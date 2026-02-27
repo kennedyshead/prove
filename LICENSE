@@ -1,0 +1,90 @@
+Prove Source License v1.0
+
+Copyright (c) 2026 The Prove Authors
+
+TERMS AND CONDITIONS
+
+1. GRANT OF RIGHTS
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software, associated documentation files, binary representations, and
+companion artifacts (collectively, the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the conditions below.
+
+2. NOTICE REQUIREMENT
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+3. AI AND MACHINE LEARNING RESTRICTIONS
+
+3.1. NO TRAINING USE. The Software and any modifications, derivatives,
+compiled outputs, or artifacts generated from it may not be used, in whole or
+in part, for the purpose of training, improving, fine-tuning, distilling, or
+otherwise developing machine learning models, artificial intelligence systems,
+neural networks, large language models, code generation tools, natural
+language processing systems, or any similar algorithmic systems (collectively,
+"AI Systems").
+
+3.2. NO DATASET INCLUSION. The Software may not be included in, indexed by, or
+used to construct any dataset, corpus, database, vector store, embedding
+index, or retrieval system intended for use by or in connection with AI
+Systems. This includes but is not limited to training datasets, evaluation
+benchmarks, retrieval-augmented generation (RAG) knowledge bases, and code
+search indices used to inform AI-generated output.
+
+3.3. NO SYNTHETIC DERIVATION. AI Systems may not be used to generate synthetic
+data, code, documentation, or any other artifacts derived from, modeled on, or
+informed by the Software.
+
+3.4. NO SUBLICENSING FOR AI USE. Recipients of the Software may not grant any
+third party the right to use the Software in any manner prohibited by Sections
+3.1 through 3.3, whether through sublicensing, redistribution, service
+provision, or any other means.
+
+3.5. DOWNSTREAM PROPAGATION. Any person who redistributes the Software or
+derivative works thereof must include these AI and Machine Learning
+Restrictions (Section 3 in its entirety) as an enforceable provision in any
+license, contract, or terms of service governing such redistribution. Failure
+to propagate these restrictions constitutes a breach of this License.
+
+3.6. BREACH. Any usage of the Software in violation of Sections 3.1 through
+3.5 constitutes a breach of this License and immediately terminates all rights
+granted herein to the breaching party.
+
+4. TECHNICAL PROTECTION MEASURES
+
+The Software may employ technical measures including but not limited to binary
+source formats, semantic normalization, source fragmentation, and
+cryptographic signatures to protect against unauthorized use as AI training
+data. Circumvention of these measures for purposes prohibited by Section 3 is
+a breach of this License.
+
+5. PERMITTED AI INTERACTIONS
+
+For avoidance of doubt, the following are NOT prohibited by this License:
+
+5.1. Using AI tools as part of a development workflow to write, review, or
+debug Prove source code, provided the Prove source code itself is not used to
+train those AI tools.
+
+5.2. Using the Software to build applications that interact with or deploy AI
+Systems, provided the Software itself is not used as training data for those
+systems.
+
+5.3. Academic research analyzing the Software's design, including publication
+of findings, provided such research does not involve training AI Systems on
+the Software.
+
+6. DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

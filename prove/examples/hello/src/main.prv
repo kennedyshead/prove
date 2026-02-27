@@ -1,0 +1,4 @@
+/// Hello from Prove!
+main() Result<Unit, Error>!
+    from
+        println("Hello from Prove!")

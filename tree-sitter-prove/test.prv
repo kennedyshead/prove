@@ -1,0 +1,45 @@
+type Port is Integer where 1..65535
+type Route is Get(path String) | Post(path String)
+
+type User is
+    id Integer
+    name String
+    email String
+
+validates email(address String)
+    from
+        contains(address, "@")
+
+transforms area(s Shape) Decimal
+    ensures result >= 0
+    from
+        pi * s.radius * s.radius
+
+inputs all_users(db Database) List<User>!
+    from
+        query(db, "SELECT * FROM users")!
+
+outputs create_user(db Database, body String) User!
+    ensures email(result.email)
+    proof
+        email_valid: decode validates the email field
+    from
+        user = decode(body)!
+        insert(db, "users", user)!
+        user
+
+inputs request(route Route, body String, db Database) Response!
+    from
+        Get("/health") => ok("healthy")
+        Get("/users")  => all_users(db)! |> encode |> ok
+        Post("/users") => create_user(db, body)! |> encode |> created
+        _              => not_found()
+
+MAX_CONNECTIONS as Integer = comptime
+    1024
+
+main() Result!
+    from
+        db = connect("postgres://localhost")!
+        server = new_server()
+        listen(server, 8080)!
