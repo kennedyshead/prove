@@ -1,0 +1,12 @@
+[package]
+name = "hello"
+version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+optimize = false
+
+[test]
+property_rounds = 1000
