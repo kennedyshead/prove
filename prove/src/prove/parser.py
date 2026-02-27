@@ -1243,6 +1243,10 @@ class Parser:
             self._advance()
             return TypeIdentifierExpr(tok.value, tok.span)
 
+        if tok.kind == TokenKind.CONSTANT_IDENTIFIER:
+            self._advance()
+            return IdentifierExpr(tok.value, tok.span)
+
         self._error(f"unexpected token in expression: {tok.kind.name} ({tok.value!r})", tok.span)
         raise _ParseError
 
