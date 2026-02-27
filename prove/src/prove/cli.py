@@ -7,8 +7,50 @@ from pathlib import Path
 import click
 
 from prove import __version__
+from prove.checker import Checker
 from prove.config import find_config, load_config
+from prove.errors import CompileError, DiagnosticRenderer, Severity
+from prove.lexer import Lexer
+from prove.parser import Parser
 from prove.project import scaffold
+
+
+def _compile_project(project_path: Path, *, check_only: bool = False) -> bool:
+    """Lex, parse, and check all .prv files under src/. Returns True if OK."""
+    src_dir = project_path / "src"
+    if not src_dir.is_dir():
+        src_dir = project_path  # fallback to project root
+
+    prv_files = sorted(src_dir.rglob("*.prv"))
+    if not prv_files:
+        click.echo("warning: no .prv files found", err=True)
+        return True
+
+    renderer = DiagnosticRenderer(color=True)
+    had_errors = False
+
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        filename = str(prv_file)
+
+        try:
+            tokens = Lexer(source, filename).lex()
+            module = Parser(tokens, filename).parse()
+        except CompileError as e:
+            had_errors = True
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            continue
+
+        checker = Checker()
+        checker.check(module)
+
+        for diag in checker.diagnostics:
+            click.echo(renderer.render(diag), err=True)
+            if diag.severity == Severity.ERROR:
+                had_errors = True
+
+    return not had_errors
 
 
 @click.group()
@@ -26,8 +68,13 @@ def build(path: str, mutate: bool) -> None:
         config_path = find_config(Path(path))
         config = load_config(config_path)
         click.echo(f"building {config.package.name}...")
+        project_dir = config_path.parent
+        ok = _compile_project(project_dir)
+        if not ok:
+            raise SystemExit(1)
         if mutate:
             click.echo("(mutation testing not yet implemented)")
+        click.echo(f"built {config.package.name} successfully")
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
@@ -41,6 +88,12 @@ def check(path: str) -> None:
         config_path = find_config(Path(path))
         config = load_config(config_path)
         click.echo(f"checking {config.package.name}...")
+        project_dir = config_path.parent
+        ok = _compile_project(project_dir, check_only=True)
+        if ok:
+            click.echo(f"checked {config.package.name} — no errors")
+        else:
+            raise SystemExit(1)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
