@@ -64,17 +64,28 @@ def main() -> None:
 @click.option("--mutate", is_flag=True, help="Enable mutation testing.")
 def build(path: str, mutate: bool) -> None:
     """Compile a Prove project."""
+    from prove.builder import build_project
+
     try:
         config_path = find_config(Path(path))
         config = load_config(config_path)
         click.echo(f"building {config.package.name}...")
         project_dir = config_path.parent
-        ok = _compile_project(project_dir)
-        if not ok:
+
+        renderer = DiagnosticRenderer(color=True)
+        result = build_project(project_dir, config)
+
+        for diag in result.diagnostics:
+            click.echo(renderer.render(diag), err=True)
+
+        if not result.ok:
+            if result.c_error:
+                click.echo(f"error: {result.c_error}", err=True)
             raise SystemExit(1)
+
         if mutate:
             click.echo("(mutation testing not yet implemented)")
-        click.echo(f"built {config.package.name} successfully")
+        click.echo(f"built {config.package.name} -> {result.binary}")
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
