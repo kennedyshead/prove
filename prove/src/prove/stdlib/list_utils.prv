@@ -1,5 +1,0 @@
-/// List utility functions.
-/// Return the number of elements in a list.
-transforms list_length(items List<Integer>) Integer
-from
-    len(items)

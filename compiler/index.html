@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://botwork.pages.botwork.se/prove/compiler/">
+        <link rel="canonical" href="https://kennedyshead.github.io/prove/compiler/">
       
       
         <link rel="prev" href="../ai-resistance/">
@@ -577,6 +577,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#proof-verification-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proof Verification Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#concurrency-structured-typed-no-data-races" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -714,47 +736,55 @@
 </code></pre></div>
 <h2 id="comptime-compile-time-computation">Comptime (Compile-Time Computation)<a class="headerlink" href="#comptime-compile-time-computation" title="Permanent link">&para;</a></h2>
 <p>Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>MAX_CONNECTIONS as Integer = comptime
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    if cfg.target == &quot;embedded&quot;
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        16
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    else
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        1024
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nc">MAX_CONNECTIONS</span> <span class="n">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">target</span> <span class="o">==</span> <span class="s">&quot;embedded&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="mi">16</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="k">else</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="mi">1024</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>LOOKUP_TABLE as List&lt;Integer:[32 Unsigned]&gt; = comptime
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    collect(map(0..256, crc32_step))
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nc">LOOKUP_TABLE</span> <span class="n">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="p">:[</span><span class="mi">32</span> <span class="nc">Unsigned</span><span class="p">]</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">collect</span><span class="p">(</span><span class="n">map</span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">256</span><span class="p">,</span> <span class="n">crc32_step</span><span class="p">))</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>ROUTES as List&lt;Route&gt; = comptime
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    decode(read(&quot;routes.json&quot;))                   // IO allowed — routes.json becomes a build dep
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nc">ROUTES</span> <span class="n">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Route</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">decode</span><span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;routes.json&quot;</span><span class="p">))</span>                   <span class="c1">// IO allowed — routes.json becomes a build dep</span>
 </code></pre></div>
 <h2 id="formal-verification-of-contracts">Formal Verification of Contracts<a class="headerlink" href="#formal-verification-of-contracts" title="Permanent link">&para;</a></h2>
 <p>The compiler proves properties when it can, and generates tests when it can't:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>transforms binary_search(xs Sorted&lt;List&lt;Integer&gt;&gt;, target Integer) Option&lt;Index&gt;
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    ensures is_some(result) implies xs[unwrap(result)] == target
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    ensures is_none(result) implies target not_in xs
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">transforms</span> <span class="n">binary_search</span><span class="p">(</span><span class="n">xs</span> <span class="nc">Sorted</span><span class="o">&lt;</span><span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;&gt;</span><span class="p">,</span> <span class="n">target</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Option</span><span class="o">&lt;</span><span class="nc">Index</span><span class="o">&gt;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="kn">requires</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="kn">ensures</span> <span class="n">is_some</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="n">implies</span> <span class="n">xs</span><span class="p">[</span><span class="n">unwrap</span><span class="p">(</span><span class="n">result</span><span class="p">)]</span> <span class="o">==</span> <span class="n">target</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="kn">ensures</span> <span class="n">is_none</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="n">implies</span> <span class="n">target</span> <span class="n">not_in</span> <span class="n">xs</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="kn">proof</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="na">found</span><span class="p">:</span> <span class="n">binary</span> <span class="n">search</span> <span class="n">narrows</span> <span class="n">to</span> <span class="n">the</span> <span class="n">exact</span> <span class="n">index</span> <span class="k">where</span> <span class="n">target</span> <span class="n">lives</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="na">not_found</span><span class="p">:</span> <span class="n">exhaustive</span> <span class="n">halving</span> <span class="n">covers</span> <span class="n">all</span> <span class="n">indices</span><span class="p">,</span> <span class="n">so</span> <span class="n">absence</span> <span class="k">is</span> <span class="n">certain</span>
 </code></pre></div>
 <hr />
 <h2 id="auto-testing">Auto-Testing<a class="headerlink" href="#auto-testing" title="Permanent link">&para;</a></h2>
-<p>Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.</p>
+<p>Testing is not a separate activity. It is woven into the language — contracts are the single source of truth for test generation. <code>ensures</code>, <code>believe</code>, and <code>near_miss</code> annotations generate tests automatically. Doc comments (<code>///</code>) remain as documentation only — they do not generate tests.</p>
 <h3 id="level-1-contracts-generate-property-tests">Level 1: Contracts Generate Property Tests<a class="headerlink" href="#level-1-contracts-generate-property-tests" title="Permanent link">&para;</a></h3>
-<p>No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>transforms sort(xs List&lt;T&gt;) List&lt;T&gt;
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    ensures len(result) == len(xs)
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    ensures is_sorted(result)
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    ensures is_permutation_of(result, xs)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    from
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        // implementation
+<p>No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Every <code>ensures</code> clause requires a <code>proof</code> block explaining <em>why</em> the guarantee holds (E390).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">transforms</span> <span class="n">sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="kn">ensures</span> <span class="n">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">==</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="kn">ensures</span> <span class="n">is_sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="kn">ensures</span> <span class="n">is_permutation_of</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="kn">proof</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="na">length</span><span class="p">:</span> <span class="n">sort</span> <span class="n">only</span> <span class="n">rearranges</span><span class="p">,</span> <span class="n">never</span> <span class="n">adds</span> <span class="n">or</span> <span class="n">removes</span> <span class="n">elements</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="na">sorted</span><span class="p">:</span> <span class="n">merge</span> <span class="n">step</span> <span class="n">preserves</span> <span class="n">ordering</span> <span class="n">by</span> <span class="n">induction</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="na">permutation</span><span class="p">:</span> <span class="n">every</span> <span class="n">element</span> <span class="k">is</span> <span class="n">moved</span><span class="p">,</span> <span class="n">never</span> <span class="n">duplicated</span> <span class="n">or</span> <span class="n">dropped</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="k">from</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="c1">// implementation</span>
 </code></pre></div>
 <h3 id="level-2-automatic-edge-case-generation">Level 2: Automatic Edge-Case Generation<a class="headerlink" href="#level-2-automatic-edge-case-generation" title="Permanent link">&para;</a></h3>
 <p>Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>transforms divide(a Integer, b NonZero&lt;Integer&gt;) Integer
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>// (MIN_INT, -1), (7, 3), ...
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>// Derived from type bounds + heuristic edge-case generation
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">transforms</span> <span class="n">divide</span><span class="p">(</span><span class="n">a</span> <span class="kt">Integer</span><span class="p">,</span> <span class="n">b</span> <span class="nc">NonZero</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1">// (MIN_INT, -1), (7, 3), ...</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">// Derived from type bounds + heuristic edge-case generation</span>
 </code></pre></div>
 <p>For refinement types, boundary testing is automatic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>transforms set_port(p Port) Config    // Port = 1..65535
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>// Auto-tests: 1, 2, 65534, 65535, and random values between
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>// Also verifies that 0 and 65536 are rejected at the call site
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">transforms</span> <span class="n">set_port</span><span class="p">(</span><span class="n">p</span> <span class="nc">Port</span><span class="p">)</span> <span class="nc">Config</span>    <span class="c1">// Port = 1..65535</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// Auto-tests: 1, 2, 65534, 65535, and random values between</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1">// Also verifies that 0 and 65536 are rejected at the call site</span>
 </code></pre></div>
 <h3 id="level-4-built-in-mutation-testing">Level 4: Built-in Mutation Testing<a class="headerlink" href="#level-4-built-in-mutation-testing" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ prove build --mutate
@@ -768,20 +798,86 @@
 <a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
 </code></pre></div>
 <hr />
+<h2 id="proof-verification-diagnostics">Proof Verification Diagnostics<a class="headerlink" href="#proof-verification-diagnostics" title="Permanent link">&para;</a></h2>
+<p>The compiler enforces structural proof obligations with these diagnostics:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Severity</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E390</td>
+<td>error</td>
+<td><code>ensures</code> without <code>proof</code> block</td>
+</tr>
+<tr>
+<td>E391</td>
+<td>error</td>
+<td>duplicate proof obligation name</td>
+</tr>
+<tr>
+<td>E392</td>
+<td>error</td>
+<td>proof obligations fewer than ensures count</td>
+</tr>
+<tr>
+<td>E393</td>
+<td>error</td>
+<td><code>believe</code> without <code>ensures</code></td>
+</tr>
+<tr>
+<td>W321</td>
+<td>warning</td>
+<td>proof text doesn't reference function concepts</td>
+</tr>
+<tr>
+<td>W322</td>
+<td>warning</td>
+<td>duplicate near-miss inputs</td>
+</tr>
+<tr>
+<td>W324</td>
+<td>warning</td>
+<td><code>ensures</code> without <code>requires</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>Projects are configured via <code>prove.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">[package]</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myproject&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">[build]</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;native&quot;</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">optimize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="k">[test]</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">property_rounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="k">[style]</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="n">line_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">90</span>
+</code></pre></div>
+<hr />
 <h2 id="concurrency-structured-typed-no-data-races">Concurrency — Structured, Typed, No Data Races<a class="headerlink" href="#concurrency-structured-typed-no-data-races" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>inputs fetch_all(urls List&lt;Url&gt;) List&lt;Response&gt;!
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    from
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        par_map(urls, fetch)   // parallel map — compiler proves no shared mutable state
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">inputs</span> <span class="n">fetch_all</span><span class="p">(</span><span class="n">urls</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Url</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Response</span><span class="o">&gt;!</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="k">from</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="n">par_map</span><span class="p">(</span><span class="n">urls</span><span class="p">,</span> <span class="n">fetch</span><span class="p">)</span>   <span class="c1">// parallel map — compiler proves no shared mutable state</span>
 </code></pre></div>
 <p>The ownership system and effect types combine to eliminate data races at compile time.</p>
 <hr />
 <h2 id="error-handling-errors-are-values">Error Handling — Errors Are Values<a class="headerlink" href="#error-handling-errors-are-values" title="Permanent link">&para;</a></h2>
 <p>No exceptions. Every failure path is visible in the type signature. Uses <code>!</code> for error propagation. Panics exist only for violated <code>assume:</code> assertions at system boundaries — normal error handling is always through <code>Result</code> values.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>main() Result&lt;Unit, Error&gt;!
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    from
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        config as Config = read_config(&quot;app.yaml&quot;)!
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        db as Database = connect(config.db_url)!
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        serve(config.port, db)!
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;!</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">from</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="n">config</span> <span class="n">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">read_config</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="o">!</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        <span class="n">db</span> <span class="n">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="o">!</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="o">!</span>
 </code></pre></div>
 <hr />
 <h2 id="zero-cost-abstractions">Zero-Cost Abstractions<a class="headerlink" href="#zero-cost-abstractions" title="Permanent link">&para;</a></h2>

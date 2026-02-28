@@ -1,9 +1,0 @@
-transforms abs_val(n Integer) Integer
-    ensures result >= 0
-    requires n > -1000000
-    believe: result >= 0
-    from
-        if n >= 0
-            n
-        else
-            0 - n

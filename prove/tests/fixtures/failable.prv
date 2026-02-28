@@ -1,7 +1,0 @@
-inputs read_name() Result<String, Error>!
-    from
-        readln()
-
-main() Result<Unit, Error>!
-    from
-        println("hello")
