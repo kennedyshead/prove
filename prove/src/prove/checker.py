@@ -54,6 +54,7 @@ from prove.ast_nodes import (
     WildcardPattern,
 )
 from prove.errors import Diagnostic, DiagnosticLabel, Severity
+from prove.prover import ProofVerifier
 from prove.source import Span
 from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
 from prove.types import (
@@ -368,6 +369,11 @@ class Checker:
 
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
+
+        # ── Proof verification ──
+        verifier = ProofVerifier()
+        verifier.verify(fd)
+        self.diagnostics.extend(verifier.diagnostics)
 
         self.symbols.pop_scope()
         self._current_function = None
