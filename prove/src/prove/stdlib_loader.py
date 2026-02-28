@@ -30,7 +30,7 @@ _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
 # Map stdlib module names to .prv filenames
 # Keys are lowercase; lookup normalizes to lowercase.
 _STDLIB_MODULES: dict[str, str] = {
-    "io": "io.prv",
+    "io": "input_output.prv",
     "http": "http.prv",
     "json": "json.prv",
     "list_utils": "list_utils.prv",
@@ -102,7 +102,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
         param_names = []
         for p in decl.params:
             param_names.append(p.name)
-            if hasattr(p.type_expr, 'name'):
+            if hasattr(p.type_expr, "name"):
                 pt = _resolve_type_name(p.type_expr.name)
                 # Handle generic types like List<Integer>
                 if isinstance(p.type_expr, GenericType):
@@ -131,7 +131,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
                     else:
                         args.append(TypeVariable("T"))
                 ret_type = GenericInstance(decl.return_type.name, args)
-            elif hasattr(decl.return_type, 'name'):
+            elif hasattr(decl.return_type, "name"):
                 ret_type = _resolve_type_name(decl.return_type.name)
 
         sig = FunctionSignature(
@@ -238,7 +238,9 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
         for decl in all_decls:
             if isinstance(decl, FunctionDef):
                 suggestion = ImportSuggestion(
-                    module=display, verb=decl.verb, name=decl.name,
+                    module=display,
+                    verb=decl.verb,
+                    name=decl.name,
                 )
                 index.setdefault(decl.name, []).append(suggestion)
 
@@ -252,7 +254,9 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                 for variant in td.body.variants:
                     index.setdefault(variant.name, []).append(
                         ImportSuggestion(
-                            module=display, verb=None, name=variant.name,
+                            module=display,
+                            verb=None,
+                            name=variant.name,
                         ),
                     )
 

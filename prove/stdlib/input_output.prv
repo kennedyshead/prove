@@ -1,5 +1,5 @@
-module IO
-  narrative: "Handles IO operations"
+module InputOutput
+  narrative: """Handles IO operations"""
 
 outputs println(text String)
 from
