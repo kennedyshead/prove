@@ -115,11 +115,78 @@ def check(path: str) -> None:
 @click.option("--property-rounds", type=int, default=None, help="Override property test rounds.")
 def test(path: str, property_rounds: int | None) -> None:
     """Run tests for a Prove project."""
+    from prove.testing import run_tests
+
     try:
         config_path = find_config(Path(path))
         config = load_config(config_path)
         rounds = property_rounds or config.test.property_rounds
+        project_dir = config_path.parent
         click.echo(f"testing {config.package.name} (property rounds: {rounds})...")
+
+        # Parse and check all modules
+        src_dir = project_dir / "src"
+        if not src_dir.is_dir():
+            src_dir = project_dir
+
+        prv_files = sorted(src_dir.rglob("*.prv"))
+        if not prv_files:
+            click.echo("warning: no .prv files found", err=True)
+            return
+
+        renderer = DiagnosticRenderer(color=True)
+        modules = []
+        had_errors = False
+
+        for prv_file in prv_files:
+            source = prv_file.read_text()
+            filename = str(prv_file)
+            try:
+                tokens = Lexer(source, filename).lex()
+                module = Parser(tokens, filename).parse()
+            except CompileError as e:
+                had_errors = True
+                for diag in e.diagnostics:
+                    click.echo(renderer.render(diag), err=True)
+                continue
+
+            checker = Checker()
+            symbols = checker.check(module)
+            for diag in checker.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+                if diag.severity == Severity.ERROR:
+                    had_errors = True
+
+            if not checker.has_errors():
+                modules.append((module, symbols))
+
+        if had_errors:
+            raise SystemExit(1)
+
+        result = run_tests(
+            project_dir, modules, property_rounds=rounds,
+        )
+
+        if result.output:
+            click.echo(result.output)
+
+        if result.c_error:
+            click.echo(f"error: {result.c_error}", err=True)
+            raise SystemExit(1)
+
+        if result.ok:
+            click.echo(
+                f"tested {config.package.name} — "
+                f"{result.tests_run} tests, "
+                f"{result.tests_passed} passed"
+            )
+        else:
+            click.echo(
+                f"tested {config.package.name} — "
+                f"{result.tests_failed} FAILED",
+                err=True,
+            )
+            raise SystemExit(1)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)

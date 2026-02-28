@@ -234,7 +234,9 @@ class TestLexerNewlines:
     def test_suppressed_after_comma(self):
         source = "a,\nb\n"
         k = kinds(source)
-        assert TokenKind.NEWLINE not in k or k.index(TokenKind.NEWLINE) > k.index(TokenKind.IDENTIFIER)
+        newline_absent = TokenKind.NEWLINE not in k
+        newline_after_id = k.index(TokenKind.NEWLINE) > k.index(TokenKind.IDENTIFIER)
+        assert newline_absent or newline_after_id
 
     def test_suppressed_after_operator(self):
         for op in ["+", "-", "*", "/", "==", "!=", "&&", "||"]:
@@ -314,7 +316,12 @@ class TestLexerIntegration:
         assert TokenKind.DOT_DOT in k
 
     def test_hello_world(self):
-        source = '/// Hello from Prove!\nmain() Result<Unit, Error>!\n    from\n        println("Hello from Prove!")\n'
+        source = (
+            '/// Hello from Prove!\n'
+            'main() Result<Unit, Error>!\n'
+            '    from\n'
+            '        println("Hello from Prove!")\n'
+        )
         tokens = Lexer(source).lex()
         k = [t.kind for t in tokens]
         assert TokenKind.DOC_COMMENT in k
