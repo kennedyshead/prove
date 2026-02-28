@@ -98,6 +98,7 @@ class Checker:
         self.symbols = SymbolTable()
         self.diagnostics: list[Diagnostic] = []
         self._current_function: FunctionDef | MainDef | None = None
+        self._io_function_names: set[str] = set()
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -116,6 +117,11 @@ class Checker:
                 self._register_import(decl)
             elif isinstance(decl, MainDef):
                 self._register_main(decl)
+
+        # Collect user-defined IO function names (inputs/outputs verbs)
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef) and decl.verb in ("inputs", "outputs"):
+                self._io_function_names.add(decl.name)
 
         # Pass 2: check bodies
         for decl in module.declarations:
@@ -533,11 +539,20 @@ class Checker:
     def _check_pure_expr(self, expr: Expr) -> None:
         """Check an expression for IO calls."""
         if isinstance(expr, CallExpr):
-            if isinstance(expr.func, IdentifierExpr) and expr.func.name in _IO_FUNCTIONS:
-                self._error(
-                    "E362", f"pure function cannot call IO function '{expr.func.name}'",
-                    expr.span,
-                )
+            if isinstance(expr.func, IdentifierExpr):
+                fname = expr.func.name
+                if fname in _IO_FUNCTIONS:
+                    self._error(
+                        "E362",
+                        f"pure function cannot call IO function '{fname}'",
+                        expr.span,
+                    )
+                elif fname in self._io_function_names:
+                    self._error(
+                        "E363",
+                        f"pure function cannot call IO function '{fname}'",
+                        expr.span,
+                    )
             for arg in expr.args:
                 self._check_pure_expr(arg)
         elif isinstance(expr, BinaryExpr):
