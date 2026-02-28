@@ -429,6 +429,27 @@ class TestVerbEnforcement:
         )
 
 
+class TestLambdaCapture:
+    """Test closure capture detection."""
+
+    def test_lambda_capture_rejected(self):
+        """Lambda capturing a local variable -> E364."""
+        check_fails(
+            "transforms compute(y Integer) List<Integer>\n"
+            "    from\n"
+            "        map([1, 2, 3], |x| x + y)\n",
+            "E364",
+        )
+
+    def test_lambda_no_capture_ok(self):
+        """Lambda using only its own params is fine."""
+        check(
+            "transforms doubled() List<Integer>\n"
+            "    from\n"
+            "        map([1, 2, 3], |x| x * 2)\n"
+        )
+
+
 class TestMatchExhaustiveness:
     """Test match exhaustiveness checking."""
 

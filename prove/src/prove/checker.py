@@ -977,6 +977,7 @@ class Checker:
     def _infer_lambda(self, expr: LambdaExpr) -> Type:
         self.symbols.push_scope("lambda")
         param_types: list[Type] = []
+        param_names = set(expr.params)
         for pname in expr.params:
             pt = TypeVariable(pname)
             param_types.append(pt)
@@ -984,9 +985,39 @@ class Checker:
                 name=pname, kind=SymbolKind.PARAMETER,
                 resolved_type=pt, span=expr.span,
             ))
+
+        # Check for closure captures (not supported in v0.1)
+        self._check_lambda_captures(expr.body, param_names, expr.span)
+
         body_type = self._infer_expr(expr.body)
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
+
+    def _check_lambda_captures(
+        self, expr: Expr, param_names: set[str], span: Span,
+    ) -> None:
+        """Detect closure captures in lambda body (not supported)."""
+        if isinstance(expr, IdentifierExpr):
+            if expr.name not in param_names:
+                # Check if it's a variable/parameter from enclosing scope
+                sym = self.symbols.lookup(expr.name)
+                if sym is not None and sym.kind in (
+                    SymbolKind.VARIABLE, SymbolKind.PARAMETER,
+                ):
+                    self._error(
+                        "E364",
+                        f"lambda captures variable '{expr.name}' "
+                        f"(closures not supported)",
+                        span,
+                    )
+        elif isinstance(expr, BinaryExpr):
+            self._check_lambda_captures(expr.left, param_names, span)
+            self._check_lambda_captures(expr.right, param_names, span)
+        elif isinstance(expr, UnaryExpr):
+            self._check_lambda_captures(expr.operand, param_names, span)
+        elif isinstance(expr, CallExpr):
+            for arg in expr.args:
+                self._check_lambda_captures(arg, param_names, span)
 
     def _infer_index(self, expr: IndexExpr) -> Type:
         obj_type = self._infer_expr(expr.obj)
