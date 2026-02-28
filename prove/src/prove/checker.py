@@ -337,22 +337,40 @@ class Checker:
             self._error("E301", f"duplicate definition of '{cd.name}'", cd.span)
 
     def _register_import(self, imp: ImportDecl) -> None:
-        """Register imported names (shallow — no cross-module resolution)."""
+        """Register imported names, loading from stdlib if available."""
+        from prove.stdlib_loader import load_stdlib
+
+        # Try loading real signatures from stdlib
+        stdlib_sigs = load_stdlib(imp.module)
+        stdlib_map = {s.name: s for s in stdlib_sigs}
+
         for item in imp.items:
-            self.symbols.define(Symbol(
-                name=item.name, kind=SymbolKind.FUNCTION,
-                resolved_type=ERROR_TY, span=item.span,
-                verb=item.verb,
-            ))
-            # Also register a function signature so calls resolve
-            sig = FunctionSignature(
-                verb=item.verb, name=item.name,
-                param_names=[], param_types=[],
-                return_type=ERROR_TY,
-                can_fail=False,
-                span=item.span,
-            )
-            self.symbols.define_function(sig)
+            # Check if stdlib has a real signature for this item
+            real_sig = stdlib_map.get(item.name)
+            if real_sig is not None:
+                ret_type = real_sig.return_type
+                func_type = FunctionType(real_sig.param_types, ret_type)
+                self.symbols.define(Symbol(
+                    name=item.name, kind=SymbolKind.FUNCTION,
+                    resolved_type=func_type, span=item.span,
+                    verb=real_sig.verb,
+                ))
+                self.symbols.define_function(real_sig)
+            else:
+                # Fallback: placeholder with ERROR_TY
+                self.symbols.define(Symbol(
+                    name=item.name, kind=SymbolKind.FUNCTION,
+                    resolved_type=ERROR_TY, span=item.span,
+                    verb=item.verb,
+                ))
+                sig = FunctionSignature(
+                    verb=item.verb, name=item.name,
+                    param_names=[], param_types=[],
+                    return_type=ERROR_TY,
+                    can_fail=False,
+                    span=item.span,
+                )
+                self.symbols.define_function(sig)
 
     # ── Pass 2: Checking ────────────────────────────────────────
 

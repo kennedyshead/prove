@@ -1,0 +1,16 @@
+/// String utility functions.
+
+/// Convert an integer to its string representation.
+transforms int_to_string(n Integer) String
+from
+    to_string(n)
+
+/// Convert a boolean to "true" or "false".
+transforms bool_to_string(b Boolean) String
+from
+    to_string(b)
+
+/// Return the length of a string in characters.
+transforms string_length(s String) Integer
+from
+    len(s)

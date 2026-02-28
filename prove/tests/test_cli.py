@@ -80,6 +80,11 @@ class TestCLI:
             prv_text = (project / "src" / "main.prv").read_text()
             assert "Hello from Prove!" in prv_text
 
+            # Verify README.md
+            assert (project / "README.md").exists()
+            readme_text = (project / "README.md").read_text()
+            assert "# hello" in readme_text
+
     def test_new_existing_dir_fails(self, runner, tmp_path):
         with runner.isolated_filesystem(temp_dir=tmp_path):
             Path("hello").mkdir()
