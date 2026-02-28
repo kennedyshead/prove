@@ -329,19 +329,35 @@ class CEmitter:
                 # Last expression is the return value
                 if isinstance(ret_type, UnitType) and not is_failable:
                     self._emit_stmt(stmt)
+                    self._emit_releases(None)
                 elif is_failable:
                     # For failable functions, wrap last in result_ok
                     self._emit_stmt(stmt)
+                    self._emit_releases(None)
                     if isinstance(ret_type, GenericInstance) and ret_type.base_name == "Result":
                         self._line("return prove_result_ok();")
                 else:
                     expr = self._stmt_expr(stmt)
                     if expr is not None:
-                        self._line(f"return {self._emit_expr(expr)};")
+                        ret_tmp = self._tmp()
+                        ret_ct = map_type(ret_type)
+                        self._line(f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};")
+                        self._emit_releases(ret_tmp)
+                        self._line(f"return {ret_tmp};")
                     else:
                         self._emit_stmt(stmt)
+                        self._emit_releases(None)
             else:
                 self._emit_stmt(stmt)
+
+    def _emit_releases(self, skip_var: str | None) -> None:
+        """Emit prove_release for all pointer locals except skip_var."""
+        for name, ty in self._locals.items():
+            if name == skip_var:
+                continue
+            ct = map_type(ty)
+            if ct.is_pointer:
+                self._line(f"prove_release({name});")
 
     def _stmt_expr(self, stmt) -> Expr | None:
         """Extract the expression from a statement, if it is an ExprStmt."""
@@ -369,6 +385,9 @@ class CEmitter:
         ct = map_type(ty)
         val = self._emit_expr(vd.value)
         self._line(f"{ct.decl} {vd.name} = {val};")
+        # Retain pointer types
+        if ct.is_pointer:
+            self._line(f"prove_retain({vd.name});")
 
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)
