@@ -1,0 +1,9 @@
+type Shape is
+    Circle(radius Integer)
+    | Rectangle(width Integer, height Integer)
+
+transforms describe(s Shape) String
+    from
+        match s
+            Circle(r) => "circle"
+            Rectangle(w, h) => "rectangle"

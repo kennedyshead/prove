@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from prove.builder import build_project
-from prove.c_compiler import find_c_compiler
 from prove.config import load_config
 
 _EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
@@ -15,13 +14,6 @@ _EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 @pytest.fixture
 def hello_project():
     return _EXAMPLES_DIR / "hello"
-
-
-@pytest.fixture
-def needs_cc():
-    """Skip test if no C compiler is available."""
-    if find_c_compiler() is None:
-        pytest.skip("no C compiler available")
 
 
 class TestBuildHello:
