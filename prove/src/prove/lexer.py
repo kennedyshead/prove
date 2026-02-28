@@ -289,9 +289,6 @@ class Lexer:
                         self._lex_operator_or_punct()
                 start_line = self.line
                 start_col = self.col
-            elif self.source[self.pos] == '\n':
-                self._error("unterminated string literal", start_line, start_col)
-                return
             else:
                 text.append(self._advance())
 
