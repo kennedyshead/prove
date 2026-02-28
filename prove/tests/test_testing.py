@@ -2,29 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.checker import Checker
-from prove.lexer import Lexer
-from prove.parser import Parser
 from prove.testing import TestGenerator, run_tests
-
-
-def _parse_check(source: str):
-    """Parse and check source, return (module, symbols)."""
-    tokens = Lexer(source, "<test>").lex()
-    module = Parser(tokens, "<test>").parse()
-    checker = Checker()
-    symbols = checker.check(module)
-    assert not checker.has_errors(), [d.message for d in checker.diagnostics]
-    return module, symbols
-
-
-@pytest.fixture
-def needs_cc():
-    if find_c_compiler() is None:
-        pytest.skip("no C compiler available")
+from tests.helpers import parse_check as _parse_check
 
 
 class TestTestGenerator:
