@@ -148,8 +148,8 @@ line_length = 90
 
 ```prove
 inputs fetch_all(urls List<Url>) List<Response>!
-    from
-        par_map(urls, fetch)   // parallel map — compiler proves no shared mutable state
+from
+    par_map(urls, fetch)
 ```
 
 The ownership system and effect types combine to eliminate data races at compile time.
@@ -162,10 +162,10 @@ No exceptions. Every failure path is visible in the type signature. Uses `!` for
 
 ```prove
 main() Result<Unit, Error>!
-    from
-        config as Config = read_config("app.yaml")!
-        db as Database = connect(config.db_url)!
-        serve(config.port, db)!
+from
+    config as Config = read_config("app.yaml")!
+    db as Database = connect(config.db_url)!
+    serve(config.port, db)!
 ```
 
 ---

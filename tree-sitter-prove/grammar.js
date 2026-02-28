@@ -35,14 +35,8 @@ module.exports = grammar({
 
     _top_level: $ => choice(
       $.module_declaration,
-      $.import_declaration,
-      $.type_definition,
       $.function_definition,
       $.main_definition,
-      $.constant_definition,
-      $.invariant_network,
-      $.narrative_annotation,
-      $.temporal_annotation,
     ),
 
     // ─── Comments ──────────────────────────────────────────────
@@ -56,20 +50,26 @@ module.exports = grammar({
     module_declaration: $ => seq(
       'module',
       $.type_identifier,
+      repeat(choice(
+        $.import_declaration,
+        $.type_definition,
+        $.constant_definition,
+        $.invariant_network,
+        $.narrative_annotation,
+        $.temporal_annotation,
+      )),
     ),
 
     // ─── Imports ───────────────────────────────────────────────
 
     import_declaration: $ => seq(
-      'with',
       $.type_identifier,
-      'use',
-      sep1($.import_item, ','),
+      sep1($.import_group, ','),
     ),
 
-    import_item: $ => seq(
+    import_group: $ => seq(
       optional($.verb),
-      $.identifier,
+      repeat1($.identifier),
     ),
 
     // ─── Type Definitions ──────────────────────────────────────
@@ -279,11 +279,11 @@ module.exports = grammar({
 
     // ─── Invariant Networks ────────────────────────────────────
 
-    invariant_network: $ => seq(
+    invariant_network: $ => prec.left(seq(
       'invariant_network',
       $.type_identifier,
       repeat1($.expression),
-    ),
+    )),
 
     // ─── Constants ─────────────────────────────────────────────
 
@@ -294,10 +294,10 @@ module.exports = grammar({
       choice($.comptime_block, $.expression),
     ),
 
-    comptime_block: $ => seq(
+    comptime_block: $ => prec.left(seq(
       'comptime',
       repeat1($._statement),
-    ),
+    )),
 
     // ─── Statements ────────────────────────────────────────────
 

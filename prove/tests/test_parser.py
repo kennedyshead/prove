@@ -17,7 +17,7 @@ from prove.ast_nodes import (
     FunctionDef,
     GenericType,
     IfExpr,
-    ImportDecl,
+    ImportItem,
     IndexExpr,
     IntegerLit,
     InvariantNetwork,
@@ -56,9 +56,39 @@ def parse_decl(source: str):
     return mod.declarations[0]
 
 
+def parse_module_type(source: str):
+    """Helper: wrap source in a module, parse, return first type from ModuleDecl."""
+    wrapped = f"module M\n{source}"
+    mod = parse(wrapped)
+    decl = mod.declarations[0]
+    assert isinstance(decl, ModuleDecl)
+    assert len(decl.types) >= 1
+    return decl.types[0]
+
+
+def parse_module_constant(source: str):
+    """Helper: wrap source in a module, parse, return first constant from ModuleDecl."""
+    wrapped = f"module M\n{source}"
+    mod = parse(wrapped)
+    decl = mod.declarations[0]
+    assert isinstance(decl, ModuleDecl)
+    assert len(decl.constants) >= 1
+    return decl.constants[0]
+
+
+def parse_module_invariant(source: str):
+    """Helper: wrap source in a module, parse, return first invariant from ModuleDecl."""
+    wrapped = f"module M\n{source}"
+    mod = parse(wrapped)
+    decl = mod.declarations[0]
+    assert isinstance(decl, ModuleDecl)
+    assert len(decl.invariants) >= 1
+    return decl.invariants[0]
+
+
 class TestParserTypes:
     def test_simple_type(self):
-        decl = parse_decl("type Port is Integer where 1..65535\n")
+        decl = parse_module_type("  type Port is Integer where 1..65535\n")
         assert isinstance(decl, TypeDef)
         assert decl.name == "Port"
         assert isinstance(decl.body, RefinementTypeDef)
@@ -66,14 +96,14 @@ class TestParserTypes:
         assert decl.body.base_type.name == "Integer"
 
     def test_generic_type(self):
-        decl = parse_decl("type Result<T, E> is Ok(value T) | Err(error E)\n")
+        decl = parse_module_type("  type Result<T, E> is Ok(value T) | Err(error E)\n")
         assert isinstance(decl, TypeDef)
         assert decl.name == "Result"
         assert decl.type_params == ["T", "E"]
         assert isinstance(decl.body, AlgebraicTypeDef)
 
     def test_modified_type(self):
-        decl = parse_decl("type Port is Integer:[16 Unsigned] where 1..65535\n")
+        decl = parse_module_type("  type Port is Integer:[16 Unsigned] where 1..65535\n")
         assert isinstance(decl, TypeDef)
         assert isinstance(decl.body, RefinementTypeDef)
         assert isinstance(decl.body.base_type, ModifiedType)
@@ -81,32 +111,34 @@ class TestParserTypes:
 
     def test_refinement_type(self):
         # Shorthand `>= 0` means the constraint is an operator expression
-        decl = parse_decl("type Quantity is Integer where >= 0\n")
+        decl = parse_module_type("  type Quantity is Integer where >= 0\n")
         assert isinstance(decl, TypeDef)
         assert isinstance(decl.body, RefinementTypeDef)
 
     def test_algebraic_inline(self):
-        decl = parse_decl("type OrderStatus is Pending | Confirmed | Shipped | Cancelled\n")
+        decl = parse_module_type(
+            "  type OrderStatus is Pending | Confirmed | Shipped | Cancelled\n"
+        )
         assert isinstance(decl, TypeDef)
         assert isinstance(decl.body, AlgebraicTypeDef)
         assert len(decl.body.variants) == 4
 
     def test_algebraic_multiline(self):
-        source = "type Shape is\n    Circle(radius Decimal)\n    | Rect(w Decimal, h Decimal)\n"
-        decl = parse_decl(source)
+        source = "  type Shape is\n    Circle(radius Decimal)\n    | Rect(w Decimal, h Decimal)\n"
+        decl = parse_module_type(source)
         assert isinstance(decl, TypeDef)
         assert isinstance(decl.body, AlgebraicTypeDef)
         assert len(decl.body.variants) >= 2
 
     def test_record_type(self):
-        source = "type Product is\n    sku String\n    name String\n    price Decimal\n"
-        decl = parse_decl(source)
+        source = "  type Product is\n    sku String\n    name String\n    price Decimal\n"
+        decl = parse_module_type(source)
         assert isinstance(decl, TypeDef)
         assert isinstance(decl.body, RecordTypeDef)
         assert len(decl.body.fields) == 3
 
     def test_unit_variants(self):
-        decl = parse_decl("type Color is Red | Green | Blue\n")
+        decl = parse_module_type("  type Color is Red | Green | Blue\n")
         assert isinstance(decl.body, AlgebraicTypeDef)
         for v in decl.body.variants:
             assert isinstance(v, Variant)
@@ -386,54 +418,76 @@ class TestParserImplicitMatch:
 
 class TestParserConstants:
     def test_simple_constant(self):
-        source = 'MAX_SIZE as Integer = 100\n'
-        decl = parse_decl(source)
+        source = '  MAX_SIZE as Integer = 100\n'
+        decl = parse_module_constant(source)
         assert isinstance(decl, ConstantDef)
         assert decl.name == "MAX_SIZE"
         assert isinstance(decl.type_expr, SimpleType)
 
     def test_comptime_constant(self):
         source = (
-            'MAX_CONNECTIONS as Integer = comptime\n'
+            '  MAX_CONNECTIONS as Integer = comptime\n'
             '    if true\n        16\n'
             '    else\n        1024\n'
         )
-        decl = parse_decl(source)
+        decl = parse_module_constant(source)
         assert isinstance(decl, ConstantDef)
         assert isinstance(decl.value, ComptimeExpr)
 
 
 class TestParserModules:
     def test_module_decl(self):
-        source = 'module Auth\n    temporal: authenticate -> authorize -> access\n'
+        source = 'module Auth\n  temporal: authenticate -> authorize -> access\n'
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert decl.name == "Auth"
         assert decl.temporal == ["authenticate", "authorize", "access"]
 
     def test_module_with_narrative(self):
-        source = 'module UserService\n    narrative: """Users are managed here."""\n'
+        source = 'module UserService\n  narrative: """Users are managed here."""\n'
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert decl.narrative is not None
 
     def test_import(self):
-        source = 'with String use contains, length\n'
+        source = 'module Foo\n  String contains length\n'
         decl = parse_decl(source)
-        assert isinstance(decl, ImportDecl)
-        assert decl.module == "String"
-        assert len(decl.items) == 2
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.imports) == 1
+        imp = decl.imports[0]
+        assert imp.module == "String"
+        assert len(imp.items) == 2
+        assert imp.items[0].verb is None
+        assert imp.items[0].name == "contains"
+        assert imp.items[1].name == "length"
 
     def test_import_with_verb(self):
-        source = 'with Auth use validates login, transforms login\n'
+        source = 'module Foo\n  Auth validates login, transforms login\n'
         decl = parse_decl(source)
-        assert isinstance(decl, ImportDecl)
-        assert decl.items[0].verb == "validates"
-        assert decl.items[1].verb == "transforms"
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.imports) == 1
+        imp = decl.imports[0]
+        assert imp.items[0].verb == "validates"
+        assert imp.items[0].name == "login"
+        assert imp.items[1].verb == "transforms"
+        assert imp.items[1].name == "login"
+
+    def test_import_verb_group(self):
+        source = 'module Foo\n  Http transforms ok not_found, validates method1 method2\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.imports) == 1
+        imp = decl.imports[0]
+        assert imp.module == "Http"
+        assert len(imp.items) == 4
+        assert imp.items[0] == ImportItem("transforms", "ok", imp.items[0].span)
+        assert imp.items[1] == ImportItem("transforms", "not_found", imp.items[1].span)
+        assert imp.items[2] == ImportItem("validates", "method1", imp.items[2].span)
+        assert imp.items[3] == ImportItem("validates", "method2", imp.items[3].span)
 
     def test_invariant_network(self):
-        source = 'invariant_network Accounting\n    total >= 0\n'
-        decl = parse_decl(source)
+        source = '  invariant_network Accounting\n    total >= 0\n'
+        decl = parse_module_invariant(source)
         assert isinstance(decl, InvariantNetwork)
         assert decl.name == "Accounting"
         assert len(decl.constraints) >= 1
@@ -504,12 +558,15 @@ class TestParserIntegration:
             pytest.skip("hello example not found")
         source = hello.read_text()
         mod = parse(source)
-        assert len(mod.declarations) == 1
-        assert isinstance(mod.declarations[0], MainDef)
+        # Module declaration + main function
+        assert len(mod.declarations) == 2
+        assert isinstance(mod.declarations[0], ModuleDecl)
+        assert isinstance(mod.declarations[1], MainDef)
 
     def test_parse_multiple_declarations(self):
         source = (
-            'type Port is Integer where 1..65535\n'
+            'module M\n'
+            '  type Port is Integer where 1..65535\n'
             '\n'
             'validates valid_port(p Integer)\n'
             '    from\n'
@@ -517,5 +574,6 @@ class TestParserIntegration:
         )
         mod = parse(source)
         assert len(mod.declarations) == 2
-        assert isinstance(mod.declarations[0], TypeDef)
+        assert isinstance(mod.declarations[0], ModuleDecl)
+        assert len(mod.declarations[0].types) == 1
         assert isinstance(mod.declarations[1], FunctionDef)

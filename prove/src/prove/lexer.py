@@ -27,6 +27,7 @@ _VALUE_TOKENS = frozenset({
     TokenKind.BOOLEAN_LIT,
     TokenKind.CHAR_LIT,
     TokenKind.REGEX_LIT,
+    TokenKind.PATH_LIT,
     TokenKind.RPAREN,
     TokenKind.RBRACKET,
     TokenKind.BANG,
@@ -73,7 +74,10 @@ class Lexer:
             elif ch == "'":
                 self._lex_char()
             elif ch == '/' and self._should_start_regex():
-                self._lex_regex()
+                if self._is_path_literal():
+                    self._lex_path()
+                else:
+                    self._lex_regex()
             elif ch.isdigit():
                 self._lex_number()
             elif ch.isalpha() or ch == '_':
@@ -361,6 +365,58 @@ class Lexer:
             return
         self._advance()  # skip closing /
         self._emit(TokenKind.REGEX_LIT, ''.join(text), start_line, start_col)
+
+    # ── Path literals ────────────────────────────────────────────
+
+    def _is_path_literal(self) -> bool:
+        """Lookahead to distinguish path literal from regex literal.
+
+        A path literal starts with / followed by a letter or _, and
+        continues through path-valid chars. Internal / must be followed
+        by a letter/digit/_ (multi-segment path). If we reach a
+        terminator without a closing / it's a path.
+        """
+        i = self.pos + 1
+        if i >= len(self.source):
+            return False
+        ch = self.source[i]
+        if not (ch.isalpha() or ch == '_'):
+            return False
+        i += 1
+        while i < len(self.source):
+            ch = self.source[i]
+            if ch == '\\':
+                # Backslash escape → this is a regex, not a path
+                return False
+            if ch == '/':
+                # Internal slash: check if next char continues a path segment
+                nxt = self.source[i + 1] if i + 1 < len(self.source) else '\0'
+                if nxt.isalpha() or nxt.isdigit() or nxt == '_':
+                    i += 1
+                    continue
+                else:
+                    # Closing / → this is a regex, not a path
+                    return False
+            elif ch.isalnum() or ch in '-_.':
+                i += 1
+                continue
+            else:
+                # Hit a terminator (paren, comma, space, newline, etc.)
+                return True
+        return True
+
+    def _lex_path(self) -> None:
+        """Lex a path literal: /segment/segment/..."""
+        start_line = self.line
+        start_col = self.col
+        text = [self._advance()]  # consume leading /
+        while self.pos < len(self.source):
+            ch = self.source[self.pos]
+            if ch.isalnum() or ch in '-_./':
+                text.append(self._advance())
+            else:
+                break
+        self._emit(TokenKind.PATH_LIT, ''.join(text), start_line, start_col)
 
     # ── Numbers ──────────────────────────────────────────────────
 

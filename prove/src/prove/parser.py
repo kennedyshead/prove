@@ -43,6 +43,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     NearMiss,
     Param,
+    PathLit,
     Pattern,
     PipeExpr,
     ProofBlock,
@@ -252,16 +253,8 @@ class Parser:
             return self._parse_function_def(doc_comment)
         if tok.kind == TokenKind.MAIN:
             return self._parse_main_def(doc_comment)
-        if tok.kind == TokenKind.TYPE:
-            return self._parse_type_def()
-        if tok.kind == TokenKind.WITH:
-            return self._parse_import_decl()
         if tok.kind == TokenKind.MODULE:
             return self._parse_module_decl()
-        if tok.kind == TokenKind.INVARIANT_NETWORK:
-            return self._parse_invariant_network()
-        if tok.kind == TokenKind.CONSTANT_IDENTIFIER:
-            return self._parse_constant_def()
 
         if tok.kind == TokenKind.EOF:
             return None
@@ -809,16 +802,18 @@ class Parser:
 
     # ── Import declarations ──────────────────────────────────────
 
-    def _parse_import_decl(self) -> ImportDecl:
-        start = self._current().span
-        self._advance()  # 'with'
-        module_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
-        self._expect(TokenKind.USE)
+    def _parse_import(self, module_tok: Token) -> ImportDecl:
+        """Parse an import: ModuleName verb_group (, verb_group)*
+
+        The module name TYPE_IDENTIFIER has already been consumed.
+        """
+        start = module_tok.span
 
         items: list[ImportItem] = []
+        seen_verbs: set[str | None] = set()
         while True:
-            item = self._parse_import_item()
-            items.append(item)
+            group = self._parse_import_group(seen_verbs)
+            items.extend(group)
             if not self._at(TokenKind.COMMA):
                 break
             self._advance()
@@ -827,18 +822,34 @@ class Parser:
         return ImportDecl(module_tok.value, items,
                           self._span(start, end))
 
-    def _parse_import_item(self) -> ImportItem:
+    def _parse_import_group(
+        self, seen_verbs: set[str | None],
+    ) -> list[ImportItem]:
+        """Parse a verb group: [verb] name+ (space-separated names share the verb)."""
         start = self._current().span
-        verb = None
+        verb: str | None = None
         if self._current().kind in _VERBS:
             verb = self._advance().value
-        # Accept both lowercase identifiers (functions) and
-        # uppercase type identifiers (types, variant constructors).
-        if self._at(TokenKind.TYPE_IDENTIFIER):
+
+        if verb in seen_verbs:
+            self._error(
+                f"duplicate verb '{verb}' in import — "
+                f"group all '{verb}' names together",
+                start,
+            )
+        seen_verbs.add(verb)
+
+        items: list[ImportItem] = []
+        # Consume one or more names (identifiers or type identifiers).
+        while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER):
             name_tok = self._advance()
-        else:
-            name_tok = self._expect(TokenKind.IDENTIFIER)
-        return ImportItem(verb, name_tok.value, start)
+            items.append(ImportItem(verb, name_tok.value, name_tok.span))
+
+        if not items:
+            # Force an error — we need at least one name.
+            self._expect(TokenKind.IDENTIFIER)
+
+        return items
 
     # ── Module declarations ──────────────────────────────────────
 
@@ -850,6 +861,10 @@ class Parser:
 
         narrative = None
         temporal = None
+        imports: list[ImportDecl] = []
+        types: list[TypeDef] = []
+        constants: list[ConstantDef] = []
+        invariants: list[InvariantNetwork] = []
         body: list[Declaration] = []
 
         if self._at(TokenKind.INDENT):
@@ -874,6 +889,16 @@ class Parser:
                         self._advance()
                         steps.append(self._expect(TokenKind.IDENTIFIER).value)
                     temporal = steps
+                elif self._at(TokenKind.TYPE):
+                    types.append(self._parse_type_def())
+                elif self._at(TokenKind.CONSTANT_IDENTIFIER):
+                    constants.append(self._parse_constant_def())
+                elif self._at(TokenKind.INVARIANT_NETWORK):
+                    invariants.append(self._parse_invariant_network())
+                elif self._at(TokenKind.TYPE_IDENTIFIER):
+                    # Import: ModuleName verb_group (, verb_group)*
+                    module_tok = self._advance()
+                    imports.append(self._parse_import(module_tok))
                 else:
                     # Parse nested declarations
                     doc_lines: list[str] = []
@@ -886,8 +911,6 @@ class Parser:
                         body.append(self._parse_function_def(doc))
                     elif self._at(TokenKind.MAIN):
                         body.append(self._parse_main_def(doc))
-                    elif self._at(TokenKind.TYPE):
-                        body.append(self._parse_type_def())
                     else:
                         tok = self._current()
                         self._error(
@@ -902,8 +925,9 @@ class Parser:
                 self._advance()
 
         end = self._current().span
-        return ModuleDecl(name_tok.value, narrative, temporal, body,
-                          self._span(start, end))
+        return ModuleDecl(name_tok.value, narrative, temporal, imports,
+                          types, constants, invariants,
+                          body, self._span(start, end))
 
     # ── Invariant network ────────────────────────────────────────
 
@@ -1026,7 +1050,8 @@ class Parser:
         if tok.kind == TokenKind.IDENTIFIER and tok.value == '_':
             return self._peek(1).kind == TokenKind.FAT_ARROW
         if tok.kind in (TokenKind.INTEGER_LIT, TokenKind.DECIMAL_LIT,
-                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT):
+                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT,
+                        TokenKind.PATH_LIT):
             return self._peek(1).kind == TokenKind.FAT_ARROW
         return False
 
@@ -1286,6 +1311,10 @@ class Parser:
             self._advance()
             return RegexLit(tok.value, tok.span)
 
+        if tok.kind == TokenKind.PATH_LIT:
+            self._advance()
+            return PathLit(tok.value, tok.span)
+
         # Parenthesized expression
         if tok.kind == TokenKind.LPAREN:
             self._advance()
@@ -1529,7 +1558,8 @@ class Parser:
             return BindingPattern(tok.value, tok.span)
 
         if tok.kind in (TokenKind.INTEGER_LIT, TokenKind.DECIMAL_LIT,
-                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT):
+                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT,
+                        TokenKind.PATH_LIT):
             self._advance()
             return LiteralPattern(tok.value, tok.span)
 

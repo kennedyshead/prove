@@ -1,6 +1,6 @@
-/// List utility functions.
+module ListUtils
+  narrative: """Handles list operations"""
 
-/// Return the number of elements in a list.
 transforms list_length(items List<Integer>) Integer
 from
     len(items)

@@ -16,6 +16,7 @@ from prove.ast_nodes import (
     ConstantDef,
     FunctionDef,
     ImportDecl,
+    ImportItem,
     MainDef,
     Module,
     ModuleDecl,
@@ -434,6 +435,20 @@ def _decl_to_symbol(decl: object) -> lsp.DocumentSymbol | None:
         )
     if isinstance(decl, ModuleDecl):
         children: list[lsp.DocumentSymbol] = []
+        for td in decl.types:
+            children.append(lsp.DocumentSymbol(
+                name=td.name,
+                kind=lsp.SymbolKind.Class,
+                range=span_to_range(td.span),
+                selection_range=span_to_range(td.span),
+            ))
+        for cd in decl.constants:
+            children.append(lsp.DocumentSymbol(
+                name=cd.name,
+                kind=lsp.SymbolKind.Constant,
+                range=span_to_range(cd.span),
+                selection_range=span_to_range(cd.span),
+            ))
         for sub in decl.body:
             child = _decl_to_symbol(sub)
             if child is not None:
@@ -565,48 +580,75 @@ def _extract_undefined_name(message: str) -> str | None:
 def _build_import_edit(
     ds: DocumentState, suggestion: ImportSuggestion,
 ) -> lsp.TextEdit | None:
-    """Compute TextEdit to insert or extend an import.
+    """Compute TextEdit to insert or extend an import inside a module block.
 
     Returns None if the name is already imported or the module is not parsed.
     """
     if ds.module is None:
         return None
 
-    # Check existing imports — skip if already imported, or extend if same module
-    last_import_line = -1  # 0-indexed line of last import decl
+    from prove.formatter import ProveFormatter
+
+    # Find the ModuleDecl that owns the imports.
+    mod_decl: ModuleDecl | None = None
     for decl in ds.module.declarations:
-        if not isinstance(decl, ImportDecl):
-            continue
-        # Track last import line (span is 1-indexed)
-        decl_line = decl.span.start_line - 1
-        if decl_line > last_import_line:
-            last_import_line = decl_line
+        if isinstance(decl, ModuleDecl):
+            mod_decl = decl
+            break
 
-        if decl.module != suggestion.module:
-            continue
-
-        # Same module — check if name is already imported
-        for item in decl.items:
-            if item.name == suggestion.name:
-                return None  # already imported
-
-        # Extend this import line: append ", [verb] name"
-        source_lines = ds.source.splitlines()
-        line_text = source_lines[decl_line] if decl_line < len(source_lines) else ""
+    if mod_decl is None:
+        # No module declaration — insert one at line 0 with the import.
         verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
-        suffix = f", {verb_prefix}{suggestion.name}"
+        new_line = f"  {suggestion.module} {verb_prefix}{suggestion.name}\n"
         return lsp.TextEdit(
             range=lsp.Range(
-                start=lsp.Position(line=decl_line, character=len(line_text)),
-                end=lsp.Position(line=decl_line, character=len(line_text)),
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=0, character=0),
             ),
-            new_text=suffix,
+            new_text=new_line,
         )
 
-    # No existing import for this module — insert a new line
+    # Search existing imports in the module.
+    last_import_line = -1
+    for imp in mod_decl.imports:
+        imp_line = imp.span.start_line - 1  # 0-indexed
+        if imp_line > last_import_line:
+            last_import_line = imp_line
+
+        if imp.module != suggestion.module:
+            continue
+
+        # Same module — check if already imported.
+        for item in imp.items:
+            if item.name == suggestion.name:
+                return None
+
+        # Extend: rebuild the import line with the new name.
+        new_items = list(imp.items) + [
+            ImportItem(suggestion.verb, suggestion.name, imp.span),
+        ]
+        new_decl = ImportDecl(imp.module, new_items, imp.span)
+        new_line = f"  {ProveFormatter()._format_import_decl(new_decl)}"
+
+        source_lines = ds.source.splitlines()
+        line_text = source_lines[imp_line] if imp_line < len(source_lines) else ""
+        return lsp.TextEdit(
+            range=lsp.Range(
+                start=lsp.Position(line=imp_line, character=0),
+                end=lsp.Position(line=imp_line, character=len(line_text)),
+            ),
+            new_text=new_line,
+        )
+
+    # No existing import for this module — insert a new indented line.
     verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
-    new_line = f"with {suggestion.module} use {verb_prefix}{suggestion.name}\n"
-    insert_line = last_import_line + 1 if last_import_line >= 0 else 0
+    new_line = f"  {suggestion.module} {verb_prefix}{suggestion.name}\n"
+    # Insert after the last import, or after the module header line.
+    if last_import_line >= 0:
+        insert_line = last_import_line + 1
+    else:
+        # After narrative/temporal or the module line itself.
+        insert_line = mod_decl.span.start_line  # 0-indexed: line after 'module X'
     return lsp.TextEdit(
         range=lsp.Range(
             start=lsp.Position(line=insert_line, character=0),

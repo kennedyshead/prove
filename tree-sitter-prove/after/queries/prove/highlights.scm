@@ -19,8 +19,6 @@
   "type"
   "is"
   "as"
-  "with"
-  "use"
   "where"
   "match"
   "if"
@@ -197,7 +195,7 @@
 (import_declaration
   (type_identifier) @module)
 
-(import_item
+(import_group
   (identifier) @function)
 
 ; ─── Variable references (fallback) ───────────────────────────

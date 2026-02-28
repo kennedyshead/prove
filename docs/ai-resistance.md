@@ -125,11 +125,11 @@ Require inputs that *almost* break the code but don't. This proves the programme
 
 ```prove
 validates leap_year(y Year)
-    near_miss: 1900 => false   // divisible by 100 but not 400
-    near_miss: 2000 => true    // divisible by 400
-    near_miss: 2100 => false   // the trap most people forget
-    from
-        y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+  near_miss: 1900  => false
+  near_miss: 2000  => true
+  near_miss: 2100  => false
+from
+    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 ```
 
 The compiler verifies each near-miss actually exercises a distinct branch or boundary condition. Redundant near-misses are rejected. AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.

@@ -534,7 +534,7 @@
       "required": true,
       "types": [
         {
-          "type": "import_item",
+          "type": "import_group",
           "named": true
         },
         {
@@ -545,7 +545,7 @@
     }
   },
   {
-    "type": "import_item",
+    "type": "import_group",
     "named": true,
     "fields": {},
     "children": {
@@ -785,9 +785,33 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "constant_definition",
+          "named": true
+        },
+        {
+          "type": "import_declaration",
+          "named": true
+        },
+        {
+          "type": "invariant_network",
+          "named": true
+        },
+        {
+          "type": "narrative_annotation",
+          "named": true
+        },
+        {
+          "type": "temporal_annotation",
+          "named": true
+        },
+        {
+          "type": "type_definition",
+          "named": true
+        },
         {
           "type": "type_identifier",
           "named": true
@@ -1100,19 +1124,7 @@
       "required": false,
       "types": [
         {
-          "type": "constant_definition",
-          "named": true
-        },
-        {
           "type": "function_definition",
-          "named": true
-        },
-        {
-          "type": "import_declaration",
-          "named": true
-        },
-        {
-          "type": "invariant_network",
           "named": true
         },
         {
@@ -1121,18 +1133,6 @@
         },
         {
           "type": "module_declaration",
-          "named": true
-        },
-        {
-          "type": "narrative_annotation",
-          "named": true
-        },
-        {
-          "type": "temporal_annotation",
-          "named": true
-        },
-        {
-          "type": "type_definition",
           "named": true
         }
       ]
@@ -1601,10 +1601,6 @@
     "named": true
   },
   {
-    "type": "use",
-    "named": false
-  },
-  {
     "type": "valid",
     "named": false
   },
@@ -1623,10 +1619,6 @@
   {
     "type": "wildcard_pattern",
     "named": true
-  },
-  {
-    "type": "with",
-    "named": false
   },
   {
     "type": "{",

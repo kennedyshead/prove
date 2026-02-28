@@ -1,18 +1,21 @@
-type Method is Get
+module Http
+  narrative: """HTTP types and helpers"""
+
+  type Method is Get
     | Post
     | Put
     | Delete
 
-type Request is
+  type Request is
     method Method
     path String
     body String
 
-type Response is
+  type Response is
     status Integer
     body String
 
-type Server is
+  type Server is
     port Integer
 
 /// Create a new HTTP server instance.

@@ -35,7 +35,8 @@ class TestTypeResolution:
 
     def test_user_record_type_resolves(self):
         st = check(
-            "type Point is\n"
+            "module M\n"
+            "  type Point is\n"
             "    x Integer\n"
             "    y Integer\n"
             "transforms origin() Point\n"
@@ -72,16 +73,18 @@ class TestTypeResolution:
 
     def test_duplicate_type_error(self):
         check_fails(
-            "type Foo is\n"
+            "module M\n"
+            "  type Foo is\n"
             "    x Integer\n"
-            "type Foo is\n"
+            "  type Foo is\n"
             "    y String\n",
             "E301",
         )
 
     def test_algebraic_type_resolves(self):
         st = check(
-            "type Shape is\n"
+            "module M\n"
+            "  type Shape is\n"
             "    Circle(radius Integer)\n"
             "    | Square(side Integer)\n"
             "transforms area(s Shape) Integer\n"
@@ -94,7 +97,8 @@ class TestTypeResolution:
 
     def test_refinement_type_resolves(self):
         st = check(
-            "type Positive is Integer where >= 0\n"
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
             "transforms use_pos(x Positive) Integer\n"
             "    from\n"
             "        0\n"
@@ -153,7 +157,8 @@ class TestNameResolution:
     def test_constant_registered(self):
         """Constants are registered in the symbol table."""
         st = check(
-            "MAX_SIZE as Integer = 100\n"
+            "module M\n"
+            "  MAX_SIZE as Integer = 100\n"
         )
         sym = st.lookup("MAX_SIZE")
         assert sym is not None
@@ -319,7 +324,8 @@ class TestFieldAccess:
 
     def test_valid_field(self):
         check(
-            "type Point is\n"
+            "module M\n"
+            "  type Point is\n"
             "    x Integer\n"
             "    y Integer\n"
             "transforms get_x(p Point) Integer\n"
@@ -329,7 +335,8 @@ class TestFieldAccess:
 
     def test_invalid_field(self):
         check_fails(
-            "type Point is\n"
+            "module M\n"
+            "  type Point is\n"
             "    x Integer\n"
             "    y Integer\n"
             "transforms bad(p Point) Integer\n"
@@ -455,7 +462,8 @@ class TestMatchExhaustiveness:
 
     def test_exhaustive_match(self):
         check(
-            "type Color is Red | Green | Blue\n"
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
             "transforms name(c Color) String\n"
             "    from\n"
             "        match c\n"
@@ -466,7 +474,8 @@ class TestMatchExhaustiveness:
 
     def test_non_exhaustive_match(self):
         check_fails(
-            "type Color is Red | Green | Blue\n"
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
             "transforms name(c Color) String\n"
             "    from\n"
             "        match c\n"
@@ -477,7 +486,8 @@ class TestMatchExhaustiveness:
 
     def test_wildcard_covers_all(self):
         check(
-            "type Color is Red | Green | Blue\n"
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
             "transforms name(c Color) String\n"
             "    from\n"
             "        match c\n"
@@ -487,7 +497,8 @@ class TestMatchExhaustiveness:
 
     def test_unknown_variant_error(self):
         check_fails(
-            "type Color is Red | Green\n"
+            "module M\n"
+            "  type Color is Red | Green\n"
             "transforms bad(c Color) String\n"
             "    from\n"
             "        match c\n"
@@ -499,7 +510,8 @@ class TestMatchExhaustiveness:
 
     def test_unreachable_after_wildcard(self):
         check_warns(
-            "type Color is Red | Green\n"
+            "module M\n"
+            "  type Color is Red | Green\n"
             "transforms name(c Color) String\n"
             "    from\n"
             "        match c\n"
@@ -546,10 +558,11 @@ class TestIntegration:
 
     def test_multiple_declarations(self):
         st = check(
-            "type Point is\n"
+            "module M\n"
+            "  type Point is\n"
             "    x Integer\n"
             "    y Integer\n"
-            "MAX_COORD as Integer = 1000\n"
+            "  MAX_COORD as Integer = 1000\n"
             "transforms origin() Point\n"
             "    from\n"
             "        Point(0, 0)\n"
@@ -562,7 +575,8 @@ class TestIntegration:
 
     def test_complex_function(self):
         check(
-            "type MyResult is\n"
+            "module M\n"
+            "  type MyResult is\n"
             "    Ok(value Integer)\n"
             "    | Err(message String)\n"
             "transforms safe_divide(a Integer, b Integer) MyResult\n"
@@ -598,7 +612,8 @@ class TestIntegration:
 
     def test_imports(self):
         check(
-            "with Math use transforms sin, transforms cos\n"
+            "module Main\n"
+            "  Math transforms sin cos\n"
             "transforms angle(x Integer) Integer\n"
             "    from\n"
             "        sin(x)\n"
@@ -733,7 +748,8 @@ class TestContractChecking:
 
     def test_satisfies_valid_type(self):
         check(
-            "type Positive is Integer where >= 0\n"
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
             "transforms identity(a Integer) Integer\n"
             "    satisfies Positive\n"
             "    from\n"
@@ -756,7 +772,8 @@ class TestStdlibLoading:
     def test_io_import_resolves(self):
         """Importing from Io should resolve function types."""
         st = check(
-            "with Io use outputs println\n"
+            "module Main\n"
+            "  Io outputs println\n"
             "\n"
             "main()\n"
             "    from\n"
@@ -769,7 +786,8 @@ class TestStdlibLoading:
     def test_json_import_resolves(self):
         """Importing from Json should resolve function types."""
         check(
-            "with Json use transforms encode_string\n"
+            "module Main\n"
+            "  Json transforms encode_string\n"
             "\n"
             "transforms wrap(s String) String\n"
             "    from\n"

@@ -64,21 +64,21 @@ prove test
 Every function declares its purpose. The compiler enforces it.
 
 ```prove
-transforms area(s Shape) Decimal          // pure computation — no IO
+transforms area(s Shape) Decimal
 from
     match s
         Circle(r) => pi * r * r
         Rect(w, h) => w * h
 
-validates email(address String)           // pure boolean check
+validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-inputs users(db Database) List<User>!     // reads from external world, can fail
+inputs users(db Database) List<User>!
 from
     query(db, "SELECT * FROM users")!
 
-outputs log(message String)               // writes to external world
+outputs log(message String)
 from
     write(stdout, message)
 ```
@@ -114,12 +114,12 @@ transforms apply_discount(discount Discount, amount Price) Price
   ensures result >= 0
   ensures result <= amount
   proof
-    non_negative: FlatOff is clamped to zero, PercentOff rate is 0..1
-    bounded: every discount path subtracts from amount, never adds
+    non_negative: FlatOff is clamped to zero , PercentOff rate is 0 .. 1
+    bounded: every discount path subtracts from amount , never adds
 from
     match discount
-        FlatOff(off)      => max(0, amount - off)
-        PercentOff(rate)  => amount * (1 - rate)
+        FlatOff(off) => max(0, amount - off)
+        PercentOff(rate) => amount * (1 - rate)
 ```
 
 ### No Loops — Functional Iteration

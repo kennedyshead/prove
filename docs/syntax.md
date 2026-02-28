@@ -104,39 +104,39 @@ Functions are declared with a **verb** that describes their purpose. No `fn`, no
 
 ```prove
 transforms area(s Shape) Decimal
-    from
-        match s
-            Circle(r) => pi * r * r
-            Rect(w, h) => w * h
+from
+    match s
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 transforms normalize(data List<Decimal>) List<Decimal>
-    ensures len(result) == len(data)
-    from
-        max_val as Decimal = max(data)
-        divide_each(data, max_val)
+  ensures len(result) == len(data)
+from
+    max_val as Decimal = max(data)
+    divide_each(data, max_val)
 
 transforms parse(raw String) Result<Config, ParseError>
-    from
-        decode(raw)
+from
+    decode(raw)
 
 inputs users() List<User>!
-    from
-        query(db, "SELECT * FROM users")!
+from
+    query(db, "SELECT * FROM users")!
 
 outputs log(message String)
-    from
-        write(stdout, message)
+from
+    write(stdout, message)
 
 inputs request(route Route, req Request) Response!
-    from
-        Get("/health") => ok("healthy")
-        Get("/users")  => users()! |> ok
-        Post("/users") => create(req.body)! |> created
-        _              => not_found()
+from
+        Get(/health) => ok("healthy")
+        Get(/users) => users()! |> ok
+        Post(/users) => create(req.body)! |> created
+        _ => not_found()
 ```
 
 ## Verb-Dispatched Identity
@@ -145,16 +145,16 @@ Functions are identified by the triple `(verb, name, parameter types)` — not j
 
 ```prove
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 transforms email(raw String) Email
-    from
-        lowercase(trim(raw))
+from
+    lowercase(trim(raw))
 
 inputs email(user_id Integer) Email!
-    from
-        query(db, "SELECT email FROM users WHERE id = {user_id}")!
+from
+    query(db, "SELECT email FROM users WHERE id = {user_id}")!
 ```
 
 Three functions, all named `email`, with completely different intents.
@@ -248,17 +248,17 @@ The LSP shows inferred types inline as you type, so you always know what the com
 IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`) have neither IO nor `!`.
 
 ```prove
-transforms area(s Shape) Decimal                       // pure — no IO, no !
-    from
-        pi * s.radius * s.radius
+transforms area(s Shape) Decimal
+from
+    pi * s.radius * s.radius
 
-inputs users() List<User>!                             // IO inherent, ! = can fail
-    from
-        query(db, "SELECT * FROM users")!
+inputs users() List<User>!
+from
+    query(db, "SELECT * FROM users")!
 
-outputs write_log(entry String)                        // IO inherent, infallible — no !
-    from
-        append(log_file, entry)
+outputs write_log(entry String)
+from
+    append(log_file, entry)
 ```
 
 Reads as: *"inputs users, returns List of User, can fail!"*
@@ -270,16 +270,14 @@ The compiler knows which functions touch the world (`inputs`/`outputs`) and whic
 Every function body begins with `from`. No exceptions. This reads as *"the result comes from..."* and makes it immediately clear where the implementation starts, whether the function has annotations or not.
 
 ```prove
-// Simple function — from marks the body
 transforms area(s Shape) Decimal
-    from
-        pi * s.radius * s.radius
+from
+    pi * s.radius * s.radius
 
-// Annotated function — from separates annotations from body
 inputs users() List<User>!
-    ensures len(result) >= 0
-    from
-        query(db, "SELECT * FROM users")!
+  ensures len(result) >= 0
+from
+    query(db, "SELECT * FROM users")!
 ```
 
 ## Pattern Matching
@@ -399,10 +397,10 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 
 ```prove
 main() Result<Unit, Error>!
-    from
-        config as Config = load("app.yaml")!
-        db as Database = connect(config.db_url)!
-        serve(config.port, db)!
+from
+    config as Config = load("app.yaml")!
+    db as Database = connect(config.db_url)!
+    serve(config.port, db)!
 ```
 
 ## Complete Example: RESTful Server

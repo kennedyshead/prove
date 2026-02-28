@@ -234,8 +234,9 @@ class TestBuildImportEdit:
     def _make_ds(self, source: str) -> DocumentState:
         return _analyze("file:///test_import.prv", source)
 
-    def test_new_import_at_top(self):
+    def test_new_import_in_module(self):
         source = (
+            "module Main\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "from\n"
             "    a + b\n"
@@ -244,13 +245,14 @@ class TestBuildImportEdit:
         suggestion = ImportSuggestion(module="Io", verb="outputs", name="println")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert edit.new_text == "with Io use outputs println\n"
-        # Should insert at line 0 (no existing imports)
-        assert edit.range.start.line == 0
+        assert "Io outputs println" in edit.new_text
+        # Should insert after the module line
+        assert edit.range.start.line == 1
 
     def test_extend_existing_import(self):
         source = (
-            "with Json use transforms encode_string\n"
+            "module Main\n"
+            "  Json transforms encode_string\n"
             "transforms run() String\n"
             "from\n"
             '    encode_string("hi")\n'
@@ -259,13 +261,14 @@ class TestBuildImportEdit:
         suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_int")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert "transforms encode_int" in edit.new_text
-        # Should append to line 0 (the existing import line)
-        assert edit.range.start.line == 0
+        assert edit.new_text == "  Json transforms encode_string encode_int"
+        # Should replace line 1 (the existing import line)
+        assert edit.range.start.line == 1
 
     def test_already_imported_returns_none(self):
         source = (
-            "with Json use transforms encode_string\n"
+            "module Main\n"
+            "  Json transforms encode_string\n"
             "transforms run() String\n"
             "from\n"
             '    encode_string("hi")\n'
@@ -283,7 +286,8 @@ class TestBuildImportEdit:
 
     def test_insert_after_existing_imports(self):
         source = (
-            "with Io use outputs println\n"
+            "module Main\n"
+            "  Io outputs println\n"
             "transforms run() Unit\n"
             "from\n"
             '    println("hi")\n'
@@ -292,6 +296,6 @@ class TestBuildImportEdit:
         suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_string")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert edit.new_text == "with Json use transforms encode_string\n"
-        # Should insert after line 0 (the existing import)
-        assert edit.range.start.line == 1
+        assert "Json transforms encode_string" in edit.new_text
+        # Should insert after line 1 (the existing import)
+        assert edit.range.start.line == 2

@@ -83,15 +83,26 @@ The compiler **enforces** casing. Wrong case is a compile error, not a warning. 
 
 ### Modules and Imports
 
-Each file is a module. The filename (without extension) is the module name in CamelCase. Imports use `with Module use` syntax with verb-qualified function names:
+Each file is a module. The filename (without extension) is the module name in CamelCase. The `module` block is mandatory and contains all declarations/metadata: narrative, imports, types, constants, and invariant networks. Functions remain top-level:
 
 ```prove
-with String use contains, length
-with Auth use validates login, transforms login    // two verb variants of login
-with Http use inputs request, inputs session
+module InventoryService
+  narrative: """Products are added to inventory..."""
+  String contains length
+  Auth validates login, transforms login
+  Http inputs request session
+
+  type Product is
+    sku Sku
+    name String
+
+  MAX_CONNECTIONS as Integer = 1024
+
+  invariant_network Accounting
+    total >= 0
 ```
 
-Multiple verbs for the same function name import each variant. The verb is part of the function's identity.
+A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity.
 
 ### Blocks and Indentation
 
@@ -144,18 +155,19 @@ type Port is Integer:[16 Unsigned] where 1..65535
 
 ### Type Definitions
 
-Types are defined with `type Name is`:
+Types live inside the `module` block, defined with `type Name is`:
 
 ```prove
-type Shape is
+module Main
+  type Shape is
     Circle(radius Decimal)
     | Rect(w Decimal, h Decimal)
 
-type Port is Integer:[16 Unsigned] where 1..65535
+  type Port is Integer:[16 Unsigned] where 1 .. 65535
 
-type Result<T, E> is Ok(T) | Err(E)
+  type Result<T, E> is Ok(T) | Err(E)
 
-type User is
+  type User is
     id Integer
     name String
     email String
@@ -174,39 +186,39 @@ Functions are declared with a **verb** that describes their purpose. No `fn`, no
 
 ```prove
 transforms area(s Shape) Decimal
-    from
-        match s
-            Circle(r) => pi * r * r
-            Rect(w, h) => w * h
+from
+    match s
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 transforms normalize(data List<Decimal>) List<Decimal>
-    ensures len(result) == len(data)
-    from
-        max_val as Decimal = max(data)
-        divide_each(data, max_val)
+  ensures len(result) == len(data)
+from
+    max_val as Decimal = max(data)
+    divide_each(data, max_val)
 
 transforms parse(raw String) Result<Config, ParseError>
-    from
-        decode(raw)
+from
+    decode(raw)
 
 inputs users() List<User>!
-    from
-        query(db, "SELECT * FROM users")!
+from
+    query(db, "SELECT * FROM users")!
 
 outputs log(message String)
-    from
-        write(stdout, message)
+from
+    write(stdout, message)
 
 inputs request(route Route, req Request) Response!
-    from
-        Get("/health") => ok("healthy")
-        Get("/users")  => users()! |> ok
-        Post("/users") => create(req.body)! |> created
-        _              => not_found()
+from
+        Get(/health) => ok("healthy")
+        Get(/users) => users()! |> ok
+        Post(/users) => create(req.body)! |> created
+        _ => not_found()
 ```
 
 ### Verb-Dispatched Identity
@@ -215,16 +227,16 @@ Functions are identified by the triple `(verb, name, parameter types)` — not j
 
 ```prove
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 transforms email(raw String) Email
-    from
-        lowercase(trim(raw))
+from
+    lowercase(trim(raw))
 
 inputs email(user_id Integer) Email!
-    from
-        query(db, "SELECT email FROM users WHERE id = {user_id}")!
+from
+    query(db, "SELECT email FROM users WHERE id = {user_id}")!
 ```
 
 Three functions, all named `email`, with completely different intents.
@@ -316,17 +328,17 @@ The LSP shows inferred types inline as you type, so you always know what the com
 IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`) have neither IO nor `!`.
 
 ```prove
-transforms area(s Shape) Decimal                       // pure — no IO, no !
-    from
-        pi * s.radius * s.radius
+transforms area(s Shape) Decimal
+from
+    pi * s.radius * s.radius
 
-inputs users() List<User>!                             // IO inherent, ! = can fail
-    from
-        query(db, "SELECT * FROM users")!
+inputs users() List<User>!
+from
+    query(db, "SELECT * FROM users")!
 
-outputs write_log(entry String)                        // IO inherent, infallible — no !
-    from
-        append(log_file, entry)
+outputs write_log(entry String)
+from
+    append(log_file, entry)
 ```
 
 Reads as: *"inputs users, returns List of User, can fail!"*
@@ -338,16 +350,14 @@ The compiler knows which functions touch the world (`inputs`/`outputs`) and whic
 Every function body begins with `from`. No exceptions. This reads as *"the result comes from..."* and makes it immediately clear where the implementation starts, whether the function has annotations or not.
 
 ```prove
-// Simple function — from marks the body
 transforms area(s Shape) Decimal
-    from
-        pi * s.radius * s.radius
+from
+    pi * s.radius * s.radius
 
-// Annotated function — from separates annotations from body
 inputs users() List<User>!
-    ensures len(result) >= 0
-    from
-        query(db, "SELECT * FROM users")!
+  ensures len(result) >= 0
+from
+    query(db, "SELECT * FROM users")!
 ```
 
 ### Pattern Matching
@@ -466,62 +476,62 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 
 ```prove
 main() Result<Unit, Error>!
-    from
-        config as Config = load("app.yaml")!
-        db as Database = connect(config.db_url)!
-        serve(config.port, db)!
+from
+    config as Config = load("app.yaml")!
+    db as Database = connect(config.db_url)!
+    serve(config.port, db)!
 ```
 
 ### Complete Example: RESTful Server
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1..65535
+type Port is Integer:[16 Unsigned] where 1 .. 65535
 type Route is Get(path String) | Post(path String) | Delete(path String)
 
 type User is
-    id Integer
-    name String
-    email String
+  id Integer
+  name String
+  email String
 
 /// Checks whether a string is a valid email address.
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 /// Retrieves all users from the database.
 ///
 ///   users() == [User(1, "Alice", "alice@example.com")]
 ///
 inputs users(db Database) List<User>!
-    from
-        query(db, "SELECT * FROM users")!
+from
+    query(db, "SELECT * FROM users")!
 
 /// Creates a new user from a request body.
 outputs create(db Database, body String) User!
-    ensures email(result.email)
-    proof
-        email_valid: decode validates the email field before insertion
-    from
-        user as User = decode(body)!
-        insert(db, "users", user)!
-        user
+  ensures email(result.email)
+  proof
+    email_valid: decode validates the email field before insertion
+from
+    user as User = decode(body)!
+    insert(db, "users", user)!
+    user
 
 /// Routes incoming HTTP requests.
 inputs request(route Route, body String, db Database) Response!
-    from
-        Get("/health") => ok("healthy")
-        Get("/users")  => users(db)! |> encode |> ok
-        Post("/users") => create(db, body)! |> encode |> created
-        _              => not_found()
+from
+    Get("/health") => ok("healthy")
+    Get("/users")  => users(db)! |> encode |> ok
+    Post("/users") => create(db, body)! |> encode |> created
+    _              => not_found()
 
 /// Application entry point — no verb, main is special.
 main() Result<Unit, Error>!
-    from
-        port as Port = 8080
-        db as Database = connect("postgres://localhost/app")!
-        server as Server = new_server()
-        route(server, "/", request)
-        listen(server, port)!
+from
+    port as Port = 8080
+    db as Database = connect("postgres://localhost/app")!
+    server as Server = new_server()
+    route(server, "/", request)
+    listen(server, port)!
 ```
 
 ---
@@ -533,7 +543,7 @@ main() Result<Unit, Error>!
 Types carry constraints, not just shapes. The compiler rejects invalid values statically — no runtime checks, no panics, no `unwrap()`.
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1..65535
+type Port is Integer:[16 Unsigned] where 1 .. 65535
 type Email is String where matches(/^[^@]+@[^@]+\.[^@]+$/)
 type NonEmpty<T> is List<T> where len > 0
 
@@ -552,10 +562,10 @@ type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
 transforms area(s Shape) Decimal
-    from
-        match s
-            Circle(r) => pi * r * r
-            Rect(w, h) => w * h
+from
+    match s
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 ```
 
 ### Effect Types
@@ -576,10 +586,9 @@ Linear types for resources, but without Rust's lifetime annotation burden. The c
 
 ```prove
 inputs process(file File:[Own]) Data!
-    from
-        content as String = read(file)     // immutable borrow, inferred
-        close(file)                       // ownership consumed
-        // read(file)                     // compile error: used after close
+from
+    content as String = read(file)
+    close(file)
 ```
 
 ### No Null
@@ -612,16 +621,16 @@ Inspired by Zig. Arbitrary computation at compile time, including IO. Files read
 
 ```prove
 MAX_CONNECTIONS as Integer = comptime
-    if cfg.target == "embedded"
-        16
-    else
-        1024
+  if cfg.target == "embedded"
+    16
+  else
+    1024
 
 LOOKUP_TABLE as List<Integer:[32 Unsigned]> = comptime
-    collect(map(0..256, crc32_step))
+  collect(map(0..256, crc32_step))
 
 ROUTES as List<Route> = comptime
-    decode(read("routes.json"))                   // IO allowed — routes.json becomes a build dep
+  decode(read("routes.json"))                   // IO allowed — routes.json becomes a build dep
 ```
 
 ### Formal Verification of Contracts
@@ -630,8 +639,8 @@ The compiler proves properties when it can, and generates tests when it can't:
 
 ```prove
 transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Index>
-    ensures is_some(result) implies xs[unwrap(result)] == target
-    ensures is_none(result) implies target not_in xs
+  ensures is_some(result) implies xs[unwrap(result)] == target
+  ensures is_none(result) implies target not_in xs
 ```
 
 ---
@@ -646,11 +655,11 @@ No test file needed. No QuickCheck boilerplate. The compiler generates thousands
 
 ```prove
 transforms sort(xs List<T>) List<T>
-    ensures len(result) == len(xs)
-    ensures is_sorted(result)
-    ensures is_permutation_of(result, xs)
-    from
-        // implementation
+  ensures len(result) == len(xs)
+  ensures is_sorted(result)
+  ensures is_permutation_of(result, xs)
+from
+    // implementation
 ```
 
 ### Level 2: Examples Are Tests
@@ -706,8 +715,8 @@ Surviving mutants:
 
 ```prove
 inputs fetch_all(urls List<Url>) List<Response>!
-    from
-        par_map(urls, fetch)   // parallel map — compiler proves no shared mutable state
+from
+    par_map(urls, fetch)
 ```
 
 The ownership system and effect types combine to eliminate data races at compile time.
@@ -720,10 +729,10 @@ No exceptions. No panics. Every failure path is visible in the type signature. U
 
 ```prove
 main() Result<Unit, Error>!
-    from
-        config as Config = read_config("app.yaml")!
-        db as Database = connect(config.db_url)!
-        serve(config.port, db)!
+from
+    config as Config = read_config("app.yaml")!
+    db as Database = connect(config.db_url)!
+    serve(config.port, db)!
 ```
 
 ---
@@ -763,14 +772,14 @@ Instead of fixed keywords, the language adapts syntax based on the module's decl
 
 ```prove
 domain Finance
-    // "balance" is now a keyword, arithmetic operators
-    // follow financial rounding rules
-    total as Balance = sum(ledger.entries)  // compiler enforces Decimal with financial Scale
+  // "balance" is now a keyword, arithmetic operators
+  // follow financial rounding rules
+  total as Balance = sum(ledger.entries)  // compiler enforces Decimal with financial Scale
 
 domain Physics
-    // "balance" is just an identifier again
-    // operators now track units
-    balance as Acceleration = force / mass   // type: Acceleration, not a keyword
+  // "balance" is just an identifier again
+  // operators now track units
+  balance as Acceleration = force / mass   // type: Acceleration, not a keyword
 ```
 
 ### Proof Obligations as Code
@@ -779,13 +788,13 @@ Every function with `ensures` clauses requires an inline proof sketch that the c
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-    proof
-        base: len(xs) <= 1 implies already sorted
-        split: halves are strictly smaller (terminates)
-        merge: merging two sorted halves preserves ordering
-               by induction on combined length
-    from
-        // implementation
+  proof
+    base: len(xs) <= 1 implies already sorted
+    split: halves are strictly smaller (terminates)
+    merge: merging two sorted halves preserves ordering
+           by induction on combined length
+from
+    // implementation
 ```
 
 ### Intentional Ambiguity Resolution
@@ -809,16 +818,16 @@ The compiler enforces that an entire module tells a coherent "story." Functions 
 
 ```prove
 module UserAuth
-    narrative: """
-    Users authenticate with credentials, receive a session token,
-    and the token is validated on each request. Tokens expire
-    after the configured TTL.
-    """
+  narrative: """
+  Users authenticate with credentials, receive a session token,
+  and the token is validated on each request. Tokens expire
+  after the configured TTL.
+  """
 
-    inputs login(creds Credentials) Session!
-    transforms validate(token Token) User
-    outputs expire(session Session)
-    // outputs send_email(...)   // compiler error: unrelated to narrative
+  inputs login(creds Credentials) Session!
+  transforms validate(token Token) User
+  outputs expire(session Session)
+  // outputs send_email(...)   // compiler error: unrelated to narrative
 ```
 
 Coherence across an entire module requires understanding the *purpose* of the system, not just local patterns.
@@ -829,13 +838,13 @@ Refinement types that encode constraints requiring genuine reasoning, not just p
 
 ```prove
 type BalancedTree<T> is
-    Node(left BalancedTree<T>, right BalancedTree<T>)
-    where abs(left.depth - right.depth) <= 1
+  Node(left BalancedTree<T>, right BalancedTree<T>)
+  where abs(left.depth - right.depth) <= 1
 
 transforms insert(tree BalancedTree<T>, val T) BalancedTree<T>
-    // Can't just pattern match — you need to construct a value
-    // that satisfies the depth constraint, which requires
-    // understanding rotation logic
+  // Can't just pattern match — you need to construct a value
+  // that satisfies the depth constraint, which requires
+  // understanding rotation logic
 ```
 
 ### Semantic Commit Messages as Compilation Input
@@ -863,11 +872,11 @@ Every non-trivial design choice must explain what would break under alternative 
 
 ```prove
 transforms evict(cache Cache:[Mutable]) Option<Entry>
-    why_not: "FIFO would evict still-hot entries under burst traffic"
-    why_not: "Random eviction has unbounded worst-case for repeated keys"
-    chosen: "LRU because access recency correlates with reuse probability"
-    from
-        // LRU implementation
+  why_not: "FIFO would evict still-hot entries under burst traffic"
+  why_not: "Random eviction has unbounded worst-case for repeated keys"
+  chosen: "LRU because access recency correlates with reuse probability"
+from
+    // LRU implementation
 ```
 
 The compiler verifies the `chosen` rationale is consistent with the implementation's actual behavior (e.g., it really does track recency). `why_not` clauses are checked for plausibility against the function's type signature and effects.
@@ -878,11 +887,11 @@ Require inputs that *almost* break the code but don't. This proves the programme
 
 ```prove
 validates leap_year(y Year)
-    near_miss: 1900 => false   // divisible by 100 but not 400
-    near_miss: 2000 => true    // divisible by 400
-    near_miss: 2100 => false   // the trap most people forget
-    from
-        y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+  near_miss: 1900  => false
+  near_miss: 2000  => true
+  near_miss: 2100  => false
+from
+    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 ```
 
 The compiler verifies each near-miss actually exercises a distinct branch or boundary condition. Redundant near-misses are rejected. AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.
@@ -893,11 +902,11 @@ Track the programmer's confidence level about invariants. The compiler treats ea
 
 ```prove
 transforms process_order(order Order) Receipt
-    know: len(order.items) > 0            // enforced by NonEmpty type — zero cost
-    assume: order.total == sum(prices)    // validated at boundary, runtime check inserted
-    believe: order.user.is_verified       // generates aggressive property tests to falsify
-    from
-        // implementation
+  know: len(order.items) > 0            // enforced by NonEmpty type — zero cost
+  assume: order.total == sum(prices)    // validated at boundary, runtime check inserted
+  believe: order.user.is_verified       // generates aggressive property tests to falsify
+from
+    // implementation
 ```
 
 - **`know`** — Proven by the type system. Zero runtime cost. Compiler error if not actually provable.
@@ -912,17 +921,17 @@ Not just *what* effects a function has, but the *required order* — enforced ac
 
 ```prove
 module Auth
-    temporal: authenticate -> authorize -> access
+  temporal: authenticate -> authorize -> access
 
-    inputs authenticate(creds Credentials) Token!
-    transforms authorize(token Token, resource Resource) Permission
-    inputs access(perm Permission, resource Resource) Data!
+  inputs authenticate(creds Credentials) Token!
+  transforms authorize(token Token, resource Resource) Permission
+  inputs access(perm Permission, resource Resource) Data!
 
 // Compiler error: access() called before authorize()
 inputs bad_handler(req Request) Response!
-    from
-        token as Token = authenticate(req.creds)!
-        data as Data = access(token, req.resource)!    // ERROR: skipped authorize
+from
+    token as Token = authenticate(req.creds)!
+    data as Data = access(token, req.resource)!    // ERROR: skipped authorize
 ```
 
 The compiler builds a call graph and verifies temporal constraints are satisfied across all execution paths. AI generates plausible call sequences but does not reason about protocol ordering.
@@ -933,15 +942,15 @@ Instead of isolated `ensures` clauses, define networks of mutually-dependent inv
 
 ```prove
 invariant_network AccountingRules
-    total_assets == total_liabilities + equity
-    revenue - expenses == net_income
-    net_income flows_to equity
-    every(transaction) preserves total_assets == total_liabilities + equity
+  total_assets == total_liabilities + equity
+  revenue - expenses == net_income
+  net_income flows_to equity
+  every(transaction) preserves total_assets == total_liabilities + equity
 
 transforms post_transaction(ledger Ledger, tx Transaction) Ledger
-    satisfies AccountingRules
-    from
-        // implementation
+  satisfies AccountingRules
+from
+    // implementation
 ```
 
 No function can be written in isolation — the compiler checks that the entire network remains consistent after every change. This is the ultimate non-local reasoning requirement. Requires a constraint solver that scales across modules.
@@ -1023,21 +1032,21 @@ The compiler canonicalizes all code before storage. Variable names, ordering of 
 ```prove
 // What you write:
 transforms calculate_total_price(items List<Item>, tax TaxRate) Price
-    from
-        subtotal as Decimal = sum(prices(items))
-        subtotal * (1 + tax.rate)
+from
+    subtotal as Decimal = sum(prices(items))
+    subtotal * (1 + tax.rate)
 
 // What is stored (canonical form):
 transforms _f0(_a0 List<_T0>, _a1 _T1) _T2
-    from
-        _v0 as _T3 = _f1(_f2(_a0))
-        _v0 * (1 + _a1._f3)
+from
+    _v0 as _T3 = _f1(_f2(_a0))
+    _v0 * (1 + _a1._f3)
 
 // What you see (reconstructed with your naming via the LSP):
 transforms calculate_total_price(items List<Item>, tax TaxRate) Price
-    from
-        subtotal as Decimal = sum(prices(items))
-        subtotal * (1 + tax.rate)
+from
+    subtotal as Decimal = sum(prices(items))
+    subtotal * (1 + tax.rate)
 ```
 
 A **name map** is stored alongside the canonical AST. The LSP reconstructs human-readable code on demand. But the stored form strips all semantic signal from identifiers — AI cannot learn naming conventions, domain patterns, or stylistic habits from Prove source.

@@ -18,35 +18,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "import_declaration"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "type_definition"
-        },
-        {
-          "type": "SYMBOL",
           "name": "function_definition"
         },
         {
           "type": "SYMBOL",
           "name": "main_definition"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "constant_definition"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "invariant_network"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "narrative_annotation"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "temporal_annotation"
         }
       ]
     },
@@ -96,6 +72,38 @@
         {
           "type": "SYMBOL",
           "name": "type_identifier"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "import_declaration"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "type_definition"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "constant_definition"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "invariant_network"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "narrative_annotation"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "temporal_annotation"
+              }
+            ]
+          }
         }
       ]
     },
@@ -103,23 +111,15 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "STRING",
-          "value": "with"
-        },
-        {
           "type": "SYMBOL",
           "name": "type_identifier"
-        },
-        {
-          "type": "STRING",
-          "value": "use"
         },
         {
           "type": "SEQ",
           "members": [
             {
               "type": "SYMBOL",
-              "name": "import_item"
+              "name": "import_group"
             },
             {
               "type": "REPEAT",
@@ -132,7 +132,7 @@
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "import_item"
+                    "name": "import_group"
                   }
                 ]
               }
@@ -141,7 +141,7 @@
         }
       ]
     },
-    "import_item": {
+    "import_group": {
       "type": "SEQ",
       "members": [
         {
@@ -157,8 +157,11 @@
           ]
         },
         {
-          "type": "SYMBOL",
-          "name": "identifier"
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
         }
       ]
     },
@@ -1106,24 +1109,28 @@
       ]
     },
     "invariant_network": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "invariant_network"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "type_identifier"
-        },
-        {
-          "type": "REPEAT1",
-          "content": {
+      "type": "PREC_LEFT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "invariant_network"
+          },
+          {
             "type": "SYMBOL",
-            "name": "expression"
+            "name": "type_identifier"
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "SYMBOL",
+              "name": "expression"
+            }
           }
-        }
-      ]
+        ]
+      }
     },
     "constant_definition": {
       "type": "SEQ",
@@ -1173,20 +1180,24 @@
       ]
     },
     "comptime_block": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "comptime"
-        },
-        {
-          "type": "REPEAT1",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_statement"
+      "type": "PREC_LEFT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "comptime"
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_statement"
+            }
           }
-        }
-      ]
+        ]
+      }
     },
     "_statement": {
       "type": "CHOICE",

@@ -1,11 +1,11 @@
 /// add(1, 2) == 3
 transforms add(a Integer, b Integer) Integer
-    ensures result == a + b
-    from
-        a + b
+  ensures result == a + b
+from
+    a + b
 
 /// double(5) == 10
 transforms double(n Integer) Integer
-    ensures result == n * 2
-    from
-        n * 2
+  ensures result == n * 2
+from
+    n * 2

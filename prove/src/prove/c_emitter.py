@@ -25,6 +25,8 @@ from prove.ast_nodes import (
     MainDef,
     MatchExpr,
     Module,
+    ModuleDecl,
+    PathLit,
     PipeExpr,
     RecordTypeDef,
     StringInterp,
@@ -79,6 +81,14 @@ class CEmitter:
         self._needed_headers: set[str] = set()
         self._current_func_return: Type = UNIT
 
+    def _all_type_defs(self) -> list[TypeDef]:
+        """Collect all TypeDef nodes from ModuleDecl blocks."""
+        result: list[TypeDef] = []
+        for decl in self._module.declarations:
+            if isinstance(decl, ModuleDecl):
+                result.extend(decl.types)
+        return result
+
     # ── Public API ─────────────────────────────────────────────
 
     def emit(self) -> str:
@@ -94,9 +104,8 @@ class CEmitter:
         self._emit_type_forwards()
 
         # Type definitions
-        for decl in self._module.declarations:
-            if isinstance(decl, TypeDef):
-                self._emit_type_def(decl)
+        for td in self._all_type_defs():
+            self._emit_type_def(td)
 
         # Hoisted lambdas will be inserted here (placeholder position)
         lambda_pos = len(self._out)
@@ -197,10 +206,9 @@ class CEmitter:
     # ── Type forward declarations ──────────────────────────────
 
     def _emit_type_forwards(self) -> None:
-        for decl in self._module.declarations:
-            if isinstance(decl, TypeDef):
-                cname = mangle_type_name(decl.name)
-                self._line(f"typedef struct {cname} {cname};")
+        for td in self._all_type_defs():
+            cname = mangle_type_name(td.name)
+            self._line(f"typedef struct {cname} {cname};")
         self._line("")
 
     # ── Type definitions ───────────────────────────────────────
@@ -509,6 +517,10 @@ class CEmitter:
 
         if isinstance(expr, CharLit):
             return f"'{expr.value}'"
+
+        if isinstance(expr, PathLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, StringLit):
             escaped = self._escape_c_string(expr.value)
@@ -1103,7 +1115,7 @@ class CEmitter:
             return INTEGER
         if isinstance(expr, DecimalLit):
             return DECIMAL
-        if isinstance(expr, (StringLit, TripleStringLit, StringInterp)):
+        if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit)):
             return STRING
         if isinstance(expr, BooleanLit):
             return BOOLEAN

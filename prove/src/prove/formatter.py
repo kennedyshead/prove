@@ -40,6 +40,7 @@ from prove.ast_nodes import (
     ModifiedType,
     Module,
     ModuleDecl,
+    PathLit,
     PipeExpr,
     ProofBlock,
     RecordTypeDef,
@@ -94,16 +95,8 @@ class ProveFormatter:
             return self._format_function_def(decl)
         if isinstance(decl, MainDef):
             return self._format_main_def(decl)
-        if isinstance(decl, TypeDef):
-            return self._format_type_def(decl)
-        if isinstance(decl, ConstantDef):
-            return self._format_constant_def(decl)
-        if isinstance(decl, ImportDecl):
-            return self._format_import_decl(decl)
         if isinstance(decl, ModuleDecl):
             return self._format_module_decl(decl)
-        if isinstance(decl, InvariantNetwork):
-            return self._format_invariant_network(decl)
         return ""
 
     # ── Function definitions ───────────────────────────────────
@@ -210,7 +203,7 @@ class ProveFormatter:
                 constraint = ""
                 if f.constraint:
                     constraint = f" where {self._format_expr(f.constraint)}"
-                lines.append(f"    {f.name} {self._format_type_expr(f.type_expr)}{constraint}")
+                lines.append(f"  {f.name} {self._format_type_expr(f.type_expr)}{constraint}")
             return "\n".join(lines)
 
         if isinstance(body, AlgebraicTypeDef):
@@ -230,7 +223,7 @@ class ProveFormatter:
             # Multi-variant: first on same line, rest with | prefix
             variant_str = parts[0]
             for p in parts[1:]:
-                variant_str += f"\n    | {p}"
+                variant_str += f"\n  | {p}"
             return f"type {td.name}{params} is {variant_str}"
 
         if isinstance(body, RefinementTypeDef):
@@ -258,11 +251,22 @@ class ProveFormatter:
     # ── Import declarations ────────────────────────────────────
 
     def _format_import_decl(self, imp: ImportDecl) -> str:
-        items = ", ".join(
-            (f"{item.verb} {item.name}" if item.verb else item.name)
-            for item in imp.items
-        )
-        return f"with {imp.module} use {items}"
+        # Group items by verb, preserving order of first appearance.
+        groups: list[tuple[str | None, list[str]]] = []
+        seen: dict[str | None, int] = {}
+        for item in imp.items:
+            if item.verb in seen:
+                groups[seen[item.verb]][1].append(item.name)
+            else:
+                seen[item.verb] = len(groups)
+                groups.append((item.verb, [item.name]))
+        parts = []
+        for verb, names in groups:
+            if verb:
+                parts.append(f"{verb} {' '.join(names)}")
+            else:
+                parts.append(" ".join(names))
+        return f"{imp.module} {', '.join(parts)}"
 
     # ── Module declarations ────────────────────────────────────
 
@@ -270,10 +274,29 @@ class ProveFormatter:
         lines = [f"module {mod.name}"]
 
         if mod.narrative:
-            lines.append(f'    narrative: """{mod.narrative}"""')
+            lines.append(f'  narrative: """{mod.narrative}"""')
 
         if mod.temporal:
-            lines.append(f"    temporal: {' -> '.join(mod.temporal)}")
+            lines.append(f"  temporal: {' -> '.join(mod.temporal)}")
+
+        for imp in mod.imports:
+            lines.append(f"  {self._format_import_decl(imp)}")
+
+        for td in mod.types:
+            lines.append("")
+            formatted = self._format_type_def(td)
+            # Indent type definition by 2 spaces inside module
+            lines.append(self._indent_spaces(formatted, 2))
+
+        for cd in mod.constants:
+            lines.append("")
+            formatted = self._format_constant_def(cd)
+            lines.append(self._indent_spaces(formatted, 2))
+
+        for inv in mod.invariants:
+            lines.append("")
+            formatted = self._format_invariant_network(inv)
+            lines.append(self._indent_spaces(formatted, 2))
 
         for decl in mod.body:
             lines.append("")
@@ -287,7 +310,7 @@ class ProveFormatter:
     def _format_invariant_network(self, inv: InvariantNetwork) -> str:
         lines = [f"invariant_network {inv.name}"]
         for constraint in inv.constraints:
-            lines.append(f"    {self._format_expr(constraint)}")
+            lines.append(f"  {self._format_expr(constraint)}")
         return "\n".join(lines)
 
     # ── Statement formatting ───────────────────────────────────
@@ -324,6 +347,8 @@ class ProveFormatter:
             return f"'{expr.value}'"
         if isinstance(expr, RegexLit):
             return f"/{expr.pattern}/"
+        if isinstance(expr, PathLit):
+            return expr.value
         if isinstance(expr, TripleStringLit):
             return f'"""{expr.value}"""'
         if isinstance(expr, StringInterp):
@@ -476,4 +501,9 @@ class ProveFormatter:
     @staticmethod
     def _indent(text: str, levels: int) -> str:
         prefix = "    " * levels
+        return "\n".join(prefix + line if line else line for line in text.splitlines())
+
+    @staticmethod
+    def _indent_spaces(text: str, spaces: int) -> str:
+        prefix = " " * spaces
         return "\n".join(prefix + line if line else line for line in text.splitlines())

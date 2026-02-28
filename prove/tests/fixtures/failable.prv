@@ -1,7 +1,7 @@
 inputs read_name() Result<String, Error>!
-    from
-        readln()
+from
+    readln()
 
 main() Result<Unit, Error>!
-    from
-        println("hello")
+from
+    println("hello")

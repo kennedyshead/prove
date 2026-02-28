@@ -87,10 +87,14 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     except Exception:
         return []
 
-    from prove.ast_nodes import FunctionDef, GenericType, SimpleType
+    from prove.ast_nodes import FunctionDef, GenericType, ModuleDecl, SimpleType
 
     sigs: list[FunctionSignature] = []
+    all_decls = list(module.declarations)
     for decl in module.declarations:
+        if isinstance(decl, ModuleDecl):
+            all_decls.extend(decl.body)
+    for decl in all_decls:
         if not isinstance(decl, FunctionDef):
             continue
 
@@ -210,7 +214,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
     if _import_index is not None:
         return _import_index
 
-    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, TypeDef
+    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, ModuleDecl, TypeDef
 
     index: dict[str, list[ImportSuggestion]] = {}
     for key, _filename in _STDLIB_MODULES.items():
@@ -221,25 +225,36 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
         if module is None:
             continue
 
+        # Collect all declarations, including those inside ModuleDecl
+        all_decls: list[object] = []
+        all_types: list[TypeDef] = []
         for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                all_decls.extend(decl.body)
+                all_types.extend(decl.types)
+            else:
+                all_decls.append(decl)
+
+        for decl in all_decls:
             if isinstance(decl, FunctionDef):
                 suggestion = ImportSuggestion(
                     module=display, verb=decl.verb, name=decl.name,
                 )
                 index.setdefault(decl.name, []).append(suggestion)
-            elif isinstance(decl, TypeDef):
-                # Index the type name itself
-                index.setdefault(decl.name, []).append(
-                    ImportSuggestion(module=display, verb=None, name=decl.name),
-                )
-                # Index variant constructors for algebraic types
-                if isinstance(decl.body, AlgebraicTypeDef):
-                    for variant in decl.body.variants:
-                        index.setdefault(variant.name, []).append(
-                            ImportSuggestion(
-                                module=display, verb=None, name=variant.name,
-                            ),
-                        )
+
+        for td in all_types:
+            # Index the type name itself
+            index.setdefault(td.name, []).append(
+                ImportSuggestion(module=display, verb=None, name=td.name),
+            )
+            # Index variant constructors for algebraic types
+            if isinstance(td.body, AlgebraicTypeDef):
+                for variant in td.body.variants:
+                    index.setdefault(variant.name, []).append(
+                        ImportSuggestion(
+                            module=display, verb=None, name=variant.name,
+                        ),
+                    )
 
     _import_index = index
     return _import_index

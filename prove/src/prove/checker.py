@@ -35,6 +35,8 @@ from prove.ast_nodes import (
     MatchExpr,
     ModifiedType,
     Module,
+    ModuleDecl,
+    PathLit,
     PipeExpr,
     RecordTypeDef,
     RefinementTypeDef,
@@ -123,16 +125,17 @@ class Checker:
         self._register_builtins()
         # Pass 1: register all top-level declarations
         for decl in module.declarations:
-            if isinstance(decl, TypeDef):
-                self._register_type(decl)
-            elif isinstance(decl, FunctionDef):
+            if isinstance(decl, FunctionDef):
                 self._register_function(decl)
-            elif isinstance(decl, ConstantDef):
-                self._register_constant(decl)
-            elif isinstance(decl, ImportDecl):
-                self._register_import(decl)
             elif isinstance(decl, MainDef):
                 self._register_main(decl)
+            elif isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    self._register_import(imp)
+                for td in decl.types:
+                    self._register_type(td)
+                for cd in decl.constants:
+                    self._register_constant(cd)
 
         # Collect user-defined IO function names (inputs/outputs verbs)
         for decl in module.declarations:
@@ -145,10 +148,11 @@ class Checker:
                 self._check_function(decl)
             elif isinstance(decl, MainDef):
                 self._check_main(decl)
-            elif isinstance(decl, ConstantDef):
-                self._check_constant(decl)
-            elif isinstance(decl, TypeDef):
-                self._check_type_def(decl)
+            elif isinstance(decl, ModuleDecl):
+                for cd in decl.constants:
+                    self._check_constant(cd)
+                for td in decl.types:
+                    self._check_type_def(td)
 
         # Check unused variables (W300)
         self._check_unused()
@@ -694,6 +698,8 @@ class Checker:
             return CHARACTER
         if isinstance(expr, RegexLit):
             return STRING  # regex patterns are strings at type level
+        if isinstance(expr, PathLit):
+            return STRING  # path literals are string-typed
         if isinstance(expr, TripleStringLit):
             return STRING
         if isinstance(expr, StringInterp):

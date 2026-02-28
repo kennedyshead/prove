@@ -72,7 +72,9 @@ class TestFormatterBasic:
 class TestFormatterTypes:
     def test_record_type(self):
         source = (
-            "type Product is\n"
+            "module M\n"
+            "\n"
+            "  type Product is\n"
             "    name String\n"
             "    price Integer\n"
         )
@@ -80,13 +82,18 @@ class TestFormatterTypes:
 
     def test_algebraic_type(self):
         source = (
-            "type Route is Get(path String)\n"
+            "module M\n"
+            "\n"
+            "  type Route is Get(path String)\n"
             "    | Post(path String)\n"
         )
         assert _roundtrip(source) == source
 
     def test_unit_variants(self):
-        source = "type Status is Pending | Active | Done\n"
+        source = (
+            "module M\n"
+            "  type Status is Pending | Active | Done\n"
+        )
         result = _parse_format(source)
         assert "Pending" in result
         assert "Active" in result
@@ -207,14 +214,19 @@ class TestFormatterAnnotations:
 
 class TestFormatterImports:
     def test_import(self):
-        source = "with Http use transforms ok, transforms not_found\n"
+        source = "module Foo\n  Http transforms ok not_found\n"
+        assert _roundtrip(source) == source
+
+    def test_import_verb_groups(self):
+        source = "module Foo\n  Http transforms ok not_found, validates method1 method2\n"
         assert _roundtrip(source) == source
 
 
 class TestFormatterConstants:
     def test_simple_constant(self):
         source = (
-            "MAX as Integer = 100\n"
+            "module M\n"
+            "  MAX as Integer = 100\n"
         )
         result = _parse_format(source)
         assert "MAX" in result

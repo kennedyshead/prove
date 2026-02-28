@@ -48,10 +48,9 @@ Linear types for resources, but without Rust's lifetime annotation burden. The c
 
 ```prove
 inputs process(file File:[Own]) Data!
-    from
-        content as String = read(file)     // immutable borrow, inferred
-        close(file)                       // ownership consumed
-        // read(file)                     // compile error: used after close
+from
+    content as String = read(file)
+    close(file)
 ```
 
 ## No Null

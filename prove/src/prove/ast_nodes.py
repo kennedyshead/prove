@@ -110,6 +110,12 @@ class RegexLit:
 
 
 @dataclass(frozen=True)
+class PathLit:
+    value: str
+    span: Span
+
+
+@dataclass(frozen=True)
 class TripleStringLit:
     value: str
     span: Span
@@ -231,7 +237,7 @@ class IndexExpr:
 
 
 Expr = Union[
-    IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit,
+    IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit, PathLit,
     TripleStringLit, StringInterp, ListLiteral,
     IdentifierExpr, TypeIdentifierExpr,
     BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
@@ -408,6 +414,10 @@ class ModuleDecl:
     name: str
     narrative: str | None
     temporal: list[str] | None  # list of ordered step names
+    imports: list[ImportDecl]
+    types: list[TypeDef]
+    constants: list[ConstantDef]
+    invariants: list[InvariantNetwork]
     body: list[Declaration]
     span: Span
 
@@ -419,10 +429,7 @@ class InvariantNetwork:
     span: Span
 
 
-Declaration = Union[
-    FunctionDef, MainDef, TypeDef, ConstantDef,
-    ImportDecl, ModuleDecl, InvariantNetwork,
-]
+Declaration = Union[FunctionDef, MainDef, ModuleDecl]
 
 
 @dataclass(frozen=True)
