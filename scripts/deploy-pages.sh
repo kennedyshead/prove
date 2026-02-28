@@ -3,7 +3,7 @@ set -euo pipefail
 
 SITE_DIR="/tmp/prove-site-deploy"
 BRANCH="gitea-pages"
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$REPO_DIR"
 
