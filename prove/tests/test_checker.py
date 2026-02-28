@@ -577,3 +577,122 @@ class TestIntegration:
             "    from\n"
             "        println(\"starting\")\n"
         )
+
+
+class TestContractChecking:
+    """Test type-checking of ensures/requires/know/assume/believe contracts."""
+
+    def test_ensures_boolean_ok(self):
+        check(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    ensures result == a + b\n"
+            "    from\n"
+            "        a + b\n"
+        )
+
+    def test_ensures_non_boolean_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    ensures result + 1\n"
+            "    from\n"
+            "        a\n",
+            "E380",
+        )
+
+    def test_requires_boolean_ok(self):
+        check(
+            "transforms safe_div(a Integer, b Integer) Integer\n"
+            "    requires b != 0\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_requires_non_boolean_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    requires a + 1\n"
+            "    from\n"
+            "        a\n",
+            "E381",
+        )
+
+    def test_know_boolean_ok(self):
+        check(
+            "transforms safe(a Integer) Integer\n"
+            "    know: a > 0\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_know_non_boolean_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    know: a + 1\n"
+            "    from\n"
+            "        a\n",
+            "E384",
+        )
+
+    def test_assume_boolean_ok(self):
+        check(
+            "transforms safe(a Integer) Integer\n"
+            "    assume: a > 0\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_assume_non_boolean_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    assume: a + 1\n"
+            "    from\n"
+            "        a\n",
+            "E385",
+        )
+
+    def test_believe_boolean_ok(self):
+        check(
+            "transforms abs_val(n Integer) Integer\n"
+            "    believe: result >= 0\n"
+            "    from\n"
+            "        if n >= 0\n"
+            "            n\n"
+            "        else\n"
+            "            0 - n\n"
+        )
+
+    def test_believe_non_boolean_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    believe: result + 1\n"
+            "    from\n"
+            "        a\n",
+            "E386",
+        )
+
+    def test_satisfies_undefined_type_error(self):
+        check_fails(
+            "transforms bad(a Integer) Integer\n"
+            "    satisfies Nonexistent\n"
+            "    from\n"
+            "        a\n",
+            "E382",
+        )
+
+    def test_satisfies_valid_type(self):
+        check(
+            "type Positive is Integer where >= 0\n"
+            "transforms identity(a Integer) Integer\n"
+            "    satisfies Positive\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_intent_without_contracts_warning(self):
+        check_warns(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    intent: \"add two numbers\"\n"
+            "    from\n"
+            "        a + b\n",
+            "W310",
+        )
