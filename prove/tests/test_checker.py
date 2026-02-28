@@ -743,3 +743,30 @@ class TestContractChecking:
             "        a + b\n",
             "W310",
         )
+
+
+class TestStdlibLoading:
+    """Test that stdlib imports resolve to real signatures."""
+
+    def test_io_import_resolves(self):
+        """Importing from Io should resolve function types."""
+        st = check(
+            "with Io use outputs println\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        println("hello")\n'
+        )
+        # println should resolve without error
+        sig = st.resolve_function_any("println")
+        assert sig is not None
+
+    def test_json_import_resolves(self):
+        """Importing from Json should resolve function types."""
+        check(
+            "with Json use transforms encode_string\n"
+            "\n"
+            "transforms wrap(s String) String\n"
+            "    from\n"
+            "        encode_string(s)\n"
+        )
