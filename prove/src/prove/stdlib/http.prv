@@ -1,12 +1,7 @@
-/// HTTP server types and functions.
-///
-/// Provides types for building HTTP servers and handling requests.
-
-type Method is
-    Get
-    Post
-    Put
-    Delete
+type Method is Get
+    | Post
+    | Put
+    | Delete
 
 type Request is
     method Method

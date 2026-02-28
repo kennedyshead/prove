@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 license = {text = "Prove Source License v1.0"}
 dependencies = [
     "click>=8.1",
+    "pygls>=2.0,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +23,7 @@ dev = [
 
 [project.scripts]
 prove = "prove.cli:main"
+prove-lsp = "prove.lsp:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
