@@ -141,3 +141,19 @@ class SymbolTable:
 
     def all_functions(self) -> dict[tuple[str | None, str], list[FunctionSignature]]:
         return dict(self._functions)
+
+    def all_known_names(self) -> set[str]:
+        """Return all names visible in current scope + types + functions."""
+        names: set[str] = set()
+        # Walk scope chain
+        scope: Scope | None = self.current_scope
+        while scope is not None:
+            for sym in scope.all_symbols():
+                names.add(sym.name)
+            scope = scope.parent
+        # Types
+        names.update(self._types.keys())
+        # Function names
+        for (_verb, fname) in self._functions:
+            names.add(fname)
+        return names

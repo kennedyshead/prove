@@ -234,3 +234,72 @@ class TestSource:
     def test_span_str(self):
         span = Span("file.prv", 10, 5, 10, 20)
         assert str(span) == "file.prv:10:5"
+
+
+# --- Diagnostic quality tests (Phase H) ---
+
+
+class TestDiagnosticNotes:
+    def test_undefined_name_did_you_mean(self):
+        from prove.checker import Checker
+        from prove.lexer import Lexer
+        from prove.parser import Parser
+
+        source = (
+            "transforms compute(x Integer) Integer\n"
+            "    from\n"
+            "        y\n"  # typo — should be x
+        )
+        tokens = Lexer(source, "test.prv").lex()
+        module = Parser(tokens, "test.prv").parse()
+        checker = Checker()
+        checker.check(module)
+        renderer = DiagnosticRenderer(color=False)
+        rendered = [renderer.render(d) for d in checker.diagnostics]
+        assert any("E310" in r for r in rendered)
+        assert any("did you mean" in r for r in rendered)
+
+    def test_wrong_arg_count_shows_signature(self):
+        from prove.checker import Checker
+        from prove.lexer import Lexer
+        from prove.parser import Parser
+
+        source = (
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a + b\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        println(to_string(add(1)))\n"
+        )
+        tokens = Lexer(source, "test.prv").lex()
+        module = Parser(tokens, "test.prv").parse()
+        checker = Checker()
+        checker.check(module)
+        renderer = DiagnosticRenderer(color=False)
+        rendered = [renderer.render(d) for d in checker.diagnostics]
+        assert any("E330" in r for r in rendered)
+        assert any("function signature:" in r for r in rendered)
+
+    def test_source_line_in_render(self, tmp_path):
+        """Diagnostics should show the source line from a real file."""
+        prv = tmp_path / "test.prv"
+        prv.write_text(
+            "transforms identity(x Integer) Integer\n"
+            "    from\n"
+            "        y\n"
+        )
+        from prove.checker import Checker
+        from prove.lexer import Lexer
+        from prove.parser import Parser
+
+        source = prv.read_text()
+        tokens = Lexer(source, str(prv)).lex()
+        module = Parser(tokens, str(prv)).parse()
+        checker = Checker()
+        checker.check(module)
+        renderer = DiagnosticRenderer(color=False)
+        rendered = [renderer.render(d) for d in checker.diagnostics]
+        # Should include source line content
+        assert any("y" in r and "^" in r for r in rendered)
