@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -18,7 +16,6 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     GenericType,
-    IdentifierExpr,
     IfExpr,
     ImportDecl,
     IndexExpr,
@@ -27,7 +24,6 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     MainDef,
-    MatchArm,
     MatchExpr,
     ModifiedType,
     ModuleDecl,
@@ -38,19 +34,11 @@ from prove.ast_nodes import (
     SimpleType,
     StringInterp,
     StringLit,
-    TripleStringLit,
     TypeDef,
-    TypeIdentifierExpr,
     UnaryExpr,
-    ValidExpr,
     VarDecl,
     Variant,
-    VariantPattern,
-    WildcardPattern,
-    LiteralPattern,
-    BindingPattern,
 )
-from prove.errors import CompileError
 from prove.lexer import Lexer
 from prove.parser import Parser
 
@@ -286,13 +274,21 @@ class TestParserExpressions:
         assert call.args[1].params == ["x"]
 
     def test_if_expr(self):
-        source = 'transforms f() Integer\n    from\n        if x\n            1\n        else\n            2\n'
+        source = (
+            'transforms f() Integer\n    from\n'
+            '        if x\n            1\n'
+            '        else\n            2\n'
+        )
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, IfExpr)
 
     def test_match_expr(self):
-        source = 'transforms f() Integer\n    from\n        match x\n            A => 1\n            B => 2\n'
+        source = (
+            'transforms f() Integer\n    from\n'
+            '        match x\n            A => 1\n'
+            '            B => 2\n'
+        )
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, MatchExpr)
@@ -397,7 +393,11 @@ class TestParserConstants:
         assert isinstance(decl.type_expr, SimpleType)
 
     def test_comptime_constant(self):
-        source = 'MAX_CONNECTIONS as Integer = comptime\n    if true\n        16\n    else\n        1024\n'
+        source = (
+            'MAX_CONNECTIONS as Integer = comptime\n'
+            '    if true\n        16\n'
+            '    else\n        1024\n'
+        )
         decl = parse_decl(source)
         assert isinstance(decl, ConstantDef)
         assert isinstance(decl.value, ComptimeExpr)
@@ -483,7 +483,12 @@ class TestParserAIResistance:
 class TestParserIntegration:
     def test_parse_hello_main(self):
         """Parse the hello world example."""
-        source = '/// Hello from Prove!\nmain() Result<Unit, Error>!\n    from\n        println("Hello from Prove!")\n'
+        source = (
+            '/// Hello from Prove!\n'
+            'main() Result<Unit, Error>!\n'
+            '    from\n'
+            '        println("Hello from Prove!")\n'
+        )
         mod = parse(source)
         assert len(mod.declarations) == 1
         decl = mod.declarations[0]

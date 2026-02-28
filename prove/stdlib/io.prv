@@ -1,0 +1,29 @@
+/// Standard I/O operations.
+///
+/// Provides functions for reading and writing to standard streams
+/// and the filesystem.
+
+/// Print a string followed by a newline to stdout.
+outputs println(text String)
+    from
+        println(text)
+
+/// Print a string to stdout without a trailing newline.
+outputs print(text String)
+    from
+        print(text)
+
+/// Read a line from stdin.
+inputs readln() String
+    from
+        readln()
+
+/// Read the entire contents of a file.
+inputs read_file(path String) Result<String, Error>!
+    from
+        read_file(path)
+
+/// Write content to a file, creating or overwriting it.
+outputs write_file(path String, content String) Result<Unit, Error>!
+    from
+        write_file(path, content)

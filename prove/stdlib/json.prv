@@ -1,0 +1,18 @@
+/// JSON encoding and decoding.
+///
+/// Provides functions for converting between Prove values and JSON strings.
+
+/// Encode a string value as a JSON string.
+transforms encode_string(value String) String
+    from
+        value
+
+/// Encode an integer as a JSON number string.
+transforms encode_int(value Integer) String
+    from
+        to_string(value)
+
+/// Encode a boolean as a JSON boolean string.
+transforms encode_bool(value Boolean) String
+    from
+        to_string(value)
