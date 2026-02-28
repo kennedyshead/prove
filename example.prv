@@ -68,26 +68,26 @@ type Discount is
 ///   sku("ABCDE-1") == false
 ///
 validates sku(code String)
-    from
-        matches(code, /^[A-Z]{2,4}-[0-9]{4,8}$/)
+from
+    matches(code, /^[A-Z]{2,4}-[0-9]{4,8}$/)
 
 /// Checks if there is enough stock to fulfill the requested quantity.
 validates in_stock(product Product, requested Integer)
-    from
-        product.stock >= requested
+from
+    product.stock >= requested
 
 /// Checks whether every item in an order can be fulfilled.
 validates fulfillable(order Order)
-    from
-        all(order.items, |item| in_stock(item.product, item.quantity))
+from
+    all(order.items, |item| in_stock(item.product, item.quantity))
 
 /// Checks that a discount doesn't exceed the subtotal.
 validates discount_valid(discount Discount, subtotal Price)
-    from
-        match discount
-            FlatOff(amount)      => amount <= subtotal
-            PercentOff(rate)     => rate <= 1
-            BuyNGetFree(buy, _)  => buy >= 1
+from
+    match discount
+        FlatOff(amount)      => amount <= subtotal
+        PercentOff(rate)     => rate <= 1
+        BuyNGetFree(buy, _)  => buy >= 1
 
 // ═══════════════════════════════════════════════════════════════
 // Transforms — pure data conversion, no IO, no !
@@ -99,9 +99,9 @@ validates discount_valid(discount Discount, subtotal Price)
 ///   subtotal([OrderItem(Product("AB-1234", "Widget", 10.00, 5), 3)]) == 30.00
 ///
 transforms subtotal(items List<OrderItem>) Price
-    ensures result >= 0
-    from
-        reduce(items, 0, |acc, item| acc + item.product.price * item.quantity)
+  ensures result >= 0
+from
+    reduce(items, 0, |acc, item| acc + item.product.price * item.quantity)
 
 /// Applies a discount to a subtotal.
 ///
@@ -109,67 +109,67 @@ transforms subtotal(items List<OrderItem>) Price
 ///   apply_discount(PercentOff(0.10), 100.00) == 90.00
 ///
 transforms apply_discount(discount Discount, amount Price) Price
-    ensures result >= 0
-    ensures result <= amount
-    proof
-        non_negative: FlatOff is clamped to zero, PercentOff rate is 0..1,
-                      BuyNGetFree only reduces by whole item prices
-        bounded: every discount path subtracts from amount, never adds
-    from
-        match discount
-            FlatOff(off)          => max(0, amount - off)
-            PercentOff(rate)      => amount * (1 - rate)
-            BuyNGetFree(buy, free) =>
-                sets as Integer = len(items) / (buy + free)
-                amount - sets * cheapest_price(items)
+  ensures result >= 0
+  ensures result <= amount
+  proof
+    non_negative: FlatOff is clamped to zero, PercentOff rate is 0..1,
+                  BuyNGetFree only reduces by whole item prices
+    bounded: every discount path subtracts from amount, never adds
+from
+    match discount
+        FlatOff(off)          => max(0, amount - off)
+        PercentOff(rate)      => amount * (1 - rate)
+        BuyNGetFree(buy, free) =>
+            sets as Integer = len(items) / (buy + free)
+            amount - sets * cheapest_price(items)
 
 /// Applies tax to an amount.
 ///
 ///   apply_tax(TaxRule("SE", 0.25), 100.00) == 125.00
 ///
 transforms apply_tax(rule TaxRule, amount Price) Price
-    ensures result >= amount
-    proof
-        tax_additive: rate is 0..1 so multiplier (1 + rate) >= 1,
-                      therefore result >= amount
-    from
-        amount * (1 + rule.rate)
+  ensures result >= amount
+  proof
+    tax_additive: rate is 0..1 so multiplier (1 + rate) >= 1,
+                  therefore result >= amount
+from
+    amount * (1 + rule.rate)
 
 /// Computes the full order total: subtotal → discount → tax.
 transforms calculate_total(items List<OrderItem>, discount Option<Discount>, tax TaxRule) Price
-    ensures result >= 0
-    from
-        sub as Price = subtotal(items)
-        discounted as Price = match discount
-            Some(d) => apply_discount(d, sub)
-            None    => sub
-        apply_tax(tax, discounted)
+  ensures result >= 0
+from
+    sub as Price = subtotal(items)
+    discounted as Price = match discount
+        Some(d) => apply_discount(d, sub)
+        None    => sub
+    apply_tax(tax, discounted)
 
 /// Reduces stock for each item in an order.
 transforms deduct_stock(products List<Product>, items List<OrderItem>) List<Product>
-    ensures len(result) == len(products)
-    from
-        map(products, |p|
-            match find(items, |item| item.product.sku == p.sku)
-                Some(item) => Product(p.sku, p.name, p.price, p.stock - item.quantity)
-                None       => p
-        )
+  ensures len(result) == len(products)
+from
+    map(products, |p|
+        match find(items, |item| item.product.sku == p.sku)
+            Some(item) => Product(p.sku, p.name, p.price, p.stock - item.quantity)
+            None       => p
+    )
 
 /// Parses a raw JSON body into an order. Pure — failure is in the type.
 transforms parse_order(raw String) Result<Order, Error>
-    from
-        decode(raw)
+from
+    decode(raw)
 
 /// Finds the cheapest product price in a list.
 transforms cheapest_price(items List<OrderItem>) Price
-    requires len(items) > 0
-    from
-        reduce(items, items[0].product.price, |acc, item| min(acc, item.product.price))
+  requires len(items) > 0
+from
+    reduce(items, items[0].product.price, |acc, item| min(acc, item.product.price))
 
 /// Selects only products that are running low on stock.
 transforms low_stock(products List<Product>, threshold Quantity) List<Product>
-    from
-        filter(products, |p| p.stock <= threshold)
+from
+    filter(products, |p| p.stock <= threshold)
 
 // ═══════════════════════════════════════════════════════════════
 // Inputs — reads from external world, IO inherent
@@ -177,32 +177,32 @@ transforms low_stock(products List<Product>, threshold Quantity) List<Product>
 
 /// Loads application config from a YAML file.
 inputs load_config(path String) Config!
-    from
-        raw as String = read_file(path)!
-        decode(raw)!
+from
+    raw as String = read_file(path)!
+    decode(raw)!
 
 /// Fetches all products from the database.
 inputs all_products(db Database) List<Product>!
-    from
-        query(db, "SELECT * FROM products")!
+from
+    query(db, "SELECT * FROM products")!
 
 /// Fetches a single product by SKU.
 ///
 ///   product_by_sku(db, "AB-1234") == Product("AB-1234", "Widget", 10.00, 100)
 ///
 inputs product_by_sku(db Database, code Sku) Product!
-    from
-        query_one(db, "SELECT * FROM products WHERE sku = {code}")!
+from
+    query_one(db, "SELECT * FROM products WHERE sku = {code}")!
 
 /// Fetches an order by ID.
 inputs order_by_id(db Database, id Integer) Order!
-    from
-        query_one(db, "SELECT * FROM orders WHERE id = {id}")!
+from
+    query_one(db, "SELECT * FROM orders WHERE id = {id}")!
 
 /// Fetches the applicable tax rule for a region.
 inputs tax_rule(db Database, region String) TaxRule!
-    from
-        query_one(db, "SELECT * FROM tax_rules WHERE region = {region}")!
+from
+    query_one(db, "SELECT * FROM tax_rules WHERE region = {region}")!
 
 // ═══════════════════════════════════════════════════════════════
 // Outputs — writes to external world, IO inherent
@@ -210,52 +210,52 @@ inputs tax_rule(db Database, region String) TaxRule!
 
 /// Inserts a new product into inventory.
 outputs add_product(db Database, product Product)!
-    ensures product_by_sku(db, product.sku) == product
-    proof
-        persistence: insert writes the product row, and product_by_sku
-                     queries the same table by the same SKU
-    from
-        insert(db, "products", product)!
+  ensures product_by_sku(db, product.sku) == product
+  proof
+    persistence: insert writes the product row, and product_by_sku
+                 queries the same table by the same SKU
+from
+    insert(db, "products", product)!
 
 /// Places an order: validates stock, calculates total, deducts inventory.
 outputs place_order(db Database, order Order, tax TaxRule) Order!
-    requires fulfillable(order)
-    ensures result.status == Confirmed
-    ensures result.total == calculate_total(order.items, None, tax)
-    proof
-        fulfillment: requires clause guarantees stock sufficiency before
-                     deduction, so stock never goes negative
-        total_correct: calculate_total is a pure transform applied to
-                       the same items and tax rule stored in the result
-        status: order is created with Confirmed status after successful insert
-    from
-        total as Price = calculate_total(order.items, None, tax)
-        confirmed as Order = Order(order.id, order.items, Confirmed, total)
-        insert(db, "orders", confirmed)!
-        products as List<Product> = all_products(db)!
-        updated as List<Product> = deduct_stock(products, order.items)
-        update_all(db, "products", updated)!
-        confirmed
+  requires fulfillable(order)
+  ensures result.status == Confirmed
+  ensures result.total == calculate_total(order.items, None, tax)
+  proof
+    fulfillment: requires clause guarantees stock sufficiency before
+                 deduction, so stock never goes negative
+    total_correct: calculate_total is a pure transform applied to
+                   the same items and tax rule stored in the result
+    status: order is created with Confirmed status after successful insert
+from
+    total as Price = calculate_total(order.items, None, tax)
+    confirmed as Order = Order(order.id, order.items, Confirmed, total)
+    insert(db, "orders", confirmed)!
+    products as List<Product> = all_products(db)!
+    updated as List<Product> = deduct_stock(products, order.items)
+    update_all(db, "products", updated)!
+    confirmed
 
 /// Cancels an order and restores stock.
 outputs cancel_order(db Database, order Order)!
-    requires order.status == Pending || order.status == Confirmed
-    from
-        cancelled as Order = Order(order.id, order.items, Cancelled, order.total)
-        update(db, "orders", cancelled)!
-        // Stock restoration is the reverse of deduction
-        products as List<Product> = all_products(db)!
-        restored as List<Product> = map(products, |p|
-            match find(order.items, |item| item.product.sku == p.sku)
-                Some(item) => Product(p.sku, p.name, p.price, p.stock + item.quantity)
-                None       => p
-        )
-        update_all(db, "products", restored)!
+  requires order.status == Pending || order.status == Confirmed
+from
+    cancelled as Order = Order(order.id, order.items, Cancelled, order.total)
+    update(db, "orders", cancelled)!
+    // Stock restoration is the reverse of deduction
+    products as List<Product> = all_products(db)!
+    restored as List<Product> = map(products, |p|
+        match find(order.items, |item| item.product.sku == p.sku)
+            Some(item) => Product(p.sku, p.name, p.price, p.stock + item.quantity)
+            None       => p
+    )
+    update_all(db, "products", restored)!
 
 /// Logs a request for audit purposes.
 outputs log_request(route Route, status Integer)
-    from
-        write(stdout, "[{now()}] {route} -> {status}")
+from
+    write(stdout, "[{now()}] {route} -> {status}")
 
 // ═══════════════════════════════════════════════════════════════
 // Counterfactual + Epistemic annotations
@@ -263,21 +263,21 @@ outputs log_request(route Route, status Integer)
 
 /// Selects the eviction strategy for the product cache.
 transforms evict(cache Cache:[Mutable]) Option<Product>
-    why_not: "FIFO would evict recently restocked products under burst queries"
-    why_not: "Random eviction gives no guarantees about cache hit rate"
-    chosen: "LFU because inventory queries follow power-law distribution —
-             popular products are queried far more often"
-    from
-        least_frequent(cache)
+  why_not: "FIFO would evict recently restocked products under burst queries"
+  why_not: "Random eviction gives no guarantees about cache hit rate"
+  chosen: "LFU because inventory queries follow power-law distribution —
+           popular products are queried far more often"
+from
+    least_frequent(cache)
 
 /// Processes a bulk order import with epistemic annotations.
 outputs import_orders(db Database, raw String) List<Order>!
-    know: len(raw) > 0                                  // enforced by NonEmpty param type
-    assume: valid_json(raw)                             // validated at API boundary
-    believe: all_skus_exist(db, extract_skus(raw))      // generates adversarial tests
-    from
-        orders as List<Order> = decode(raw)!
-        map(orders, |o| place_order(db, o, default_tax())!)
+  know: len(raw) > 0                                  // enforced by NonEmpty param type
+  assume: valid_json(raw)                             // validated at API boundary
+  believe: all_skus_exist(db, extract_skus(raw))      // generates adversarial tests
+from
+    orders as List<Order> = decode(raw)!
+    map(orders, |o| place_order(db, o, default_tax())!)
 
 // ═══════════════════════════════════════════════════════════════
 // Near-miss testing — prove you understand the boundaries
@@ -290,11 +290,11 @@ outputs import_orders(db Database, raw String) List<Order>!
 ///   wholesale(100) == true
 ///
 validates wholesale(quantity Quantity)
-    near_miss: 10  => false    // exactly at the boundary — not wholesale
-    near_miss: 11  => true     // one above — first wholesale quantity
-    near_miss: 0   => false    // zero quantity edge case
-    from
-        quantity > 10
+  near_miss: 10  => false    // exactly at the boundary — not wholesale
+  near_miss: 11  => true     // one above — first wholesale quantity
+  near_miss: 0   => false    // zero quantity edge case
+from
+    quantity > 10
 
 // ═══════════════════════════════════════════════════════════════
 // Temporal ordering — authenticate before authorize before access
@@ -304,17 +304,17 @@ module Auth
     temporal: authenticate -> authorize -> access
 
     inputs authenticate(token String) User!
-        from
-            verify_jwt(token)!
+    from
+        verify_jwt(token)!
 
     transforms authorize(user User, resource String) Permission
-        from
-            lookup_permission(user.role, resource)
+    from
+        lookup_permission(user.role, resource)
 
     inputs access(perm Permission, db Database) Data!
-        requires perm.granted
-        from
-            query(db, perm.query)!
+      requires perm.granted
+    from
+        query(db, perm.query)!
 
 // ═══════════════════════════════════════════════════════════════
 // Invariant network — accounting rules must always hold
@@ -335,42 +335,42 @@ invariant_network InventoryAccounting
 /// event (Route) and dispatches to inputs/outputs as appropriate.
 ///
 inputs request(route Route, body String, db Database, token String) Response!
-    from
-        user as User = authenticate(token)!
+from
+    user as User = authenticate(token)!
 
-        Get("/health")   => ok("healthy")
+    Get("/health")   => ok("healthy")
 
-        Get("/products") =>
-            all_products(db)! |> encode |> ok
+    Get("/products") =>
+        all_products(db)! |> encode |> ok
 
-        Get("/products/low-stock") =>
-            all_products(db)!
-                |> low_stock(5)
-                |> encode
-                |> ok
+    Get("/products/low-stock") =>
+        all_products(db)!
+            |> low_stock(5)
+            |> encode
+            |> ok
 
-        Post("/products") =>
-            product as Product = decode(body)!
-            if !valid sku(product.sku)
-                bad_request("invalid SKU format")
-            add_product(db, product)!
-            encode(product) |> created
+    Post("/products") =>
+        product as Product = decode(body)!
+        if !valid sku(product.sku)
+            bad_request("invalid SKU format")
+        add_product(db, product)!
+        encode(product) |> created
 
-        Post("/orders") =>
-            order as Order = parse_order(body)!
-            if !valid fulfillable(order)
-                bad_request("insufficient stock")
-            perm as Permission = authorize(user, "orders.create")
-            tax as TaxRule = tax_rule(db, "SE")!
-            place_order(db, order, tax)! |> encode |> created
+    Post("/orders") =>
+        order as Order = parse_order(body)!
+        if !valid fulfillable(order)
+            bad_request("insufficient stock")
+        perm as Permission = authorize(user, "orders.create")
+        tax as TaxRule = tax_rule(db, "SE")!
+        place_order(db, order, tax)! |> encode |> created
 
-        Delete("/orders") =>
-            order as Order = decode(body)!
-            perm as Permission = authorize(user, "orders.cancel")
-            cancel_order(db, order)!
-            ok("cancelled")
+    Delete("/orders") =>
+        order as Order = decode(body)!
+        perm as Permission = authorize(user, "orders.cancel")
+        cancel_order(db, order)!
+        ok("cancelled")
 
-        _ => not_found()
+    _ => not_found()
 
 // ═══════════════════════════════════════════════════════════════
 // Compile-time constants
@@ -398,10 +398,10 @@ ROUTES as List<String> = comptime
 /// main is special — no verb, the program itself.
 ///
 main() Result<Unit, Error>!
-    from
-        cfg as Config = load_config("inventory.yaml")!
-        db as Database = connect(cfg.db_url)!
-        server as Server = new_server()
-        port as Port = cfg.port
-        route(server, "/", |r, b| request(r, b, db, extract_token(r)))
-        listen(server, port)!
+from
+    cfg as Config = load_config("inventory.yaml")!
+    db as Database = connect(cfg.db_url)!
+    server as Server = new_server()
+    port as Port = cfg.port
+    route(server, "/", |r, b| request(r, b, db, extract_token(r)))
+    listen(server, port)!
