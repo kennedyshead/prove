@@ -199,3 +199,8 @@
 
 (import_item
   (identifier) @function)
+
+; ─── Variable references (fallback) ───────────────────────────
+; Must be last — more specific patterns above take precedence.
+
+(identifier) @variable

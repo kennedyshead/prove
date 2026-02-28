@@ -245,7 +245,10 @@ module.exports = grammar({
       field('text', $.proof_text),
     ),
 
-    proof_text: $ => repeat1(token(prec(-2, /[a-zA-Z0-9_',\.\-\(\) ]+/))),
+    // Each proof_text line is a single token (rest of line after `:` or
+    // an indented continuation).  Continuations are separate proof_text
+    // tokens so the repeat absorbs them.
+    proof_text: $ => repeat1(token(prec(-1, /[^\n]*[a-zA-Z0-9\)][^\n]*/))),
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
 
