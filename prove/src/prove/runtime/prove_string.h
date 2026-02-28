@@ -23,5 +23,6 @@ Prove_String *prove_string_from_char(char val);
 
 void prove_println(Prove_String *s);
 void prove_print(Prove_String *s);
+Prove_String *prove_readln(void);
 
 #endif /* PROVE_STRING_H */

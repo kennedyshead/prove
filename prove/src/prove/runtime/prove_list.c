@@ -38,3 +38,14 @@ void *prove_list_get(Prove_List *list, int64_t index) {
 int64_t prove_list_len(Prove_List *list) {
     return list ? list->length : 0;
 }
+
+void prove_list_free(Prove_List *list, void (*free_elem)(void *)) {
+    if (!list) return;
+    if (free_elem) {
+        for (int64_t i = 0; i < list->length; i++) {
+            void *elem = list->data + list->elem_size * (size_t)i;
+            free_elem(elem);
+        }
+    }
+    free(list);
+}

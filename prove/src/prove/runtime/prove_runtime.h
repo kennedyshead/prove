@@ -46,4 +46,10 @@ static inline _Noreturn void prove_panic(const char *msg) {
     exit(1);
 }
 
+/* ── Clamp ────────────────────────────────────────────────────── */
+
+static inline int64_t prove_clamp(int64_t val, int64_t lo, int64_t hi) {
+    return val < lo ? lo : (val > hi ? hi : val);
+}
+
 #endif /* PROVE_RUNTIME_H */
