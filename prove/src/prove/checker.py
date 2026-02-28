@@ -366,6 +366,9 @@ class Checker:
                     fd.span,
                 )
 
+        # ── Contract type-checking ──
+        self._check_contracts(fd, return_type, param_types)
+
         self.symbols.pop_scope()
         self._current_function = None
 
@@ -402,6 +405,92 @@ class Checker:
             for v in body.variants:
                 for f in v.fields:
                     self._resolve_type_expr(f.type_expr)
+
+    # ── Contract checking ──────────────────────────────────────
+
+    def _check_contracts(self, fd: FunctionDef, return_type: Type, param_types: list[Type]) -> None:
+        """Type-check ensures/requires/know/assume/believe contracts."""
+        # Type-check `ensures` — push sub-scope with `result` bound to return type
+        for ens_expr in fd.ensures:
+            self.symbols.push_scope("ensures")
+            self.symbols.define(Symbol(
+                name="result", kind=SymbolKind.VARIABLE,
+                resolved_type=return_type, span=fd.span,
+            ))
+            ens_type = self._infer_expr(ens_expr)
+            if not isinstance(ens_type, ErrorType) and not types_compatible(BOOLEAN, ens_type):
+                self._error(
+                    "E380",
+                    f"ensures expression must be Boolean, got '{type_name(ens_type)}'",
+                    ens_expr.span if hasattr(ens_expr, 'span') else fd.span,
+                )
+            self.symbols.pop_scope()
+
+        # Type-check `requires` — params are already in scope
+        for req_expr in fd.requires:
+            req_type = self._infer_expr(req_expr)
+            if not isinstance(req_type, ErrorType) and not types_compatible(BOOLEAN, req_type):
+                self._error(
+                    "E381",
+                    f"requires expression must be Boolean, got '{type_name(req_type)}'",
+                    req_expr.span if hasattr(req_expr, 'span') else fd.span,
+                )
+
+        # Type-check `know`
+        for know_expr in fd.know:
+            know_type = self._infer_expr(know_expr)
+            if not isinstance(know_type, ErrorType) and not types_compatible(BOOLEAN, know_type):
+                self._error(
+                    "E384",
+                    f"know expression must be Boolean, got '{type_name(know_type)}'",
+                    know_expr.span if hasattr(know_expr, 'span') else fd.span,
+                )
+
+        # Type-check `assume`
+        for assume_expr in fd.assume:
+            assume_type = self._infer_expr(assume_expr)
+            if (not isinstance(assume_type, ErrorType)
+                    and not types_compatible(BOOLEAN, assume_type)):
+                self._error(
+                    "E385",
+                    f"assume expression must be Boolean, got '{type_name(assume_type)}'",
+                    assume_expr.span if hasattr(assume_expr, 'span') else fd.span,
+                )
+
+        # Type-check `believe`
+        for believe_expr in fd.believe:
+            self.symbols.push_scope("believe")
+            self.symbols.define(Symbol(
+                name="result", kind=SymbolKind.VARIABLE,
+                resolved_type=return_type, span=fd.span,
+            ))
+            believe_type = self._infer_expr(believe_expr)
+            if (not isinstance(believe_type, ErrorType)
+                    and not types_compatible(BOOLEAN, believe_type)):
+                self._error(
+                    "E386",
+                    f"believe expression must be Boolean, got '{type_name(believe_type)}'",
+                    believe_expr.span if hasattr(believe_expr, 'span') else fd.span,
+                )
+            self.symbols.pop_scope()
+
+        # Validate `satisfies` — each named type must exist
+        for sat_name in fd.satisfies:
+            resolved = self.symbols.resolve_type(sat_name)
+            if resolved is None:
+                self._error(
+                    "E382",
+                    f"satisfies references undefined type '{sat_name}'",
+                    fd.span,
+                )
+
+        # Warning: intent set but no ensures/requires
+        if fd.intent and not fd.ensures and not fd.requires:
+            self._warning(
+                "W310",
+                "intent declared but no ensures or requires to validate it",
+                fd.span,
+            )
 
     # ── Verb enforcement ────────────────────────────────────────
 
