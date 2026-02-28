@@ -22,7 +22,7 @@ domain Physics
 
 ### Proof Obligations as Code
 
-Every function with `ensures` clauses requires an inline proof sketch that the compiler verifies. No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.
+Every function with `ensures` clauses requires an inline proof sketch that the compiler verifies (E390: `ensures` without `proof` is a compile error). No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
@@ -149,7 +149,7 @@ transforms process_order(order Order) Receipt
 
 - **`know`** — Proven by the type system. Zero runtime cost. Compiler error if not actually provable.
 - **`assume`** — Compiler inserts runtime validation at system boundaries. Logged when violated.
-- **`believe`** — Compiler generates adversarial test cases specifically targeting this claim.
+- **`believe`** — Compiler generates adversarial test cases specifically targeting this claim. Requires `ensures` to be present (E393).
 
 AI has no model of its own uncertainty — it would either mark everything `know` (fails verification) or `assume` (wasteful and reveals lack of understanding).
 

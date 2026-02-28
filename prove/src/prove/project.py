@@ -18,6 +18,9 @@ optimize = false
 
 [test]
 property_rounds = 1000
+
+[style]
+line_length = 90
 """
 
 _MAIN_PRV_TEMPLATE = """\

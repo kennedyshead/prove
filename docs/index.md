@@ -7,11 +7,13 @@ Prove is a strongly typed, compiler-driven language where contracts generate tes
 ```prove
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
+  proof
+    correctness: result is the sum of a and b
 from
     a + b
 ```
 
-The `ensures` clause generates property tests. The `transforms` verb guarantees purity. The compiler proves or tests every contract — and none of it can be faked by autocomplete.
+The `ensures` clause declares guarantees. The `proof` block explains *why* they hold. The `transforms` verb guarantees purity. The compiler enforces every contract — and none of it can be faked by autocomplete.
 
 ---
 
@@ -26,6 +28,7 @@ The `ensures` clause generates property tests. The `transforms` verb guarantees 
 | Null/nil crashes | No null — `Option<T>` enforced by compiler |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
+| Contracts without proof | `ensures` without `proof` is a compile error (E390) |
 
 ---
 
@@ -220,7 +223,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 ## Status
 
-v0.1.0 — the core compilation pipeline works end-to-end. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 283 tests pass across every stage.
+v0.1.0 — the core compilation pipeline works end-to-end. The compiler lexes, parses, type-checks, verifies proof obligations, emits C, and produces native binaries. 326 tests pass across every stage.
 
 ## License
 

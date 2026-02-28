@@ -1,4 +1,10 @@
-CLAUDE.md 
+CLAUDE.md
 .claude
 .ruff_cache
 .ropeproject
+
+# MkDocs build output
+site/
+__pycache__/
+*.pyc
+*.egg-info/

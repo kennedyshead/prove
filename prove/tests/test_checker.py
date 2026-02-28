@@ -633,6 +633,8 @@ class TestContractChecking:
         check(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
+            "    proof\n"
+            '        correctness: "result is sum of a and b"\n'
             "    from\n"
             "        a + b\n"
         )
@@ -700,7 +702,10 @@ class TestContractChecking:
     def test_believe_boolean_ok(self):
         check(
             "transforms abs_val(n Integer) Integer\n"
+            "    ensures result >= 0\n"
             "    believe: result >= 0\n"
+            "    proof\n"
+            '        non_negative: "result is abs so >= 0"\n'
             "    from\n"
             "        if n >= 0\n"
             "            n\n"

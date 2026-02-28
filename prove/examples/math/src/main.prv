@@ -25,8 +25,7 @@ transforms abs_val(n Integer) Integer
   ensures result >= 0
   believe: result >= 0
   proof
-    non_negative: "if n >= 0 return n, else return 0 - n,
-                   both branches produce result >= 0"
+    non_negative: "both branches produce result >= 0"
 from
     if n >= 0
         n

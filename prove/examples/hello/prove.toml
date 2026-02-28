@@ -10,3 +10,6 @@ optimize = false
 
 [test]
 property_rounds = 1000
+
+[style]
+line_length = 90

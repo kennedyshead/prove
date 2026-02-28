@@ -1,6 +1,6 @@
 site_name: Prove
 site_description: A programming language that fights back against AI slop and code scraping
-site_url: https://botwork.pages.botwork.se/prove/
+site_url: https://kennedyshead.github.io/prove/
 
 theme:
   name: material

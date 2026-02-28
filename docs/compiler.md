@@ -40,25 +40,33 @@ The compiler proves properties when it can, and generates tests when it can't:
 
 ```prove
 transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Index>
+    requires len(xs) >= 0
     ensures is_some(result) implies xs[unwrap(result)] == target
     ensures is_none(result) implies target not_in xs
+    proof
+        found: binary search narrows to the exact index where target lives
+        not_found: exhaustive halving covers all indices, so absence is certain
 ```
 
 ---
 
 ## Auto-Testing
 
-Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.
+Testing is not a separate activity. It is woven into the language — contracts are the single source of truth for test generation. `ensures`, `believe`, and `near_miss` annotations generate tests automatically. Doc comments (`///`) remain as documentation only — they do not generate tests.
 
 ### Level 1: Contracts Generate Property Tests
 
-No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
+No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Every `ensures` clause requires a `proof` block explaining *why* the guarantee holds (E390).
 
 ```prove
 transforms sort(xs List<T>) List<T>
     ensures len(result) == len(xs)
     ensures is_sorted(result)
     ensures is_permutation_of(result, xs)
+    proof
+        length: sort only rearranges, never adds or removes elements
+        sorted: merge step preserves ordering by induction
+        permutation: every element is moved, never duplicated or dropped
     from
         // implementation
 ```
@@ -94,6 +102,44 @@ Surviving mutants:
 
   Suggested contract to add:
     ensures len(cache) <= max_size   // would kill both mutants
+```
+
+---
+
+## Proof Verification Diagnostics
+
+The compiler enforces structural proof obligations with these diagnostics:
+
+| Code | Severity | Meaning |
+|------|----------|---------|
+| E390 | error | `ensures` without `proof` block |
+| E391 | error | duplicate proof obligation name |
+| E392 | error | proof obligations fewer than ensures count |
+| E393 | error | `believe` without `ensures` |
+| W321 | warning | proof text doesn't reference function concepts |
+| W322 | warning | duplicate near-miss inputs |
+| W324 | warning | `ensures` without `requires` |
+
+---
+
+## Configuration
+
+Projects are configured via `prove.toml`:
+
+```toml
+[package]
+name = "myproject"
+version = "0.1.0"
+
+[build]
+target = "native"
+optimize = false
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90
 ```
 
 ---
