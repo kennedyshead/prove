@@ -17,6 +17,8 @@ _RUNTIME_FILES = [
     "prove_hof.c",
     "prove_option.h",
     "prove_result.h",
+    "prove_http.h",
+    "prove_http.c",
 ]
 
 
