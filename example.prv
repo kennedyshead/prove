@@ -117,13 +117,16 @@ transforms apply_tax(rule TaxRule, amount Price) Price
 from
     amount * (1 + rule.rate)
 
-transforms calculate_total(items List<OrderItem>, discount Option<Discount>, tax TaxRule) Price
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
+  requires len(items) > 0
+  proof
+    subtotal: sums the items Price
+    apply_discount: deduct discount if > 0
+    apply_tax: adds tax if tax > 0
 from
     sub as Price = subtotal(items)
-    discounted as Price = match discount
-        Some(d) => apply_discount(d, sub)
-        None => sub
+    discounted as Price = apply_discount(discount, sub)
     apply_tax(tax, discounted)
 
 transforms deduct_stock(products List<Product>, items List<OrderItem>) List<Product>
@@ -176,14 +179,14 @@ from
 
 outputs place_order(db Database, order Order, tax TaxRule) Order!
   ensures result.status == Confirmed
-  ensures result.total == calculate_total(order.items, None, tax)
+  ensures result.total == calculate_total(order.items, FlatOff(0), tax)
   requires fulfillable(order)
   proof
     fulfillment: requires clause guarantees stock sufficiency before deduction , so stock never goes negative
     total_correct: calculate_total is a pure transform applied to the same items and tax rule stored in the result
     status: order is created with Confirmed status after successful insert
 from
-    total as Price = calculate_total(order.items, None, tax)
+    total as Price = calculate_total(order.items, FlatOff(0), tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)
     insert(db, "orders", confirmed)!
     products as List<Product> = all_products(db)!

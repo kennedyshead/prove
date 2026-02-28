@@ -19,33 +19,62 @@ func main() {
 		lexer = prove.Lexer
 	}
 
-	code := `type Port is Integer where 1..65535
+	code := `module InventoryService
+  narrative: """
+  Products are added to inventory with validated stock levels.
+  """
+
+  type Port is Integer where 1..65535
+
+  type Sku is String where matches(r"^[A-Z]{2,4}-[0-9]{4,8}$")
+
+  type Discount is FlatOff(amount Price)
+    | PercentOff(rate Percentage)
+
+  MAX_CONNECTIONS as Integer = comptime
+      if cfg.target == "embedded"
+          16
+      else
+          1024
 
 validates email(address String)
-    from
-        contains(address, "@")
+from
+    contains(address, "@")
 
-transforms area(s Shape) Decimal
-    ensures result >= 0
-    proof
-        area_positive: the area formula always produces positive values
-    from
-        pi * s.radius * s.radius
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+  proof
+    subtotal: sums the items Price
+    apply_discount: deduct discount if > 0
+    apply_tax: adds tax if tax > 0
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
 
-inputs create_user(db Database, body String) User!
-    requires valid_email(body)
-    ensures email(result.email)
-    from
-        user = decode(body)!
-        insert(db, "users", user)!
-        user
+inputs product_by_sku(db Database, code Sku) Product!
+from
+    query_one(db, f"SELECT * FROM products WHERE sku = {code}")!
 
-main() Result!
-    know: this function starts the server
-    from
-        db = connect("postgres://localhost")!
-        server = new_server()
-        listen(server, 8080)!`
+outputs place_order(db Database, order Order, tax TaxRule) Order!
+  ensures result.status == Confirmed
+  requires fulfillable(order)
+  proof
+    fulfillment: requires clause guarantees stock sufficiency
+from
+    total as Price = calculate_total(order.items, FlatOff(0), tax)
+    confirmed as Order = Order(order.id, order.items, Confirmed, total)
+    insert(db, "orders", confirmed)!
+    confirmed
+
+main() Result<Unit, Error>!
+from
+    cfg as Config = load_config("inventory.yaml")!
+    db as Database = connect(cfg.db_url)!
+    if !valid sku(product.sku)
+        bad_request("invalid SKU format")
+    listen(server, port)!`
 
 	iterator, err := lexer.Tokenise(nil, code)
 	if err != nil {

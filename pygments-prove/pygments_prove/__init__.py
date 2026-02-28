@@ -25,31 +25,73 @@ class ProveLexer(RegexLexer):
         "root": [
             # Whitespace
             (r"\s+", Text),
-            # Doc comments
-            (r"///.*$", Comment.Doc),
-            # Line comments
+            # Doc comments (/// ...)
+            (r"///.*$", Comment.Special),
+            # Line comments (// ...)
             (r"//.*$", Comment.Single),
             # Triple-quoted strings
             (r'"""[\s\S]*?"""', String),
-            # Strings with escapes
-            (r'"(?:[^"\\]|\\.)*"', String),
-            # Hex numbers
+            # F-strings with interpolation
+            (r'f"', String.Affix, "fstring"),
+            # Raw strings (no escapes)
+            (r'r"[^"]*"', String.Regex),
+            # Regular strings with escape support
+            (r'"', String, "string"),
+            # Regex literals (deprecated /pattern/ form)
+            (r"/[^\s/]([^/\n\\]|\\.)*?/", String.Regex),
+            # Numbers
             (r"0x[0-9a-fA-F][0-9a-fA-F_]*", Number.Hex),
-            # Binary numbers
             (r"0b[01][01_]*", Number.Bin),
-            # Octal numbers
             (r"0o[0-7][0-7_]*", Number.Oct),
-            # Decimal floats
             (r"[0-9][0-9_]*\.[0-9][0-9_]*", Number.Float),
-            # Integers
             (r"[0-9][0-9_]*", Number.Integer),
-            # Contract/annotation keywords
+            # Fail marker (before operators)
+            (r"!", Keyword.Pseudo),
+            # Intent verbs (function declaration keywords)
+            (
+                words(
+                    ("transforms", "inputs", "outputs", "validates"),
+                    prefix=r"\b",
+                    suffix=r"\b",
+                ),
+                Keyword.Declaration,
+            ),
+            # Contract keywords
+            (
+                words(
+                    ("ensures", "requires", "proof"),
+                    prefix=r"\b",
+                    suffix=r"\b",
+                ),
+                Keyword.Namespace,
+            ),
+            # Core keywords
             (
                 words(
                     (
-                        "ensures",
-                        "requires",
-                        "proof",
+                        "module",
+                        "type",
+                        "is",
+                        "as",
+                        "from",
+                        "if",
+                        "else",
+                        "match",
+                        "where",
+                        "comptime",
+                        "valid",
+                        "main",
+                        "types",
+                    ),
+                    prefix=r"\b",
+                    suffix=r"\b",
+                ),
+                Keyword,
+            ),
+            # AI-resistance and annotation keywords
+            (
+                words(
+                    (
                         "invariant_network",
                         "know",
                         "assume",
@@ -67,35 +109,9 @@ class ProveLexer(RegexLexer):
                 ),
                 Keyword.Namespace,
             ),
-            # Core keywords
-            (
-                words(
-                    (
-                        "module",
-                        "type",
-                        "with",
-                        "use",
-                        "transforms",
-                        "inputs",
-                        "outputs",
-                        "validates",
-                        "main",
-                        "from",
-                        "if",
-                        "else",
-                        "match",
-                        "where",
-                        "comptime",
-                        "is",
-                    ),
-                    prefix=r"\b",
-                    suffix=r"\b",
-                ),
-                Keyword,
-            ),
             # Boolean constants
             (r"\b(true|false)\b", Keyword.Constant),
-            # Built-in types
+            # Built-in types (synced with tree-sitter highlights.scm)
             (
                 words(
                     (
@@ -120,23 +136,40 @@ class ProveLexer(RegexLexer):
                 ),
                 Keyword.Type,
             ),
-            # User-defined types (PascalCase)
-            (r"[A-Z][A-Za-z0-9_]*", Name.Class),
-            # Pipe operator
+            # Operators (multi-char before single-char)
             (r"\|>", Operator),
-            # Fat arrow
-            (r"=>", Operator),
-            # Multi-char operators
+            (r"=>", Punctuation),
             (r"==|!=|<=|>=|&&|\|\||\.\.|\->", Operator),
-            # Single-char operators
-            (r"[+\-*/%=<>!&|^~]", Operator),
-            # Dot operator
+            (r"[+\-*/%<>]", Operator),
+            (r"=", Operator),
             (r"\.", Operator),
+            # Constant identifiers (ALL_CAPS)
+            (r"[A-Z][A-Z0-9_]+\b", Name.Constant),
+            # User-defined types (PascalCase)
+            (r"[A-Z][a-zA-Z0-9]*", Name.Class),
             # Proof obligation names (word followed by colon)
             (r"[a-z_][a-z0-9_]+(?=\s*:)", Name.Attribute),
             # Identifiers
             (r"[a-z_][a-z0-9_]*", Name),
             # Punctuation
-            (r"[(),;\[\]{}:]", Punctuation),
+            (r"[(),;\[\]{}:|]", Punctuation),
+        ],
+        # String state — handles escape sequences
+        "string": [
+            (r'\\[nrt\\"{}0]', String.Escape),
+            (r'[^"\\]+', String),
+            (r'"', String, "#pop"),
+        ],
+        # F-string state — handles escapes and interpolation
+        "fstring": [
+            (r'\\[nrt\\"{}0]', String.Escape),
+            (r"\{", String.Interpol, "fstring_interp"),
+            (r'[^"\\{]+', String.Affix),
+            (r'"', String.Affix, "#pop"),
+        ],
+        # F-string interpolation — lex expression inside {…}
+        "fstring_interp": [
+            (r"\}", String.Interpol, "#pop"),
+            (r"[^}]+", Name),
         ],
     }
