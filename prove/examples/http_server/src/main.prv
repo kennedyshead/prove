@@ -3,6 +3,8 @@
 /// Demonstrates Prove's algebraic types and pattern matching
 /// for request routing.
 
+with Http use transforms ok, transforms not_found
+
 type Route is
     Get(path String)
     Post(path String)

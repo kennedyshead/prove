@@ -39,6 +39,16 @@ class TestBuildHello:
         assert "Hello from Prove!" in proc.stdout
 
 
+class TestBuildHttpServer:
+    def test_http_server_compiles(self, needs_cc):
+        http_project = _EXAMPLES_DIR / "http_server"
+        config = load_config(http_project / "prove.toml")
+        result = build_project(http_project, config)
+        assert result.ok, f"Build failed: {result.c_error or result.diagnostics}"
+        assert result.binary is not None
+        assert result.binary.exists()
+
+
 class TestBuildErrors:
     def test_no_prv_files(self, tmp_path, needs_cc):
         from prove.config import ProveConfig

@@ -440,6 +440,8 @@ class CEmitter:
                     self._emit_stmt(s)
             return
 
+        # Save locals so match arm bindings don't leak to function scope
+        saved_locals = dict(self._locals)
         subj = self._emit_expr(m.subject)
         subj_type = self._infer_expr_type(m.subject)
 
@@ -490,6 +492,8 @@ class CEmitter:
             for arm in m.arms:
                 for s in arm.body:
                     self._emit_stmt(s)
+        # Restore locals (match arm bindings are scoped to arms)
+        self._locals = saved_locals
 
     # ── Expression emission ────────────────────────────────────
 
@@ -919,6 +923,8 @@ class CEmitter:
                     self._emit_stmt(s)
             return "/* match */"
 
+        # Save locals so match arm bindings don't leak to function scope
+        saved_locals = dict(self._locals)
         subj = self._emit_expr(m.subject)
         subj_type = self._infer_expr_type(m.subject)
 
@@ -927,6 +933,7 @@ class CEmitter:
             for arm in m.arms:
                 for s in arm.body:
                     self._emit_stmt(s)
+            self._locals = saved_locals
             return "/* match */"
 
         # Tagged union switch
@@ -994,6 +1001,8 @@ class CEmitter:
                 self._indent -= 1
                 self._line("}")
         self._line("}")
+        # Restore locals (match arm bindings are scoped to arms)
+        self._locals = saved_locals
 
         return result_tmp if not isinstance(result_type, UnitType) else "/* match */"
 

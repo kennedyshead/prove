@@ -23,7 +23,7 @@ type Server is
 /// Create a new HTTP server instance.
 inputs new_server() Server
 from
-    Server(port = 0)
+    Server(0)
 
 /// Start listening on the given port.
 inputs listen(server Server, port Integer) Result<Unit, Error>!
@@ -33,19 +33,19 @@ from
 /// Create an OK (200) response.
 transforms ok(body String) Response
 from
-    Response(status = 200, body = body)
+    Response(200, body)
 
 /// Create a Created (201) response.
 transforms created(body String) Response
 from
-    Response(status = 201, body = body)
+    Response(201, body)
 
 /// Create a Not Found (404) response.
 transforms not_found() Response
 from
-    Response(status = 404, body = "not found")
+    Response(404, "not found")
 
 /// Create a Bad Request (400) response.
 transforms bad_request(msg String) Response
 from
-    Response(status = 400, body = msg)
+    Response(400, msg)
