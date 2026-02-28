@@ -10,29 +10,29 @@ Instead of fixed keywords, the language adapts syntax based on the module's decl
 
 ```prove
 domain Finance
-    // "balance" is now a keyword, arithmetic operators
-    // follow financial rounding rules
-    total as Balance = sum(ledger.entries)  // compiler enforces Decimal with financial Scale
+  // "balance" is now a keyword, arithmetic operators
+  // follow financial rounding rules
+  total as Balance = sum(ledger.entries)  // compiler enforces Decimal with financial Scale
 
 domain Physics
-    // "balance" is just an identifier again
-    // operators now track units
-    balance as Acceleration = force / mass   // type: Acceleration, not a keyword
+  // "balance" is just an identifier again
+  // operators now track units
+  balance as Acceleration = force / mass   // type: Acceleration, not a keyword
 ```
 
 ### Proof Obligations as Code
 
-Every function with `ensures` clauses requires an inline proof sketch that the compiler verifies (E390: `ensures` without `proof` is a compile error). No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.
+Every function with `ensures` clauses requires an inline proof sketch that the compiler verifies. No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-    proof
-        base: len(xs) <= 1 implies already sorted
-        split: halves are strictly smaller (terminates)
-        merge: merging two sorted halves preserves ordering
-               by induction on combined length
-    from
-        // implementation
+  proof
+    base: len(xs) <= 1 implies already sorted
+    split: halves are strictly smaller (terminates)
+    merge: merging two sorted halves preserves ordering
+           by induction on combined length
+from
+    // implementation
 ```
 
 ### Intentional Ambiguity Resolution
@@ -56,16 +56,16 @@ The compiler enforces that an entire module tells a coherent "story." Functions 
 
 ```prove
 module UserAuth
-    narrative: """
-    Users authenticate with credentials, receive a session token,
-    and the token is validated on each request. Tokens expire
-    after the configured TTL.
-    """
+  narrative: """
+  Users authenticate with credentials, receive a session token,
+  and the token is validated on each request. Tokens expire
+  after the configured TTL.
+  """
 
-    inputs login(creds Credentials) Session!
-    transforms validate(token Token) User
-    outputs expire(session Session)
-    // outputs send_email(...)   // compiler error: unrelated to narrative
+  inputs login(creds Credentials) Session!
+  transforms validate(token Token) User
+  outputs expire(session Session)
+  // outputs send_email(...)   // compiler error: unrelated to narrative
 ```
 
 Coherence across an entire module requires understanding the *purpose* of the system, not just local patterns.
@@ -76,13 +76,13 @@ Refinement types that encode constraints requiring genuine reasoning, not just p
 
 ```prove
 type BalancedTree<T> is
-    Node(left BalancedTree<T>, right BalancedTree<T>)
-    where abs(left.depth - right.depth) <= 1
+  Node(left BalancedTree<T>, right BalancedTree<T>)
+  where abs(left.depth - right.depth) <= 1
 
 transforms insert(tree BalancedTree<T>, val T) BalancedTree<T>
-    // Can't just pattern match — you need to construct a value
-    // that satisfies the depth constraint, which requires
-    // understanding rotation logic
+  // Can't just pattern match — you need to construct a value
+  // that satisfies the depth constraint, which requires
+  // understanding rotation logic
 ```
 
 ### Semantic Commit Messages as Compilation Input
@@ -110,11 +110,11 @@ Every non-trivial design choice must explain what would break under alternative 
 
 ```prove
 transforms evict(cache Cache:[Mutable]) Option<Entry>
-    why_not: "FIFO would evict still-hot entries under burst traffic"
-    why_not: "Random eviction has unbounded worst-case for repeated keys"
-    chosen: "LRU because access recency correlates with reuse probability"
-    from
-        // LRU implementation
+  why_not: "FIFO would evict still-hot entries under burst traffic"
+  why_not: "Random eviction has unbounded worst-case for repeated keys"
+  chosen: "LRU because access recency correlates with reuse probability"
+from
+    // LRU implementation
 ```
 
 The compiler verifies the `chosen` rationale is consistent with the implementation's actual behavior (e.g., it really does track recency). `why_not` clauses are checked for plausibility against the function's type signature and effects.
@@ -140,16 +140,16 @@ Track the programmer's confidence level about invariants. The compiler treats ea
 
 ```prove
 transforms process_order(order Order) Receipt
-    know: len(order.items) > 0            // enforced by NonEmpty type — zero cost
-    assume: order.total == sum(prices)    // validated at boundary, runtime check inserted
-    believe: order.user.is_verified       // generates aggressive property tests to falsify
-    from
-        // implementation
+  know: len(order.items) > 0            // enforced by NonEmpty type — zero cost
+  assume: order.total == sum(prices)    // validated at boundary, runtime check inserted
+  believe: order.user.is_verified       // generates aggressive property tests to falsify
+from
+    // implementation
 ```
 
 - **`know`** — Proven by the type system. Zero runtime cost. Compiler error if not actually provable.
 - **`assume`** — Compiler inserts runtime validation at system boundaries. Logged when violated.
-- **`believe`** — Compiler generates adversarial test cases specifically targeting this claim. Requires `ensures` to be present (E393).
+- **`believe`** — Compiler generates adversarial test cases specifically targeting this claim.
 
 AI has no model of its own uncertainty — it would either mark everything `know` (fails verification) or `assume` (wasteful and reveals lack of understanding).
 
@@ -159,17 +159,17 @@ Not just *what* effects a function has, but the *required order* — enforced ac
 
 ```prove
 module Auth
-    temporal: authenticate -> authorize -> access
+  temporal: authenticate -> authorize -> access
 
-    inputs authenticate(creds Credentials) Token!
-    transforms authorize(token Token, resource Resource) Permission
-    inputs access(perm Permission, resource Resource) Data!
+  inputs authenticate(creds Credentials) Token!
+  transforms authorize(token Token, resource Resource) Permission
+  inputs access(perm Permission, resource Resource) Data!
 
 // Compiler error: access() called before authorize()
 inputs bad_handler(req Request) Response!
-    from
-        token as Token = authenticate(req.creds)!
-        data as Data = access(token, req.resource)!    // ERROR: skipped authorize
+from
+    token as Token = authenticate(req.creds)!
+    data as Data = access(token, req.resource)!    // ERROR: skipped authorize
 ```
 
 The compiler builds a call graph and verifies temporal constraints are satisfied across all execution paths. AI generates plausible call sequences but does not reason about protocol ordering.
@@ -180,15 +180,15 @@ Instead of isolated `ensures` clauses, define networks of mutually-dependent inv
 
 ```prove
 invariant_network AccountingRules
-    total_assets == total_liabilities + equity
-    revenue - expenses == net_income
-    net_income flows_to equity
-    every(transaction) preserves total_assets == total_liabilities + equity
+  total_assets == total_liabilities + equity
+  revenue - expenses == net_income
+  net_income flows_to equity
+  every(transaction) preserves total_assets == total_liabilities + equity
 
 transforms post_transaction(ledger Ledger, tx Transaction) Ledger
-    satisfies AccountingRules
-    from
-        // implementation
+  satisfies AccountingRules
+from
+    // implementation
 ```
 
 No function can be written in isolation — the compiler checks that the entire network remains consistent after every change. This is the ultimate non-local reasoning requirement. Requires a constraint solver that scales across modules.
@@ -270,21 +270,21 @@ The compiler canonicalizes all code before storage. Variable names, ordering of 
 ```prove
 // What you write:
 transforms calculate_total_price(items List<Item>, tax TaxRate) Price
-    from
-        subtotal as Decimal = sum(prices(items))
-        subtotal * (1 + tax.rate)
+from
+    subtotal as Decimal = sum(prices(items))
+    subtotal * (1 + tax.rate)
 
 // What is stored (canonical form):
 transforms _f0(_a0 List<_T0>, _a1 _T1) _T2
-    from
-        _v0 as _T3 = _f1(_f2(_a0))
-        _v0 * (1 + _a1._f3)
+from
+    _v0 as _T3 = _f1(_f2(_a0))
+    _v0 * (1 + _a1._f3)
 
 // What you see (reconstructed with your naming via the LSP):
 transforms calculate_total_price(items List<Item>, tax TaxRate) Price
-    from
-        subtotal as Decimal = sum(prices(items))
-        subtotal * (1 + tax.rate)
+from
+    subtotal as Decimal = sum(prices(items))
+    subtotal * (1 + tax.rate)
 ```
 
 A **name map** is stored alongside the canonical AST. The LSP reconstructs human-readable code on demand. But the stored form strips all semantic signal from identifiers — AI cannot learn naming conventions, domain patterns, or stylistic habits from Prove source.
@@ -339,6 +339,8 @@ Every `prove new` project is initialized with the **Prove Source License v1.0** 
 
 The license explicitly permits using AI tools *to write* Prove code and building AI-powered applications *with* Prove — it only prohibits using Prove source *as training data*.
 
+Design draws from: NON-AI-MIT (base structure), Common Paper (precise LLM language), Authors Guild (sublicensing prohibition), Open RAIL-S (downstream propagation). Should be reviewed by legal counsel before production use.
+
 This is not just a legal barrier — combined with the binary format and semantic normalization, it creates a layered defense: the code is hard to scrape, useless if scraped, and illegal to train on.
 
 ---
@@ -360,16 +362,3 @@ The uncomfortable truth is that the things AI is bad at are the things lazy huma
 The anti-training features (binary format, semantic normalization, fragmented source) add friction to sharing and collaboration. The mitigation is a first-class toolchain: the `prove` CLI and LSP make the experience seamless for developers working inside the ecosystem, while making the code opaque to anything outside it.
 
 **The design answers both questions:** Prove resists AI *writing* the code (Phase 1 + 2) and resists AI *training on* the code (Phase 3).
-
----
-
-## Trade-offs
-
-An honest assessment of the costs:
-
-1. **Compilation speed** — Proving properties is expensive. Incremental compilation and caching are essential. Expect Rust-like compile times, not Go-like.
-2. **Learning curve** — Refinement types and effect types are unfamiliar to most developers. The compiler's suggestions help, but there's still a ramp-up.
-3. **Ecosystem bootstrap** — A new language needs libraries. A C FFI and a story for wrapping existing libraries is a secondary priority, deferred until the core language is stable.
-4. **Not every property is provable** — For complex invariants the compiler falls back to runtime property tests, which is still better than nothing but not a proof.
-
-**The core bet:** Making the compiler do more work upfront saves orders of magnitude more time than writing and maintaining tests by hand.

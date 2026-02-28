@@ -335,7 +335,7 @@ class TestCompletion:
         _analyze("<test://kw>", "")
         labels = _complete_labels("<test://kw>")
         for kw in ("transforms", "validates", "inputs", "outputs", "from",
-                    "match", "if", "else", "module"):
+                    "match", "module"):
             assert kw in labels, f"keyword '{kw}' missing from completions"
 
     def test_builtin_functions_always_present(self):

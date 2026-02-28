@@ -26,7 +26,6 @@ from prove.ast_nodes import (
     FunctionDef,
     GenericType,
     IdentifierExpr,
-    IfExpr,
     ImportDecl,
     ImportItem,
     IndexExpr,
@@ -1381,9 +1380,7 @@ class Parser:
         if tok.kind == TokenKind.VALID:
             return self._parse_valid_expr()
 
-        # if expression
-        if tok.kind == TokenKind.IF:
-            return self._parse_if_expr()
+
 
         # match expression
         if tok.kind == TokenKind.MATCH:
@@ -1473,48 +1470,6 @@ class Parser:
         end = self._current().span
         return ValidExpr(name_tok.value, args,
                          self._span(start, end))
-
-    def _parse_if_expr(self) -> IfExpr:
-        start = self._current().span
-        self._advance()  # 'if'
-        condition = self._parse_expression(0)
-        self._skip_newlines()
-
-        then_body: list[Stmt] = []
-        if self._at(TokenKind.INDENT):
-            self._advance()
-            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
-                self._skip_newlines()
-                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
-                    break
-                then_body.append(self._parse_statement())
-                self._skip_newlines()
-            if self._at(TokenKind.DEDENT):
-                self._advance()
-        else:
-            then_body.append(self._parse_statement())
-
-        self._skip_newlines()
-        else_body: list[Stmt] = []
-        if self._at(TokenKind.ELSE):
-            self._advance()
-            self._skip_newlines()
-            if self._at(TokenKind.INDENT):
-                self._advance()
-                while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
-                    self._skip_newlines()
-                    if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
-                        break
-                    else_body.append(self._parse_statement())
-                    self._skip_newlines()
-                if self._at(TokenKind.DEDENT):
-                    self._advance()
-            else:
-                else_body.append(self._parse_statement())
-
-        end = self._current().span
-        return IfExpr(condition, then_body, else_body,
-                      self._span(start, end))
 
     def _parse_match_expr(self) -> MatchExpr:
         start = self._current().span

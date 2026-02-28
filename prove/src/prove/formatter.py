@@ -26,7 +26,6 @@ from prove.ast_nodes import (
     FunctionDef,
     GenericType,
     IdentifierExpr,
-    IfExpr,
     ImportDecl,
     IndexExpr,
     IntegerLit,
@@ -382,8 +381,6 @@ class ProveFormatter:
                 args = ", ".join(self._format_expr(a) for a in expr.args)
                 return f"valid {expr.name}({args})"
             return f"valid {expr.name}"
-        if isinstance(expr, IfExpr):
-            return self._format_if_expr(expr)
         if isinstance(expr, MatchExpr):
             return self._format_match_expr(expr)
         if isinstance(expr, ComptimeExpr):
@@ -425,18 +422,6 @@ class ProveFormatter:
             else:
                 parts.append("{" + self._format_expr(part) + "}")
         return 'f"' + "".join(parts) + '"'
-
-    def _format_if_expr(self, expr: IfExpr) -> str:
-        lines: list[str] = []
-        cond = self._format_expr(expr.condition)
-        lines.append(f"if {cond}")
-        for stmt in expr.then_body:
-            lines.append(self._indent(self._format_stmt(stmt), 1))
-        if expr.else_body:
-            lines.append("else")
-            for stmt in expr.else_body:
-                lines.append(self._indent(self._format_stmt(stmt), 1))
-        return "\n".join(lines)
 
     def _format_match_expr(self, expr: MatchExpr) -> str:
         lines: list[str] = []

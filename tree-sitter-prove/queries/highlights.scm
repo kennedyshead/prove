@@ -22,8 +22,6 @@
   "as"
   "where"
   "match"
-  "if"
-  "else"
   "comptime"
   "valid"
   "module"

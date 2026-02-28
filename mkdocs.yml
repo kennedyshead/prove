@@ -36,10 +36,12 @@ nav:
   - Language:
     - Syntax Reference: syntax.md
     - Type System: types.md
-    - AI Resistance: ai-resistance.md
+    - Contracts & Testing: contracts.md
   - Compiler: compiler.md
-  - Philosophy: philosophy.md
-  - Inspirations: inspirations.md
+  - AI Resistance: ai-resistance.md
+  - Design:
+    - Decisions & Trade-offs: design.md
+    - Inspirations: inspirations.md
 
 extra_css:
   - stylesheets/extra.css

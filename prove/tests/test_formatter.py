@@ -133,17 +133,6 @@ class TestFormatterExpressions:
         )
         assert _roundtrip(source) == source
 
-    def test_if_expr(self):
-        source = (
-            "transforms abs_val(n Integer) Integer\n"
-            "from\n"
-            "    if n >= 0\n"
-            "        n\n"
-            "    else\n"
-            "        0 - n\n"
-        )
-        assert _roundtrip(source) == source
-
     def test_match_expr(self):
         source = (
             "transforms handle(route Route) String\n"
@@ -204,10 +193,9 @@ class TestFormatterAnnotations:
             "  ensures result >= 0\n"
             "  believe: result >= 0\n"
             "from\n"
-            "    if n >= 0\n"
-            "        n\n"
-            "    else\n"
-            "        0 - n\n"
+            "    match n >= 0\n"
+            "        true => n\n"
+            "        false => 0 - n\n"
         )
         assert _roundtrip(source) == source
 

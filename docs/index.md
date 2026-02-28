@@ -1,6 +1,6 @@
 # Prove
 
-![Prove](../assets/icon.png)
+![Prove](assets/icon.png)
 
 **A programming language that fights back against AI slop and code scraping.**
 

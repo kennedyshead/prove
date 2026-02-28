@@ -208,14 +208,6 @@ class ValidExpr:
 
 
 @dataclass(frozen=True)
-class IfExpr:
-    condition: Expr
-    then_body: list[Stmt]
-    else_body: list[Stmt]
-    span: Span
-
-
-@dataclass(frozen=True)
 class MatchArm:
     pattern: Pattern
     body: list[Stmt]
@@ -248,7 +240,7 @@ Expr = Union[
     IdentifierExpr, TypeIdentifierExpr,
     BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
     FailPropExpr, LambdaExpr, ValidExpr,
-    IfExpr, MatchExpr, ComptimeExpr, IndexExpr,
+    MatchExpr, ComptimeExpr, IndexExpr,
 ]
 
 

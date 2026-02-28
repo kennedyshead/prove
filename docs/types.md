@@ -5,7 +5,7 @@
 Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no `unwrap()`.
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1..65535
+type Port is Integer:[16 Unsigned] where 1 .. 65535
 type Email is String where matches(/^[^@]+@[^@]+\.[^@]+$/)
 type NonEmpty<T> is List<T> where len > 0
 
@@ -24,10 +24,10 @@ type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
 transforms area(s Shape) Decimal
-    from
-        match s
-            Circle(r) => pi * r * r
-            Rect(w, h) => w * h
+from
+    match s
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 ```
 
 ## Effect Types

@@ -17,11 +17,11 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
-    IfExpr,
     IndexExpr,
     IntegerLit,
     LambdaExpr,
     ListLiteral,
+    LiteralPattern,
     MainDef,
     MatchExpr,
     Module,
@@ -565,9 +565,6 @@ class CEmitter:
         if isinstance(expr, FailPropExpr):
             return self._emit_fail_prop(expr)
 
-        if isinstance(expr, IfExpr):
-            return self._emit_if(expr)
-
         if isinstance(expr, MatchExpr):
             return self._emit_match_expr(expr)
 
@@ -877,59 +874,6 @@ class CEmitter:
                     return f"(Prove_String*)prove_result_unwrap_ptr({tmp})"
         return f"{tmp}"
 
-    # ── If expressions ─────────────────────────────────────────
-
-    def _emit_if(self, expr: IfExpr) -> str:
-        cond = self._emit_expr(expr.condition)
-        result_type = self._infer_if_type(expr)
-        ct = map_type(result_type)
-
-        if isinstance(result_type, UnitType):
-            # Statement-level if
-            self._line(f"if ({cond}) {{")
-            self._indent += 1
-            for s in expr.then_body:
-                self._emit_stmt(s)
-            self._indent -= 1
-            if expr.else_body:
-                self._line("} else {")
-                self._indent += 1
-                for s in expr.else_body:
-                    self._emit_stmt(s)
-                self._indent -= 1
-            self._line("}")
-            return "/* if */"
-
-        # Expression-level if — use temp var
-        tmp = self._tmp()
-        self._line(f"{ct.decl} {tmp};")
-        self._line(f"if ({cond}) {{")
-        self._indent += 1
-        for i, s in enumerate(expr.then_body):
-            if i == len(expr.then_body) - 1:
-                e = self._stmt_expr(s)
-                if e is not None:
-                    self._line(f"{tmp} = {self._emit_expr(e)};")
-                else:
-                    self._emit_stmt(s)
-            else:
-                self._emit_stmt(s)
-        self._indent -= 1
-        self._line("} else {")
-        self._indent += 1
-        for i, s in enumerate(expr.else_body):
-            if i == len(expr.else_body) - 1:
-                e = self._stmt_expr(s)
-                if e is not None:
-                    self._line(f"{tmp} = {self._emit_expr(e)};")
-                else:
-                    self._emit_stmt(s)
-            else:
-                self._emit_stmt(s)
-        self._indent -= 1
-        self._line("}")
-        return tmp
-
     # ── Match expressions ──────────────────────────────────────
 
     def _emit_match_expr(self, m: MatchExpr) -> str:
@@ -946,12 +890,61 @@ class CEmitter:
         subj_type = self._infer_expr_type(m.subject)
 
         if not isinstance(subj_type, AlgebraicType):
-            # Non-algebraic: emit as first arm
+            # Non-algebraic match: emit as if/else-if chain
+            result_type = self._infer_match_result_type(m)
+            ct = map_type(result_type)
+            is_unit = isinstance(result_type, UnitType)
+            tmp = "" if is_unit else self._tmp()
+            if not is_unit:
+                self._line(f"{ct.decl} {tmp};")
+
+            first = True
             for arm in m.arms:
-                for s in arm.body:
-                    self._emit_stmt(s)
+                if isinstance(arm.pattern, WildcardPattern) or isinstance(arm.pattern, BindingPattern):
+                    # Default/else branch
+                    if first:
+                        self._line("{")
+                    else:
+                        self._line("} else {")
+                    self._indent += 1
+                    if isinstance(arm.pattern, BindingPattern):
+                        bct = map_type(subj_type)
+                        self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                        self._locals[arm.pattern.name] = subj_type
+                    for i, s in enumerate(arm.body):
+                        if not is_unit and i == len(arm.body) - 1:
+                            e = self._stmt_expr(s)
+                            if e is not None:
+                                self._line(f"{tmp} = {self._emit_expr(e)};")
+                            else:
+                                self._emit_stmt(s)
+                        else:
+                            self._emit_stmt(s)
+                    self._indent -= 1
+                    self._line("}")
+                elif isinstance(arm.pattern, LiteralPattern):
+                    cond = self._emit_literal_cond(subj, arm.pattern)
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({cond}) {{")
+                    self._indent += 1
+                    for i, s in enumerate(arm.body):
+                        if not is_unit and i == len(arm.body) - 1:
+                            e = self._stmt_expr(s)
+                            if e is not None:
+                                self._line(f"{tmp} = {self._emit_expr(e)};")
+                            else:
+                                self._emit_stmt(s)
+                        else:
+                            self._emit_stmt(s)
+                    self._indent -= 1
+                first = False
+
+            # Close trailing if without else
+            if not isinstance(m.arms[-1].pattern, (WildcardPattern, BindingPattern)):
+                self._line("}")
+
             self._locals = saved_locals
-            return "/* match */"
+            return "/* match */" if is_unit else tmp
 
         # Tagged union switch
         result_type = self._infer_match_result_type(m)
@@ -1176,9 +1169,6 @@ class CEmitter:
                     return inner.args[0]
             return ERROR_TY
 
-        if isinstance(expr, IfExpr):
-            return self._infer_if_type(expr)
-
         if isinstance(expr, MatchExpr):
             return self._infer_match_result_type(expr)
 
@@ -1236,12 +1226,15 @@ class CEmitter:
                 return sig.return_type
         return ERROR_TY
 
-    def _infer_if_type(self, expr: IfExpr) -> Type:
-        if expr.then_body:
-            last = expr.then_body[-1]
-            if isinstance(last, ExprStmt):
-                return self._infer_expr_type(last.expr)
-        return UNIT
+    def _emit_literal_cond(self, subj: str, pat: LiteralPattern) -> str:
+        """Generate a C condition comparing subj to a literal pattern."""
+        val = pat.value
+        if val in ("true", "false"):
+            return subj if val == "true" else f"!({subj})"
+        if val.startswith('"'):
+            escaped = self._escape_c_string(val[1:-1])
+            return f'prove_string_eq({subj}, "{escaped}")'
+        return f"{subj} == {val}L"
 
     # ── Utilities ──────────────────────────────────────────────
 

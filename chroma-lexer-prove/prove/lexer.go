@@ -55,7 +55,7 @@ var (
 				{`\b(ensures|requires|proof)\b`, chroma.KeywordNamespace, nil},
 
 				// Core keywords
-				{`\b(module|type|is|as|from|if|else|match|where|comptime|valid|main)\b`, chroma.Keyword, nil},
+				{`\b(module|type|is|as|from|match|where|comptime|valid|main)\b`, chroma.Keyword, nil},
 
 				// AI-resistance and annotation keywords
 				{`\b(invariant_network|know|assume|believe|intent|narrative|temporal|why_not|chosen|near_miss|satisfies)\b`, chroma.KeywordNamespace, nil},

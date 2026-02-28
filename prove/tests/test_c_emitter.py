@@ -103,21 +103,6 @@ class TestFunctionDef:
         assert "int64_t b" in c_code
 
 
-class TestIfExpr:
-    def test_if_statement(self):
-        source = (
-            "main()\n"
-            "    from\n"
-            "        if true\n"
-            '            println("yes")\n'
-            "        else\n"
-            '            println("no")\n'
-        )
-        c_code = _emit(source)
-        assert "if (true)" in c_code
-        assert "} else {" in c_code
-
-
 class TestStringInterp:
     def test_string_interpolation(self):
         source = (

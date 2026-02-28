@@ -28,8 +28,6 @@ class TokenKind(Enum):
     USE = auto()
     WHERE = auto()
     MATCH = auto()
-    IF = auto()
-    ELSE = auto()
     COMPTIME = auto()
     VALID = auto()
     MODULE = auto()
@@ -138,8 +136,6 @@ KEYWORDS: dict[str, TokenKind] = {
     "use": TokenKind.USE,
     "where": TokenKind.WHERE,
     "match": TokenKind.MATCH,
-    "if": TokenKind.IF,
-    "else": TokenKind.ELSE,
     "comptime": TokenKind.COMPTIME,
     "valid": TokenKind.VALID,
     "module": TokenKind.MODULE,

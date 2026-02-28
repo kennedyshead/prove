@@ -3,7 +3,6 @@
 (function_definition) @local.scope
 (main_definition) @local.scope
 (lambda_expression) @local.scope
-(if_expression) @local.scope
 (match_arm) @local.scope
 
 (parameter (identifier) @local.definition)

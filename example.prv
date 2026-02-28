@@ -54,10 +54,9 @@ module InventoryService
     | BuyNGetFree(buy Integer where self > 0, free Integer where self > 0)
 
   MAX_CONNECTIONS as Integer = comptime
-      if cfg.target == "embedded"
-          16
-      else
-          1024
+      match cfg.target
+          "embedded" => 16
+          _ => 1024
 
   DEFAULT_TAX as TaxRule = comptime
       TaxRule("SE", 0.25)
@@ -241,17 +240,19 @@ from
         Get(/products/low-stock) => all_products(db)! |> low_stock(5) |> encode |> ok
         Post(/products) =>
             product as Product = decode(body)!
-            if !valid sku(product.sku)
-                bad_request("invalid SKU format")
-            add_product(db, product)!
-            encode(product) |> created
+            match valid sku(product.sku)
+                false => bad_request("invalid SKU format")
+                true =>
+                    add_product(db, product)!
+                    encode(product) |> created
         Post(/orders) =>
             order as Order = parse_order(body)!
-            if !valid fulfillable(order)
-                bad_request("insufficient stock")
-            perm as Permission = authorize(user, "orders.create")
-            tax as TaxRule = tax_rule(db, "SE")!
-            place_order(db, order, tax)! |> encode |> created
+            match valid fulfillable(order)
+                false => bad_request("insufficient stock")
+                true =>
+                    perm as Permission = authorize(user, "orders.create")
+                    tax as TaxRule = tax_rule(db, "SE")!
+                    place_order(db, order, tax)! |> encode |> created
         Delete(/orders) =>
             order as Order = decode(body)!
             perm as Permission = authorize(user, "orders.cancel")

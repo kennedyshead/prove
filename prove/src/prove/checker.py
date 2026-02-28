@@ -24,7 +24,6 @@ from prove.ast_nodes import (
     FunctionDef,
     GenericType,
     IdentifierExpr,
-    IfExpr,
     ImportDecl,
     IndexExpr,
     IntegerLit,
@@ -654,12 +653,6 @@ class Checker:
         elif isinstance(expr, PipeExpr):
             self._check_pure_expr(expr.left)
             self._check_pure_expr(expr.right)
-        elif isinstance(expr, IfExpr):
-            self._check_pure_expr(expr.condition)
-            for s in expr.then_body:
-                self._check_pure_stmt(s)
-            for s in expr.else_body:
-                self._check_pure_stmt(s)
         elif isinstance(expr, FailPropExpr):
             self._check_pure_expr(expr.expr)
         elif isinstance(expr, LambdaExpr):
@@ -775,8 +768,6 @@ class Checker:
             return self._infer_pipe(expr)
         if isinstance(expr, FailPropExpr):
             return self._infer_fail_prop(expr)
-        if isinstance(expr, IfExpr):
-            return self._infer_if(expr)
         if isinstance(expr, MatchExpr):
             return self._infer_match(expr)
         if isinstance(expr, LambdaExpr):
@@ -1055,29 +1046,6 @@ class Checker:
         if isinstance(inner, GenericInstance) and inner.base_name == "Result":
             if inner.args:
                 return inner.args[0]
-        return ERROR_TY
-
-    def _infer_if(self, expr: IfExpr) -> Type:
-        cond_type = self._infer_expr(expr.condition)
-        if not isinstance(cond_type, ErrorType) and not types_compatible(BOOLEAN, cond_type):
-            self._error(
-                "E321",
-                f"type mismatch: expected 'Boolean', got '{type_name(cond_type)}'",
-                expr.condition.span if hasattr(expr.condition, 'span') else expr.span,
-            )
-
-        # Infer branch types
-        then_type = UNIT
-        for stmt in expr.then_body:
-            then_type = self._check_stmt(stmt)
-
-        else_type = UNIT
-        for stmt in expr.else_body:
-            else_type = self._check_stmt(stmt)
-
-        # Both branches should be compatible
-        if types_compatible(then_type, else_type):
-            return then_type
         return ERROR_TY
 
     def _infer_match(self, expr: MatchExpr) -> Type:

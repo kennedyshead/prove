@@ -92,10 +92,9 @@ class TestProofVerification:
             "transforms abs_val(n Integer) Integer\n"
             "    believe: result >= 0\n"
             "    from\n"
-            "        if n >= 0\n"
-            "            n\n"
-            "        else\n"
-            "            0 - n\n",
+            "        match n >= 0\n"
+            "            true => n\n"
+            "            false => 0 - n\n",
             "E393",
         )
 
@@ -112,10 +111,9 @@ class TestProofVerification:
             "    proof\n"
             '        non_negative: "result is abs so >= 0"\n'
             "    from\n"
-            "        if n >= 0\n"
-            "            n\n"
-            "        else\n"
-            "            0 - n\n"
+            "        match n >= 0\n"
+            "            true => n\n"
+            "            false => 0 - n\n"
         )
         tokens = Lexer(source, "test.prv").lex()
         module = Parser(tokens, "test.prv").parse()

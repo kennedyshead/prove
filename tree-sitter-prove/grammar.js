@@ -304,7 +304,6 @@ module.exports = grammar({
     _statement: $ => choice(
       $.variable_declaration,
       $.assignment,
-      $.if_expression,
       $.match_expression,
       $.expression,
     ),
@@ -393,13 +392,6 @@ module.exports = grammar({
     ),
 
     parenthesized_expression: $ => seq('(', $.expression, ')'),
-
-    if_expression: $ => prec.right(seq(
-      'if',
-      field('condition', $.expression),
-      repeat1($._statement),
-      optional(seq('else', repeat1($._statement))),
-    )),
 
     match_expression: $ => prec.left(seq(
       'match',

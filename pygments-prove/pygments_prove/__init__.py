@@ -74,8 +74,6 @@ class ProveLexer(RegexLexer):
                         "is",
                         "as",
                         "from",
-                        "if",
-                        "else",
                         "match",
                         "where",
                         "comptime",

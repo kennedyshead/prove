@@ -24,10 +24,9 @@ transforms abs_val(n Integer) Integer
     non_negative: both branches produce result >= 0
   believe: result >= 0
 from
-    if n >= 0
-        n
-    else
-        0 - n
+    match n >= 0
+        true => n
+        false => 0 - n
 
 main()
 from

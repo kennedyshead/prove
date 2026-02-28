@@ -1,6 +1,6 @@
 # Syntax Reference
 
-## Naming Conventions
+## Naming
 
 - **Types, modules, and classes**: CamelCase — `Shape`, `Port`, `UserAuth`, `NonEmpty`, `HttpServer`
 - **Variables and parameters**: snake_case — `port`, `user_list`, `max_retries`, `db_connection`
@@ -12,15 +12,26 @@ The compiler **enforces** casing. Wrong case is a compile error, not a warning. 
 
 ## Modules and Imports
 
-Each file is a module. The filename (without extension) is the module name in CamelCase. Imports use `with Module use` syntax with verb-qualified function names:
+Each file is a module. The filename (without extension) is the module name in CamelCase. The `module` block is mandatory and contains all declarations/metadata: narrative, imports, types, constants, and invariant networks. Functions remain top-level:
 
 ```prove
-with String use contains, length
-with Auth use validates login, transforms login    // two verb variants of login
-with Http use inputs request, inputs session
+module InventoryService
+  narrative: """Products are added to inventory..."""
+  String contains length
+  Auth validates login, transforms login
+  Http inputs request session
+
+  type Product is
+    sku Sku
+    name String
+
+  MAX_CONNECTIONS as Integer = 1024
+
+  invariant_network Accounting
+    total >= 0
 ```
 
-Multiple verbs for the same function name import each variant. The verb is part of the function's identity.
+A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity.
 
 ## Blocks and Indentation
 
@@ -41,7 +52,6 @@ Every type uses its full name. No abbreviations. Type modifiers use bracket synt
 | `Character` | encoding (UTF8/UTF16/ASCII) | `Character:[UTF8]` | `Character:[ASCII]` |
 
 **Modifier rules:**
-
 - Modifiers are **order-independent** — `Integer:[Signed 64]` and `Integer:[64 Signed]` are identical. The compiler normalizes internally.
 - Each modifier occupies a **distinct axis**. Two modifiers on the same axis is a compile error: `Integer:[32 64]` → ERROR: conflicting size modifiers.
 - **Positional modifiers** when unambiguous by kind. **Named modifiers** (`Key:Value`) when a bare value could be confused: `Decimal:[128 Scale:2]`.
@@ -74,18 +84,19 @@ type Port is Integer:[16 Unsigned] where 1..65535
 
 ## Type Definitions
 
-Types are defined with `type Name is`:
+Types live inside the `module` block, defined with `type Name is`:
 
 ```prove
-type Shape is
+module Main
+  type Shape is
     Circle(radius Decimal)
     | Rect(w Decimal, h Decimal)
 
-type Port is Integer:[16 Unsigned] where 1..65535
+  type Port is Integer:[16 Unsigned] where 1 .. 65535
 
-type Result<T, E> is Ok(T) | Err(E)
+  type Result<T, E> is Ok(T) | Err(E)
 
-type User is
+  type User is
     id Integer
     name String
     email String
@@ -164,10 +175,12 @@ Three functions, all named `email`, with completely different intents.
 At call sites, you use **just the function name** — the compiler resolves which verb-variant to call based on context (expected type, parameter types, expression position):
 
 ```prove
-// Boolean context (if) → resolves to validates email
-if email(input)
-    clean as Email = email(raw_input)    // Email context + String param → transforms
-    stored as Email = email(user.id)     // Email context + Integer param → inputs
+// Boolean context (match on Boolean) → resolves to validates email
+match email(input)
+    true =>
+        clean as Email = email(raw_input)    // Email context + String param → transforms
+        stored as Email = email(user.id)     // Email context + Integer param → inputs
+    false => handle_invalid()
 
 // When context is ambiguous, use `valid` for explicit Boolean cast
 print(valid email(input))               // forces validates variant
@@ -177,14 +190,12 @@ filter(users, valid email)              // passes `validates email` as predicate
 ```
 
 Resolution rules:
-
-1. **Boolean context** (`if`, `&&`, `||`, `!`) → resolves to `validates` variant
+1. **Boolean context** (`match` on Boolean, `&&`, `||`, `!`) → resolves to `validates` variant
 2. **Expected type** from assignment or parameter → matches the variant returning that type
 3. **Parameter types** disambiguate between variants with the same return type
 4. **Ambiguous** → compiler error with suggestions listing available variants
 
 The `valid` keyword serves two purposes:
-
 - **As expression**: `valid email(input)` — casts a validates call to its Boolean result explicitly
 - **As function reference**: `valid email` (no parens) — passes the validates function as a predicate to higher-order functions like `filter`
 
@@ -280,9 +291,9 @@ from
     query(db, "SELECT * FROM users")!
 ```
 
-## Pattern Matching
+## Pattern Matching — The Only Way to Branch
 
-Indentation-based, no braces:
+Prove has no `if`/`else`. All branching is done through `match`.
 
 ```prove
 match route
@@ -290,11 +301,69 @@ match route
     Get("/users")  => users()!
     _              => not_found()
 
-if connected
-    send(data)
-else
-    retry()
+match connected
+    true  => send(data)
+    false => retry()
+
+MAX_CONNECTIONS as Integer = comptime
+    match cfg.target
+        "embedded" => 16
+        _ => 1024
 ```
+
+This is not an omission. It is a deliberate design choice with consequences for correctness, verification, and code quality.
+
+### Why No `if`
+
+**1. `match` is exhaustive. `if` is not.**
+
+An `if` without `else` silently does nothing on the false branch. The programmer may not have intended this — they may have forgotten the other case. In Prove, `match` on a Boolean requires both `true =>` and `false =>` arms. The compiler rejects incomplete branching.
+
+```prove
+// This is a compile error — you must handle both cases:
+match connected
+    true => send(data)
+// error: non-exhaustive match — missing 'false' arm
+```
+
+Every branch point in the program explicitly states what happens in every case. There are no invisible default paths.
+
+**2. `if` obscures what you are branching on.**
+
+An `if` condition is an expression floating in the middle of a function body. A `match` names its subject and structurally enumerates the possibilities. When conditions get complex, `if`/`else if`/`else` chains become hard to follow. A `match` block is always a flat table: subject at the top, one arm per case, every arm visible.
+
+**3. One construct is simpler than two.**
+
+Every `if`/`else` is isomorphic to `match condition / true => ... / false => ...`. Having both constructs adds no expressive power — it only adds surface area to the language, the parser, the type checker, the emitter, the formatter, and every tool that processes Prove code. Removing `if` means less to learn, less to implement, and fewer ways to express the same thing.
+
+**4. `if` encourages guard-style early returns.**
+
+In many languages, `if` is used for guard clauses:
+
+```
+if !valid(input)
+    return error("bad input")
+// continue with the happy path
+```
+
+This pattern breaks the principle that a function body is a single expression tree that produces a value. It introduces invisible control flow — the reader must mentally track which conditions have been checked at each point in the function. In Prove, the same logic is a `match`:
+
+```prove
+match valid input
+    false => error("bad input")
+    true =>
+        // happy path — structurally inside the arm
+```
+
+Both branches are explicitly scoped. There is no ambiguity about which code runs when.
+
+**5. Contracts need visible branches.**
+
+Prove's compiler verifies `ensures` postconditions across all code paths. With `match`, every arm is structurally enumerable — the compiler (and the programmer writing `proof` blocks) can see every branch and reason about each one. An `if` without `else` has an implicit branch that returns `Unit`, which is invisible to both the programmer and the verifier. Making all branches explicit makes contracts easier to write, easier to verify, and harder to get wrong.
+
+### The Rule
+
+All conditional logic in Prove is expressed through `match`. Boolean conditions, algebraic type dispatch, literal comparison, and exhaustive enumeration all use the same construct with the same guarantees.
 
 ## Lambdas — Constrained Inline Functions
 
@@ -317,7 +386,6 @@ verified_emails as List<String> = filter(emails, valid email)
 ```
 
 **Constraints:**
-
 - **Single expression only** — no multi-line bodies, no statements. If you need more, write a named function.
 - **Must be pure** — no IO effects inside a lambda. Side effects require a named function.
 - **No closures over mutable state** — lambdas can reference immutable bindings from the enclosing scope, but not `:[Mutable]` variables.
@@ -350,7 +418,7 @@ For complex iteration that doesn't fit map/filter/reduce, use recursion with a `
 
 Every keyword in Prove has exactly one purpose. No keyword is overloaded across different contexts. This makes the language predictable and parseable by humans without memorizing context-dependent rules.
 
-### Core Keywords
+**Core keywords:**
 
 | Keyword | Exclusive purpose |
 |---------|-------------------|
@@ -367,14 +435,13 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `type` | Type definition — `type Name is ...` |
 | `is` | Type body — follows `type Name` |
 | `match` | Pattern matching expression |
-| `if`/`else` | Conditional expression |
 | `ensures` | Postcondition contract |
 | `requires` | Precondition contract |
 | `proof` | Proof obligation block |
 | `valid` | Predicate reference for validates functions |
 | `comptime` | Compile-time computation |
 
-### AI-Resistance Keywords (Phase 1+2)
+**AI-Resistance keywords (Phase 1+2):**
 
 | Keyword | Exclusive purpose |
 |---------|-------------------|
@@ -406,48 +473,48 @@ from
 ## Complete Example: RESTful Server
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1..65535
+type Port is Integer:[16 Unsigned] where 1 .. 65535
 type Route is Get(path String) | Post(path String) | Delete(path String)
 
 type User is
-    id Integer
-    name String
-    email String
+  id Integer
+  name String
+  email String
 
 /// Checks whether a string is a valid email address.
 validates email(address String)
-    from
-        contains(address, "@") && contains(address, ".")
+from
+    contains(address, "@") && contains(address, ".")
 
 /// Retrieves all users from the database.
 inputs users(db Database) List<User>!
-    from
-        query(db, "SELECT * FROM users")!
+from
+    query(db, "SELECT * FROM users")!
 
 /// Creates a new user from a request body.
 outputs create(db Database, body String) User!
-    ensures email(result.email)
-    proof
-        email_valid: decode validates the email field before insertion
-    from
-        user as User = decode(body)!
-        insert(db, "users", user)!
-        user
+  ensures email(result.email)
+  proof
+    email_valid: decode validates the email field before insertion
+from
+    user as User = decode(body)!
+    insert(db, "users", user)!
+    user
 
 /// Routes incoming HTTP requests.
 inputs request(route Route, body String, db Database) Response!
-    from
-        Get("/health") => ok("healthy")
-        Get("/users")  => users(db)! |> encode |> ok
-        Post("/users") => create(db, body)! |> encode |> created
-        _              => not_found()
+from
+    Get("/health") => ok("healthy")
+    Get("/users")  => users(db)! |> encode |> ok
+    Post("/users") => create(db, body)! |> encode |> created
+    _              => not_found()
 
 /// Application entry point — no verb, main is special.
 main() Result<Unit, Error>!
-    from
-        port as Port = 8080
-        db as Database = connect("postgres://localhost/app")!
-        server as Server = new_server()
-        route(server, "/", request)
-        listen(server, port)!
+from
+    port as Port = 8080
+    db as Database = connect("postgres://localhost/app")!
+    server as Server = new_server()
+    route(server, "/", request)
+    listen(server, port)!
 ```

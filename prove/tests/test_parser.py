@@ -16,7 +16,6 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     GenericType,
-    IfExpr,
     ImportItem,
     IndexExpr,
     IntegerLit,
@@ -306,16 +305,6 @@ class TestParserExpressions:
         assert isinstance(call.args[1], LambdaExpr)
         assert call.args[1].params == ["x"]
 
-    def test_if_expr(self):
-        source = (
-            'transforms f() Integer\n    from\n'
-            '        if x\n            1\n'
-            '        else\n            2\n'
-        )
-        decl = parse_decl(source)
-        expr = decl.body[0].expr
-        assert isinstance(expr, IfExpr)
-
     def test_match_expr(self):
         source = (
             'transforms f() Integer\n    from\n'
@@ -442,8 +431,8 @@ class TestParserConstants:
     def test_comptime_constant(self):
         source = (
             '  MAX_CONNECTIONS as Integer = comptime\n'
-            '    if true\n        16\n'
-            '    else\n        1024\n'
+            '    match target\n        "embedded" => 16\n'
+            '        _ => 1024\n'
         )
         decl = parse_module_constant(source)
         assert isinstance(decl, ConstantDef)
