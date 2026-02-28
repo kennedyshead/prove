@@ -60,8 +60,8 @@ from prove.types import (
 _BUILTIN_MAP: dict[str, str] = {
     "println": "prove_println",
     "print": "prove_print",
-    "to_string": "prove_string_from_int",  # simplified
-    "len": "prove_list_len",
+    "readln": "prove_readln",
+    "clamp": "prove_clamp",
 }
 
 
@@ -547,13 +547,22 @@ class CEmitter:
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
 
+            # Type-aware dispatch for to_string
+            if name == "to_string" and expr.args:
+                arg_type = self._infer_expr_type(expr.args[0])
+                c_name = self._to_string_func(arg_type)
+                return f"{c_name}({', '.join(args)})"
+
+            # Type-aware dispatch for len
+            if name == "len" and expr.args:
+                arg_type = self._infer_expr_type(expr.args[0])
+                if isinstance(arg_type, PrimitiveType) and arg_type.name == "String":
+                    return f"prove_string_len({', '.join(args)})"
+                return f"prove_list_len({', '.join(args)})"
+
             # Builtin mapping
             if name in _BUILTIN_MAP:
                 c_name = _BUILTIN_MAP[name]
-                # Special case: to_string needs type-aware dispatch
-                if name == "to_string" and expr.args:
-                    arg_type = self._infer_expr_type(expr.args[0])
-                    c_name = self._to_string_func(arg_type)
                 return f"{c_name}({', '.join(args)})"
 
             # User function — resolve and mangle
@@ -650,6 +659,15 @@ class CEmitter:
         inner = self._emit_expr(expr.expr)
         self._line(f"Prove_Result {tmp} = {inner};")
         self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+        # Use typed unwrap based on the inner result's success type
+        inner_type = self._infer_expr_type(expr.expr)
+        if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
+            if inner_type.args:
+                success_type = inner_type.args[0]
+                if isinstance(success_type, PrimitiveType) and success_type.name == "Integer":
+                    return f"prove_result_unwrap_int({tmp})"
+                if isinstance(success_type, PrimitiveType) and success_type.name == "String":
+                    return f"(Prove_String*)prove_result_unwrap_ptr({tmp})"
         return f"{tmp}"
 
     # ── If expressions ─────────────────────────────────────────

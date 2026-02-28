@@ -128,3 +128,59 @@ class TestStringInterp:
         c_code = _emit(source)
         assert "prove_string_concat" in c_code
         assert "prove_string_from_int" in c_code
+
+
+class TestBuiltinDispatch:
+    def test_to_string_integer(self):
+        source = (
+            "transforms show(x Integer) String\n"
+            "    from\n"
+            "        to_string(x)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_int" in c_code
+
+    def test_to_string_boolean(self):
+        source = (
+            "transforms show(x Boolean) String\n"
+            "    from\n"
+            "        to_string(x)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_bool" in c_code
+
+    def test_to_string_decimal(self):
+        source = (
+            "transforms show(x Decimal) String\n"
+            "    from\n"
+            "        to_string(x)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_double" in c_code
+
+    def test_len_list(self):
+        source = (
+            "transforms count() Integer\n"
+            "    from\n"
+            "        len([1, 2, 3])\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_len" in c_code
+
+    def test_readln_emits(self):
+        source = (
+            "inputs get_name() String\n"
+            "    from\n"
+            "        readln()\n"
+        )
+        c_code = _emit(source)
+        assert "prove_readln" in c_code
+
+    def test_clamp_emits(self):
+        source = (
+            "transforms safe(x Integer) Integer\n"
+            "    from\n"
+            "        clamp(x, 0, 100)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_clamp" in c_code

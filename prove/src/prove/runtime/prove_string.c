@@ -75,3 +75,19 @@ void prove_print(Prove_String *s) {
         fwrite(s->data, 1, (size_t)s->length, stdout);
     }
 }
+
+Prove_String *prove_readln(void) {
+    char buf[4096];
+    if (!fgets(buf, sizeof(buf), stdin)) {
+        return prove_string_new("", 0);
+    }
+    /* Strip trailing newline */
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') {
+        buf[--len] = '\0';
+    }
+    if (len > 0 && buf[len - 1] == '\r') {
+        buf[--len] = '\0';
+    }
+    return prove_string_new(buf, (int64_t)len);
+}
