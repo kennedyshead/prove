@@ -1,5 +1,4 @@
 /// String utility functions.
-
 /// Convert an integer to its string representation.
 transforms int_to_string(n Integer) String
 from

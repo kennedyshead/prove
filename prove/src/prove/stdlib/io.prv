@@ -2,7 +2,6 @@
 ///
 /// Provides functions for reading and writing to standard streams
 /// and the filesystem.
-
 /// Print a string followed by a newline to stdout.
 outputs println(text String)
 from

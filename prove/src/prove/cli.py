@@ -206,19 +206,117 @@ def new(name: str) -> None:
 
 @main.command(name="format")
 @click.argument("path", default=".", type=click.Path(exists=True))
-def format_cmd(path: str) -> None:
+@click.option("--check", is_flag=True, help="Check formatting without modifying files.")
+@click.option("--stdin", "use_stdin", is_flag=True, help="Read from stdin, write to stdout.")
+def format_cmd(path: str, check: bool, use_stdin: bool) -> None:
     """Format Prove source files."""
-    click.echo("format: not yet implemented")
+    import sys
+
+    from prove.formatter import ProveFormatter
+
+    formatter = ProveFormatter()
+
+    if use_stdin:
+        source = sys.stdin.read()
+        try:
+            tokens = Lexer(source, "<stdin>").lex()
+            module = Parser(tokens, "<stdin>").parse()
+        except CompileError as e:
+            renderer = DiagnosticRenderer(color=True)
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            raise SystemExit(1)
+        formatted = formatter.format(module)
+        if check:
+            if formatted != source:
+                raise SystemExit(1)
+        else:
+            sys.stdout.write(formatted)
+        return
+
+    target = Path(path)
+    prv_files = sorted(target.rglob("*.prv")) if target.is_dir() else [target]
+
+    if not prv_files:
+        click.echo("no .prv files found", err=True)
+        return
+
+    needs_formatting = False
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        filename = str(prv_file)
+        try:
+            tokens = Lexer(source, filename).lex()
+            module = Parser(tokens, filename).parse()
+        except CompileError as e:
+            renderer = DiagnosticRenderer(color=True)
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            continue
+
+        formatted = formatter.format(module)
+        if formatted != source:
+            if check:
+                click.echo(f"would reformat {filename}")
+                needs_formatting = True
+            else:
+                prv_file.write_text(formatted)
+                click.echo(f"formatted {filename}")
+
+    if check and needs_formatting:
+        raise SystemExit(1)
 
 
 @main.command()
 def lsp() -> None:
     """Start the Prove language server."""
-    click.echo("lsp: not yet implemented")
+    from prove.lsp import main as lsp_main
+
+    lsp_main()
 
 
 @main.command()
 @click.argument("file", type=click.Path(exists=True))
 def view(file: str) -> None:
-    """View a compiled Prove artifact."""
-    click.echo("view: not yet implemented")
+    """View the AST of a Prove source file."""
+    source = Path(file).read_text()
+    filename = str(file)
+
+    try:
+        tokens = Lexer(source, filename).lex()
+        module = Parser(tokens, filename).parse()
+    except CompileError as e:
+        renderer = DiagnosticRenderer(color=True)
+        for diag in e.diagnostics:
+            click.echo(renderer.render(diag), err=True)
+        raise SystemExit(1)
+
+    _dump_ast(module, 0)
+
+
+def _dump_ast(node: object, depth: int) -> None:
+    """Print a readable AST dump."""
+    indent = "  " * depth
+    name = type(node).__name__
+
+    if hasattr(node, "__dataclass_fields__"):
+        fields = node.__dataclass_fields__  # type: ignore[union-attr]
+        click.echo(f"{indent}{name}")
+        for field_name in fields:
+            if field_name == "span":
+                continue
+            value = getattr(node, field_name)
+            if isinstance(value, list):
+                if value:
+                    click.echo(f"{indent}  {field_name}:")
+                    for item in value:
+                        _dump_ast(item, depth + 2)
+                else:
+                    click.echo(f"{indent}  {field_name}: []")
+            elif hasattr(value, "__dataclass_fields__"):
+                click.echo(f"{indent}  {field_name}:")
+                _dump_ast(value, depth + 2)
+            elif value is not None:
+                click.echo(f"{indent}  {field_name}: {value!r}")
+    else:
+        click.echo(f"{indent}{name}: {node!r}")

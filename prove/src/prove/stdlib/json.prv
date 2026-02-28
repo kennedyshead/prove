@@ -1,7 +1,6 @@
 /// JSON encoding and decoding.
 ///
 /// Provides functions for converting between Prove values and JSON strings.
-
 /// Encode a string value as a JSON string.
 transforms encode_string(value String) String
 from

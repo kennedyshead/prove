@@ -1,13 +1,7 @@
-/// A simple HTTP server example.
-///
-/// Demonstrates Prove's algebraic types and pattern matching
-/// for request routing.
-
 with Http use transforms ok, transforms not_found
 
-type Route is
-    Get(path String)
-    Post(path String)
+type Route is Get(path String)
+    | Post(path String)
 
 /// Route a request and return a response string.
 /// handle(Get("/health")) == "GET /health"

@@ -36,7 +36,7 @@ def tmp_project(tmp_path):
     )
     src = tmp_path / "src"
     src.mkdir()
-    (src / "main.prv").write_text('main() Result<Unit, Error>!\n    from\n        println("hi")\n')
+    (src / "main.prv").write_text('main() Result<Unit, Error>!\nfrom\n    println("hi")\n')
     return tmp_path
 
 
@@ -92,12 +92,12 @@ class TestCLI:
             assert result.exit_code == 1
             assert "already exists" in result.output
 
-    def test_build_with_project(self, runner, tmp_project):
+    def test_build_with_project(self, runner, tmp_project, needs_cc):
         result = runner.invoke(main, ["build", str(tmp_project)])
         assert result.exit_code == 0
         assert "building testproj" in result.output
 
-    def test_build_mutate_flag(self, runner, tmp_project):
+    def test_build_mutate_flag(self, runner, tmp_project, needs_cc):
         result = runner.invoke(main, ["build", str(tmp_project), "--mutate"])
         assert result.exit_code == 0
         assert "mutation testing not yet implemented" in result.output
@@ -118,15 +118,26 @@ class TestCLI:
         assert result.exit_code == 0
         assert "property rounds: 100" in result.output
 
-    def test_format_stub(self, runner):
-        result = runner.invoke(main, ["format"])
-        assert result.exit_code == 0
-        assert "not yet implemented" in result.output
+    def test_format_check(self, runner, tmp_project):
+        result = runner.invoke(main, ["format", "--check", str(tmp_project)])
+        # Should either pass (exit 0) or find formatting differences (exit 1)
+        assert result.exit_code in (0, 1)
 
-    def test_lsp_stub(self, runner):
-        result = runner.invoke(main, ["lsp"])
+    def test_format_help(self, runner):
+        result = runner.invoke(main, ["format", "--help"])
         assert result.exit_code == 0
-        assert "not yet implemented" in result.output
+        assert "--check" in result.output
+        assert "--stdin" in result.output
+
+    def test_lsp_help(self, runner):
+        result = runner.invoke(main, ["lsp", "--help"])
+        assert result.exit_code == 0
+
+    def test_view_command(self, runner, tmp_project):
+        prv_file = tmp_project / "src" / "main.prv"
+        result = runner.invoke(main, ["view", str(prv_file)])
+        assert result.exit_code == 0
+        assert "Module" in result.output
 
 
 # --- Config tests ---

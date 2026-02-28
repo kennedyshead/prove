@@ -497,8 +497,12 @@ class TestParserIntegration:
 
     def test_parse_hello_file(self):
         """Parse the actual hello example file."""
-        with open("/workspace/prove/examples/hello/src/main.prv") as f:
-            source = f.read()
+        from pathlib import Path
+        hello = Path(__file__).resolve().parent.parent / "examples/hello/src/main.prv"
+        if not hello.exists():
+            import pytest
+            pytest.skip("hello example not found")
+        source = hello.read_text()
         mod = parse(source)
         assert len(mod.declarations) == 1
         assert isinstance(mod.declarations[0], MainDef)
