@@ -33,9 +33,9 @@ The compiler POC is implemented in Python (>=3.11). The goal is to validate the 
 
 As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via direct assembly emission (x86_64 + ARM64). No VM, no interpreter for production output.
 
-### First POC: RESTful Server
+### First POC: Self-Hosting Compiler
 
-The first program written in Prove will be a RESTful HTTP server. This exercises the type system (request/response types, route matching), verb system (inputs/outputs), error handling, and IO — proving the language works for real-world backend development.
+The first program written in Prove will be the Prove compiler itself. The bootstrap path: (1) write a complete compiler in Python, (2) use it to compile a Prove compiler written in Prove. This exercises the type system (AST node types, token variants), verb system (transforms for pure passes, inputs for file reading, outputs for code emission), pattern matching (exhaustive over AST nodes), and algebraic types — proving the language works by compiling itself. Self-hosting is the strongest possible validation: if Prove can express its own compiler, it can express anything.
 
 ### AI-Resistance: Fundamental
 
