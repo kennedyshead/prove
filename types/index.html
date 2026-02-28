@@ -662,10 +662,9 @@
 <h2 id="ownership-lite-linear-types-with-compiler-inferred-borrows">Ownership Lite (Linear Types with Compiler-Inferred Borrows)<a class="headerlink" href="#ownership-lite-linear-types-with-compiler-inferred-borrows" title="Permanent link">&para;</a></h2>
 <p>Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">inputs</span> <span class="n">process</span><span class="p">(</span><span class="n">file</span> <span class="nc">File</span><span class="p">:[</span><span class="nc">Own</span><span class="p">])</span> <span class="nc">Data</span><span class="o">!</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">from</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="n">content</span> <span class="n">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>     <span class="c1">// immutable borrow, inferred</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="n">close</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>                       <span class="c1">// ownership consumed</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="c1">// read(file)                     // compile error: used after close</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">from</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">content</span> <span class="n">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">close</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="no-null">No Null<a class="headerlink" href="#no-null" title="Permanent link">&para;</a></h2>
 <p>No null — use <code>Option&lt;T&gt;</code>, enforced by the compiler.</p>

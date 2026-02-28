@@ -868,18 +868,18 @@
 <hr />
 <h2 id="concurrency-structured-typed-no-data-races">Concurrency — Structured, Typed, No Data Races<a class="headerlink" href="#concurrency-structured-typed-no-data-races" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">inputs</span> <span class="n">fetch_all</span><span class="p">(</span><span class="n">urls</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Url</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Response</span><span class="o">&gt;!</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="k">from</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="n">par_map</span><span class="p">(</span><span class="n">urls</span><span class="p">,</span> <span class="n">fetch</span><span class="p">)</span>   <span class="c1">// parallel map — compiler proves no shared mutable state</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">from</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">par_map</span><span class="p">(</span><span class="n">urls</span><span class="p">,</span> <span class="n">fetch</span><span class="p">)</span>
 </code></pre></div>
 <p>The ownership system and effect types combine to eliminate data races at compile time.</p>
 <hr />
 <h2 id="error-handling-errors-are-values">Error Handling — Errors Are Values<a class="headerlink" href="#error-handling-errors-are-values" title="Permanent link">&para;</a></h2>
 <p>No exceptions. Every failure path is visible in the type signature. Uses <code>!</code> for error propagation. Panics exist only for violated <code>assume:</code> assertions at system boundaries — normal error handling is always through <code>Result</code> values.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;!</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">from</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="n">config</span> <span class="n">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">read_config</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="o">!</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>        <span class="n">db</span> <span class="n">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="o">!</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="o">!</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">from</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">config</span> <span class="n">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">read_config</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="o">!</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">db</span> <span class="n">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="o">!</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="o">!</span>
 </code></pre></div>
 <hr />
 <h2 id="zero-cost-abstractions">Zero-Cost Abstractions<a class="headerlink" href="#zero-cost-abstractions" title="Permanent link">&para;</a></h2>
