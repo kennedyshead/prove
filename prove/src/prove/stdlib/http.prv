@@ -24,7 +24,7 @@ from
 
 inputs listen(server Server, port Integer) Result<Unit, Error>!
 from
-    server
+    server()
 
 transforms ok(body String) Response
 from

@@ -149,6 +149,11 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     return sigs
 
 
+def is_stdlib_module(module_name: str) -> bool:
+    """Return True if module_name is a known stdlib module."""
+    return module_name.lower() in _STDLIB_MODULES
+
+
 def available_modules() -> list[str]:
     """Return names of all available stdlib modules."""
     return list(_STDLIB_MODULES.keys())
