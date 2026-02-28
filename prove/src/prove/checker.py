@@ -91,6 +91,22 @@ _IO_FUNCTIONS = frozenset({
 })
 
 
+def _edit_distance(a: str, b: str) -> int:
+    """Compute Levenshtein edit distance between two strings."""
+    if len(a) < len(b):
+        return _edit_distance(b, a)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a):
+        curr = [i + 1]
+        for j, cb in enumerate(b):
+            cost = 0 if ca == cb else 1
+            curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + cost))
+        prev = curr
+    return prev[-1]
+
+
 class Checker:
     """Semantic analyzer for a single module."""
 
@@ -143,6 +159,18 @@ class Checker:
         return any(d.severity == Severity.ERROR for d in self.diagnostics)
 
     # ── Error helpers ───────────────────────────────────────────
+
+    @staticmethod
+    def _fuzzy_match(name: str, candidates: set[str], max_dist: int = 2) -> str | None:
+        """Find the closest match for *name* among *candidates*."""
+        best: str | None = None
+        best_dist = max_dist + 1
+        for c in candidates:
+            d = _edit_distance(name, c)
+            if d < best_dist:
+                best_dist = d
+                best = c
+        return best if best_dist <= max_dist else None
 
     def _error(self, code: str, message: str, span: Span) -> None:
         self.diagnostics.append(Diagnostic(
@@ -687,7 +715,18 @@ class Checker:
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:
         sym = self.symbols.lookup(expr.name)
         if sym is None:
-            self._error("E310", f"undefined name '{expr.name}'", expr.span)
+            diag = Diagnostic(
+                severity=Severity.ERROR,
+                code="E310",
+                message=f"undefined name '{expr.name}'",
+                labels=[DiagnosticLabel(span=expr.span, message="")],
+            )
+            suggestion = self._fuzzy_match(
+                expr.name, self.symbols.all_known_names(),
+            )
+            if suggestion:
+                diag.notes.append(f"did you mean '{suggestion}'?")
+            self.diagnostics.append(diag)
             return ERROR_TY
         sym.used = True
         return sym.resolved_type
@@ -783,12 +822,21 @@ class Checker:
             # Check argument count
             if len(sig.param_types) != arg_count:
                 expected_n = len(sig.param_types)
-                self._error(
-                    "E330",
-                    f"wrong number of arguments: "
-                    f"expected {expected_n}, got {arg_count}",
-                    expr.span,
+                sig_str = ", ".join(
+                    f"{n}: {type_name(t)}"
+                    for n, t in zip(sig.param_names, sig.param_types)
                 )
+                diag = Diagnostic(
+                    severity=Severity.ERROR,
+                    code="E330",
+                    message=(
+                        f"wrong number of arguments: "
+                        f"expected {expected_n}, got {arg_count}"
+                    ),
+                    labels=[DiagnosticLabel(span=expr.span, message="")],
+                    notes=[f"function signature: {name}({sig_str})"],
+                )
+                self.diagnostics.append(diag)
                 return sig.return_type
 
             # Check argument types

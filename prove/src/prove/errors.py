@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -61,9 +62,26 @@ class DiagnosticRenderer:
 
     def __init__(self, *, color: bool = True) -> None:
         self.color = color
+        self._file_cache: dict[str, list[str]] = {}
 
     def _c(self, code: str) -> str:
         return code if self.color else ""
+
+    def _get_source_line(self, filename: str, line_num: int) -> str | None:
+        """Load and cache source file, return the 1-indexed line."""
+        if filename not in self._file_cache:
+            try:
+                path = Path(filename)
+                if path.is_file():
+                    self._file_cache[filename] = path.read_text().splitlines()
+                else:
+                    self._file_cache[filename] = []
+            except OSError:
+                self._file_cache[filename] = []
+        lines = self._file_cache[filename]
+        if 1 <= line_num <= len(lines):
+            return lines[line_num - 1]
+        return None
 
     def render(self, diag: Diagnostic) -> str:
         lines: list[str] = []
@@ -83,22 +101,30 @@ class DiagnosticRenderer:
             lines.append(
                 f"  {self._c(_BLUE)}-->{self._c(_RESET)} {loc}"
             )
-            # We show line context if we can read the file, but for rendering
-            # we just show the label info with underline markers
             gutter = f"{span.start_line:>4}"
             lines.append(f"  {self._c(_BLUE)}   |{self._c(_RESET)}")
 
-            # If the label has source text we could load, indicate with carets
+            # Show the source line if available
+            source_line = self._get_source_line(span.file, span.start_line)
+            if source_line is not None:
+                lines.append(
+                    f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)} {source_line}"
+                )
+
+            # Show carets underneath
             if span.start_line == span.end_line:
                 caret_len = max(1, span.end_col - span.start_col + 1)
                 padding = " " * (span.start_col - 1)
                 carets = "^" * caret_len
                 lines.append(
-                    f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)}   "
+                    f"  {self._c(_BLUE)}   |{self._c(_RESET)} "
                     f"{padding}{self._c(color)}{carets}{self._c(_RESET)}"
                 )
             else:
-                lines.append(f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)}")
+                if source_line is None:
+                    lines.append(
+                        f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)}"
+                    )
 
             if label.message:
                 lines.append(
