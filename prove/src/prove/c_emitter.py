@@ -291,6 +291,11 @@ class CEmitter:
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
+        # Emit assume assertions at function entry
+        for assume_expr in fd.assume:
+            cond = self._emit_expr(assume_expr)
+            self._line(f'if (!({cond})) prove_panic("assumption violated");')
+
         # Emit body
         self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
 
