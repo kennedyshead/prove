@@ -9,11 +9,15 @@ from prove.lsp import (
     _SEVERITY_MAP,
     DocumentState,
     _analyze,
+    _build_import_edit,
+    _extract_undefined_name,
     _get_word_at,
+    _is_e310,
     _types_display,
     span_to_range,
 )
 from prove.source import Span
+from prove.stdlib_loader import ImportSuggestion, build_import_index
 from prove.symbols import FunctionSignature
 
 
@@ -155,3 +159,139 @@ class TestDocumentState:
         assert ds.module is None
         assert ds.symbols is None
         assert ds.diagnostics == []
+
+
+class TestBuildImportIndex:
+    def test_index_contains_println(self):
+        index = build_import_index()
+        assert "println" in index
+        suggestions = index["println"]
+        assert any(s.module == "Io" and s.verb == "outputs" for s in suggestions)
+
+    def test_index_contains_encode_string(self):
+        index = build_import_index()
+        assert "encode_string" in index
+        suggestions = index["encode_string"]
+        assert any(s.module == "Json" and s.verb == "transforms" for s in suggestions)
+
+    def test_index_contains_type_variants(self):
+        index = build_import_index()
+        # Post is a variant of type Method in http.prv
+        assert "Post" in index
+        suggestions = index["Post"]
+        assert any(s.module == "Http" and s.verb is None for s in suggestions)
+
+    def test_index_contains_type_names(self):
+        index = build_import_index()
+        assert "Method" in index
+        assert "Request" in index
+        assert "Response" in index
+
+    def test_index_no_duplicates_from_aliases(self):
+        index = build_import_index()
+        # list_length should appear only once (not duplicated via "listutils" alias)
+        if "list_length" in index:
+            assert len(index["list_length"]) == 1
+
+
+class TestIsE310:
+    def test_matches_e310(self):
+        diag = lsp.Diagnostic(
+            range=lsp.Range(lsp.Position(0, 0), lsp.Position(0, 5)),
+            message="[E310] undefined name 'foo'",
+            code="E310",
+        )
+        assert _is_e310(diag)
+
+    def test_rejects_other_code(self):
+        diag = lsp.Diagnostic(
+            range=lsp.Range(lsp.Position(0, 0), lsp.Position(0, 5)),
+            message="[E100] some other error",
+            code="E100",
+        )
+        assert not _is_e310(diag)
+
+    def test_rejects_no_code(self):
+        diag = lsp.Diagnostic(
+            range=lsp.Range(lsp.Position(0, 0), lsp.Position(0, 5)),
+            message="some error",
+        )
+        assert not _is_e310(diag)
+
+
+class TestExtractUndefinedName:
+    def test_extracts_name(self):
+        assert _extract_undefined_name("[E310] undefined name 'foo'") == "foo"
+
+    def test_extracts_underscore_name(self):
+        assert _extract_undefined_name("[E310] undefined name 'my_func'") == "my_func"
+
+    def test_no_match(self):
+        assert _extract_undefined_name("[E100] type mismatch") is None
+
+
+class TestBuildImportEdit:
+    def _make_ds(self, source: str) -> DocumentState:
+        return _analyze("file:///test_import.prv", source)
+
+    def test_new_import_at_top(self):
+        source = (
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n"
+        )
+        ds = self._make_ds(source)
+        suggestion = ImportSuggestion(module="Io", verb="outputs", name="println")
+        edit = _build_import_edit(ds, suggestion)
+        assert edit is not None
+        assert edit.new_text == "with Io use outputs println\n"
+        # Should insert at line 0 (no existing imports)
+        assert edit.range.start.line == 0
+
+    def test_extend_existing_import(self):
+        source = (
+            "with Json use transforms encode_string\n"
+            "transforms run() String\n"
+            "from\n"
+            '    encode_string("hi")\n'
+        )
+        ds = self._make_ds(source)
+        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_int")
+        edit = _build_import_edit(ds, suggestion)
+        assert edit is not None
+        assert "transforms encode_int" in edit.new_text
+        # Should append to line 0 (the existing import line)
+        assert edit.range.start.line == 0
+
+    def test_already_imported_returns_none(self):
+        source = (
+            "with Json use transforms encode_string\n"
+            "transforms run() String\n"
+            "from\n"
+            '    encode_string("hi")\n'
+        )
+        ds = self._make_ds(source)
+        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_string")
+        edit = _build_import_edit(ds, suggestion)
+        assert edit is None
+
+    def test_no_module_returns_none(self):
+        ds = DocumentState()  # module is None
+        suggestion = ImportSuggestion(module="Io", verb="outputs", name="println")
+        edit = _build_import_edit(ds, suggestion)
+        assert edit is None
+
+    def test_insert_after_existing_imports(self):
+        source = (
+            "with Io use outputs println\n"
+            "transforms run() Unit\n"
+            "from\n"
+            '    println("hi")\n'
+        )
+        ds = self._make_ds(source)
+        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_string")
+        edit = _build_import_edit(ds, suggestion)
+        assert edit is not None
+        assert edit.new_text == "with Json use transforms encode_string\n"
+        # Should insert after line 0 (the existing import)
+        assert edit.range.start.line == 1

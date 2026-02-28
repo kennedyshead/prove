@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import importlib.resources
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from prove.ast_nodes import Module
 
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -143,3 +148,98 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 def available_modules() -> list[str]:
     """Return names of all available stdlib modules."""
     return list(_STDLIB_MODULES.keys())
+
+
+# ── Auto-import support ──────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class ImportSuggestion:
+    """A suggestion for auto-importing a stdlib function."""
+
+    module: str  # display-cased: "Io", "Json", etc.
+    verb: str | None  # "outputs", "transforms", etc.
+    name: str  # "println", "decode", etc.
+
+
+# Canonical module keys → display names used in `with <Name> use ...`
+_MODULE_DISPLAY_NAMES: dict[str, str] = {
+    "io": "Io",
+    "http": "Http",
+    "json": "Json",
+    "list_utils": "ListUtils",
+    "string_utils": "StringUtils",
+}
+
+# Alias keys that should be skipped when building the index
+_ALIAS_KEYS = {"listutils", "stringutils"}
+
+_import_index: dict[str, list[ImportSuggestion]] | None = None
+
+
+def _parse_stdlib_module(module_name: str) -> Module | None:
+    """Parse a stdlib .prv file and return the Module AST, or None."""
+    normalized = module_name.lower()
+    filename = _STDLIB_MODULES.get(normalized)
+    if filename is None:
+        return None
+
+    pkg = importlib.resources.files("prove.stdlib")
+    resource = pkg.joinpath(filename)
+
+    try:
+        with importlib.resources.as_file(resource) as path:
+            source = path.read_text()
+    except (FileNotFoundError, TypeError):
+        return None
+
+    try:
+        tokens = Lexer(source, f"<stdlib:{module_name}>").lex()
+        return Parser(tokens, f"<stdlib:{module_name}>").parse()
+    except Exception:
+        return None
+
+
+def build_import_index() -> dict[str, list[ImportSuggestion]]:
+    """Return a reverse index: name → list of ImportSuggestion.
+
+    Indexes both functions (with their verb) and types/variant constructors
+    (with verb=None). Built once and cached at module level.
+    """
+    global _import_index
+    if _import_index is not None:
+        return _import_index
+
+    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, TypeDef
+
+    index: dict[str, list[ImportSuggestion]] = {}
+    for key, _filename in _STDLIB_MODULES.items():
+        if key in _ALIAS_KEYS:
+            continue
+        display = _MODULE_DISPLAY_NAMES.get(key, key)
+        module = _parse_stdlib_module(key)
+        if module is None:
+            continue
+
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                suggestion = ImportSuggestion(
+                    module=display, verb=decl.verb, name=decl.name,
+                )
+                index.setdefault(decl.name, []).append(suggestion)
+            elif isinstance(decl, TypeDef):
+                # Index the type name itself
+                index.setdefault(decl.name, []).append(
+                    ImportSuggestion(module=display, verb=None, name=decl.name),
+                )
+                # Index variant constructors for algebraic types
+                if isinstance(decl.body, AlgebraicTypeDef):
+                    for variant in decl.body.variants:
+                        index.setdefault(variant.name, []).append(
+                            ImportSuggestion(
+                                module=display, verb=None, name=variant.name,
+                            ),
+                        )
+
+    _import_index = index
+    return _import_index
