@@ -150,6 +150,9 @@ class Parser:
             return self._advance()
         tok = self._current()
         self._error(f"expected {kind.name}, got {tok.kind.name} ({tok.value!r})", tok.span)
+        # Advance past the unexpected token to prevent infinite loops
+        if tok.kind != TokenKind.EOF:
+            self._advance()
         return tok
 
     def _skip_newlines(self) -> None:
@@ -173,6 +176,15 @@ class Parser:
             start.start_line, start.start_col,
             end.end_line, end.end_col,
         )
+
+    def _check_progress(self, last_pos: int) -> bool:
+        """Return True if parser has advanced since last_pos; break infinite loops."""
+        if self.pos == last_pos:
+            # No progress — force advance to prevent infinite loop
+            if not self._at(TokenKind.EOF):
+                self._advance()
+            return False
+        return True
 
     def _synchronize(self) -> None:
         """Skip tokens until we find a reasonable recovery point."""
@@ -200,6 +212,7 @@ class Parser:
         self._skip_newlines()
 
         while not self._at(TokenKind.EOF):
+            _loop_pos = self.pos
             try:
                 decl = self._parse_declaration()
                 if decl is not None:
@@ -207,6 +220,11 @@ class Parser:
             except _ParseError:
                 self._synchronize()
             self._skip_newlines()
+            # Skip orphaned DEDENTs (e.g., from pipe continuation indents)
+            while self._at(TokenKind.DEDENT):
+                self._advance()
+            if not self._check_progress(_loop_pos):
+                break
 
         end = self._current().span
         span = Span(
@@ -284,6 +302,7 @@ class Parser:
             self._advance()
 
         while not self._at(TokenKind.FROM) and not self._at(TokenKind.EOF):
+            _loop_pos = self.pos
             if self._at(TokenKind.ENSURES):
                 self._advance()
                 ensures.append(self._parse_expression(0))
@@ -333,6 +352,8 @@ class Parser:
             else:
                 break
             self._skip_newlines()
+            if not self._check_progress(_loop_pos):
+                break
 
         self._expect(TokenKind.FROM)
         self._skip_newlines()
@@ -447,18 +468,30 @@ class Parser:
         name_tok = self._expect(TokenKind.IDENTIFIER)
         self._expect(TokenKind.COLON)
 
-        # Collect proof text until next obligation name or DEDENT
+        # Collect proof text until next obligation name or DEDENT.
+        # Track INDENT/DEDENT depth so continuation lines don't
+        # prematurely end the obligation.
         text_parts: list[str] = []
-        while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+        depth = 0
+        while not self._at(TokenKind.EOF):
+            if self._at(TokenKind.INDENT):
+                depth += 1
+                self._advance()
+                continue
+            if self._at(TokenKind.DEDENT):
+                if depth > 0:
+                    depth -= 1
+                    self._advance()
+                    continue
+                else:
+                    break
             # Check if this is the start of a new obligation (identifier followed by colon)
-            if (self._at(TokenKind.IDENTIFIER)
-                    and self._peek(1).kind == TokenKind.COLON
-                    and not self._peek(1).value == ':'):
-                # Look ahead: if after the colon there's text (not a type), it's a new obligation
+            if (depth == 0
+                    and self._at(TokenKind.IDENTIFIER)
+                    and self._peek(1).kind == TokenKind.COLON):
                 break
             tok = self._advance()
             if tok.kind == TokenKind.NEWLINE:
-                # Don't break on newlines inside proof text
                 continue
             text_parts.append(tok.value)
 
@@ -878,12 +911,15 @@ class Parser:
         if self._at(TokenKind.INDENT):
             self._advance()
             while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                _loop_pos = self.pos
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
                 expr = self._parse_expression(0)
                 constraints.append(expr)
                 self._skip_newlines()
+                if not self._check_progress(_loop_pos):
+                    break
             if self._at(TokenKind.DEDENT):
                 self._advance()
 
@@ -950,6 +986,7 @@ class Parser:
 
         self._advance()  # INDENT
         while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+            _loop_pos = self.pos
             self._skip_newlines()
             if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                 break
@@ -959,11 +996,15 @@ class Parser:
                 arms = self._parse_implicit_match_arms()
                 span = arms[0].span if arms else self._current().span
                 stmts.append(MatchExpr(subject=None, arms=arms, span=span))
+                if not self._check_progress(_loop_pos):
+                    break
                 continue
 
             stmt = self._parse_statement()
             stmts.append(stmt)
             self._skip_newlines()
+            if not self._check_progress(_loop_pos):
+                break
 
         if self._at(TokenKind.DEDENT):
             self._advance()
@@ -1150,6 +1191,23 @@ class Parser:
                         self._span(left.span, right.span),
                     )
                 continue
+
+            # Check for pipe continuation across newline+indent boundaries
+            # (e.g., `expr!\n    |> func`)
+            if tok.kind in (TokenKind.NEWLINE, TokenKind.INDENT):
+                save_pos = self.pos
+                depth = 0
+                while self._at_any(TokenKind.NEWLINE, TokenKind.INDENT):
+                    if self._at(TokenKind.INDENT):
+                        depth += 1
+                    self._advance()
+                if self._at(TokenKind.PIPE_ARROW):
+                    # Found a pipe continuation — keep parsing
+                    continue
+                # Not a pipe chain — restore position and break
+                self.pos = save_pos
+                # Balance any consumed indents by not restoring
+                # (we restore the pos, so nothing was consumed)
 
             break
 
@@ -1372,18 +1430,29 @@ class Parser:
         if self._at(TokenKind.INDENT):
             self._advance()
             while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                _loop_pos = self.pos
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
                 arm = self._parse_match_arm()
                 arms.append(arm)
                 self._skip_newlines()
+                if not self._check_progress(_loop_pos):
+                    break
             if self._at(TokenKind.DEDENT):
                 self._advance()
         else:
-            # Inline match arms
+            # No INDENT — inline or inside brackets (where INDENT/DEDENT
+            # are suppressed).  Parse arms while the next tokens look like
+            # a match arm pattern.
             arm = self._parse_match_arm()
             arms.append(arm)
+            while self._looks_like_match_arm():
+                _lp = self.pos
+                arm = self._parse_match_arm()
+                arms.append(arm)
+                if not self._check_progress(_lp):
+                    break
 
         end = self._current().span
         return MatchExpr(subject, arms,
@@ -1399,11 +1468,14 @@ class Parser:
         if self._at(TokenKind.INDENT):
             self._advance()
             while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                _loop_pos = self.pos
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
                 body.append(self._parse_statement())
                 self._skip_newlines()
+                if not self._check_progress(_loop_pos):
+                    break
             if self._at(TokenKind.DEDENT):
                 self._advance()
         else:
