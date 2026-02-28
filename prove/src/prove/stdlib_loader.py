@@ -252,7 +252,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
         for td in all_types:
             # Index the type name itself
             index.setdefault(td.name, []).append(
-                ImportSuggestion(module=display, verb=None, name=td.name),
+                ImportSuggestion(module=display, verb="types", name=td.name),
             )
             # Index variant constructors for algebraic types
             if isinstance(td.body, AlgebraicTypeDef):
@@ -260,10 +260,16 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                     index.setdefault(variant.name, []).append(
                         ImportSuggestion(
                             module=display,
-                            verb=None,
+                            verb="types",
                             name=variant.name,
                         ),
                     )
 
     _import_index = index
     return _import_index
+
+
+def _reset_import_index() -> None:
+    """Clear the cached import index (used by tests)."""
+    global _import_index
+    _import_index = None

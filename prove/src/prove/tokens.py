@@ -16,6 +16,7 @@ class TokenKind(Enum):
     INPUTS = auto()
     OUTPUTS = auto()
     VALIDATES = auto()
+    TYPES = auto()
 
     # Keywords
     MAIN = auto()
@@ -126,6 +127,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "inputs": TokenKind.INPUTS,
     "outputs": TokenKind.OUTPUTS,
     "validates": TokenKind.VALIDATES,
+    "types": TokenKind.TYPES,
     "main": TokenKind.MAIN,
     "from": TokenKind.FROM,
     "type": TokenKind.TYPE,

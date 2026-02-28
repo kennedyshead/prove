@@ -67,10 +67,10 @@ module.exports = grammar({
       sep1($.import_group, ','),
     ),
 
-    import_group: $ => seq(
-      optional($.verb),
-      repeat1($.identifier),
-    ),
+    import_group: $ => prec.right(seq(
+      optional(choice($.verb, 'types')),
+      repeat1(choice($.identifier, $.type_identifier)),
+    )),
 
     // ─── Type Definitions ──────────────────────────────────────
 

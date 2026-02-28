@@ -20,8 +20,8 @@ def parse_check(source: str) -> tuple:
 
 def check(source: str) -> SymbolTable:
     """Parse and check source, asserting no errors. Returns symbol table."""
-    tokens = Lexer(source, "test.prv").lex()
-    module = Parser(tokens, "test.prv").parse()
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
     checker = Checker()
     st = checker.check(module)
     errors = [d for d in checker.diagnostics if d.severity.value == "error"]
@@ -31,8 +31,8 @@ def check(source: str) -> SymbolTable:
 
 def check_fails(source: str, error_code: str) -> list:
     """Parse and check source, asserting the given error code appears."""
-    tokens = Lexer(source, "test.prv").lex()
-    module = Parser(tokens, "test.prv").parse()
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
     checker = Checker()
     checker.check(module)
     matching = [d for d in checker.diagnostics if d.code == error_code]
@@ -45,8 +45,8 @@ def check_fails(source: str, error_code: str) -> list:
 
 def check_warns(source: str, warning_code: str) -> list:
     """Parse and check source, asserting the given warning code appears."""
-    tokens = Lexer(source, "test.prv").lex()
-    module = Parser(tokens, "test.prv").parse()
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
     checker = Checker()
     checker.check(module)
     matching = [d for d in checker.diagnostics if d.code == warning_code]

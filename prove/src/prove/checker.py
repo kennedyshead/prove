@@ -123,6 +123,26 @@ class Checker:
     def check(self, module: Module) -> SymbolTable:
         """Run both passes on a module. Raises nothing; check self.diagnostics."""
         self._register_builtins()
+
+        # Require a module declaration with narrative (skip for internal sources)
+        source_name = module.span.file if module.span else ""
+        if not source_name.startswith("<"):
+            mod_decls = [
+                d for d in module.declarations if isinstance(d, ModuleDecl)
+            ]
+            if not mod_decls:
+                self._error(
+                    "E200",
+                    "Prove requires a module declaration with narrative",
+                    module.span,
+                )
+            elif mod_decls[0].narrative is None:
+                self._error(
+                    "E200",
+                    "module declaration requires a narrative",
+                    mod_decls[0].span,
+                )
+
         # Pass 1: register all top-level declarations
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
@@ -213,6 +233,12 @@ class Checker:
         _dummy = Span("<builtin>", 0, 0, 0, 0)
 
         # Common built-in functions
+        # Builtins that accept additional types beyond their signature.
+        # Maps (func_name, param_index) → frozenset of extra types.
+        self._builtin_extra_types: dict[tuple[str, int], frozenset[Type]] = {
+            ("len", 0): frozenset({STRING}),
+        }
+
         builtins = [
             ("println", [STRING], UNIT),
             ("print", [STRING], UNIT),
@@ -349,6 +375,19 @@ class Checker:
         stdlib_map = {s.name: s for s in stdlib_sigs}
 
         for item in imp.items:
+            # Type imports (verb="types" or bare CamelCase with no verb)
+            is_type_import = (
+                item.verb == "types"
+                or (item.verb is None and item.name[:1].isupper())
+            )
+            if is_type_import:
+                self.symbols.define(Symbol(
+                    name=item.name, kind=SymbolKind.TYPE,
+                    resolved_type=PrimitiveType(item.name), span=item.span,
+                    verb=item.verb,
+                ))
+                continue
+
             # Check if stdlib has a real signature for this item
             real_sig = stdlib_map.get(item.name)
             if real_sig is not None:
@@ -866,6 +905,9 @@ class Checker:
             # Check argument types
             for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
                 if not types_compatible(expected, actual):
+                    extra = self._builtin_extra_types.get((name, i))
+                    if extra and any(types_compatible(e, actual) for e in extra):
+                        continue
                     self._error(
                         "E331",
                         f"argument type mismatch: expected "

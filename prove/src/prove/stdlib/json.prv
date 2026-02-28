@@ -1,5 +1,5 @@
 module Json
-  narrative: """Handles json operations"""
+  narrative: """Handles JSON encoding operations"""
 
 transforms encode_string(value String) String
 from

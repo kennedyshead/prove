@@ -1,5 +1,7 @@
 # Prove
 
+![Prove](../assets/icon.png)
+
 **A programming language that fights back against AI slop and code scraping.**
 
 Prove is a strongly typed, compiler-driven language where contracts generate tests, intent verbs enforce purity, and the compiler rejects code that can't demonstrate understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.

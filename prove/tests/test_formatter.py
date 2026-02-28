@@ -221,6 +221,10 @@ class TestFormatterImports:
         source = "module Foo\n  Http transforms ok not_found, validates method1 method2\n"
         assert _roundtrip(source) == source
 
+    def test_import_types_verb(self):
+        source = "module Foo\n  Http types Response Server, inputs listen\n"
+        assert _roundtrip(source) == source
+
 
 class TestFormatterConstants:
     def test_simple_constant(self):

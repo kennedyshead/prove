@@ -5,6 +5,7 @@ module InventoryService
   and all monetary calculations use exact decimal arithmetic.
   Orders are priced with tax and discount rules.
   """
+  Http types Response Server, inputs listen
 
   type Port is Integer:[16 Unsigned] where 1 .. 65535
 
@@ -53,16 +54,16 @@ module InventoryService
     | BuyNGetFree(buy Integer where self > 0, free Integer where self > 0)
 
   MAX_CONNECTIONS as Integer = comptime
-    if cfg.target == "embedded"
-        16
-    else
-        1024
+      if cfg.target == "embedded"
+          16
+      else
+          1024
 
   DEFAULT_TAX as TaxRule = comptime
-    TaxRule("SE", 0.25)
+      TaxRule("SE", 0.25)
 
   ROUTES as List<String> = comptime
-    ["/health", "/products", "/products/low-stock", "/orders"]
+      ["/health", "/products", "/products/low-stock", "/orders"]
 
   invariant_network InventoryAccounting
     sum_stock(products) >= 0
@@ -228,26 +229,10 @@ validates wholesale(quantity Quantity)
 from
     quantity > 10
 
-module Auth
-  temporal: authenticate -> authorize -> access
-
-    inputs authenticate(token String) User!
-    from
-        verify_jwt(token)!
-
-    transforms authorize(user User, resource String) Permission
-    from
-        lookup_permission(user.role, resource)
-
-    inputs access(perm Permission, db Database) Data!
-      requires perm.granted
-    from
-        query(db, perm.query)!
-
 inputs request(route Route, body String, db Database, token String) Response!
 from
     user as User = authenticate(token)!
-    match
+    match route
         Get(/health) => ok("healthy")
         Get(/products) => all_products(db)! |> encode |> ok
         Get(/products/low-stock) => all_products(db)! |> low_stock(5) |> encode |> ok

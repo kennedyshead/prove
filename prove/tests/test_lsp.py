@@ -14,10 +14,11 @@ from prove.lsp import (
     _get_word_at,
     _is_e310,
     _types_display,
+    completion,
     span_to_range,
 )
 from prove.source import Span
-from prove.stdlib_loader import ImportSuggestion, build_import_index
+from prove.stdlib_loader import ImportSuggestion, _reset_import_index, build_import_index
 from prove.symbols import FunctionSignature
 
 
@@ -116,6 +117,9 @@ class TestTypesDisplay:
 class TestAnalyze:
     def test_analyze_valid_source(self):
         source = (
+            "module Main\n"
+            '  narrative: """Test module"""\n'
+            "\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "from\n"
             "    a + b\n"
@@ -175,17 +179,25 @@ class TestBuildImportIndex:
         assert any(s.module == "Json" and s.verb == "transforms" for s in suggestions)
 
     def test_index_contains_type_variants(self):
+        _reset_import_index()
         index = build_import_index()
         # Post is a variant of type Method in http.prv
         assert "Post" in index
         suggestions = index["Post"]
-        assert any(s.module == "Http" and s.verb is None for s in suggestions)
+        assert any(s.module == "Http" and s.verb == "types" for s in suggestions)
 
     def test_index_contains_type_names(self):
+        _reset_import_index()
         index = build_import_index()
         assert "Method" in index
         assert "Request" in index
         assert "Response" in index
+        # Type names should have verb="types"
+        for name in ("Method", "Request", "Response"):
+            suggestions = index[name]
+            assert any(s.verb == "types" for s in suggestions), (
+                f"expected verb='types' for {name}"
+            )
 
     def test_index_no_duplicates_from_aliases(self):
         index = build_import_index()
@@ -299,3 +311,211 @@ class TestBuildImportEdit:
         assert "Json transforms encode_string" in edit.new_text
         # Should insert after line 1 (the existing import)
         assert edit.range.start.line == 2
+
+
+def _complete(uri: str, line: int = 0, character: int = 0) -> lsp.CompletionList:
+    """Helper to call the completion handler."""
+    params = lsp.CompletionParams(
+        text_document=lsp.TextDocumentIdentifier(uri=uri),
+        position=lsp.Position(line=line, character=character),
+    )
+    return completion(params)
+
+
+def _complete_labels(uri: str, **kwargs: int) -> set[str]:
+    """Return the set of completion labels for a URI."""
+    result = _complete(uri, **kwargs)
+    return {item.label for item in result.items}
+
+
+class TestCompletion:
+    """Completion must always provide stdlib and builtins, even with errors."""
+
+    def test_keywords_always_present(self):
+        _analyze("<test://kw>", "")
+        labels = _complete_labels("<test://kw>")
+        for kw in ("transforms", "validates", "inputs", "outputs", "from",
+                    "match", "if", "else", "module"):
+            assert kw in labels, f"keyword '{kw}' missing from completions"
+
+    def test_builtin_functions_always_present(self):
+        _analyze("<test://bi>", "")
+        labels = _complete_labels("<test://bi>")
+        for fn in ("println", "print", "readln", "len", "map",
+                    "filter", "reduce", "to_string", "clamp"):
+            assert fn in labels, f"builtin '{fn}' missing from completions"
+
+    def test_builtin_types_always_present(self):
+        _analyze("<test://ty>", "")
+        labels = _complete_labels("<test://ty>")
+        for ty in ("Integer", "String", "Boolean", "Decimal",
+                    "List", "Result", "Option", "Unit"):
+            assert ty in labels, f"type '{ty}' missing from completions"
+
+    def test_stdlib_functions_with_parse_errors(self):
+        """Stdlib completions must work even when the file cannot parse."""
+        _analyze("<test://broken>", "this is not valid prove code\n")
+        labels = _complete_labels("<test://broken>")
+        # Io
+        assert "println" in labels
+        # Json
+        assert "encode_string" in labels
+        # Http types
+        assert "Request" in labels
+        assert "Response" in labels
+
+    def test_stdlib_functions_with_valid_file(self):
+        _analyze(
+            "<test://valid>",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "main()\nfrom\n"
+            '    println("hi")\n',
+        )
+        labels = _complete_labels("<test://valid>")
+        assert "println" in labels
+        assert "encode_string" in labels
+
+    def test_stdlib_completions_have_detail(self):
+        """Stdlib items should show which module they come from."""
+        _analyze("<test://det>", "")
+        result = _complete("<test://det>")
+        by_label = {item.label: item for item in result.items}
+        println_item = by_label.get("println")
+        assert println_item is not None
+        assert println_item.detail is not None
+        assert "Io" in println_item.detail
+
+    def test_symbol_table_completions_when_parsed(self):
+        """User-defined names should appear when the file parses."""
+        _analyze(
+            "<test://sym>",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n",
+        )
+        labels = _complete_labels("<test://sym>")
+        assert "add" in labels
+
+    def test_no_duplicate_labels(self):
+        """Each label should appear at most once."""
+        _analyze("<test://dup>", "")
+        result = _complete("<test://dup>")
+        labels = [item.label for item in result.items]
+        assert len(labels) == len(set(labels)), (
+            f"duplicate completions: "
+            f"{[l for l in labels if labels.count(l) > 1]}"
+        )
+
+    def test_stdlib_completion_auto_imports(self):
+        """Selecting a stdlib completion should add the import."""
+        _analyze(
+            "file:///auto.prv",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "main()\nfrom\n"
+            '    println("hi")\n',
+        )
+        result = _complete("file:///auto.prv")
+        by_label = {item.label: item for item in result.items}
+
+        # encode_string should have an additional edit adding the import
+        item = by_label.get("encode_string")
+        assert item is not None
+        assert item.additional_text_edits is not None
+        assert len(item.additional_text_edits) == 1
+        edit = item.additional_text_edits[0]
+        assert "Json" in edit.new_text
+        assert "encode_string" in edit.new_text
+
+    def test_stdlib_completion_no_duplicate_import(self):
+        """If already imported, no additional edit should be added."""
+        _analyze(
+            "file:///noimport.prv",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "  Json transforms encode_string\n"
+            "\n"
+            "main()\nfrom\n"
+            '    encode_string("hi")\n',
+        )
+        result = _complete("file:///noimport.prv")
+        by_label = {item.label: item for item in result.items}
+
+        item = by_label.get("encode_string")
+        assert item is not None
+        # Already imported — no additional edit
+        assert item.additional_text_edits is None
+
+    def test_completion_does_not_insert_params(self):
+        """Completions must not insert placeholder parameter names."""
+        _analyze(
+            "file:///noparams.prv",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n",
+        )
+        result = _complete("file:///noparams.prv")
+        for item in result.items:
+            if item.insert_text is not None:
+                assert "(" not in item.insert_text, (
+                    f"completion '{item.label}' has insert_text with parens: "
+                    f"{item.insert_text!r}"
+                )
+
+    def test_auto_import_works_with_parse_errors(self):
+        """Auto-import must work even when the file has parse errors."""
+        _analyze(
+            "file:///parseerr.prv",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "outputs handle()\n"
+            "from\n"
+            "    match\n"
+            "        Get => ok()\n",
+        )
+        result = _complete("file:///parseerr.prv")
+        by_label = {item.label: item for item in result.items}
+
+        item = by_label.get("encode_string")
+        assert item is not None
+        assert item.additional_text_edits is not None, (
+            "auto-import should work even when file has parse errors"
+        )
+        edit = item.additional_text_edits[0]
+        assert "Json" in edit.new_text
+        assert "encode_string" in edit.new_text
+        # Should insert after narrative (line 2), not at end of file
+        assert edit.range.start.line == 2
+
+    def test_auto_import_after_existing_imports_with_errors(self):
+        """Auto-import should go after existing imports, even with errors."""
+        _analyze(
+            "file:///afterimport.prv",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "  Io outputs println\n"
+            "\n"
+            "outputs handle()\n"
+            "from\n"
+            "    match\n"
+            "        Get => ok()\n",
+        )
+        result = _complete("file:///afterimport.prv")
+        by_label = {item.label: item for item in result.items}
+
+        item = by_label.get("encode_string")
+        assert item is not None
+        assert item.additional_text_edits is not None
+        edit = item.additional_text_edits[0]
+        # Should insert after "Io outputs println" (line 2), so at line 3
+        assert edit.range.start.line == 3

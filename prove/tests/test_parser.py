@@ -461,6 +461,21 @@ class TestParserModules:
         assert imp.items[0].name == "contains"
         assert imp.items[1].name == "length"
 
+    def test_import_types_verb(self):
+        source = 'module Foo\n  Http types Response Server, inputs listen\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.imports) == 1
+        imp = decl.imports[0]
+        assert imp.module == "Http"
+        assert len(imp.items) == 3
+        assert imp.items[0].verb == "types"
+        assert imp.items[0].name == "Response"
+        assert imp.items[1].verb == "types"
+        assert imp.items[1].name == "Server"
+        assert imp.items[2].verb == "inputs"
+        assert imp.items[2].name == "listen"
+
     def test_import_with_verb(self):
         source = 'module Foo\n  Auth validates login, transforms login\n'
         decl = parse_decl(source)

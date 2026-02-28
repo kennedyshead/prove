@@ -1,4 +1,4 @@
-module InputOutput
+module Io
   narrative: """Handles IO operations"""
 
 outputs println(text String)

@@ -307,6 +307,45 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             kind=lsp.CompletionItemKind.Function,
         ))
 
+    # Built-in types (always available)
+    from prove.types import BUILTINS as _TYPE_BUILTINS
+    for type_name in _TYPE_BUILTINS:
+        items.append(lsp.CompletionItem(
+            label=type_name,
+            kind=lsp.CompletionItemKind.Class,
+        ))
+    # Generic types
+    for type_name in ("List", "Result", "Option"):
+        items.append(lsp.CompletionItem(
+            label=type_name,
+            kind=lsp.CompletionItemKind.Class,
+        ))
+
+    # Stdlib functions and types (always available, even with parse errors)
+    index = build_import_index()
+    for name, suggestions in index.items():
+        if suggestions:
+            s = suggestions[0]
+            is_type = s.verb == "types"
+            # Compute auto-import edit if we have document state
+            additional_edits: list[lsp.TextEdit] | None = None
+            if ds is not None:
+                edit = _build_import_edit(ds, s)
+                if edit is not None:
+                    additional_edits = [edit]
+            items.append(lsp.CompletionItem(
+                label=name,
+                kind=(
+                    lsp.CompletionItemKind.Struct if is_type
+                    else lsp.CompletionItemKind.Function
+                ),
+                detail=f"from {s.module}" + (
+                    f" ({s.verb})" if s.verb else ""
+                ),
+                additional_text_edits=additional_edits,
+            ))
+
+    # Symbol table completions (when file parses successfully)
     if ds is not None and ds.symbols is not None:
         # All known names from symbol table
         for name in ds.symbols.all_known_names():
@@ -329,28 +368,28 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     kind=lsp.CompletionItemKind.Text,
                 ))
 
-        # Function snippets
+        # Function signatures (detail only, no insert_text mangling)
         for (_verb, fname), sigs in ds.symbols.all_functions().items():
             if sigs:
                 sig = sigs[0]
-                params_str = ", ".join(sig.param_names)
                 items.append(lsp.CompletionItem(
                     label=fname,
                     kind=lsp.CompletionItemKind.Function,
                     detail=_types_display(sig),
-                    insert_text=f"{fname}({params_str})",
-                    insert_text_format=lsp.InsertTextFormat.PlainText,
                 ))
 
-    # Deduplicate by label
-    seen: set[str] = set()
-    unique: list[lsp.CompletionItem] = []
+    # Deduplicate by label (prefer items with detail over bare ones)
+    seen: dict[str, lsp.CompletionItem] = {}
     for item in items:
-        if item.label not in seen:
-            seen.add(item.label)
-            unique.append(item)
+        existing = seen.get(item.label)
+        if existing is None:
+            seen[item.label] = item
+        elif item.detail and not existing.detail:
+            seen[item.label] = item
 
-    return lsp.CompletionList(is_incomplete=False, items=unique)
+    return lsp.CompletionList(
+        is_incomplete=False, items=list(seen.values()),
+    )
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DEFINITION)
@@ -577,15 +616,87 @@ def _extract_undefined_name(message: str) -> str | None:
     return m.group(1) if m else None
 
 
+_IMPORT_VERBS = {"transforms", "validates", "inputs", "outputs", "types"}
+
+
+def _build_import_edit_text(
+    source: str, suggestion: ImportSuggestion,
+) -> lsp.TextEdit | None:
+    """Text-based fallback for auto-import when the AST is not available.
+
+    Scans source lines to find the module header and existing imports,
+    then inserts the new import at the right location.
+    """
+    lines = source.splitlines()
+    verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
+    new_import = f"  {suggestion.module} {verb_prefix}{suggestion.name}\n"
+
+    # Check if already imported (simple text match)
+    for line in lines:
+        stripped = line.strip()
+        if suggestion.name in stripped and suggestion.module in stripped:
+            return None
+
+    # Find the module header region
+    module_line: int | None = None
+    header_end: int = 0
+    last_import_line: int | None = None
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        if stripped.startswith("module ") and module_line is None:
+            module_line = i
+            header_end = i + 1
+            continue
+
+        if module_line is None:
+            continue
+
+        # Still in the header (narrative/temporal)
+        if stripped.startswith("narrative:") or stripped.startswith("temporal:"):
+            header_end = i + 1
+            continue
+
+        # Import lines: indented "ModuleName verb name, name"
+        # e.g. "  Io outputs println" or "  Json transforms encode_string"
+        if line.startswith("  ") and stripped:
+            parts = stripped.split()
+            if (len(parts) >= 3
+                    and parts[0][0].isupper()
+                    and parts[1] in _IMPORT_VERBS):
+                last_import_line = i
+                continue
+
+        # Past the header/import region — stop scanning
+        break
+
+    if module_line is None:
+        return None
+
+    if last_import_line is not None:
+        insert_line = last_import_line + 1
+    else:
+        insert_line = header_end
+
+    return lsp.TextEdit(
+        range=lsp.Range(
+            start=lsp.Position(line=insert_line, character=0),
+            end=lsp.Position(line=insert_line, character=0),
+        ),
+        new_text=new_import,
+    )
+
+
 def _build_import_edit(
     ds: DocumentState, suggestion: ImportSuggestion,
 ) -> lsp.TextEdit | None:
     """Compute TextEdit to insert or extend an import inside a module block.
 
-    Returns None if the name is already imported or the module is not parsed.
+    Falls back to text-based insertion when the module is not parsed.
     """
     if ds.module is None:
-        return None
+        return _build_import_edit_text(ds.source, suggestion)
 
     from prove.formatter import ProveFormatter
 

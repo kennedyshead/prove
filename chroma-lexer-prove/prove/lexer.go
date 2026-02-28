@@ -28,7 +28,7 @@ var (
 				{`[0-9][0-9_]*`, chroma.Number, nil},
 				// Annotation keywords (ensures, requires, proof, etc.)
 				{`\b(ensures|requires|proof)\b`, chroma.KeywordNamespace, nil},
-				{`\b(module|type|with|use|transforms|inputs|outputs|validates|main|from|if|else|match|where|comptime)\b`, chroma.Keyword, nil},
+				{`\b(module|type|with|use|transforms|inputs|outputs|validates|types|main|from|if|else|match|where|comptime)\b`, chroma.Keyword, nil},
 				// More annotation keywords
 				{`\b(invariant_network|know|assume|believe|intent|narrative|temporal|why_not|chosen|near_miss|satisfies)\b`, chroma.KeywordNamespace, nil},
 				{`\b(true|false)\b`, chroma.KeywordConstant, nil},

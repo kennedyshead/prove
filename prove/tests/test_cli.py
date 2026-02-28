@@ -36,7 +36,10 @@ def tmp_project(tmp_path):
     )
     src = tmp_path / "src"
     src.mkdir()
-    (src / "main.prv").write_text('main() Result<Unit, Error>!\nfrom\n    println("hi")\n')
+    (src / "main.prv").write_text(
+        'module Main\n  narrative: """Test project"""\n\n'
+        'main() Result<Unit, Error>!\nfrom\n    println("hi")\n'
+    )
     return tmp_path
 
 

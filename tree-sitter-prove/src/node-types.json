@@ -557,6 +557,10 @@
           "named": true
         },
         {
+          "type": "type_identifier",
+          "named": true
+        },
+        {
           "type": "verb",
           "named": true
         }
@@ -1599,6 +1603,10 @@
   {
     "type": "type_identifier",
     "named": true
+  },
+  {
+    "type": "types",
+    "named": false
   },
   {
     "type": "valid",

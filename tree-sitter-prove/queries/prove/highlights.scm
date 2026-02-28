@@ -8,6 +8,7 @@
   "inputs"
   "outputs"
   "validates"
+  "types"
 ] @keyword.function
 
 "main" @keyword.function
@@ -197,6 +198,9 @@
 
 (import_group
   (identifier) @function)
+
+(import_group
+  (type_identifier) @function)
 
 ; ─── Variable references (fallback) ───────────────────────────
 ; Must be last — more specific patterns above take precedence.

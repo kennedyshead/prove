@@ -101,6 +101,8 @@ _VERBS = frozenset({
     TokenKind.OUTPUTS, TokenKind.VALIDATES,
 })
 
+_IMPORT_VERBS = _VERBS | {TokenKind.TYPES}
+
 _OP_STRINGS: dict[TokenKind, str] = {
     TokenKind.PLUS: '+', TokenKind.MINUS: '-', TokenKind.STAR: '*',
     TokenKind.SLASH: '/', TokenKind.PERCENT: '%',
@@ -187,6 +189,17 @@ class Parser:
             return False
         return True
 
+    def _abort_missing_module(self) -> None:
+        """Replace all diagnostics with a single clear message and stop parsing."""
+        span = Span(self.filename, 1, 1, 1, 1)
+        self.diagnostics.clear()
+        self._error(
+            "Prove requires a module declaration with narrative — "
+            "add 'module <Name>' with a narrative as the first line",
+            span,
+        )
+        raise CompileError(self.diagnostics)
+
     def _synchronize(self) -> None:
         """Skip tokens until we find a reasonable recovery point."""
         while not self._at(TokenKind.EOF):
@@ -210,6 +223,8 @@ class Parser:
     def parse(self) -> Module:
         """Parse the entire token stream into a Module."""
         declarations: list[Declaration] = []
+        self._has_module_decl = False
+        self._recovery_mode = False
         self._skip_newlines()
 
         while not self._at(TokenKind.EOF):
@@ -218,7 +233,10 @@ class Parser:
                 decl = self._parse_declaration()
                 if decl is not None:
                     declarations.append(decl)
+                    self._recovery_mode = False
             except _ParseError:
+                if not self._has_module_decl:
+                    self._abort_missing_module()
                 self._synchronize()
             self._skip_newlines()
             # Skip orphaned INDENT/DEDENTs (e.g., from pipe continuation or error recovery)
@@ -254,12 +272,21 @@ class Parser:
         if tok.kind == TokenKind.MAIN:
             return self._parse_main_def(doc_comment)
         if tok.kind == TokenKind.MODULE:
+            self._has_module_decl = True
             return self._parse_module_decl()
 
         if tok.kind == TokenKind.EOF:
             return None
 
-        self._error(f"unexpected token at module level: {tok.kind.name} ({tok.value!r})", tok.span)
+        # Only report if this is the first unexpected-token error (avoid cascading)
+        if not self._recovery_mode:
+            self._error(
+                f"expected a declaration (module, transforms, validates, "
+                f"inputs, outputs, main) but found {tok.kind.name} "
+                f"({tok.value!r})",
+                tok.span,
+            )
+            self._recovery_mode = True
         raise _ParseError
 
     # ── Function definitions ─────────────────────────────────────
@@ -828,7 +855,7 @@ class Parser:
         """Parse a verb group: [verb] name+ (space-separated names share the verb)."""
         start = self._current().span
         verb: str | None = None
-        if self._current().kind in _VERBS:
+        if self._current().kind in _IMPORT_VERBS:
             verb = self._advance().value
 
         if verb in seen_verbs:
@@ -913,10 +940,15 @@ class Parser:
                         body.append(self._parse_main_def(doc))
                     else:
                         tok = self._current()
-                        self._error(
-                            f"unexpected token in module body: {tok.kind.name}",
-                            tok.span,
-                        )
+                        if not self._recovery_mode:
+                            self._error(
+                                f"expected a declaration (type, constant, "
+                                f"import, transforms, validates, inputs, "
+                                f"outputs, main) but found {tok.kind.name} "
+                                f"({tok.value!r})",
+                                tok.span,
+                            )
+                            self._recovery_mode = True
                         self._advance()
 
                 self._skip_newlines()
@@ -1351,7 +1383,10 @@ class Parser:
             self._advance()
             return IdentifierExpr(tok.value, tok.span)
 
-        self._error(f"unexpected token in expression: {tok.kind.name} ({tok.value!r})", tok.span)
+        self._error(
+            f"expected an expression but found {tok.kind.name} ({tok.value!r})",
+            tok.span,
+        )
         raise _ParseError
 
     def _parse_string_or_interp(self) -> Expr:
