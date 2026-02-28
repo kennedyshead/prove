@@ -206,3 +206,36 @@ class TestBuiltinDispatch:
         )
         c_code = _emit(source)
         assert "prove_clamp" in c_code
+
+
+class TestHigherOrderFunctions:
+    def test_map_integer_list(self):
+        source = (
+            "transforms doubled() List<Integer>\n"
+            "    from\n"
+            "        map([1, 2, 3], |x| x * 2)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_map" in c_code
+        assert "_lambda_" in c_code
+        assert '#include "prove_hof.h"' in c_code
+
+    def test_filter_integer_list(self):
+        source = (
+            "transforms evens() List<Integer>\n"
+            "    from\n"
+            "        filter([1, 2, 3, 4], |x| x > 2)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_filter" in c_code
+        assert "_lambda_" in c_code
+
+    def test_reduce_integer_list(self):
+        source = (
+            "transforms total() Integer\n"
+            "    from\n"
+            "        reduce([1, 2, 3], 0, |acc, x| acc + x)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_reduce" in c_code
+        assert "_lambda_" in c_code

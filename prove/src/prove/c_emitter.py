@@ -139,6 +139,40 @@ class CEmitter:
                 if ct.header:
                     self._needed_headers.add(ct.header)
 
+        # Check if HOF functions are used (map/filter/reduce)
+        self._scan_for_hof(self._module)
+
+    def _scan_for_hof(self, module: Module) -> None:
+        """Pre-scan AST for map/filter/reduce calls to include prove_hof.h."""
+        _hof_names = {"map", "filter", "reduce"}
+
+        def _scan_expr(expr: Expr) -> bool:
+            if isinstance(expr, CallExpr):
+                if isinstance(expr.func, IdentifierExpr) and expr.func.name in _hof_names:
+                    return True
+                for a in expr.args:
+                    if _scan_expr(a):
+                        return True
+            elif isinstance(expr, BinaryExpr):
+                return _scan_expr(expr.left) or _scan_expr(expr.right)
+            elif isinstance(expr, PipeExpr):
+                return _scan_expr(expr.left) or _scan_expr(expr.right)
+            return False
+
+        def _scan_stmts(stmts: list) -> bool:
+            for s in stmts:
+                if isinstance(s, ExprStmt) and _scan_expr(s.expr):
+                    return True
+                if isinstance(s, VarDecl) and _scan_expr(s.value):
+                    return True
+            return False
+
+        for decl in module.declarations:
+            if isinstance(decl, (FunctionDef, MainDef)):
+                if _scan_stmts(decl.body):
+                    self._needed_headers.add("prove_hof.h")
+                    return
+
     # ── Output helpers ─────────────────────────────────────────
 
     def _line(self, text: str) -> None:
@@ -584,6 +618,14 @@ class CEmitter:
                     return f"prove_string_len({', '.join(args)})"
                 return f"prove_list_len({', '.join(args)})"
 
+            # Higher-order functions: map, filter, reduce
+            if name == "map" and len(expr.args) == 2:
+                return self._emit_hof_map(expr)
+            if name == "filter" and len(expr.args) == 2:
+                return self._emit_hof_filter(expr)
+            if name == "reduce" and len(expr.args) == 3:
+                return self._emit_hof_reduce(expr)
+
             # Builtin mapping
             if name in _BUILTIN_MAP:
                 c_name = _BUILTIN_MAP[name]
@@ -627,6 +669,126 @@ class CEmitter:
             if ty.name == "String":
                 return ""  # identity — shouldn't happen
         return "prove_string_from_int"  # fallback
+
+    # ── Higher-order function emission ─────────────────────────
+
+    def _emit_hof_map(self, expr: CallExpr) -> str:
+        """Emit prove_list_map(list, fn, result_elem_size)."""
+        self._needed_headers.add("prove_hof.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        # Infer element type from the list
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+
+        # Emit lambda with correct types
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "map")
+        result_ct = map_type(elem_type)  # map result elem same type for now
+        return f"prove_list_map({list_arg}, {fn_name}, sizeof({result_ct.decl}))"
+
+    def _emit_hof_filter(self, expr: CallExpr) -> str:
+        """Emit prove_list_filter(list, pred)."""
+        self._needed_headers.add("prove_hof.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_list_filter({list_arg}, {fn_name})"
+
+    def _emit_hof_reduce(self, expr: CallExpr) -> str:
+        """Emit prove_list_reduce(list, &accum, fn)."""
+        self._needed_headers.add("prove_hof.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+
+        accum_type = self._infer_expr_type(expr.args[1])
+        accum_ct = map_type(accum_type)
+
+        # Emit initial accumulator into a temp
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[1])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        fn_name = self._emit_hof_lambda(
+            expr.args[2], elem_type, "reduce", accum_type=accum_type,
+        )
+        self._line(f"prove_list_reduce({list_arg}, &{accum_tmp}, {fn_name});")
+        return accum_tmp
+
+    def _emit_hof_lambda(
+        self, expr: Expr, elem_type: Type, kind: str,
+        *, accum_type: Type | None = None,
+    ) -> str:
+        """Emit a lambda for HOF use with correct C signature."""
+        if not isinstance(expr, LambdaExpr):
+            # Not a lambda — assume it's an identifier referencing a function
+            return self._emit_expr(expr)
+
+        name = f"_lambda_{self._tmp_counter}"
+        self._tmp_counter += 1
+        elem_ct = map_type(elem_type)
+
+        if kind == "map":
+            # void *fn(const void *_arg)
+            param = expr.params[0] if expr.params else "_x"
+            # Save and set locals for lambda body
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(expr.body)
+            self._locals = saved_locals
+            lam = (
+                f"static void *{name}(const void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
+                f"    static {elem_ct.decl} _result;\n"
+                f"    _result = {body_code};\n"
+                f"    return &_result;\n"
+                f"}}\n"
+            )
+        elif kind == "filter":
+            # bool fn(const void *_arg)
+            param = expr.params[0] if expr.params else "_x"
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(expr.body)
+            self._locals = saved_locals
+            lam = (
+                f"static bool {name}(const void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
+                f"    return {body_code};\n"
+                f"}}\n"
+            )
+        elif kind == "reduce":
+            # void fn(void *_accum, const void *_elem)
+            accum_param = expr.params[0] if len(expr.params) > 0 else "_acc"
+            elem_param = expr.params[1] if len(expr.params) > 1 else "_el"
+            accum_ct = map_type(accum_type) if accum_type else elem_ct
+            saved_locals = dict(self._locals)
+            self._locals[accum_param] = accum_type if accum_type else elem_type
+            self._locals[elem_param] = elem_type
+            body_code = self._emit_expr(expr.body)
+            self._locals = saved_locals
+            lam = (
+                f"static void {name}(void *_accum, const void *_elem) {{\n"
+                f"    {accum_ct.decl} *{accum_param} = ({accum_ct.decl}*)_accum;\n"
+                f"    {elem_ct.decl} {elem_param} = *({elem_ct.decl}*)_elem;\n"
+                f"    *{accum_param} = {body_code};\n"
+                f"}}\n"
+            )
+        else:
+            return self._emit_expr(expr)
+
+        self._lambdas.append(lam)
+        return name
 
     # ── Field access ───────────────────────────────────────────
 
