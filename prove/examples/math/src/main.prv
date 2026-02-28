@@ -2,29 +2,29 @@
 /// add(0, 0) == 0
 /// add(-1, 1) == 0
 transforms add(a Integer, b Integer) Integer
-    ensures result == a + b
-    from
-        a + b
+  ensures result == a + b
+from
+    a + b
 
 /// double(5) == 10
 /// double(0) == 0
 transforms double(n Integer) Integer
-    ensures result == n * 2
-    from
-        n * 2
+  ensures result == n * 2
+from
+    n * 2
 
 /// Returns the absolute value.
 transforms abs_val(n Integer) Integer
-    ensures result >= 0
-    believe: result >= 0
-    from
-        if n >= 0
-            n
-        else
-            0 - n
+  ensures result >= 0
+  believe: result >= 0
+from
+    if n >= 0
+        n
+    else
+        0 - n
 
 main()
-    from
-        println(to_string(add(10, 20)))
-        println(to_string(double(15)))
-        println(to_string(abs_val(-42)))
+from
+    println(to_string(add(10, 20)))
+    println(to_string(double(15)))
+    println(to_string(abs_val(-42)))
