@@ -207,6 +207,7 @@ class Parser:
                 self._advance()
                 return
             if self._at(TokenKind.DEDENT):
+                self._advance()
                 return
             self._advance()
 

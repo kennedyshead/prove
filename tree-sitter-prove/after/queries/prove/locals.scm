@@ -10,4 +10,9 @@
 (variable_declaration (identifier) @local.definition)
 (lambda_expression (identifier) @local.definition)
 
+; Function calls are references, not definitions
+(call_expression (identifier) @local.reference)
+(valid_expression (identifier) @local.reference)
+
+; Other identifiers are references
 (identifier) @local.reference

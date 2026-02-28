@@ -208,6 +208,238 @@ class TestBuiltinDispatch:
         assert "prove_clamp" in c_code
 
 
+class TestMatchExpression:
+    def test_match_algebraic_switch(self):
+        source = (
+            "type Color is\n"
+            "    Red\n"
+            "    Green\n"
+            "    Blue\n"
+            "\n"
+            "transforms name(c Color) String\n"
+            "    from\n"
+            "        match c\n"
+            '            Red => "red"\n'
+            '            Green => "green"\n'
+            '            Blue => "blue"\n'
+        )
+        c_code = _emit(source)
+        assert "switch" in c_code
+        assert "Prove_Color_TAG_RED" in c_code
+        assert "Prove_Color_TAG_GREEN" in c_code
+        assert "Prove_Color_TAG_BLUE" in c_code
+
+    def test_match_with_binding(self):
+        source = (
+            "type Shape is\n"
+            "    Circle(radius Integer)\n"
+            "    Square(side Integer)\n"
+            "\n"
+            "transforms area(s Shape) Integer\n"
+            "    from\n"
+            "        match s\n"
+            "            Circle(r) => r * r\n"
+            "            Square(s) => s * s\n"
+        )
+        c_code = _emit(source)
+        assert "switch" in c_code
+        assert "Prove_Shape_TAG_CIRCLE" in c_code
+        assert "Prove_Shape_TAG_SQUARE" in c_code
+        # Bindings should be declared inside case blocks
+        assert "int64_t r =" in c_code
+        # Match arm bindings should NOT leak to function-level releases
+        assert "prove_release(r)" not in c_code
+        assert "prove_release(s)" not in c_code
+
+    def test_match_string_binding_no_leak(self):
+        source = (
+            "type Route is\n"
+            "    Get(path String)\n"
+            "    Post(path String)\n"
+            "\n"
+            "transforms handle(route Route) String\n"
+            "    from\n"
+            "        match route\n"
+            '            Get(path) => "GET " + path\n'
+            '            Post(path) => "POST " + path\n'
+        )
+        c_code = _emit(source)
+        assert "switch" in c_code
+        # path is declared inside case blocks, should not be released at function scope
+        assert "prove_release(path)" not in c_code
+
+
+class TestAlgebraicConstructors:
+    def test_unit_variant_constructor(self):
+        source = (
+            "type Color is\n"
+            "    Red\n"
+            "    Blue\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        x as Color = Red()\n"
+            '        println("done")\n'
+        )
+        c_code = _emit(source)
+        assert "static inline Prove_Color Red(void)" in c_code
+        assert "static inline Prove_Color Blue(void)" in c_code
+
+    def test_data_variant_constructor(self):
+        source = (
+            "type Expr is\n"
+            "    Num(val Integer)\n"
+            "    Add(left Integer, right Integer)\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        x as Expr = Num(42)\n"
+            '        println("done")\n'
+        )
+        c_code = _emit(source)
+        assert "static inline Prove_Expr Num(int64_t val)" in c_code
+        assert "static inline Prove_Expr Add(int64_t left, int64_t right)" in c_code
+        assert "_v.tag = Prove_Expr_TAG_NUM;" in c_code
+
+
+class TestRecordFieldAccess:
+    def test_record_field(self):
+        source = (
+            "type Point is\n"
+            "    x Integer\n"
+            "    y Integer\n"
+            "\n"
+            "transforms get_x(p Point) Integer\n"
+            "    from\n"
+            "        p.x\n"
+        )
+        c_code = _emit(source)
+        assert "p.x" in c_code
+
+
+class TestListLiteralAndIndex:
+    def test_list_literal(self):
+        source = (
+            "transforms nums() List<Integer>\n"
+            "    from\n"
+            "        [10, 20, 30]\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_new" in c_code
+        assert "prove_list_push" in c_code
+        assert "10L" in c_code
+
+    def test_list_index(self):
+        source = (
+            "transforms first() Integer\n"
+            "    from\n"
+            "        xs as List<Integer> = [1, 2, 3]\n"
+            "        xs[0]\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_get" in c_code
+        assert "0L" in c_code
+
+
+class TestPipeExpression:
+    def test_pipe_to_function(self):
+        source = (
+            "transforms double(x Integer) Integer\n"
+            "    from\n"
+            "        x * 2\n"
+            "\n"
+            "transforms compute() Integer\n"
+            "    from\n"
+            "        5 |> double\n"
+        )
+        c_code = _emit(source)
+        assert "transforms_double_Integer(5L)" in c_code
+
+    def test_pipe_to_builtin(self):
+        source = (
+            "outputs show()\n"
+            "    from\n"
+            '        "hello" |> println\n'
+        )
+        c_code = _emit(source)
+        assert "prove_println" in c_code
+
+
+class TestFailPropagation:
+    def test_fail_prop_emits_result_check(self):
+        source = (
+            "inputs risky() Result<Integer, Error>!\n"
+            "    from\n"
+            "        42\n"
+            "\n"
+            "inputs caller() Result<Integer, Error>!\n"
+            "    from\n"
+            "        risky()!\n"
+        )
+        c_code = _emit(source)
+        assert "Prove_Result" in c_code
+        assert "prove_result_is_err" in c_code
+
+    def test_fail_prop_unwraps_int(self):
+        source = (
+            "inputs risky() Result<Integer, Error>!\n"
+            "    from\n"
+            "        42\n"
+            "\n"
+            "inputs caller() Result<Integer, Error>!\n"
+            "    from\n"
+            "        risky()!\n"
+        )
+        c_code = _emit(source)
+        assert "prove_result_unwrap_int" in c_code
+
+
+class TestAssumeAssertion:
+    def test_assume_emits_if_panic(self):
+        source = (
+            "transforms safe_div(a Integer, b Integer) Integer\n"
+            "    assume: b != 0\n"
+            "    from\n"
+            "        a / b\n"
+        )
+        c_code = _emit(source)
+        assert "prove_panic" in c_code
+        assert "assumption violated" in c_code
+
+
+class TestStringInterpolationEdgeCases:
+    def test_interp_with_integer(self):
+        source = (
+            "transforms msg(n Integer) String\n"
+            "    from\n"
+            '        "count: {n}"\n'
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_int(n)" in c_code
+        assert "prove_string_concat" in c_code
+
+    def test_interp_with_boolean(self):
+        source = (
+            "transforms msg(b Boolean) String\n"
+            "    from\n"
+            '        "flag: {b}"\n'
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_bool(b)" in c_code
+
+    def test_interp_with_string_var(self):
+        source = (
+            "transforms msg(name String) String\n"
+            "    from\n"
+            '        "hello {name}"\n'
+        )
+        c_code = _emit(source)
+        # String vars should be used directly, not converted
+        assert "prove_string_concat" in c_code
+        # Should NOT call prove_string_from_int on a string
+        assert "prove_string_from_int(name)" not in c_code
+
+
 class TestHigherOrderFunctions:
     def test_map_integer_list(self):
         source = (

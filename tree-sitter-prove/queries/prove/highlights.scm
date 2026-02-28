@@ -205,4 +205,7 @@
 ; ─── Variable references (fallback) ───────────────────────────
 ; Must be last — more specific patterns above take precedence.
 
-(identifier) @variable
+; Binary expressions, unary expressions, etc. contain identifier operands
+(binary_expression (identifier) @variable)
+(unary_expression (identifier) @variable)
+(match_arm (identifier) @variable)

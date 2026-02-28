@@ -1,6 +1,8 @@
 # Prove Language Specification
 
-> A strongly typed, compiler-driven, auto-tested programming language where **"if it compiles, it ships."**
+> **A programming language that fights back against AI slop and code scraping.**
+
+Prove is a strongly typed, compiler-driven language where contracts generate tests, intent verbs enforce purity, and the compiler rejects code that can't demonstrate understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
 
 ## Philosophy
 
@@ -29,7 +31,7 @@ The compiler POC is implemented in Python (>=3.11). The goal is to validate the 
 
 ### Compilation Target: Native Code
 
-As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via LLVM or Cranelift (to be decided). No VM, no interpreter for production output.
+As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via direct assembly emission (x86_64 + ARM64). No VM, no interpreter for production output.
 
 ### First POC: RESTful Server
 
@@ -499,9 +501,6 @@ from
     contains(address, "@") && contains(address, ".")
 
 /// Retrieves all users from the database.
-///
-///   users() == [User(1, "Alice", "alice@example.com")]
-///
 inputs users(db Database) List<User>!
 from
     query(db, "SELECT * FROM users")!
@@ -540,7 +539,7 @@ from
 
 ### Refinement Types
 
-Types carry constraints, not just shapes. The compiler rejects invalid values statically — no runtime checks, no panics, no `unwrap()`.
+Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no `unwrap()`.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535
@@ -647,11 +646,11 @@ transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Index>
 
 ## Auto-Testing
 
-Testing is not a separate activity. It is woven into the language at four levels.
+Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.
 
 ### Level 1: Contracts Generate Property Tests
 
-No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold.
+No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
 
 ```prove
 transforms sort(xs List<T>) List<T>
@@ -662,21 +661,7 @@ from
     // implementation
 ```
 
-### Level 2: Examples Are Tests
-
-Every doc example is compiled and executed on every build. Stale docs are compile errors.
-
-```prove
-/// Splits a string by delimiter.
-///
-///   split("a,b,c", ",") == ["a", "b", "c"]
-///   split("hello", ",") == ["hello"]
-///   split("", ",") == [""]
-///
-transforms split(s String, delim String) List<String>
-```
-
-### Level 3: Automatic Edge-Case Generation
+### Level 2: Automatic Edge-Case Generation
 
 Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:
 
@@ -725,7 +710,7 @@ The ownership system and effect types combine to eliminate data races at compile
 
 ## Error Handling — Errors Are Values
 
-No exceptions. No panics. Every failure path is visible in the type signature. Uses `?` for error propagation.
+No exceptions. Every failure path is visible in the type signature. Uses `!` for error propagation. Panics exist only for violated `assume:` assertions at system boundaries — normal error handling is always through `Result` values.
 
 ```prove
 main() Result<Unit, Error>!
@@ -751,11 +736,10 @@ from
 
 | Pain in existing languages | How Prove solves it |
 |---|---|
-| Tests are separate from code | Contracts + doc examples *are* tests |
+| Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit (`inputs`/`outputs`) |
 | Null/nil crashes | No null — use `Option<T>`, enforced by compiler |
 | Race conditions | Ownership + verb system prevents data races |
-| Stale documentation | Doc examples are compiled; stale = build failure |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Slow test suites | Property tests run at compile time when provable |
 | Runtime type errors | Refinement types catch invalid values at compile time |
