@@ -3,7 +3,6 @@
 Extracts testable properties from:
 - `ensures` postconditions
 - `requires` preconditions (used to constrain random inputs)
-- doc comment examples
 - `near_miss` annotations (explicit negative test cases)
 - `believe` annotations (adversarial test generation)
 
@@ -195,23 +194,19 @@ class TestGenerator:
         if isinstance(ret_type, (ErrorType, GenericInstance)):
             return
 
-        # 1. Doc comment examples
-        if fd.doc_comment:
-            self._gen_doc_tests(fd, mangled, param_types, ret_type, suite)
-
-        # 2. Near-miss tests
+        # Near-miss tests
         for nm in fd.near_misses:
             self._gen_near_miss_test(
                 fd, nm, mangled, param_types, ret_type, suite,
             )
 
-        # 3. Property tests from ensures
+        # Property tests from ensures
         if fd.ensures and self._all_testable(param_types):
             self._gen_property_tests(
                 fd, mangled, param_types, ret_type, suite,
             )
 
-        # 4. Believe annotations → adversarial tests
+        # Believe annotations → adversarial tests
         if fd.believe and self._all_testable(param_types):
             self._gen_believe_tests(
                 fd, mangled, param_types, ret_type, suite,
@@ -225,86 +220,6 @@ class TestGenerator:
             if t.name not in ("Integer", "Decimal", "Float", "Boolean"):
                 return False
         return True
-
-    # ── Doc comment tests ──────────────────────────────────────
-
-    def _gen_doc_tests(
-        self,
-        fd: FunctionDef,
-        mangled: str,
-        param_types: list[Type],
-        ret_type: Type,
-        suite: TestSuite,
-    ) -> None:
-        """Extract test cases from doc comments.
-
-        Looks for lines like: `add(1, 2) == 3`
-        """
-        if not fd.doc_comment:
-            return
-
-        for line in fd.doc_comment.split("\n"):
-            line = line.strip()
-            if not line or "==" not in line:
-                continue
-            # Try to parse: func(args) == expected
-            if "(" not in line:
-                continue
-            self._test_counter += 1
-            name = f"_test_doc_{fd.name}_{self._test_counter}"
-            code = self._gen_doc_example_code(
-                line, fd, mangled, name,
-            )
-            if code:
-                suite.cases.append(TestCase(name=name, code=code))
-
-    def _gen_doc_example_code(
-        self,
-        line: str,
-        fd: FunctionDef,
-        mangled: str,
-        test_name: str,
-    ) -> str | None:
-        """Try to generate C test code from a doc example line."""
-        # Parse "func(args) == expected"
-        parts = line.split("==")
-        if len(parts) != 2:
-            return None
-        call_part = parts[0].strip()
-        expected_part = parts[1].strip()
-
-        # Simple integer expected value
-        try:
-            expected_val = int(expected_part)
-        except ValueError:
-            return None
-
-        # Extract args from call
-        if "(" not in call_part or ")" not in call_part:
-            return None
-        args_str = call_part[call_part.index("(") + 1:call_part.rindex(")")]
-        args = [a.strip() for a in args_str.split(",") if a.strip()]
-        c_args = []
-        for a in args:
-            try:
-                int(a)
-                c_args.append(f"{a}L")
-            except ValueError:
-                try:
-                    float(a)
-                    c_args.append(a)
-                except ValueError:
-                    c_args.append(f'prove_string_from_cstr("{a}")')
-
-        arg_str = ", ".join(c_args)
-        return (
-            f'int64_t _result = {mangled}({arg_str});\n'
-            f'if (_result == {expected_val}L) {{\n'
-            f'    _test_pass("{test_name}");\n'
-            f'}} else {{\n'
-            f'    _test_fail("{test_name}", "wrong result");\n'
-            f'}}'
-        )
 
     # ── Near-miss tests ────────────────────────────────────────
 

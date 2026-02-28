@@ -1,0 +1,8 @@
+pyproject.toml
+pygments_prove/__init__.py
+pygments_prove.egg-info/PKG-INFO
+pygments_prove.egg-info/SOURCES.txt
+pygments_prove.egg-info/dependency_links.txt
+pygments_prove.egg-info/entry_points.txt
+pygments_prove.egg-info/requires.txt
+pygments_prove.egg-info/top_level.txt

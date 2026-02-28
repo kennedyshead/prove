@@ -11,6 +11,8 @@ class TestTestGenerator:
         source = (
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
+            "    proof\n"
+            '        correctness: "result is sum of a and b"\n'
             "    from\n"
             "        a + b\n"
         )
@@ -23,23 +25,13 @@ class TestTestGenerator:
         assert any("prop" in n for n in names)
         assert any("boundary" in n for n in names)
 
-    def test_generates_from_doc_comment(self):
-        source = (
-            "/// add(1, 2) == 3\n"
-            "transforms add(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a + b\n"
-        )
-        module, symbols = _parse_check(source)
-        gen = TestGenerator(module, symbols)
-        suite = gen.generate()
-        names = [tc.name for tc in suite.cases]
-        assert any("doc" in n for n in names)
-
     def test_generates_from_believe(self):
         source = (
             "transforms abs_val(n Integer) Integer\n"
+            "    ensures result >= 0\n"
             "    believe: result >= 0\n"
+            "    proof\n"
+            '        non_negative: "result is abs so >= 0"\n'
             "    from\n"
             "        if n >= 0\n"
             "            n\n"
@@ -79,6 +71,8 @@ class TestTestGenerator:
         source = (
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
+            "    proof\n"
+            '        correctness: "result is sum of a and b"\n'
             "    from\n"
             "        a + b\n"
         )

@@ -27,10 +27,16 @@ class TestConfig:
 
 
 @dataclass
+class StyleConfig:
+    line_length: int = 90
+
+
+@dataclass
 class ProveConfig:
     package: PackageConfig = field(default_factory=PackageConfig)
     build: BuildConfig = field(default_factory=BuildConfig)
     test: TestConfig = field(default_factory=TestConfig)
+    style: StyleConfig = field(default_factory=StyleConfig)
 
 
 def find_config(start_path: Path | None = None) -> Path:
@@ -75,6 +81,12 @@ def load_config(path: Path) -> ProveConfig:
         tst = data["test"]
         config.test = TestConfig(
             property_rounds=tst.get("property_rounds", 1000),
+        )
+
+    if "style" in data:
+        sty = data["style"]
+        config.style = StyleConfig(
+            line_length=sty.get("line_length", 90),
         )
 
     return config

@@ -3,7 +3,7 @@
 from prove.ast_nodes import FunctionDef, IntegerLit, ProofBlock, ProofObligation
 from prove.prover import ProofVerifier
 from prove.source import Span
-from tests.helpers import check, check_warns
+from tests.helpers import check, check_fails, check_warns
 
 _DUMMY = Span("<test>", 1, 1, 1, 1)
 
@@ -24,13 +24,13 @@ def _make_fd(**kwargs) -> FunctionDef:
 class TestProofVerification:
     """Test proof verification errors and warnings."""
 
-    def test_ensures_without_proof_warning(self):
-        check_warns(
+    def test_ensures_without_proof_error(self):
+        check_fails(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
             "    from\n"
             "        a + b\n",
-            "W390",
+            "E390",
         )
 
     def test_ensures_with_proof_no_warning(self):
@@ -57,7 +57,7 @@ class TestProofVerification:
         codes = [d.code for d in verifier.diagnostics]
         assert "E391" in codes
 
-    def test_obligation_coverage_warning_direct(self):
+    def test_obligation_coverage_error_direct(self):
         """Test obligation coverage using ProofVerifier directly."""
         obl = ProofObligation(name="one", text="covers result", span=_DUMMY)
         proof = ProofBlock(obligations=[obl], span=_DUMMY)
@@ -71,7 +71,7 @@ class TestProofVerification:
         verifier = ProofVerifier()
         verifier.verify(fd)
         codes = [d.code for d in verifier.diagnostics]
-        assert "W320" in codes
+        assert "E392" in codes
 
     def test_proof_text_no_references_warning_direct(self):
         """Test proof text reference checking using ProofVerifier directly."""
@@ -87,8 +87,8 @@ class TestProofVerification:
         codes = [d.code for d in verifier.diagnostics]
         assert "W321" in codes
 
-    def test_believe_without_ensures_warning(self):
-        check_warns(
+    def test_believe_without_ensures_error(self):
+        check_fails(
             "transforms abs_val(n Integer) Integer\n"
             "    believe: result >= 0\n"
             "    from\n"
@@ -96,11 +96,11 @@ class TestProofVerification:
             "            n\n"
             "        else\n"
             "            0 - n\n",
-            "W323",
+            "E393",
         )
 
-    def test_believe_with_ensures_no_w323(self):
-        """W323 should not fire when ensures is present."""
+    def test_believe_with_ensures_no_e393(self):
+        """E393 should not fire when ensures is present."""
         from prove.checker import Checker
         from prove.lexer import Lexer
         from prove.parser import Parser
@@ -109,6 +109,8 @@ class TestProofVerification:
             "transforms abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
+            "    proof\n"
+            '        non_negative: "result is abs so >= 0"\n'
             "    from\n"
             "        if n >= 0\n"
             "            n\n"
@@ -119,8 +121,31 @@ class TestProofVerification:
         module = Parser(tokens, "test.prv").parse()
         checker = Checker()
         checker.check(module)
-        w323 = [d for d in checker.diagnostics if d.code == "W323"]
-        assert not w323, "should not warn W323 when ensures is present"
+        e393 = [d for d in checker.diagnostics if d.code == "E393"]
+        assert not e393, "should not error E393 when ensures is present"
+
+
+    def test_ensures_without_requires_warning(self):
+        check_warns(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    ensures result == a + b\n"
+            "    proof\n"
+            '        correctness: "result is sum of a and b"\n'
+            "    from\n"
+            "        a + b\n",
+            "W324",
+        )
+
+    def test_ensures_with_requires_no_w324(self):
+        check(
+            "transforms safe_div(a Integer, b Integer) Integer\n"
+            "    requires b != 0\n"
+            "    ensures result == a / b\n"
+            "    proof\n"
+            '        correctness: "result is a divided by b"\n'
+            "    from\n"
+            "        a / b\n"
+        )
 
 
 class TestAssumeAssertion:

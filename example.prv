@@ -7,7 +7,6 @@
 
 
 
-
 module InventoryService
     narrative: """
     Products are added to inventory with validated stock levels.

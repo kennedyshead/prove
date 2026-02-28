@@ -1,12 +1,13 @@
 """Structural proof verification for the Prove language.
 
 Checks proof blocks for completeness and consistency:
-- E390: ensures without proof block
-- E391: duplicate obligation names
-- W320: obligations don't cover ensures count
+- E390: ensures without proof block (error)
+- E391: duplicate obligation names (error)
+- E392: proof obligations < ensures count (error)
+- E393: believe without ensures (error)
 - W321: proof text doesn't reference function concepts
 - W322: duplicate near-miss inputs
-- W323: believe without ensures
+- W324: ensures without requires
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ class ProofVerifier:
         self._check_proof_references(fd)
         self._check_near_miss_duplicates(fd)
         self._check_believe_without_ensures(fd)
+        self._check_ensures_without_requires(fd)
 
     def _error(self, code: str, message: str, span: Span) -> None:
         self.diagnostics.append(Diagnostic(
@@ -48,10 +50,10 @@ class ProofVerifier:
         ))
 
     def _check_ensures_proof(self, fd: FunctionDef) -> None:
-        """W390: ensures without proof block."""
+        """E390: ensures without proof block."""
         if fd.ensures and fd.proof is None:
-            self._warning(
-                "W390",
+            self._error(
+                "E390",
                 f"function '{fd.name}' has ensures but no proof block",
                 fd.span,
             )
@@ -71,12 +73,12 @@ class ProofVerifier:
             seen.add(obl.name)
 
     def _check_obligation_coverage(self, fd: FunctionDef) -> None:
-        """W320: obligations should cover ensures count."""
+        """E392: obligations must cover ensures count."""
         if fd.proof is None or not fd.ensures:
             return
         if len(fd.proof.obligations) < len(fd.ensures):
-            self._warning(
-                "W320",
+            self._error(
+                "E392",
                 f"proof has {len(fd.proof.obligations)} obligation(s) "
                 f"but {len(fd.ensures)} ensures clause(s)",
                 fd.proof.span,
@@ -117,11 +119,20 @@ class ProofVerifier:
             seen.append(nm)
 
     def _check_believe_without_ensures(self, fd: FunctionDef) -> None:
-        """W323: believe without ensures."""
+        """E393: believe without ensures."""
         if fd.believe and not fd.ensures:
-            self._warning(
-                "W323",
+            self._error(
+                "E393",
                 f"function '{fd.name}' has believe but no ensures",
+                fd.span,
+            )
+
+    def _check_ensures_without_requires(self, fd: FunctionDef) -> None:
+        """W324: ensures without requires."""
+        if fd.ensures and not fd.requires:
+            self._warning(
+                "W324",
+                f"function '{fd.name}' has ensures but no requires",
                 fd.span,
             )
 
