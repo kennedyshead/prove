@@ -2,9 +2,8 @@
 ///
 /// A complete Prove service demonstrating: refinement types, algebraic types,
 /// contracts with proof obligations, validators, transforms, IO verbs,
-/// implicit match, lambdas, pipes, doc-example tests, epistemic annotations,
+/// implicit match, lambdas, pipes, epistemic annotations,
 /// counterfactual reasoning, near-miss testing, and narrative coherence.
-
 
 
 module InventoryService
