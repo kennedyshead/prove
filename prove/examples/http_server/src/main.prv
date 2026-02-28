@@ -11,12 +11,12 @@ type Route is
 /// handle(Get("/health")) == "GET /health"
 /// handle(Post("/users")) == "POST /users"
 transforms handle(route Route) String
-    from
-        match route
-            Get(path) => "GET " + path
-            Post(path) => "POST " + path
+from
+    match route
+        Get(path) => "GET " + path
+        Post(path) => "POST " + path
 
 main()
-    from
-        println(handle(Get("/health")))
-        println(handle(Post("/users")))
+from
+    println(handle(Get("/health")))
+    println(handle(Post("/users")))

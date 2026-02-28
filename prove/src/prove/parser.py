@@ -326,6 +326,10 @@ class Parser:
             elif self._at(TokenKind.SATISFIES):
                 self._advance()
                 satisfies.append(self._expect(TokenKind.TYPE_IDENTIFIER).value)
+            elif self._at(TokenKind.DEDENT):
+                # Annotations indented under function, `from` back at column 0
+                self._advance()
+                in_indent = False
             else:
                 break
             self._skip_newlines()
@@ -334,7 +338,7 @@ class Parser:
         self._skip_newlines()
         body = self._parse_body()
 
-        # If we entered an indent block for annotations/from, consume its DEDENT
+        # If we entered an indent block that included `from`, consume its DEDENT
         if in_indent and self._at(TokenKind.DEDENT):
             self._advance()
 
