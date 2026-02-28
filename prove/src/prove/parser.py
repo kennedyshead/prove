@@ -48,6 +48,7 @@ from prove.ast_nodes import (
     PipeExpr,
     ProofBlock,
     ProofObligation,
+    RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
     RegexLit,
@@ -636,10 +637,14 @@ class Parser:
 
         # Peek to see if this looks like a refinement base type followed by 'where'
         # or a modified/generic type followed by 'where'
-        if self._is_refinement_type():
+        if self._is_refinement_or_alias_type():
             type_expr = self._parse_type_expr()
-            self._expect(TokenKind.WHERE)
-            constraint = self._parse_refinement_constraint()
+            if self._at(TokenKind.WHERE):
+                self._advance()
+                constraint = self._parse_refinement_constraint()
+            else:
+                # Bare type alias (e.g. String:[Reg]) — no constraint
+                constraint = BooleanLit(True, type_expr.span)
             end = self._current().span
             return RefinementTypeDef(type_expr, constraint,
                                     self._span(start, end))
@@ -673,10 +678,14 @@ class Parser:
         end = variants[-1].span
         return AlgebraicTypeDef(variants, self._span(start, end))
 
-    def _is_refinement_type(self) -> bool:
-        """Look ahead to determine if the current position starts a refinement type."""
+    def _is_refinement_or_alias_type(self) -> bool:
+        """Look ahead to determine if the current position starts a
+        refinement type (Type where ...) or a bare type alias
+        (e.g. String:[Reg] with no 'where').
+        """
         # Skip past the type name
         idx = self.pos + 1
+        saw_modifier = False
         # Check for :[ (modified type) or < (generic type) or just 'where'
         while idx < len(self.tokens):
             tok = self.tokens[idx]
@@ -686,6 +695,7 @@ class Parser:
                     and idx + 1 < len(self.tokens)
                     and self.tokens[idx + 1].kind == TokenKind.LBRACKET):
                 # Modified type — skip past :[...]
+                saw_modifier = True
                 idx += 2  # skip : and [
                 depth = 1
                 while idx < len(self.tokens) and depth > 0:
@@ -697,6 +707,7 @@ class Parser:
                 continue
             if tok.kind == TokenKind.LESS:
                 # Generic type — skip past <...>
+                saw_modifier = True
                 idx += 1
                 depth = 1
                 while idx < len(self.tokens) and depth > 0:
@@ -706,12 +717,15 @@ class Parser:
                         depth -= 1
                     idx += 1
                 continue
-            # If we see ( or | or NEWLINE/EOF, it's algebraic
-            if tok.kind in (TokenKind.LPAREN, TokenKind.PIPE, TokenKind.NEWLINE,
-                            TokenKind.EOF, TokenKind.INDENT, TokenKind.DEDENT):
+            # If we see ( or |, it's algebraic
+            if tok.kind in (TokenKind.LPAREN, TokenKind.PIPE):
                 return False
+            # End of the type body — if we saw a modifier it's an alias
+            if tok.kind in (TokenKind.NEWLINE, TokenKind.EOF,
+                            TokenKind.INDENT, TokenKind.DEDENT):
+                return saw_modifier
             idx += 1
-        return False
+        return saw_modifier
 
     def _parse_refinement_constraint(self) -> Expr:
         """Parse a refinement constraint after 'where'.
@@ -1343,6 +1357,10 @@ class Parser:
         if tok.kind == TokenKind.REGEX_LIT:
             self._advance()
             return RegexLit(tok.value, tok.span)
+
+        if tok.kind == TokenKind.RAW_STRING_LIT:
+            self._advance()
+            return RawStringLit(tok.value, tok.span)
 
         if tok.kind == TokenKind.PATH_LIT:
             self._advance()

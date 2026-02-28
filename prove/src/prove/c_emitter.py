@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
+    RawStringLit,
     RecordTypeDef,
     StringInterp,
     StringLit,
@@ -527,6 +528,10 @@ class CEmitter:
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, TripleStringLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, RawStringLit):
             escaped = self._escape_c_string(expr.value)
             return f'prove_string_from_cstr("{escaped}")'
 
@@ -1117,6 +1122,8 @@ class CEmitter:
             return DECIMAL
         if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit)):
             return STRING
+        if isinstance(expr, RawStringLit):
+            return PrimitiveType("String", ("Reg",))
         if isinstance(expr, BooleanLit):
             return BOOLEAN
         if isinstance(expr, CharLit):

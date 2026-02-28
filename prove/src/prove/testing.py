@@ -26,6 +26,7 @@ from prove.ast_nodes import (
     IntegerLit,
     Module,
     NearMiss,
+    RawStringLit,
     StringLit,
 )
 from prove.c_emitter import CEmitter
@@ -469,6 +470,8 @@ class TestGenerator:
         if isinstance(expr, BooleanLit):
             return "true" if expr.value else "false"
         if isinstance(expr, StringLit):
+            return f'prove_string_from_cstr("{expr.value}")'
+        if isinstance(expr, RawStringLit):
             return f'prove_string_from_cstr("{expr.value}")'
         if isinstance(expr, IdentifierExpr):
             if expr.name == "result":

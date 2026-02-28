@@ -8,6 +8,7 @@
   "inputs"
   "outputs"
   "validates"
+  "types"
 ] @keyword.function
 
 "main" @keyword.function
@@ -73,6 +74,11 @@
   "Integer" "Decimal" "Float" "Boolean" "String" "Byte" "Character"
   "List" "Option" "Result" "Unit" "NonEmpty" "Map"))
 
+; ─── Variable references (fallback) ───────────────────────────
+; Must be before all specific identifier patterns so they take precedence.
+
+(identifier) @variable
+
 ; ─── Functions ──────────────────────────────────────────────
 
 (function_definition
@@ -118,6 +124,10 @@
   "}" @punctuation.special)
 
 (escape_sequence) @string.escape
+
+(regex_literal) @string.regexp
+(format_string) @string
+(raw_string) @string.regexp
 
 (integer_literal) @number
 (decimal_literal) @number.float
@@ -191,6 +201,7 @@
   (type_identifier) @constructor)
 
 ; ─── Import items ───────────────────────────────────────────
+; Must be after variable fallback so these take precedence.
 
 (import_declaration
   (type_identifier) @module)
@@ -198,10 +209,5 @@
 (import_group
   (identifier) @function)
 
-; ─── Variable references (fallback) ───────────────────────────
-; Must be last — more specific patterns above take precedence.
-
-; Binary expressions, unary expressions, etc. contain identifier operands
-(binary_expression (identifier) @variable)
-(unary_expression (identifier) @variable)
-(match_arm (identifier) @variable)
+(import_group
+  (type_identifier) @type)

@@ -2019,8 +2019,32 @@
         {
           "type": "SYMBOL",
           "name": "boolean_literal"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "regex_literal"
         }
       ]
+    },
+    "regex_literal": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "/"
+          },
+          {
+            "type": "PATTERN",
+            "value": "[^\\s\\/]([^\\/\\n\\\\]|\\\\.)*"
+          },
+          {
+            "type": "STRING",
+            "value": "/"
+          }
+        ]
+      }
     },
     "string_literal": {
       "type": "CHOICE",
@@ -2032,6 +2056,14 @@
         {
           "type": "SYMBOL",
           "name": "_triple_string"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "format_string"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "raw_string"
         }
       ]
     },
@@ -2041,6 +2073,42 @@
         {
           "type": "STRING",
           "value": "\""
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "escape_sequence"
+              },
+              {
+                "type": "IMMEDIATE_TOKEN",
+                "content": {
+                  "type": "PREC",
+                  "value": 1,
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "[^\"\\\\]+"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\""
+        }
+      ]
+    },
+    "format_string": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "f\""
         },
         {
           "type": "REPEAT",
@@ -2067,6 +2135,26 @@
                 }
               }
             ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\""
+        }
+      ]
+    },
+    "raw_string": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "r\""
+        },
+        {
+          "type": "IMMEDIATE_TOKEN",
+          "content": {
+            "type": "PATTERN",
+            "value": "[^\"]*"
           }
         },
         {

@@ -436,20 +436,44 @@ module.exports = grammar({
       $.integer_literal,
       $.decimal_literal,
       $.boolean_literal,
+      $.regex_literal,
     ),
+
+    // Regex literals: /pattern/ (deprecated — prefer r"pattern")
+    regex_literal: $ => token(seq('/', /[^\s\/]([^\/\n\\]|\\.)*/, '/')),
 
     string_literal: $ => choice(
       $._simple_string,
       $._triple_string,
+      $.format_string,
+      $.raw_string,
     ),
 
+    // Plain string — no interpolation, { is literal
     _simple_string: $ => seq(
       '"',
+      repeat(choice(
+        $.escape_sequence,
+        token.immediate(prec(1, /[^"\\]+/)),
+      )),
+      '"',
+    ),
+
+    // f-string — explicit interpolation with {expr}
+    format_string: $ => seq(
+      'f"',
       repeat(choice(
         $.escape_sequence,
         $.interpolation,
         token.immediate(prec(1, /[^"\\{]+/)),
       )),
+      '"',
+    ),
+
+    // r-string — raw string, no escapes, no interpolation
+    raw_string: $ => seq(
+      'r"',
+      token.immediate(/[^"]*/),
       '"',
     ),
 

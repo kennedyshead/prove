@@ -61,6 +61,7 @@ class TokenKind(Enum):
     CHAR_LIT = auto()
     TRIPLE_STRING_LIT = auto()
     REGEX_LIT = auto()
+    RAW_STRING_LIT = auto()
     PATH_LIT = auto()
 
     # String interpolation

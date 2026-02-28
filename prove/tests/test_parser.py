@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     ModifiedType,
     ModuleDecl,
     PipeExpr,
+    RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
     RegexLit,
@@ -334,10 +335,17 @@ class TestParserExpressions:
         assert len(expr.elements) == 3
 
     def test_string_interpolation(self):
-        source = 'transforms f() String\n    from\n        "hello {name}"\n'
+        source = 'transforms f() String\n    from\n        f"hello {name}"\n'
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, StringInterp)
+
+    def test_plain_string_no_interp(self):
+        source = 'transforms f() String\n    from\n        "hello {x}"\n'
+        decl = parse_decl(source)
+        expr = decl.body[0].expr
+        assert isinstance(expr, StringLit)
+        assert expr.value == "hello {x}"
 
     def test_range(self):
         source = 'transforms f() Integer\n    from\n        1..10\n'
@@ -358,6 +366,13 @@ class TestParserExpressions:
         call = decl.body[0].expr
         assert isinstance(call, CallExpr)
         assert isinstance(call.args[1], RegexLit)
+
+    def test_raw_string_literal(self):
+        source = 'validates f(s String)\n    from\n        matches(s, r"^[A-Z]+$")\n'
+        decl = parse_decl(source)
+        call = decl.body[0].expr
+        assert isinstance(call, CallExpr)
+        assert isinstance(call.args[1], RawStringLit)
 
 
 class TestParserStatements:

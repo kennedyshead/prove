@@ -43,6 +43,7 @@ from prove.ast_nodes import (
     PathLit,
     PipeExpr,
     ProofBlock,
+    RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
     RegexLit,
@@ -347,6 +348,8 @@ class ProveFormatter:
             return f"'{expr.value}'"
         if isinstance(expr, RegexLit):
             return f"/{expr.pattern}/"
+        if isinstance(expr, RawStringLit):
+            return f'r"{expr.value}"'
         if isinstance(expr, PathLit):
             return expr.value
         if isinstance(expr, TripleStringLit):
@@ -421,7 +424,7 @@ class ProveFormatter:
                 parts.append(part.value)
             else:
                 parts.append("{" + self._format_expr(part) + "}")
-        return '"' + "".join(parts) + '"'
+        return 'f"' + "".join(parts) + '"'
 
     def _format_if_expr(self, expr: IfExpr) -> str:
         lines: list[str] = []

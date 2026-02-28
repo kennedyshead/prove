@@ -623,7 +623,19 @@ class TestIntegration:
         check(
             "transforms greet(name String) String\n"
             "    from\n"
-            "        \"Hello, {name}!\"\n"
+            "        f\"Hello, {name}!\"\n"
+        )
+
+    def test_fstring_non_stringable_type_error(self):
+        check_fails(
+            "module Test\n"
+            "  type Point is\n"
+            "    x Integer\n"
+            "    y Integer\n"
+            "transforms show(p Point) String\n"
+            "    from\n"
+            "        f\"point: {p}\"\n",
+            "E325",
         )
 
     def test_validates_function(self):

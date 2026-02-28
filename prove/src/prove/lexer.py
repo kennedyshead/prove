@@ -27,6 +27,7 @@ _VALUE_TOKENS = frozenset({
     TokenKind.BOOLEAN_LIT,
     TokenKind.CHAR_LIT,
     TokenKind.REGEX_LIT,
+    TokenKind.RAW_STRING_LIT,
     TokenKind.PATH_LIT,
     TokenKind.RPAREN,
     TokenKind.RBRACKET,
@@ -248,24 +249,41 @@ class Lexer:
         self._error("unterminated triple-quoted string", start_line, start_col)
 
     def _lex_string(self) -> None:
+        """Lex a plain string literal. No interpolation — { is literal."""
         start_line = self.line
         start_col = self.col
         self._advance()  # skip opening "
-        text = []
+        text: list[str] = []
+
+        while self.pos < len(self.source) and self.source[self.pos] != '"':
+            if self.source[self.pos] == '\\':
+                text.append(self._lex_escape_sequence())
+            else:
+                text.append(self._advance())
+
+        if self.pos >= len(self.source):
+            self._error("unterminated string literal", start_line, start_col)
+            return
+
+        self._advance()  # skip closing "
+        self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+
+    def _lex_fstring(self, start_line: int, start_col: int) -> None:
+        """Lex an f-string with interpolation support."""
+        self._advance()  # skip opening "
+        text: list[str] = []
         has_interp = False
 
         while self.pos < len(self.source) and self.source[self.pos] != '"':
             if self.source[self.pos] == '\\':
                 text.append(self._lex_escape_sequence())
             elif self.source[self.pos] == '{':
-                # String interpolation
                 has_interp = True
                 if text:
                     self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
                     text = []
                 self._advance()  # skip {
                 self._emit(TokenKind.INTERP_START, "{", self.line, self.col - 1)
-                # Lex tokens inside interpolation until matching }
                 brace_depth = 1
                 while self.pos < len(self.source) and brace_depth > 0:
                     self._skip_spaces()
@@ -279,7 +297,6 @@ class Lexer:
                             break
                     elif self.source[self.pos] == '{':
                         brace_depth += 1
-                    # Lex one token inside interpolation
                     ch = self.source[self.pos]
                     if ch == '\n':
                         self._advance()
@@ -297,7 +314,7 @@ class Lexer:
                 text.append(self._advance())
 
         if self.pos >= len(self.source):
-            self._error("unterminated string literal", start_line, start_col)
+            self._error("unterminated f-string literal", start_line, start_col)
             return
 
         self._advance()  # skip closing "
@@ -307,6 +324,24 @@ class Lexer:
                 self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
         else:
             self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+
+    def _lex_raw_string(self, start_line: int, start_col: int) -> None:
+        """Lex a raw string literal. No escapes, no interpolation."""
+        self._advance()  # skip opening "
+        text: list[str] = []
+
+        while self.pos < len(self.source) and self.source[self.pos] != '"':
+            if self.source[self.pos] == '\n':
+                self._error("unterminated raw string literal", start_line, start_col)
+                return
+            text.append(self._advance())
+
+        if self.pos >= len(self.source):
+            self._error("unterminated raw string literal", start_line, start_col)
+            return
+
+        self._advance()  # skip closing "
+        self._emit(TokenKind.RAW_STRING_LIT, ''.join(text), start_line, start_col)
 
     def _lex_escape_sequence(self) -> str:
         self._advance()  # skip backslash
@@ -482,6 +517,14 @@ class Lexer:
         while self.pos < len(self.source) and self._is_ident_char():
             text.append(self._advance())
         word = ''.join(text)
+
+        # Check for f-string or r-string prefix
+        if word in ('f', 'r') and self.pos < len(self.source) and self.source[self.pos] == '"':
+            if word == 'f':
+                self._lex_fstring(start_line, start_col)
+            else:
+                self._lex_raw_string(start_line, start_col)
+            return
 
         # Check keywords first
         if word in KEYWORDS:

@@ -110,6 +110,12 @@ class RegexLit:
 
 
 @dataclass(frozen=True)
+class RawStringLit:
+    value: str
+    span: Span
+
+
+@dataclass(frozen=True)
 class PathLit:
     value: str
     span: Span
@@ -237,8 +243,8 @@ class IndexExpr:
 
 
 Expr = Union[
-    IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit, PathLit,
-    TripleStringLit, StringInterp, ListLiteral,
+    IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit,
+    RawStringLit, PathLit, TripleStringLit, StringInterp, ListLiteral,
     IdentifierExpr, TypeIdentifierExpr,
     BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
     FailPropExpr, LambdaExpr, ValidExpr,

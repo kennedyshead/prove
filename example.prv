@@ -15,9 +15,9 @@ module InventoryService
 
   type Percentage is Decimal:[128 Scale:4] where 0 .. 1
 
-  type Sku is String where matches(/^[A-Z]{2,4}-[0-9]{4,8}$/)
+  type Sku is String where matches(r"^[A-Z]{2,4}-[0-9]{4,8}$")
 
-  type Email is String where matches(/^[^@]+@[^@]+\.[^@]+$/)
+  type Email is String where matches(r"^[^@]+@[^@]+\.[^@]+$")
 
   type Route is Get(path String)
     | Post(path String)
@@ -74,7 +74,7 @@ module InventoryService
 
 validates sku(code String)
 from
-    matches(code, /^[A-Z]{2,4}-[0-9]{4,8}$/)
+    matches(code, r"^[A-Z]{2,4}-[0-9]{4,8}$")
 
 validates in_stock(product Product, requested Integer)
 from
@@ -157,15 +157,15 @@ from
 
 inputs product_by_sku(db Database, code Sku) Product!
 from
-    query_one(db, "SELECT * FROM products WHERE sku = {code}")!
+    query_one(db, f"SELECT * FROM products WHERE sku = {code}")!
 
 inputs order_by_id(db Database, id Integer) Order!
 from
-    query_one(db, "SELECT * FROM orders WHERE id = {id}")!
+    query_one(db, f"SELECT * FROM orders WHERE id = {id}")!
 
 inputs tax_rule(db Database, region String) TaxRule!
 from
-    query_one(db, "SELECT * FROM tax_rules WHERE region = {region}")!
+    query_one(db, f"SELECT * FROM tax_rules WHERE region = {region}")!
 
 outputs add_product(db Database, product Product)!
   ensures product_by_sku(db, product.sku) == product
@@ -204,7 +204,7 @@ from
 
 outputs log_request(route Route, status Integer)
 from
-    write(stdout, "[{now()}] {route} -> {status}")
+    write(stdout, f"[{now()}] {route} -> {status}")
 
 transforms evict(cache Cache:[Mutable]) Option<Product>
   why_not: "FIFO would evict recently restocked products under burst queries"

@@ -1,0 +1,8 @@
+module Regex
+  narrative: """Handles regex matching and parsing"""
+
+  type RString is String:[Reg] where true
+
+validates matches(string String, regex RString)
+from
+    match_regex_string(string, regex)

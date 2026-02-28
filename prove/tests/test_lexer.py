@@ -114,12 +114,43 @@ class TestLexerLiterals:
         assert result == [(TokenKind.STRING_LIT, "hello\nworld")]
 
     def test_string_interpolation(self):
-        result = lex('"hello {name}"')
+        result = lex('f"hello {name}"')
         k = [r[0] for r in result]
         assert TokenKind.STRING_LIT in k
         assert TokenKind.INTERP_START in k
         assert TokenKind.INTERP_END in k
         assert TokenKind.IDENTIFIER in k
+
+    def test_plain_string_braces_literal(self):
+        result = lex('"hello {world}"')
+        assert result == [(TokenKind.STRING_LIT, "hello {world}")]
+
+    def test_fstring_basic(self):
+        result = lex('f"hello {name}"')
+        kinds = [r[0] for r in result]
+        assert kinds == [
+            TokenKind.STRING_LIT,
+            TokenKind.INTERP_START,
+            TokenKind.IDENTIFIER,
+            TokenKind.INTERP_END,
+        ]
+
+    def test_raw_string_no_escapes(self):
+        result = lex(r'r"hello\nworld"')
+        assert result == [(TokenKind.RAW_STRING_LIT, r"hello\nworld")]
+
+    def test_f_as_identifier(self):
+        result = lex("f + 1")
+        kinds = [r[0] for r in result]
+        assert kinds[0] == TokenKind.IDENTIFIER
+
+    def test_unknown_escape_error(self):
+        import pytest
+
+        from prove.errors import CompileError
+        with pytest.raises(CompileError):
+            from prove.lexer import Lexer
+            Lexer(r'"\d"').lex()
 
     def test_triple_string(self):
         result = lex('"""hello\nworld"""')
@@ -142,13 +173,17 @@ class TestLexerLiterals:
         assert result == [(TokenKind.BOOLEAN_LIT, "false")]
 
     def test_regex(self):
-        # Regex at start of expression (not after value)
+        # Regex at start of expression (not after value, deprecated syntax)
         result = lex("/^[A-Z]+$/")
         assert result == [(TokenKind.REGEX_LIT, "^[A-Z]+$")]
 
     def test_regex_with_escape(self):
         result = lex(r"/hello\/world/")
         assert result == [(TokenKind.REGEX_LIT, r"hello\/world")]
+
+    def test_raw_string_regex(self):
+        result = lex(r'r"^[A-Z]+$"')
+        assert result == [(TokenKind.RAW_STRING_LIT, "^[A-Z]+$")]
 
     def test_slash_after_value_is_division(self):
         result = lex("x / y")

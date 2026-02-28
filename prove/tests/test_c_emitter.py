@@ -123,11 +123,20 @@ class TestStringInterp:
         source = (
             "transforms describe(x Integer) String\n"
             "    from\n"
-            '        "value is {x}"\n'
+            '        f"value is {x}"\n'
         )
         c_code = _emit(source)
         assert "prove_string_concat" in c_code
         assert "prove_string_from_int" in c_code
+
+    def test_raw_string_emit(self):
+        source = (
+            "transforms pattern() String\n"
+            "    from\n"
+            '        r"^[A-Z]+$"\n'
+        )
+        c_code = _emit(source)
+        assert "prove_string_from_cstr" in c_code
 
 
 class TestRetainRelease:
@@ -412,7 +421,7 @@ class TestStringInterpolationEdgeCases:
         source = (
             "transforms msg(n Integer) String\n"
             "    from\n"
-            '        "count: {n}"\n'
+            '        f"count: {n}"\n'
         )
         c_code = _emit(source)
         assert "prove_string_from_int(n)" in c_code
@@ -422,7 +431,7 @@ class TestStringInterpolationEdgeCases:
         source = (
             "transforms msg(b Boolean) String\n"
             "    from\n"
-            '        "flag: {b}"\n'
+            '        f"flag: {b}"\n'
         )
         c_code = _emit(source)
         assert "prove_string_from_bool(b)" in c_code
@@ -431,7 +440,7 @@ class TestStringInterpolationEdgeCases:
         source = (
             "transforms msg(name String) String\n"
             "    from\n"
-            '        "hello {name}"\n'
+            '        f"hello {name}"\n'
         )
         c_code = _emit(source)
         # String vars should be used directly, not converted

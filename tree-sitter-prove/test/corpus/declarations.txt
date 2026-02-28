@@ -2,37 +2,44 @@
 Type definition - refinement
 ===
 
-type Port is Integer where 1..65535
+module Test
+  type Port is Integer where 1..65535
 
 ---
 
 (source_file
-  (type_definition
+  (module_declaration
     (type_identifier)
-    (refinement_type_body
-      (type_expression (simple_type (type_identifier)))
-      (binary_expression
-        (expression (integer_literal))
-        (expression (integer_literal))))))
+    (type_definition
+      (type_identifier)
+      (refinement_type_body
+        (type_expression (simple_type (type_identifier)))
+        (expression
+          (binary_expression
+            (expression (integer_literal))
+            (expression (integer_literal))))))))
 
 ===
 Type definition - algebraic
 ===
 
-type Route is Get(path String) | Post(path String)
+module Test
+  type Route is Get(path String) | Post(path String)
 
 ---
 
 (source_file
-  (type_definition
+  (module_declaration
     (type_identifier)
-    (algebraic_type_body
-      (algebraic_variant
-        (type_identifier)
-        (variant_fields (field_declaration (identifier) (type_expression (simple_type (type_identifier))))))
-      (algebraic_variant
-        (type_identifier)
-        (variant_fields (field_declaration (identifier) (type_expression (simple_type (type_identifier)))))))))
+    (type_definition
+      (type_identifier)
+      (algebraic_type_body
+        (algebraic_variant
+          (type_identifier)
+          (variant_fields (field_declaration (identifier) (type_expression (simple_type (type_identifier))))))
+        (algebraic_variant
+          (type_identifier)
+          (variant_fields (field_declaration (identifier) (type_expression (simple_type (type_identifier))))))))))
 
 ===
 Validates function
@@ -50,18 +57,19 @@ validates email(address String)
     (identifier)
     (parameter_list
       (parameter (identifier) (type_expression (simple_type (type_identifier)))))
-    (call_expression
-      (identifier)
-      (expression (identifier))
-      (expression (string_literal)))))
+    (expression
+      (call_expression
+        (identifier)
+        (expression (identifier))
+        (expression (string_literal))))))
 
 ===
-Inputs function with fail marker
+Inputs function with return type
 ===
 
-inputs users(db Database) List<User>!
+inputs users(db Database) List<User>
     from
-        query(db, "SELECT * FROM users")!
+        query(db, "SELECT * FROM users")
 
 ---
 
@@ -73,31 +81,48 @@ inputs users(db Database) List<User>!
       (parameter (identifier) (type_expression (simple_type (type_identifier)))))
     (type_expression
       (generic_type (type_identifier) (type_expression (simple_type (type_identifier)))))
-    (fail_marker)
-    (fail_propagation
-      (expression
-        (call_expression
-          (identifier)
-          (expression (identifier))
-          (expression (string_literal)))))))
+    (expression
+      (call_expression
+        (identifier)
+        (expression (identifier))
+        (expression (string_literal))))))
 
 ===
 Main definition
 ===
 
-main() Result!
+main() Result
     from
-        listen(server, 8080)!
+        listen(server, 8080)
 
 ---
 
 (source_file
   (main_definition
     (type_expression (simple_type (type_identifier)))
-    (fail_marker)
-    (fail_propagation
-      (expression
-        (call_expression
-          (identifier)
-          (expression (identifier))
-          (expression (integer_literal)))))))
+    (expression
+      (call_expression
+        (identifier)
+        (expression (identifier))
+        (expression (integer_literal))))))
+
+===
+Import with types keyword
+===
+
+module Foo
+  Http types Response Server, inputs listen
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (import_declaration
+      (type_identifier)
+      (import_group
+        (type_identifier)
+        (type_identifier))
+      (import_group
+        (verb)
+        (identifier)))))

@@ -38,6 +38,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
+    RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
     RegexLit,
@@ -65,6 +66,7 @@ from prove.types import (
     CHARACTER,
     DECIMAL,
     ERROR_TY,
+    FLOAT,
     INTEGER,
     STRING,
     UNIT,
@@ -737,11 +739,23 @@ class Checker:
             return CHARACTER
         if isinstance(expr, RegexLit):
             return STRING  # regex patterns are strings at type level
+        if isinstance(expr, RawStringLit):
+            return PrimitiveType("String", ("Reg",))
         if isinstance(expr, PathLit):
             return STRING  # path literals are string-typed
         if isinstance(expr, TripleStringLit):
             return STRING
         if isinstance(expr, StringInterp):
+            for part in expr.parts:
+                if not isinstance(part, StringLit):
+                    part_type = self._infer_expr(part)
+                    if not self._is_stringable(part_type):
+                        self._error(
+                            "E325",
+                            f"f-string interpolation requires a "
+                            f"stringable type, got {part_type}",
+                            part.span,
+                        )
             return STRING
         if isinstance(expr, ListLiteral):
             return self._infer_list(expr)
@@ -1142,6 +1156,10 @@ class Checker:
         if isinstance(obj_type, ErrorType):
             return ERROR_TY
         return ERROR_TY
+
+    def _is_stringable(self, ty: Type) -> bool:
+        """Return True if the type can be interpolated into an f-string."""
+        return ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER)
 
     def _infer_list(self, expr: ListLiteral) -> Type:
         if not expr.elements:

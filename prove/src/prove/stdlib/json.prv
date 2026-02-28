@@ -12,3 +12,11 @@ from
 transforms encode_bool(value Boolean) String
 from
     to_string(value)
+
+transforms encode_decimal(value Decimal) String
+from
+    to_string(value)
+
+transforms encode_float(value Float) String
+from
+    to_string(value)
