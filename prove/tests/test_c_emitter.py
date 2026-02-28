@@ -130,6 +130,28 @@ class TestStringInterp:
         assert "prove_string_from_int" in c_code
 
 
+class TestRetainRelease:
+    def test_string_var_retained(self):
+        source = (
+            "transforms greet(name String) String\n"
+            "    from\n"
+            '        msg as String = "hello"\n'
+            "        msg\n"
+        )
+        c_code = _emit(source)
+        assert "prove_retain(msg)" in c_code
+
+    def test_pointer_released_before_return(self):
+        source = (
+            "outputs show()\n"
+            "    from\n"
+            '        s as String = "test"\n'
+            "        println(s)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_release(s)" in c_code
+
+
 class TestBuiltinDispatch:
     def test_to_string_integer(self):
         source = (
