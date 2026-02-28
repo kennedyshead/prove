@@ -402,6 +402,32 @@ class TestVerbEnforcement:
             "        println(msg)\n"
         )
 
+    def test_transitive_purity_error(self):
+        """transforms calling a user-defined outputs function -> E363."""
+        check_fails(
+            "outputs log_msg(msg String) Unit\n"
+            "    from\n"
+            "        println(msg)\n"
+            "transforms bad(x Integer) Integer\n"
+            "    from\n"
+            "        log_msg(\"side effect\")\n"
+            "        x\n",
+            "E363",
+        )
+
+    def test_transitive_purity_inputs_error(self):
+        """transforms calling a user-defined inputs function -> E363."""
+        check_fails(
+            "inputs get_data() String\n"
+            "    from\n"
+            "        readln()\n"
+            "transforms bad() Integer\n"
+            "    from\n"
+            "        get_data()\n"
+            "        0\n",
+            "E363",
+        )
+
 
 class TestMatchExhaustiveness:
     """Test match exhaustiveness checking."""
