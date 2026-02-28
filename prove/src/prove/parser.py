@@ -220,9 +220,10 @@ class Parser:
             except _ParseError:
                 self._synchronize()
             self._skip_newlines()
-            # Skip orphaned DEDENTs (e.g., from pipe continuation indents)
-            while self._at(TokenKind.DEDENT):
+            # Skip orphaned INDENT/DEDENTs (e.g., from pipe continuation or error recovery)
+            while self._at_any(TokenKind.INDENT, TokenKind.DEDENT):
                 self._advance()
+                self._skip_newlines()
             if not self._check_progress(_loop_pos):
                 break
 
@@ -831,7 +832,12 @@ class Parser:
         verb = None
         if self._current().kind in _VERBS:
             verb = self._advance().value
-        name_tok = self._expect(TokenKind.IDENTIFIER)
+        # Accept both lowercase identifiers (functions) and
+        # uppercase type identifiers (types, variant constructors).
+        if self._at(TokenKind.TYPE_IDENTIFIER):
+            name_tok = self._advance()
+        else:
+            name_tok = self._expect(TokenKind.IDENTIFIER)
         return ImportItem(verb, name_tok.value, start)
 
     # ── Module declarations ──────────────────────────────────────
@@ -1097,6 +1103,7 @@ class Parser:
     def _parse_expression(self, min_bp: int) -> Expr:
         """Parse an expression using Pratt parsing with binding powers."""
         left = self._parse_prefix()
+        pipe_indent_depth = 0
 
         while True:
             tok = self._current()
@@ -1202,14 +1209,20 @@ class Parser:
                         depth += 1
                     self._advance()
                 if self._at(TokenKind.PIPE_ARROW):
-                    # Found a pipe continuation — keep parsing
+                    # Found a pipe continuation — track indents to consume
+                    pipe_indent_depth += depth
                     continue
                 # Not a pipe chain — restore position and break
                 self.pos = save_pos
-                # Balance any consumed indents by not restoring
-                # (we restore the pos, so nothing was consumed)
 
             break
+
+        # Consume DEDENT tokens that match INDENTs eaten by pipe continuation
+        for _ in range(pipe_indent_depth):
+            if self._at(TokenKind.NEWLINE):
+                self._advance()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
 
         return left
 

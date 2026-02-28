@@ -6,6 +6,7 @@ document symbols, signature help, and formatting via stdio transport.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from lsprotocol import types as lsp
@@ -14,6 +15,7 @@ from pygls.lsp.server import LanguageServer
 from prove.ast_nodes import (
     ConstantDef,
     FunctionDef,
+    ImportDecl,
     MainDef,
     Module,
     ModuleDecl,
@@ -24,6 +26,7 @@ from prove.errors import CompileError, Severity
 from prove.formatter import ProveFormatter
 from prove.lexer import Lexer
 from prove.parser import Parser
+from prove.stdlib_loader import ImportSuggestion, build_import_index
 from prove.symbols import FunctionSignature, SymbolKind, SymbolTable
 from prove.tokens import KEYWORDS, Token
 
@@ -94,8 +97,25 @@ class DocumentState:
 
 # ── Server ────────────────────────────────────────────────────────
 
-server = LanguageServer("prove-lsp", "0.1.0")
+server = LanguageServer(
+    "prove-lsp", "0.1.0",
+    text_document_sync_kind=lsp.TextDocumentSyncKind.Full,
+)
 _state: dict[str, DocumentState] = {}
+
+
+def _compile_diag(d: object) -> lsp.Diagnostic:
+    """Convert a prove Diagnostic to an LSP Diagnostic."""
+    span_range = lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0))
+    if hasattr(d, "labels") and d.labels:
+        span_range = span_to_range(d.labels[0].span)
+    sev = _SEVERITY_MAP.get(getattr(d, "severity", None), lsp.DiagnosticSeverity.Error)
+    code = getattr(d, "code", "E000")
+    msg = getattr(d, "message", str(d))
+    return lsp.Diagnostic(
+        range=span_range, severity=sev, source="prove",
+        code=code, message=f"[{code}] {msg}",
+    )
 
 
 def _analyze(uri: str, source: str) -> DocumentState:
@@ -109,15 +129,16 @@ def _analyze(uri: str, source: str) -> DocumentState:
         tokens = Lexer(source, filename).lex()
         ds.tokens = tokens
     except CompileError as e:
-        for d in e.diagnostics:
-            diags.append(lsp.Diagnostic(
-                range=span_to_range(d.labels[0].span) if d.labels else lsp.Range(
-                    start=lsp.Position(0, 0), end=lsp.Position(0, 0),
-                ),
-                severity=_SEVERITY_MAP.get(d.severity, lsp.DiagnosticSeverity.Error),
-                source="prove",
-                message=f"[{d.code}] {d.message}",
-            ))
+        diags.extend(_compile_diag(d) for d in e.diagnostics)
+        ds.diagnostics = diags
+        _state[uri] = ds
+        return ds
+    except Exception as e:
+        diags.append(lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+            severity=lsp.DiagnosticSeverity.Error, source="prove",
+            message=f"[internal] lexer error: {e}",
+        ))
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
@@ -127,32 +148,31 @@ def _analyze(uri: str, source: str) -> DocumentState:
         module = Parser(tokens, filename).parse()
         ds.module = module
     except CompileError as e:
-        for d in e.diagnostics:
-            diags.append(lsp.Diagnostic(
-                range=span_to_range(d.labels[0].span) if d.labels else lsp.Range(
-                    start=lsp.Position(0, 0), end=lsp.Position(0, 0),
-                ),
-                severity=_SEVERITY_MAP.get(d.severity, lsp.DiagnosticSeverity.Error),
-                source="prove",
-                message=f"[{d.code}] {d.message}",
-            ))
+        diags.extend(_compile_diag(d) for d in e.diagnostics)
+        ds.diagnostics = diags
+        _state[uri] = ds
+        return ds
+    except Exception as e:
+        diags.append(lsp.Diagnostic(
+            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+            severity=lsp.DiagnosticSeverity.Error, source="prove",
+            message=f"[internal] parser error: {e}",
+        ))
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
 
     # Phase 3: Check
-    checker = Checker()
-    symbols = checker.check(module)
-    ds.symbols = symbols
-
-    for d in checker.diagnostics:
+    try:
+        checker = Checker()
+        symbols = checker.check(module)
+        ds.symbols = symbols
+        diags.extend(_compile_diag(d) for d in checker.diagnostics)
+    except Exception as e:
         diags.append(lsp.Diagnostic(
-            range=span_to_range(d.labels[0].span) if d.labels else lsp.Range(
-                start=lsp.Position(0, 0), end=lsp.Position(0, 0),
-            ),
-            severity=_SEVERITY_MAP.get(d.severity, lsp.DiagnosticSeverity.Error),
-            source="prove",
-            message=f"[{d.code}] {d.message}",
+            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+            severity=lsp.DiagnosticSeverity.Error, source="prove",
+            message=f"[internal] checker error: {e}",
         ))
 
     ds.diagnostics = diags
@@ -522,6 +542,116 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
         ),
         new_text=formatted,
     )]
+
+
+# ── Auto-import code actions ─────────────────────────────────────
+
+
+def _is_importable_error(diag: lsp.Diagnostic) -> bool:
+    """Match E310 (undefined name) or E300 (undefined type) diagnostics."""
+    return diag.code in ("E310", "E300")
+
+
+# Keep old name as alias for backwards compat in tests
+_is_e310 = _is_importable_error
+
+
+def _extract_undefined_name(message: str) -> str | None:
+    """Extract name from '[E310] undefined name 'foo'' or '[E300] undefined type 'Foo''."""
+    m = re.search(r"undefined (?:name|type) '(\w+)'", message)
+    return m.group(1) if m else None
+
+
+def _build_import_edit(
+    ds: DocumentState, suggestion: ImportSuggestion,
+) -> lsp.TextEdit | None:
+    """Compute TextEdit to insert or extend an import.
+
+    Returns None if the name is already imported or the module is not parsed.
+    """
+    if ds.module is None:
+        return None
+
+    # Check existing imports — skip if already imported, or extend if same module
+    last_import_line = -1  # 0-indexed line of last import decl
+    for decl in ds.module.declarations:
+        if not isinstance(decl, ImportDecl):
+            continue
+        # Track last import line (span is 1-indexed)
+        decl_line = decl.span.start_line - 1
+        if decl_line > last_import_line:
+            last_import_line = decl_line
+
+        if decl.module != suggestion.module:
+            continue
+
+        # Same module — check if name is already imported
+        for item in decl.items:
+            if item.name == suggestion.name:
+                return None  # already imported
+
+        # Extend this import line: append ", [verb] name"
+        source_lines = ds.source.splitlines()
+        line_text = source_lines[decl_line] if decl_line < len(source_lines) else ""
+        verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
+        suffix = f", {verb_prefix}{suggestion.name}"
+        return lsp.TextEdit(
+            range=lsp.Range(
+                start=lsp.Position(line=decl_line, character=len(line_text)),
+                end=lsp.Position(line=decl_line, character=len(line_text)),
+            ),
+            new_text=suffix,
+        )
+
+    # No existing import for this module — insert a new line
+    verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
+    new_line = f"with {suggestion.module} use {verb_prefix}{suggestion.name}\n"
+    insert_line = last_import_line + 1 if last_import_line >= 0 else 0
+    return lsp.TextEdit(
+        range=lsp.Range(
+            start=lsp.Position(line=insert_line, character=0),
+            end=lsp.Position(line=insert_line, character=0),
+        ),
+        new_text=new_line,
+    )
+
+
+@server.feature(
+    lsp.TEXT_DOCUMENT_CODE_ACTION,
+    lsp.CodeActionOptions(code_action_kinds=[lsp.CodeActionKind.QuickFix]),
+)
+def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
+    uri = params.text_document.uri
+    ds = _state.get(uri)
+    if ds is None:
+        return None
+
+    index = build_import_index()
+    actions: list[lsp.CodeAction] = []
+
+    for diag in params.context.diagnostics:
+        if not _is_importable_error(diag):
+            continue
+        name = _extract_undefined_name(diag.message)
+        if name is None or name not in index:
+            continue
+
+        suggestions = index[name]
+        for suggestion in suggestions:
+            edit = _build_import_edit(ds, suggestion)
+            if edit is None:
+                continue
+            verb_part = f" ({suggestion.verb})" if suggestion.verb else ""
+            title = f"Import {suggestion.name} from {suggestion.module}{verb_part}"
+            actions.append(lsp.CodeAction(
+                title=title,
+                kind=lsp.CodeActionKind.QuickFix,
+                diagnostics=[diag],
+                is_preferred=len(suggestions) == 1,
+                edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
+            ))
+
+    return actions if actions else None
 
 
 # ── Entry point ──────────────────────────────────────────────────

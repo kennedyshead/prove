@@ -325,7 +325,7 @@ module Auth
 
 invariant_network InventoryAccounting
     sum_stock(products) >= 0
-    every(order where status == Confirmed) implies fulfillable(order)
+    every(order, status == Confirmed) implies fulfillable(order)
     total_revenue == reduce(confirmed_orders, 0, |acc, o| acc + o.total)
 
 // ═══════════════════════════════════════════════════════════════
