@@ -8,6 +8,9 @@
   "inputs"
   "outputs"
   "validates"
+  "reads"
+  "creates"
+  "matches"
   "types"
 ] @keyword.function
 
@@ -25,6 +28,7 @@
   "comptime"
   "valid"
   "module"
+  "binary"
 ] @keyword
 
 ; ─── Contract Keywords ──────────────────────────────────────
@@ -33,7 +37,15 @@
   "ensures"
   "requires"
   "proof"
+  "explain"
+  "terminates"
 ] @keyword.control
+
+(trusted_annotation) @keyword.control
+
+; ─── Explain Lines ─────────────────────────────────────────
+
+(explain_line) @string.documentation
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
 
@@ -71,11 +83,6 @@
  (#any-of? @type.builtin
   "Integer" "Decimal" "Float" "Boolean" "String" "Byte" "Character"
   "List" "Option" "Result" "Unit" "NonEmpty" "Map"))
-
-; ─── Variable references (fallback) ───────────────────────────
-; Must be before all specific identifier patterns so they take precedence.
-
-(identifier) @variable
 
 ; ─── Functions ──────────────────────────────────────────────
 
@@ -122,10 +129,6 @@
   "}" @punctuation.special)
 
 (escape_sequence) @string.escape
-
-(regex_literal) @string.regexp
-(format_string) @string
-(raw_string) @string.regexp
 
 (integer_literal) @number
 (decimal_literal) @number.float
@@ -199,7 +202,6 @@
   (type_identifier) @constructor)
 
 ; ─── Import items ───────────────────────────────────────────
-; Must be after variable fallback so these take precedence.
 
 (import_declaration
   (type_identifier) @module)
@@ -208,4 +210,9 @@
   (identifier) @function)
 
 (import_group
-  (type_identifier) @type)
+  (type_identifier) @function)
+
+; ─── Variable references (fallback) ───────────────────────────
+; Must be last — more specific patterns above take precedence.
+
+(identifier) @variable

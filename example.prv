@@ -41,7 +41,7 @@ module InventoryService
 
   type Order is
     id Integer
-    items NonEmpty<List<OrderItem>>
+    items List<OrderItem>
     status OrderStatus
     total Price
 
@@ -92,6 +92,8 @@ from
 
 transforms subtotal(items List<OrderItem>) Price
   ensures result >= 0
+  explain
+    iterates over items and accumulate all items . price * items . quantity
 from
     reduce(items, 0, |acc, item| acc + item.product.price * item.quantity)
 

@@ -674,13 +674,24 @@ class TestIntegration:
             "        map(xs, |x| x + 1)\n"
         )
 
-    def test_imports(self):
-        check(
+    def test_imports_unknown_module(self):
+        check_fails(
             "module Main\n"
             "  Math transforms sin cos\n"
             "transforms angle(x Integer) Integer\n"
             "    from\n"
-            "        sin(x)\n"
+            "        sin(x)\n",
+            "E310",
+        )
+
+    def test_imports_known_module(self):
+        check(
+            "module Main\n"
+            "  narrative: \"test\"\n"
+            "  InputOutput outputs console\n"
+            "main() Unit\n"
+            "    from\n"
+            "        InputOutput.console(\"hello\")\n"
         )
 
     def test_string_interpolation(self):
@@ -893,7 +904,7 @@ class TestNamespacedCalls:
             "outputs run() Unit\n"
             "    from\n"
             "        InputOutput.file(\"test.txt\")\n",
-            "E310",
+            "E311",
         )
 
 

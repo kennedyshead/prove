@@ -98,6 +98,11 @@
     }
   },
   {
+    "type": "binary_type_body",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "boolean_literal",
     "named": true,
     "fields": {}
@@ -223,6 +228,21 @@
       "types": [
         {
           "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "explain_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "explain_line",
           "named": true
         }
       ]
@@ -417,6 +437,10 @@
           "named": true
         },
         {
+          "type": "explain_annotation",
+          "named": true
+        },
+        {
           "type": "expression",
           "named": true
         },
@@ -462,6 +486,14 @@
         },
         {
           "type": "satisfies_clause",
+          "named": true
+        },
+        {
+          "type": "terminates_annotation",
+          "named": true
+        },
+        {
+          "type": "trusted_annotation",
           "named": true
         },
         {
@@ -1163,6 +1195,36 @@
     }
   },
   {
+    "type": "terminates_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "trusted_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "string_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "type_definition",
     "named": true,
     "fields": {},
@@ -1463,8 +1525,8 @@
     "named": false
   },
   {
-    "type": "binary_type_body",
-    "named": true
+    "type": "binary",
+    "named": false
   },
   {
     "type": "chosen",
@@ -1496,6 +1558,14 @@
   },
   {
     "type": "escape_sequence",
+    "named": true
+  },
+  {
+    "type": "explain",
+    "named": false
+  },
+  {
+    "type": "explain_line",
     "named": true
   },
   {
@@ -1551,6 +1621,10 @@
     "named": false
   },
   {
+    "type": "matches",
+    "named": false
+  },
+  {
     "type": "module",
     "named": false
   },
@@ -1591,11 +1665,11 @@
     "named": false
   },
   {
-    "type": "saves",
+    "type": "temporal",
     "named": false
   },
   {
-    "type": "temporal",
+    "type": "terminates",
     "named": false
   },
   {
@@ -1604,6 +1678,10 @@
   },
   {
     "type": "true",
+    "named": false
+  },
+  {
+    "type": "trusted",
     "named": false
   },
   {

@@ -379,14 +379,25 @@ class Checker:
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib
 
-        # Track which functions are imported from which module
+        # Try loading real signatures from stdlib
+        is_known = is_stdlib_module(imp.module)
+        if not is_known:
+            # Register the module name so we know it was declared,
+            # but don't add function names — call sites will flag them.
+            self._module_imports.setdefault(imp.module, set())
+            self._error(
+                "E310",
+                f"unknown module '{imp.module}'",
+                imp.span,
+            )
+            return
+
+        # Track which functions are imported from this known module
         names = self._module_imports.setdefault(imp.module, set())
         for item in imp.items:
             names.add(item.name)
 
-        # Try loading real signatures from stdlib
-        is_known = is_stdlib_module(imp.module)
-        stdlib_sigs = load_stdlib(imp.module) if is_known else []
+        stdlib_sigs = load_stdlib(imp.module)
         # Index by (verb, name) for exact match and by name for fallback
         stdlib_by_verb: dict[tuple[str | None, str], FunctionSignature] = {
             (s.verb, s.name): s for s in stdlib_sigs
@@ -423,7 +434,7 @@ class Checker:
                     verb=real_sig.verb,
                 ))
                 self.symbols.define_function(real_sig)
-            elif is_known:
+            else:
                 # Known stdlib module but function not found — error
                 self._error(
                     "E311",
@@ -431,21 +442,6 @@ class Checker:
                     f"in module '{imp.module}'",
                     item.span,
                 )
-            else:
-                # Unknown module — placeholder with ERROR_TY
-                self.symbols.define(Symbol(
-                    name=item.name, kind=SymbolKind.FUNCTION,
-                    resolved_type=ERROR_TY, span=item.span,
-                    verb=item.verb,
-                ))
-                sig = FunctionSignature(
-                    verb=item.verb, name=item.name,
-                    param_names=[], param_types=[],
-                    return_type=ERROR_TY,
-                    can_fail=False,
-                    span=item.span,
-                )
-                self.symbols.define_function(sig)
 
     def _is_module_imported(self, module_name: str) -> bool:
         """Check if a module has any imports."""
@@ -1048,8 +1044,9 @@ class Checker:
             # Verify the function is explicitly imported from this module
             if not self._is_function_imported(module_name, func_name):
                 self._error(
-                    "E310",
-                    f"function '{func_name}' is not imported from '{module_name}'",
+                    "E311",
+                    f"undefined function '{func_name}' "
+                    f"in module '{module_name}'",
                     expr.func.span,
                 )
                 return ERROR_TY

@@ -164,12 +164,17 @@ class ProveFormatter:
             lines.append(f"  requires {self._format_expr(expr)}")
         if fd.proof:
             lines.extend(self._format_proof_block(fd.proof, 2))
-        for text in fd.explain:
-            lines.append(f'  explain: "{text}"')
+        if fd.explain:
+            lines.append("  explain")
+            for text in fd.explain:
+                lines.append(f"    {text}")
         if fd.terminates is not None:
             lines.append(f"  terminates: {self._format_expr(fd.terminates)}")
-        if fd.trusted:
-            lines.append("  trusted")
+        if fd.trusted is not None:
+            if fd.trusted:
+                lines.append(f'  trusted "{fd.trusted}"')
+            else:
+                lines.append("  trusted")
         for text in fd.why_not:
             lines.append(f'  why_not: "{text}"')
         if fd.chosen:

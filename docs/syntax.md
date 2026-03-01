@@ -128,8 +128,8 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 ```prove
 matches area(s Shape) Decimal
 from
-    Circle(r) => pi * r * r
-    Rect(w, h) => w * h
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 
 validates email(address String)
 from
@@ -163,10 +163,10 @@ from
 
 inputs request(route Route, body String, db Database) Response!
 from
-    Get("/health") => ok("healthy")
-    Get("/users")  => users(db)! |> encode |> ok
-    Post("/users") => create(db, body)! |> encode |> created
-    _              => not_found()
+        Get(/health) => ok("healthy")
+        Get(/users) => users(db)! |> encode |> ok
+        Post(/users) => create(db, body)! |> encode |> created
+        _ => not_found()
 ```
 
 ## Verb-Dispatched Identity
@@ -492,7 +492,7 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   ensures result >= 0
   requires len(items) > 0
   explain
-    sum all items.price
+    sum all items . price
     reduce sub by discount
     add tax to discounted
 from
@@ -516,11 +516,11 @@ Compiler parses: `sum` (operation) + `all` (connector) + `items.price` (referenc
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  terminates: len(xs)
   explain
     split the list at the midpoint
     recursively sort both halves
     merge the sorted halves back together
+  terminates: len(xs)
 from
     halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
     left as Sorted<List<T>> = merge_sort(halves.first)
@@ -554,11 +554,11 @@ matches apply_discount(discount Discount, amount Price) Price
     scale amount by complement of rate
     subtract bulk discount from amount
 from
-    FlatOff(off) => max(0, amount - off)
-    PercentOff(rate) => amount * (1 - rate)
-    BuyNGetFree(buy, free) =>
-        sets as Integer = len(items) / (buy + free)
-        amount - sets * cheapest_price(items)
+        FlatOff(off) => max(0, amount - off)
+        PercentOff(rate) => amount * (1 - rate)
+        BuyNGetFree(buy, free) =>
+            sets as Integer = len(items) / (buy + free)
+            amount - sets * cheapest_price(items)
 ```
 
 **Custom vocabulary** for operations and connectors can be declared at module level or in `prove.toml`:
@@ -578,12 +578,12 @@ Recursive functions must declare `terminates` with a measure expression — an e
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  terminates: len(xs)
   explain
     split the list at the midpoint
     recursively sort the first half
     recursively sort the second half
     merge both sorted halves preserving order
+  terminates: len(xs)
 from
     halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
     left as Sorted<List<T>> = merge_sort(halves.first)

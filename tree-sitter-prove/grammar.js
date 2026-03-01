@@ -263,11 +263,13 @@ module.exports = grammar({
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
 
-    explain_annotation: $ => seq('explain', ':', $.string_literal),
+    explain_annotation: $ => seq('explain', repeat1($.explain_line)),
+
+    explain_line: $ => token(prec(-1, /[a-z][^\n]*/)),
 
     terminates_annotation: $ => seq('terminates', ':', $.expression),
 
-    trusted_annotation: $ => 'trusted',
+    trusted_annotation: $ => seq('trusted', optional($.string_literal)),
 
     // ─── AI-Resistance Annotations ─────────────────────────────
 

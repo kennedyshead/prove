@@ -28,10 +28,9 @@ prove test
 ```bash
 prove new <name>                # scaffold a new project
 prove build [path]              # compile to native binary
-prove check [path] [--md]       # type-check without compiling
+prove check [path] [--md]       # type-check and lint
 prove test [path]               # run contract tests
 prove format [path] [--check]   # format source files
-prove lint [path] [--md]        # check formatting with excerpts
 prove view <file>               # print AST
 prove lsp                       # start language server
 ```

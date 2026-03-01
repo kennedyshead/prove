@@ -40,7 +40,7 @@ The project directory must contain a `prove.toml`. Output binary is placed in `b
 
 ## `prove check [path]`
 
-Type-check Prove source without compiling.
+Type-check and lint Prove source without compiling.
 
 ```bash
 prove check
@@ -53,6 +53,8 @@ prove check docs/tutorial.md --md
 | `--md` | Also check ` ```prove ` code blocks in Markdown files |
 
 When `path` is a `.prv` file, checks that single file. When `path` is a directory, finds `prove.toml` and checks all files in `src/`. When `path` is a `.md` file (with `--md`), checks all fenced Prove blocks.
+
+Reports type errors, warnings, and formatting issues in a unified summary. Formatting mismatches show a diff-style context excerpt.
 
 ---
 
@@ -92,24 +94,6 @@ prove format docs/ --md
 | `--md` | Also format ` ```prove ` blocks in Markdown files |
 
 Reformats all `.prv` files recursively under the given path. Files with parse errors are skipped.
-
----
-
-## `prove lint [path]`
-
-Report formatting mismatches with line-by-line context.
-
-```bash
-prove lint
-prove lint src/
-prove lint --md
-```
-
-| Flag | Description |
-|------|-------------|
-| `--md` | Also lint ` ```prove ` blocks in Markdown files |
-
-Shows a diff-style comparison of actual vs. expected formatting.
 
 ---
 

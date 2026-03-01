@@ -370,7 +370,7 @@ class FunctionDef:
     proof: ProofBlock | None
     explain: list[str]
     terminates: Expr | None
-    trusted: bool
+    trusted: str | None
     binary: bool
     why_not: list[str]
     chosen: str | None

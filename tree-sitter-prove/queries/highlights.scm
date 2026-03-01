@@ -8,6 +8,9 @@
   "inputs"
   "outputs"
   "validates"
+  "reads"
+  "creates"
+  "matches"
   "types"
 ] @keyword.function
 
@@ -25,6 +28,7 @@
   "comptime"
   "valid"
   "module"
+  "binary"
 ] @keyword
 
 ; ─── Contract Keywords ──────────────────────────────────────
@@ -33,7 +37,15 @@
   "ensures"
   "requires"
   "proof"
+  "explain"
+  "terminates"
 ] @keyword.control
+
+(trusted_annotation) @keyword.control
+
+; ─── Explain Lines ─────────────────────────────────────────
+
+(explain_line) @string.documentation
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
 

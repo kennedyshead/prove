@@ -579,7 +579,7 @@
         },
         {
           "type": "STRING",
-          "value": "saves"
+          "value": "matches"
         }
       ]
     },
@@ -642,12 +642,26 @@
           }
         },
         {
-          "type": "STRING",
-          "value": "from"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_body_content"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "from"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_body_content"
+                }
+              ]
+            },
+            {
+              "type": "STRING",
+              "value": "binary"
+            }
+          ]
         }
       ]
     },
@@ -839,6 +853,18 @@
         },
         {
           "type": "SYMBOL",
+          "name": "explain_annotation"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "terminates_annotation"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "trusted_annotation"
+        },
+        {
+          "type": "SYMBOL",
           "name": "why_not_annotation"
         },
         {
@@ -962,6 +988,71 @@
         {
           "type": "SYMBOL",
           "name": "type_identifier"
+        }
+      ]
+    },
+    "explain_annotation": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "explain"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "explain_line"
+          }
+        }
+      ]
+    },
+    "explain_line": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": -1,
+        "content": {
+          "type": "PATTERN",
+          "value": "[a-z][^\\n]*"
+        }
+      }
+    },
+    "terminates_annotation": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "terminates"
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "expression"
+        }
+      ]
+    },
+    "trusted_annotation": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "trusted"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "string_literal"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },

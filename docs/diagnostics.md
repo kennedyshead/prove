@@ -13,12 +13,10 @@ These errors enforce the purity rules of the verb system. Pure verbs (`transform
 A `validates` function always returns `Boolean`. Declaring an explicit return type is an error.
 
 ```prove
-// Wrong — do not declare a return type
-validates is_active(u User) Boolean    // E360
+validates is_active(u User) Boolean
 from
     u.active
 
-// Correct
 validates is_active(u User)
 from
     u.active
@@ -29,12 +27,10 @@ from
 Functions with pure verbs cannot use the `!` fail marker. Pure functions do not perform IO and therefore cannot fail.
 
 ```prove
-// Wrong — transforms is pure, cannot fail
-transforms double(x Integer) Integer!    // E361
+transforms double(x Integer) Integer!
 from
     x * 2
 
-// Correct
 transforms double(x Integer) Integer
 from
     x * 2
@@ -45,13 +41,11 @@ from
 A function with a pure verb cannot call built-in IO functions such as `println`, `print`, `readln`, `read_file`, `write_file`, `open`, `close`, `flush`, or `sleep`.
 
 ```prove
-// Wrong — transforms cannot call println
-transforms greet(name String) String    // E362
+transforms greet(name String) String
 from
     println("Hello")
     name
 
-// Correct — use an IO verb
 outputs greet(name String)
 from
     println(f"Hello, {name}")
@@ -66,8 +60,7 @@ outputs save(data String)
 from
     write_file("out.txt", data)
 
-// Wrong — transforms cannot call an outputs function
-transforms process(data String) String    // E363
+transforms process(data String) String
 from
     save(data)
     data
@@ -80,8 +73,7 @@ Lambdas cannot reference variables from an enclosing scope. All values must be p
 ```prove
 transforms scale_all(xs List<Integer>, factor Integer) List<Integer>
 from
-    // Wrong — lambda captures `factor`
-    map(xs, |x| x * factor)    // E364
+    map(xs, |x| x * factor)
 ```
 
 ### E365 — Ambiguous IO verb declaration
@@ -103,14 +95,12 @@ outputs push_sync(data Data, server Server) Data!
 Every recursive function must declare a `terminates` measure expression. The compiler uses this to verify that the recursion converges.
 
 ```prove
-// Wrong — recursive but no terminates
-transforms factorial(n Integer) Integer                    // E366
+transforms factorial(n Integer) Integer
 from
     match n
         0 => 1
         _ => n * factorial(n - 1)
 
-// Correct
 transforms factorial(n Integer) Integer
   terminates: n
 from
@@ -130,19 +120,17 @@ These diagnostics enforce the relationship between contracts (`ensures`, `requir
 When `explain` is present alongside `ensures` (strict mode), the number of explain rows must exactly match the number of lines in the `from` block. A mismatch is a compiler error.
 
 ```prove
-// Wrong — 2 explain rows but 3 from lines
 transforms clamp(x Integer, lo Integer, hi Integer) Integer
   ensures result >= lo
   ensures result <= hi
   explain
-    bound the value from below                     // E390 — 2 rows, 3 lines
+    bound the value from below
     bound the value from above
 from
     clamped_low as Integer = max(lo, x)
     clamped as Integer = min(clamped_low, hi)
     clamped
 
-// Correct — 3 explain rows match 3 from lines
 transforms clamp(x Integer, lo Integer, hi Integer) Integer
   ensures result >= lo
   ensures result <= hi
@@ -167,7 +155,7 @@ transforms abs(x Integer) Integer
   ensures result >= 0
   explain
     take the maximum of x and negated x
-    take the maximum of x and negated x            // E391 — duplicate
+    take the maximum of x and negated x
 from
     candidate as Integer = 0 - x
     max(x, candidate)
@@ -181,7 +169,7 @@ In strict mode (with `ensures`), the compiler verifies that references in explai
 transforms double(x Integer) Integer
   ensures result == x * 2
   explain
-    multiply foo by two                            // E392 — `foo` not found
+    multiply foo by two
 from
     x * 2
 ```
@@ -213,7 +201,7 @@ In strict mode (with `ensures`), the compiler parses each explain row for a know
 transforms abs(x Integer) Integer
   ensures result >= 0
   explain
-    frobulate x into a positive value              // E394 — `frobulate` not a known operation
+    frobulate x into a positive value
 from
     max(x, 0 - x)
 ```
@@ -232,7 +220,7 @@ An explain row should reference at least one concept from the function — a par
 transforms double(x Integer) Integer
   ensures result == x * 2
   explain
-    this is obvious                                // W321 — doesn't mention x, result, or double
+    this is obvious
 from
     x * 2
 ```
@@ -255,7 +243,7 @@ A function has postconditions but no `explain` block. If you promise, explain ho
 
 ```prove
 transforms clamp(x Integer, lo Integer, hi Integer) Integer
-  ensures result >= lo                             // W323 — add explain
+  ensures result >= lo
   ensures result <= hi
 from
     max(lo, min(x, hi))
@@ -267,7 +255,7 @@ A function has postconditions but no preconditions. This is a warning, not an er
 
 ```prove
 transforms head(xs List<T>) T
-  ensures result == xs[0]                          // W324 — no requires on xs
+  ensures result == xs[0]
 from
     xs[0]
 ```
@@ -279,7 +267,7 @@ An `explain` block is present but there are no `ensures` clauses. Without contra
 ```prove
 transforms double(x Integer) Integer
   explain
-    multiply x by two                              // W325 — no ensures to verify against
+    multiply x by two
 from
     x * 2
 ```

@@ -40,7 +40,7 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   ensures result >= 0
   requires len(items) > 0
   explain
-    sum all items.price
+    sum all items . price
     reduce sub by discount
     add tax to discounted
 from
@@ -201,7 +201,7 @@ Surviving mutants:
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
 from
-    sub as Price = subtotal(items)                    // does subtotal have ensures?
+    sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)
     apply_tax(tax, discounted)
 ```

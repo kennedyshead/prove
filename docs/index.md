@@ -64,28 +64,28 @@ prove test
 Every function declares its purpose with a verb. The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit.
 
 ```prove
-matches area(s Shape) Decimal              // dispatch on algebraic type
+matches area(s Shape) Decimal
 from
-    Circle(r) => pi * r * r
-    Rect(w, h) => w * h
+        Circle(r) => pi * r * r
+        Rect(w, h) => w * h
 
-validates email(address String)            // pure boolean check
+validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-reads get(key String, table Table<V>) Option<V>   // non-mutating access
+reads get(key String, table Table<V>) Option<V>
 from
     lookup(table, key)
 
-creates builder() Builder                  // construct a new value
+creates builder() Builder
 from
     allocate_buffer()
 
-inputs users(db Database) List<User>!      // read from external world
+inputs users(db Database) List<User>!
 from
     query(db, "SELECT * FROM users")!
 
-outputs log(message String)                // write to external world
+outputs log(message String)
 from
     write(stdout, message)
 ```
@@ -118,12 +118,12 @@ The compiler rejects `head([])` statically.
 
 ```prove
 matches apply_discount(discount Discount, amount Price) Price
-  requires amount >= 0
   ensures result >= 0
   ensures result <= amount
+  requires amount >= 0
 from
-    FlatOff(off) => max(0, amount - off)
-    PercentOff(rate) => amount * (1 - rate)
+        FlatOff(off) => max(0, amount - off)
+        PercentOff(rate) => amount * (1 - rate)
 ```
 
 `explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and references are verified against contracts. Without `ensures` (loose mode), explain is free-form documentation:
@@ -133,7 +133,7 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   ensures result >= 0
   requires len(items) > 0
   explain
-    sum all items.price
+    sum all items . price
     reduce sub by discount
     add tax to discounted
 from

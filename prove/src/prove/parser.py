@@ -321,7 +321,7 @@ class Parser:
         ensures, requires, proof = [], [], None
         explain: list[str] = []
         terminates_expr = None
-        is_trusted = False
+        is_trusted: str | None = None
         why_not, chosen, near_misses = [], None, []
         know, assume, believe = [], [], []
         intent = None
@@ -347,18 +347,36 @@ class Parser:
                 proof = self._parse_proof_block()
             elif self._at(TokenKind.EXPLAIN):
                 self._advance()
-                self._expect(TokenKind.COLON)
-                if self._at(TokenKind.TRIPLE_STRING_LIT):
-                    explain.append(self._advance().value)
-                else:
-                    explain.append(self._expect(TokenKind.STRING_LIT).value)
+                self._skip_newlines()
+                if self._at(TokenKind.INDENT):
+                    self._advance()
+                    while (not self._at(TokenKind.DEDENT)
+                           and not self._at(TokenKind.EOF)):
+                        self._skip_newlines()
+                        if (self._at(TokenKind.DEDENT)
+                                or self._at(TokenKind.EOF)):
+                            break
+                        # Collect all tokens on this line as one
+                        # explain row
+                        parts: list[str] = []
+                        while (not self._at(TokenKind.NEWLINE)
+                               and not self._at(TokenKind.DEDENT)
+                               and not self._at(TokenKind.EOF)):
+                            parts.append(self._advance().value)
+                        explain.append(" ".join(parts))
+                        self._skip_newlines()
+                    if self._at(TokenKind.DEDENT):
+                        self._advance()
             elif self._at(TokenKind.TERMINATES):
                 self._advance()
                 self._expect(TokenKind.COLON)
                 terminates_expr = self._parse_expression(0)
             elif self._at(TokenKind.TRUSTED):
                 self._advance()
-                is_trusted = True
+                if self._at(TokenKind.STRING_LIT):
+                    is_trusted = self._advance().value
+                else:
+                    is_trusted = ""
             elif self._at(TokenKind.WHY_NOT):
                 self._advance()
                 self._expect(TokenKind.COLON)

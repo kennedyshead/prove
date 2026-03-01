@@ -17,11 +17,13 @@ from prove.project import scaffold
 
 def _compile_project(
     project_path: Path,
-) -> tuple[bool, int, int]:
+) -> tuple[bool, int, int, int, int]:
     """Lex, parse, and check all .prv files under src/.
 
-    Returns (ok, checked, errors) tuple.
+    Returns (ok, checked, errors, warnings, format_issues) tuple.
     """
+    from prove.formatter import ProveFormatter
+
     src_dir = project_path / "src"
     if not src_dir.is_dir():
         src_dir = project_path  # fallback to project root
@@ -29,11 +31,14 @@ def _compile_project(
     prv_files = sorted(src_dir.rglob("*.prv"))
     if not prv_files:
         click.echo("warning: no .prv files found", err=True)
-        return True, 0, 0
+        return True, 0, 0, 0, 0
 
     renderer = DiagnosticRenderer(color=True)
+    formatter = ProveFormatter()
     checked = 0
     errors = 0
+    warnings = 0
+    format_issues = 0
 
     for prv_file in prv_files:
         source = prv_file.read_text()
@@ -56,8 +61,16 @@ def _compile_project(
             click.echo(renderer.render(diag), err=True)
             if diag.severity == Severity.ERROR:
                 errors += 1
+            elif diag.severity == Severity.WARNING:
+                warnings += 1
 
-    return errors == 0, checked, errors
+        formatted = formatter.format(module)
+        if formatted != source:
+            format_issues += 1
+            click.echo(f"format: {filename}", err=True)
+            click.echo(_format_excerpt(filename, source, formatted), err=True)
+
+    return errors == 0, checked, errors, warnings, format_issues
 
 
 @click.group()
@@ -98,8 +111,13 @@ def build(path: str, mutate: bool) -> None:
         raise SystemExit(1)
 
 
-def _check_file(filepath: Path) -> bool:
-    """Lex, parse, and check a single .prv file. Returns True if OK."""
+def _check_file(filepath: Path) -> tuple[int, int, int]:
+    """Lex, parse, and check a single .prv file.
+
+    Returns (errors, warnings, format_issues) tuple.
+    """
+    from prove.formatter import ProveFormatter
+
     source = filepath.read_text()
     filename = str(filepath)
     renderer = DiagnosticRenderer(color=True)
@@ -110,24 +128,35 @@ def _check_file(filepath: Path) -> bool:
     except CompileError as e:
         for diag in e.diagnostics:
             click.echo(renderer.render(diag), err=True)
-        return False
+        return len(e.diagnostics), 0, 0
 
     checker = Checker()
     checker.check(module)
 
-    had_errors = False
+    errors = 0
+    warnings = 0
     for diag in checker.diagnostics:
         click.echo(renderer.render(diag), err=True)
         if diag.severity == Severity.ERROR:
-            had_errors = True
+            errors += 1
+        elif diag.severity == Severity.WARNING:
+            warnings += 1
 
-    return not had_errors
+    formatter = ProveFormatter()
+    formatted = formatter.format(module)
+    format_issues = 0
+    if formatted != source:
+        format_issues = 1
+        click.echo(f"format: {filename}", err=True)
+        click.echo(_format_excerpt(filename, source, formatted), err=True)
+
+    return errors, warnings, format_issues
 
 
-def _check_md_prove_blocks(md_file: Path) -> tuple[int, int]:
+def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
     """Check all ```prove blocks in a markdown file.
 
-    Returns (checked_blocks, error_count).
+    Returns (checked_blocks, error_count, warning_count).
     """
     import re
 
@@ -136,6 +165,7 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int]:
     renderer = DiagnosticRenderer(color=True)
     blocks = 0
     errors = 0
+    warnings = 0
 
     for match in fence_re.finditer(text):
         code = match.group(1)
@@ -158,34 +188,54 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int]:
             click.echo(renderer.render(diag), err=True)
             if diag.severity == Severity.ERROR:
                 errors += 1
+            elif diag.severity == Severity.WARNING:
+                warnings += 1
 
-    return blocks, errors
+    return blocks, errors, warnings
+
+
+def _check_summary(name: str, files: int, errors: int, warnings: int,
+                    format_issues: int, md_blocks: int = 0) -> str:
+    """Build a unified check summary line."""
+    parts = [f"{files} file(s)"]
+    if md_blocks:
+        parts[0] += f", {md_blocks} md block(s)"
+
+    counts: list[str] = []
+    if errors:
+        counts.append(f"{errors} error(s)")
+    if warnings:
+        counts.append(f"{warnings} warning(s)")
+    if format_issues:
+        counts.append(f"{format_issues} formatting issue(s)")
+
+    if counts:
+        return f"checked {name} — {', '.join(parts)}, {', '.join(counts)}"
+    return f"checked {name} — {', '.join(parts)}, no issues"
 
 
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
 def check(path: str, md: bool) -> None:
-    """Type-check a Prove project or a single .prv file."""
+    """Type-check and lint a Prove project or a single .prv file."""
     target = Path(path)
 
     if target.is_file() and target.suffix == ".prv":
         click.echo(f"checking {target.name}...")
-        ok = _check_file(target)
-        if ok:
-            click.echo(f"checked {target.name} — no errors")
-        else:
+        errors, warnings, fmt = _check_file(target)
+        click.echo(_check_summary(target.name, 1, errors, warnings, fmt))
+        if errors:
             raise SystemExit(1)
         return
 
     if target.is_file() and target.suffix == ".md":
         click.echo(f"checking {target.name}...")
-        blocks, errors = _check_md_prove_blocks(target)
+        blocks, errors, warnings = _check_md_prove_blocks(target)
+        click.echo(_check_summary(target.name, 1, errors, warnings, 0,
+                                  md_blocks=blocks))
         if errors:
-            click.echo(f"checked {target.name} — {blocks} block(s), {errors} error(s)")
             raise SystemExit(1)
-        else:
-            click.echo(f"checked {target.name} — {blocks} block(s), no errors")
         return
 
     try:
@@ -193,26 +243,26 @@ def check(path: str, md: bool) -> None:
         config = load_config(config_path)
         click.echo(f"checking {config.package.name}...")
         project_dir = config_path.parent
-        ok, checked, errors = _compile_project(project_dir)
+        ok, checked, errors, warnings, format_issues = _compile_project(
+            project_dir,
+        )
 
         md_blocks = 0
         md_errors = 0
+        md_warnings = 0
         if md and target.is_dir():
             for md_file in sorted(target.rglob("*.md")):
-                b, e = _check_md_prove_blocks(md_file)
+                b, e, w = _check_md_prove_blocks(md_file)
                 md_blocks += b
                 md_errors += e
+                md_warnings += w
             errors += md_errors
+            warnings += md_warnings
 
-        parts = [f"{checked} file(s) checked"]
-        if md_blocks:
-            parts.append(f"{md_blocks} md block(s)")
+        click.echo(_check_summary(config.package.name, checked, errors,
+                                  warnings, format_issues,
+                                  md_blocks=md_blocks))
         if errors:
-            parts.append(f"{errors} error(s)")
-        if ok and md_errors == 0:
-            click.echo(f"checked {config.package.name} — {', '.join(parts)}, no errors")
-        else:
-            click.echo(f"checked {config.package.name} — {', '.join(parts)}")
             raise SystemExit(1)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
@@ -464,73 +514,6 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
 
     if check and changed:
         raise SystemExit(1)
-
-
-@main.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--md", is_flag=True, help="Also lint ```prove blocks in .md files.")
-def lint(path: str, md: bool) -> None:
-    """Check formatting and report mismatches with excerpts."""
-    from prove.formatter import ProveFormatter
-
-    formatter = ProveFormatter()
-    target = Path(path)
-
-    prv_files = sorted(target.rglob("*.prv")) if target.is_dir() else [target]
-
-    issues = 0
-    checked = 0
-    skipped = 0
-    for prv_file in prv_files:
-        source = prv_file.read_text()
-        filename = str(prv_file)
-        try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
-        except CompileError as e:
-            skipped += 1
-            renderer = DiagnosticRenderer(color=True)
-            for diag in e.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-            continue
-
-        checked += 1
-        formatted = formatter.format(module)
-        if formatted != source:
-            issues += 1
-            click.echo(f"lint: {filename}")
-            click.echo(_format_excerpt(filename, source, formatted))
-            click.echo()
-
-    if md and target.is_dir():
-        import re
-
-        fence_re = re.compile(r"(```prove\s*\n)(.*?)(```)", re.DOTALL)
-        for md_file in sorted(target.rglob("*.md")):
-            original = md_file.read_text()
-            checked += 1
-            for match in fence_re.finditer(original):
-                code = match.group(2)
-                fmt = _format_source(code, "<md-block>")
-                if fmt is not None and fmt != code:
-                    issues += 1
-                    # Line number of the block in the .md file
-                    block_line = original[:match.start()].count("\n") + 2
-                    click.echo(f"lint: {md_file}:{block_line} (prove block)")
-                    click.echo(
-                        _format_excerpt(str(md_file), code, fmt)
-                    )
-                    click.echo()
-
-    # --- summary ---
-    parts = [f"{checked} file(s) checked"]
-    if skipped:
-        parts.append(f"{skipped} skipped (parse errors)")
-    if issues:
-        click.echo(f"{issues} formatting issue(s), {', '.join(parts)}.")
-        raise SystemExit(1)
-    else:
-        click.echo(f"{', '.join(parts)}, all clean.")
 
 
 @main.command()
