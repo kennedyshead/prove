@@ -16,7 +16,7 @@ from prove.project import scaffold
 
 
 def _compile_project(
-    project_path: Path, *, check_only: bool = False
+    project_path: Path,
 ) -> tuple[bool, int, int]:
     """Lex, parse, and check all .prv files under src/.
 
@@ -193,7 +193,7 @@ def check(path: str, md: bool) -> None:
         config = load_config(config_path)
         click.echo(f"checking {config.package.name}...")
         project_dir = config_path.parent
-        ok, checked, errors = _compile_project(project_dir, check_only=True)
+        ok, checked, errors = _compile_project(project_dir)
 
         md_blocks = 0
         md_errors = 0
