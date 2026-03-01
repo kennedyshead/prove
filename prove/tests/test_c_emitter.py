@@ -205,10 +205,11 @@ class TestBuiltinDispatch:
 class TestMatchExpression:
     def test_match_algebraic_switch(self):
         source = (
-            "type Color is\n"
-            "    Red\n"
-            "    Green\n"
-            "    Blue\n"
+            "module Test\n"
+            "    type Color is\n"
+            "        Red\n"
+            "        Green\n"
+            "        Blue\n"
             "\n"
             "transforms name(c Color) String\n"
             "    from\n"
@@ -225,9 +226,10 @@ class TestMatchExpression:
 
     def test_match_with_binding(self):
         source = (
-            "type Shape is\n"
-            "    Circle(radius Integer)\n"
-            "    Square(side Integer)\n"
+            "module Test\n"
+            "    type Shape is\n"
+            "        Circle(radius Integer)\n"
+            "        Square(side Integer)\n"
             "\n"
             "transforms area(s Shape) Integer\n"
             "    from\n"
@@ -247,9 +249,10 @@ class TestMatchExpression:
 
     def test_match_string_binding_no_leak(self):
         source = (
-            "type Route is\n"
-            "    Get(path String)\n"
-            "    Post(path String)\n"
+            "module Test\n"
+            "    type Route is\n"
+            "        Get(path String)\n"
+            "        Post(path String)\n"
             "\n"
             "transforms handle(route Route) String\n"
             "    from\n"
@@ -266,9 +269,10 @@ class TestMatchExpression:
 class TestAlgebraicConstructors:
     def test_unit_variant_constructor(self):
         source = (
-            "type Color is\n"
-            "    Red\n"
-            "    Blue\n"
+            "module Test\n"
+            "    type Color is\n"
+            "        Red\n"
+            "        Blue\n"
             "\n"
             "main()\n"
             "    from\n"
@@ -281,9 +285,10 @@ class TestAlgebraicConstructors:
 
     def test_data_variant_constructor(self):
         source = (
-            "type Expr is\n"
-            "    Num(val Integer)\n"
-            "    Add(left Integer, right Integer)\n"
+            "module Test\n"
+            "    type Expr is\n"
+            "        Num(val Integer)\n"
+            "        Add(left Integer, right Integer)\n"
             "\n"
             "main()\n"
             "    from\n"
@@ -299,9 +304,10 @@ class TestAlgebraicConstructors:
 class TestRecordFieldAccess:
     def test_record_field(self):
         source = (
-            "type Point is\n"
-            "    x Integer\n"
-            "    y Integer\n"
+            "module Test\n"
+            "    type Point is\n"
+            "        x Integer\n"
+            "        y Integer\n"
             "\n"
             "transforms get_x(p Point) Integer\n"
             "    from\n"

@@ -1,6 +1,6 @@
 # Prove
 
-![Prove](assets/icon.png)
+<img src="assets/icon.png" alt="Prove" width="100" height="100">
 
 **A programming language that fights back against AI slop and code scraping.**
 
@@ -227,6 +227,12 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 v0.1.0 — the core compilation pipeline works end-to-end. The compiler lexes, parses, type-checks, verifies proof obligations, emits C, and produces native binaries. 326 tests pass across every stage.
 
+## Repository
+
+Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove).
+
+The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
+
 ## License
 
-[Prove Source License v1.0](https://github.com/prove-lang/prove/blob/main/LICENSE) — permissive for developers, prohibits use as AI training data.
+[Prove Source License v1.0](https://code.botwork.se/Botwork/prove/src/branch/main/LICENSE) — permissive for developers, prohibits use as AI training data.

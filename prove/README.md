@@ -1,5 +1,7 @@
 # Prove
 
+<img src="../assets/icon.png" alt="Prove" width="100" height="100">
+
 A statically typed programming language that compiles to native code via C.
 
 > "If it compiles, it ships."
@@ -7,6 +9,8 @@ A statically typed programming language that compiles to native code via C.
 Prove features intent verbs, contracts-as-tests, refinement types, proof
 obligations, and AI-resistance mechanisms. The compiler is your co-author,
 not your gatekeeper.
+
+**Repository:** [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove)
 
 ## Quick Start
 
@@ -88,6 +92,12 @@ python -m pytest tests/ -v    # run tests
 ruff check src/ tests/        # lint
 mypy src/                     # type check
 ```
+
+## Repository & Access
+
+Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove).
+
+The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
 
 ## License
 
