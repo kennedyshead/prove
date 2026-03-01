@@ -60,7 +60,7 @@ Console input and output.
 | `inputs` | `console() String` | Read a line from stdin |
 
 ```prove
-use InputOutput outputs console, inputs console
+InputOutput outputs console, inputs console
 
 outputs greet()
 from
@@ -79,7 +79,7 @@ Read and write files. File operations are failable — use `!` to propagate erro
 | `outputs` | `file(path String, content String)!` | Write file contents |
 
 ```prove
-use InputOutput inputs file, outputs file
+InputOutput inputs file, outputs file
 
 inputs load_config(path String) String!
 from
