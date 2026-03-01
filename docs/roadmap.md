@@ -57,4 +57,5 @@ The Python compiler remains as the bootstrap. Estimated at ~5,900 lines of Prove
 | Project | Description |
 |---------|-------------|
 | [tree-sitter-prove](https://code.botwork.se/Botwork/tree-sitter-prove) | Tree-sitter grammar for editor syntax highlighting |
+| [pygments-prove](https://code.botwork.se/Botwork/pygments-prove) | Pygments lexer for MkDocs and Sphinx code rendering |
 | [chroma-lexer-prove](https://code.botwork.se/Botwork/chroma-lexer-prove) | Chroma lexer for Gitea and Hugo code rendering |

@@ -221,6 +221,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 ## Ecosystem
 
 - **tree-sitter-prove** — Tree-sitter grammar for editor syntax highlighting
+- **pygments-prove** — Pygments lexer for MkDocs and Sphinx code rendering
 - **chroma-lexer-prove** — Chroma lexer for Gitea/Hugo code rendering
 
 ## Status
