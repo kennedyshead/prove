@@ -388,6 +388,36 @@ class TestVerbEnforcement:
             "E362",
         )
 
+    def test_reads_is_pure(self):
+        check(
+            "reads get(key String) String\n"
+            "    from\n"
+            "        key\n"
+        )
+
+    def test_creates_is_pure(self):
+        check(
+            "creates make() Integer\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_saves_is_pure(self):
+        check(
+            "saves store(x Integer) Integer\n"
+            "    from\n"
+            "        x\n"
+        )
+
+    def test_reads_rejects_io(self):
+        check_fails(
+            "reads bad() Integer\n"
+            "    from\n"
+            "        println(\"side effect\")\n"
+            "        0\n",
+            "E362",
+        )
+
     def test_main_allows_io(self):
         check(
             "main() Unit\n"
@@ -400,6 +430,46 @@ class TestVerbEnforcement:
             "inputs read_input() String\n"
             "    from\n"
             "        readln()\n"
+        )
+
+
+class TestChannelDispatch:
+    """Test same-name functions with different verbs."""
+
+    def test_same_name_different_verbs(self):
+        """Two functions with same name but different verbs should coexist."""
+        check(
+            "inputs load() String\n"
+            "    from\n"
+            "        readln()\n"
+            "\n"
+            "outputs load(data String) Unit\n"
+            "    from\n"
+            "        println(data)\n"
+        )
+
+    def test_verb_context_resolves_correct_overload(self):
+        """Calling same-name function should resolve via verb context."""
+        check(
+            "inputs fetch() String\n"
+            "    from\n"
+            "        readln()\n"
+            "\n"
+            "inputs process() String\n"
+            "    from\n"
+            "        fetch()\n"
+        )
+
+    def test_validates_channel(self):
+        """validates verb functions should coexist with other verbs."""
+        check(
+            "transforms format(n Integer) String\n"
+            "    from\n"
+            "        to_string(n)\n"
+            "\n"
+            "validates format(n Integer)\n"
+            "    from\n"
+            "        n > 0\n"
         )
 
     def test_outputs_allows_io(self):
@@ -783,6 +853,45 @@ class TestStdlibLoading:
         # println should resolve without error
         sig = st.resolve_function_any("println")
         assert sig is not None
+
+class TestNamespacedCalls:
+    """Test Module.function() syntax."""
+
+    def test_namespaced_call_resolves(self):
+        """InputOutput.standard() should resolve when imported."""
+        check(
+            "module Main\n"
+            "  InputOutput outputs standard\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        InputOutput.standard("hello")\n'
+        )
+
+    def test_namespaced_call_unimported_module_errors(self):
+        """Module.function() should error if module is not imported."""
+        check_fails(
+            "module Main\n"
+            '  narrative: """test"""\n'
+            "\n"
+            "transforms run() Integer\n"
+            "    from\n"
+            "        Table.new()\n",
+            "E310",
+        )
+
+    def test_namespaced_call_unimported_function_errors(self):
+        """Module.function() should error if function is not imported."""
+        check_fails(
+            "module Main\n"
+            "  InputOutput outputs standard\n"
+            "\n"
+            "outputs run() Unit\n"
+            "    from\n"
+            "        InputOutput.file(\"test.txt\")\n",
+            "E310",
+        )
+
 
 class TestProofConditionChecking:
     """Test type-checking of proof obligation conditions."""

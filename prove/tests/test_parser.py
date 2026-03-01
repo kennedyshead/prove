@@ -5,6 +5,7 @@ from __future__ import annotations
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
+    BinaryDef,
     BinaryExpr,
     BooleanLit,
     CallExpr,
@@ -35,6 +36,7 @@ from prove.ast_nodes import (
     StringInterp,
     StringLit,
     TypeDef,
+    TypeIdentifierExpr,
     UnaryExpr,
     VarDecl,
     Variant,
@@ -137,6 +139,19 @@ class TestParserTypes:
         assert isinstance(decl.body, RecordTypeDef)
         assert len(decl.body.fields) == 3
 
+    def test_binary_type(self):
+        decl = parse_module_type("  type Table<V> is binary\n")
+        assert isinstance(decl, TypeDef)
+        assert decl.name == "Table"
+        assert decl.type_params == ["V"]
+        assert isinstance(decl.body, BinaryDef)
+
+    def test_binary_type_no_params(self):
+        decl = parse_module_type("  type StringBuilder is binary\n")
+        assert isinstance(decl, TypeDef)
+        assert decl.name == "StringBuilder"
+        assert isinstance(decl.body, BinaryDef)
+
     def test_unit_variants(self):
         decl = parse_module_type("  type Color is Red | Green | Blue\n")
         assert isinstance(decl.body, AlgebraicTypeDef)
@@ -173,6 +188,27 @@ class TestParserFunctions:
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "outputs"
         assert decl.can_fail is True
+
+    def test_reads(self):
+        source = 'reads get(key String, table Table) String\n    from\n        key\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.verb == "reads"
+        assert decl.name == "get"
+
+    def test_creates(self):
+        source = 'creates new() Table\n    from\n        0\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.verb == "creates"
+        assert decl.name == "new"
+
+    def test_saves(self):
+        source = 'saves add(key String, value String, table Table) Table\n    from\n        table\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.verb == "saves"
+        assert decl.name == "add"
 
     def test_main(self):
         source = 'main() Result<Unit, Error>!\n    from\n        x\n'
@@ -321,6 +357,16 @@ class TestParserExpressions:
         expr = decl.body[0].expr
         assert isinstance(expr, CallExpr)
         assert len(expr.args) == 2
+
+    def test_namespaced_call(self):
+        source = 'transforms f() Integer\n    from\n        Table.new()\n'
+        decl = parse_decl(source)
+        expr = decl.body[0].expr
+        assert isinstance(expr, CallExpr)
+        assert isinstance(expr.func, FieldExpr)
+        assert isinstance(expr.func.obj, TypeIdentifierExpr)
+        assert expr.func.obj.name == "Table"
+        assert expr.func.field == "new"
 
     def test_fail_propagation(self):
         source = 'inputs f() Integer!\n    from\n        g()!\n'

@@ -9,6 +9,7 @@ from __future__ import annotations
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
+    BinaryDef,
     BinaryExpr,
     BindingPattern,
     BooleanLit,
@@ -99,6 +100,7 @@ _POSTFIX_BP = 17  # left bp for !, ., (), []
 _VERBS = frozenset({
     TokenKind.TRANSFORMS, TokenKind.INPUTS,
     TokenKind.OUTPUTS, TokenKind.VALIDATES,
+    TokenKind.READS, TokenKind.CREATES, TokenKind.SAVES,
 })
 
 _IMPORT_VERBS = _VERBS | {TokenKind.TYPES}
@@ -560,6 +562,12 @@ class Parser:
 
     def _parse_type_body(self) -> TypeBody:
         """Determine and parse the type body kind."""
+        # Binary type: `type X is binary`
+        if self._at(TokenKind.BINARY):
+            span = self._current().span
+            self._advance()
+            return BinaryDef(span)
+
         # Check for indented block (record or multiline algebraic)
         if self._at(TokenKind.INDENT):
             return self._parse_indented_type_body()
@@ -1208,7 +1216,7 @@ class Parser:
                 continue
 
             if (tok.kind == TokenKind.LPAREN
-                    and isinstance(left, (IdentifierExpr, TypeIdentifierExpr))):
+                    and isinstance(left, (IdentifierExpr, TypeIdentifierExpr, FieldExpr))):
                 if _POSTFIX_BP < min_bp:
                     break
                 left = self._parse_call_expr(left)

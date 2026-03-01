@@ -231,6 +231,10 @@ class ProveFormatter:
             constraint = self._format_expr(body.constraint)
             return f"type {td.name}{params} is {base} where {constraint}"
 
+        from prove.ast_nodes import BinaryDef
+        if isinstance(body, BinaryDef):
+            return f"type {td.name}{params} is binary"
+
         return f"type {td.name}{params} is ..."
 
     # ── Constant definitions ───────────────────────────────────

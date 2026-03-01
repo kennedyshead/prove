@@ -616,7 +616,10 @@ def _extract_undefined_name(message: str) -> str | None:
     return m.group(1) if m else None
 
 
-_IMPORT_VERBS = {"transforms", "validates", "inputs", "outputs", "types"}
+_IMPORT_VERBS = {
+    "transforms", "validates", "inputs", "outputs",
+    "reads", "creates", "saves", "types",
+}
 
 
 def _build_import_edit_text(

@@ -5,6 +5,7 @@ from __future__ import annotations
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
+    BinaryDef,
     BinaryExpr,
     BindingPattern,
     BooleanLit,
@@ -289,6 +290,11 @@ class CEmitter:
                 self._indent -= 1
                 self._line("}")
                 self._line("")
+
+        elif isinstance(body, BinaryDef):
+            # Opaque pointer typedef for C-backed types
+            self._line(f"typedef struct {cname}_impl* {cname};")
+            self._line("")
 
     # ── Function emission ──────────────────────────────────────
 
@@ -738,6 +744,17 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
                 return f"{name}({', '.join(args)})"
+            return f"{name}({', '.join(args)})"
+
+        # Namespaced call: Module.function(args)
+        if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            name = expr.func.field
+            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            if sig is None:
+                sig = self._symbols.resolve_function_any(name)
+            if sig and sig.verb is not None:
+                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                return f"{mangled}({', '.join(args)})"
             return f"{name}({', '.join(args)})"
 
         # Complex callable expression
@@ -1277,6 +1294,13 @@ class CEmitter:
             resolved = self._symbols.resolve_type(name)
             if resolved:
                 return resolved
+        if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            name = expr.func.field
+            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            if sig is None:
+                sig = self._symbols.resolve_function_any(name)
+            if sig:
+                return sig.return_type
         return ERROR_TY
 
     def _infer_pipe_type(self, expr: PipeExpr) -> Type:

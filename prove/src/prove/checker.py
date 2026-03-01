@@ -9,6 +9,7 @@ from __future__ import annotations
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
+    BinaryDef,
     BinaryExpr,
     BindingPattern,
     BooleanLit,
@@ -85,7 +86,7 @@ from prove.types import (
 )
 
 # Verbs considered pure (no IO side effects allowed)
-_PURE_VERBS = frozenset({"transforms", "validates"})
+_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "saves"})
 
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset({
@@ -118,6 +119,8 @@ class Checker:
         self.diagnostics: list[Diagnostic] = []
         self._current_function: FunctionDef | MainDef | None = None
         self._io_function_names: set[str] = set()
+        # Track imports: module_name -> set of imported function names
+        self._module_imports: dict[str, set[str]] = {}
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -316,6 +319,10 @@ class Checker:
             base = self._resolve_type_expr(body.base_type)
             resolved = RefinementType(td.name, base)
 
+        elif isinstance(body, BinaryDef):
+            # Binary types are opaque C-backed types — no fields visible to Prove
+            resolved = PrimitiveType(td.name)
+
         else:
             resolved = ERROR_TY
 
@@ -371,6 +378,11 @@ class Checker:
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import load_stdlib
 
+        # Track which functions are imported from which module
+        names = self._module_imports.setdefault(imp.module, set())
+        for item in imp.items:
+            names.add(item.name)
+
         # Try loading real signatures from stdlib
         stdlib_sigs = load_stdlib(imp.module)
         stdlib_map = {s.name: s for s in stdlib_sigs}
@@ -415,6 +427,15 @@ class Checker:
                     span=item.span,
                 )
                 self.symbols.define_function(sig)
+
+    def _is_module_imported(self, module_name: str) -> bool:
+        """Check if a module has any imports."""
+        return module_name in self._module_imports
+
+    def _is_function_imported(self, module_name: str, func_name: str) -> bool:
+        """Check if a specific function is imported from a module."""
+        names = self._module_imports.get(module_name)
+        return names is not None and func_name in names
 
     # ── Pass 2: Checking ────────────────────────────────────────
 
@@ -960,6 +981,40 @@ class Checker:
                 return resolved
             self._error("E311", f"undefined function '{name}'", expr.span)
             return ERROR_TY
+
+        # Namespaced call: Module.function(args)
+        if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            module_name = expr.func.obj.name
+            func_name = expr.func.field
+            # Verify the module is imported
+            if not self._is_module_imported(module_name):
+                self._error(
+                    "E310",
+                    f"module '{module_name}' is not imported",
+                    expr.func.obj.span,
+                )
+                return ERROR_TY
+            # Verify the function is explicitly imported from this module
+            if not self._is_function_imported(module_name, func_name):
+                self._error(
+                    "E310",
+                    f"function '{func_name}' is not imported from '{module_name}'",
+                    expr.func.span,
+                )
+                return ERROR_TY
+            # Resolve the function normally by name
+            sig = self.symbols.resolve_function(None, func_name, arg_count)
+            cur = self._current_function
+            if sig is None and cur and isinstance(cur, FunctionDef):
+                sig = self.symbols.resolve_function(
+                    cur.verb, func_name, arg_count,
+                )
+            if sig is None:
+                sig = self.symbols.resolve_function_any(func_name)
+            if sig is None:
+                self._error("E311", f"undefined function '{func_name}'", expr.span)
+                return ERROR_TY
+            return sig.return_type
 
         # For complex expressions (e.g., method-like calls), infer the function type
         func_type = self._infer_expr(expr.func)

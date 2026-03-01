@@ -347,7 +347,12 @@ class RecordTypeDef:
     span: Span
 
 
-TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef]
+@dataclass(frozen=True)
+class BinaryDef:
+    span: Span
+
+
+TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef]
 
 
 # ── Top-level declarations ───────────────────────────────────────
