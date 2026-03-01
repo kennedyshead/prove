@@ -9,13 +9,11 @@ Prove is a strongly typed, compiler-driven language where contracts generate tes
 ```prove
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
-  proof
-    correctness: result is the sum of a and b
 from
     a + b
 ```
 
-The `ensures` clause declares guarantees. The `proof` block explains *why* they hold. The `transforms` verb guarantees purity. The compiler enforces every contract — and none of it can be faked by autocomplete.
+The `ensures` clause declares hard postconditions — the compiler enforces them automatically. The `transforms` verb guarantees purity. None of it can be faked by autocomplete.
 
 ---
 
@@ -24,13 +22,13 @@ The `ensures` clause declares guarantees. The `proof` block explains *why* they 
 | Problem | How Prove solves it |
 |---|---|
 | AI scrapes your code for training | Binary AST format + anti-training license + semantic normalization |
-| AI slop PRs waste maintainer time | Compiler rejects code without proof obligations and intent |
+| AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
 | Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit |
 | Null/nil crashes | No null — `Option<T>` enforced by compiler |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
-| Contracts without proof | `ensures` without `proof` is a compile error (E390) |
+| Code without reasoning | `explain` documents each step using controlled natural language — verified against contracts |
 
 ---
 
@@ -63,24 +61,35 @@ prove test
 
 ### Intent Verbs
 
-Every function declares its purpose. The compiler enforces it.
+Every function declares its purpose with a verb. The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit.
 
 ```prove
-transforms area(s Shape) Decimal
+matches area(s Shape) Decimal              // dispatch on algebraic type
 from
-    match s
-        Circle(r) => pi * r * r
-        Rect(w, h) => w * h
+    Circle(r) => pi * r * r
+    Rect(w, h) => w * h
 
-validates email(address String)
+validates email(address String)            // pure boolean check
 from
     contains(address, "@") && contains(address, ".")
 
-inputs users(db Database) List<User>!
+reads get(key String, table Table<V>) Option<V>   // non-mutating access
+from
+    lookup(table, key)
+
+creates builder() Builder                  // construct a new value
+from
+    allocate_buffer()
+
+saves add(key String, value V, table Table<V>) Table<V>  // return modified version
+from
+    insert(table, key, value)
+
+inputs users(db Database) List<User>!      // read from external world
 from
     query(db, "SELECT * FROM users")!
 
-outputs log(message String)
+outputs log(message String)                // write to external world
 from
     write(stdout, message)
 ```
@@ -107,22 +116,37 @@ transforms head(xs NonEmpty<T>) T         // no Option needed — emptiness is i
 
 The compiler rejects `head([])` statically.
 
-### Contracts and Proofs
+### Contracts
 
-Functions declare what they guarantee. The compiler verifies or tests it.
+`requires` and `ensures` are hard rules about the function's interface. The compiler enforces them automatically:
 
 ```prove
-transforms apply_discount(discount Discount, amount Price) Price
+matches apply_discount(discount Discount, amount Price) Price
+  requires amount >= 0
   ensures result >= 0
   ensures result <= amount
-  proof
-    non_negative: FlatOff is clamped to zero , PercentOff rate is 0 .. 1
-    bounded: every discount path subtracts from amount , never adds
 from
-    match discount
-        FlatOff(off) => max(0, amount - off)
-        PercentOff(rate) => amount * (1 - rate)
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
 ```
+
+`explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and references are verified against contracts. Without `ensures` (loose mode), explain is free-form documentation:
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+  explain
+    sum all items.price
+    reduce sub by discount
+    add tax to discounted
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+`explain` is LSP-suggested, not compiler-required — but `ensures` without `explain` produces a warning, since promises should be documented.
 
 ### No Loops — Functional Iteration
 
@@ -183,9 +207,6 @@ from
 outputs place_order(db Database, order Order, tax TaxRule) Order!
   requires fulfillable(order)
   ensures result.status == Confirmed
-  proof
-    fulfillment: requires clause guarantees stock sufficiency
-                 before deduction, so stock never goes negative
 from
     total as Price = calculate_total(order.items, None, tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)
@@ -226,7 +247,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 ## Status
 
-v0.4 — pure verb enforcement, binary types, namespaced calls, and channel dispatch are complete. The compiler lexes, parses, type-checks, verifies proof obligations, emits C, and produces native binaries. 394 tests pass across every stage.
+v0.4 — pure verb enforcement, binary types, namespaced calls, and channel dispatch are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 394 tests pass across every stage.
 
 ## Repository
 

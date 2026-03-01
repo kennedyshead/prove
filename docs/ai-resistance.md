@@ -20,19 +20,23 @@ domain Physics
   balance as Acceleration = force / mass   // type: Acceleration, not a keyword
 ```
 
-### Proof Obligations as Code
+### Implementation Explanation as Code
 
-Every function with `ensures` clauses requires an inline proof sketch that the compiler verifies. No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.
+`explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers.
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  proof
-    base: len(xs) <= 1 implies already sorted
-    split: halves are strictly smaller (terminates)
-    merge: merging two sorted halves preserves ordering
-           by induction on combined length
+  terminates: halves are strictly smaller than xs
+  explain
+    split the list at the midpoint
+    recursively sort the first half
+    recursively sort the second half
+    merge both sorted halves preserving order
 from
-    // implementation
+    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<T>> = merge_sort(halves.first)
+    right as Sorted<List<T>> = merge_sort(halves.second)
+    merge(left, right)
 ```
 
 ### Intentional Ambiguity Resolution
@@ -296,13 +300,13 @@ A function's complete definition is distributed across multiple sections that on
 ```
 src/
   server.prv          # implementation (canonical binary AST)
-  server.proof        # proof obligations for server.prv
+  server.explain      # implementation explanations for server.prv
   server.intent       # intent declarations
   server.near_miss    # adversarial near-miss examples
   server.narrative    # module narrative
 ```
 
-A scraper that grabs `server.prv` alone gets a canonical binary AST with no variable names, no comments, no documentation, and no proofs. The proof file without the implementation is meaningless. The intent file without both is noise.
+A scraper that grabs `server.prv` alone gets a canonical binary AST with no variable names, no comments, no documentation, and no explanations. The explain file without the implementation is meaningless. The intent file without both is noise.
 
 **All five files are required to compile.** The compiler assembles the complete picture. No single artifact is useful in isolation.
 

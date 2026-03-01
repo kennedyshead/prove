@@ -7,15 +7,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: deep purple
-      accent: amber
+      primary: teal
+      accent: cyan
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: deep purple
-      accent: amber
+      primary: teal
+      accent: cyan
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -25,6 +25,8 @@ theme:
     - navigation.top
     - content.code.copy
     - toc.integrate
+  logo: assets/icon.png
+  favicon: assets/icon.png
   icon:
     repo: fontawesome/brands/git-alt
 

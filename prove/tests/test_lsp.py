@@ -166,10 +166,10 @@ class TestDocumentState:
 
 
 class TestBuildImportIndex:
-    def test_index_contains_standard(self):
+    def test_index_contains_console(self):
         index = build_import_index()
-        assert "standard" in index
-        suggestions = index["standard"]
+        assert "console" in index
+        suggestions = index["console"]
         assert any(s.module == "InputOutput" and s.verb == "outputs" for s in suggestions)
 
     def test_index_contains_file(self):
@@ -235,55 +235,55 @@ class TestBuildImportEdit:
             "    a + b\n"
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert "InputOutput outputs standard" in edit.new_text
+        assert "InputOutput outputs console" in edit.new_text
         # Should insert after the module line
         assert edit.range.start.line == 1
 
     def test_extend_existing_import(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "outputs run() Unit\n"
             "from\n"
-            '    standard("hi")\n'
+            '    console("hi")\n'
         )
         ds = self._make_ds(source)
         suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="file")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert edit.new_text == "  InputOutput outputs standard file"
+        assert edit.new_text == "  InputOutput outputs console file"
         # Should replace line 1 (the existing import line)
         assert edit.range.start.line == 1
 
     def test_already_imported_returns_none(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "outputs run() Unit\n"
             "from\n"
-            '    standard("hi")\n'
+            '    console("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
     def test_no_module_returns_none(self):
         ds = DocumentState()  # module is None
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
     def test_extend_existing_import_different_verb(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "outputs run() Unit\n"
             "from\n"
-            '    standard("hi")\n'
+            '    console("hi")\n'
         )
         ds = self._make_ds(source)
         suggestion = ImportSuggestion(module="InputOutput", verb="inputs", name="file")
@@ -337,7 +337,7 @@ class TestCompletion:
         """Stdlib completions must work even when the file cannot parse."""
         _analyze("<test://broken>", "this is not valid prove code\n")
         labels = _complete_labels("<test://broken>")
-        assert "standard" in labels
+        assert "console" in labels
         assert "file" in labels
 
     def test_stdlib_functions_with_valid_file(self):
@@ -347,10 +347,10 @@ class TestCompletion:
             '  narrative: """Test"""\n'
             "\n"
             "main()\nfrom\n"
-            '    standard("hi")\n',
+            '    console("hi")\n',
         )
         labels = _complete_labels("<test://valid>")
-        assert "standard" in labels
+        assert "console" in labels
         assert "file" in labels
 
     def test_stdlib_completions_have_detail(self):
@@ -358,7 +358,7 @@ class TestCompletion:
         _analyze("<test://det>", "")
         result = _complete("<test://det>")
         by_label = {item.label: item for item in result.items}
-        item = by_label.get("standard")
+        item = by_label.get("console")
         assert item is not None
         assert item.detail is not None
         assert "InputOutput" in item.detail
@@ -395,7 +395,7 @@ class TestCompletion:
             '  narrative: """Test"""\n'
             "\n"
             "main()\nfrom\n"
-            '    standard("hi")\n',
+            '    console("hi")\n',
         )
         result = _complete("file:///auto.prv")
         by_label = {item.label: item for item in result.items}
@@ -415,15 +415,15 @@ class TestCompletion:
             "file:///noimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "\n"
             "main()\nfrom\n"
-            '    standard("hi")\n',
+            '    console("hi")\n',
         )
         result = _complete("file:///noimport.prv")
         by_label = {item.label: item for item in result.items}
 
-        item = by_label.get("standard")
+        item = by_label.get("console")
         assert item is not None
         # Already imported — no additional edit
         assert item.additional_text_edits is None
@@ -479,7 +479,7 @@ class TestCompletion:
             "file:///afterimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "\n"
             "outputs handle()\n"
             "from\n"
@@ -493,5 +493,5 @@ class TestCompletion:
         assert item is not None
         assert item.additional_text_edits is not None
         edit = item.additional_text_edits[0]
-        # Should insert after "InputOutput outputs standard" (line 2), so at line 3
+        # Should insert after "InputOutput outputs console" (line 2), so at line 3
         assert edit.range.start.line == 3

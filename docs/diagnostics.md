@@ -86,59 +86,69 @@ from
 
 ---
 
-## Proof Verification (E390-E394)
+## Explain & Contract Verification (E390-E394)
 
-These errors enforce the relationship between contracts (`ensures`, `requires`, `believe`) and proof obligations.
+These diagnostics enforce the relationship between contracts (`ensures`, `requires`, `believe`) and implementation explanations.
 
-### E390 — `ensures` without proof block
+### E390 — `explain` row count mismatch
 
-Every function with `ensures` clauses must have a `proof` block. The proof explains *why* the postconditions hold.
+When `explain` is present alongside `ensures` (strict mode), the number of explain rows must exactly match the number of lines in the `from` block. A mismatch is a compiler error.
 
 ```prove
-// Wrong — has ensures but no proof
+// Wrong — 2 explain rows but 3 from lines
 transforms clamp(x Integer, lo Integer, hi Integer) Integer
   ensures result >= lo
   ensures result <= hi
-from                                          // E390
-    max(lo, min(x, hi))
-
-// Correct
-transforms clamp(x Integer, lo Integer, hi Integer) Integer
-  ensures result >= lo
-  ensures result <= hi
-  proof
-    bounded_below: max with lo guarantees result >= lo
-    bounded_above: min with hi guarantees result <= hi
+  explain
+    bound the value from below                     // E390 — 2 rows, 3 lines
+    bound the value from above
 from
-    max(lo, min(x, hi))
+    clamped_low as Integer = max(lo, x)
+    clamped as Integer = min(clamped_low, hi)
+    clamped
+
+// Correct — 3 explain rows match 3 from lines
+transforms clamp(x Integer, lo Integer, hi Integer) Integer
+  ensures result >= lo
+  ensures result <= hi
+  explain
+    bound value from below using lo
+    bound clamped_low from above using hi
+    return the clamped result
+from
+    clamped_low as Integer = max(lo, x)
+    clamped as Integer = min(clamped_low, hi)
+    clamped
 ```
 
-### E391 — Duplicate proof obligation name
+> **Note:** `ensures` without `explain` is a **warning**, not an error — the LSP suggests adding explain to document how the postconditions are satisfied. Similarly, `explain` without `ensures` produces a warning: the explain is unverifiable without contracts to check against.
 
-Each obligation in a `proof` block must have a unique name.
+### E391 — Duplicate explain row
+
+Each explain row must be distinct. Duplicate rows indicate copy-paste errors.
 
 ```prove
 transforms abs(x Integer) Integer
   ensures result >= 0
-  proof
-    non_negative: x or negated x are both >= 0
-    non_negative: redundant obligation             // E391
+  explain
+    take the maximum of x and negated x
+    take the maximum of x and negated x            // E391 — duplicate
 from
-    max(x, 0 - x)
+    candidate as Integer = 0 - x
+    max(x, candidate)
 ```
 
-### E392 — Proof obligations fewer than ensures count
+### E392 — `explain` reference not found
 
-The number of proof obligations must be at least the number of `ensures` clauses.
+In strict mode (with `ensures`), the compiler verifies that references in explain rows correspond to real identifiers in the function. An unrecognized reference that isn't a sugar word triggers this error.
 
 ```prove
-transforms divide(a Integer, b NonZero<Integer>) Integer
-  ensures result * b <= a
-  ensures result * b > a - b
-  proof
-    approximation: integer division truncates       // E392 — 1 obligation, 2 ensures
+transforms double(x Integer) Integer
+  ensures result == x * 2
+  explain
+    multiply foo by two                            // E392 — `foo` not found
 from
-    a / b
+    x * 2
 ```
 
 ### E393 — `believe` without `ensures`
@@ -156,39 +166,38 @@ from
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
   believe result > 0
-  proof
-    sum: addition of a and b produces their sum
 from
     a + b
 ```
 
-### E394 — Proof condition must be Boolean
+### E394 — `explain` operation not recognized
 
-When a proof obligation includes a structured condition (a code expression rather than just text), that expression must evaluate to `Boolean`.
+In strict mode (with `ensures`), the compiler parses each explain row for a known operation (action verb). If no recognized operation is found and the word isn't in the custom vocabulary, this error is emitted.
 
 ```prove
 transforms abs(x Integer) Integer
   ensures result >= 0
-  proof
-    non_negative: result is non-negative
-      when result + 1                              // E394 — Integer, not Boolean
+  explain
+    frobulate x into a positive value              // E394 — `frobulate` not a known operation
 from
     max(x, 0 - x)
 ```
+
+Custom operations can be declared in `prove.toml` under `[explain].operations`.
 
 ---
 
 ## Warnings
 
-### W321 — Proof text missing concept references
+### W321 — `explain` text missing concept references
 
-A text-only proof obligation should reference at least one concept from the function — a parameter name, the function name, or `result`. Obligations that reference none of these are likely too vague to be useful.
+An explain row should reference at least one concept from the function — a parameter name, a variable, or `result`. Rows that reference none of these are likely too vague to be useful.
 
 ```prove
 transforms double(x Integer) Integer
   ensures result == x * 2
-  proof
-    correct: this is obvious                       // W321 — doesn't mention x, result, or double
+  explain
+    this is obvious                                // W321 — doesn't mention x, result, or double
 from
     x * 2
 ```
@@ -212,8 +221,6 @@ A function has postconditions but no preconditions. This is a warning, not an er
 ```prove
 transforms head(xs List<T>) T
   ensures result == xs[0]                          // W324 — no requires on xs
-  proof
-    first: returns the first element
 from
     xs[0]
 ```

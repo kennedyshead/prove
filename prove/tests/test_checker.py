@@ -858,14 +858,14 @@ class TestNamespacedCalls:
     """Test Module.function() syntax."""
 
     def test_namespaced_call_resolves(self):
-        """InputOutput.standard() should resolve when imported."""
+        """InputOutput.console() should resolve when imported."""
         check(
             "module Main\n"
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "\n"
             "main()\n"
             "    from\n"
-            '        InputOutput.standard("hello")\n'
+            '        InputOutput.console("hello")\n'
         )
 
     def test_namespaced_call_unimported_module_errors(self):
@@ -884,7 +884,7 @@ class TestNamespacedCalls:
         """Module.function() should error if function is not imported."""
         check_fails(
             "module Main\n"
-            "  InputOutput outputs standard\n"
+            "  InputOutput outputs console\n"
             "\n"
             "outputs run() Unit\n"
             "    from\n"

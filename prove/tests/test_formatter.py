@@ -210,15 +210,15 @@ class TestFormatterAnnotations:
 
 class TestFormatterImports:
     def test_import(self):
-        source = "module Foo\n  InputOutput outputs standard\n"
+        source = "module Foo\n  InputOutput outputs console\n"
         assert _roundtrip(source) == source
 
     def test_import_verb_groups(self):
-        source = "module Foo\n  InputOutput outputs standard, inputs file\n"
+        source = "module Foo\n  InputOutput outputs console, inputs file\n"
         assert _roundtrip(source) == source
 
     def test_import_types_verb(self):
-        source = "module Foo\n  InputOutput inputs standard file\n"
+        source = "module Foo\n  InputOutput inputs console file\n"
         assert _roundtrip(source) == source
 
 

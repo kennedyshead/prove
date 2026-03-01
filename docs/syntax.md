@@ -106,19 +106,31 @@ module Main
 
 Functions are declared with a **verb** that describes their purpose. No `fn`, no `function` keyword — the verb IS the declaration. The compiler verifies the implementation matches the declared intent.
 
+Verbs are divided into two families: **pure** (no side effects) and **IO** (interacts with the outside world).
+
+**Pure verbs:**
+
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
 | `transforms` | Pure data computation/conversion | No `!`. Failure encoded in return type (`Result`, `Option`) |
+| `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
+| `reads` | Non-mutating access to data | No `!`. Extracts or queries without changing anything |
+| `creates` | Constructs a new value | No `!`. Returns a freshly allocated value |
+| `saves` | Mutating operation (returns modified value) | No `!`. Takes a value, returns a new version with changes applied |
+| `matches` | Pure match dispatch on algebraic type | No `!`. First parameter must be algebraic. `from` block is implicitly a match — no `match x` needed |
+
+**IO verbs:**
+
+| Verb | Purpose | Compiler enforces |
+|------|---------|-------------------|
 | `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
-| `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
 
 ```prove
-transforms area(s Shape) Decimal
+matches area(s Shape) Decimal
 from
-    match s
-        Circle(r) => pi * r * r
-        Rect(w, h) => w * h
+    Circle(r) => pi * r * r
+    Rect(w, h) => w * h
 
 validates email(address String)
 from
@@ -141,6 +153,18 @@ from
 outputs log(message String)
 from
     write(stdout, message)
+
+reads length(s String) Integer
+from
+    count_bytes(s)
+
+creates builder() Builder
+from
+    allocate_buffer()
+
+saves add(key String, value V, table Table<V>) Table<V>
+from
+    insert(table, key, value)
 
 inputs request(route Route, req Request) Response!
 from
@@ -258,7 +282,7 @@ The LSP shows inferred types inline as you type, so you always know what the com
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`) have neither IO nor `!`.
+IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`, `matches`) have neither IO nor `!`.
 
 ```prove
 transforms area(s Shape) Decimal
@@ -347,17 +371,13 @@ Where other languages use `if` to decide whether to run code, Prove uses validat
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
   requires len(items) > 0
-  proof
-    subtotal: sums the items Price
-    apply_discount: deduct when discount > 0
-    apply_tax: adds tax when tax > 0
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)
     apply_tax(tax, discounted)
 ```
 
-There is no `if discount > 0 then apply_discount(...)`. Instead, the proof declares *when* `apply_discount` is meaningful, and the contract system validates it. The function `apply_discount` is called — but its `requires` clause ensures the compiler has already proven the discount is valid before the call happens. The "branching" lives in the type system and contracts, not in boolean conditions.
+There is no `if discount > 0 then apply_discount(...)`. The `requires` clause on `apply_discount` ensures the compiler has already proven the discount is valid before the call happens. The "branching" lives in the type system and contracts, not in boolean conditions.
 
 **5. Boolean matching is a code smell.**
 
@@ -365,7 +385,7 @@ There is no `if discount > 0 then apply_discount(...)`. Instead, the proof decla
 
 ### The Rule
 
-Branch on *what something is*, not on *whether something is true*. Types and contracts handle the rest — `requires` guards preconditions, `ensures` guarantees postconditions, and `proof` explains why. No boolean branch needed.
+Branch on *what something is*, not on *whether something is true*. Types and contracts handle the rest — `requires` guards preconditions, `ensures` guarantees postconditions, and `explain` documents the reasoning. No boolean branch needed.
 
 ## Lambdas — Constrained Inline Functions
 
@@ -414,7 +434,7 @@ result as List<String> = users
     |> filter(valid email)
 ```
 
-For complex iteration that doesn't fit map/filter/reduce, use recursion with a `transforms` function. The compiler verifies termination through proof obligations.
+For complex iteration that doesn't fit map/filter/reduce, use recursion with a `transforms` function.
 
 ## Keyword Exclusivity
 
@@ -425,22 +445,29 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | Keyword | What it does |
 |---------|-------------|
 | `transforms` | Declares a pure function — no side effects, just data in, data out |
+| `validates` | Declares a function that returns true or false |
+| `reads` | Declares a pure function that extracts or queries data without changing it |
+| `creates` | Declares a pure function that constructs a new value |
+| `saves` | Declares a pure function that returns a modified version of its input |
 | `inputs` | Declares a function that reads from the outside world (database, file, network) |
 | `outputs` | Declares a function that writes to the outside world |
-| `validates` | Declares a function that returns true or false |
 | `main` | The program's entry point — can freely mix reading and writing |
 | `from` | Marks where the function body starts — "the result comes from..." |
 | `where` | Adds a value constraint to a type — `Integer where 1..65535` |
 | `as` / `is` | `as` declares a variable — `port as Port = 8080` (what it's treated as). `is` defines a type — `type Port is Integer` (what it is) |
 | `type` | Starts a type definition — `type Port is Integer where 1..65535` |
 | `match` | Branches on a value — the only way to do conditional logic |
-| `ensures` | States what a function guarantees about its result |
-| `requires` | States what must be true before calling a function |
-| `proof` | Explains *why* the guarantees hold — checked by the compiler |
+| `ensures` | States what a function guarantees about its result — a hard postcondition |
+| `requires` | States what must be true before calling a function — a hard precondition |
+| `matches` | Declares a pure function that dispatches on an algebraic first parameter |
+| `explain` | Documents each step in the `from` block using controlled natural language. **Strict** (with `ensures`): row count must match `from`, references verified against contracts. **Loose** (without `ensures`): free-form text, documentation only. LSP-suggested, not compiler-required |
+| `terminates` | Declares why a recursive function terminates — what decreases on each call |
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Runs code at compile time instead of runtime |
 
-### Contracts: `requires`, `ensures`, `proof`
+### Interface Contracts: `requires`, `ensures`
+
+`requires` and `ensures` are hard rules about the function's interface. The compiler enforces them automatically.
 
 ```prove
 type Clamped is Integer where low .. high
@@ -449,13 +476,123 @@ transforms clamp(value Integer, low Integer, high Integer) Clamped
   requires low <= high
   ensures result >= low
   ensures result <= high
-  proof
-    bounded: Clamped constrains result to low..high by definition
 from
     max(low, min(value, high))
 ```
 
-`requires` states what must be true before calling the function — the compiler rejects call sites that can't prove it. `ensures` states what the function guarantees about its result. `proof` explains *why* the guarantees hold — the compiler checks that the explanation is consistent with the code. Here, the refinement type `Clamped` does the heavy lifting — no branching needed.
+`requires` states what must be true before calling the function — the compiler rejects call sites that can't prove it. `ensures` states what the function guarantees about its result — the compiler verifies every code path or generates property tests. Here, the refinement type `Clamped` does the heavy lifting.
+
+### Implementation Explanation: `explain`
+
+`explain` documents the chain of operations in the `from` block using controlled natural language. It is **LSP-suggested, not compiler-required** — the LSP recommends adding it when a function has enough complexity to warrant documentation.
+
+**Two strictness modes:**
+
+**Strict mode** (function has `ensures`): Each explain row corresponds to a line in the `from` block — the count must match exactly (mismatch is a compiler error). The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). References are verified against the function's contracts and called functions. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+  explain
+    sum all items.price
+    reduce sub by discount
+    add tax to discounted
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+Sugar words keep it readable — the compiler sees the same thing:
+
+```prove
+  explain
+    sum all the items.price
+    reduce the sub by discount
+    add applicable tax to the discounted total
+```
+
+Compiler parses: `sum` (operation) + `all` (connector) + `items.price` (reference), ignoring "the". Both forms are equivalent.
+
+**Loose mode** (no `ensures`): Row count is flexible. Free-form text. Documentation value only.
+
+```prove
+transforms merge_sort(xs List<T>) Sorted<List<T>>
+  terminates: halves are strictly smaller than xs
+  explain
+    split the list at the midpoint
+    recursively sort both halves
+    merge the sorted halves back together
+from
+    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<T>> = merge_sort(halves.first)
+    right as Sorted<List<T>> = merge_sort(halves.second)
+    merge(left, right)
+```
+
+**Warning pairs:**
+
+- `ensures` without `explain` → warning: add explain to document how ensures are satisfied
+- `explain` without `ensures` → warning: explain is unverifiable without contracts to check against
+
+**Bare functions are fine.** Trivial code needs no annotations:
+
+```prove
+validates email(address String)
+from
+    contains(address, "@") && contains(address, ".")
+```
+
+No explain needed — the implementation is self-evident. The LSP suggests explain only when complexity warrants it.
+
+For `matches` functions, each explain row corresponds to one arm. The LSP suggests per-arm explain for complex dispatch:
+
+```prove
+matches apply_discount(discount Discount, amount Price) Price
+  ensures result >= 0
+  ensures result <= amount
+  explain
+    clamp the difference to zero
+    scale amount by complement of rate
+    subtract bulk discount from amount
+from
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
+    BuyNGetFree(buy, free) =>
+        sets as Integer = len(items) / (buy + free)
+        amount - sets * cheapest_price(items)
+```
+
+**Custom vocabulary** for operations and connectors can be declared at module level or in `prove.toml`:
+
+```toml
+# prove.toml
+[explain]
+operations = ["amortize", "interpolate", "normalize"]
+connectors = ["across", "between", "within"]
+```
+
+`explain` is independent of `requires` and `ensures`. A function can have any combination — though the strictness mode depends on whether `ensures` is present.
+
+### Termination: `terminates`
+
+Recursive functions use `terminates` to declare why the recursion ends. The compiler uses this to verify termination:
+
+```prove
+transforms merge_sort(xs List<T>) Sorted<List<T>>
+  terminates: halves are strictly smaller than xs
+  explain
+    split the list at the midpoint
+    recursively sort the first half
+    recursively sort the second half
+    merge both sorted halves preserving order
+from
+    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<T>> = merge_sort(halves.first)
+    right as Sorted<List<T>> = merge_sort(halves.second)
+    merge(left, right)
+```
 
 **AI-Resistance keywords (Phase 1+2):**
 
@@ -570,8 +707,6 @@ from
 /// Creates a new user from a request body.
 outputs create(db Database, body String) User!
   ensures email(result.email)
-  proof
-    email_valid: decode validates the email field before insertion
 from
     user as User = decode(body)!
     insert(db, "users", user)!

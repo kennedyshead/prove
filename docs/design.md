@@ -35,7 +35,7 @@ The first program written in Prove will be the Prove compiler itself. The bootst
 
 ### AI-Resistance: Fundamental
 
-AI-resistance features (proof obligations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are **mandatory and fundamental to the language identity**, not optional extras. Proof obligations are required for every function that has `ensures` clauses — if you declare what a function guarantees, you must prove why.
+AI-resistance features (implementation explanations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are **mandatory and fundamental to the language identity**, not optional extras. `requires` and `ensures` are hard rules the compiler enforces automatically. `explain` blocks document the chain of operations in the implementation — each key maps to a variable name, and the count must match the `from` block exactly.
 
 ### Comptime: IO Allowed
 
@@ -57,7 +57,7 @@ prove new <name>     # scaffold a new project
 
 ### Syntax Philosophy
 
-No shorthands. No abbreviations. Full words everywhere. The language reads like English prose where possible. Since it is inherently a hard-to-learn language (refinement types, proof obligations, effect tracking), **simplicity is maximized wherever possible**. If something can be simple, it must be. The compiler works for the programmer, not the other way around.
+No shorthands. No abbreviations. Full words everywhere. The language reads like English prose where possible. Since it is inherently a hard-to-learn language (refinement types, implementation explanations, effect tracking), **simplicity is maximized wherever possible**. If something can be simple, it must be. The compiler works for the programmer, not the other way around.
 
 ### Secondary Priorities (Deferred)
 

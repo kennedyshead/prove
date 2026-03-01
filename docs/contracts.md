@@ -20,23 +20,38 @@ Prove's contract system is not syntactic sugar for assertions. It is a fundament
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
   requires len(items) > 0
-  proof
-    subtotal: sums the items Price
-    apply_discount: deduct when discount > 0
-    apply_tax: adds tax when tax > 0
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)
     apply_tax(tax, discounted)
 ```
 
-Three things happen at compile time:
+Two things happen at compile time:
 
 - **`requires`** — The compiler rejects any call site that cannot prove `len(items) > 0`. This is not a runtime check. If your list might be empty, the code does not compile.
 - **`ensures`** — The compiler verifies that every code path produces `result >= 0`. If it cannot prove this statically, it generates property tests that exercise thousands of inputs.
-- **`proof`** — The programmer explains *why* the postconditions hold. The compiler uses these proof hints to guide its verification. If the proof is wrong, the compiler says so.
 
-All three are mandatory. You cannot ship a function without declaring what it requires and what it guarantees.
+These are hard rules — the compiler enforces them automatically.
+
+When the implementation has multiple steps, `explain` documents the chain of operations using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and the compiler verifies references against contracts:
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+  explain
+    sum all items.price
+    reduce sub by discount
+    add tax to discounted
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+`requires` and `ensures` are about the function's *interface*. `explain` is about the function's *implementation* — it documents *how* each step satisfies the promises.
+
+`explain` is LSP-suggested, not compiler-required. Simple functions with `ensures` don't need it — the LSP suggests it when complexity warrants documentation. However, `ensures` without `explain` produces a warning: if you promise, explain how.
 
 ### Python
 
@@ -103,11 +118,11 @@ fn calculate_total(items: &[OrderItem], discount: &Discount, tax: &TaxRule) -> P
 |---|---|---|---|---|
 | **Preconditions** | `requires` — compile-time enforced | `assert` — runtime, strippable | Types cover some; rest are comments | `debug_assert!` — stripped in release |
 | **Postconditions** | `ensures` — compiler-verified or auto-tested | `assert` — runtime, strippable | Comments or smart constructors (manual) | `debug_assert!` — stripped in release |
-| **Proof of correctness** | `proof` — checked by compiler | Does not exist | Does not exist | Does not exist |
+| **Implementation reasoning** | `explain` — checked by compiler | Does not exist | Does not exist | Does not exist |
 | **Test generation** | Automatic from contracts | Manual (pytest, hypothesis) | Manual (QuickCheck) | Manual (proptest) |
-| **Contracts are...** | Mandatory, part of the function signature | Optional, easily ignored | Convention, not enforced | Convention, not enforced |
+| **Contracts are...** | Part of the function signature, compiler-enforced | Optional, easily ignored | Convention, not enforced | Convention, not enforced |
 
-The gap is not about syntax. Python, Haskell, and Rust all have *mechanisms* for expressing some of these ideas. The difference is that in Prove, contracts are **mandatory**, **compiler-enforced**, and **self-testing**. You cannot write a function that silently ignores its own guarantees.
+The gap is not about syntax. Python, Haskell, and Rust all have *mechanisms* for expressing some of these ideas. The difference is that in Prove, contracts are **compiler-enforced** and **self-testing**. You cannot write a function that silently ignores its own guarantees.
 
 ---
 
@@ -156,8 +171,6 @@ transforms leap_year(y Integer) Boolean
   requires y > 0
   near_miss 0 => rejected       // not a valid year
   near_miss -1 => rejected      // negative year
-  proof
-    positive_year: requires clause rejects non-positive years
 from
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 ```

@@ -1,11 +1,11 @@
 module InputOutput
   narrative: """Handles IO operations"""
 
-outputs standard(text String)
+outputs console(text String)
 from
     print(text)
 
-inputs standard() String
+inputs console() String
 from
     readln()
 

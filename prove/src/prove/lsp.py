@@ -662,7 +662,7 @@ def _build_import_edit_text(
             continue
 
         # Import lines: indented "ModuleName verb name, name"
-        # e.g. "  InputOutput outputs standard"
+        # e.g. "  InputOutput outputs console"
         if line.startswith("  ") and stripped:
             parts = stripped.split()
             if (len(parts) >= 3

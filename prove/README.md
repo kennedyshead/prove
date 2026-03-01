@@ -104,8 +104,8 @@ Console and file I/O through channel dispatch:
 
 | Verb | Channel | Signature |
 |------|---------|-----------|
-| `outputs` | `standard` | `(text String)` |
-| `inputs` | `standard` | `() String` |
+| `outputs` | `console` | `(text String)` |
+| `inputs` | `console` | `() String` |
 | `inputs` | `file` | `(path String) Result<String, Error>!` |
 | `outputs` | `file` | `(path String, content String) Result<Unit, Error>!` |
 
