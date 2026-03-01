@@ -1,0 +1,28 @@
+module Table
+  narrative: """Hash table from String keys to values."""
+
+  type Table<V> is binary
+
+creates new() Table<V>
+binary
+
+validates has(key String, table Table<V>) Boolean
+binary
+
+transforms add(key String, value V, table Table<V>) Table<V>
+binary
+
+reads get(key String, table Table<V>) Option<V>
+binary
+
+transforms remove(key String, table Table<V>) Table<V>
+binary
+
+reads keys(table Table<V>) List<String>
+binary
+
+reads values(table Table<V>) List<V>
+binary
+
+reads length(table Table<V>) Integer
+binary

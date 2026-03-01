@@ -82,6 +82,8 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_String*", is_pointer=True, header="prove_string.h")
         if name == "Error":
             return CType("Prove_String*", is_pointer=True, header="prove_string.h")
+        if name == "Builder":
+            return CType("Prove_Builder*", is_pointer=True, header="prove_text.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 
@@ -103,6 +105,8 @@ def map_type(ty: Type) -> CType:
     if isinstance(ty, GenericInstance):
         if ty.base_name == "Result":
             return CType("Prove_Result", is_pointer=False, header="prove_result.h")
+        if ty.base_name == "Table":
+            return CType("Prove_Table*", is_pointer=True, header="prove_table.h")
         if ty.base_name == "Option":
             # Monomorphize: Option<Integer> -> Prove_Option_int64_t
             if ty.args:

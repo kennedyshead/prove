@@ -23,6 +23,12 @@ _RUNTIME_FILES = [
     "prove_hof.c",
     "prove_option.h",
     "prove_result.h",
+    "prove_character.h",
+    "prove_character.c",
+    "prove_text.h",
+    "prove_text.c",
+    "prove_table.h",
+    "prove_table.c",
 ]
 
 

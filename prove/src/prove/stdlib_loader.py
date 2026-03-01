@@ -15,6 +15,7 @@ from prove.source import Span
 from prove.symbols import FunctionSignature
 from prove.types import (
     BOOLEAN,
+    CHARACTER,
     ERROR_TY,
     INTEGER,
     STRING,
@@ -30,6 +31,7 @@ _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
 # Binary function → C runtime function mapping
 # Key: (module_key, verb, function_name) → C function name
 _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
+    # InputOutput
     ("io", "outputs", "console"): "prove_println",
     ("io", "inputs", "console"): "prove_readln",
     ("io", "inputs", "file"): "prove_file_read",
@@ -38,6 +40,42 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     ("inputoutput", "inputs", "console"): "prove_readln",
     ("inputoutput", "inputs", "file"): "prove_file_read",
     ("inputoutput", "outputs", "file"): "prove_file_write",
+    # Character
+    ("character", "validates", "alpha"): "prove_character_alpha",
+    ("character", "validates", "digit"): "prove_character_digit",
+    ("character", "validates", "alnum"): "prove_character_alnum",
+    ("character", "validates", "upper"): "prove_character_upper",
+    ("character", "validates", "lower"): "prove_character_lower",
+    ("character", "validates", "space"): "prove_character_space",
+    ("character", "reads", "at"): "prove_character_at",
+    # Text
+    ("text", "reads", "length"): "prove_text_length",
+    ("text", "transforms", "slice"): "prove_text_slice",
+    ("text", "validates", "starts_with"): "prove_text_starts_with",
+    ("text", "validates", "ends_with"): "prove_text_ends_with",
+    ("text", "validates", "contains"): "prove_text_contains",
+    ("text", "reads", "index_of"): "prove_text_index_of",
+    ("text", "transforms", "split"): "prove_text_split",
+    ("text", "transforms", "join"): "prove_text_join",
+    ("text", "transforms", "trim"): "prove_text_trim",
+    ("text", "transforms", "to_lower"): "prove_text_to_lower",
+    ("text", "transforms", "to_upper"): "prove_text_to_upper",
+    ("text", "transforms", "replace"): "prove_text_replace",
+    ("text", "transforms", "repeat"): "prove_text_repeat",
+    ("text", "creates", "builder"): "prove_text_builder",
+    ("text", "transforms", "write"): "prove_text_write",
+    ("text", "transforms", "write_char"): "prove_text_write_char",
+    ("text", "reads", "build"): "prove_text_build",
+    ("text", "reads", "builder_length"): "prove_text_builder_length",
+    # Table
+    ("table", "creates", "new"): "prove_table_new",
+    ("table", "validates", "has"): "prove_table_has",
+    ("table", "transforms", "add"): "prove_table_add",
+    ("table", "reads", "get"): "prove_table_get",
+    ("table", "transforms", "remove"): "prove_table_remove",
+    ("table", "reads", "keys"): "prove_table_keys",
+    ("table", "reads", "values"): "prove_table_values",
+    ("table", "reads", "length"): "prove_table_length",
 }
 
 
@@ -50,6 +88,9 @@ def binary_c_name(module: str, verb: str | None, name: str) -> str | None:
 _STDLIB_MODULES: dict[str, str] = {
     "io": "input_output.prv",
     "inputoutput": "input_output.prv",
+    "character": "character.prv",
+    "text": "text.prv",
+    "table": "table.prv",
 }
 
 # Cache loaded signatures
@@ -62,6 +103,7 @@ def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance 
         "Integer": INTEGER,
         "String": STRING,
         "Boolean": BOOLEAN,
+        "Character": CHARACTER,
         "Unit": UNIT,
     }
     if name in mapping:
@@ -189,6 +231,9 @@ class ImportSuggestion:
 _MODULE_DISPLAY_NAMES: dict[str, str] = {
     "io": "InputOutput",
     "inputoutput": "InputOutput",
+    "character": "Character",
+    "text": "Text",
+    "table": "Table",
 }
 
 # Alias keys that should be skipped when building the index
