@@ -35,7 +35,7 @@ The first program written in Prove will be the Prove compiler itself. The bootst
 
 ### AI-Resistance: Fundamental
 
-AI-resistance features (implementation explanations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are **mandatory and fundamental to the language identity**, not optional extras. `requires` and `ensures` are hard rules the compiler enforces automatically. `explain` blocks document the chain of operations in the implementation — each key maps to a variable name, and the count must match the `from` block exactly.
+AI-resistance features (implementation explanations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are **mandatory and fundamental to the language identity**, not optional extras. `requires` and `ensures` are hard rules the compiler enforces automatically. `explain` documents the chain of operations in the implementation using controlled natural language — with `ensures` present, references are verified against contracts and row count must match the `from` block.
 
 ### Comptime: IO Allowed
 
@@ -84,7 +84,7 @@ The ownership system and effect types combine to eliminate data races at compile
 No exceptions. Every failure path is visible in the type signature. Uses `!` for error propagation. Panics exist only for violated `assume:` assertions at system boundaries — normal error handling is always through `Result` values.
 
 ```prove
-main() Result<Unit, Error>!
+main()!
 from
     config as Config = read_config("app.yaml")!
     db as Database = connect(config.db_url)!

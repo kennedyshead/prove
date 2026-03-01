@@ -6,7 +6,7 @@ The Prove compiler emits errors and warnings with unique codes. Each diagnostic 
 
 ## Verb Enforcement (E360-E364)
 
-These errors enforce the purity rules of the verb system. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`) cannot perform side effects.
+These errors enforce the purity rules of the verb system. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects.
 
 ### E360 — `validates` has implicit Boolean return
 
@@ -82,6 +82,41 @@ transforms scale_all(xs List<Integer>, factor Integer) List<Integer>
 from
     // Wrong — lambda captures `factor`
     map(xs, |x| x * factor)    // E364
+```
+
+### E365 — Ambiguous IO verb declaration
+
+Two IO verbs (`inputs` and `outputs`) cannot declare functions with the same name and parameter types. If the compiler can't disambiguate, neither can the programmer.
+
+```prove
+// Wrong — same name, same params, both IO
+inputs sync(data Data, server Server) Data!       // E365
+outputs sync(data Data, server Server) Data!
+
+// Correct — use distinct names
+inputs fetch_sync(data Data, server Server) Data!
+outputs push_sync(data Data, server Server) Data!
+```
+
+### E366 — Recursive function missing `terminates`
+
+Every recursive function must declare a `terminates` measure expression. The compiler uses this to verify that the recursion converges.
+
+```prove
+// Wrong — recursive but no terminates
+transforms factorial(n Integer) Integer                    // E366
+from
+    match n
+        0 => 1
+        _ => n * factorial(n - 1)
+
+// Correct
+transforms factorial(n Integer) Integer
+  terminates: n
+from
+    match n
+        0 => 1
+        _ => n * factorial(n - 1)
 ```
 
 ---
@@ -214,6 +249,18 @@ from
     // ...
 ```
 
+### W323 — `ensures` without `explain`
+
+A function has postconditions but no `explain` block. If you promise, explain how. The LSP will suggest adding explain.
+
+```prove
+transforms clamp(x Integer, lo Integer, hi Integer) Integer
+  ensures result >= lo                             // W323 — add explain
+  ensures result <= hi
+from
+    max(lo, min(x, hi))
+```
+
 ### W324 — `ensures` without `requires`
 
 A function has postconditions but no preconditions. This is a warning, not an error — it may be intentional, but often indicates missing input constraints.
@@ -223,4 +270,34 @@ transforms head(xs List<T>) T
   ensures result == xs[0]                          // W324 — no requires on xs
 from
     xs[0]
+```
+
+### W325 — `explain` without `ensures`
+
+An `explain` block is present but there are no `ensures` clauses. Without contracts to check against, the explain is unverifiable — it serves as documentation only.
+
+```prove
+transforms double(x Integer) Integer
+  explain
+    multiply x by two                              // W325 — no ensures to verify against
+from
+    x * 2
+```
+
+### W326 — Recursion depth may be unbounded
+
+A recursive function's `terminates` measure decreases by a constant amount per call, suggesting O(n) call depth. Consider using `map`, `filter`, or `reduce` via the pipe operator instead.
+
+```prove
+transforms sum_all(xs List<Integer>) Integer
+  terminates: len(xs)                              // W326 — O(n) depth
+from
+    match xs
+        [] => 0
+        [head, ...tail] => head + sum_all(tail)
+
+// Preferred: use reduce
+transforms sum_all(xs List<Integer>) Integer
+from
+    reduce(xs, 0, |acc, x| acc + x)
 ```

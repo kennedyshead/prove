@@ -116,7 +116,6 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 | `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
 | `reads` | Non-mutating access to data | No `!`. Extracts or queries without changing anything |
 | `creates` | Constructs a new value | No `!`. Returns a freshly allocated value |
-| `saves` | Mutating operation (returns modified value) | No `!`. Takes a value, returns a new version with changes applied |
 | `matches` | Pure match dispatch on algebraic type | No `!`. First parameter must be algebraic. `from` block is implicitly a match — no `match x` needed |
 
 **IO verbs:**
@@ -162,16 +161,12 @@ creates builder() Builder
 from
     allocate_buffer()
 
-saves add(key String, value V, table Table<V>) Table<V>
+inputs request(route Route, body String, db Database) Response!
 from
-    insert(table, key, value)
-
-inputs request(route Route, req Request) Response!
-from
-        Get(/health) => ok("healthy")
-        Get(/users) => users()! |> ok
-        Post(/users) => create(req.body)! |> created
-        _ => not_found()
+    Get("/health") => ok("healthy")
+    Get("/users")  => users(db)! |> encode |> ok
+    Post("/users") => create(db, body)! |> encode |> created
+    _              => not_found()
 ```
 
 ## Verb-Dispatched Identity
@@ -282,7 +277,7 @@ The LSP shows inferred types inline as you type, so you always know what the com
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`, `matches`) have neither IO nor `!`.
+IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`.
 
 ```prove
 transforms area(s Shape) Decimal
@@ -410,7 +405,7 @@ verified_emails as List<String> = filter(emails, valid email)
 **Constraints:**
 - **Single expression only** — no multi-line bodies, no statements. If you need more, write a named function.
 - **Must be pure** — no IO effects inside a lambda. Side effects require a named function.
-- **No closures over mutable state** — lambdas can reference immutable bindings from the enclosing scope, but not `:[Mutable]` variables.
+- **No closures** — lambdas cannot reference variables from the enclosing scope. All values must be passed as arguments or accessed through the lambda's own parameters.
 - **Only as arguments** — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function.
 
 ## Iteration — No Loops
@@ -448,7 +443,6 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `validates` | Declares a function that returns true or false |
 | `reads` | Declares a pure function that extracts or queries data without changing it |
 | `creates` | Declares a pure function that constructs a new value |
-| `saves` | Declares a pure function that returns a modified version of its input |
 | `inputs` | Declares a function that reads from the outside world (database, file, network) |
 | `outputs` | Declares a function that writes to the outside world |
 | `main` | The program's entry point — can freely mix reading and writing |
@@ -461,7 +455,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `requires` | States what must be true before calling a function — a hard precondition |
 | `matches` | Declares a pure function that dispatches on an algebraic first parameter |
 | `explain` | Documents each step in the `from` block using controlled natural language. **Strict** (with `ensures`): row count must match `from`, references verified against contracts. **Loose** (without `ensures`): free-form text, documentation only. LSP-suggested, not compiler-required |
-| `terminates` | Declares why a recursive function terminates — what decreases on each call |
+| `terminates` | Required for recursive functions — declares a measure expression that decreases on each call. Compiler error if omitted |
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Runs code at compile time instead of runtime |
 
@@ -488,7 +482,9 @@ from
 
 **Two strictness modes:**
 
-**Strict mode** (function has `ensures`): Each explain row corresponds to a line in the `from` block — the count must match exactly (mismatch is a compiler error). The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). References are verified against the function's contracts and called functions. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
+**Strict mode** (function has `ensures`): Each explain row corresponds to a **top-level statement** in the `from` block — a binding, a final expression, or a match arm. Multi-line expressions (pipe chains, multi-line arms) count as one. The count must match exactly (mismatch is a compiler error). The compiler warns if a single arm grows complex enough to warrant extraction into a named function.
+
+The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
 
 ```prove
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
@@ -519,7 +515,7 @@ Compiler parses: `sum` (operation) + `all` (connector) + `items.price` (referenc
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  terminates: halves are strictly smaller than xs
+  terminates: len(xs)
   explain
     split the list at the midpoint
     recursively sort both halves
@@ -577,11 +573,11 @@ connectors = ["across", "between", "within"]
 
 ### Termination: `terminates`
 
-Recursive functions use `terminates` to declare why the recursion ends. The compiler uses this to verify termination:
+Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error.
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  terminates: halves are strictly smaller than xs
+  terminates: len(xs)
   explain
     split the list at the midpoint
     recursively sort the first half
@@ -593,6 +589,21 @@ from
     right as Sorted<List<T>> = merge_sort(halves.second)
     merge(left, right)
 ```
+
+The compiler verifies that `len(halves.first) < len(xs)` and `len(halves.second) < len(xs)` at both recursive call sites.
+
+### Annotation Ordering
+
+All annotations appear between the verb line and `from`. The compiler accepts any order. The formatter normalizes to this canonical order:
+
+1. `requires` — preconditions
+2. `ensures` — postconditions
+3. `terminates` — recursion measure
+4. `know` / `assume` / `believe` — confidence levels
+5. `why_not` / `chosen` — design reasoning
+6. `near_miss` — boundary examples
+7. `satisfies` — invariant networks
+8. `explain` — implementation documentation (adjacent to `from`)
 
 **AI-Resistance keywords (Phase 1+2):**
 
@@ -608,7 +619,7 @@ module PaymentService
   temporal: validate -> charge -> record
 ```
 
-`narrative` describes the module's purpose — the compiler rejects functions unrelated to it. `domain` adapts syntax to the context (e.g. Finance enforces decimal rounding rules). `temporal` enforces the order things must happen — calling `record` before `charge` is a compile error.
+`narrative` is required — it describes the module's purpose in plain language. `domain` tags the module's problem domain. `temporal` declares the expected ordering of operations. These are currently **documentation keywords** — the compiler requires `narrative` but does not yet verify semantic coherence. Compiler verification (rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering) is planned for a future release.
 
 ### Function-level: `why_not`, `chosen`, `near_miss`
 
@@ -628,7 +639,7 @@ from
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 ```
 
-`why_not` documents rejected alternatives. `chosen` explains the selected approach. The compiler checks that the rationale matches the implementation. `near_miss` provides inputs that *almost* break the code — proving you understand the exact boundary.
+`why_not` documents rejected alternatives. `chosen` explains the selected approach. These are currently **documentation keywords** — compiler verification of rationale consistency is planned. `near_miss` provides inputs that *almost* break the code — the compiler verifies each near-miss exercises a distinct boundary condition.
 
 ### Confidence: `know`, `assume`, `believe`
 
@@ -653,7 +664,7 @@ intent: "remove corrupt entries"
 result as List<Record> = filter(records, valid corrupt)
 ```
 
-Same `filter()` call, but the compiler checks that the declared `intent` matches the predicate's actual behavior (keep vs discard).
+`intent` annotates a statement with its purpose. Currently a **documentation keyword** — the compiler records it but does not yet verify that the intent matches the code's behavior. Verification using controlled natural language (similar to `explain`) is planned for a future release.
 
 ### Invariants: `invariant_network`, `satisfies`
 
@@ -673,10 +684,12 @@ from
 
 ## Error Propagation
 
-`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error. Only IO verbs (`inputs`, `outputs`) can use `!`. Pure functions encode failure in the return type (`Result<T, E>`) and handle it with `match`.
+`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) can use `!`. There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
+
+Pure functions that need to represent expected failure cases use `Result<T, E>` and handle them with `match` — these are values, not errors.
 
 ```prove
-main() Result<Unit, Error>!
+main()!
 from
     config as Config = load("app.yaml")!
     db as Database = connect(config.db_url)!
@@ -721,7 +734,7 @@ from
     _              => not_found()
 
 /// Application entry point — no verb, main is special.
-main() Result<Unit, Error>!
+main()!
 from
     port as Port = 8080
     db as Database = connect("postgres://localhost/app")!

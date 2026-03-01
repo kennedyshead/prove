@@ -61,7 +61,7 @@ prove test
 
 ### Intent Verbs
 
-Every function declares its purpose with a verb. The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit.
+Every function declares its purpose with a verb. The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit.
 
 ```prove
 matches area(s Shape) Decimal              // dispatch on algebraic type
@@ -80,10 +80,6 @@ from
 creates builder() Builder                  // construct a new value
 from
     allocate_buffer()
-
-saves add(key String, value V, table Table<V>) Table<V>  // return modified version
-from
-    insert(table, key, value)
 
 inputs users(db Database) List<User>!      // read from external world
 from
@@ -167,7 +163,7 @@ result as List<String> = users
 Errors are values. `!` propagates failures. No exceptions.
 
 ```prove
-main() Result<Unit, Error>!
+main()!
 from
     config as Config = load("app.yaml")!
     db as Database = connect(config.db_url)!
@@ -222,7 +218,7 @@ from
     Post("/orders")  => parse_order(body)! |> place_order(db, tax)! |> encode |> created
     _                => not_found()
 
-main() Result<Unit, Error>!
+main()!
 from
     cfg as Config = load_config("inventory.yaml")!
     db as Database = connect(cfg.db_url)!

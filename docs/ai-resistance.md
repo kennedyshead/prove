@@ -26,7 +26,7 @@ domain Physics
 
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
-  terminates: halves are strictly smaller than xs
+  terminates: len(xs)
   explain
     split the list at the midpoint
     recursively sort the first half

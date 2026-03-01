@@ -23,8 +23,6 @@ Verbs fall into two families. **Pure verbs** have no side effects — the compil
 | `validates` | Check a condition, return Boolean | `validates has(key String, table Table<V>)` |
 | `reads` | Extract or query data without changing it | `reads get(key String, table Table<V>) Option<V>` |
 | `creates` | Construct a new value from scratch | `creates builder() Builder` |
-| `saves` | Return a modified version of the input | `saves add(key String, value V, table Table<V>) Table<V>` |
-
 **IO verbs** interact with the outside world:
 
 | Verb | Intent | Example |
@@ -77,8 +75,8 @@ Read and write files. File operations are failable — use `!` to propagate erro
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `file(path String) Result<String, Error>!` | Read file contents |
-| `outputs` | `file(path String, content String) Result<Unit, Error>!` | Write file contents |
+| `inputs` | `file(path String) String!` | Read file contents |
+| `outputs` | `file(path String, content String)!` | Write file contents |
 
 ```prove
 use InputOutput inputs file, outputs file
@@ -98,6 +96,6 @@ The standard library grows with each release. Modules are added when the self-ho
 |---------|--------|---------|
 | v0.6 | **Character** | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
 | v0.6 | **Text** | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
-| v0.6 | **Table** | Hash map `Table<V>` with `creates new`, `reads get`, `saves add`, `validates has` |
+| v0.6 | **Table** | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | v0.7 | **InputOutput** (ext) | New channels: `system` (process execution), `dir` (directory operations), `process` (command-line arguments) |
 | v0.7 | **Parse** | Format codecs — `creates toml(source)` to decode, `reads toml(value)` to encode. Same pattern for JSON |

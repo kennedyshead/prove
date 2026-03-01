@@ -97,7 +97,7 @@ ROUTES as List<Route> = comptime
 
 ## Verb Enforcement
 
-The compiler enforces purity rules based on the function's verb. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `saves`, `matches`) cannot perform side effects:
+The compiler enforces purity rules based on the function's verb. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects:
 
 - Cannot call built-in IO functions like `println` or `read_file` (E362)
 - Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E363)
