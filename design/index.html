@@ -22,7 +22,7 @@
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../assets/icon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
     
     
@@ -71,7 +71,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -98,8 +98,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Prove" class="md-header__button md-logo" aria-label="Prove" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../assets/icon.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -129,7 +128,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -139,7 +138,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -236,8 +235,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Prove" class="md-nav__button md-logo" aria-label="Prove" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../assets/icon.png" alt="logo">
 
     </a>
     Prove
@@ -1061,7 +1059,7 @@
 <h3 id="first-poc-self-hosting-compiler">First POC: Self-Hosting Compiler<a class="headerlink" href="#first-poc-self-hosting-compiler" title="Permanent link">&para;</a></h3>
 <p>The first program written in Prove will be the Prove compiler itself. The bootstrap path: (1) write a complete compiler in Python, (2) use it to compile a Prove compiler written in Prove. This exercises the type system (AST node types, token variants), verb system (transforms for pure passes, inputs for file reading, outputs for code emission), pattern matching (exhaustive over AST nodes), and algebraic types — proving the language works by compiling itself. Self-hosting is the strongest possible validation: if Prove can express its own compiler, it can express anything.</p>
 <h3 id="ai-resistance-fundamental">AI-Resistance: Fundamental<a class="headerlink" href="#ai-resistance-fundamental" title="Permanent link">&para;</a></h3>
-<p>AI-resistance features (proof obligations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are <strong>mandatory and fundamental to the language identity</strong>, not optional extras. Proof obligations are required for every function that has <code>ensures</code> clauses — if you declare what a function guarantees, you must prove why.</p>
+<p>AI-resistance features (implementation explanations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are <strong>mandatory and fundamental to the language identity</strong>, not optional extras. <code>requires</code> and <code>ensures</code> are hard rules the compiler enforces automatically. <code>explain</code> blocks document the chain of operations in the implementation — each key maps to a variable name, and the count must match the <code>from</code> block exactly.</p>
 <h3 id="comptime-io-allowed">Comptime: IO Allowed<a class="headerlink" href="#comptime-io-allowed" title="Permanent link">&para;</a></h3>
 <p>Compile-time computation (<code>comptime</code>) allows IO operations. This enables reading config files, schema definitions, and static assets at compile time. Files accessed during comptime become build dependencies — changing them triggers recompilation. This may be revisited if reproducibility concerns arise.</p>
 <h3 id="cli-first-toolchain-prove">CLI-First Toolchain: <code>prove</code><a class="headerlink" href="#cli-first-toolchain-prove" title="Permanent link">&para;</a></h3>
@@ -1075,7 +1073,7 @@
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>prove new &lt;name&gt;     # scaffold a new project
 </code></pre></div>
 <h3 id="syntax-philosophy">Syntax Philosophy<a class="headerlink" href="#syntax-philosophy" title="Permanent link">&para;</a></h3>
-<p>No shorthands. No abbreviations. Full words everywhere. The language reads like English prose where possible. Since it is inherently a hard-to-learn language (refinement types, proof obligations, effect tracking), <strong>simplicity is maximized wherever possible</strong>. If something can be simple, it must be. The compiler works for the programmer, not the other way around.</p>
+<p>No shorthands. No abbreviations. Full words everywhere. The language reads like English prose where possible. Since it is inherently a hard-to-learn language (refinement types, implementation explanations, effect tracking), <strong>simplicity is maximized wherever possible</strong>. If something can be simple, it must be. The compiler works for the programmer, not the other way around.</p>
 <h3 id="secondary-priorities-deferred">Secondary Priorities (Deferred)<a class="headerlink" href="#secondary-priorities-deferred" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>C FFI</strong> — important but not day-one. Will be addressed after the core language is stable.</li>

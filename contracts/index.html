@@ -22,7 +22,7 @@
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../assets/icon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
     
     
@@ -71,7 +71,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -98,8 +98,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Prove" class="md-header__button md-logo" aria-label="Prove" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../assets/icon.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -129,7 +128,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -139,7 +138,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -236,8 +235,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Prove" class="md-nav__button md-logo" aria-label="Prove" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+  <img src="../assets/icon.png" alt="logo">
 
     </a>
     Prove
@@ -995,40 +993,50 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">transforms</span> <span class="n">calculate_total</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">discount</span> <span class="nc">Discount</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRule</span><span class="p">)</span> <span class="nc">Price</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  <span class="kn">ensures</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  <span class="kn">requires</span> <span class="n">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  <span class="kn">proof</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="na">subtotal</span><span class="p">:</span> <span class="n">sums</span> <span class="n">the</span> <span class="n">items</span> <span class="nc">Price</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="na">apply_discount</span><span class="p">:</span> <span class="n">deduct</span> <span class="n">when</span> <span class="n">discount</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="na">apply_tax</span><span class="p">:</span> <span class="n">adds</span> <span class="n">tax</span> <span class="n">when</span> <span class="n">tax</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="k">from</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">sub</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">discounted</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">from</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">sub</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">discounted</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
 </code></pre></div>
-<p>Three things happen at compile time:</p>
+<p>Two things happen at compile time:</p>
 <ul>
 <li><strong><code>requires</code></strong> — The compiler rejects any call site that cannot prove <code>len(items) &gt; 0</code>. This is not a runtime check. If your list might be empty, the code does not compile.</li>
 <li><strong><code>ensures</code></strong> — The compiler verifies that every code path produces <code>result &gt;= 0</code>. If it cannot prove this statically, it generates property tests that exercise thousands of inputs.</li>
-<li><strong><code>proof</code></strong> — The programmer explains <em>why</em> the postconditions hold. The compiler uses these proof hints to guide its verification. If the proof is wrong, the compiler says so.</li>
 </ul>
-<p>All three are mandatory. You cannot ship a function without declaring what it requires and what it guarantees.</p>
+<p>These are hard rules — the compiler enforces them automatically.</p>
+<p>When the implementation has multiple steps, <code>explain</code> documents the chain of operations using controlled natural language. With <code>ensures</code> present (strict mode), the row count must match the <code>from</code> block and the compiler verifies references against contracts:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">transforms</span> <span class="n">calculate_total</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">discount</span> <span class="nc">Discount</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRule</span><span class="p">)</span> <span class="nc">Price</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  <span class="kn">ensures</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  <span class="kn">requires</span> <span class="n">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  <span class="n">explain</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">sum</span> <span class="n">all</span> <span class="n">items</span><span class="o">.</span><span class="n">price</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">reduce</span> <span class="n">sub</span> <span class="n">by</span> <span class="n">discount</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">add</span> <span class="n">tax</span> <span class="n">to</span> <span class="n">discounted</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="k">from</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">sub</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">discounted</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
+</code></pre></div>
+<p><code>requires</code> and <code>ensures</code> are about the function's <em>interface</em>. <code>explain</code> is about the function's <em>implementation</em> — it documents <em>how</em> each step satisfies the promises.</p>
+<p><code>explain</code> is LSP-suggested, not compiler-required. Simple functions with <code>ensures</code> don't need it — the LSP suggests it when complexity warrants documentation. However, <code>ensures</code> without <code>explain</code> produces a warning: if you promise, explain how.</p>
 <h3 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_total</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderItem</span><span class="p">],</span> <span class="n">discount</span><span class="p">:</span> <span class="n">Discount</span><span class="p">,</span> <span class="n">tax</span><span class="p">:</span> <span class="n">TaxRule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Price</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate order total after discount and tax.</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="sd">    Args:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="sd">        items: must be non-empty</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="sd">        discount: discount to apply</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="sd">        tax: tax rule to apply</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="sd">        total price, always &gt;= 0</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># only checked if -O is not set</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">sub</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="n">discounted</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="k">assert</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>  <span class="c1"># also stripped by -O</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="k">return</span> <span class="n">result</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">calculate_total</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderItem</span><span class="p">],</span> <span class="n">discount</span><span class="p">:</span> <span class="n">Discount</span><span class="p">,</span> <span class="n">tax</span><span class="p">:</span> <span class="n">TaxRule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Price</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate order total after discount and tax.</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="sd">    Args:</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="sd">        items: must be non-empty</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="sd">        discount: discount to apply</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="sd">        tax: tax rule to apply</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="sd">        total price, always &gt;= 0</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># only checked if -O is not set</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">sub</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="n">discounted</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="k">assert</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>  <span class="c1"># also stripped by -O</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div>
 <ul>
 <li><strong>Preconditions</strong> — <code>assert</code> statements, stripped by <code>python -O</code>. The type hint <code>list[OrderItem]</code> says nothing about length. An empty list passes type checking and reaches runtime.</li>
@@ -1036,13 +1044,13 @@
 <li><strong>Proof</strong> — Does not exist. The docstring is a comment. Tests are a separate file written by a separate person at a separate time.</li>
 </ul>
 <h3 id="haskell">Haskell<a class="headerlink" href="#haskell" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nf">calculateTotal</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">NonEmpty</span><span class="w"> </span><span class="kt">OrderItem</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Discount</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">TaxRule</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Price</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1">-- | Precondition: items is non-empty (enforced by NonEmpty type)</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1">-- | Postcondition: result &gt;= 0 (NOT enforced — Price is just a newtype)</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nf">calculateTotal</span><span class="w"> </span><span class="n">items</span><span class="w"> </span><span class="n">discount</span><span class="w"> </span><span class="n">tax</span><span class="w"> </span><span class="ow">=</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="kr">let</span><span class="w"> </span><span class="n">sub</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">subtotal</span><span class="w"> </span><span class="p">(</span><span class="n">toList</span><span class="w"> </span><span class="n">items</span><span class="p">)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="n">discounted</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">applyDiscount</span><span class="w"> </span><span class="n">discount</span><span class="w"> </span><span class="n">sub</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="kr">in</span><span class="w"> </span><span class="n">applyTax</span><span class="w"> </span><span class="n">tax</span><span class="w"> </span><span class="n">discounted</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nf">calculateTotal</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">NonEmpty</span><span class="w"> </span><span class="kt">OrderItem</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Discount</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">TaxRule</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Price</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">-- | Precondition: items is non-empty (enforced by NonEmpty type)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1">-- | Postcondition: result &gt;= 0 (NOT enforced — Price is just a newtype)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nf">calculateTotal</span><span class="w"> </span><span class="n">items</span><span class="w"> </span><span class="n">discount</span><span class="w"> </span><span class="n">tax</span><span class="w"> </span><span class="ow">=</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="kr">let</span><span class="w"> </span><span class="n">sub</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">subtotal</span><span class="w"> </span><span class="p">(</span><span class="n">toList</span><span class="w"> </span><span class="n">items</span><span class="p">)</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="n">discounted</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">applyDiscount</span><span class="w"> </span><span class="n">discount</span><span class="w"> </span><span class="n">sub</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="kr">in</span><span class="w"> </span><span class="n">applyTax</span><span class="w"> </span><span class="n">tax</span><span class="w"> </span><span class="n">discounted</span>
 </code></pre></div>
 <ul>
 <li><strong>Preconditions</strong> — <code>NonEmpty</code> enforces non-emptiness at the type level. This is genuinely good. But most preconditions ("discount is valid", "tax rate is between 0 and 1") require dependent types that Haskell does not have.</li>
@@ -1050,14 +1058,14 @@
 <li><strong>Proof</strong> — Does not exist in the language. QuickCheck can test properties, but it is a library, it is opt-in, and the properties are written in test files separate from the function.</li>
 </ul>
 <h3 id="rust">Rust<a class="headerlink" href="#rust" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">fn</span><span class="w"> </span><span class="nf">calculate_total</span><span class="p">(</span><span class="n">items</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="n">OrderItem</span><span class="p">],</span><span class="w"> </span><span class="n">discount</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Discount</span><span class="p">,</span><span class="w"> </span><span class="n">tax</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">TaxRule</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">Price</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="fm">debug_assert!</span><span class="p">(</span><span class="o">!</span><span class="n">items</span><span class="p">.</span><span class="n">is_empty</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;items must be non-empty&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">sub</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">);</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">discounted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span><span class="w"> </span><span class="n">sub</span><span class="p">);</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span><span class="w"> </span><span class="n">discounted</span><span class="p">);</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="fm">debug_assert!</span><span class="p">(</span><span class="n">result</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">Price</span><span class="p">::</span><span class="n">ZERO</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;result must be non-negative&quot;</span><span class="p">);</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="n">result</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">fn</span><span class="w"> </span><span class="nf">calculate_total</span><span class="p">(</span><span class="n">items</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="p">[</span><span class="n">OrderItem</span><span class="p">],</span><span class="w"> </span><span class="n">discount</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Discount</span><span class="p">,</span><span class="w"> </span><span class="n">tax</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">TaxRule</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">Price</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="fm">debug_assert!</span><span class="p">(</span><span class="o">!</span><span class="n">items</span><span class="p">.</span><span class="n">is_empty</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;items must be non-empty&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">sub</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">);</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">discounted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span><span class="w"> </span><span class="n">sub</span><span class="p">);</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span><span class="w"> </span><span class="n">discounted</span><span class="p">);</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="fm">debug_assert!</span><span class="p">(</span><span class="n">result</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">Price</span><span class="p">::</span><span class="n">ZERO</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;result must be non-negative&quot;</span><span class="p">);</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="n">result</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
 <li><strong>Preconditions</strong> — <code>debug_assert!</code>, compiled out in release builds. The slice type <code>&amp;[OrderItem]</code> permits empty slices. A <code>NonEmpty</code> wrapper exists in crates but is not standard.</li>
@@ -1091,8 +1099,8 @@
 <td><code>debug_assert!</code> — stripped in release</td>
 </tr>
 <tr>
-<td><strong>Proof of correctness</strong></td>
-<td><code>proof</code> — checked by compiler</td>
+<td><strong>Implementation reasoning</strong></td>
+<td><code>explain</code> — checked by compiler</td>
 <td>Does not exist</td>
 <td>Does not exist</td>
 <td>Does not exist</td>
@@ -1106,60 +1114,58 @@
 </tr>
 <tr>
 <td><strong>Contracts are...</strong></td>
-<td>Mandatory, part of the function signature</td>
+<td>Part of the function signature, compiler-enforced</td>
 <td>Optional, easily ignored</td>
 <td>Convention, not enforced</td>
 <td>Convention, not enforced</td>
 </tr>
 </tbody>
 </table>
-<p>The gap is not about syntax. Python, Haskell, and Rust all have <em>mechanisms</em> for expressing some of these ideas. The difference is that in Prove, contracts are <strong>mandatory</strong>, <strong>compiler-enforced</strong>, and <strong>self-testing</strong>. You cannot write a function that silently ignores its own guarantees.</p>
+<p>The gap is not about syntax. Python, Haskell, and Rust all have <em>mechanisms</em> for expressing some of these ideas. The difference is that in Prove, contracts are <strong>compiler-enforced</strong> and <strong>self-testing</strong>. You cannot write a function that silently ignores its own guarantees.</p>
 <hr />
 <h2 id="auto-testing">Auto-Testing<a class="headerlink" href="#auto-testing" title="Permanent link">&para;</a></h2>
 <p>Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.</p>
 <h3 id="level-1-contracts-generate-property-tests">Level 1: Contracts Generate Property Tests<a class="headerlink" href="#level-1-contracts-generate-property-tests" title="Permanent link">&para;</a></h3>
 <p>No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kd">transforms</span> <span class="n">sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  <span class="kn">ensures</span> <span class="n">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">==</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  <span class="kn">ensures</span> <span class="n">is_sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  <span class="kn">ensures</span> <span class="n">is_permutation_of</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">from</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="c1">// implementation</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">transforms</span> <span class="n">sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  <span class="kn">ensures</span> <span class="n">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">==</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  <span class="kn">ensures</span> <span class="n">is_sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  <span class="kn">ensures</span> <span class="n">is_permutation_of</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">from</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
 <h3 id="level-2-automatic-edge-case-generation">Level 2: Automatic Edge-Case Generation<a class="headerlink" href="#level-2-automatic-edge-case-generation" title="Permanent link">&para;</a></h3>
 <p>Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">transforms</span> <span class="n">divide</span><span class="p">(</span><span class="n">a</span> <span class="kt">Integer</span><span class="p">,</span> <span class="n">b</span> <span class="nc">NonZero</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1">// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1">// (MIN_INT, -1), (7, 3), ...</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// Derived from type bounds + heuristic edge-case generation</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">transforms</span> <span class="n">divide</span><span class="p">(</span><span class="n">a</span> <span class="kt">Integer</span><span class="p">,</span> <span class="n">b</span> <span class="nc">NonZero</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1">// (MIN_INT, -1), (7, 3), ...</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">// Derived from type bounds + heuristic edge-case generation</span>
 </code></pre></div>
 <p>For refinement types, boundary testing is automatic:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">transforms</span> <span class="n">set_port</span><span class="p">(</span><span class="n">p</span> <span class="nc">Port</span><span class="p">)</span> <span class="nc">Config</span>    <span class="c1">// Port = 1..65535</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// Auto-tests: 1, 2, 65534, 65535, and random values between</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1">// Also verifies that 0 and 65536 are rejected at the call site</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">transforms</span> <span class="n">set_port</span><span class="p">(</span><span class="n">p</span> <span class="nc">Port</span><span class="p">)</span> <span class="nc">Config</span>    <span class="c1">// Port = 1..65535</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// Auto-tests: 1, 2, 65534, 65535, and random values between</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">// Also verifies that 0 and 65536 are rejected at the call site</span>
 </code></pre></div>
 <h3 id="level-3-near_miss-boundary-witnesses">Level 3: <code>near_miss</code> — Boundary Witnesses<a class="headerlink" href="#level-3-near_miss-boundary-witnesses" title="Permanent link">&para;</a></h3>
 <p>A <code>near_miss</code> declares an input that <em>should fail</em> a contract. The compiler verifies that the function's <code>requires</code> or <code>validates</code> clauses actually reject it. This catches contracts that are too permissive.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">transforms</span> <span class="n">leap_year</span><span class="p">(</span><span class="n">y</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Boolean</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  <span class="kn">requires</span> <span class="n">y</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  <span class="kn">near_miss</span> <span class="mi">0</span> <span class="p">=&gt;</span> <span class="n">rejected</span>       <span class="c1">// not a valid year</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  <span class="kn">near_miss</span> <span class="o">-</span><span class="mi">1</span> <span class="p">=&gt;</span> <span class="n">rejected</span>      <span class="c1">// negative year</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  <span class="kn">proof</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="na">positive_year</span><span class="p">:</span> <span class="kn">requires</span> <span class="n">clause</span> <span class="n">rejects</span> <span class="n">non</span><span class="o">-</span><span class="n">positive</span> <span class="n">years</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">from</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="p">(</span><span class="n">y</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">100</span> <span class="kp">!</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">400</span> <span class="o">==</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">transforms</span> <span class="n">leap_year</span><span class="p">(</span><span class="n">y</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Boolean</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  <span class="kn">requires</span> <span class="n">y</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  <span class="kn">near_miss</span> <span class="mi">0</span> <span class="p">=&gt;</span> <span class="n">rejected</span>       <span class="c1">// not a valid year</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  <span class="kn">near_miss</span> <span class="o">-</span><span class="mi">1</span> <span class="p">=&gt;</span> <span class="n">rejected</span>      <span class="c1">// negative year</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="k">from</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="p">(</span><span class="n">y</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">100</span> <span class="kp">!</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">400</span> <span class="o">==</span> <span class="mi">0</span>
 </code></pre></div>
 <p>The compiler generates tests that pass each <code>near_miss</code> input to the function and confirms it is rejected by the preconditions. If a <code>near_miss</code> input is accidentally accepted, the test fails — the contract has a gap.</p>
 <h3 id="level-4-built-in-mutation-testing">Level 4: Built-in Mutation Testing<a class="headerlink" href="#level-4-built-in-mutation-testing" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ prove build --mutate
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Mutation score: 97.2% (347/357 mutants killed)
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>Surviving mutants:
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  src/cache.prv:45  — changed `&gt;=` to `&gt;` (boundary condition not covered)
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Suggested contract to add:
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ prove build --mutate
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Mutation score: 97.2% (347/357 mutants killed)
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>Surviving mutants:
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  src/cache.prv:45  — changed `&gt;=` to `&gt;` (boundary condition not covered)
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>  Suggested contract to add:
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
 </code></pre></div>
 
 
