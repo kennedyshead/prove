@@ -429,8 +429,8 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `main` | The program's entry point — can freely mix reading and writing |
 | `from` | Marks where the function body starts — "the result comes from..." |
 | `where` | Adds a value constraint to a type — `Integer where 1..65535` |
-| `as` | Declares a variable — `name as Type = value` |
-| `type` | Defines a new type — `type Port is Integer where 1..65535` |
+| `as` / `is` | `as` declares a variable — `port as Port = 8080` (what it's treated as). `is` defines a type — `type Port is Integer` (what it is) |
+| `type` | Starts a type definition — `type Port is Integer where 1..65535` |
 | `match` | Branches on a value — the only way to do conditional logic |
 | `ensures` | States what a function guarantees about its result |
 | `requires` | States what must be true before calling a function |
