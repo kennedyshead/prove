@@ -37,10 +37,15 @@ nav:
     - Syntax Reference: syntax.md
     - Type System: types.md
     - Contracts & Testing: contracts.md
-  - Compiler: compiler.md
+    - Standard Library: stdlib.md
+  - Compiler:
+    - CLI Reference: cli.md
+    - Diagnostic Codes: diagnostics.md
+    - Compiler Features: compiler.md
   - AI Resistance: ai-resistance.md
-  - Design:
-    - Decisions & Trade-offs: design.md
+  - Project:
+    - Design Decisions: design.md
+    - Roadmap: roadmap.md
     - Inspirations: inspirations.md
 
 extra_css:

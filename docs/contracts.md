@@ -147,6 +147,23 @@ transforms set_port(p Port) Config    // Port = 1..65535
 // Also verifies that 0 and 65536 are rejected at the call site
 ```
 
+### Level 3: `near_miss` — Boundary Witnesses
+
+A `near_miss` declares an input that *should fail* a contract. The compiler verifies that the function's `requires` or `validates` clauses actually reject it. This catches contracts that are too permissive.
+
+```prove
+transforms leap_year(y Integer) Boolean
+  requires y > 0
+  near_miss 0 => rejected       // not a valid year
+  near_miss -1 => rejected      // negative year
+  proof
+    positive_year: requires clause rejects non-positive years
+from
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+```
+
+The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
+
 ### Level 4: Built-in Mutation Testing
 
 ```

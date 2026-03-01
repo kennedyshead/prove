@@ -225,7 +225,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 ## Status
 
-v0.1.0 — the core compilation pipeline works end-to-end. The compiler lexes, parses, type-checks, verifies proof obligations, emits C, and produces native binaries. 326 tests pass across every stage.
+v0.4 — pure verb enforcement, binary types, namespaced calls, and channel dispatch are complete. The compiler lexes, parses, type-checks, verifies proof obligations, emits C, and produces native binaries. 394 tests pass across every stage.
 
 ## Repository
 
