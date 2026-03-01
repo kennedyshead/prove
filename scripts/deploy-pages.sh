@@ -20,6 +20,11 @@ pip install -e pygments-prove --quiet
 echo "==> Building MkDocs site from main..."
 mkdocs build --clean -d "$SITE_DIR"
 
+echo "==> Copying icon assets into built site..."
+mkdir -p "$SITE_DIR/assets"
+cp "$REPO_DIR/assets/icon.png" "$SITE_DIR/assets/"
+cp "$REPO_DIR/assets/icon.svg" "$SITE_DIR/assets/"
+
 echo "==> Preparing $BRANCH branch..."
 # Create a temporary worktree for the pages branch
 WORK_DIR=$(mktemp -d)
