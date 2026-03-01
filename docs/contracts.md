@@ -22,8 +22,8 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   requires len(items) > 0
   proof
     subtotal: sums the items Price
-    apply_discount: deduct discount if > 0
-    apply_tax: adds tax if tax > 0
+    apply_discount: deduct when discount > 0
+    apply_tax: adds tax when tax > 0
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)

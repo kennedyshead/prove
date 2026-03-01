@@ -175,12 +175,14 @@ Three functions, all named `email`, with completely different intents.
 At call sites, you use **just the function name** — the compiler resolves which verb-variant to call based on context (expected type, parameter types, expression position):
 
 ```prove
-// Boolean context (match on Boolean) → resolves to validates email
-match email(input)
-    true =>
-        clean as Email = email(raw_input)    // Email context + String param → transforms
-        stored as Email = email(user.id)     // Email context + Integer param → inputs
-    false => handle_invalid()
+// Predicate context → resolves to validates email
+clean_list as List<Email> = filter(inputs, valid email)
+
+// Email context + String param → resolves to transforms email
+clean as Email = email(raw_input)
+
+// Email context + Integer param → resolves to inputs email
+stored as Email = email(user.id)
 
 // When context is ambiguous, use `valid` for explicit Boolean cast
 print(valid email(input))               // forces validates variant
@@ -293,7 +295,7 @@ from
 
 ## Pattern Matching — The Only Way to Branch
 
-Prove has no `if`/`else`. All branching is done through `match`.
+Prove has no `if`/`else`. All branching is done through `match` — and good Prove code rarely matches on booleans at all.
 
 ```prove
 match route
@@ -301,9 +303,9 @@ match route
     Get("/users")  => users()!
     _              => not_found()
 
-match connected
-    true  => send(data)
-    false => retry()
+match discount
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
 
 MAX_CONNECTIONS as Integer = comptime
     match cfg.target
@@ -311,59 +313,59 @@ MAX_CONNECTIONS as Integer = comptime
         _ => 1024
 ```
 
-This is not an omission. It is a deliberate design choice with consequences for correctness, verification, and code quality.
+This is not an omission. It is a deliberate design choice.
 
 ### Why No `if`
 
-**1. `match` is exhaustive. `if` is not.**
+**1. Types replace booleans.**
 
-An `if` without `else` silently does nothing on the false branch. The programmer may not have intended this — they may have forgotten the other case. In Prove, `match` on a Boolean requires both `true =>` and `false =>` arms. The compiler rejects incomplete branching.
+When you reach for `if connected then send(data) else retry()`, the real question is: what *kind* of connection state are you in? Model it as a type and the branching becomes meaningful:
 
 ```prove
-// This is a compile error — you must handle both cases:
-match connected
-    true => send(data)
-// error: non-exhaustive match — missing 'false' arm
+type Connection is Active(socket Socket) | Disconnected(reason String)
+
+match connection
+    Active(socket) => send(socket, data)
+    Disconnected(reason) => retry(reason)
 ```
 
-Every branch point in the program explicitly states what happens in every case. There are no invisible default paths.
+Each arm names what it handles. No `true`/`false` to mentally decode. The compiler enforces that every variant is covered — add a `Reconnecting` state later and the compiler tells you everywhere you need to handle it.
 
-**2. `if` obscures what you are branching on.**
+**2. `if` hides missing cases.**
 
-An `if` condition is an expression floating in the middle of a function body. A `match` names its subject and structurally enumerates the possibilities. When conditions get complex, `if`/`else if`/`else` chains become hard to follow. A `match` block is always a flat table: subject at the top, one arm per case, every arm visible.
+An `if` without `else` silently does nothing on the false branch. The programmer may have forgotten it. With types, there's no such escape — every variant must be handled.
 
 **3. One construct is simpler than two.**
 
-Every `if`/`else` is isomorphic to `match condition / true => ... / false => ...`. Having both constructs adds no expressive power — it only adds surface area to the language, the parser, the type checker, the emitter, the formatter, and every tool that processes Prove code. Removing `if` means less to learn, less to implement, and fewer ways to express the same thing.
+`if`/`else` adds no expressive power over `match`. It only adds surface area to the language, the parser, the type checker, the emitter, and every tool that processes Prove code. One construct means less to learn and fewer ways to express the same thing.
 
-**4. `if` encourages guard-style early returns.**
+**4. Contracts replace conditional logic.**
 
-In many languages, `if` is used for guard clauses:
-
-```
-if !valid(input)
-    return error("bad input")
-// continue with the happy path
-```
-
-This pattern breaks the principle that a function body is a single expression tree that produces a value. It introduces invisible control flow — the reader must mentally track which conditions have been checked at each point in the function. In Prove, the same logic is a `match`:
+Where other languages use `if` to decide whether to run code, Prove uses validation. Consider:
 
 ```prove
-match valid input
-    false => error("bad input")
-    true =>
-        // happy path — structurally inside the arm
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+  proof
+    subtotal: sums the items Price
+    apply_discount: deduct when discount > 0
+    apply_tax: adds tax when tax > 0
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
 ```
 
-Both branches are explicitly scoped. There is no ambiguity about which code runs when.
+There is no `if discount > 0 then apply_discount(...)`. Instead, the proof declares *when* `apply_discount` is meaningful, and the contract system validates it. The function `apply_discount` is called — but its `requires` clause ensures the compiler has already proven the discount is valid before the call happens. The "branching" lives in the type system and contracts, not in boolean conditions.
 
-**5. Contracts need visible branches.**
+**5. Boolean matching is a code smell.**
 
-Prove's compiler verifies `ensures` postconditions across all code paths. With `match`, every arm is structurally enumerable — the compiler (and the programmer writing `proof` blocks) can see every branch and reason about each one. An `if` without `else` has an implicit branch that returns `Unit`, which is invisible to both the programmer and the verifier. Making all branches explicit makes contracts easier to write, easier to verify, and harder to get wrong.
+`match x > 0 / true => ... / false => ...` is technically valid but signals that you should model your domain better. Instead of branching on `amount > 0`, define `type Positive is Integer where > 0` and let the type system handle it. The branching disappears into the type — where the compiler can prove things about it.
 
 ### The Rule
 
-All conditional logic in Prove is expressed through `match`. Boolean conditions, algebraic type dispatch, literal comparison, and exhaustive enumeration all use the same construct with the same guarantees.
+Branch on *what something is*, not on *whether something is true*. Types and contracts handle the rest — `requires` guards preconditions, `ensures` guarantees postconditions, and `proof` explains why. No boolean branch needed.
 
 ## Lambdas — Constrained Inline Functions
 
@@ -438,22 +440,99 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Runs code at compile time instead of runtime |
 
+### Contracts: `requires`, `ensures`, `proof`
+
+```prove
+type Clamped is Integer where low .. high
+
+transforms clamp(value Integer, low Integer, high Integer) Clamped
+  requires low <= high
+  ensures result >= low
+  ensures result <= high
+  proof
+    bounded: Clamped constrains result to low..high by definition
+from
+    max(low, min(value, high))
+```
+
+`requires` states what must be true before calling the function — the compiler rejects call sites that can't prove it. `ensures` states what the function guarantees about its result. `proof` explains *why* the guarantees hold — the compiler checks that the explanation is consistent with the code. Here, the refinement type `Clamped` does the heavy lifting — no branching needed.
+
 **AI-Resistance keywords (Phase 1+2):**
 
-| Keyword | What it does |
-|---------|-------------|
-| `domain` | Sets the module's domain — syntax adapts to the context |
-| `intent` | Declares what a piece of code is *meant* to do — compiler checks it matches |
-| `narrative` | Describes the module's purpose — unrelated functions are rejected |
-| `why_not` | Documents a rejected alternative — "we didn't do X because..." |
-| `chosen` | Documents the chosen approach — "we did Y because..." |
-| `near_miss` | An input that *almost* breaks the code but doesn't — proves you understand the boundary |
-| `know` | "I'm certain" — the compiler can prove this, no runtime cost |
-| `assume` | "I expect this" — the compiler adds a runtime check at boundaries |
-| `believe` | "I think this" — the compiler generates tests trying to disprove it |
-| `temporal` | Enforces the order things must happen — e.g. authenticate before access |
-| `satisfies` | Declares that a function obeys a set of rules |
-| `invariant_network` | Defines a set of rules that must always hold together |
+### Module-level: `narrative`, `domain`, `temporal`
+
+```prove
+module PaymentService
+  narrative: """
+  Customers submit payments. Each payment is validated,
+  charged through the gateway, and recorded in the ledger.
+  """
+  domain Finance
+  temporal: validate -> charge -> record
+```
+
+`narrative` describes the module's purpose — the compiler rejects functions unrelated to it. `domain` adapts syntax to the context (e.g. Finance enforces decimal rounding rules). `temporal` enforces the order things must happen — calling `record` before `charge` is a compile error.
+
+### Function-level: `why_not`, `chosen`, `near_miss`
+
+```prove
+transforms select_gateway(amount Price, region Region) Gateway
+  why_not: "Round-robin ignores regional latency differences"
+  why_not: "Cheapest-first causes thundering herd on one provider"
+  chosen: "Latency-weighted routing balances cost and speed per region"
+from
+    closest_by_latency(region, available_gateways())
+
+validates leap_year(y Year)
+  near_miss: 1900  => false    // divisible by 100 but not 400
+  near_miss: 2000  => true     // divisible by 400
+  near_miss: 2100  => false    // divisible by 100 but not 400
+from
+    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+```
+
+`why_not` documents rejected alternatives. `chosen` explains the selected approach. The compiler checks that the rationale matches the implementation. `near_miss` provides inputs that *almost* break the code — proving you understand the exact boundary.
+
+### Confidence: `know`, `assume`, `believe`
+
+```prove
+transforms process_order(order Order) Receipt
+  know: len(order.items) > 0            // proven by NonEmpty type — zero cost
+  assume: order.total == sum(prices)    // runtime check inserted at boundaries
+  believe: order.user.is_verified       // compiler generates tests to disprove this
+from
+    // implementation
+```
+
+`know` = the compiler can prove it (free). `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
+
+### Intent: `intent`
+
+```prove
+intent: "keep only valid records"
+result as List<Record> = filter(records, valid record)
+
+intent: "remove corrupt entries"
+result as List<Record> = filter(records, valid corrupt)
+```
+
+Same `filter()` call, but the compiler checks that the declared `intent` matches the predicate's actual behavior (keep vs discard).
+
+### Invariants: `invariant_network`, `satisfies`
+
+```prove
+invariant_network AccountingRules
+  total_assets == total_liabilities + equity
+  revenue - expenses == net_income
+  every(transaction) preserves total_assets == total_liabilities + equity
+
+transforms post_transaction(ledger Ledger, tx Transaction) Ledger
+  satisfies AccountingRules
+from
+    // implementation — compiler verifies the rules hold after every change
+```
+
+`invariant_network` defines rules that must always hold together. `satisfies` declares that a function obeys those rules.
 
 ## Error Propagation
 
