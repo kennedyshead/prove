@@ -18,7 +18,7 @@ from prove.lsp import (
     span_to_range,
 )
 from prove.source import Span
-from prove.stdlib_loader import ImportSuggestion, _reset_import_index, build_import_index
+from prove.stdlib_loader import ImportSuggestion, build_import_index
 from prove.symbols import FunctionSignature
 
 
@@ -166,44 +166,25 @@ class TestDocumentState:
 
 
 class TestBuildImportIndex:
-    def test_index_contains_println(self):
+    def test_index_contains_standard(self):
         index = build_import_index()
-        assert "println" in index
-        suggestions = index["println"]
-        assert any(s.module == "Io" and s.verb == "outputs" for s in suggestions)
+        assert "standard" in index
+        suggestions = index["standard"]
+        assert any(s.module == "InputOutput" and s.verb == "outputs" for s in suggestions)
 
-    def test_index_contains_encode_string(self):
+    def test_index_contains_file(self):
         index = build_import_index()
-        assert "encode_string" in index
-        suggestions = index["encode_string"]
-        assert any(s.module == "Json" and s.verb == "transforms" for s in suggestions)
-
-    def test_index_contains_type_variants(self):
-        _reset_import_index()
-        index = build_import_index()
-        # Post is a variant of type Method in http.prv
-        assert "Post" in index
-        suggestions = index["Post"]
-        assert any(s.module == "Http" and s.verb == "types" for s in suggestions)
-
-    def test_index_contains_type_names(self):
-        _reset_import_index()
-        index = build_import_index()
-        assert "Method" in index
-        assert "Request" in index
-        assert "Response" in index
-        # Type names should have verb="types"
-        for name in ("Method", "Request", "Response"):
-            suggestions = index[name]
-            assert any(s.verb == "types" for s in suggestions), (
-                f"expected verb='types' for {name}"
-            )
+        assert "file" in index
+        suggestions = index["file"]
+        assert any(s.module == "InputOutput" and s.verb == "inputs" for s in suggestions)
 
     def test_index_no_duplicates_from_aliases(self):
         index = build_import_index()
-        # list_length should appear only once (not duplicated via "listutils" alias)
-        if "list_length" in index:
-            assert len(index["list_length"]) == 1
+        # file has inputs + outputs verbs = 2 entries, but no duplicates from aliases
+        if "file" in index:
+            # Each entry should have a unique (module, verb) pair
+            pairs = [(s.module, s.verb) for s in index["file"]]
+            assert len(pairs) == len(set(pairs))
 
 
 class TestIsE310:
@@ -254,63 +235,63 @@ class TestBuildImportEdit:
             "    a + b\n"
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="Io", verb="outputs", name="println")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert "Io outputs println" in edit.new_text
+        assert "InputOutput outputs standard" in edit.new_text
         # Should insert after the module line
         assert edit.range.start.line == 1
 
     def test_extend_existing_import(self):
         source = (
             "module Main\n"
-            "  Json transforms encode_string\n"
-            "transforms run() String\n"
+            "  InputOutput outputs standard\n"
+            "outputs run() Unit\n"
             "from\n"
-            '    encode_string("hi")\n'
+            '    standard("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_int")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="file")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert edit.new_text == "  Json transforms encode_string encode_int"
+        assert edit.new_text == "  InputOutput outputs standard file"
         # Should replace line 1 (the existing import line)
         assert edit.range.start.line == 1
 
     def test_already_imported_returns_none(self):
         source = (
             "module Main\n"
-            "  Json transforms encode_string\n"
-            "transforms run() String\n"
+            "  InputOutput outputs standard\n"
+            "outputs run() Unit\n"
             "from\n"
-            '    encode_string("hi")\n'
+            '    standard("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_string")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
     def test_no_module_returns_none(self):
         ds = DocumentState()  # module is None
-        suggestion = ImportSuggestion(module="Io", verb="outputs", name="println")
+        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="standard")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
-    def test_insert_after_existing_imports(self):
+    def test_extend_existing_import_different_verb(self):
         source = (
             "module Main\n"
-            "  Io outputs println\n"
-            "transforms run() Unit\n"
+            "  InputOutput outputs standard\n"
+            "outputs run() Unit\n"
             "from\n"
-            '    println("hi")\n'
+            '    standard("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="Json", verb="transforms", name="encode_string")
+        suggestion = ImportSuggestion(module="InputOutput", verb="inputs", name="file")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert "Json transforms encode_string" in edit.new_text
-        # Should insert after line 1 (the existing import)
-        assert edit.range.start.line == 2
+        # Same module — extends existing line with new verb group
+        assert "inputs file" in edit.new_text
+        assert edit.range.start.line == 1
 
 
 def _complete(uri: str, line: int = 0, character: int = 0) -> lsp.CompletionList:
@@ -356,13 +337,8 @@ class TestCompletion:
         """Stdlib completions must work even when the file cannot parse."""
         _analyze("<test://broken>", "this is not valid prove code\n")
         labels = _complete_labels("<test://broken>")
-        # Io
-        assert "println" in labels
-        # Json
-        assert "encode_string" in labels
-        # Http types
-        assert "Request" in labels
-        assert "Response" in labels
+        assert "standard" in labels
+        assert "file" in labels
 
     def test_stdlib_functions_with_valid_file(self):
         _analyze(
@@ -371,21 +347,21 @@ class TestCompletion:
             '  narrative: """Test"""\n'
             "\n"
             "main()\nfrom\n"
-            '    println("hi")\n',
+            '    standard("hi")\n',
         )
         labels = _complete_labels("<test://valid>")
-        assert "println" in labels
-        assert "encode_string" in labels
+        assert "standard" in labels
+        assert "file" in labels
 
     def test_stdlib_completions_have_detail(self):
         """Stdlib items should show which module they come from."""
         _analyze("<test://det>", "")
         result = _complete("<test://det>")
         by_label = {item.label: item for item in result.items}
-        println_item = by_label.get("println")
-        assert println_item is not None
-        assert println_item.detail is not None
-        assert "Io" in println_item.detail
+        item = by_label.get("standard")
+        assert item is not None
+        assert item.detail is not None
+        assert "InputOutput" in item.detail
 
     def test_symbol_table_completions_when_parsed(self):
         """User-defined names should appear when the file parses."""
@@ -419,19 +395,19 @@ class TestCompletion:
             '  narrative: """Test"""\n'
             "\n"
             "main()\nfrom\n"
-            '    println("hi")\n',
+            '    standard("hi")\n',
         )
         result = _complete("file:///auto.prv")
         by_label = {item.label: item for item in result.items}
 
-        # encode_string should have an additional edit adding the import
-        item = by_label.get("encode_string")
+        # file should have an additional edit adding the import
+        item = by_label.get("file")
         assert item is not None
         assert item.additional_text_edits is not None
         assert len(item.additional_text_edits) == 1
         edit = item.additional_text_edits[0]
-        assert "Json" in edit.new_text
-        assert "encode_string" in edit.new_text
+        assert "InputOutput" in edit.new_text
+        assert "file" in edit.new_text
 
     def test_stdlib_completion_no_duplicate_import(self):
         """If already imported, no additional edit should be added."""
@@ -439,15 +415,15 @@ class TestCompletion:
             "file:///noimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  Json transforms encode_string\n"
+            "  InputOutput outputs standard\n"
             "\n"
             "main()\nfrom\n"
-            '    encode_string("hi")\n',
+            '    standard("hi")\n',
         )
         result = _complete("file:///noimport.prv")
         by_label = {item.label: item for item in result.items}
 
-        item = by_label.get("encode_string")
+        item = by_label.get("standard")
         assert item is not None
         # Already imported — no additional edit
         assert item.additional_text_edits is None
@@ -486,14 +462,14 @@ class TestCompletion:
         result = _complete("file:///parseerr.prv")
         by_label = {item.label: item for item in result.items}
 
-        item = by_label.get("encode_string")
+        item = by_label.get("file")
         assert item is not None
         assert item.additional_text_edits is not None, (
             "auto-import should work even when file has parse errors"
         )
         edit = item.additional_text_edits[0]
-        assert "Json" in edit.new_text
-        assert "encode_string" in edit.new_text
+        assert "InputOutput" in edit.new_text
+        assert "file" in edit.new_text
         # Should insert after narrative (line 2), not at end of file
         assert edit.range.start.line == 2
 
@@ -503,7 +479,7 @@ class TestCompletion:
             "file:///afterimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  Io outputs println\n"
+            "  InputOutput outputs standard\n"
             "\n"
             "outputs handle()\n"
             "from\n"
@@ -513,9 +489,9 @@ class TestCompletion:
         result = _complete("file:///afterimport.prv")
         by_label = {item.label: item for item in result.items}
 
-        item = by_label.get("encode_string")
+        item = by_label.get("file")
         assert item is not None
         assert item.additional_text_edits is not None
         edit = item.additional_text_edits[0]
-        # Should insert after "Io outputs println" (line 2), so at line 3
+        # Should insert after "InputOutput outputs standard" (line 2), so at line 3
         assert edit.range.start.line == 3

@@ -511,19 +511,17 @@ class TestParserModules:
         assert imp.items[1].name == "length"
 
     def test_import_types_verb(self):
-        source = 'module Foo\n  Http types Response Server, inputs listen\n'
+        source = 'module Foo\n  InputOutput types ExitCode, inputs standard\n'
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
         imp = decl.imports[0]
-        assert imp.module == "Http"
-        assert len(imp.items) == 3
+        assert imp.module == "InputOutput"
+        assert len(imp.items) == 2
         assert imp.items[0].verb == "types"
-        assert imp.items[0].name == "Response"
-        assert imp.items[1].verb == "types"
-        assert imp.items[1].name == "Server"
-        assert imp.items[2].verb == "inputs"
-        assert imp.items[2].name == "listen"
+        assert imp.items[0].name == "ExitCode"
+        assert imp.items[1].verb == "inputs"
+        assert imp.items[1].name == "standard"
 
     def test_import_with_verb(self):
         source = 'module Foo\n  Auth validates login, transforms login\n'
@@ -537,17 +535,17 @@ class TestParserModules:
         assert imp.items[1].name == "login"
 
     def test_import_verb_group(self):
-        source = 'module Foo\n  Http transforms ok not_found, validates method1 method2\n'
+        source = 'module Foo\n  InputOutput outputs standard file, inputs standard file\n'
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
         imp = decl.imports[0]
-        assert imp.module == "Http"
+        assert imp.module == "InputOutput"
         assert len(imp.items) == 4
-        assert imp.items[0] == ImportItem("transforms", "ok", imp.items[0].span)
-        assert imp.items[1] == ImportItem("transforms", "not_found", imp.items[1].span)
-        assert imp.items[2] == ImportItem("validates", "method1", imp.items[2].span)
-        assert imp.items[3] == ImportItem("validates", "method2", imp.items[3].span)
+        assert imp.items[0] == ImportItem("outputs", "standard", imp.items[0].span)
+        assert imp.items[1] == ImportItem("outputs", "file", imp.items[1].span)
+        assert imp.items[2] == ImportItem("inputs", "standard", imp.items[2].span)
+        assert imp.items[3] == ImportItem("inputs", "file", imp.items[3].span)
 
     def test_invariant_network(self):
         source = '  invariant_network Accounting\n    total >= 0\n'

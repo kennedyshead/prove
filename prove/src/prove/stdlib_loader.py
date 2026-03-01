@@ -31,12 +31,7 @@ _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
 # Keys are lowercase; lookup normalizes to lowercase.
 _STDLIB_MODULES: dict[str, str] = {
     "io": "input_output.prv",
-    "http": "http.prv",
-    "json": "json.prv",
-    "list_utils": "list_utils.prv",
-    "string_utils": "string_utils.prv",
-    "listutils": "list_utils.prv",
-    "stringutils": "string_utils.prv",
+    "inputoutput": "input_output.prv",
 }
 
 # Cache loaded signatures
@@ -61,7 +56,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 
     Returns an empty list if the module is not found.
     """
-    # Normalize: "Io" -> "io", "ListUtils" -> "listutils"
+    # Normalize: "InputOutput" -> "inputoutput"
     normalized = module_name.lower()
 
     if normalized in _cache:
@@ -166,22 +161,19 @@ def available_modules() -> list[str]:
 class ImportSuggestion:
     """A suggestion for auto-importing a stdlib function."""
 
-    module: str  # display-cased: "Io", "Json", etc.
+    module: str  # display-cased: "InputOutput", etc.
     verb: str | None  # "outputs", "transforms", etc.
     name: str  # "println", "decode", etc.
 
 
 # Canonical module keys → display names used in `with <Name> use ...`
 _MODULE_DISPLAY_NAMES: dict[str, str] = {
-    "io": "Io",
-    "http": "Http",
-    "json": "Json",
-    "list_utils": "ListUtils",
-    "string_utils": "StringUtils",
+    "io": "InputOutput",
+    "inputoutput": "InputOutput",
 }
 
 # Alias keys that should be skipped when building the index
-_ALIAS_KEYS = {"listutils", "stringutils"}
+_ALIAS_KEYS = {"inputoutput"}
 
 _import_index: dict[str, list[ImportSuggestion]] | None = None
 

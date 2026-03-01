@@ -1,6 +1,0 @@
-module ListUtils
-  narrative: """Handles list operations"""
-
-transforms list_length(items List<Integer>) Integer
-from
-    len(items)

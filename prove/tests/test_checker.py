@@ -784,18 +784,6 @@ class TestStdlibLoading:
         sig = st.resolve_function_any("println")
         assert sig is not None
 
-    def test_json_import_resolves(self):
-        """Importing from Json should resolve function types."""
-        check(
-            "module Main\n"
-            "  Json transforms encode_string\n"
-            "\n"
-            "transforms wrap(s String) String\n"
-            "    from\n"
-            "        encode_string(s)\n"
-        )
-
-
 class TestProofConditionChecking:
     """Test type-checking of proof obligation conditions."""
 

@@ -202,15 +202,15 @@ class TestFormatterAnnotations:
 
 class TestFormatterImports:
     def test_import(self):
-        source = "module Foo\n  Http transforms ok not_found\n"
+        source = "module Foo\n  InputOutput outputs standard\n"
         assert _roundtrip(source) == source
 
     def test_import_verb_groups(self):
-        source = "module Foo\n  Http transforms ok not_found, validates method1 method2\n"
+        source = "module Foo\n  InputOutput outputs standard, inputs file\n"
         assert _roundtrip(source) == source
 
     def test_import_types_verb(self):
-        source = "module Foo\n  Http types Response Server, inputs listen\n"
+        source = "module Foo\n  InputOutput inputs standard file\n"
         assert _roundtrip(source) == source
 
 
@@ -234,7 +234,6 @@ class TestFormatterRoundTrip:
     @pytest.fixture(params=[
         "examples/hello/src/main.prv",
         "examples/math/src/main.prv",
-        "examples/http_server/src/main.prv",
     ])
     def example_file(self, request: pytest.FixtureRequest) -> Path:
         path = _PROJECT_ROOT / request.param

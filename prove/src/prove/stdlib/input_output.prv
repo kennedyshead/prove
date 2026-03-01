@@ -1,22 +1,18 @@
-module Io
+module InputOutput
   narrative: """Handles IO operations"""
 
-outputs println(text String)
-from
-    println(text)
-
-outputs print(text String)
+outputs standard(text String)
 from
     print(text)
 
-inputs readln() String
+inputs standard() String
 from
     readln()
 
-inputs read_file(path String) Result<String, Error>!
+inputs file(path String) Result<String, Error>!
 from
-    read_file(path)
+    file(path)
 
-outputs write_file(path String, content String) Result<Unit, Error>!
+outputs file(path String, content String) Result<Unit, Error>!
 from
-    write_file(path, content)
+    file(path, content)
