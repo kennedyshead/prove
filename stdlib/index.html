@@ -968,13 +968,12 @@
 <td><code>creates builder() Builder</code></td>
 </tr>
 <tr>
-<td><code>saves</code></td>
-<td>Return a modified version of the input</td>
-<td><code>saves add(key String, value V, table Table&lt;V&gt;) Table&lt;V&gt;</code></td>
+<td><strong>IO verbs</strong> interact with the outside world:</td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table>
-<p><strong>IO verbs</strong> interact with the outside world:</p>
 <table>
 <thead>
 <tr>
@@ -1051,12 +1050,12 @@
 <tbody>
 <tr>
 <td><code>inputs</code></td>
-<td><code>file(path String) Result&lt;String, Error&gt;!</code></td>
+<td><code>file(path String) String!</code></td>
 <td>Read file contents</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td><code>file(path String, content String) Result&lt;Unit, Error&gt;!</code></td>
+<td><code>file(path String, content String)!</code></td>
 <td>Write file contents</td>
 </tr>
 </tbody>
@@ -1092,7 +1091,7 @@
 <tr>
 <td>v0.6</td>
 <td><strong>Table</strong></td>
-<td>Hash map <code>Table&lt;V&gt;</code> with <code>creates new</code>, <code>reads get</code>, <code>saves add</code>, <code>validates has</code></td>
+<td>Hash map <code>Table&lt;V&gt;</code> with <code>creates new</code>, <code>reads get</code>, <code>transforms add</code>, <code>validates has</code></td>
 </tr>
 <tr>
 <td>v0.7</td>

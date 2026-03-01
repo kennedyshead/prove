@@ -652,6 +652,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#annotation-ordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Annotation Ordering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#module-level-narrative-domain-temporal" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -678,6 +689,17 @@
     <span class="md-ellipsis">
       
         Confidence: know, assume, believe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-chain-trusted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Chain: trusted
       
     </span>
   </a>
@@ -1328,11 +1350,6 @@
 <td>No <code>!</code>. Returns a freshly allocated value</td>
 </tr>
 <tr>
-<td><code>saves</code></td>
-<td>Mutating operation (returns modified value)</td>
-<td>No <code>!</code>. Takes a value, returns a new version with changes applied</td>
-</tr>
-<tr>
 <td><code>matches</code></td>
 <td>Pure match dispatch on algebraic type</td>
 <td>No <code>!</code>. First parameter must be algebraic. <code>from</code> block is implicitly a match — no <code>match x</code> needed</td>
@@ -1396,16 +1413,12 @@
 <a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="k">from</span>
 <a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>    <span class="n">allocate_buffer</span><span class="p">()</span>
 <a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="n">saves</span> <span class="n">add</span><span class="p">(</span><span class="n">key</span> <span class="kt">String</span><span class="p">,</span> <span class="n">value</span> <span class="nc">V</span><span class="p">,</span> <span class="n">table</span> <span class="nc">Table</span><span class="o">&lt;</span><span class="nc">V</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Table</span><span class="o">&lt;</span><span class="nc">V</span><span class="o">&gt;</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="kd">inputs</span> <span class="n">request</span><span class="p">(</span><span class="n">route</span> <span class="nc">Route</span><span class="p">,</span> <span class="n">body</span> <span class="kt">String</span><span class="p">,</span> <span class="n">db</span> <span class="nc">Database</span><span class="p">)</span> <span class="nc">Response</span><span class="kp">!</span>
 <a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="k">from</span>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    <span class="n">insert</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="kd">inputs</span> <span class="n">request</span><span class="p">(</span><span class="n">route</span> <span class="nc">Route</span><span class="p">,</span> <span class="n">req</span> <span class="nc">Request</span><span class="p">)</span> <span class="nc">Response</span><span class="kp">!</span>
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="k">from</span>
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>        <span class="nc">Get</span><span class="p">(</span><span class="o">/</span><span class="n">health</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">ok</span><span class="p">(</span><span class="s">&quot;healthy&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>        <span class="nc">Get</span><span class="p">(</span><span class="o">/</span><span class="n">users</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">users</span><span class="p">()</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">ok</span>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>        <span class="nc">Post</span><span class="p">(</span><span class="o">/</span><span class="n">users</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">create</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">body</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">created</span>
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>        <span class="n">_</span> <span class="p">=&gt;</span> <span class="n">not_found</span><span class="p">()</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/health&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">ok</span><span class="p">(</span><span class="s">&quot;healthy&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span>  <span class="p">=&gt;</span> <span class="n">users</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">ok</span>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>    <span class="nc">Post</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">create</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">created</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>    <span class="n">_</span>              <span class="p">=&gt;</span> <span class="n">not_found</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="verb-dispatched-identity">Verb-Dispatched Identity<a class="headerlink" href="#verb-dispatched-identity" title="Permanent link">&para;</a></h2>
 <p>Functions are identified by the triple <code>(verb, name, parameter types)</code> — not just <code>(name, parameter types)</code>. The same function name can be declared multiple times with different verbs, each with a distinct meaning:</p>
@@ -1486,7 +1499,7 @@
 <p>The LSP shows inferred types inline as you type, so you always know what the compiler deduced. Function signatures are always explicit — inference only applies to local variables.</p>
 <p><strong>The language encourages explicit types</strong> — the formatter enforces them. But you're never blocked from writing code because you can't remember whether it's <code>List&lt;Map&lt;String, User&gt;&gt;</code> or <code>Map&lt;String, List&lt;User&gt;&gt;</code>.</p>
 <h2 id="io-and-fallibility">IO and Fallibility<a class="headerlink" href="#io-and-fallibility" title="Permanent link">&para;</a></h2>
-<p>IO is inherent in the verb — <code>inputs</code> and <code>outputs</code> always interact with the external world. Fallibility is marked with <code>!</code> on the return type. Pure verbs (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>saves</code>, <code>matches</code>) have neither IO nor <code>!</code>.</p>
+<p>IO is inherent in the verb — <code>inputs</code> and <code>outputs</code> always interact with the external world. Fallibility is marked with <code>!</code> on the return type. Pure verbs (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>matches</code>) have neither IO nor <code>!</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">transforms</span> <span class="n">area</span><span class="p">(</span><span class="n">s</span> <span class="nc">Shape</span><span class="p">)</span> <span class="kt">Decimal</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">from</span>
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">pi</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">radius</span> <span class="o">*</span> <span class="n">s</span><span class="o">.</span><span class="n">radius</span>
@@ -1576,7 +1589,7 @@
 <p><strong>Constraints:</strong>
 - <strong>Single expression only</strong> — no multi-line bodies, no statements. If you need more, write a named function.
 - <strong>Must be pure</strong> — no IO effects inside a lambda. Side effects require a named function.
-- <strong>No closures over mutable state</strong> — lambdas can reference immutable bindings from the enclosing scope, but not <code>:[Mutable]</code> variables.
+- <strong>No closures</strong> — lambdas cannot reference variables from the enclosing scope. All values must be passed as arguments or accessed through the lambda's own parameters.
 - <strong>Only as arguments</strong> — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function.</p>
 <h2 id="iteration-no-loops">Iteration — No Loops<a class="headerlink" href="#iteration-no-loops" title="Permanent link">&para;</a></h2>
 <p>Prove has no <code>for</code>, <code>while</code>, or loop constructs. Iteration is expressed through <code>map</code>, <code>filter</code>, <code>reduce</code>, and recursion. This keeps all data transformations as expressions (they produce values) rather than statements.</p>
@@ -1622,10 +1635,6 @@
 <tr>
 <td><code>creates</code></td>
 <td>Declares a pure function that constructs a new value</td>
-</tr>
-<tr>
-<td><code>saves</code></td>
-<td>Declares a pure function that returns a modified version of its input</td>
 </tr>
 <tr>
 <td><code>inputs</code></td>
@@ -1677,7 +1686,11 @@
 </tr>
 <tr>
 <td><code>terminates</code></td>
-<td>Declares why a recursive function terminates — what decreases on each call</td>
+<td>Required for recursive functions — declares a measure expression that decreases on each call. Compiler error if omitted</td>
+</tr>
+<tr>
+<td><code>trusted</code></td>
+<td>Explicitly marks a function as unverified — acknowledges the gap when <code>ensures</code> would otherwise be expected</td>
 </tr>
 <tr>
 <td><code>valid</code></td>
@@ -1704,7 +1717,8 @@
 <h3 id="implementation-explanation-explain">Implementation Explanation: <code>explain</code><a class="headerlink" href="#implementation-explanation-explain" title="Permanent link">&para;</a></h3>
 <p><code>explain</code> documents the chain of operations in the <code>from</code> block using controlled natural language. It is <strong>LSP-suggested, not compiler-required</strong> — the LSP recommends adding it when a function has enough complexity to warrant documentation.</p>
 <p><strong>Two strictness modes:</strong></p>
-<p><strong>Strict mode</strong> (function has <code>ensures</code>): Each explain row corresponds to a line in the <code>from</code> block — the count must match exactly (mismatch is a compiler error). The compiler parses each row for an <strong>operation</strong> (action verb), <strong>connectors</strong> (prepositions like <code>by</code>, <code>to</code>, <code>all</code>), and <strong>references</strong> (identifiers from the function). References are verified against the function's contracts and called functions. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.</p>
+<p><strong>Strict mode</strong> (function has <code>ensures</code>): Each explain row corresponds to a <strong>top-level statement</strong> in the <code>from</code> block — a binding, a final expression, or a match arm. Multi-line expressions (pipe chains, multi-line arms) count as one. The count must match exactly (mismatch is a compiler error). The compiler warns if a single arm grows complex enough to warrant extraction into a named function.</p>
+<p>The compiler parses each row for an <strong>operation</strong> (action verb), <strong>connectors</strong> (prepositions like <code>by</code>, <code>to</code>, <code>all</code>), and <strong>references</strong> (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kd">transforms</span> <span class="n">calculate_total</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">discount</span> <span class="nc">Discount</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRule</span><span class="p">)</span> <span class="nc">Price</span>
 <a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>  <span class="kn">ensures</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 <a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>  <span class="kn">requires</span> <span class="n">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
@@ -1726,7 +1740,7 @@
 <p>Compiler parses: <code>sum</code> (operation) + <code>all</code> (connector) + <code>items.price</code> (reference), ignoring "the". Both forms are equivalent.</p>
 <p><strong>Loose mode</strong> (no <code>ensures</code>): Row count is flexible. Free-form text. Documentation value only.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kd">transforms</span> <span class="n">merge_sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Sorted</span><span class="o">&lt;</span><span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;&gt;</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>  <span class="na">terminates</span><span class="p">:</span> <span class="n">halves</span> <span class="n">are</span> <span class="n">strictly</span> <span class="n">smaller</span> <span class="n">than</span> <span class="n">xs</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>  <span class="na">terminates</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
 <a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>  <span class="n">explain</span>
 <a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">split</span> <span class="n">the</span> <span class="n">list</span> <span class="n">at</span> <span class="n">the</span> <span class="n">midpoint</span>
 <a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">recursively</span> <span class="n">sort</span> <span class="n">both</span> <span class="n">halves</span>
@@ -1771,9 +1785,9 @@
 </code></pre></div>
 <p><code>explain</code> is independent of <code>requires</code> and <code>ensures</code>. A function can have any combination — though the strictness mode depends on whether <code>ensures</code> is present.</p>
 <h3 id="termination-terminates">Termination: <code>terminates</code><a class="headerlink" href="#termination-terminates" title="Permanent link">&para;</a></h3>
-<p>Recursive functions use <code>terminates</code> to declare why the recursion ends. The compiler uses this to verify termination:</p>
+<p>Recursive functions must declare <code>terminates</code> with a measure expression — an expression that strictly decreases on each recursive call. Omitting <code>terminates</code> on a recursive function is a compiler error.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kd">transforms</span> <span class="n">merge_sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Sorted</span><span class="o">&lt;</span><span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;&gt;</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>  <span class="na">terminates</span><span class="p">:</span> <span class="n">halves</span> <span class="n">are</span> <span class="n">strictly</span> <span class="n">smaller</span> <span class="n">than</span> <span class="n">xs</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>  <span class="na">terminates</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
 <a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>  <span class="n">explain</span>
 <a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    <span class="n">split</span> <span class="n">the</span> <span class="n">list</span> <span class="n">at</span> <span class="n">the</span> <span class="n">midpoint</span>
 <a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    <span class="n">recursively</span> <span class="n">sort</span> <span class="n">the</span> <span class="n">first</span> <span class="n">half</span>
@@ -1785,6 +1799,20 @@
 <a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>    <span class="n">right</span> <span class="k">as</span> <span class="nc">Sorted</span><span class="o">&lt;</span><span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;&gt;</span> <span class="o">=</span> <span class="n">merge_sort</span><span class="p">(</span><span class="n">halves</span><span class="o">.</span><span class="n">second</span><span class="p">)</span>
 <a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>    <span class="n">merge</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
 </code></pre></div>
+<p>The compiler verifies that <code>len(halves.first) &lt; len(xs)</code> and <code>len(halves.second) &lt; len(xs)</code> at both recursive call sites.</p>
+<h3 id="annotation-ordering">Annotation Ordering<a class="headerlink" href="#annotation-ordering" title="Permanent link">&para;</a></h3>
+<p>All annotations appear between the verb line and <code>from</code>. The compiler accepts any order. The formatter normalizes to this canonical order:</p>
+<ol>
+<li><code>requires</code> — preconditions</li>
+<li><code>ensures</code> — postconditions</li>
+<li><code>terminates</code> — recursion measure</li>
+<li><code>trusted</code> — explicit verification opt-out</li>
+<li><code>know</code> / <code>assume</code> / <code>believe</code> — confidence levels</li>
+<li><code>why_not</code> / <code>chosen</code> — design reasoning</li>
+<li><code>near_miss</code> — boundary examples</li>
+<li><code>satisfies</code> — invariant networks</li>
+<li><code>explain</code> — implementation documentation (adjacent to <code>from</code>)</li>
+</ol>
 <p><strong>AI-Resistance keywords (Phase 1+2):</strong></p>
 <h3 id="module-level-narrative-domain-temporal">Module-level: <code>narrative</code>, <code>domain</code>, <code>temporal</code><a class="headerlink" href="#module-level-narrative-domain-temporal" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="k">module</span> <span class="nc">PaymentService</span>
@@ -1795,7 +1823,7 @@
 <a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>  <span class="n">domain</span> <span class="nc">Finance</span>
 <a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>  <span class="kn">temporal</span><span class="p">:</span> <span class="n">validate</span> <span class="o">-&gt;</span> <span class="n">charge</span> <span class="o">-&gt;</span> <span class="n">record</span>
 </code></pre></div>
-<p><code>narrative</code> describes the module's purpose — the compiler rejects functions unrelated to it. <code>domain</code> adapts syntax to the context (e.g. Finance enforces decimal rounding rules). <code>temporal</code> enforces the order things must happen — calling <code>record</code> before <code>charge</code> is a compile error.</p>
+<p><code>narrative</code> is required — it describes the module's purpose in plain language. <code>domain</code> tags the module's problem domain. <code>temporal</code> declares the expected ordering of operations. These are currently <strong>documentation keywords</strong> — the compiler requires <code>narrative</code> but does not yet verify semantic coherence. Compiler verification (rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering) is planned for a future release.</p>
 <h3 id="function-level-why_not-chosen-near_miss">Function-level: <code>why_not</code>, <code>chosen</code>, <code>near_miss</code><a class="headerlink" href="#function-level-why_not-chosen-near_miss" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kd">transforms</span> <span class="n">select_gateway</span><span class="p">(</span><span class="n">amount</span> <span class="nc">Price</span><span class="p">,</span> <span class="n">region</span> <span class="nc">Region</span><span class="p">)</span> <span class="nc">Gateway</span>
 <a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>  <span class="kn">why_not</span><span class="p">:</span> <span class="s">&quot;Round-robin ignores regional latency differences&quot;</span>
@@ -1811,7 +1839,7 @@
 <a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a><span class="k">from</span>
 <a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>    <span class="n">y</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">y</span> <span class="o">%</span> <span class="mi">100</span> <span class="kp">!</span><span class="o">=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">400</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
 </code></pre></div>
-<p><code>why_not</code> documents rejected alternatives. <code>chosen</code> explains the selected approach. The compiler checks that the rationale matches the implementation. <code>near_miss</code> provides inputs that <em>almost</em> break the code — proving you understand the exact boundary.</p>
+<p><code>why_not</code> documents rejected alternatives. <code>chosen</code> explains the selected approach. These are currently <strong>documentation keywords</strong> — compiler verification of rationale consistency is planned. <code>near_miss</code> provides inputs that <em>almost</em> break the code — the compiler verifies each near-miss exercises a distinct boundary condition.</p>
 <h3 id="confidence-know-assume-believe">Confidence: <code>know</code>, <code>assume</code>, <code>believe</code><a class="headerlink" href="#confidence-know-assume-believe" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kd">transforms</span> <span class="n">process_order</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
 <a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>            <span class="c1">// proven by NonEmpty type — zero cost</span>
@@ -1821,77 +1849,99 @@
 <a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
 <p><code>know</code> = the compiler can prove it (free). <code>assume</code> = the compiler adds a runtime check. <code>believe</code> = the compiler tries to break it with generated tests.</p>
-<h3 id="intent-intent">Intent: <code>intent</code><a class="headerlink" href="#intent-intent" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">intent</span><span class="p">:</span> <span class="s">&quot;keep only valid records&quot;</span>
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">result</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Record</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">filter</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="k">valid</span> <span class="n">record</span><span class="p">)</span>
-<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>
-<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="kn">intent</span><span class="p">:</span> <span class="s">&quot;remove corrupt entries&quot;</span>
-<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a><span class="n">result</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Record</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">filter</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="k">valid</span> <span class="n">corrupt</span><span class="p">)</span>
+<h3 id="verification-chain-trusted">Verification Chain: <code>trusted</code><a class="headerlink" href="#verification-chain-trusted" title="Permanent link">&para;</a></h3>
+<p><code>ensures</code> requirements propagate through the call graph. If function A has <code>ensures</code> and calls function B, the compiler needs B's contracts to verify A's postconditions. If B has no <code>ensures</code>, the compiler warns — A's verification is incomplete.</p>
+<p><code>trusted</code> is the explicit opt-out. It acknowledges that a function is unverified and silences the warning:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kd">transforms</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Price</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>  <span class="na">trusted</span><span class="p">:</span> <span class="s">&quot;sum of non-negative prices is non-negative&quot;</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="k">from</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>    <span class="n">reduce</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">|</span><span class="n">acc</span><span class="p">,</span> <span class="n">item</span><span class="p">|</span> <span class="n">acc</span> <span class="o">+</span> <span class="n">item</span><span class="o">.</span><span class="n">price</span><span class="p">)</span>
 </code></pre></div>
-<p>Same <code>filter()</code> call, but the compiler checks that the declared <code>intent</code> matches the predicate's actual behavior (keep vs discard).</p>
+<p>The compiler also warns when IO functions (<code>inputs</code>/<code>outputs</code>) or exported functions lack <code>ensures</code> — these are API boundaries where contracts matter most.</p>
+<p><code>prove check</code> reports verification coverage:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>$ prove check
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>Verification:
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>  ✓ 42 functions with ensures (property tests)
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>  ✓ 11 validators with near_miss (boundary tests)
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>  ⚠ 3 functions trusted
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>  ✗ 1 unverified in chain → add ensures or trusted
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>Coverage: 89%
+</code></pre></div>
+<p>Functions outside any verification chain and with no callers that have <code>ensures</code> are fine without annotations — nobody depends on them contractually. The LSP suggests <code>near_miss</code> for <code>validates</code> functions with compound logic (multiple <code>&amp;&amp;</code>/<code>||</code>, modular arithmetic, negation). Trivial validators like <code>user.active</code> get no suggestion.</p>
+<h3 id="intent-intent">Intent: <code>intent</code><a class="headerlink" href="#intent-intent" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">intent</span><span class="p">:</span> <span class="s">&quot;keep only valid records&quot;</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="n">result</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Record</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">filter</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="k">valid</span> <span class="n">record</span><span class="p">)</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="kn">intent</span><span class="p">:</span> <span class="s">&quot;remove corrupt entries&quot;</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="n">result</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Record</span><span class="o">&gt;</span> <span class="o">=</span> <span class="n">filter</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="k">valid</span> <span class="n">corrupt</span><span class="p">)</span>
+</code></pre></div>
+<p><code>intent</code> annotates a statement with its purpose. Currently a <strong>documentation keyword</strong> — the compiler records it but does not yet verify that the intent matches the code's behavior. Verification using controlled natural language (similar to <code>explain</code>) is planned for a future release.</p>
 <h3 id="invariants-invariant_network-satisfies">Invariants: <code>invariant_network</code>, <code>satisfies</code><a class="headerlink" href="#invariants-invariant_network-satisfies" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="kn">invariant_network</span> <span class="nc">AccountingRules</span>
-<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>  <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
-<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>  <span class="n">revenue</span> <span class="o">-</span> <span class="n">expenses</span> <span class="o">==</span> <span class="n">net_income</span>
-<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>  <span class="n">every</span><span class="p">(</span><span class="n">transaction</span><span class="p">)</span> <span class="n">preserves</span> <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
-<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>
-<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="kd">transforms</span> <span class="n">post_transaction</span><span class="p">(</span><span class="n">ledger</span> <span class="nc">Ledger</span><span class="p">,</span> <span class="n">tx</span> <span class="nc">Transaction</span><span class="p">)</span> <span class="nc">Ledger</span>
-<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>  <span class="kn">satisfies</span> <span class="nc">AccountingRules</span>
-<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a><span class="k">from</span>
-<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>    <span class="c1">// implementation — compiler verifies the rules hold after every change</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="kn">invariant_network</span> <span class="nc">AccountingRules</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>  <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>  <span class="n">revenue</span> <span class="o">-</span> <span class="n">expenses</span> <span class="o">==</span> <span class="n">net_income</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>  <span class="n">every</span><span class="p">(</span><span class="n">transaction</span><span class="p">)</span> <span class="n">preserves</span> <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="kd">transforms</span> <span class="n">post_transaction</span><span class="p">(</span><span class="n">ledger</span> <span class="nc">Ledger</span><span class="p">,</span> <span class="n">tx</span> <span class="nc">Transaction</span><span class="p">)</span> <span class="nc">Ledger</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>  <span class="kn">satisfies</span> <span class="nc">AccountingRules</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="k">from</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>    <span class="c1">// implementation — compiler verifies the rules hold after every change</span>
 </code></pre></div>
 <p><code>invariant_network</code> defines rules that must always hold together. <code>satisfies</code> declares that a function obeys those rules.</p>
 <h2 id="error-propagation">Error Propagation<a class="headerlink" href="#error-propagation" title="Permanent link">&para;</a></h2>
-<p><code>!</code> marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error. Only IO verbs (<code>inputs</code>, <code>outputs</code>) can use <code>!</code>. Pure functions encode failure in the return type (<code>Result&lt;T, E&gt;</code>) and handle it with <code>match</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;</span><span class="kp">!</span>
-<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="k">from</span>
-<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>    <span class="n">config</span> <span class="k">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="n">db</span> <span class="k">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="kp">!</span>
+<p><code>!</code> marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (<code>inputs</code>, <code>outputs</code>) can use <code>!</code>. There is one <code>Error</code> type — errors are program-ending, not flow control. <code>!</code> errors propagate up the call chain until they reach <code>main</code>, which exits with an error message. There is no try/catch.</p>
+<p>Pure functions that need to represent expected failure cases use <code>Result&lt;T, E&gt;</code> and handle them with <code>match</code> — these are values, not errors.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="k">main</span><span class="p">()</span><span class="kp">!</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="k">from</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>    <span class="n">config</span> <span class="k">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">load</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>    <span class="n">db</span> <span class="k">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>    <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="kp">!</span>
 </code></pre></div>
 <h2 id="complete-example-restful-server">Complete Example: RESTful Server<a class="headerlink" href="#complete-example-restful-server" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="k">type</span> <span class="nc">Port</span> <span class="k">is</span> <span class="kt">Integer</span><span class="p">:[</span><span class="mi">16</span> <span class="nc">Unsigned</span><span class="p">]</span> <span class="k">where</span> <span class="mi">1</span> <span class="o">..</span> <span class="mi">65535</span>
-<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="k">type</span> <span class="nc">Route</span> <span class="k">is</span> <span class="nc">Get</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Post</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Delete</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span>
-<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>
-<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="k">type</span> <span class="nc">User</span> <span class="k">is</span>
-<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>  <span class="n">id</span> <span class="kt">Integer</span>
-<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>  <span class="n">name</span> <span class="kt">String</span>
-<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>  <span class="n">email</span> <span class="kt">String</span>
-<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>
-<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="cs">/// Checks whether a string is a valid email address.</span>
-<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="kd">validates</span> <span class="n">email</span><span class="p">(</span><span class="n">address</span> <span class="kt">String</span><span class="p">)</span>
-<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="k">from</span>
-<a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a>    <span class="n">contains</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="s">&quot;@&quot;</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">contains</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="s">&quot;.&quot;</span><span class="p">)</span>
-<a id="__codelineno-32-13" name="__codelineno-32-13" href="#__codelineno-32-13"></a>
-<a id="__codelineno-32-14" name="__codelineno-32-14" href="#__codelineno-32-14"></a><span class="cs">/// Retrieves all users from the database.</span>
-<a id="__codelineno-32-15" name="__codelineno-32-15" href="#__codelineno-32-15"></a><span class="kd">inputs</span> <span class="n">users</span><span class="p">(</span><span class="n">db</span> <span class="nc">Database</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">User</span><span class="o">&gt;</span><span class="kp">!</span>
-<a id="__codelineno-32-16" name="__codelineno-32-16" href="#__codelineno-32-16"></a><span class="k">from</span>
-<a id="__codelineno-32-17" name="__codelineno-32-17" href="#__codelineno-32-17"></a>    <span class="n">query</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s">&quot;SELECT * FROM users&quot;</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-32-18" name="__codelineno-32-18" href="#__codelineno-32-18"></a>
-<a id="__codelineno-32-19" name="__codelineno-32-19" href="#__codelineno-32-19"></a><span class="cs">/// Creates a new user from a request body.</span>
-<a id="__codelineno-32-20" name="__codelineno-32-20" href="#__codelineno-32-20"></a><span class="kd">outputs</span> <span class="n">create</span><span class="p">(</span><span class="n">db</span> <span class="nc">Database</span><span class="p">,</span> <span class="n">body</span> <span class="kt">String</span><span class="p">)</span> <span class="nc">User</span><span class="kp">!</span>
-<a id="__codelineno-32-21" name="__codelineno-32-21" href="#__codelineno-32-21"></a>  <span class="kn">ensures</span> <span class="n">email</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
-<a id="__codelineno-32-22" name="__codelineno-32-22" href="#__codelineno-32-22"></a><span class="k">from</span>
-<a id="__codelineno-32-23" name="__codelineno-32-23" href="#__codelineno-32-23"></a>    <span class="n">user</span> <span class="k">as</span> <span class="nc">User</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">body</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-32-24" name="__codelineno-32-24" href="#__codelineno-32-24"></a>    <span class="n">insert</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s">&quot;users&quot;</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-32-25" name="__codelineno-32-25" href="#__codelineno-32-25"></a>    <span class="n">user</span>
-<a id="__codelineno-32-26" name="__codelineno-32-26" href="#__codelineno-32-26"></a>
-<a id="__codelineno-32-27" name="__codelineno-32-27" href="#__codelineno-32-27"></a><span class="cs">/// Routes incoming HTTP requests.</span>
-<a id="__codelineno-32-28" name="__codelineno-32-28" href="#__codelineno-32-28"></a><span class="kd">inputs</span> <span class="n">request</span><span class="p">(</span><span class="n">route</span> <span class="nc">Route</span><span class="p">,</span> <span class="n">body</span> <span class="kt">String</span><span class="p">,</span> <span class="n">db</span> <span class="nc">Database</span><span class="p">)</span> <span class="nc">Response</span><span class="kp">!</span>
-<a id="__codelineno-32-29" name="__codelineno-32-29" href="#__codelineno-32-29"></a><span class="k">from</span>
-<a id="__codelineno-32-30" name="__codelineno-32-30" href="#__codelineno-32-30"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/health&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">ok</span><span class="p">(</span><span class="s">&quot;healthy&quot;</span><span class="p">)</span>
-<a id="__codelineno-32-31" name="__codelineno-32-31" href="#__codelineno-32-31"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span>  <span class="p">=&gt;</span> <span class="n">users</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">ok</span>
-<a id="__codelineno-32-32" name="__codelineno-32-32" href="#__codelineno-32-32"></a>    <span class="nc">Post</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">create</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">created</span>
-<a id="__codelineno-32-33" name="__codelineno-32-33" href="#__codelineno-32-33"></a>    <span class="n">_</span>              <span class="p">=&gt;</span> <span class="n">not_found</span><span class="p">()</span>
-<a id="__codelineno-32-34" name="__codelineno-32-34" href="#__codelineno-32-34"></a>
-<a id="__codelineno-32-35" name="__codelineno-32-35" href="#__codelineno-32-35"></a><span class="cs">/// Application entry point — no verb, main is special.</span>
-<a id="__codelineno-32-36" name="__codelineno-32-36" href="#__codelineno-32-36"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;</span><span class="kp">!</span>
-<a id="__codelineno-32-37" name="__codelineno-32-37" href="#__codelineno-32-37"></a><span class="k">from</span>
-<a id="__codelineno-32-38" name="__codelineno-32-38" href="#__codelineno-32-38"></a>    <span class="n">port</span> <span class="k">as</span> <span class="nc">Port</span> <span class="o">=</span> <span class="mi">8080</span>
-<a id="__codelineno-32-39" name="__codelineno-32-39" href="#__codelineno-32-39"></a>    <span class="n">db</span> <span class="k">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="s">&quot;postgres://localhost/app&quot;</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-32-40" name="__codelineno-32-40" href="#__codelineno-32-40"></a>    <span class="n">server</span> <span class="k">as</span> <span class="nc">Server</span> <span class="o">=</span> <span class="n">new_server</span><span class="p">()</span>
-<a id="__codelineno-32-41" name="__codelineno-32-41" href="#__codelineno-32-41"></a>    <span class="n">route</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
-<a id="__codelineno-32-42" name="__codelineno-32-42" href="#__codelineno-32-42"></a>    <span class="n">listen</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span><span class="kp">!</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="k">type</span> <span class="nc">Port</span> <span class="k">is</span> <span class="kt">Integer</span><span class="p">:[</span><span class="mi">16</span> <span class="nc">Unsigned</span><span class="p">]</span> <span class="k">where</span> <span class="mi">1</span> <span class="o">..</span> <span class="mi">65535</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="k">type</span> <span class="nc">Route</span> <span class="k">is</span> <span class="nc">Get</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Post</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Delete</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="k">type</span> <span class="nc">User</span> <span class="k">is</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>  <span class="n">id</span> <span class="kt">Integer</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>  <span class="n">name</span> <span class="kt">String</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>  <span class="n">email</span> <span class="kt">String</span>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a><span class="cs">/// Checks whether a string is a valid email address.</span>
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a><span class="kd">validates</span> <span class="n">email</span><span class="p">(</span><span class="n">address</span> <span class="kt">String</span><span class="p">)</span>
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a><span class="k">from</span>
+<a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>    <span class="n">contains</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="s">&quot;@&quot;</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">contains</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="s">&quot;.&quot;</span><span class="p">)</span>
+<a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>
+<a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a><span class="cs">/// Retrieves all users from the database.</span>
+<a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a><span class="kd">inputs</span> <span class="n">users</span><span class="p">(</span><span class="n">db</span> <span class="nc">Database</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">User</span><span class="o">&gt;</span><span class="kp">!</span>
+<a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a><span class="k">from</span>
+<a id="__codelineno-34-17" name="__codelineno-34-17" href="#__codelineno-34-17"></a>    <span class="n">query</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s">&quot;SELECT * FROM users&quot;</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-34-18" name="__codelineno-34-18" href="#__codelineno-34-18"></a>
+<a id="__codelineno-34-19" name="__codelineno-34-19" href="#__codelineno-34-19"></a><span class="cs">/// Creates a new user from a request body.</span>
+<a id="__codelineno-34-20" name="__codelineno-34-20" href="#__codelineno-34-20"></a><span class="kd">outputs</span> <span class="n">create</span><span class="p">(</span><span class="n">db</span> <span class="nc">Database</span><span class="p">,</span> <span class="n">body</span> <span class="kt">String</span><span class="p">)</span> <span class="nc">User</span><span class="kp">!</span>
+<a id="__codelineno-34-21" name="__codelineno-34-21" href="#__codelineno-34-21"></a>  <span class="kn">ensures</span> <span class="n">email</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+<a id="__codelineno-34-22" name="__codelineno-34-22" href="#__codelineno-34-22"></a><span class="k">from</span>
+<a id="__codelineno-34-23" name="__codelineno-34-23" href="#__codelineno-34-23"></a>    <span class="n">user</span> <span class="k">as</span> <span class="nc">User</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">body</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-34-24" name="__codelineno-34-24" href="#__codelineno-34-24"></a>    <span class="n">insert</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s">&quot;users&quot;</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-34-25" name="__codelineno-34-25" href="#__codelineno-34-25"></a>    <span class="n">user</span>
+<a id="__codelineno-34-26" name="__codelineno-34-26" href="#__codelineno-34-26"></a>
+<a id="__codelineno-34-27" name="__codelineno-34-27" href="#__codelineno-34-27"></a><span class="cs">/// Routes incoming HTTP requests.</span>
+<a id="__codelineno-34-28" name="__codelineno-34-28" href="#__codelineno-34-28"></a><span class="kd">inputs</span> <span class="n">request</span><span class="p">(</span><span class="n">route</span> <span class="nc">Route</span><span class="p">,</span> <span class="n">body</span> <span class="kt">String</span><span class="p">,</span> <span class="n">db</span> <span class="nc">Database</span><span class="p">)</span> <span class="nc">Response</span><span class="kp">!</span>
+<a id="__codelineno-34-29" name="__codelineno-34-29" href="#__codelineno-34-29"></a><span class="k">from</span>
+<a id="__codelineno-34-30" name="__codelineno-34-30" href="#__codelineno-34-30"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/health&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">ok</span><span class="p">(</span><span class="s">&quot;healthy&quot;</span><span class="p">)</span>
+<a id="__codelineno-34-31" name="__codelineno-34-31" href="#__codelineno-34-31"></a>    <span class="nc">Get</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span>  <span class="p">=&gt;</span> <span class="n">users</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">ok</span>
+<a id="__codelineno-34-32" name="__codelineno-34-32" href="#__codelineno-34-32"></a>    <span class="nc">Post</span><span class="p">(</span><span class="s">&quot;/users&quot;</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">create</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span><span class="kp">!</span> <span class="o">|&gt;</span> <span class="n">encode</span> <span class="o">|&gt;</span> <span class="n">created</span>
+<a id="__codelineno-34-33" name="__codelineno-34-33" href="#__codelineno-34-33"></a>    <span class="n">_</span>              <span class="p">=&gt;</span> <span class="n">not_found</span><span class="p">()</span>
+<a id="__codelineno-34-34" name="__codelineno-34-34" href="#__codelineno-34-34"></a>
+<a id="__codelineno-34-35" name="__codelineno-34-35" href="#__codelineno-34-35"></a><span class="cs">/// Application entry point — no verb, main is special.</span>
+<a id="__codelineno-34-36" name="__codelineno-34-36" href="#__codelineno-34-36"></a><span class="k">main</span><span class="p">()</span><span class="kp">!</span>
+<a id="__codelineno-34-37" name="__codelineno-34-37" href="#__codelineno-34-37"></a><span class="k">from</span>
+<a id="__codelineno-34-38" name="__codelineno-34-38" href="#__codelineno-34-38"></a>    <span class="n">port</span> <span class="k">as</span> <span class="nc">Port</span> <span class="o">=</span> <span class="mi">8080</span>
+<a id="__codelineno-34-39" name="__codelineno-34-39" href="#__codelineno-34-39"></a>    <span class="n">db</span> <span class="k">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="s">&quot;postgres://localhost/app&quot;</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-34-40" name="__codelineno-34-40" href="#__codelineno-34-40"></a>    <span class="n">server</span> <span class="k">as</span> <span class="nc">Server</span> <span class="o">=</span> <span class="n">new_server</span><span class="p">()</span>
+<a id="__codelineno-34-41" name="__codelineno-34-41" href="#__codelineno-34-41"></a>    <span class="n">route</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+<a id="__codelineno-34-42" name="__codelineno-34-42" href="#__codelineno-34-42"></a>    <span class="n">listen</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span><span class="kp">!</span>
 </code></pre></div>
 
 

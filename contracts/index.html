@@ -602,6 +602,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#verification-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Chain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verification Chain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-ensures-is-expected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When ensures is expected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trusted-explicit-opt-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        trusted — explicit opt-out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#near_miss-lsp-suggested-for-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        near_miss — LSP-suggested for validators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1167,6 +1217,35 @@
 <a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>  Suggested contract to add:
 <a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
 </code></pre></div>
+<hr />
+<h2 id="verification-chain">Verification Chain<a class="headerlink" href="#verification-chain" title="Permanent link">&para;</a></h2>
+<p><code>ensures</code> requirements propagate through the call graph. If function A has <code>ensures</code> and calls function B, the compiler needs B's contracts to verify A's postconditions. If B has no <code>ensures</code>, the verification has a gap — the compiler warns.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">transforms</span> <span class="n">calculate_total</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">discount</span> <span class="nc">Discount</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRule</span><span class="p">)</span> <span class="nc">Price</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  <span class="kn">ensures</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">from</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">sub</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>                    <span class="c1">// does subtotal have ensures?</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">discounted</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">apply_tax</span><span class="p">(</span><span class="n">tax</span><span class="p">,</span> <span class="n">discounted</span><span class="p">)</span>
+</code></pre></div>
+<p>If <code>subtotal</code> has <code>ensures result &gt;= 0</code>, the compiler can verify the chain. If it doesn't, the compiler warns that <code>calculate_total</code>'s verification depends on an unverified function.</p>
+<h3 id="when-ensures-is-expected">When <code>ensures</code> is expected<a class="headerlink" href="#when-ensures-is-expected" title="Permanent link">&para;</a></h3>
+<p>The compiler warns when <code>ensures</code> is missing on:</p>
+<ul>
+<li><strong>Functions in a verification chain</strong> — called by a function that has <code>ensures</code></li>
+<li><strong>IO functions</strong> (<code>inputs</code>/<code>outputs</code>) — API boundaries where contracts matter</li>
+<li><strong>Exported functions</strong> — callers outside the module need guarantees</li>
+</ul>
+<p>Functions outside any verification chain — trivial helpers, internal plumbing — are fine without annotations.</p>
+<h3 id="trusted-explicit-opt-out"><code>trusted</code> — explicit opt-out<a class="headerlink" href="#trusted-explicit-opt-out" title="Permanent link">&para;</a></h3>
+<p>When a function is in a verification chain but you don't want to add contracts yet, <code>trusted</code> acknowledges the gap:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kd">transforms</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">OrderItem</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Price</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>  <span class="na">trusted</span><span class="p">:</span> <span class="s">&quot;sum of non-negative prices is non-negative&quot;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="k">from</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">reduce</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">|</span><span class="n">acc</span><span class="p">,</span> <span class="n">item</span><span class="p">|</span> <span class="n">acc</span> <span class="o">+</span> <span class="n">item</span><span class="o">.</span><span class="n">price</span><span class="p">)</span>
+</code></pre></div>
+<p>The compiler stops warning. <code>prove check</code> reports trusted functions in its verification coverage summary.</p>
+<h3 id="near_miss-lsp-suggested-for-validators"><code>near_miss</code> — LSP-suggested for validators<a class="headerlink" href="#near_miss-lsp-suggested-for-validators" title="Permanent link">&para;</a></h3>
+<p>The LSP suggests <code>near_miss</code> for <code>validates</code> functions with compound logic — multiple <code>&amp;&amp;</code>/<code>||</code>, modular arithmetic, negation. Trivial validators (single field access, simple equality) get no suggestion. <code>near_miss</code> proves the programmer understands the exact boundary between valid and invalid inputs.</p>
 
 
 

@@ -1054,7 +1054,7 @@
 </code></pre></div>
 <hr />
 <h2 id="verb-enforcement">Verb Enforcement<a class="headerlink" href="#verb-enforcement" title="Permanent link">&para;</a></h2>
-<p>The compiler enforces purity rules based on the function's verb. Pure verbs (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>saves</code>, <code>matches</code>) cannot perform side effects:</p>
+<p>The compiler enforces purity rules based on the function's verb. Pure verbs (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>matches</code>) cannot perform side effects:</p>
 <ul>
 <li>Cannot call built-in IO functions like <code>println</code> or <code>read_file</code> (E362)</li>
 <li>Cannot call user-defined functions with IO verbs <code>inputs</code> or <code>outputs</code> (E363)</li>
