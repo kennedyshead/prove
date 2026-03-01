@@ -190,3 +190,47 @@ Surviving mutants:
   Suggested contract to add:
     ensures len(cache) <= max_size   // would kill both mutants
 ```
+
+---
+
+## Verification Chain
+
+`ensures` requirements propagate through the call graph. If function A has `ensures` and calls function B, the compiler needs B's contracts to verify A's postconditions. If B has no `ensures`, the verification has a gap — the compiler warns.
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+from
+    sub as Price = subtotal(items)                    // does subtotal have ensures?
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+If `subtotal` has `ensures result >= 0`, the compiler can verify the chain. If it doesn't, the compiler warns that `calculate_total`'s verification depends on an unverified function.
+
+### When `ensures` is expected
+
+The compiler warns when `ensures` is missing on:
+
+- **Functions in a verification chain** — called by a function that has `ensures`
+- **IO functions** (`inputs`/`outputs`) — API boundaries where contracts matter
+- **Exported functions** — callers outside the module need guarantees
+
+Functions outside any verification chain — trivial helpers, internal plumbing — are fine without annotations.
+
+### `trusted` — explicit opt-out
+
+When a function is in a verification chain but you don't want to add contracts yet, `trusted` acknowledges the gap:
+
+```prove
+transforms subtotal(items List<OrderItem>) Price
+  trusted: "sum of non-negative prices is non-negative"
+from
+    reduce(items, 0, |acc, item| acc + item.price)
+```
+
+The compiler stops warning. `prove check` reports trusted functions in its verification coverage summary.
+
+### `near_miss` — LSP-suggested for validators
+
+The LSP suggests `near_miss` for `validates` functions with compound logic — multiple `&&`/`||`, modular arithmetic, negation. Trivial validators (single field access, simple equality) get no suggestion. `near_miss` proves the programmer understands the exact boundary between valid and invalid inputs.

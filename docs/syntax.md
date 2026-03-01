@@ -456,6 +456,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `matches` | Declares a pure function that dispatches on an algebraic first parameter |
 | `explain` | Documents each step in the `from` block using controlled natural language. **Strict** (with `ensures`): row count must match `from`, references verified against contracts. **Loose** (without `ensures`): free-form text, documentation only. LSP-suggested, not compiler-required |
 | `terminates` | Required for recursive functions — declares a measure expression that decreases on each call. Compiler error if omitted |
+| `trusted` | Explicitly marks a function as unverified — acknowledges the gap when `ensures` would otherwise be expected |
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Runs code at compile time instead of runtime |
 
@@ -599,11 +600,12 @@ All annotations appear between the verb line and `from`. The compiler accepts an
 1. `requires` — preconditions
 2. `ensures` — postconditions
 3. `terminates` — recursion measure
-4. `know` / `assume` / `believe` — confidence levels
-5. `why_not` / `chosen` — design reasoning
-6. `near_miss` — boundary examples
-7. `satisfies` — invariant networks
-8. `explain` — implementation documentation (adjacent to `from`)
+4. `trusted` — explicit verification opt-out
+5. `know` / `assume` / `believe` — confidence levels
+6. `why_not` / `chosen` — design reasoning
+7. `near_miss` — boundary examples
+8. `satisfies` — invariant networks
+9. `explain` — implementation documentation (adjacent to `from`)
 
 **AI-Resistance keywords (Phase 1+2):**
 
@@ -653,6 +655,37 @@ from
 ```
 
 `know` = the compiler can prove it (free). `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
+
+### Verification Chain: `trusted`
+
+`ensures` requirements propagate through the call graph. If function A has `ensures` and calls function B, the compiler needs B's contracts to verify A's postconditions. If B has no `ensures`, the compiler warns — A's verification is incomplete.
+
+`trusted` is the explicit opt-out. It acknowledges that a function is unverified and silences the warning:
+
+```prove
+transforms subtotal(items List<OrderItem>) Price
+  trusted: "sum of non-negative prices is non-negative"
+from
+    reduce(items, 0, |acc, item| acc + item.price)
+```
+
+The compiler also warns when IO functions (`inputs`/`outputs`) or exported functions lack `ensures` — these are API boundaries where contracts matter most.
+
+`prove check` reports verification coverage:
+
+```
+$ prove check
+
+Verification:
+  ✓ 42 functions with ensures (property tests)
+  ✓ 11 validators with near_miss (boundary tests)
+  ⚠ 3 functions trusted
+  ✗ 1 unverified in chain → add ensures or trusted
+
+Coverage: 89%
+```
+
+Functions outside any verification chain and with no callers that have `ensures` are fine without annotations — nobody depends on them contractually. The LSP suggests `near_miss` for `validates` functions with compound logic (multiple `&&`/`||`, modular arithmetic, negation). Trivial validators like `user.active` get no suggestion.
 
 ### Intent: `intent`
 
