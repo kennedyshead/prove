@@ -128,8 +128,8 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 ```prove
 matches area(s Shape) Decimal
 from
-        Circle(r) => pi * r * r
-        Rect(w, h) => w * h
+    Circle(r) => pi * r * r
+    Rect(w, h) => w * h
 
 validates email(address String)
 from
@@ -163,10 +163,10 @@ from
 
 inputs request(route Route, body String, db Database) Response!
 from
-        Get(/health) => ok("healthy")
-        Get(/users) => users(db)! |> encode |> ok
-        Post(/users) => create(db, body)! |> encode |> created
-        _ => not_found()
+    Get(/health) => ok("healthy")
+    Get(/users) => users(db)! |> encode |> ok
+    Post(/users) => create(db, body)! |> encode |> created
+    _ => not_found()
 ```
 
 ## Verb-Dispatched Identity
@@ -554,11 +554,11 @@ matches apply_discount(discount Discount, amount Price) Price
     scale amount by complement of rate
     subtract bulk discount from amount
 from
-        FlatOff(off) => max(0, amount - off)
-        PercentOff(rate) => amount * (1 - rate)
-        BuyNGetFree(buy, free) =>
-            sets as Integer = len(items) / (buy + free)
-            amount - sets * cheapest_price(items)
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
+    BuyNGetFree(buy, free) =>
+        sets as Integer = len(items) / (buy + free)
+        amount - sets * cheapest_price(items)
 ```
 
 **Custom vocabulary** for operations and connectors can be declared at module level or in `prove.toml`:

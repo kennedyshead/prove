@@ -66,8 +66,8 @@ Every function declares its purpose with a verb. The compiler enforces it. Pure 
 ```prove
 matches area(s Shape) Decimal
 from
-        Circle(r) => pi * r * r
-        Rect(w, h) => w * h
+    Circle(r) => pi * r * r
+    Rect(w, h) => w * h
 
 validates email(address String)
 from
@@ -122,8 +122,8 @@ matches apply_discount(discount Discount, amount Price) Price
   ensures result <= amount
   requires amount >= 0
 from
-        FlatOff(off) => max(0, amount - off)
-        PercentOff(rate) => amount * (1 - rate)
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
 ```
 
 `explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and references are verified against contracts. Without `ensures` (loose mode), explain is free-form documentation:

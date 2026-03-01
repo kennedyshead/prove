@@ -37,10 +37,10 @@ from
 
 inputs request(route Route, body String, db Database) Response!
 from
-        Get(/health) => ok("healthy")
-        Get(/users) => all_users(db)! |> encode |> ok
-        Post(/users) => create_user(db, body)! |> encode |> created
-        _ => not_found()
+    Get(/health) => ok("healthy")
+    Get(/users) => all_users(db)! |> encode |> ok
+    Post(/users) => create_user(db, body)! |> encode |> created
+    _ => not_found()
 
 main() Result!
 from

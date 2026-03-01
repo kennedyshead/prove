@@ -6,7 +6,7 @@ license = ""
 
 [build]
 target = "native"
-optimize = false
+optimize = true
 
 [test]
 property_rounds = 500
