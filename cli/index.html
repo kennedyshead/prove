@@ -631,17 +631,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prove-lint-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        prove lint [path]
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#prove-view-file" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -969,7 +958,7 @@
 <p>The project directory must contain a <code>prove.toml</code>. Output binary is placed in <code>build/</code>.</p>
 <hr />
 <h2 id="prove-check-path"><code>prove check [path]</code><a class="headerlink" href="#prove-check-path" title="Permanent link">&para;</a></h2>
-<p>Type-check Prove source without compiling.</p>
+<p>Type-check and lint Prove source without compiling.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>prove<span class="w"> </span>check
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>prove<span class="w"> </span>check<span class="w"> </span>src/main.prv
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>prove<span class="w"> </span>check<span class="w"> </span>docs/tutorial.md<span class="w"> </span>--md
@@ -989,6 +978,7 @@
 </tbody>
 </table>
 <p>When <code>path</code> is a <code>.prv</code> file, checks that single file. When <code>path</code> is a directory, finds <code>prove.toml</code> and checks all files in <code>src/</code>. When <code>path</code> is a <code>.md</code> file (with <code>--md</code>), checks all fenced Prove blocks.</p>
+<p>Reports type errors, warnings, and formatting issues in a unified summary. Formatting mismatches show a diff-style context excerpt.</p>
 <hr />
 <h2 id="prove-test-path"><code>prove test [path]</code><a class="headerlink" href="#prove-test-path" title="Permanent link">&para;</a></h2>
 <p>Run contract-based tests generated from <code>ensures</code>, <code>believe</code>, and <code>near_miss</code> annotations.</p>
@@ -1043,37 +1033,15 @@
 </table>
 <p>Reformats all <code>.prv</code> files recursively under the given path. Files with parse errors are skipped.</p>
 <hr />
-<h2 id="prove-lint-path"><code>prove lint [path]</code><a class="headerlink" href="#prove-lint-path" title="Permanent link">&para;</a></h2>
-<p>Report formatting mismatches with line-by-line context.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>prove<span class="w"> </span>lint
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>prove<span class="w"> </span>lint<span class="w"> </span>src/
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>prove<span class="w"> </span>lint<span class="w"> </span>--md
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Flag</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--md</code></td>
-<td>Also lint <code>```prove</code> blocks in Markdown files</td>
-</tr>
-</tbody>
-</table>
-<p>Shows a diff-style comparison of actual vs. expected formatting.</p>
-<hr />
 <h2 id="prove-view-file"><code>prove view &lt;file&gt;</code><a class="headerlink" href="#prove-view-file" title="Permanent link">&para;</a></h2>
 <p>Display the AST of a <code>.prv</code> file for debugging.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>prove<span class="w"> </span>view<span class="w"> </span>src/main.prv
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>prove<span class="w"> </span>view<span class="w"> </span>src/main.prv
 </code></pre></div>
 <p>Prints a human-readable, indented representation of the parsed AST.</p>
 <hr />
 <h2 id="prove-lsp"><code>prove lsp</code><a class="headerlink" href="#prove-lsp" title="Permanent link">&para;</a></h2>
 <p>Start the Prove language server (LSP protocol).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>prove<span class="w"> </span>lsp
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>prove<span class="w"> </span>lsp
 </code></pre></div>
 <p>Used by editor integrations (VS Code, Neovim, etc.) for diagnostics, completions, and hover information. Communicates over stdio.</p>
 <hr />
