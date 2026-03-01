@@ -43,10 +43,15 @@ class TestLexerBasic:
         for kw in ["transforms", "inputs", "outputs", "validates",
                     "main", "from", "type", "is", "as", "with", "use",
                     "where", "match", "comptime", "valid",
-                    "module", "domain", "ensures", "requires", "proof"]:
+                    "module", "domain", "ensures", "requires", "proof",
+                    "when"]:
             result = lex(kw)
             assert len(result) == 1, f"keyword {kw} should lex to one token"
             assert result[0][1] == kw
+
+    def test_when_keyword(self):
+        result = lex("when")
+        assert result == [(TokenKind.WHEN, "when")]
 
     def test_type_identifier(self):
         result = lex("String")

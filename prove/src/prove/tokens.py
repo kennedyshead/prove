@@ -37,6 +37,7 @@ class TokenKind(Enum):
     ENSURES = auto()
     REQUIRES = auto()
     PROOF = auto()
+    WHEN = auto()
 
     # AI-resistance
     WHY_NOT = auto()
@@ -143,6 +144,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "ensures": TokenKind.ENSURES,
     "requires": TokenKind.REQUIRES,
     "proof": TokenKind.PROOF,
+    "when": TokenKind.WHEN,
     "why_not": TokenKind.WHY_NOT,
     "chosen": TokenKind.CHOSEN,
     "near_miss": TokenKind.NEAR_MISS,

@@ -95,6 +95,9 @@ class ProofVerifier:
         concepts.add("result")
 
         for obl in fd.proof.obligations:
+            # Structured conditions reference params directly — skip text check
+            if obl.condition is not None:
+                continue
             text_lower = obl.text.lower()
             if not any(c.lower() in text_lower for c in concepts):
                 self._warning(

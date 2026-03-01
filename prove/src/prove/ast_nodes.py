@@ -286,6 +286,7 @@ class Param:
 class ProofObligation:
     name: str
     text: str
+    condition: Expr | None  # parsed "when <expr>", None if absent
     span: Span
 
 

@@ -471,3 +471,39 @@ class TestHigherOrderFunctions:
         c_code = _emit(source)
         assert "prove_list_reduce" in c_code
         assert "_lambda_" in c_code
+
+
+class TestProofBranching:
+    def test_two_branch_proof(self):
+        source = (
+            "transforms abs(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    proof\n"
+            "        positive: identity when n >= 0\n"
+            "        negative: deducted when n < 0\n"
+            "    from\n"
+            "        n\n"
+            "        0 - n\n"
+        )
+        c_code = _emit(source)
+        assert "if ((" in c_code
+        assert "n >= 0L" in c_code
+        assert "return n;" in c_code
+        assert "else if ((" in c_code
+        assert "n < 0L" in c_code
+        assert "return (0L - n);" in c_code
+
+    def test_no_condition_fallback(self):
+        """Proof block without when conditions falls through to regular body."""
+        source = (
+            "transforms identity(x Integer) Integer\n"
+            "    ensures result == x\n"
+            "    proof\n"
+            "        trivial: x is returned unchanged\n"
+            "    from\n"
+            "        x\n"
+        )
+        c_code = _emit(source)
+        # Should NOT have if/else branches — just regular body emission
+        assert "else if" not in c_code
+        assert "= x;" in c_code  # regular return through temp

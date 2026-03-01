@@ -207,6 +207,51 @@ class TestParserFunctions:
         assert decl.proof is not None
         assert len(decl.proof.obligations) == 1
         assert decl.proof.obligations[0].name == "non_negative"
+        assert decl.proof.obligations[0].condition is None
+
+    def test_proof_with_when_condition(self):
+        source = (
+            'transforms abs(n Integer) Integer\n'
+            '    ensures result >= 0\n'
+            '    proof\n'
+            '        positive: identity when n >= 0\n'
+            '        negative: deducted when n < 0\n'
+            '    from\n'
+            '        n\n'
+            '        0 - n\n'
+        )
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.proof is not None
+        assert len(decl.proof.obligations) == 2
+        obl0 = decl.proof.obligations[0]
+        assert obl0.name == "positive"
+        assert obl0.text == "identity"
+        assert isinstance(obl0.condition, BinaryExpr)
+        assert obl0.condition.op == ">="
+        obl1 = decl.proof.obligations[1]
+        assert obl1.name == "negative"
+        assert obl1.text == "deducted"
+        assert isinstance(obl1.condition, BinaryExpr)
+        assert obl1.condition.op == "<"
+
+    def test_proof_mixed_obligations(self):
+        source = (
+            'transforms clamp_pos(n Integer) Integer\n'
+            '    ensures result >= 0\n'
+            '    proof\n'
+            '        bounded: every path keeps result non-negative\n'
+            '        positive: identity when n >= 0\n'
+            '    from\n'
+            '        n\n'
+            '        0\n'
+        )
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.proof is not None
+        assert len(decl.proof.obligations) == 2
+        assert decl.proof.obligations[0].condition is None
+        assert decl.proof.obligations[1].condition is not None
 
     def test_doc_comment(self):
         source = '/// Does something\ntransforms f(x Integer) Integer\n    from\n        x\n'

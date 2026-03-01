@@ -466,6 +466,20 @@ class Checker:
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
 
+        # ── Proof condition type-checking ──
+        if fd.proof is not None:
+            for obl in fd.proof.obligations:
+                if obl.condition is not None:
+                    cond_type = self._infer_expr(obl.condition)
+                    if (not isinstance(cond_type, ErrorType)
+                            and not types_compatible(BOOLEAN, cond_type)):
+                        self._error(
+                            "E394",
+                            f"proof condition must be Boolean, "
+                            f"got '{type_name(cond_type)}'",
+                            obl.condition.span,
+                        )
+
         # ── Proof verification ──
         verifier = ProofVerifier()
         verifier.verify(fd)

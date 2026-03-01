@@ -794,3 +794,41 @@ class TestStdlibLoading:
             "    from\n"
             "        encode_string(s)\n"
         )
+
+
+class TestProofConditionChecking:
+    """Test type-checking of proof obligation conditions."""
+
+    def test_boolean_condition_ok(self):
+        check(
+            "transforms abs(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    proof\n"
+            "        positive: identity when n >= 0\n"
+            "        negative: deducted when n < 0\n"
+            "    from\n"
+            "        n\n"
+            "        0 - n\n"
+        )
+
+    def test_non_boolean_condition_error(self):
+        check_fails(
+            "transforms bad(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    proof\n"
+            "        wrong: bad when n + 1\n"
+            "    from\n"
+            "        n\n",
+            "E394",
+        )
+
+    def test_undefined_name_in_condition(self):
+        check_fails(
+            "transforms bad(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    proof\n"
+            "        wrong: bad when x > 0\n"
+            "    from\n"
+            "        n\n",
+            "E310",
+        )

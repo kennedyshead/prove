@@ -45,8 +45,8 @@ class TestProofVerification:
 
     def test_duplicate_obligation_error_direct(self):
         """Test duplicate obligation detection using ProofVerifier directly."""
-        obl1 = ProofObligation(name="same", text="first", span=_DUMMY)
-        obl2 = ProofObligation(name="same", text="second", span=_DUMMY)
+        obl1 = ProofObligation(name="same", text="first", condition=None, span=_DUMMY)
+        obl2 = ProofObligation(name="same", text="second", condition=None, span=_DUMMY)
         proof = ProofBlock(obligations=[obl1, obl2], span=_DUMMY)
         fd = _make_fd(
             ensures=[IntegerLit(value="1", span=_DUMMY)],
@@ -59,7 +59,7 @@ class TestProofVerification:
 
     def test_obligation_coverage_error_direct(self):
         """Test obligation coverage using ProofVerifier directly."""
-        obl = ProofObligation(name="one", text="covers result", span=_DUMMY)
+        obl = ProofObligation(name="one", text="covers result", condition=None, span=_DUMMY)
         proof = ProofBlock(obligations=[obl], span=_DUMMY)
         fd = _make_fd(
             ensures=[
@@ -75,7 +75,7 @@ class TestProofVerification:
 
     def test_proof_text_no_references_warning_direct(self):
         """Test proof text reference checking using ProofVerifier directly."""
-        obl = ProofObligation(name="vague", text="xyz qrs tuv", span=_DUMMY)
+        obl = ProofObligation(name="vague", text="xyz qrs tuv", condition=None, span=_DUMMY)
         proof = ProofBlock(obligations=[obl], span=_DUMMY)
         fd = _make_fd(
             name="compute",

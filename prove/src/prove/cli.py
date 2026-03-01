@@ -69,18 +69,20 @@ def main() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--mutate", is_flag=True, help="Enable mutation testing.")
-def build(path: str, mutate: bool) -> None:
+@click.option("--asm", is_flag=True, help="Use x86-64 ASM backend instead of C.")
+def build(path: str, mutate: bool, asm: bool) -> None:
     """Compile a Prove project."""
     from prove.builder import build_project
 
     try:
         config_path = find_config(Path(path))
         config = load_config(config_path)
-        click.echo(f"building {config.package.name}...")
+        backend = "asm" if asm else "c"
+        click.echo(f"building {config.package.name} ({backend})...")
         project_dir = config_path.parent
 
         renderer = DiagnosticRenderer(color=True)
-        result = build_project(project_dir, config)
+        result = build_project(project_dir, config, asm=asm)
 
         for diag in result.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -88,6 +90,8 @@ def build(path: str, mutate: bool) -> None:
         if not result.ok:
             if result.c_error:
                 click.echo(f"error: {result.c_error}", err=True)
+            if result.asm_error:
+                click.echo(f"error: {result.asm_error}", err=True)
             raise SystemExit(1)
 
         if mutate:
@@ -566,7 +570,7 @@ def _dump_ast(node: object, depth: int) -> None:
     name = type(node).__name__
 
     if hasattr(node, "__dataclass_fields__"):
-        fields = node.__dataclass_fields__  # type: ignore[union-attr]
+        fields = node.__dataclass_fields__
         click.echo(f"{indent}{name}")
         for field_name in fields:
             if field_name == "span":

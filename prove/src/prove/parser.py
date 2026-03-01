@@ -490,10 +490,11 @@ class Parser:
         name_tok = self._expect(TokenKind.IDENTIFIER)
         self._expect(TokenKind.COLON)
 
-        # Collect proof text until next obligation name or DEDENT.
+        # Collect proof text until `when`, next obligation name, or DEDENT.
         # Track INDENT/DEDENT depth so continuation lines don't
         # prematurely end the obligation.
         text_parts: list[str] = []
+        condition: Expr | None = None
         depth = 0
         while not self._at(TokenKind.EOF):
             if self._at(TokenKind.INDENT):
@@ -507,10 +508,15 @@ class Parser:
                     continue
                 else:
                     break
-            # Check if this is the start of a new obligation (identifier followed by colon)
+            # Check if this is the start of a new obligation (name followed by colon)
             if (depth == 0
-                    and self._at(TokenKind.IDENTIFIER)
+                    and self._current().kind == TokenKind.IDENTIFIER
                     and self._peek(1).kind == TokenKind.COLON):
+                break
+            # Check for `when <expr>` — parse condition
+            if depth == 0 and self._at(TokenKind.WHEN):
+                self._advance()  # consume 'when'
+                condition = self._parse_expression(0)
                 break
             tok = self._advance()
             if tok.kind == TokenKind.NEWLINE:
@@ -523,7 +529,8 @@ class Parser:
             text = text.replace('  ', ' ')
         end = self._current().span
         return ProofObligation(name_tok.value, text,
-                               self._span(start, end))
+                               condition=condition,
+                               span=self._span(start, end))
 
     # ── Type definitions ─────────────────────────────────────────
 

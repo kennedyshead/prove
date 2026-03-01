@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
+    ProofObligation,
     RawStringLit,
     RecordTypeDef,
     StringInterp,
@@ -339,12 +340,82 @@ class CEmitter:
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
 
-        # Emit body
-        self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
+        # Check if proof block has structured conditions (when)
+        has_proof_conditions = (
+            fd.proof is not None
+            and any(obl.condition is not None for obl in fd.proof.obligations)
+        )
+
+        if has_proof_conditions:
+            self._emit_proof_branches(fd, ret_type)
+        else:
+            # Emit body
+            self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
 
         self._indent -= 1
         self._line("}")
         self._line("")
+
+    def _emit_proof_branches(self, fd: FunctionDef, ret_type: Type) -> None:
+        """Emit if/else-if chains from proof obligations with `when` conditions.
+
+        Obligations with conditions map to body expressions by order.
+        An obligation without a condition becomes the else branch.
+        """
+        assert fd.proof is not None
+
+        # Separate obligations with and without conditions
+        cond_obls: list[tuple[ProofObligation, int]] = []
+        default_idx: int | None = None
+        for i, obl in enumerate(fd.proof.obligations):
+            if obl.condition is not None:
+                cond_obls.append((obl, i))
+            else:
+                default_idx = i
+
+        is_unit = isinstance(ret_type, UnitType)
+
+        # Each obligation maps to the body expression at the same index.
+        # Body is a list of stmts — we use obligation index to pick the
+        # corresponding body expression.
+        body = fd.body
+
+        first = True
+        for obl, idx in cond_obls:
+            assert obl.condition is not None
+            cond = self._emit_expr(obl.condition)
+            keyword = "if" if first else "else if"
+            self._line(f"{keyword} (({cond})) {{")
+            self._indent += 1
+            if idx < len(body):
+                stmt = body[idx]
+                if is_unit:
+                    self._emit_stmt(stmt)
+                else:
+                    expr = self._stmt_expr(stmt)
+                    if expr is not None:
+                        self._line(f"return {self._emit_expr(expr)};")
+                    else:
+                        self._emit_stmt(stmt)
+            self._indent -= 1
+            self._line("}")
+            first = False
+
+        # Default (else) branch — obligation without condition
+        if default_idx is not None and default_idx < len(body):
+            self._line("else {")
+            self._indent += 1
+            stmt = body[default_idx]
+            if is_unit:
+                self._emit_stmt(stmt)
+            else:
+                expr = self._stmt_expr(stmt)
+                if expr is not None:
+                    self._line(f"return {self._emit_expr(expr)};")
+                else:
+                    self._emit_stmt(stmt)
+            self._indent -= 1
+            self._line("}")
 
     def _emit_main(self, md: MainDef) -> None:
         self._current_func_return = UNIT
@@ -900,7 +971,7 @@ class CEmitter:
 
             first = True
             for arm in m.arms:
-                if isinstance(arm.pattern, WildcardPattern) or isinstance(arm.pattern, BindingPattern):
+                if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                     # Default/else branch
                     if first:
                         self._line("{")
