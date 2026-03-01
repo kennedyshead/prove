@@ -484,9 +484,9 @@ from
     closest_by_latency(region, available_gateways())
 
 validates leap_year(y Year)
-  near_miss: 1900  => false    // divisible by 100 but not 400
-  near_miss: 2000  => true     // divisible by 400
-  near_miss: 2100  => false    // divisible by 100 but not 400
+  near_miss: 1900  => false
+  near_miss: 2000  => true
+  near_miss: 2100  => false
 from
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 ```
