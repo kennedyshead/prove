@@ -98,7 +98,7 @@ class TestFunctionDef:
             "        println(to_string(add(1, 2)))\n"
         )
         c_code = _emit(source)
-        assert "transforms_add_Integer_Integer" in c_code
+        assert "prv_transforms_add_Integer_Integer" in c_code
         assert "int64_t a" in c_code
         assert "int64_t b" in c_code
 
@@ -353,7 +353,7 @@ class TestPipeExpression:
             "        5 |> double\n"
         )
         c_code = _emit(source)
-        assert "transforms_double_Integer(5L)" in c_code
+        assert "prv_transforms_double_Integer(5L)" in c_code
 
     def test_pipe_to_builtin(self):
         source = (

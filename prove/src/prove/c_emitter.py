@@ -299,6 +299,10 @@ class CEmitter:
     # ── Function emission ──────────────────────────────────────
 
     def _emit_function(self, fd: FunctionDef) -> None:
+        # Binary functions are C-backed — no Prove body to emit
+        if fd.binary:
+            return
+
         # Resolve types
         param_types: list[Type] = []
         for p in fd.params:

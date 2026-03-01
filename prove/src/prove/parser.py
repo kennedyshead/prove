@@ -192,14 +192,19 @@ class Parser:
         return True
 
     def _abort_missing_module(self) -> None:
-        """Replace all diagnostics with a single clear message and stop parsing."""
-        span = Span(self.filename, 1, 1, 1, 1)
-        self.diagnostics.clear()
-        self._error(
-            "Prove requires a module declaration with narrative — "
-            "add 'module <Name>' with a narrative as the first line",
-            span,
-        )
+        """Replace all diagnostics with a single clear message and stop parsing.
+
+        If meaningful diagnostics were already collected (e.g. from inside a
+        partially-parsed declaration), keep them instead of replacing with
+        the generic module-missing message.
+        """
+        if not self.diagnostics:
+            span = Span(self.filename, 1, 1, 1, 1)
+            self._error(
+                "Prove requires a module declaration with narrative — "
+                "add 'module <Name>' with a narrative as the first line",
+                span,
+            )
         raise CompileError(self.diagnostics)
 
     def _synchronize(self) -> None:
@@ -328,7 +333,9 @@ class Parser:
             in_indent = True
             self._advance()
 
-        while not self._at(TokenKind.FROM) and not self._at(TokenKind.EOF):
+        while (not self._at(TokenKind.FROM)
+               and not self._at(TokenKind.BINARY)
+               and not self._at(TokenKind.EOF)):
             _loop_pos = self.pos
             if self._at(TokenKind.ENSURES):
                 self._advance()
@@ -396,9 +403,15 @@ class Parser:
             if not self._check_progress(_loop_pos):
                 break
 
-        self._expect(TokenKind.FROM)
-        self._skip_newlines()
-        body = self._parse_body()
+        is_binary = False
+        body: list = []
+        if self._at(TokenKind.BINARY):
+            self._advance()
+            is_binary = True
+        else:
+            self._expect(TokenKind.FROM)
+            self._skip_newlines()
+            body = self._parse_body()
 
         # If we entered an indent block that included `from`, consume its DEDENT
         if in_indent and self._at(TokenKind.DEDENT):
@@ -411,7 +424,7 @@ class Parser:
             return_type=return_type, can_fail=can_fail,
             ensures=ensures, requires=requires, proof=proof,
             explain=explain, terminates=terminates_expr,
-            trusted=is_trusted,
+            trusted=is_trusted, binary=is_binary,
             why_not=why_not, chosen=chosen, near_misses=near_misses,
             know=know, assume=assume, believe=believe,
             intent=intent, satisfies=satisfies,
@@ -1432,6 +1445,14 @@ class Parser:
         if tok.kind == TokenKind.CONSTANT_IDENTIFIER:
             self._advance()
             return IdentifierExpr(tok.value, tok.span)
+
+        if tok.kind in _VERBS:
+            self._error(
+                f"'{tok.value}' is a verb keyword and cannot be "
+                f"used as an identifier",
+                tok.span,
+            )
+            raise _ParseError
 
         self._error(
             f"expected an expression but found {tok.kind.name} ({tok.value!r})",

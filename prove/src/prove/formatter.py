@@ -125,10 +125,13 @@ class ProveFormatter:
         # Annotations (2-space indent relative to signature)
         lines.extend(self._format_annotations(fd))
 
-        # from + body (4-space indent)
-        lines.append("from")
-        for stmt in fd.body:
-            lines.append(self._indent(self._format_stmt(stmt), 1))
+        # binary or from + body (4-space indent)
+        if fd.binary:
+            lines.append("binary")
+        else:
+            lines.append("from")
+            for stmt in fd.body:
+                lines.append(self._indent(self._format_stmt(stmt), 1))
 
         return "\n".join(lines)
 

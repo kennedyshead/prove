@@ -130,11 +130,14 @@ def map_type(ty: Type) -> CType:
 
 
 def mangle_name(verb: str | None, name: str, param_types: list[Type] | None = None) -> str:
-    """Mangle a function name for C.
+    """Mangle a function name for C with ``prv_`` prefix.
 
-    e.g. ("transforms", "add", [Integer, Integer]) -> "transforms_add_Integer_Integer"
+    e.g. ("transforms", "add", [Integer, Integer]) -> "prv_transforms_add_Integer_Integer"
+
+    The prefix prevents collisions with C standard library and system
+    functions (e.g. ``file``, ``read``, ``close``).
     """
-    parts: list[str] = []
+    parts: list[str] = ["prv"]
     if verb:
         parts.append(verb)
     parts.append(name)

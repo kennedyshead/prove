@@ -457,6 +457,18 @@ class TestParserExpressions:
         assert isinstance(call, CallExpr)
         assert isinstance(call.args[1], RawStringLit)
 
+    def test_verb_keyword_in_expr_gives_clear_error(self):
+        import pytest
+
+        from prove.errors import CompileError
+        source = (
+            'validates f(s String)\n'
+            '    from\n'
+            '        matches(s, "pattern")\n'
+        )
+        with pytest.raises(CompileError, match="verb keyword"):
+            parse_decl(source)
+
 
 class TestParserStatements:
     def test_var_decl_with_type(self):

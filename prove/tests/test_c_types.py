@@ -101,15 +101,15 @@ class TestMapType:
 class TestMangling:
     def test_mangle_name_with_verb(self):
         result = mangle_name("transforms", "add", [INTEGER, INTEGER])
-        assert result == "transforms_add_Integer_Integer"
+        assert result == "prv_transforms_add_Integer_Integer"
 
     def test_mangle_name_no_verb(self):
         result = mangle_name(None, "println", [STRING])
-        assert result == "println_String"
+        assert result == "prv_println_String"
 
     def test_mangle_name_no_params(self):
         result = mangle_name("inputs", "main")
-        assert result == "inputs_main"
+        assert result == "prv_inputs_main"
 
     def test_mangle_type_name(self):
         assert mangle_type_name("Point") == "Prove_Point"

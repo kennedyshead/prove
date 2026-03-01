@@ -371,6 +371,7 @@ class FunctionDef:
     explain: list[str]
     terminates: Expr | None
     trusted: bool
+    binary: bool
     why_not: list[str]
     chosen: str | None
     near_misses: list[NearMiss]

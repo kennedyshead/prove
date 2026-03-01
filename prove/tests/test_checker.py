@@ -848,14 +848,14 @@ class TestStdlibLoading:
         """Importing from Io should resolve function types."""
         st = check(
             "module Main\n"
-            "  Io outputs println\n"
+            "  Io outputs console\n"
             "\n"
             "main()\n"
             "    from\n"
-            '        println("hello")\n'
+            '        console("hello")\n'
         )
-        # println should resolve without error
-        sig = st.resolve_function_any("println")
+        # console should resolve without error
+        sig = st.resolve_function_any("console")
         assert sig is not None
 
 class TestNamespacedCalls:

@@ -95,6 +95,30 @@ BYTE = PrimitiveType("Byte")
 UNIT = UnitType()
 ERROR_TY = ErrorType()
 
+# Numeric widening hierarchy: Integer → Decimal → Float
+_NUMERIC_RANK: dict[str, int] = {
+    "Integer": 0,
+    "Decimal": 1,
+    "Float": 2,
+}
+
+
+def numeric_widen(a: Type, b: Type) -> Type | None:
+    """Return the wider numeric type, or None if not both numeric.
+
+    Unwraps refinement types so that e.g. Price (Decimal where ...)
+    widens correctly against Integer.
+    """
+    ua = _unwrap_refinement(a)
+    ub = _unwrap_refinement(b)
+    if not (isinstance(ua, PrimitiveType) and isinstance(ub, PrimitiveType)):
+        return None
+    ra = _NUMERIC_RANK.get(ua.name)
+    rb = _NUMERIC_RANK.get(ub.name)
+    if ra is None or rb is None:
+        return None
+    return a if ra >= rb else b
+
 BUILTINS: dict[str, Type] = {
     "Integer": INTEGER,
     "Decimal": DECIMAL,
@@ -143,16 +167,32 @@ def type_name(ty: Type) -> str:
     return str(ty)
 
 
+def _unwrap_refinement(ty: Type) -> Type:
+    """Unwrap a RefinementType to its base type for compatibility checks.
+
+    A refinement type (e.g. Price = Decimal where value > 0) is a subtype
+    of its base and should be compatible wherever the base is expected.
+    """
+    while isinstance(ty, RefinementType) and ty.base is not None:
+        ty = ty.base
+    return ty
+
+
 def types_compatible(expected: Type, actual: Type) -> bool:
     """Check structural compatibility between two types.
 
     ErrorType and TypeVariable are compatible with anything to prevent
     cascading errors and allow generic params through without full inference.
+    Refinement types are compatible with their base type.
     """
     if isinstance(expected, ErrorType) or isinstance(actual, ErrorType):
         return True
     if isinstance(expected, TypeVariable) or isinstance(actual, TypeVariable):
         return True
+    # Unwrap refinement types so Price (Decimal where ...) is
+    # compatible with Decimal and with other Decimal refinements.
+    expected = _unwrap_refinement(expected)
+    actual = _unwrap_refinement(actual)
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):

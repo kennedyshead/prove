@@ -2,17 +2,13 @@ module InputOutput
   narrative: """Handles IO operations"""
 
 outputs console(text String)
-from
-    print(text)
+binary
 
 inputs console() String
-from
-    readln()
+binary
 
 inputs file(path String) Result<String, Error>!
-from
-    file(path)
+binary
 
 outputs file(path String, content String) Result<Unit, Error>!
-from
-    file(path, content)
+binary

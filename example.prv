@@ -15,9 +15,9 @@ module InventoryService
 
   type Percentage is Decimal:[128 Scale:4] where 0 .. 1
 
-  type Sku is String where matches(r"^[A-Z]{2,4}-[0-9]{4,8}$")
+  type Sku is String where matched(r"^[A-Z]{2,4}-[0-9]{4,8}$")
 
-  type Email is String where matches(r"^[^@]+@[^@]+\.[^@]+$")
+  type Email is String where matched(r"^[^@]+@[^@]+\.[^@]+$")
 
   type Route is Get(path String)
     | Post(path String)
@@ -73,7 +73,7 @@ module InventoryService
 
 validates sku(code String)
 from
-    matches(code, r"^[A-Z]{2,4}-[0-9]{4,8}$")
+    matched(code, r"^[A-Z]{2,4}-[0-9]{4,8}$")
 
 validates in_stock(product Product, requested Integer)
 from
@@ -121,8 +121,8 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   requires len(items) > 0
   proof
     subtotal: sums the items Price
-    apply_discount: deduct when discount > 0
-    apply_tax: adds tax when tax > 0
+    apply_discount: deduct
+    apply_tax: adds tax
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)

@@ -13,7 +13,7 @@ def _make_fd(**kwargs) -> FunctionDef:
     defaults = dict(
         verb="transforms", name="f", params=[], return_type=None,
         can_fail=False, ensures=[], requires=[], proof=None,
-        explain=[], terminates=None, trusted=False,
+        explain=[], terminates=None, trusted=False, binary=False,
         why_not=[], chosen=None, near_misses=[], know=[], assume=[],
         believe=[], intent=None, satisfies=[], body=[], doc_comment=None,
         span=_DUMMY,

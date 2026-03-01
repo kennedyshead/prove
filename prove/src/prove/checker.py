@@ -81,6 +81,7 @@ from prove.types import (
     Type,
     TypeVariable,
     VariantInfo,
+    numeric_widen,
     type_name,
     types_compatible,
 )
@@ -376,7 +377,7 @@ class Checker:
 
     def _register_import(self, imp: ImportDecl) -> None:
         """Register imported names, loading from stdlib if available."""
-        from prove.stdlib_loader import load_stdlib
+        from prove.stdlib_loader import is_stdlib_module, load_stdlib
 
         # Track which functions are imported from which module
         names = self._module_imports.setdefault(imp.module, set())
@@ -384,8 +385,15 @@ class Checker:
             names.add(item.name)
 
         # Try loading real signatures from stdlib
-        stdlib_sigs = load_stdlib(imp.module)
-        stdlib_map = {s.name: s for s in stdlib_sigs}
+        is_known = is_stdlib_module(imp.module)
+        stdlib_sigs = load_stdlib(imp.module) if is_known else []
+        # Index by (verb, name) for exact match and by name for fallback
+        stdlib_by_verb: dict[tuple[str | None, str], FunctionSignature] = {
+            (s.verb, s.name): s for s in stdlib_sigs
+        }
+        stdlib_by_name: dict[str, FunctionSignature] = {
+            s.name: s for s in stdlib_sigs
+        }
 
         for item in imp.items:
             # Type imports (verb="types" or bare CamelCase with no verb)
@@ -402,7 +410,10 @@ class Checker:
                 continue
 
             # Check if stdlib has a real signature for this item
-            real_sig = stdlib_map.get(item.name)
+            # Prefer exact (verb, name) match, fall back to name-only
+            real_sig = stdlib_by_verb.get((item.verb, item.name))
+            if real_sig is None:
+                real_sig = stdlib_by_name.get(item.name)
             if real_sig is not None:
                 ret_type = real_sig.return_type
                 func_type = FunctionType(real_sig.param_types, ret_type)
@@ -412,8 +423,16 @@ class Checker:
                     verb=real_sig.verb,
                 ))
                 self.symbols.define_function(real_sig)
+            elif is_known:
+                # Known stdlib module but function not found — error
+                self._error(
+                    "E311",
+                    f"undefined function '{item.name}' "
+                    f"in module '{imp.module}'",
+                    item.span,
+                )
             else:
-                # Fallback: placeholder with ERROR_TY
+                # Unknown module — placeholder with ERROR_TY
                 self.symbols.define(Symbol(
                     name=item.name, kind=SymbolKind.FUNCTION,
                     resolved_type=ERROR_TY, span=item.span,
@@ -454,6 +473,12 @@ class Checker:
 
         # Check verb rules
         self._check_verb_rules(fd)
+
+        # Binary functions have no Prove body — skip body and return checks
+        if fd.binary:
+            self.symbols.pop_scope()
+            self._current_function = None
+            return
 
         # Check body
         body_type = UNIT
@@ -887,8 +912,16 @@ class Checker:
         # Arithmetic operators
         if expr.op in ("+", "-", "*", "/", "%"):
             if not types_compatible(left, right):
-                self._error("E320", "type mismatch in binary expression", expr.span)
-                return ERROR_TY
+                # Try numeric widening (Integer → Decimal → Float)
+                widened = numeric_widen(left, right)
+                if widened is None:
+                    self._error(
+                        "E320",
+                        "type mismatch in binary expression",
+                        expr.span,
+                    )
+                    return ERROR_TY
+                return widened
             # String concatenation
             if isinstance(left, PrimitiveType) and left.name == "String" and expr.op == "+":
                 return STRING

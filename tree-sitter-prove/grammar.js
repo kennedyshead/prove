@@ -184,8 +184,10 @@ module.exports = grammar({
       optional($.type_expression),
       optional($.fail_marker),
       repeat($._annotation),
-      'from',
-      $._body_content,
+      choice(
+        seq('from', $._body_content),
+        'binary',
+      ),
     ),
 
     doc_comment_block: $ => repeat1($.doc_comment),
