@@ -201,7 +201,7 @@ The `valid` keyword serves two purposes:
 
 Implications:
 
-- **Imports are precise**: `with Auth use validates login, inputs session`
+- **Imports are precise**: `Auth validates login, inputs session`
 - **API docs group by verb**: what can you validate? what can you yield? what can you transform?
 - **Call sites are clean**: just the function name in most cases
 - **AI resistance**: declarations require the correct verb, and the resolution rules add non-local reasoning requirements
@@ -420,43 +420,40 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 
 **Core keywords:**
 
-| Keyword | Exclusive purpose |
-|---------|-------------------|
-| `transforms` | Verb — pure data computation/conversion |
-| `inputs` | Verb — reads/receives from external world (implicit match when first param is algebraic) |
-| `outputs` | Verb — writes/sends to external world |
-| `validates` | Verb — pure boolean check |
-| `main` | Entry point — no verb, the program itself. Only function that freely mixes inputs/outputs |
-| `from` | Body marker — introduces function implementation |
-| `where` | Refinement constraint — value predicates only |
-| `as` | Variable declaration — `name as Type = value` |
-| `!` | Fallibility — on declaration: can fail. At call site: propagate failure. IO verbs only |
-| `with` | Import — `with Module use function` |
-| `type` | Type definition — `type Name is ...` |
-| `is` | Type body — follows `type Name` |
-| `match` | Pattern matching expression |
-| `ensures` | Postcondition contract |
-| `requires` | Precondition contract |
-| `proof` | Proof obligation block |
-| `valid` | Predicate reference for validates functions |
-| `comptime` | Compile-time computation |
+| Keyword | What it does |
+|---------|-------------|
+| `transforms` | Declares a pure function — no side effects, just data in, data out |
+| `inputs` | Declares a function that reads from the outside world (database, file, network) |
+| `outputs` | Declares a function that writes to the outside world |
+| `validates` | Declares a function that returns true or false |
+| `main` | The program's entry point — can freely mix reading and writing |
+| `from` | Marks where the function body starts — "the result comes from..." |
+| `where` | Adds a value constraint to a type — `Integer where 1..65535` |
+| `as` | Declares a variable — `name as Type = value` |
+| `type` | Defines a new type — `type Port is Integer where 1..65535` |
+| `match` | Branches on a value — the only way to do conditional logic |
+| `ensures` | States what a function guarantees about its result |
+| `requires` | States what must be true before calling a function |
+| `proof` | Explains *why* the guarantees hold — checked by the compiler |
+| `valid` | References a `validates` function as a predicate |
+| `comptime` | Runs code at compile time instead of runtime |
 
 **AI-Resistance keywords (Phase 1+2):**
 
-| Keyword | Exclusive purpose |
-|---------|-------------------|
-| `domain` | Domain declaration — context-dependent syntax |
-| `intent` | Intentional ambiguity resolution |
-| `narrative` | Module coherence requirement |
-| `why_not` | Counterfactual annotation — rejected alternatives |
-| `chosen` | Counterfactual annotation — selected rationale |
-| `near_miss` | Adversarial boundary example |
-| `know` | Epistemic — proven by type system (zero cost) |
-| `assume` | Epistemic — runtime validated at boundaries |
-| `believe` | Epistemic — compiler generates adversarial tests |
-| `temporal` | Temporal effect ordering constraint |
-| `satisfies` | Invariant network conformance |
-| `invariant_network` | Invariant network declaration |
+| Keyword | What it does |
+|---------|-------------|
+| `domain` | Sets the module's domain — syntax adapts to the context |
+| `intent` | Declares what a piece of code is *meant* to do — compiler checks it matches |
+| `narrative` | Describes the module's purpose — unrelated functions are rejected |
+| `why_not` | Documents a rejected alternative — "we didn't do X because..." |
+| `chosen` | Documents the chosen approach — "we did Y because..." |
+| `near_miss` | An input that *almost* breaks the code but doesn't — proves you understand the boundary |
+| `know` | "I'm certain" — the compiler can prove this, no runtime cost |
+| `assume` | "I expect this" — the compiler adds a runtime check at boundaries |
+| `believe` | "I think this" — the compiler generates tests trying to disprove it |
+| `temporal` | Enforces the order things must happen — e.g. authenticate before access |
+| `satisfies` | Declares that a function obeys a set of rules |
+| `invariant_network` | Defines a set of rules that must always hold together |
 
 ## Error Propagation
 
