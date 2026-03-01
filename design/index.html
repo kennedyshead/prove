@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://kennedyshead.github.io/prove/philosophy/">
+        <link rel="canonical" href="https://kennedyshead.github.io/prove/design/">
       
       
-        <link rel="prev" href="../compiler/">
+        <link rel="prev" href="../ai-resistance/">
       
       
         <link rel="next" href="../inspirations/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>Philosophy - Prove</title>
+        <title>Decisions & Trade-offs - Prove</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#philosophy-design-decisions" class="md-skip">
+        <a href="#design-decisions-trade-offs" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Philosophy
+              Decisions & Trade-offs
             
           </span>
         </div>
@@ -401,14 +401,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai-resistance/" class="md-nav__link">
+      <a href="../contracts/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    AI Resistance
+    Contracts & Testing
   
 
     
@@ -460,6 +460,87 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-resistance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Resistance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
     
   
   
@@ -479,7 +560,7 @@
   <span class="md-ellipsis">
     
   
-    Philosophy
+    Decisions & Trade-offs
   
 
     
@@ -497,7 +578,7 @@
   <span class="md-ellipsis">
     
   
-    Philosophy
+    Decisions & Trade-offs
   
 
     
@@ -579,10 +660,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#first-poc-restful-server" class="md-nav__link">
+  <a href="#first-poc-self-hosting-compiler" class="md-nav__link">
     <span class="md-ellipsis">
       
-        First POC: RESTful Server
+        First POC: Self-Hosting Compiler
       
     </span>
   </a>
@@ -649,6 +730,61 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#concurrency-structured-typed-no-data-races" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency — Structured, Typed, No Data Races
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling-errors-are-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling — Errors Are Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zero-cost-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zero-Cost Abstractions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pain-point-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pain Point Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trade-offs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trade-offs
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -656,9 +792,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -683,6 +820,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
   </ul>
 </nav>
@@ -701,11 +846,7 @@
 
 
 
-<h1 id="philosophy-design-decisions">Philosophy &amp; Design Decisions<a class="headerlink" href="#philosophy-design-decisions" title="Permanent link">&para;</a></h1>
-<blockquote>
-<p><strong>A programming language that fights back against AI slop and code scraping.</strong></p>
-</blockquote>
-<p>Prove is a strongly typed, compiler-driven language where contracts generate tests, intent verbs enforce purity, and the compiler rejects code that can't demonstrate understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.</p>
+<h1 id="design-decisions-trade-offs">Design Decisions &amp; Trade-offs<a class="headerlink" href="#design-decisions-trade-offs" title="Permanent link">&para;</a></h1>
 <h2 id="philosophy">Philosophy<a class="headerlink" href="#philosophy" title="Permanent link">&para;</a></h2>
 <p>The compiler is your co-author, not your gatekeeper.</p>
 <p>Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.</p>
@@ -743,8 +884,8 @@
 <p>The compiler POC is implemented in Python (&gt;=3.11). The goal is to validate the language design and prove out the compilation pipeline before rewriting in a systems language.</p>
 <h3 id="compilation-target-native-code">Compilation Target: Native Code<a class="headerlink" href="#compilation-target-native-code" title="Permanent link">&para;</a></h3>
 <p>As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via direct assembly emission (x86_64 + ARM64). No VM, no interpreter for production output.</p>
-<h3 id="first-poc-restful-server">First POC: RESTful Server<a class="headerlink" href="#first-poc-restful-server" title="Permanent link">&para;</a></h3>
-<p>The first program written in Prove will be a RESTful HTTP server. This exercises the type system (request/response types, route matching), verb system (inputs/outputs), error handling, and IO — proving the language works for real-world backend development.</p>
+<h3 id="first-poc-self-hosting-compiler">First POC: Self-Hosting Compiler<a class="headerlink" href="#first-poc-self-hosting-compiler" title="Permanent link">&para;</a></h3>
+<p>The first program written in Prove will be the Prove compiler itself. The bootstrap path: (1) write a complete compiler in Python, (2) use it to compile a Prove compiler written in Prove. This exercises the type system (AST node types, token variants), verb system (transforms for pure passes, inputs for file reading, outputs for code emission), pattern matching (exhaustive over AST nodes), and algebraic types — proving the language works by compiling itself. Self-hosting is the strongest possible validation: if Prove can express its own compiler, it can express anything.</p>
 <h3 id="ai-resistance-fundamental">AI-Resistance: Fundamental<a class="headerlink" href="#ai-resistance-fundamental" title="Permanent link">&para;</a></h3>
 <p>AI-resistance features (proof obligations, intent declarations, narrative coherence, context-dependent syntax, semantic commits) are <strong>mandatory and fundamental to the language identity</strong>, not optional extras. Proof obligations are required for every function that has <code>ensures</code> clauses — if you declare what a function guarantees, you must prove why.</p>
 <h3 id="comptime-io-allowed">Comptime: IO Allowed<a class="headerlink" href="#comptime-io-allowed" title="Permanent link">&para;</a></h3>
@@ -767,6 +908,81 @@
 <li><strong>Calling Prove from other languages</strong> — deferred until the FFI story is established.</li>
 <li><strong>Method syntax</strong> — deferred. All function calls use <code>function(args)</code> form. No <code>object.method()</code> dot-call syntax. Keeps the language simple and avoids dispatch complexity. Field access (<code>user.name</code>) is unaffected.</li>
 </ul>
+<hr />
+<h2 id="concurrency-structured-typed-no-data-races">Concurrency — Structured, Typed, No Data Races<a class="headerlink" href="#concurrency-structured-typed-no-data-races" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">inputs</span> <span class="n">fetch_all</span><span class="p">(</span><span class="n">urls</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Url</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Response</span><span class="o">&gt;</span><span class="kp">!</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">from</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">par_map</span><span class="p">(</span><span class="n">urls</span><span class="p">,</span> <span class="n">fetch</span><span class="p">)</span>
+</code></pre></div>
+<p>The ownership system and effect types combine to eliminate data races at compile time.</p>
+<hr />
+<h2 id="error-handling-errors-are-values">Error Handling — Errors Are Values<a class="headerlink" href="#error-handling-errors-are-values" title="Permanent link">&para;</a></h2>
+<p>No exceptions. Every failure path is visible in the type signature. Uses <code>!</code> for error propagation. Panics exist only for violated <code>assume:</code> assertions at system boundaries — normal error handling is always through <code>Result</code> values.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;</span><span class="kp">!</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">from</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">config</span> <span class="k">as</span> <span class="nc">Config</span> <span class="o">=</span> <span class="n">read_config</span><span class="p">(</span><span class="s">&quot;app.yaml&quot;</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">db</span> <span class="k">as</span> <span class="nc">Database</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">db_url</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">serve</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span><span class="kp">!</span>
+</code></pre></div>
+<hr />
+<h2 id="zero-cost-abstractions">Zero-Cost Abstractions<a class="headerlink" href="#zero-cost-abstractions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Pure functions auto-memoized and inlined</li>
+<li>Region-based memory for short-lived allocations</li>
+<li>Reference counting only where ownership is shared (compiler-inserted)</li>
+<li>No GC pauses, predictable performance</li>
+<li>Native code output</li>
+</ul>
+<hr />
+<h2 id="pain-point-comparison">Pain Point Comparison<a class="headerlink" href="#pain-point-comparison" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Pain in existing languages</th>
+<th>How Prove solves it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tests are separate from code</td>
+<td>Testing is part of the definition — <code>ensures</code>, <code>requires</code>, <code>near_miss</code></td>
+</tr>
+<tr>
+<td>"Works on my machine"</td>
+<td>Verb system makes IO explicit (<code>inputs</code>/<code>outputs</code>)</td>
+</tr>
+<tr>
+<td>Null/nil crashes</td>
+<td>No null — use <code>Option&lt;T&gt;</code>, enforced by compiler</td>
+</tr>
+<tr>
+<td>Race conditions</td>
+<td>Ownership + verb system prevents data races</td>
+</tr>
+<tr>
+<td>"I forgot an edge case"</td>
+<td>Compiler generates edge cases from types</td>
+</tr>
+<tr>
+<td>Slow test suites</td>
+<td>Property tests run at compile time when provable</td>
+</tr>
+<tr>
+<td>Runtime type errors</td>
+<td>Refinement types catch invalid values at compile time</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="trade-offs">Trade-offs<a class="headerlink" href="#trade-offs" title="Permanent link">&para;</a></h2>
+<p>An honest assessment of the costs:</p>
+<ol>
+<li><strong>Compilation speed</strong> — Proving properties is expensive. Incremental compilation and caching are essential. Expect Rust-like compile times, not Go-like.</li>
+<li><strong>Learning curve</strong> — Refinement types and effect types are unfamiliar to most developers. The compiler's suggestions help, but there's still a ramp-up.</li>
+<li><strong>Ecosystem bootstrap</strong> — A new language needs libraries. A C FFI and a story for wrapping existing libraries is a secondary priority, deferred until the core language is stable.</li>
+<li><strong>Not every property is provable</strong> — For complex invariants the compiler falls back to runtime property tests, which is still better than nothing but not a proof.</li>
+</ol>
+<p><strong>The core bet:</strong> Making the compiler do more work upfront saves orders of magnitude more time than writing and maintaining tests by hand.</p>
 
 
 

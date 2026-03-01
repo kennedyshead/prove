@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://kennedyshead.github.io/prove/ai-resistance/">
       
       
-        <link rel="prev" href="../types/">
+        <link rel="prev" href="../compiler/">
       
       
-        <link rel="next" href="../compiler/">
+        <link rel="next" href="../design/">
       
       
         
@@ -288,8 +288,6 @@
       
   
   
-    
-  
   
   
     
@@ -302,11 +300,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -327,7 +327,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -396,6 +396,68 @@
             
               
                 
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contracts & Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
   
   
     
@@ -720,17 +782,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#trade-offs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Trade-offs
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -738,71 +789,91 @@
     </li>
   
 
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions & Trade-offs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../compiler/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Compiler
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../philosophy/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Philosophy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+                
   
   
   
@@ -824,6 +895,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -851,25 +930,25 @@
 <h3 id="context-dependent-syntax">Context-Dependent Syntax<a class="headerlink" href="#context-dependent-syntax" title="Permanent link">&para;</a></h3>
 <p>Instead of fixed keywords, the language adapts syntax based on the module's declared domain. AI cannot memorize syntax because it shifts per-context.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">domain</span> <span class="nc">Finance</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="c1">// &quot;balance&quot; is now a keyword, arithmetic operators</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="c1">// follow financial rounding rules</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">total</span> <span class="k">as</span> <span class="nc">Balance</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">ledger</span><span class="o">.</span><span class="n">entries</span><span class="p">)</span>  <span class="c1">// compiler enforces Decimal with financial Scale</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  <span class="c1">// &quot;balance&quot; is now a keyword, arithmetic operators</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  <span class="c1">// follow financial rounding rules</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  <span class="n">total</span> <span class="k">as</span> <span class="nc">Balance</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">ledger</span><span class="o">.</span><span class="n">entries</span><span class="p">)</span>  <span class="c1">// compiler enforces Decimal with financial Scale</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">domain</span> <span class="nc">Physics</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1">// &quot;balance&quot; is just an identifier again</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="c1">// operators now track units</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">balance</span> <span class="k">as</span> <span class="nc">Acceleration</span> <span class="o">=</span> <span class="n">force</span> <span class="o">/</span> <span class="n">mass</span>   <span class="c1">// type: Acceleration, not a keyword</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  <span class="c1">// &quot;balance&quot; is just an identifier again</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  <span class="c1">// operators now track units</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  <span class="n">balance</span> <span class="k">as</span> <span class="nc">Acceleration</span> <span class="o">=</span> <span class="n">force</span> <span class="o">/</span> <span class="n">mass</span>   <span class="c1">// type: Acceleration, not a keyword</span>
 </code></pre></div>
 <h3 id="proof-obligations-as-code">Proof Obligations as Code<a class="headerlink" href="#proof-obligations-as-code" title="Permanent link">&para;</a></h3>
-<p>Every function with <code>ensures</code> clauses requires an inline proof sketch that the compiler verifies (E390: <code>ensures</code> without <code>proof</code> is a compile error). No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.</p>
+<p>Every function with <code>ensures</code> clauses requires an inline proof sketch that the compiler verifies. No ensures, no proof needed — the rule is clear and mechanical. AI can generate plausible-looking proofs, but they won't verify — you need to actually understand why the code is correct.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">transforms</span> <span class="n">merge_sort</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">Sorted</span><span class="o">&lt;</span><span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;&gt;</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="kn">proof</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>        <span class="na">base</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="n">implies</span> <span class="n">already</span> <span class="n">sorted</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="na">split</span><span class="p">:</span> <span class="n">halves</span> <span class="n">are</span> <span class="n">strictly</span> <span class="n">smaller</span> <span class="p">(</span><span class="n">terminates</span><span class="p">)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="na">merge</span><span class="p">:</span> <span class="n">merging</span> <span class="n">two</span> <span class="n">sorted</span> <span class="n">halves</span> <span class="n">preserves</span> <span class="n">ordering</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>               <span class="n">by</span> <span class="n">induction</span> <span class="n">on</span> <span class="n">combined</span> <span class="n">length</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="k">from</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="c1">// implementation</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  <span class="kn">proof</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="na">base</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="n">implies</span> <span class="n">already</span> <span class="n">sorted</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="na">split</span><span class="p">:</span> <span class="n">halves</span> <span class="n">are</span> <span class="n">strictly</span> <span class="n">smaller</span> <span class="p">(</span><span class="n">terminates</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="na">merge</span><span class="p">:</span> <span class="n">merging</span> <span class="n">two</span> <span class="n">sorted</span> <span class="n">halves</span> <span class="n">preserves</span> <span class="n">ordering</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>           <span class="n">by</span> <span class="n">induction</span> <span class="n">on</span> <span class="n">combined</span> <span class="n">length</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">from</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
 <h3 id="intentional-ambiguity-resolution">Intentional Ambiguity Resolution<a class="headerlink" href="#intentional-ambiguity-resolution" title="Permanent link">&para;</a></h3>
 <p>Constructs that are deliberately ambiguous without understanding intent. The <code>intent</code> string is parsed by the compiler using a formal semantics model and must match the code's behavior.</p>
@@ -885,28 +964,28 @@
 <h3 id="non-local-coherence-requirements">Non-Local Coherence Requirements<a class="headerlink" href="#non-local-coherence-requirements" title="Permanent link">&para;</a></h3>
 <p>The compiler enforces that an entire module tells a coherent "story." Functions unrelated to the narrative produce compile errors.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">module</span> <span class="nc">UserAuth</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="s">    Users authenticate with credentials, receive a session token,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="s">    and the token is validated on each request. Tokens expire</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s">    after the configured TTL.</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s">    &quot;&quot;&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="s">  Users authenticate with credentials, receive a session token,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="s">  and the token is validated on each request. Tokens expire</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s">  after the configured TTL.</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s">  &quot;&quot;&quot;</span>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="kd">inputs</span> <span class="n">login</span><span class="p">(</span><span class="n">creds</span> <span class="nc">Credentials</span><span class="p">)</span> <span class="nc">Session</span><span class="kp">!</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="kd">transforms</span> <span class="n">validate</span><span class="p">(</span><span class="n">token</span> <span class="nc">Token</span><span class="p">)</span> <span class="nc">User</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="kd">outputs</span> <span class="n">expire</span><span class="p">(</span><span class="n">session</span> <span class="nc">Session</span><span class="p">)</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="c1">// outputs send_email(...)   // compiler error: unrelated to narrative</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  <span class="kd">inputs</span> <span class="n">login</span><span class="p">(</span><span class="n">creds</span> <span class="nc">Credentials</span><span class="p">)</span> <span class="nc">Session</span><span class="kp">!</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  <span class="kd">transforms</span> <span class="n">validate</span><span class="p">(</span><span class="n">token</span> <span class="nc">Token</span><span class="p">)</span> <span class="nc">User</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  <span class="kd">outputs</span> <span class="n">expire</span><span class="p">(</span><span class="n">session</span> <span class="nc">Session</span><span class="p">)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  <span class="c1">// outputs send_email(...)   // compiler error: unrelated to narrative</span>
 </code></pre></div>
 <p>Coherence across an entire module requires understanding the <em>purpose</em> of the system, not just local patterns.</p>
 <h3 id="adversarial-type-puzzles">Adversarial Type Puzzles<a class="headerlink" href="#adversarial-type-puzzles" title="Permanent link">&para;</a></h3>
 <p>Refinement types that encode constraints requiring genuine reasoning, not just pattern matching:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">type</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">is</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="nc">Node</span><span class="p">(</span><span class="n">left</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">right</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">where</span> <span class="n">abs</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">depth</span> <span class="o">-</span> <span class="n">right</span><span class="o">.</span><span class="n">depth</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  <span class="nc">Node</span><span class="p">(</span><span class="n">left</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">right</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  <span class="k">where</span> <span class="n">abs</span><span class="p">(</span><span class="n">left</span><span class="o">.</span><span class="n">depth</span> <span class="o">-</span> <span class="n">right</span><span class="o">.</span><span class="n">depth</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kd">transforms</span> <span class="n">insert</span><span class="p">(</span><span class="n">tree</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">val</span> <span class="nc">T</span><span class="p">)</span> <span class="nc">BalancedTree</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="c1">// Can&#39;t just pattern match — you need to construct a value</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1">// that satisfies the depth constraint, which requires</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="c1">// understanding rotation logic</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  <span class="c1">// Can&#39;t just pattern match — you need to construct a value</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  <span class="c1">// that satisfies the depth constraint, which requires</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  <span class="c1">// understanding rotation logic</span>
 </code></pre></div>
 <h3 id="semantic-commit-messages-as-compilation-input">Semantic Commit Messages as Compilation Input<a class="headerlink" href="#semantic-commit-messages-as-compilation-input" title="Permanent link">&para;</a></h3>
 <p>The compiler diffs the previous version, reads the commit message, and verifies the change actually addresses the described bug.</p>
@@ -923,11 +1002,11 @@
 <h3 id="counterfactual-annotations">Counterfactual Annotations<a class="headerlink" href="#counterfactual-annotations" title="Permanent link">&para;</a></h3>
 <p>Every non-trivial design choice must explain what would break under alternative approaches. AI cannot reason about paths not taken.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">transforms</span> <span class="n">evict</span><span class="p">(</span><span class="n">cache</span> <span class="nc">Cache</span><span class="p">:[</span><span class="nc">Mutable</span><span class="p">])</span> <span class="kt">Option</span><span class="o">&lt;</span><span class="nc">Entry</span><span class="o">&gt;</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="kn">why_not</span><span class="p">:</span> <span class="s">&quot;FIFO would evict still-hot entries under burst traffic&quot;</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="kn">why_not</span><span class="p">:</span> <span class="s">&quot;Random eviction has unbounded worst-case for repeated keys&quot;</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="kn">chosen</span><span class="p">:</span> <span class="s">&quot;LRU because access recency correlates with reuse probability&quot;</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="k">from</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        <span class="c1">// LRU implementation</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  <span class="kn">why_not</span><span class="p">:</span> <span class="s">&quot;FIFO would evict still-hot entries under burst traffic&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  <span class="kn">why_not</span><span class="p">:</span> <span class="s">&quot;Random eviction has unbounded worst-case for repeated keys&quot;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  <span class="kn">chosen</span><span class="p">:</span> <span class="s">&quot;LRU because access recency correlates with reuse probability&quot;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">from</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="c1">// LRU implementation</span>
 </code></pre></div>
 <p>The compiler verifies the <code>chosen</code> rationale is consistent with the implementation's actual behavior (e.g., it really does track recency). <code>why_not</code> clauses are checked for plausibility against the function's type signature and effects.</p>
 <h3 id="adversarial-near-miss-examples">Adversarial Near-Miss Examples<a class="headerlink" href="#adversarial-near-miss-examples" title="Permanent link">&para;</a></h3>
@@ -943,46 +1022,46 @@
 <h3 id="epistemic-annotations-know-vs-assume-vs-believe">Epistemic Annotations — <code>know</code> vs <code>assume</code> vs <code>believe</code><a class="headerlink" href="#epistemic-annotations-know-vs-assume-vs-believe" title="Permanent link">&para;</a></h3>
 <p>Track the programmer's confidence level about invariants. The compiler treats each tier differently.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">transforms</span> <span class="n">process_order</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>            <span class="c1">// enforced by NonEmpty type — zero cost</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>    <span class="c1">// validated at boundary, runtime check inserted</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="kn">believe</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">is_verified</span>       <span class="c1">// generates aggressive property tests to falsify</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">from</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="c1">// implementation</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>            <span class="c1">// enforced by NonEmpty type — zero cost</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span> <span class="o">==</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>    <span class="c1">// validated at boundary, runtime check inserted</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  <span class="kn">believe</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">is_verified</span>       <span class="c1">// generates aggressive property tests to falsify</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">from</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
 <ul>
 <li><strong><code>know</code></strong> — Proven by the type system. Zero runtime cost. Compiler error if not actually provable.</li>
 <li><strong><code>assume</code></strong> — Compiler inserts runtime validation at system boundaries. Logged when violated.</li>
-<li><strong><code>believe</code></strong> — Compiler generates adversarial test cases specifically targeting this claim. Requires <code>ensures</code> to be present (E393).</li>
+<li><strong><code>believe</code></strong> — Compiler generates adversarial test cases specifically targeting this claim.</li>
 </ul>
 <p>AI has no model of its own uncertainty — it would either mark everything <code>know</code> (fails verification) or <code>assume</code> (wasteful and reveals lack of understanding).</p>
 <h3 id="temporal-effect-ordering">Temporal Effect Ordering<a class="headerlink" href="#temporal-effect-ordering" title="Permanent link">&para;</a></h3>
 <p>Not just <em>what</em> effects a function has, but the <em>required order</em> — enforced across function boundaries and call graphs.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">module</span> <span class="nc">Auth</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="kn">temporal</span><span class="p">:</span> <span class="n">authenticate</span> <span class="o">-&gt;</span> <span class="n">authorize</span> <span class="o">-&gt;</span> <span class="n">access</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  <span class="kn">temporal</span><span class="p">:</span> <span class="n">authenticate</span> <span class="o">-&gt;</span> <span class="n">authorize</span> <span class="o">-&gt;</span> <span class="n">access</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="kd">inputs</span> <span class="n">authenticate</span><span class="p">(</span><span class="n">creds</span> <span class="nc">Credentials</span><span class="p">)</span> <span class="nc">Token</span><span class="kp">!</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="kd">transforms</span> <span class="n">authorize</span><span class="p">(</span><span class="n">token</span> <span class="nc">Token</span><span class="p">,</span> <span class="n">resource</span> <span class="nc">Resource</span><span class="p">)</span> <span class="nc">Permission</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="kd">inputs</span> <span class="n">access</span><span class="p">(</span><span class="n">perm</span> <span class="nc">Permission</span><span class="p">,</span> <span class="n">resource</span> <span class="nc">Resource</span><span class="p">)</span> <span class="nc">Data</span><span class="kp">!</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  <span class="kd">inputs</span> <span class="n">authenticate</span><span class="p">(</span><span class="n">creds</span> <span class="nc">Credentials</span><span class="p">)</span> <span class="nc">Token</span><span class="kp">!</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  <span class="kd">transforms</span> <span class="n">authorize</span><span class="p">(</span><span class="n">token</span> <span class="nc">Token</span><span class="p">,</span> <span class="n">resource</span> <span class="nc">Resource</span><span class="p">)</span> <span class="nc">Permission</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  <span class="kd">inputs</span> <span class="n">access</span><span class="p">(</span><span class="n">perm</span> <span class="nc">Permission</span><span class="p">,</span> <span class="n">resource</span> <span class="nc">Resource</span><span class="p">)</span> <span class="nc">Data</span><span class="kp">!</span>
 <a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
 <a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1">// Compiler error: access() called before authorize()</span>
 <a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="kd">inputs</span> <span class="n">bad_handler</span><span class="p">(</span><span class="n">req</span> <span class="nc">Request</span><span class="p">)</span> <span class="nc">Response</span><span class="kp">!</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="k">from</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>        <span class="n">token</span> <span class="k">as</span> <span class="nc">Token</span> <span class="o">=</span> <span class="n">authenticate</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">creds</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>        <span class="n">data</span> <span class="k">as</span> <span class="nc">Data</span> <span class="o">=</span> <span class="n">access</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span><span class="kp">!</span>    <span class="c1">// ERROR: skipped authorize</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="k">from</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">token</span> <span class="k">as</span> <span class="nc">Token</span> <span class="o">=</span> <span class="n">authenticate</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">creds</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">data</span> <span class="k">as</span> <span class="nc">Data</span> <span class="o">=</span> <span class="n">access</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span><span class="kp">!</span>    <span class="c1">// ERROR: skipped authorize</span>
 </code></pre></div>
 <p>The compiler builds a call graph and verifies temporal constraints are satisfied across all execution paths. AI generates plausible call sequences but does not reason about protocol ordering.</p>
 <h3 id="invariant-networks">Invariant Networks<a class="headerlink" href="#invariant-networks" title="Permanent link">&para;</a></h3>
 <p>Instead of isolated <code>ensures</code> clauses, define networks of mutually-dependent invariants. Changing one cascades verification across the entire network.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">invariant_network</span> <span class="nc">AccountingRules</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">revenue</span> <span class="o">-</span> <span class="n">expenses</span> <span class="o">==</span> <span class="n">net_income</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">net_income</span> <span class="n">flows_to</span> <span class="n">equity</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">every</span><span class="p">(</span><span class="n">transaction</span><span class="p">)</span> <span class="n">preserves</span> <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  <span class="n">revenue</span> <span class="o">-</span> <span class="n">expenses</span> <span class="o">==</span> <span class="n">net_income</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  <span class="n">net_income</span> <span class="n">flows_to</span> <span class="n">equity</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  <span class="n">every</span><span class="p">(</span><span class="n">transaction</span><span class="p">)</span> <span class="n">preserves</span> <span class="n">total_assets</span> <span class="o">==</span> <span class="n">total_liabilities</span> <span class="o">+</span> <span class="n">equity</span>
 <a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
 <a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="kd">transforms</span> <span class="n">post_transaction</span><span class="p">(</span><span class="n">ledger</span> <span class="nc">Ledger</span><span class="p">,</span> <span class="n">tx</span> <span class="nc">Transaction</span><span class="p">)</span> <span class="nc">Ledger</span>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="kn">satisfies</span> <span class="nc">AccountingRules</span>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="k">from</span>
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        <span class="c1">// implementation</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>  <span class="kn">satisfies</span> <span class="nc">AccountingRules</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="k">from</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
 <p>No function can be written in isolation — the compiler checks that the entire network remains consistent after every change. This is the ultimate non-local reasoning requirement. Requires a constraint solver that scales across modules.</p>
 <h3 id="refutation-challenges">Refutation Challenges<a class="headerlink" href="#refutation-challenges" title="Permanent link">&para;</a></h3>
@@ -1036,21 +1115,21 @@
 <p>The compiler canonicalizes all code before storage. Variable names, ordering of declarations, whitespace, and stylistic choices are normalized away. What the programmer writes is not what is stored.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1">// What you write:</span>
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kd">transforms</span> <span class="n">calculate_total_price</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Item</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRate</span><span class="p">)</span> <span class="nc">Price</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="k">from</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>        <span class="n">subtotal</span> <span class="k">as</span> <span class="kt">Decimal</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        <span class="n">subtotal</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tax</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">from</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">subtotal</span> <span class="k">as</span> <span class="kt">Decimal</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">subtotal</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tax</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
 <a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
 <a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1">// What is stored (canonical form):</span>
 <a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="kd">transforms</span> <span class="n">_f0</span><span class="p">(</span><span class="n">_a0</span> <span class="kt">List</span><span class="o">&lt;</span><span class="n">_</span><span class="no">T0</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">_a1</span> <span class="n">_</span><span class="no">T1</span><span class="p">)</span> <span class="n">_</span><span class="no">T2</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="k">from</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>        <span class="n">_v0</span> <span class="k">as</span> <span class="n">_</span><span class="no">T3</span> <span class="o">=</span> <span class="n">_f1</span><span class="p">(</span><span class="n">_f2</span><span class="p">(</span><span class="n">_a0</span><span class="p">))</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>        <span class="n">_v0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">_a1</span><span class="o">.</span><span class="n">_f3</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="k">from</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="n">_v0</span> <span class="k">as</span> <span class="n">_</span><span class="no">T3</span> <span class="o">=</span> <span class="n">_f1</span><span class="p">(</span><span class="n">_f2</span><span class="p">(</span><span class="n">_a0</span><span class="p">))</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">_v0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">_a1</span><span class="o">.</span><span class="n">_f3</span><span class="p">)</span>
 <a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>
 <a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="c1">// What you see (reconstructed with your naming via the LSP):</span>
 <a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="kd">transforms</span> <span class="n">calculate_total_price</span><span class="p">(</span><span class="n">items</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Item</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">tax</span> <span class="nc">TaxRate</span><span class="p">)</span> <span class="nc">Price</span>
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    <span class="k">from</span>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        <span class="n">subtotal</span> <span class="k">as</span> <span class="kt">Decimal</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        <span class="n">subtotal</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tax</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="k">from</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    <span class="n">subtotal</span> <span class="k">as</span> <span class="kt">Decimal</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>    <span class="n">subtotal</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">tax</span><span class="o">.</span><span class="n">rate</span><span class="p">)</span>
 </code></pre></div>
 <p>A <strong>name map</strong> is stored alongside the canonical AST. The LSP reconstructs human-readable code on demand. But the stored form strips all semantic signal from identifiers — AI cannot learn naming conventions, domain patterns, or stylistic habits from Prove source.</p>
 <h3 id="fragmented-source-no-file-is-self-contained">Fragmented Source (No File Is Self-Contained)<a class="headerlink" href="#fragmented-source-no-file-is-self-contained" title="Permanent link">&para;</a></h3>
@@ -1091,6 +1170,7 @@
 <li><strong>Technical protection circumvention</strong> — bypassing binary format, normalization, or signatures for AI training is a breach (Section 4)</li>
 </ul>
 <p>The license explicitly permits using AI tools <em>to write</em> Prove code and building AI-powered applications <em>with</em> Prove — it only prohibits using Prove source <em>as training data</em>.</p>
+<p>Design draws from: NON-AI-MIT (base structure), Common Paper (precise LLM language), Authors Guild (sublicensing prohibition), Open RAIL-S (downstream propagation). Should be reviewed by legal counsel before production use.</p>
 <p>This is not just a legal barrier — combined with the binary format and semantic normalization, it creates a layered defense: the code is hard to scrape, useless if scraped, and illegal to train on.</p>
 <hr />
 <h2 id="the-fundamental-tension">The Fundamental Tension<a class="headerlink" href="#the-fundamental-tension" title="Permanent link">&para;</a></h2>
@@ -1106,16 +1186,6 @@
 <p>The uncomfortable truth is that the things AI is bad at are the things lazy humans skip too. A language that resists AI would also resist copy-paste programming, cargo-culting Stack Overflow, and coding without understanding.</p>
 <p>The anti-training features (binary format, semantic normalization, fragmented source) add friction to sharing and collaboration. The mitigation is a first-class toolchain: the <code>prove</code> CLI and LSP make the experience seamless for developers working inside the ecosystem, while making the code opaque to anything outside it.</p>
 <p><strong>The design answers both questions:</strong> Prove resists AI <em>writing</em> the code (Phase 1 + 2) and resists AI <em>training on</em> the code (Phase 3).</p>
-<hr />
-<h2 id="trade-offs">Trade-offs<a class="headerlink" href="#trade-offs" title="Permanent link">&para;</a></h2>
-<p>An honest assessment of the costs:</p>
-<ol>
-<li><strong>Compilation speed</strong> — Proving properties is expensive. Incremental compilation and caching are essential. Expect Rust-like compile times, not Go-like.</li>
-<li><strong>Learning curve</strong> — Refinement types and effect types are unfamiliar to most developers. The compiler's suggestions help, but there's still a ramp-up.</li>
-<li><strong>Ecosystem bootstrap</strong> — A new language needs libraries. A C FFI and a story for wrapping existing libraries is a secondary priority, deferred until the core language is stable.</li>
-<li><strong>Not every property is provable</strong> — For complex invariants the compiler falls back to runtime property tests, which is still better than nothing but not a proof.</li>
-</ol>
-<p><strong>The core bet:</strong> Making the compiler do more work upfront saves orders of magnitude more time than writing and maintaining tests by hand.</p>
 
 
 
