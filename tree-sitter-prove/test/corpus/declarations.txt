@@ -107,6 +107,91 @@ main() Result
         (expression (integer_literal))))))
 
 ===
+Pure verb - reads
+===
+
+reads config(path String) String
+    from
+        load(path)
+
+---
+
+(source_file
+  (function_definition
+    (verb)
+    (identifier)
+    (parameter_list
+      (parameter (identifier) (type_expression (simple_type (type_identifier)))))
+    (type_expression (simple_type (type_identifier)))
+    (expression
+      (call_expression
+        (identifier)
+        (expression (identifier))))))
+
+===
+Pure verb - creates
+===
+
+creates user(name String) User
+    from
+        User(name)
+
+---
+
+(source_file
+  (function_definition
+    (verb)
+    (identifier)
+    (parameter_list
+      (parameter (identifier) (type_expression (simple_type (type_identifier)))))
+    (type_expression (simple_type (type_identifier)))
+    (expression
+      (call_expression
+        (type_identifier)
+        (expression (identifier))))))
+
+===
+Binary type definition
+===
+
+module Test
+  type Handle is binary
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (type_definition
+      (type_identifier)
+      (binary_type_body))))
+
+===
+Namespaced function call
+===
+
+transforms greet(name String) String
+    from
+        Strings.concat("Hello, ", name)
+
+---
+
+(source_file
+  (function_definition
+    (verb)
+    (identifier)
+    (parameter_list
+      (parameter (identifier) (type_expression (simple_type (type_identifier)))))
+    (type_expression (simple_type (type_identifier)))
+    (expression
+      (call_expression
+        (field_expression
+          (expression (type_identifier))
+          (identifier))
+        (expression (string_literal))
+        (expression (identifier))))))
+
+===
 Import with types keyword
 ===
 

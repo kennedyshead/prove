@@ -115,6 +115,10 @@
           "named": true
         },
         {
+          "type": "field_expression",
+          "named": true
+        },
+        {
           "type": "identifier",
           "named": true
         },
@@ -154,10 +158,6 @@
         },
         {
           "type": "expression",
-          "named": true
-        },
-        {
-          "type": "if_expression",
           "named": true
         },
         {
@@ -429,10 +429,6 @@
           "named": true
         },
         {
-          "type": "if_expression",
-          "named": true
-        },
-        {
           "type": "intent_annotation",
           "named": true
         },
@@ -501,48 +497,6 @@
         },
         {
           "type": "type_identifier",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "if_expression",
-    "named": true,
-    "fields": {
-      "condition": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "expression",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "assignment",
-          "named": true
-        },
-        {
-          "type": "expression",
-          "named": true
-        },
-        {
-          "type": "if_expression",
-          "named": true
-        },
-        {
-          "type": "match_expression",
-          "named": true
-        },
-        {
-          "type": "variable_declaration",
           "named": true
         }
       ]
@@ -710,10 +664,6 @@
         },
         {
           "type": "fail_marker",
-          "named": true
-        },
-        {
-          "type": "if_expression",
           "named": true
         },
         {
@@ -1225,6 +1175,10 @@
           "named": true
         },
         {
+          "type": "binary_type_body",
+          "named": true
+        },
+        {
           "type": "record_type_body",
           "named": true
         },
@@ -1509,6 +1463,10 @@
     "named": false
   },
   {
+    "type": "binary_type_body",
+    "named": true
+  },
+  {
     "type": "chosen",
     "named": false
   },
@@ -1521,16 +1479,16 @@
     "named": true
   },
   {
+    "type": "creates",
+    "named": false
+  },
+  {
     "type": "decimal_literal",
     "named": true
   },
   {
     "type": "doc_comment",
     "named": true
-  },
-  {
-    "type": "else",
-    "named": false
   },
   {
     "type": "ensures",
@@ -1555,10 +1513,6 @@
   {
     "type": "identifier",
     "named": true
-  },
-  {
-    "type": "if",
-    "named": false
   },
   {
     "type": "inputs",
@@ -1621,6 +1575,10 @@
     "named": false
   },
   {
+    "type": "reads",
+    "named": false
+  },
+  {
     "type": "regex_literal",
     "named": true
   },
@@ -1630,6 +1588,10 @@
   },
   {
     "type": "satisfies",
+    "named": false
+  },
+  {
+    "type": "saves",
     "named": false
   },
   {

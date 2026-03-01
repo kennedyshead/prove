@@ -234,8 +234,16 @@
         {
           "type": "SYMBOL",
           "name": "refinement_type_body"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "binary_type_body"
         }
       ]
+    },
+    "binary_type_body": {
+      "type": "STRING",
+      "value": "binary"
     },
     "algebraic_type_body": {
       "type": "PREC_LEFT",
@@ -560,6 +568,18 @@
         {
           "type": "STRING",
           "value": "validates"
+        },
+        {
+          "type": "STRING",
+          "value": "reads"
+        },
+        {
+          "type": "STRING",
+          "value": "creates"
+        },
+        {
+          "type": "STRING",
+          "value": "saves"
         }
       ]
     },
@@ -1234,10 +1254,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "if_expression"
-        },
-        {
-          "type": "SYMBOL",
           "name": "match_expression"
         },
         {
@@ -1594,6 +1610,10 @@
               {
                 "type": "SYMBOL",
                 "name": "type_identifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "field_expression"
               }
             ]
           },
@@ -1819,58 +1839,6 @@
           "value": ")"
         }
       ]
-    },
-    "if_expression": {
-      "type": "PREC_RIGHT",
-      "value": 0,
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "STRING",
-            "value": "if"
-          },
-          {
-            "type": "FIELD",
-            "name": "condition",
-            "content": {
-              "type": "SYMBOL",
-              "name": "expression"
-            }
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
-              "type": "SYMBOL",
-              "name": "_statement"
-            }
-          },
-          {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SEQ",
-                "members": [
-                  {
-                    "type": "STRING",
-                    "value": "else"
-                  },
-                  {
-                    "type": "REPEAT1",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "_statement"
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          }
-        ]
-      }
     },
     "match_expression": {
       "type": "PREC_LEFT",

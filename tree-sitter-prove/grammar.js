@@ -86,7 +86,10 @@ module.exports = grammar({
       $.algebraic_type_body,
       $.record_type_body,
       $.refinement_type_body,
+      $.binary_type_body,
     ),
+
+    binary_type_body: $ => 'binary',
 
     algebraic_type_body: $ => prec.left(seq(
       $.algebraic_variant,
@@ -168,6 +171,9 @@ module.exports = grammar({
       'inputs',
       'outputs',
       'validates',
+      'reads',
+      'creates',
+      'saves',
     ),
 
     function_definition: $ => seq(
@@ -361,7 +367,7 @@ module.exports = grammar({
     )),
 
     call_expression: $ => prec(PREC.CALL, seq(
-      choice($.identifier, $.type_identifier),
+      choice($.identifier, $.type_identifier, $.field_expression),
       '(',
       optional(sep1($.expression, ',')),
       ')',
