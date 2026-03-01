@@ -37,6 +37,7 @@ class FunctionSignature:
     return_type: Type
     can_fail: bool
     span: Span
+    module: str | None = None
 
 
 class Scope:

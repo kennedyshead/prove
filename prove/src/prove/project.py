@@ -24,10 +24,13 @@ line_length = 90
 """
 
 _MAIN_PRV_TEMPLATE = """\
-/// Hello from Prove!
+module Main
+  narrative: \"\"\"A new Prove project.\"\"\"
+  InputOutput outputs console
+
 main() Result<Unit, Error>!
-    from
-        println("Hello from Prove!")
+from
+    console("Hello from Prove!")
 """
 
 _GITIGNORE = """\

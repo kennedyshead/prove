@@ -11,8 +11,8 @@ class TestTestGenerator:
         source = (
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
-            "    proof\n"
-            '        correctness: "result is sum of a and b"\n'
+            "    explain\n"
+            "        sum a and b\n"
             "    from\n"
             "        a + b\n"
         )
@@ -30,8 +30,8 @@ class TestTestGenerator:
             "transforms abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
-            "    proof\n"
-            '        non_negative: "result is abs so >= 0"\n'
+            "    explain\n"
+            "        negate if negative\n"
             "    from\n"
             "        match n >= 0\n"
             "            true => n\n"
@@ -45,9 +45,11 @@ class TestTestGenerator:
 
     def test_no_tests_for_void_functions(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs greet()\n"
             "    from\n"
-            '        println("hi")\n'
+            '        console("hi")\n'
         )
         module, symbols = _parse_check(source)
         gen = TestGenerator(module, symbols)
@@ -70,8 +72,8 @@ class TestTestGenerator:
         source = (
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
-            "    proof\n"
-            '        correctness: "result is sum of a and b"\n'
+            "    explain\n"
+            "        sum a and b\n"
             "    from\n"
             "        a + b\n"
         )

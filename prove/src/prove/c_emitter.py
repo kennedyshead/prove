@@ -63,9 +63,6 @@ from prove.types import (
 
 # Built-in functions that map directly to runtime calls
 _BUILTIN_MAP: dict[str, str] = {
-    "println": "prove_println",
-    "print": "prove_print",
-    "readln": "prove_readln",
     "clamp": "prove_clamp",
 }
 
@@ -730,8 +727,19 @@ class CEmitter:
                 c_name = _BUILTIN_MAP[name]
                 return f"{c_name}({', '.join(args)})"
 
-            # User function — resolve and mangle
+            # Binary bridge: stdlib binary functions → C runtime
             sig = self._symbols.resolve_function(None, name, len(expr.args))
+            if sig is None:
+                sig = self._symbols.resolve_function_any(name)
+            if sig and sig.module:
+                from prove.stdlib_loader import binary_c_name
+                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                if c_name:
+                    return f"{c_name}({', '.join(args)})"
+
+            # User function — resolve and mangle (re-resolve if needed)
+            if sig is None:
+                sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig is None:
                 sig = self._symbols.resolve_function_any(name)
 
@@ -756,6 +764,11 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig is None:
                 sig = self._symbols.resolve_function_any(name)
+            if sig and sig.module:
+                from prove.stdlib_loader import binary_c_name
+                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                if c_name:
+                    return f"{c_name}({', '.join(args)})"
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 return f"{mangled}({', '.join(args)})"
@@ -925,6 +938,11 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, 1)
             if sig is None:
                 sig = self._symbols.resolve_function_any(name)
+            if sig and sig.module:
+                from prove.stdlib_loader import binary_c_name
+                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                if c_name:
+                    return f"{c_name}({left})"
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 return f"{mangled}({left})"
@@ -940,6 +958,11 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
                 sig = self._symbols.resolve_function_any(name)
+            if sig and sig.module:
+                from prove.stdlib_loader import binary_c_name
+                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                if c_name:
+                    return f"{c_name}({', '.join(all_args)})"
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 return f"{mangled}({', '.join(all_args)})"

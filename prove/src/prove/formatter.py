@@ -445,12 +445,12 @@ class ProveFormatter:
         lines: list[str] = []
         if expr.subject is not None:
             lines.append(f"match {self._format_expr(expr.subject)}")
+            for arm in expr.arms:
+                lines.append(self._indent(self._format_arm(arm), 1))
         else:
-            # Implicit match (arms at current level)
-            pass
-
-        for arm in expr.arms:
-            lines.append(self._indent(self._format_arm(arm), 1))
+            # Implicit match — arms at current level (no extra indent)
+            for arm in expr.arms:
+                lines.append(self._format_arm(arm))
         return "\n".join(lines)
 
     def _format_arm(self, arm: MatchArm) -> str:

@@ -20,9 +20,11 @@ def _emit(source: str) -> str:
 class TestHelloWorld:
     def test_hello_world_emits(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
-            '        println("Hello from Prove!")\n'
+            '        console("Hello from Prove!")\n'
         )
         c_code = _emit(source)
         assert "int main(" in c_code
@@ -32,9 +34,11 @@ class TestHelloWorld:
 
     def test_includes_runtime_headers(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
-            '        println("test")\n'
+            '        console("test")\n'
         )
         c_code = _emit(source)
         assert '#include "prove_runtime.h"' in c_code
@@ -54,10 +58,12 @@ class TestVarDecl:
 
     def test_string_var(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs greet()\n"
             "    from\n"
             '        name as String = "world"\n'
-            "        println(name)\n"
+            "        console(name)\n"
         )
         c_code = _emit(source)
         assert "Prove_String*" in c_code
@@ -77,10 +83,12 @@ class TestBinaryExpr:
 
     def test_string_concat(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs greet()\n"
             "    from\n"
             '        s as String = "hello" + " world"\n'
-            "        println(s)\n"
+            "        console(s)\n"
         )
         c_code = _emit(source)
         assert "prove_string_concat" in c_code
@@ -89,13 +97,15 @@ class TestBinaryExpr:
 class TestFunctionDef:
     def test_simple_function(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"
             "\n"
             "main()\n"
             "    from\n"
-            "        println(to_string(add(1, 2)))\n"
+            "        console(to_string(add(1, 2)))\n"
         )
         c_code = _emit(source)
         assert "prv_transforms_add_Integer_Integer" in c_code
@@ -137,10 +147,12 @@ class TestRetainRelease:
 
     def test_pointer_released_before_return(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs show()\n"
             "    from\n"
             '        s as String = "test"\n'
-            "        println(s)\n"
+            "        console(s)\n"
         )
         c_code = _emit(source)
         assert "prove_release(s)" in c_code
@@ -185,9 +197,11 @@ class TestBuiltinDispatch:
 
     def test_readln_emits(self):
         source = (
+            "module Main\n"
+            "  InputOutput inputs console\n"
             "inputs get_name() String\n"
             "    from\n"
-            "        readln()\n"
+            "        console()\n"
         )
         c_code = _emit(source)
         assert "prove_readln" in c_code
@@ -277,7 +291,7 @@ class TestAlgebraicConstructors:
             "main()\n"
             "    from\n"
             "        x as Color = Red()\n"
-            '        println("done")\n'
+            "        to_string(0)\n"
         )
         c_code = _emit(source)
         assert "static inline Prove_Color Red(void)" in c_code
@@ -293,7 +307,7 @@ class TestAlgebraicConstructors:
             "main()\n"
             "    from\n"
             "        x as Expr = Num(42)\n"
-            '        println("done")\n'
+            "        to_string(0)\n"
         )
         c_code = _emit(source)
         assert "static inline Prove_Expr Num(int64_t val)" in c_code
@@ -357,9 +371,11 @@ class TestPipeExpression:
 
     def test_pipe_to_builtin(self):
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs show()\n"
             "    from\n"
-            '        "hello" |> println\n'
+            '        "hello" |> console\n'
         )
         c_code = _emit(source)
         assert "prove_println" in c_code
@@ -478,6 +494,8 @@ class TestProofBranching:
         source = (
             "transforms abs(n Integer) Integer\n"
             "    ensures result >= 0\n"
+            "    explain\n"
+            "        return n or its negation\n"
             "    proof\n"
             "        positive: identity when n >= 0\n"
             "        negative: deducted when n < 0\n"
@@ -498,6 +516,8 @@ class TestProofBranching:
         source = (
             "transforms identity(x Integer) Integer\n"
             "    ensures result == x\n"
+            "    explain\n"
+            "        return x unchanged\n"
             "    proof\n"
             "        trivial: x is returned unchanged\n"
             "    from\n"

@@ -27,6 +27,24 @@ from prove.types import (
 
 _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
 
+# Binary function → C runtime function mapping
+# Key: (module_key, verb, function_name) → C function name
+_BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
+    ("io", "outputs", "console"): "prove_println",
+    ("io", "inputs", "console"): "prove_readln",
+    ("io", "inputs", "file"): "prove_file_read",
+    ("io", "outputs", "file"): "prove_file_write",
+    ("inputoutput", "outputs", "console"): "prove_println",
+    ("inputoutput", "inputs", "console"): "prove_readln",
+    ("inputoutput", "inputs", "file"): "prove_file_read",
+    ("inputoutput", "outputs", "file"): "prove_file_write",
+}
+
+
+def binary_c_name(module: str, verb: str | None, name: str) -> str | None:
+    """Look up the C runtime function for a binary stdlib function."""
+    return _BINARY_C_MAP.get((module.lower(), verb, name))
+
 # Map stdlib module names to .prv filenames
 # Keys are lowercase; lookup normalizes to lowercase.
 _STDLIB_MODULES: dict[str, str] = {
@@ -137,6 +155,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
             return_type=ret_type,
             can_fail=decl.can_fail,
             span=_DUMMY,
+            module=normalized,
         )
         sigs.append(sig)
 

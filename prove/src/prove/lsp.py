@@ -53,7 +53,7 @@ _KEYWORD_COMPLETIONS = sorted(KEYWORDS.keys())
 
 # Built-in function names
 _BUILTINS = [
-    "println", "print", "readln", "len", "map", "filter", "reduce",
+    "len", "map", "filter", "reduce",
     "to_string", "clamp",
 ]
 
@@ -300,11 +300,12 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             kind=lsp.CompletionItemKind.Keyword,
         ))
 
-    # Builtins
+    # Builtins (runtime intrinsics — C-backed, not .prv)
     for name in _BUILTINS:
         items.append(lsp.CompletionItem(
             label=name,
             kind=lsp.CompletionItemKind.Function,
+            detail="builtin",
         ))
 
     # Built-in types (always available)

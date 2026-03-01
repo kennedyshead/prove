@@ -213,6 +213,7 @@
   (type_identifier) @function)
 
 ; ─── Variable references (fallback) ───────────────────────────
-; Must be last — more specific patterns above take precedence.
+; Low priority so more specific patterns above win.
 
-(identifier) @variable
+((identifier) @variable
+ (#set! "priority" 90))

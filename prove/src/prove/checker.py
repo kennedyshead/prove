@@ -91,7 +91,7 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset({
-    "println", "print", "readln", "read_file", "write_file",
+    "read_file", "write_file",
     "open", "close", "flush", "sleep",
 })
 
@@ -245,9 +245,6 @@ class Checker:
         }
 
         builtins = [
-            ("println", [STRING], UNIT),
-            ("print", [STRING], UNIT),
-            ("readln", [], STRING),
             ("len", [ListType(TypeVariable("T"))], INTEGER),
             ("map", [
                 ListType(TypeVariable("T")),
@@ -554,15 +551,54 @@ class Checker:
                 )
 
     def _check_type_def(self, td: TypeDef) -> None:
-        """Validate field types exist."""
+        """Validate field types and where constraints."""
         body = td.body
         if isinstance(body, RecordTypeDef):
             for f in body.fields:
                 self._resolve_type_expr(f.type_expr)
+                if f.constraint is not None:
+                    self._check_where_constraint(f.constraint)
         elif isinstance(body, AlgebraicTypeDef):
             for v in body.variants:
                 for f in v.fields:
                     self._resolve_type_expr(f.type_expr)
+                    if f.constraint is not None:
+                        self._check_where_constraint(f.constraint)
+        elif isinstance(body, RefinementTypeDef):
+            self._check_where_constraint(body.constraint)
+
+    def _check_where_constraint(self, expr: Expr) -> None:
+        """Validate that a where constraint only uses primitive expressions.
+
+        Allowed: literals, self, comparisons, ranges (..), boolean ops,
+        unary negation, field access (self.x).
+        Disallowed: function calls, pipes, lambdas, match, etc.
+        """
+        if isinstance(expr, (
+            IntegerLit, DecimalLit, BooleanLit, StringLit,
+            CharLit, RegexLit, RawStringLit, TripleStringLit,
+        )):
+            return
+        if isinstance(expr, IdentifierExpr):
+            return
+        if isinstance(expr, FieldExpr):
+            # Allow self.field access
+            self._check_where_constraint(expr.obj)
+            return
+        if isinstance(expr, UnaryExpr):
+            self._check_where_constraint(expr.operand)
+            return
+        if isinstance(expr, BinaryExpr):
+            self._check_where_constraint(expr.left)
+            self._check_where_constraint(expr.right)
+            return
+        # Everything else is disallowed
+        self._error(
+            "E352",
+            "function calls are not allowed in `where` constraints; "
+            "use primitive expressions (comparisons, ranges, boolean ops)",
+            expr.span,
+        )
 
     # ── Contract checking ──────────────────────────────────────
 
@@ -717,6 +753,15 @@ class Checker:
                         f"pure function cannot call IO function '{fname}'",
                         expr.span,
                     )
+                else:
+                    # Also check if resolved function has an IO verb
+                    sig = self.symbols.resolve_function_any(fname)
+                    if sig and sig.verb in ("inputs", "outputs"):
+                        self._error(
+                            "E362",
+                            f"pure function cannot call IO function '{fname}'",
+                            expr.span,
+                        )
             for arg in expr.args:
                 self._check_pure_expr(arg)
         elif isinstance(expr, BinaryExpr):
@@ -1212,11 +1257,9 @@ class Checker:
         """Detect closure captures in lambda body (not supported)."""
         if isinstance(expr, IdentifierExpr):
             if expr.name not in param_names:
-                # Check if it's a variable/parameter from enclosing scope
+                # Check if it's a local variable from enclosing scope
                 sym = self.symbols.lookup(expr.name)
-                if sym is not None and sym.kind in (
-                    SymbolKind.VARIABLE, SymbolKind.PARAMETER,
-                ):
+                if sym is not None and sym.kind == SymbolKind.VARIABLE:
                     self._error(
                         "E364",
                         f"lambda captures variable '{expr.name}' "

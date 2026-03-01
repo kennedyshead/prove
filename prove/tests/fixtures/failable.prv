@@ -1,7 +1,12 @@
+module Failable
+  narrative: """Failable test fixture"""
+  InputOutput inputs console
+  InputOutput outputs console
+
 inputs read_name() Result<String, Error>!
 from
-    readln()
+    console()
 
 main() Result<Unit, Error>!
 from
-    println("hello")
+    console("hello")

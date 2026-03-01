@@ -1,14 +1,13 @@
 """Structural proof verification for the Prove language.
 
 Checks proof blocks for completeness and consistency:
-- E390: ensures without proof block (error)
+- E390: ensures without explain block (error)
 - E391: duplicate obligation names (error)
 - E392: proof obligations < ensures count (error)
 - E393: believe without ensures (error)
 - E366: recursive function missing terminates (error)
 - W321: proof text doesn't reference function concepts
 - W322: duplicate near-miss inputs
-- W323: ensures without explain (warning)
 - W324: ensures without requires
 - W325: explain without ensures (warning)
 """
@@ -55,13 +54,13 @@ class ProofVerifier:
         ))
 
     def _check_ensures_proof(self, fd: FunctionDef) -> None:
-        """E390: ensures without proof block."""
+        """E390: ensures without explain block."""
         if fd.trusted:
             return  # trusted functions opt out of proof requirement
-        if fd.ensures and fd.proof is None:
+        if fd.ensures and not fd.explain:
             self._error(
                 "E390",
-                f"function '{fd.name}' has ensures but no proof block",
+                f"function '{fd.name}' has ensures but no explain block",
                 fd.span,
             )
 
@@ -147,15 +146,9 @@ class ProofVerifier:
             )
 
     def _check_explain_ensures(self, fd: FunctionDef) -> None:
-        """W323: ensures without explain. W325: explain without ensures."""
+        """W325: explain without ensures."""
         if fd.trusted:
             return  # trusted functions opt out of verification
-        if fd.ensures and not fd.explain:
-            self._warning(
-                "W323",
-                f"function '{fd.name}' has ensures but no explain",
-                fd.span,
-            )
         if fd.explain and not fd.ensures:
             self._warning(
                 "W325",

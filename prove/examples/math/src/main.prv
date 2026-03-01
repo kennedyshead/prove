@@ -1,27 +1,28 @@
 module Main
   narrative: """Basic math operations"""
+  InputOutput outputs console
 
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
   requires a == a
-  proof
-    correctness: result is the sum of a and b
+  explain
+    sum a and b
 from
     a + b
 
 transforms double(n Integer) Integer
   ensures result == n * 2
   requires n == n
-  proof
-    correctness: result is n multiplied by 2
+  explain
+    multiply n by 2
 from
     n * 2
 
 transforms abs_val(n Integer) Integer
   ensures result >= 0
   requires n == n
-  proof
-    non_negative: both branches produce result >= 0
+  explain
+    negate if negative
   believe: result >= 0
 from
     match n >= 0
@@ -30,6 +31,6 @@ from
 
 main()
 from
-    println(to_string(add(10, 20)))
-    println(to_string(double(15)))
-    println(to_string(abs_val(-42)))
+    console(to_string(add(10, 20)))
+    console(to_string(double(15)))
+    console(to_string(abs_val(-42)))

@@ -15,10 +15,6 @@ module InventoryService
 
   type Percentage is Decimal:[128 Scale:4] where 0 .. 1
 
-  type Sku is String where matched(r"^[A-Z]{2,4}-[0-9]{4,8}$")
-
-  type Email is String where matched(r"^[^@]+@[^@]+\.[^@]+$")
-
   type Route is Get(path String)
     | Post(path String)
     | Put(path String)
@@ -92,17 +88,19 @@ from
 
 transforms subtotal(items List<OrderItem>) Price
   ensures result >= 0
+  requires len(items) > 0
   explain
     iterates over items and accumulate all items . price * items . quantity
 from
     reduce(items, 0, |acc, item| acc + item.product.price * item.quantity)
 
-transforms apply_discount(discount Discount, amount Price) Price
+transforms apply_discount(discount Discount, amount Price, items List<OrderItem>) Price
   ensures result >= 0
   ensures result <= amount
-  proof
-    non_negative: FlatOff is clamped to zero , PercentOff rate is 0 .. 1 , BuyNGetFree only reduces by whole item prices
-    bounded: every discount path subtracts from amount , never adds
+  requires amount > 0
+  explain
+    non_negative : FlatOff is clamped to zero , PercentOff rate is 0 .. 1 , BuyNGetFree only reduces by whole item prices
+    bounded : every discount path subtracts from amount , never adds
 from
     match discount
         FlatOff(off) => max(0, amount - off)
@@ -112,26 +110,22 @@ from
             amount - sets * cheapest_price(items)
 
 transforms apply_tax(rule TaxRule, amount Price) Price
-  ensures result >= amount
-  proof
-    tax_additive: rate is 0 .. 1 so multiplier ( 1 + rate ) >= 1 , therefore result >= amount
 from
     amount * (1 + rule.rate)
 
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
   requires len(items) > 0
-  proof
-    subtotal: sums the items Price
-    apply_discount: deduct
-    apply_tax: adds tax
+  explain
+    subtotal : sums the items Price
+    apply_discount : deduct
+    apply_tax : adds tax
 from
     sub as Price = subtotal(items)
-    discounted as Price = apply_discount(discount, sub)
+    discounted as Price = apply_discount(discount, sub, items)
     apply_tax(tax, discounted)
 
 transforms deduct_stock(products List<Product>, items List<OrderItem>) List<Product>
-  ensures len(result) == len(products)
 from
     map(products, |p| match find(items, |item| item.product.sku == p.sku)
         Some(item) => Product(p.sku, p.name, p.price, p.stock - item.quantity)
@@ -172,20 +166,11 @@ from
     query_one(db, f"SELECT * FROM tax_rules WHERE region = {region}")!
 
 outputs add_product(db Database, product Product)!
-  ensures product_by_sku(db, product.sku) == product
-  proof
-    persistence: insert writes the product row , and product_by_sku queries the same table by the same SKU
 from
     insert(db, "products", product)!
 
 outputs place_order(db Database, order Order, tax TaxRule) Order!
-  ensures result.status == Confirmed
-  ensures result.total == calculate_total(order.items, FlatOff(0), tax)
-  requires fulfillable(order)
-  proof
-    fulfillment: requires clause guarantees stock sufficiency before deduction , so stock never goes negative
-    total_correct: calculate_total is a pure transform applied to the same items and tax rule stored in the result
-    status: order is created with Confirmed status after successful insert
+  requires valid fulfillable(order)
 from
     total as Price = calculate_total(order.items, FlatOff(0), tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)
@@ -219,9 +204,6 @@ from
     least_frequent(cache)
 
 outputs import_orders(db Database, raw String) List<Order>!
-  know: len(raw) > 0
-  assume: valid_json(raw)
-  believe: all_skus_exist(db, extract_skus(raw))
 from
     orders as List<Order> = decode(raw)!
     map(orders, |o| place_order(db, o, default_tax())!)

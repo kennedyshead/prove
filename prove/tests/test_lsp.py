@@ -147,7 +147,11 @@ class TestAnalyze:
 
     def test_analyze_caches_state(self):
         from prove.lsp import _state
-        source = "main()\nfrom\n    println(\"hi\")\n"
+        source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
+            "main()\nfrom\n    console(\"hi\")\n"
+        )
         uri = "file:///cache_test.prv"
         ds = _analyze(uri, source)
         assert _state.get(uri) is ds
@@ -322,9 +326,12 @@ class TestCompletion:
     def test_builtin_functions_always_present(self):
         _analyze("<test://bi>", "")
         labels = _complete_labels("<test://bi>")
-        for fn in ("println", "print", "readln", "len", "map",
+        for fn in ("len", "map",
                     "filter", "reduce", "to_string", "clamp"):
             assert fn in labels, f"builtin '{fn}' missing from completions"
+        # println/print/readln are no longer builtins — they come from InputOutput
+        for fn in ("println", "print", "readln"):
+            assert fn not in labels, f"removed builtin '{fn}' should not be in completions"
 
     def test_builtin_types_always_present(self):
         _analyze("<test://ty>", "")

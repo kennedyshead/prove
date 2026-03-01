@@ -13,7 +13,7 @@ def _make_fd(**kwargs) -> FunctionDef:
     defaults = dict(
         verb="transforms", name="f", params=[], return_type=None,
         can_fail=False, ensures=[], requires=[], proof=None,
-        explain=[], terminates=None, trusted=False, binary=False,
+        explain=[], terminates=None, trusted=None, binary=False,
         why_not=[], chosen=None, near_misses=[], know=[], assume=[],
         believe=[], intent=None, satisfies=[], body=[], doc_comment=None,
         span=_DUMMY,
@@ -25,7 +25,7 @@ def _make_fd(**kwargs) -> FunctionDef:
 class TestProofVerification:
     """Test proof verification errors and warnings."""
 
-    def test_ensures_without_proof_error(self):
+    def test_ensures_without_explain_error(self):
         check_fails(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
@@ -34,12 +34,12 @@ class TestProofVerification:
             "E390",
         )
 
-    def test_ensures_with_proof_no_warning(self):
+    def test_ensures_with_explain_no_e390(self):
         check(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
-            "    proof\n"
-            "        correctness: \"result is sum of a and b\"\n"
+            "    explain\n"
+            "        sum a and b\n"
             "    from\n"
             "        a + b\n"
         )
@@ -51,6 +51,7 @@ class TestProofVerification:
         proof = ProofBlock(obligations=[obl1, obl2], span=_DUMMY)
         fd = _make_fd(
             ensures=[IntegerLit(value="1", span=_DUMMY)],
+            explain=["some step"],
             proof=proof,
         )
         verifier = ProofVerifier()
@@ -67,6 +68,7 @@ class TestProofVerification:
                 IntegerLit(value="1", span=_DUMMY),
                 IntegerLit(value="2", span=_DUMMY),
             ],
+            explain=["step one", "step two"],
             proof=proof,
         )
         verifier = ProofVerifier()
@@ -81,6 +83,7 @@ class TestProofVerification:
         fd = _make_fd(
             name="compute",
             ensures=[IntegerLit(value="1", span=_DUMMY)],
+            explain=["some step"],
             proof=proof,
         )
         verifier = ProofVerifier()
@@ -109,8 +112,8 @@ class TestProofVerification:
             "transforms abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
-            "    proof\n"
-            '        non_negative: "result is abs so >= 0"\n'
+            "    explain\n"
+            "        negate if negative\n"
             "    from\n"
             "        match n >= 0\n"
             "            true => n\n"
@@ -128,8 +131,8 @@ class TestProofVerification:
         check_warns(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
-            "    proof\n"
-            '        correctness: "result is sum of a and b"\n'
+            "    explain\n"
+            "        sum a and b\n"
             "    from\n"
             "        a + b\n",
             "W324",
@@ -140,8 +143,8 @@ class TestProofVerification:
             "transforms safe_div(a Integer, b Integer) Integer\n"
             "    requires b != 0\n"
             "    ensures result == a / b\n"
-            "    proof\n"
-            '        correctness: "result is a divided by b"\n'
+            "    explain\n"
+            "        divide a by b\n"
             "    from\n"
             "        a / b\n"
         )

@@ -4,6 +4,8 @@ module Contracts
 transforms abs_val(n Integer) Integer
   ensures result >= 0
   requires n > -1000000
+  explain
+    negate n
   proof
     n: deducted
   believe: result >= 0

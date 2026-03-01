@@ -106,6 +106,31 @@ class TestTypeResolution:
         ty = st.resolve_type("Positive")
         assert isinstance(ty, RefinementType)
 
+    def test_where_constraint_rejects_function_calls(self):
+        check_fails(
+            "module M\n"
+            '  type Sku is String where matched(r"^[A-Z]+")\n',
+            "E352",
+        )
+
+    def test_where_constraint_allows_comparison(self):
+        check(
+            "module M\n"
+            "  type Positive is Integer where self >= 0\n"
+            "transforms id(x Positive) Integer\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_where_constraint_allows_range(self):
+        check(
+            "module M\n"
+            "  type Port is Integer where 1 .. 65535\n"
+            "transforms id(x Port) Integer\n"
+            "    from\n"
+            "        0\n"
+        )
+
 
 class TestNameResolution:
     """Test name lookups in scope."""
@@ -304,11 +329,13 @@ class TestCallChecking:
             "        5 |> double\n"
         )
 
-    def test_builtin_println(self):
+    def test_imported_console(self):
         check(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        println(\"hello\")\n"
+            "        console(\"hello\")\n"
         )
 
     def test_builtin_len(self):
@@ -381,9 +408,11 @@ class TestVerbEnforcement:
 
     def test_pure_calls_io_error(self):
         check_fails(
+            "module M\n"
+            "  InputOutput outputs console\n"
             "transforms bad() Integer\n"
             "    from\n"
-            "        println(\"side effect\")\n"
+            "        console(\"side effect\")\n"
             "        0\n",
             "E362",
         )
@@ -415,25 +444,31 @@ class TestVerbEnforcement:
 
     def test_reads_rejects_io(self):
         check_fails(
+            "module M\n"
+            "  InputOutput outputs console\n"
             "reads bad() Integer\n"
             "    from\n"
-            "        println(\"side effect\")\n"
+            "        console(\"side effect\")\n"
             "        0\n",
             "E362",
         )
 
     def test_main_allows_io(self):
         check(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        println(\"hello from main\")\n"
+            "        console(\"hello from main\")\n"
         )
 
     def test_inputs_allows_io(self):
         check(
+            "module Main\n"
+            "  InputOutput inputs console\n"
             "inputs read_input() String\n"
             "    from\n"
-            "        readln()\n"
+            "        console()\n"
         )
 
 
@@ -443,21 +478,26 @@ class TestChannelDispatch:
     def test_same_name_different_verbs(self):
         """Two functions with same name but different verbs should coexist."""
         check(
+            "module Main\n"
+            "  InputOutput inputs console\n"
+            "  InputOutput outputs console\n"
             "inputs load() String\n"
             "    from\n"
-            "        readln()\n"
+            "        console()\n"
             "\n"
             "outputs load(data String) Unit\n"
             "    from\n"
-            "        println(data)\n"
+            "        console(data)\n"
         )
 
     def test_verb_context_resolves_correct_overload(self):
         """Calling same-name function should resolve via verb context."""
         check(
+            "module Main\n"
+            "  InputOutput inputs console\n"
             "inputs fetch() String\n"
             "    from\n"
-            "        readln()\n"
+            "        console()\n"
             "\n"
             "inputs process() String\n"
             "    from\n"
@@ -478,17 +518,21 @@ class TestChannelDispatch:
 
     def test_outputs_allows_io(self):
         check(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs write_output(msg String) Unit\n"
             "    from\n"
-            "        println(msg)\n"
+            "        console(msg)\n"
         )
 
     def test_transitive_purity_error(self):
         """transforms calling a user-defined outputs function -> E363."""
         check_fails(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "outputs log_msg(msg String) Unit\n"
             "    from\n"
-            "        println(msg)\n"
+            "        console(msg)\n"
             "transforms bad(x Integer) Integer\n"
             "    from\n"
             "        log_msg(\"side effect\")\n"
@@ -499,9 +543,11 @@ class TestChannelDispatch:
     def test_transitive_purity_inputs_error(self):
         """transforms calling a user-defined inputs function -> E363."""
         check_fails(
+            "module Main\n"
+            "  InputOutput inputs console\n"
             "inputs get_data() String\n"
             "    from\n"
-            "        readln()\n"
+            "        console()\n"
             "transforms bad() Integer\n"
             "    from\n"
             "        get_data()\n"
@@ -516,10 +562,19 @@ class TestLambdaCapture:
     def test_lambda_capture_rejected(self):
         """Lambda capturing a local variable -> E364."""
         check_fails(
-            "transforms compute(y Integer) List<Integer>\n"
+            "transforms compute() List<Integer>\n"
             "    from\n"
+            "        y as Integer = 10\n"
             "        map([1, 2, 3], |x| x + y)\n",
             "E364",
+        )
+
+    def test_lambda_param_capture_ok(self):
+        """Lambda capturing a function parameter is allowed."""
+        check(
+            "transforms compute(y Integer) List<Integer>\n"
+            "    from\n"
+            "        map([1, 2, 3], |x| x + y)\n"
         )
 
     def test_lambda_no_capture_ok(self):
@@ -625,9 +680,11 @@ class TestIntegration:
 
     def test_hello_world(self):
         check(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        println(\"Hello from Prove!\")\n"
+            "        console(\"Hello from Prove!\")\n"
         )
 
     def test_multiple_declarations(self):
@@ -722,9 +779,11 @@ class TestIntegration:
 
     def test_main_with_result(self):
         check(
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
-            "        println(\"starting\")\n"
+            "        console(\"starting\")\n"
         )
 
 
@@ -735,8 +794,8 @@ class TestContractChecking:
         check(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
-            "    proof\n"
-            '        correctness: "result is sum of a and b"\n'
+            "    explain\n"
+            "        sum a and b\n"
             "    from\n"
             "        a + b\n"
         )
@@ -806,8 +865,8 @@ class TestContractChecking:
             "transforms abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
-            "    proof\n"
-            '        non_negative: "result is abs so >= 0"\n'
+            "    explain\n"
+            "        negate if negative\n"
             "    from\n"
             "        match n >= 0\n"
             "            true => n\n"
@@ -915,6 +974,8 @@ class TestProofConditionChecking:
         check(
             "transforms abs(n Integer) Integer\n"
             "    ensures result >= 0\n"
+            "    explain\n"
+            "        return n or its negation\n"
             "    proof\n"
             "        positive: identity when n >= 0\n"
             "        negative: deducted when n < 0\n"

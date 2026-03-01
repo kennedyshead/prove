@@ -37,8 +37,9 @@ def tmp_project(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
     (src / "main.prv").write_text(
-        'module Main\n  narrative: """Test project"""\n\n'
-        'main() Result<Unit, Error>!\nfrom\n    println("hi")\n'
+        'module Main\n  narrative: """Test project"""\n'
+        '  InputOutput outputs console\n\n'
+        'main() Result<Unit, Error>!\nfrom\n    console("hi")\n'
     )
     return tmp_path
 
@@ -284,13 +285,15 @@ class TestDiagnosticNotes:
         from prove.parser import Parser
 
         source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"
             "\n"
             "main()\n"
             "    from\n"
-            "        println(to_string(add(1)))\n"
+            "        console(to_string(add(1)))\n"
         )
         tokens = Lexer(source, "test.prv").lex()
         module = Parser(tokens, "test.prv").parse()

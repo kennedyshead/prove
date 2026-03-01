@@ -1,11 +1,15 @@
 /// add(1, 2) == 3
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
+  explain
+    sum a and b
 from
     a + b
 
 /// double(5) == 10
 transforms double(n Integer) Integer
   ensures result == n * 2
+  explain
+    multiply n by 2
 from
     n * 2
