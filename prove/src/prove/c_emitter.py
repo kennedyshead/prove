@@ -34,6 +34,8 @@ from prove.ast_nodes import (
     RecordTypeDef,
     StringInterp,
     StringLit,
+    TailContinue,
+    TailLoop,
     TripleStringLit,
     TypeDef,
     TypeIdentifierExpr,
@@ -80,6 +82,7 @@ class CEmitter:
         self._locals: dict[str, Type] = {}  # local var -> type for inference
         self._needed_headers: set[str] = set()
         self._current_func_return: Type = UNIT
+        self._in_tail_loop = False
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -431,10 +434,13 @@ class CEmitter:
         self._line("int main(int argc, char **argv) {")
         self._indent += 1
 
+        self._line("prove_runtime_init();")
+
         # Emit body statements
         for stmt in md.body:
             self._emit_stmt(stmt)
 
+        self._line("prove_runtime_cleanup();")
         self._line("return 0;")
         self._indent -= 1
         self._line("}")
@@ -446,6 +452,10 @@ class CEmitter:
         """Emit a function body. Last expression is the return value."""
         for i, stmt in enumerate(body):
             is_last = i == len(body) - 1
+            # TailLoop handles its own returns internally
+            if isinstance(stmt, TailLoop):
+                self._emit_stmt(stmt)
+                continue
             if is_last and not isinstance(stmt, VarDecl):
                 # Last expression is the return value
                 if isinstance(ret_type, UnitType) and not is_failable:
@@ -497,6 +507,10 @@ class CEmitter:
             self._emit_assignment(stmt)
         elif isinstance(stmt, ExprStmt):
             self._emit_expr_stmt(stmt)
+        elif isinstance(stmt, TailLoop):
+            self._emit_tail_loop(stmt)
+        elif isinstance(stmt, TailContinue):
+            self._emit_tail_continue(stmt)
         elif isinstance(stmt, MatchExpr):
             self._emit_match_stmt(stmt)
 
@@ -560,27 +574,113 @@ class CEmitter:
                                         f"{fct.decl} {sub_pat.name} = "
                                         f"{tmp}.{arm.pattern.name}.{fname};"
                                     )
-                    for s in arm.body:
-                        self._emit_stmt(s)
+                    self._emit_match_arm_body(arm.body)
                     self._line("break;")
                     self._indent -= 1
                     self._line("}")
                 elif isinstance(arm.pattern, WildcardPattern):
                     self._line("default: {")
                     self._indent += 1
-                    for s in arm.body:
-                        self._emit_stmt(s)
+                    self._emit_match_arm_body(arm.body)
                     self._line("break;")
                     self._indent -= 1
                     self._line("}")
             self._line("}")
         else:
             # Non-algebraic match — emit as if-else
-            for arm in m.arms:
-                for s in arm.body:
-                    self._emit_stmt(s)
+            if self._in_tail_loop:
+                self._emit_tail_match_as_if_else(m, subj)
+            else:
+                for arm in m.arms:
+                    for s in arm.body:
+                        self._emit_stmt(s)
         # Restore locals (match arm bindings are scoped to arms)
         self._locals = saved_locals
+
+    def _emit_match_arm_body(self, body: list) -> None:  # type: ignore[type-arg]
+        """Emit match arm body, handling TailContinue and returns in tail loop."""
+        for i, s in enumerate(body):
+            is_last = i == len(body) - 1
+            if isinstance(s, TailContinue):
+                self._emit_tail_continue(s)
+            elif is_last and self._in_tail_loop and not isinstance(s, TailContinue):
+                # Base case in tail loop — emit as return
+                expr = self._stmt_expr(s)
+                if expr is not None:
+                    self._line(f"return {self._emit_expr(expr)};")
+                else:
+                    self._emit_stmt(s)
+            else:
+                self._emit_stmt(s)
+
+    def _emit_tail_match_as_if_else(self, m: MatchExpr, subj: str) -> None:
+        """Emit a non-algebraic match as if/else inside a tail loop."""
+        first = True
+        for arm in m.arms:
+            if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                if first:
+                    self._line("{")
+                else:
+                    self._line("} else {")
+                self._indent += 1
+                if isinstance(arm.pattern, BindingPattern):
+                    subj_type = self._infer_expr_type(m.subject) if m.subject else UNIT
+                    bct = map_type(subj_type)
+                    self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                self._emit_match_arm_body(arm.body)
+                self._indent -= 1
+                self._line("}")
+            elif isinstance(arm.pattern, LiteralPattern):
+                cond = self._emit_literal_cond(subj, arm.pattern)
+                keyword = "if" if first else "} else if"
+                self._line(f"{keyword} ({cond}) {{")
+                self._indent += 1
+                self._emit_match_arm_body(arm.body)
+                self._indent -= 1
+            first = False
+        # Close trailing if without else
+        if m.arms and not isinstance(m.arms[-1].pattern, (WildcardPattern, BindingPattern)):
+            self._line("}")
+
+    # ── Tail call optimization emission ─────────────────────────
+
+    def _emit_tail_loop(self, tl: TailLoop) -> None:
+        """Emit a TCO-rewritten loop: while (1) { body }."""
+        saved_in_tail = self._in_tail_loop
+        self._in_tail_loop = True
+        self._line("while (1) {")
+        self._indent += 1
+        for i, stmt in enumerate(tl.body):
+            is_last = i == len(tl.body) - 1
+            if is_last and not isinstance(stmt, (TailContinue, TailLoop, MatchExpr)):
+                # Last statement is the return value (base case)
+                expr = self._stmt_expr(stmt)
+                if expr is not None:
+                    self._line(f"return {self._emit_expr(expr)};")
+                else:
+                    self._emit_stmt(stmt)
+            else:
+                self._emit_stmt(stmt)
+        self._indent -= 1
+        self._line("}")
+        self._in_tail_loop = saved_in_tail
+
+    def _emit_tail_continue(self, tc: TailContinue) -> None:
+        """Emit temporaries for all new values, then assign + continue."""
+        # First, evaluate all new values into temporaries
+        # (avoids evaluation-order bugs when params depend on each other)
+        tmps: list[tuple[str, str]] = []
+        for param_name, new_val_expr in tc.assignments:
+            tmp = self._tmp()
+            ty = self._locals.get(param_name)
+            ct = map_type(ty) if ty else CType("int64_t", False, None)
+            val = self._emit_expr(new_val_expr)
+            self._line(f"{ct.decl} {tmp} = {val};")
+            tmps.append((param_name, tmp))
+        # Then assign all at once
+        for param_name, tmp in tmps:
+            self._line(f"{param_name} = {tmp};")
+        self._line("continue;")
 
     # ── Expression emission ────────────────────────────────────
 

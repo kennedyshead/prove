@@ -81,6 +81,10 @@ def _build_c(
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
     for module, symbols in modules_and_symbols:
+        if config.build.optimize:
+            from prove.optimizer import Optimizer
+            optimizer = Optimizer(module, symbols)
+            module = optimizer.optimize()
         emitter = CEmitter(module, symbols)
         c_sources.append(emitter.emit())
 

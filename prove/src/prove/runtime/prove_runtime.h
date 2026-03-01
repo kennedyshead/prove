@@ -52,4 +52,9 @@ static inline int64_t prove_clamp(int64_t val, int64_t lo, int64_t hi) {
     return val < lo ? lo : (val > hi ? hi : val);
 }
 
+/* ── Runtime lifecycle ────────────────────────────────────────── */
+
+void prove_runtime_init(void);
+void prove_runtime_cleanup(void);
+
 #endif /* PROVE_RUNTIME_H */

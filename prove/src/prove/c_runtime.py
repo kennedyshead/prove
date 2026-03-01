@@ -9,6 +9,12 @@ from pathlib import Path
 _RUNTIME_FILES = [
     "prove_runtime.h",
     "prove_runtime.c",
+    "prove_arena.h",
+    "prove_arena.c",
+    "prove_hash.h",
+    "prove_hash.c",
+    "prove_intern.h",
+    "prove_intern.c",
     "prove_string.h",
     "prove_string.c",
     "prove_list.h",

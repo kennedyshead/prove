@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Any, Union
 
 from prove.source import Span
 
@@ -268,7 +268,20 @@ class ExprStmt:
     span: Span
 
 
-Stmt = Union[VarDecl, Assignment, ExprStmt]
+@dataclass(frozen=True)
+class TailLoop:
+    params: list[str]
+    body: list[Any]  # list[Stmt | MatchExpr] — uses Any to avoid cycle
+    span: Span
+
+
+@dataclass(frozen=True)
+class TailContinue:
+    assignments: list[tuple[str, Expr]]
+    span: Span
+
+
+Stmt = Union[VarDecl, Assignment, ExprStmt, TailLoop, TailContinue]
 
 
 # ── Function parts ───────────────────────────────────────────────

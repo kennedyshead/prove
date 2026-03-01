@@ -21,7 +21,6 @@ module InventoryService
     | Delete(path String)
 
   type Product is
-    sku Sku
     name String
     price Price
     stock Quantity
