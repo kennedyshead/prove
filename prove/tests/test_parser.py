@@ -203,11 +203,14 @@ class TestParserFunctions:
         assert decl.verb == "creates"
         assert decl.name == "new"
 
-    def test_saves(self):
-        source = 'saves add(key String, value String, table Table) Table\n    from\n        table\n'
+    def test_matches(self):
+        source = (
+            'matches add(key String, value String, table Table)'
+            ' Table\n    from\n        table\n'
+        )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
-        assert decl.verb == "saves"
+        assert decl.verb == "matches"
         assert decl.name == "add"
 
     def test_main(self):
@@ -441,14 +444,14 @@ class TestParserExpressions:
         assert isinstance(expr, IndexExpr)
 
     def test_regex_literal(self):
-        source = 'validates f(s String)\n    from\n        matches(s, /^[A-Z]+$/)\n'
+        source = 'validates f(s String)\n    from\n        check(s, /^[A-Z]+$/)\n'
         decl = parse_decl(source)
         call = decl.body[0].expr
         assert isinstance(call, CallExpr)
         assert isinstance(call.args[1], RegexLit)
 
     def test_raw_string_literal(self):
-        source = 'validates f(s String)\n    from\n        matches(s, r"^[A-Z]+$")\n'
+        source = 'validates f(s String)\n    from\n        check(s, r"^[A-Z]+$")\n'
         decl = parse_decl(source)
         call = decl.body[0].expr
         assert isinstance(call, CallExpr)

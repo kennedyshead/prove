@@ -100,7 +100,7 @@ _POSTFIX_BP = 17  # left bp for !, ., (), []
 _VERBS = frozenset({
     TokenKind.TRANSFORMS, TokenKind.INPUTS,
     TokenKind.OUTPUTS, TokenKind.VALIDATES,
-    TokenKind.READS, TokenKind.CREATES, TokenKind.SAVES,
+    TokenKind.READS, TokenKind.CREATES, TokenKind.MATCHES,
 })
 
 _IMPORT_VERBS = _VERBS | {TokenKind.TYPES}
@@ -314,6 +314,9 @@ class Parser:
 
         # Parse annotations — may be inside an INDENT block
         ensures, requires, proof = [], [], None
+        explain: list[str] = []
+        terminates_expr = None
+        is_trusted = False
         why_not, chosen, near_misses = [], None, []
         know, assume, believe = [], [], []
         intent = None
@@ -335,6 +338,20 @@ class Parser:
                 requires.append(self._parse_expression(0))
             elif self._at(TokenKind.PROOF):
                 proof = self._parse_proof_block()
+            elif self._at(TokenKind.EXPLAIN):
+                self._advance()
+                self._expect(TokenKind.COLON)
+                if self._at(TokenKind.TRIPLE_STRING_LIT):
+                    explain.append(self._advance().value)
+                else:
+                    explain.append(self._expect(TokenKind.STRING_LIT).value)
+            elif self._at(TokenKind.TERMINATES):
+                self._advance()
+                self._expect(TokenKind.COLON)
+                terminates_expr = self._parse_expression(0)
+            elif self._at(TokenKind.TRUSTED):
+                self._advance()
+                is_trusted = True
             elif self._at(TokenKind.WHY_NOT):
                 self._advance()
                 self._expect(TokenKind.COLON)
@@ -393,6 +410,8 @@ class Parser:
             verb=verb, name=name, params=params,
             return_type=return_type, can_fail=can_fail,
             ensures=ensures, requires=requires, proof=proof,
+            explain=explain, terminates=terminates_expr,
+            trusted=is_trusted,
             why_not=why_not, chosen=chosen, near_misses=near_misses,
             know=know, assume=assume, believe=believe,
             intent=intent, satisfies=satisfies,

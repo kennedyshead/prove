@@ -402,11 +402,15 @@ class TestVerbEnforcement:
             "        0\n"
         )
 
-    def test_saves_is_pure(self):
+    def test_matches_is_pure(self):
         check(
-            "saves store(x Integer) Integer\n"
+            "module M\n"
+            "  type Shape is\n"
+            "    Circle(radius Integer)\n"
+            "    | Square(side Integer)\n"
+            "matches kind(s Shape) Integer\n"
             "    from\n"
-            "        x\n"
+            "        0\n"
         )
 
     def test_reads_rejects_io(self):

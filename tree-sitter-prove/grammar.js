@@ -173,7 +173,7 @@ module.exports = grammar({
       'validates',
       'reads',
       'creates',
-      'saves',
+      'matches',
     ),
 
     function_definition: $ => seq(
@@ -226,6 +226,9 @@ module.exports = grammar({
       $.ensures_clause,
       $.requires_clause,
       $.proof_block,
+      $.explain_annotation,
+      $.terminates_annotation,
+      $.trusted_annotation,
       $.why_not_annotation,
       $.chosen_annotation,
       $.near_miss_annotation,
@@ -257,6 +260,12 @@ module.exports = grammar({
     proof_text: $ => repeat1(token(prec(-1, /[^\n]*[a-zA-Z0-9\)][^\n]*/))),
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
+
+    explain_annotation: $ => seq('explain', ':', $.string_literal),
+
+    terminates_annotation: $ => seq('terminates', ':', $.expression),
+
+    trusted_annotation: $ => 'trusted',
 
     // ─── AI-Resistance Annotations ─────────────────────────────
 

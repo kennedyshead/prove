@@ -618,7 +618,7 @@ def _extract_undefined_name(message: str) -> str | None:
 
 _IMPORT_VERBS = {
     "transforms", "validates", "inputs", "outputs",
-    "reads", "creates", "saves", "types",
+    "reads", "creates", "matches", "types",
 }
 
 

@@ -86,7 +86,7 @@ from prove.types import (
 )
 
 # Verbs considered pure (no IO side effects allowed)
-_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "saves"})
+_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset({
@@ -640,6 +640,24 @@ class Checker:
                 self._error("E361", "pure function cannot be failable", fd.span)
             # Check body for IO calls
             self._check_pure_body(fd.body, fd.span)
+
+        # matches verb: first parameter must be an algebraic type
+        if verb == "matches":
+            if fd.params:
+                first_type = self._resolve_type_expr(fd.params[0].type_expr)
+                if not isinstance(first_type, (AlgebraicType, ErrorType)):
+                    self._error(
+                        "E365",
+                        f"matches verb requires first parameter to be "
+                        f"an algebraic type, got '{type_name(first_type)}'",
+                        fd.params[0].span,
+                    )
+            else:
+                self._error(
+                    "E365",
+                    "matches verb requires at least one parameter",
+                    fd.span,
+                )
 
     def _check_pure_body(self, body: list[Stmt | MatchExpr], span: Span) -> None:
         """Check that a body doesn't contain IO calls."""

@@ -18,7 +18,7 @@ class TokenKind(Enum):
     VALIDATES = auto()
     READS = auto()
     CREATES = auto()
-    SAVES = auto()
+    MATCHES = auto()
     TYPES = auto()
 
     # Type modifiers
@@ -44,6 +44,9 @@ class TokenKind(Enum):
     REQUIRES = auto()
     PROOF = auto()
     WHEN = auto()
+    EXPLAIN = auto()
+    TERMINATES = auto()
+    TRUSTED = auto()
 
     # AI-resistance
     WHY_NOT = auto()
@@ -135,7 +138,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "validates": TokenKind.VALIDATES,
     "reads": TokenKind.READS,
     "creates": TokenKind.CREATES,
-    "saves": TokenKind.SAVES,
+    "matches": TokenKind.MATCHES,
     "types": TokenKind.TYPES,
     "binary": TokenKind.BINARY,
     "main": TokenKind.MAIN,
@@ -155,6 +158,9 @@ KEYWORDS: dict[str, TokenKind] = {
     "requires": TokenKind.REQUIRES,
     "proof": TokenKind.PROOF,
     "when": TokenKind.WHEN,
+    "explain": TokenKind.EXPLAIN,
+    "terminates": TokenKind.TERMINATES,
+    "trusted": TokenKind.TRUSTED,
     "why_not": TokenKind.WHY_NOT,
     "chosen": TokenKind.CHOSEN,
     "near_miss": TokenKind.NEAR_MISS,

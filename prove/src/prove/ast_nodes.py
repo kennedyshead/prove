@@ -368,6 +368,9 @@ class FunctionDef:
     ensures: list[Expr]
     requires: list[Expr]
     proof: ProofBlock | None
+    explain: list[str]
+    terminates: Expr | None
+    trusted: bool
     why_not: list[str]
     chosen: str | None
     near_misses: list[NearMiss]

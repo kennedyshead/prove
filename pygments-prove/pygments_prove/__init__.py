@@ -50,7 +50,10 @@ class ProveLexer(RegexLexer):
             # Intent verbs (function declaration keywords)
             (
                 words(
-                    ("transforms", "inputs", "outputs", "validates"),
+                    (
+                        "transforms", "inputs", "outputs", "validates",
+                        "reads", "creates", "matches",
+                    ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
@@ -59,7 +62,10 @@ class ProveLexer(RegexLexer):
             # Contract keywords
             (
                 words(
-                    ("ensures", "requires", "proof"),
+                    (
+                        "ensures", "requires", "proof", "when",
+                        "explain", "terminates", "trusted",
+                    ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
@@ -80,6 +86,10 @@ class ProveLexer(RegexLexer):
                         "valid",
                         "main",
                         "types",
+                        "with",
+                        "use",
+                        "domain",
+                        "binary",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
