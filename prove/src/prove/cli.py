@@ -69,20 +69,18 @@ def main() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--mutate", is_flag=True, help="Enable mutation testing.")
-@click.option("--asm", is_flag=True, help="Use x86-64 ASM backend instead of C.")
-def build(path: str, mutate: bool, asm: bool) -> None:
+def build(path: str, mutate: bool) -> None:
     """Compile a Prove project."""
     from prove.builder import build_project
 
     try:
         config_path = find_config(Path(path))
         config = load_config(config_path)
-        backend = "asm" if asm else "c"
-        click.echo(f"building {config.package.name} ({backend})...")
+        click.echo(f"building {config.package.name}...")
         project_dir = config_path.parent
 
         renderer = DiagnosticRenderer(color=True)
-        result = build_project(project_dir, config, asm=asm)
+        result = build_project(project_dir, config)
 
         for diag in result.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -90,8 +88,6 @@ def build(path: str, mutate: bool, asm: bool) -> None:
         if not result.ok:
             if result.c_error:
                 click.echo(f"error: {result.c_error}", err=True)
-            if result.asm_error:
-                click.echo(f"error: {result.asm_error}", err=True)
             raise SystemExit(1)
 
         if mutate:

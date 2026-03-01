@@ -25,16 +25,12 @@ class BuildResult:
     binary: Path | None = None
     diagnostics: list[Diagnostic] = field(default_factory=list)
     c_error: str | None = None
-    asm_error: str | None = None
 
 
 def build_project(
-    project_dir: Path, config: ProveConfig, *, asm: bool = False,
+    project_dir: Path, config: ProveConfig,
 ) -> BuildResult:
-    """Run the full pipeline: discover -> lex -> parse -> check -> emit -> compile.
-
-    If *asm* is True, emit x86-64 assembly and assemble/link instead of C.
-    """
+    """Run the full pipeline: discover -> lex -> parse -> check -> emit -> compile."""
     src_dir = project_dir / "src"
     if not src_dir.is_dir():
         src_dir = project_dir
@@ -73,8 +69,6 @@ def build_project(
     if has_errors:
         return BuildResult(ok=False, diagnostics=all_diags)
 
-    if asm:
-        return _build_asm(project_dir, config, modules_and_symbols, all_diags)
     return _build_c(project_dir, config, modules_and_symbols, all_diags)
 
 
@@ -130,79 +124,6 @@ def _build_c(
         return BuildResult(
             ok=False, diagnostics=all_diags,
             c_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
-        )
-
-    return BuildResult(ok=True, binary=binary_path, diagnostics=all_diags)
-
-
-def _build_asm(
-    project_dir: Path,
-    config: ProveConfig,
-    modules_and_symbols: list[tuple[Module, SymbolTable]],
-    all_diags: list[Diagnostic],
-) -> BuildResult:
-    """ASM backend: emit x86-64 assembly, assemble, link with C runtime."""
-    from prove.asm_assembler import CompileAsmError, assemble, find_assembler, link
-    from prove.asm_emitter import AsmEmitter
-    from prove.asm_runtime import AsmRuntimeError, compile_runtime_objects
-
-    asm_sources: list[str] = []
-    for module, symbols in modules_and_symbols:
-        emitter = AsmEmitter(module, symbols)
-        asm_sources.append(emitter.emit())
-
-    # Set up build directory
-    build_dir = project_dir / "build"
-    gen_dir = build_dir / "gen"
-    gen_dir.mkdir(parents=True, exist_ok=True)
-
-    # Write generated ASM
-    asm_files: list[Path] = []
-    for i, asm_src in enumerate(asm_sources):
-        asm_path = gen_dir / f"module_{i}.s"
-        asm_path.write_text(asm_src)
-        asm_files.append(asm_path)
-
-    # Find assembler
-    assembler = find_assembler()
-    if assembler is None:
-        return BuildResult(
-            ok=False, diagnostics=all_diags,
-            asm_error="no assembler found (install gcc or binutils)",
-        )
-
-    # Compile C runtime to .o files
-    try:
-        runtime_objects = compile_runtime_objects(build_dir)
-    except AsmRuntimeError as e:
-        return BuildResult(
-            ok=False, diagnostics=all_diags,
-            asm_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
-        )
-
-    # Assemble generated .s files to .o
-    gen_objects: list[Path] = []
-    for asm_file in asm_files:
-        obj_file = asm_file.with_suffix(".o")
-        try:
-            assemble(asm_file, obj_file, assembler=assembler)
-        except CompileAsmError as e:
-            return BuildResult(
-                ok=False, diagnostics=all_diags,
-                asm_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
-            )
-        gen_objects.append(obj_file)
-
-    # Link everything
-    binary_name = config.package.name or "a.out"
-    binary_path = build_dir / binary_name
-
-    try:
-        link(runtime_objects + gen_objects, binary_path, linker=assembler)
-    except CompileAsmError as e:
-        return BuildResult(
-            ok=False, diagnostics=all_diags,
-            asm_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
         )
 
     return BuildResult(ok=True, binary=binary_path, diagnostics=all_diags)
