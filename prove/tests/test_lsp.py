@@ -384,7 +384,7 @@ class TestCompletion:
         labels = [item.label for item in result.items]
         assert len(labels) == len(set(labels)), (
             f"duplicate completions: "
-            f"{[l for l in labels if labels.count(l) > 1]}"
+            f"{[x for x in labels if labels.count(x) > 1]}"
         )
 
     def test_stdlib_completion_auto_imports(self):

@@ -16,7 +16,6 @@ from prove.stdlib_loader import (
     load_stdlib,
 )
 
-
 # Canonical modules (exclude alias keys like "listutils" → "list_utils.prv")
 _CANONICAL = [k for k in _STDLIB_MODULES if k not in _ALIAS_KEYS]
 
