@@ -1136,7 +1136,7 @@
 - <strong>As function reference</strong>: <code>valid email</code> (no parens) — passes the validates function as a predicate to higher-order functions like <code>filter</code></p>
 <p>Implications:</p>
 <ul>
-<li><strong>Imports are precise</strong>: <code>with Auth use validates login, inputs session</code></li>
+<li><strong>Imports are precise</strong>: <code>Auth validates login, inputs session</code></li>
 <li><strong>API docs group by verb</strong>: what can you validate? what can you yield? what can you transform?</li>
 <li><strong>Call sites are clean</strong>: just the function name in most cases</li>
 <li><strong>AI resistance</strong>: declarations require the correct verb, and the resolution rules add non-local reasoning requirements</li>
@@ -1291,81 +1291,69 @@
 <thead>
 <tr>
 <th>Keyword</th>
-<th>Exclusive purpose</th>
+<th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>transforms</code></td>
-<td>Verb — pure data computation/conversion</td>
+<td>Declares a pure function — no side effects, just data in, data out</td>
 </tr>
 <tr>
 <td><code>inputs</code></td>
-<td>Verb — reads/receives from external world (implicit match when first param is algebraic)</td>
+<td>Declares a function that reads from the outside world (database, file, network)</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td>Verb — writes/sends to external world</td>
+<td>Declares a function that writes to the outside world</td>
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td>Verb — pure boolean check</td>
+<td>Declares a function that returns true or false</td>
 </tr>
 <tr>
 <td><code>main</code></td>
-<td>Entry point — no verb, the program itself. Only function that freely mixes inputs/outputs</td>
+<td>The program's entry point — can freely mix reading and writing</td>
 </tr>
 <tr>
 <td><code>from</code></td>
-<td>Body marker — introduces function implementation</td>
+<td>Marks where the function body starts — "the result comes from..."</td>
 </tr>
 <tr>
 <td><code>where</code></td>
-<td>Refinement constraint — value predicates only</td>
+<td>Adds a value constraint to a type — <code>Integer where 1..65535</code></td>
 </tr>
 <tr>
 <td><code>as</code></td>
-<td>Variable declaration — <code>name as Type = value</code></td>
-</tr>
-<tr>
-<td><code>!</code></td>
-<td>Fallibility — on declaration: can fail. At call site: propagate failure. IO verbs only</td>
-</tr>
-<tr>
-<td><code>with</code></td>
-<td>Import — <code>with Module use function</code></td>
+<td>Declares a variable — <code>name as Type = value</code></td>
 </tr>
 <tr>
 <td><code>type</code></td>
-<td>Type definition — <code>type Name is ...</code></td>
-</tr>
-<tr>
-<td><code>is</code></td>
-<td>Type body — follows <code>type Name</code></td>
+<td>Defines a new type — <code>type Port is Integer where 1..65535</code></td>
 </tr>
 <tr>
 <td><code>match</code></td>
-<td>Pattern matching expression</td>
+<td>Branches on a value — the only way to do conditional logic</td>
 </tr>
 <tr>
 <td><code>ensures</code></td>
-<td>Postcondition contract</td>
+<td>States what a function guarantees about its result</td>
 </tr>
 <tr>
 <td><code>requires</code></td>
-<td>Precondition contract</td>
+<td>States what must be true before calling a function</td>
 </tr>
 <tr>
 <td><code>proof</code></td>
-<td>Proof obligation block</td>
+<td>Explains <em>why</em> the guarantees hold — checked by the compiler</td>
 </tr>
 <tr>
 <td><code>valid</code></td>
-<td>Predicate reference for validates functions</td>
+<td>References a <code>validates</code> function as a predicate</td>
 </tr>
 <tr>
 <td><code>comptime</code></td>
-<td>Compile-time computation</td>
+<td>Runs code at compile time instead of runtime</td>
 </tr>
 </tbody>
 </table>
@@ -1374,57 +1362,57 @@
 <thead>
 <tr>
 <th>Keyword</th>
-<th>Exclusive purpose</th>
+<th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>domain</code></td>
-<td>Domain declaration — context-dependent syntax</td>
+<td>Sets the module's domain — syntax adapts to the context</td>
 </tr>
 <tr>
 <td><code>intent</code></td>
-<td>Intentional ambiguity resolution</td>
+<td>Declares what a piece of code is <em>meant</em> to do — compiler checks it matches</td>
 </tr>
 <tr>
 <td><code>narrative</code></td>
-<td>Module coherence requirement</td>
+<td>Describes the module's purpose — unrelated functions are rejected</td>
 </tr>
 <tr>
 <td><code>why_not</code></td>
-<td>Counterfactual annotation — rejected alternatives</td>
+<td>Documents a rejected alternative — "we didn't do X because..."</td>
 </tr>
 <tr>
 <td><code>chosen</code></td>
-<td>Counterfactual annotation — selected rationale</td>
+<td>Documents the chosen approach — "we did Y because..."</td>
 </tr>
 <tr>
 <td><code>near_miss</code></td>
-<td>Adversarial boundary example</td>
+<td>An input that <em>almost</em> breaks the code but doesn't — proves you understand the boundary</td>
 </tr>
 <tr>
 <td><code>know</code></td>
-<td>Epistemic — proven by type system (zero cost)</td>
+<td>"I'm certain" — the compiler can prove this, no runtime cost</td>
 </tr>
 <tr>
 <td><code>assume</code></td>
-<td>Epistemic — runtime validated at boundaries</td>
+<td>"I expect this" — the compiler adds a runtime check at boundaries</td>
 </tr>
 <tr>
 <td><code>believe</code></td>
-<td>Epistemic — compiler generates adversarial tests</td>
+<td>"I think this" — the compiler generates tests trying to disprove it</td>
 </tr>
 <tr>
 <td><code>temporal</code></td>
-<td>Temporal effect ordering constraint</td>
+<td>Enforces the order things must happen — e.g. authenticate before access</td>
 </tr>
 <tr>
 <td><code>satisfies</code></td>
-<td>Invariant network conformance</td>
+<td>Declares that a function obeys a set of rules</td>
 </tr>
 <tr>
 <td><code>invariant_network</code></td>
-<td>Invariant network declaration</td>
+<td>Defines a set of rules that must always hold together</td>
 </tr>
 </tbody>
 </table>
