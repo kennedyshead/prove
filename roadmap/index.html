@@ -10,11 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://kennedyshead.github.io/prove/inspirations/">
+        <link rel="canonical" href="https://kennedyshead.github.io/prove/roadmap/">
       
       
-        <link rel="prev" href="../roadmap/">
+        <link rel="prev" href="../design/">
       
+      
+        <link rel="next" href="../inspirations/">
       
       
         
@@ -25,7 +27,7 @@
     
     
       
-        <title>Inspirations - Prove</title>
+        <title>Roadmap - Prove</title>
       
     
     
@@ -78,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#design-inspirations" class="md-skip">
+        <a href="#roadmap" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Inspirations
+              Roadmap
             
           </span>
         </div>
@@ -713,10 +715,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../roadmap/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -732,6 +761,109 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version History
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned Versions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Planned Versions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v05-turbo-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.5 — Turbo Runtime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v06-core-stdlib" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.6 — Core Stdlib
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v07-io-extensions-and-parse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v0.7 — IO Extensions and Parse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v10-self-hosting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.0 — Self-Hosting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ecosystem
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -741,19 +873,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../inspirations/" class="md-nav__link">
         
   
   
@@ -769,7 +892,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -799,60 +921,110 @@
 
 
 
-<h1 id="design-inspirations">Design Inspirations<a class="headerlink" href="#design-inspirations" title="Permanent link">&para;</a></h1>
+<h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<h2 id="version-history">Version History<a class="headerlink" href="#version-history" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Language</th>
-<th>What Prove borrows</th>
-<th>What Prove avoids</th>
+<th>Version</th>
+<th>Status</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Rust</strong></td>
-<td>Ownership model, exhaustive matching, no null</td>
-<td>Lifetime annotation burden, borrow checker complexity</td>
+<td>v0.1</td>
+<td>Complete</td>
+<td>Core pipeline — lexer, parser, checker, prover, C emitter, native binaries</td>
 </tr>
 <tr>
-<td><strong>Haskell</strong></td>
-<td>Type system, pure functions, algebraic types</td>
-<td>IO monad complexity, lazy evaluation surprises</td>
+<td>v0.2</td>
+<td>Complete (archived)</td>
+<td>ASM backend reference implementation (x86_64)</td>
 </tr>
 <tr>
-<td><strong>Go</strong></td>
-<td>Parameter syntax (<code>name Type</code>), simplicity as goal</td>
-<td>Weak type system, error handling verbosity</td>
+<td>v0.3</td>
+<td>Complete</td>
+<td>Legacy stdlib cleanup, <code>List</code> module</td>
 </tr>
 <tr>
-<td><strong>Python</strong></td>
-<td>Indentation-based blocks, readability philosophy</td>
-<td>Dynamic typing, runtime errors</td>
+<td>v0.4</td>
+<td>Complete</td>
+<td>Pure verbs, binary types, namespaced calls, channel dispatch — 394 tests</td>
 </tr>
 <tr>
-<td><strong>Zig</strong></td>
-<td><code>comptime</code> (compile-time computation with IO)</td>
-<td>Manual memory management</td>
+<td>v0.5</td>
+<td>Planned</td>
+<td>Turbo runtime — arena allocator, fast hash, string intern</td>
 </tr>
 <tr>
-<td><strong>Ada/SPARK</strong></td>
-<td>Contract-based programming, formal verification</td>
-<td>Verbose syntax</td>
+<td>v0.6</td>
+<td>Planned</td>
+<td>Core stdlib — Character, Text, Table</td>
 </tr>
 <tr>
-<td><strong>Idris/Agda</strong></td>
-<td>Dependent types for encoding invariants</td>
-<td>Academic accessibility barrier</td>
+<td>v0.7</td>
+<td>Planned</td>
+<td>IO extensions and Parse</td>
 </tr>
 <tr>
-<td><strong>Elm</strong></td>
-<td>Eliminating runtime exceptions, compiler as assistant</td>
-<td>Limited to frontend</td>
+<td>v1.0</td>
+<td>Planned</td>
+<td>Self-hosting compiler</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="planned-versions">Planned Versions<a class="headerlink" href="#planned-versions" title="Permanent link">&para;</a></h2>
+<h3 id="v05-turbo-runtime">v0.5 — Turbo Runtime<a class="headerlink" href="#v05-turbo-runtime" title="Permanent link">&para;</a></h3>
+<p>High-performance C runtime primitives that the stdlib builds on:</p>
+<ul>
+<li><strong>Arena allocator</strong> — bump-pointer allocation, eliminates per-object malloc and reference counting in hot paths.</li>
+<li><strong>Fast hash</strong> — hardware CRC32 hash (x86_64 + ARM64 with software fallback) for hash tables and string interning.</li>
+<li><strong>String intern table</strong> — string deduplication so that string comparisons become pointer equality.</li>
+</ul>
+<h3 id="v06-core-stdlib">v0.6 — Core Stdlib<a class="headerlink" href="#v06-core-stdlib" title="Permanent link">&para;</a></h3>
+<p>The three data modules the self-hosted compiler needs most:</p>
+<ul>
+<li><strong>Character</strong> — character classification (<code>alpha</code>, <code>digit</code>, <code>space</code>, etc.) and indexed access into strings.</li>
+<li><strong>Text</strong> — string querying (<code>contains</code>, <code>starts_with</code>, <code>index_of</code>), transformation (<code>split</code>, <code>join</code>, <code>trim</code>, <code>replace</code>), and <code>Builder</code> for efficient string construction.</li>
+<li><strong>Table</strong> — hash map from <code>String</code> keys to values. Uses the turbo runtime's fast hash internally.</li>
+</ul>
+<h3 id="v07-io-extensions-and-parse">v0.7 — IO Extensions and Parse<a class="headerlink" href="#v07-io-extensions-and-parse" title="Permanent link">&para;</a></h3>
+<p>Extend <code>InputOutput</code> with the channels the compiler needs, and add structured format parsing:</p>
+<ul>
+<li><strong>InputOutput extensions</strong> — <code>system</code> (process execution via fork/exec), <code>dir</code> (directory listing and creation), <code>process</code> (command-line arguments), and <code>validates</code> verbs for existence checks on all channels.</li>
+<li><strong>Parse</strong> — format codecs with a two-function pattern: <code>creates toml(source)</code> decodes, <code>reads toml(value)</code> encodes. Same for JSON. Additional formats follow the same pattern.</li>
+</ul>
+<h3 id="v10-self-hosting">v1.0 — Self-Hosting<a class="headerlink" href="#v10-self-hosting" title="Permanent link">&para;</a></h3>
+<p>Rewrite the Prove compiler in Prove and compile it with the Python bootstrap compiler:</p>
+<ol>
+<li>Python compiler compiles compiler <code>.prv</code> source to a native binary.</li>
+<li>That binary compiles the same source again.</li>
+<li>If both produce identical output, the compiler is self-hosting.</li>
+</ol>
+<p>The Python compiler remains as the bootstrap. Estimated at ~5,900 lines of Prove (vs ~10,800 lines of Python) thanks to algebraic types and pattern matching replacing <code>isinstance</code> dispatch.</p>
+<hr />
+<h2 id="ecosystem">Ecosystem<a class="headerlink" href="#ecosystem" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://code.botwork.se/Botwork/tree-sitter-prove">tree-sitter-prove</a></td>
+<td>Tree-sitter grammar for editor syntax highlighting</td>
 </tr>
 <tr>
-<td><strong>F#</strong></td>
-<td>Pragmatic algebraic types, pipeline operator</td>
-<td>—</td>
+<td><a href="https://code.botwork.se/Botwork/pygments-prove">pygments-prove</a></td>
+<td>Pygments lexer for MkDocs and Sphinx code rendering</td>
+</tr>
+<tr>
+<td><a href="https://code.botwork.se/Botwork/chroma-lexer-prove">chroma-lexer-prove</a></td>
+<td>Chroma lexer for Gitea and Hugo code rendering</td>
 </tr>
 </tbody>
 </table>

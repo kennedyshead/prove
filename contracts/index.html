@@ -16,7 +16,7 @@
         <link rel="prev" href="../types/">
       
       
-        <link rel="next" href="../compiler/">
+        <link rel="next" href="../stdlib/">
       
       
         
@@ -578,6 +578,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#level-3-near_miss-boundary-witnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Level 3: near_miss — Boundary Witnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#level-4-built-in-mutation-testing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -602,6 +613,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stdlib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standard Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -615,9 +654,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../compiler/" class="md-nav__link">
+    
+    
+    
+    
+      
         
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -631,7 +688,107 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -695,7 +852,7 @@
   <span class="md-ellipsis">
     
   
-    Design
+    Project
   
 
     
@@ -711,7 +868,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Design
+    Project
   
 
           </label>
@@ -731,7 +888,35 @@
   <span class="md-ellipsis">
     
   
-    Decisions & Trade-offs
+    Design Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
   
 
     
@@ -953,16 +1138,28 @@
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1">// Auto-tests: 1, 2, 65534, 65535, and random values between</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1">// Also verifies that 0 and 65536 are rejected at the call site</span>
 </code></pre></div>
+<h3 id="level-3-near_miss-boundary-witnesses">Level 3: <code>near_miss</code> — Boundary Witnesses<a class="headerlink" href="#level-3-near_miss-boundary-witnesses" title="Permanent link">&para;</a></h3>
+<p>A <code>near_miss</code> declares an input that <em>should fail</em> a contract. The compiler verifies that the function's <code>requires</code> or <code>validates</code> clauses actually reject it. This catches contracts that are too permissive.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kd">transforms</span> <span class="n">leap_year</span><span class="p">(</span><span class="n">y</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Boolean</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  <span class="kn">requires</span> <span class="n">y</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  <span class="kn">near_miss</span> <span class="mi">0</span> <span class="p">=&gt;</span> <span class="n">rejected</span>       <span class="c1">// not a valid year</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  <span class="kn">near_miss</span> <span class="o">-</span><span class="mi">1</span> <span class="p">=&gt;</span> <span class="n">rejected</span>      <span class="c1">// negative year</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  <span class="kn">proof</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="na">positive_year</span><span class="p">:</span> <span class="kn">requires</span> <span class="n">clause</span> <span class="n">rejects</span> <span class="n">non</span><span class="o">-</span><span class="n">positive</span> <span class="n">years</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">from</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="p">(</span><span class="n">y</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">100</span> <span class="kp">!</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">400</span> <span class="o">==</span> <span class="mi">0</span>
+</code></pre></div>
+<p>The compiler generates tests that pass each <code>near_miss</code> input to the function and confirms it is rejected by the preconditions. If a <code>near_miss</code> input is accidentally accepted, the test fails — the contract has a gap.</p>
 <h3 id="level-4-built-in-mutation-testing">Level 4: Built-in Mutation Testing<a class="headerlink" href="#level-4-built-in-mutation-testing" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>$ prove build --mutate
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Mutation score: 97.2% (347/357 mutants killed)
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>Surviving mutants:
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  src/cache.prv:45  — changed `&gt;=` to `&gt;` (boundary condition not covered)
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  Suggested contract to add:
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$ prove build --mutate
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Mutation score: 97.2% (347/357 mutants killed)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>Surviving mutants:
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  src/cache.prv:45  — changed `&gt;=` to `&gt;` (boundary condition not covered)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  Suggested contract to add:
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    ensures len(cache) &lt;= max_size   // would kill both mutants
 </code></pre></div>
 
 

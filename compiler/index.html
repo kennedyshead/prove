@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://kennedyshead.github.io/prove/compiler/">
       
       
-        <link rel="prev" href="../contracts/">
+        <link rel="prev" href="../diagnostics/">
       
       
         <link rel="next" href="../ai-resistance/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>Compiler - Prove</title>
+        <title>Compiler Features - Prove</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#compiler-driven-development" class="md-skip">
+        <a href="#compiler-features" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compiler
+              Compiler Features
             
           </span>
         </div>
@@ -422,6 +422,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stdlib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standard Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -431,6 +459,116 @@
     
       
       
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
   
   
     
@@ -452,7 +590,7 @@
   <span class="md-ellipsis">
     
   
-    Compiler
+    Compiler Features
   
 
     
@@ -470,7 +608,7 @@
   <span class="md-ellipsis">
     
   
-    Compiler
+    Compiler Features
   
 
     
@@ -496,10 +634,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#conversational-compiler-errors" class="md-nav__link">
+  <a href="#pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Conversational Compiler Errors
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provetoml-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prove.toml Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conversational-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conversational Errors
       
     </span>
   </a>
@@ -517,9 +677,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#verb-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verb Enforcement
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -584,7 +763,7 @@
   <span class="md-ellipsis">
     
   
-    Design
+    Project
   
 
     
@@ -600,7 +779,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Design
+    Project
   
 
           </label>
@@ -620,7 +799,35 @@
   <span class="md-ellipsis">
     
   
-    Decisions & Trade-offs
+    Design Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
   
 
     
@@ -686,32 +893,177 @@
 
 
 
-<h1 id="compiler-driven-development">Compiler-Driven Development<a class="headerlink" href="#compiler-driven-development" title="Permanent link">&para;</a></h1>
-<h2 id="conversational-compiler-errors">Conversational Compiler Errors<a class="headerlink" href="#conversational-compiler-errors" title="Permanent link">&para;</a></h2>
-<p>Errors are suggestions, not walls:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>error[E042]: `port` may exceed type bound
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  --&gt; server.prv:12:5
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   |
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>12 |   port as Port = get_integer(config, &quot;port&quot;)
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>   = note: `get_integer` returns Integer, but Port requires 1..65535
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>   try: port as Port = clamp(get_integer(config, &quot;port&quot;), 1, 65535)
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    or: port as Port = check(get_integer(config, &quot;port&quot;))!
+<h1 id="compiler-features">Compiler Features<a class="headerlink" href="#compiler-features" title="Permanent link">&para;</a></h1>
+<h2 id="pipeline">Pipeline<a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h2>
+<p>Prove compiles <code>.prv</code> source files to native binaries through a six-stage pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
 </code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Key responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lexer</strong></td>
+<td>Source text</td>
+<td>Token stream</td>
+<td>Indent/dedent tracking, string interpolation, regex disambiguation</td>
+</tr>
+<tr>
+<td><strong>Parser</strong></td>
+<td>Token stream</td>
+<td>AST</td>
+<td>Pratt expression parsing, recursive descent for declarations</td>
+</tr>
+<tr>
+<td><strong>Checker</strong></td>
+<td>AST</td>
+<td>Typed AST + symbol table</td>
+<td>Type inference, verb enforcement, match exhaustiveness</td>
+</tr>
+<tr>
+<td><strong>Prover</strong></td>
+<td>AST + contracts</td>
+<td>Diagnostics</td>
+<td>Proof obligation verification, contract consistency</td>
+</tr>
+<tr>
+<td><strong>C Emitter</strong></td>
+<td>Typed AST</td>
+<td>C source</td>
+<td>Type mapping, name mangling, lambda hoisting, reference counting</td>
+</tr>
+<tr>
+<td><strong>gcc/clang</strong></td>
+<td>C source</td>
+<td>Native binary</td>
+<td>Optimization, linking with C runtime</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="provetoml-configuration"><code>prove.toml</code> Configuration<a class="headerlink" href="#provetoml-configuration" title="Permanent link">&para;</a></h2>
+<p>Every Prove project has a <code>prove.toml</code> at its root. The <code>prove new</code> command generates one with sensible defaults.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[package]</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">authors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">[build]</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;native&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">optimize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">[test]</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">property_rounds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="k">[style]</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">line_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">90</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Key</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[package]</code></td>
+<td><code>name</code></td>
+<td><code>"untitled"</code></td>
+<td>Package name, used for the output binary</td>
+</tr>
+<tr>
+<td></td>
+<td><code>version</code></td>
+<td><code>"0.0.0"</code></td>
+<td>Semantic version</td>
+</tr>
+<tr>
+<td></td>
+<td><code>authors</code></td>
+<td><code>[]</code></td>
+<td>Author names</td>
+</tr>
+<tr>
+<td></td>
+<td><code>license</code></td>
+<td><code>""</code></td>
+<td>License identifier</td>
+</tr>
+<tr>
+<td><code>[build]</code></td>
+<td><code>target</code></td>
+<td><code>"native"</code></td>
+<td>Build target</td>
+</tr>
+<tr>
+<td></td>
+<td><code>optimize</code></td>
+<td><code>false</code></td>
+<td>Enable compiler optimizations</td>
+</tr>
+<tr>
+<td><code>[test]</code></td>
+<td><code>property_rounds</code></td>
+<td><code>1000</code></td>
+<td>Number of random inputs per property test (overridable with <code>--property-rounds</code>)</td>
+</tr>
+<tr>
+<td><code>[style]</code></td>
+<td><code>line_length</code></td>
+<td><code>90</code></td>
+<td>Maximum line length for the formatter</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="conversational-errors">Conversational Errors<a class="headerlink" href="#conversational-errors" title="Permanent link">&para;</a></h2>
+<p>Diagnostics are suggestions, not walls. Every error includes the source location, an explanation, and often a concrete fix:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>error[E042]: `port` may exceed type bound
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  --&gt; server.prv:12:5
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>   |
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>12 |   port as Port = get_integer(config, &quot;port&quot;)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   = note: `get_integer` returns Integer, but Port requires 1..65535
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   try: port as Port = clamp(get_integer(config, &quot;port&quot;), 1, 65535)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    or: port as Port = check(get_integer(config, &quot;port&quot;))!
+</code></pre></div>
+<p>The compiler uses Rust-style diagnostic rendering with ANSI colors, span highlighting, and multi-line context.</p>
+<p>See <a href="../diagnostics/">Diagnostic Codes</a> for the full list of error and warning codes.</p>
+<hr />
 <h2 id="comptime-compile-time-computation">Comptime (Compile-Time Computation)<a class="headerlink" href="#comptime-compile-time-computation" title="Permanent link">&para;</a></h2>
-<p>Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="no">MAX_CONNECTIONS</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="k">comptime</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  <span class="k">match</span> <span class="n">cfg</span><span class="o">.</span><span class="n">target</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s">&quot;embedded&quot;</span> <span class="p">=&gt;</span> <span class="mi">16</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">_</span> <span class="p">=&gt;</span> <span class="mi">1024</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="no">LOOKUP_TABLE</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="p">:[</span><span class="mi">32</span> <span class="nc">Unsigned</span><span class="p">]</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  <span class="n">collect</span><span class="p">(</span><span class="n">map</span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">256</span><span class="p">,</span> <span class="n">crc32_step</span><span class="p">))</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="no">ROUTES</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Route</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  <span class="n">decode</span><span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;routes.json&quot;</span><span class="p">))</span>                   <span class="c1">// IO allowed — routes.json becomes a build dep</span>
+<p>Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="no">MAX_CONNECTIONS</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  <span class="k">match</span> <span class="n">cfg</span><span class="o">.</span><span class="n">target</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="s">&quot;embedded&quot;</span> <span class="p">=&gt;</span> <span class="mi">16</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">_</span> <span class="p">=&gt;</span> <span class="mi">1024</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="no">LOOKUP_TABLE</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="p">:[</span><span class="mi">32</span> <span class="nc">Unsigned</span><span class="p">]</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  <span class="n">collect</span><span class="p">(</span><span class="n">map</span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">256</span><span class="p">,</span> <span class="n">crc32_step</span><span class="p">))</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="no">ROUTES</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">Route</span><span class="o">&gt;</span> <span class="o">=</span> <span class="k">comptime</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  <span class="n">decode</span><span class="p">(</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;routes.json&quot;</span><span class="p">))</span>         <span class="c1">// IO allowed — routes.json becomes a build dep</span>
 </code></pre></div>
+<hr />
+<h2 id="verb-enforcement">Verb Enforcement<a class="headerlink" href="#verb-enforcement" title="Permanent link">&para;</a></h2>
+<p>The compiler enforces purity rules based on the function's verb. Pure verbs (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>saves</code>) cannot perform side effects:</p>
+<ul>
+<li>Cannot call built-in IO functions like <code>println</code> or <code>read_file</code> (E362)</li>
+<li>Cannot call user-defined functions with IO verbs <code>inputs</code> or <code>outputs</code> (E363)</li>
+<li>Cannot be failable with <code>!</code> (E361)</li>
+</ul>
+<p>IO verbs (<code>inputs</code>, <code>outputs</code>) have no such restrictions.</p>
+<p>See <a href="../diagnostics/#verb-enforcement-e360-e364">Diagnostic Codes</a> for details on each enforcement error.</p>
 
 
 
