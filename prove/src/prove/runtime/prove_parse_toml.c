@@ -12,55 +12,48 @@
 /* ── Value constructors (shared with JSON) ───────────────────── */
 
 Prove_Value *prove_value_null(void) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_NULL;
     return v;
 }
 
 Prove_Value *prove_value_text(Prove_String *s) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_TEXT;
     v->text = s;
     return v;
 }
 
 Prove_Value *prove_value_number(int64_t n) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_NUMBER;
     v->number = n;
     return v;
 }
 
 Prove_Value *prove_value_decimal(double d) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_DECIMAL;
     v->decimal = d;
     return v;
 }
 
 Prove_Value *prove_value_bool(bool b) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_BOOL;
     v->boolean = b;
     return v;
 }
 
 Prove_Value *prove_value_array(Prove_List *arr) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_ARRAY;
     v->array = arr;
     return v;
 }
 
 Prove_Value *prove_value_object(Prove_Table *obj) {
-    Prove_Value *v = (Prove_Value *)malloc(sizeof(Prove_Value));
-    if (!v) return NULL;
+    Prove_Value *v = (Prove_Value *)prove_alloc(sizeof(Prove_Value));
     v->tag = PROVE_VALUE_OBJECT;
     v->object = obj;
     return v;

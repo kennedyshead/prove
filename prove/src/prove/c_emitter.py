@@ -947,6 +947,21 @@ class CEmitter:
     # ── Call expressions ───────────────────────────────────────
 
     def _emit_call(self, expr: CallExpr) -> str:
+        if isinstance(expr.func, IdentifierExpr):
+            name = expr.func.name
+
+            # Higher-order functions handle their own arg emission
+            # (must check before eagerly emitting args to avoid
+            # hoisting lambdas that will be inlined)
+            if name == "map" and len(expr.args) == 2:
+                return self._emit_hof_map(expr)
+            if name == "each" and len(expr.args) == 2:
+                return self._emit_hof_each(expr)
+            if name == "filter" and len(expr.args) == 2:
+                return self._emit_hof_filter(expr)
+            if name == "reduce" and len(expr.args) == 3:
+                return self._emit_hof_reduce(expr)
+
         args = [self._emit_expr(a) for a in expr.args]
 
         if isinstance(expr.func, IdentifierExpr):
@@ -964,16 +979,6 @@ class CEmitter:
                 if isinstance(arg_type, PrimitiveType) and arg_type.name == "String":
                     return f"prove_string_len({', '.join(args)})"
                 return f"prove_list_len({', '.join(args)})"
-
-            # Higher-order functions: map, filter, reduce
-            if name == "map" and len(expr.args) == 2:
-                return self._emit_hof_map(expr)
-            if name == "each" and len(expr.args) == 2:
-                return self._emit_hof_each(expr)
-            if name == "filter" and len(expr.args) == 2:
-                return self._emit_hof_filter(expr)
-            if name == "reduce" and len(expr.args) == 3:
-                return self._emit_hof_reduce(expr)
 
             # Builtin mapping
             if name in _BUILTIN_MAP:
@@ -1077,6 +1082,21 @@ class CEmitter:
 
     # ── Higher-order function emission ─────────────────────────
 
+    def _emit_loop_body_retains(self, body: Expr, loop_param: str) -> None:
+        """Emit prove_retain for captured pointer vars passed to calls in a loop.
+
+        The callee releases its parameters, but loop-invariant captured
+        variables are reused on every iteration, so we must retain them
+        before each call to keep the refcount balanced.
+        """
+        if not isinstance(body, CallExpr):
+            return
+        for arg in body.args:
+            if isinstance(arg, IdentifierExpr) and arg.name != loop_param:
+                ty = self._locals.get(arg.name)
+                if ty and map_type(ty).is_pointer:
+                    self._line(f"prove_retain({arg.name});")
+
     def _emit_hof_map(self, expr: CallExpr) -> str:
         """Emit prove_list_map(list, fn, result_elem_size)."""
         self._needed_headers.add("prove_hof.h")
@@ -1120,6 +1140,9 @@ class CEmitter:
             )
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            # Retain captured pointer vars before the call — the callee
+            # releases its params, but we reuse captured vars each iteration.
+            self._emit_loop_body_retains(lam.body, param)
             body_code = self._emit_expr(lam.body)
             self._locals = saved_locals
             self._line(f"{body_code};")
@@ -1324,7 +1347,7 @@ class CEmitter:
             err_str = self._tmp()
             self._line(
                 f"Prove_String *{err_str} ="
-                f" (Prove_String*){tmp}.data;"
+                f" (Prove_String*){tmp}.error;"
             )
             self._line(
                 f"if ({err_str}) fprintf(stderr,"

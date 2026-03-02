@@ -22,6 +22,7 @@ typedef enum {
 typedef struct Prove_Value Prove_Value;
 
 struct Prove_Value {
+    Prove_Header   header;
     Prove_ValueTag tag;
     union {
         Prove_String *text;

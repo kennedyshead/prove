@@ -182,5 +182,5 @@ from
 | v0.6 | **Character** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
 | v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
 | v0.6 | **Table** | Complete | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
-| v0.7 | **InputOutput** (ext) | Complete | New channels: `system`, `dir`, `process` with `validates` verbs for existence checks |
-| v0.7 | **Parse** | Complete | Format codecs for TOML and JSON with `Value` type and accessors |
+| v0.7 | **InputOutput** (ext) | In progress | New channels: `system`, `dir`, `process` with `validates` verbs for existence checks |
+| v0.7 | **Parse** | In progress | Format codecs for TOML and JSON with `Value` type and accessors |
