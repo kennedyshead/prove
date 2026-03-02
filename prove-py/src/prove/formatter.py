@@ -3,11 +3,16 @@
 Produces canonical formatting for .prv files. Walks the parsed AST and
 emits source text using the same isinstance-dispatch pattern as c_emitter.py.
 
+v0.8: When a SymbolTable is provided, the formatter infers type annotations
+for variable declarations whose RHS is a function call.
+
 Limitation (v0.1): Regular ``//`` comments are not preserved in the AST
 (discarded by the lexer). Doc comments (``///``) are preserved and emitted.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from prove.ast_nodes import (
     AlgebraicTypeDef,
@@ -59,6 +64,10 @@ from prove.ast_nodes import (
     WildcardPattern,
 )
 
+if TYPE_CHECKING:
+    from prove.symbols import SymbolTable
+    from prove.types import Type
+
 # Operator precedence table (higher binds tighter)
 _PRECEDENCE: dict[str, int] = {
     "||": 1,
@@ -73,6 +82,9 @@ _PRECEDENCE: dict[str, int] = {
 
 class ProveFormatter:
     """Format a parsed Prove Module back to canonical source text."""
+
+    def __init__(self, symbols: SymbolTable | None = None) -> None:
+        self._symbols = symbols
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -337,7 +349,7 @@ class ProveFormatter:
         if isinstance(stmt, VarDecl):
             return self._format_var_decl(stmt)
         if isinstance(stmt, Assignment):
-            return f"{stmt.target} = {self._format_expr(stmt.value)}"
+            return self._format_assignment(stmt)
         if isinstance(stmt, ExprStmt):
             return self._format_expr(stmt.expr)
         if isinstance(stmt, MatchExpr):
@@ -348,7 +360,24 @@ class ProveFormatter:
         type_ann = ""
         if vd.type_expr:
             type_ann = f" {self._format_type_expr(vd.type_expr)}"
+        elif self._symbols is not None:
+            inferred = self._infer_var_type(vd.value)
+            if inferred:
+                type_ann = f" {inferred}"
         return f"{vd.name} as{type_ann} = {self._format_expr(vd.value)}"
+
+    def _format_assignment(self, assign: Assignment) -> str:
+        """Format an assignment, promoting to VarDecl syntax when possible.
+
+        When the RHS is a function call and we can infer the return type,
+        emit ``name as Type = expr`` (variable declaration) instead of
+        plain ``name = expr``.
+        """
+        if self._symbols is not None:
+            inferred = self._infer_var_type(assign.value)
+            if inferred:
+                return f"{assign.target} as {inferred} = {self._format_expr(assign.value)}"
+        return f"{assign.target} = {self._format_expr(assign.value)}"
 
     # ── Expression formatting ──────────────────────────────────
 
@@ -501,6 +530,153 @@ class ProveFormatter:
             )
             return f"{te.name}:[{mods}]"
         return "???"
+
+    # ── Type inference (v0.8) ────────────────────────────────────
+
+    def _infer_var_type(self, value: object) -> str | None:
+        """Infer a type annotation string from a value expression.
+
+        Only handles function calls (direct and module-qualified) and
+        FailProp wrapping a call.  Returns None if no inference is possible.
+        """
+        assert self._symbols is not None
+
+        # FailProp: expr! — unwrap to get the inner call, then unwrap Result
+        if isinstance(value, FailPropExpr):
+            inner_type = self._resolve_call_return(value.expr, prefer_result=True)
+            if inner_type is not None:
+                return self._unwrap_result(inner_type)
+            return None
+
+        return self._resolve_call_return_str(value)
+
+    def _resolve_call_return_str(self, expr: object) -> str | None:
+        """If expr is a call, resolve and stringify its return type."""
+        ty = self._resolve_call_return(expr)
+        if ty is None:
+            return None
+        return self._type_to_str(ty)
+
+    def _resolve_call_return(
+        self, expr: object, *, prefer_result: bool = False,
+    ) -> Type | None:
+        """Resolve the return type of a call expression.
+
+        When *prefer_result* is True (FailProp context), prefer overloads
+        that return ``Result<T, E>`` over those that don't.
+        """
+        assert self._symbols is not None
+        from prove.types import GenericInstance
+
+        if not isinstance(expr, CallExpr):
+            return None
+
+        arg_count = len(expr.args)
+
+        def _pick_sig(name: str) -> Type | None:
+            sig = self._symbols.resolve_function(None, name, arg_count)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(name, arity=arg_count)
+            if sig is None:
+                return None
+            if not prefer_result:
+                return sig.return_type
+            # In FailProp context, prefer a Result-returning overload
+            ret = sig.return_type
+            if isinstance(ret, GenericInstance) and ret.base_name == "Result":
+                return ret
+            # Check all overloads for a Result-returning one
+            all_fns = self._symbols.all_functions()
+            for (_v, fname), sigs in all_fns.items():
+                if fname != name:
+                    continue
+                for s in sigs:
+                    if len(s.param_types) != arg_count:
+                        continue
+                    r = s.return_type
+                    if isinstance(r, GenericInstance) and r.base_name == "Result":
+                        return r
+            return ret
+
+        # Module-qualified call: Module.function(args)
+        if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            return _pick_sig(expr.func.field)
+
+        # Unqualified call: function(args)
+        if isinstance(expr.func, IdentifierExpr):
+            return _pick_sig(expr.func.name)
+
+        # Type constructor call: TypeName(args)
+        if isinstance(expr.func, TypeIdentifierExpr):
+            name = expr.func.name
+            result = _pick_sig(name)
+            if result is not None:
+                return result
+            resolved = self._symbols.resolve_type(name)
+            if resolved is not None:
+                return resolved
+            return None
+
+        return None
+
+    def _unwrap_result(self, ty: Type) -> str | None:
+        """Unwrap Result<T, E> to T as the annotation string.
+
+        FailProp (!) propagates the error case, so the variable holds the
+        success type T.  For non-Result return types, stringify as-is.
+        """
+        from prove.types import ErrorType, GenericInstance, UnitType
+
+        if isinstance(ty, (UnitType, ErrorType)):
+            return None
+        # Result<T, E> → T (the success type)
+        if isinstance(ty, GenericInstance) and ty.base_name == "Result" and ty.args:
+            return self._type_to_str(ty.args[0])
+        return self._type_to_str(ty)
+
+    @staticmethod
+    def _type_to_str(ty: Type) -> str | None:
+        """Convert a resolved Type to source-level type syntax."""
+        from prove.types import (
+            AlgebraicType,
+            ErrorType,
+            GenericInstance,
+            ListType,
+            PrimitiveType,
+            RecordType,
+            RefinementType,
+            TypeVariable,
+            UnitType,
+        )
+
+        if isinstance(ty, UnitType):
+            return None  # Don't annotate Unit
+        if isinstance(ty, ErrorType):
+            return None  # Unknown type — skip
+        if isinstance(ty, PrimitiveType):
+            return ty.name
+        if isinstance(ty, TypeVariable):
+            return ty.name
+        if isinstance(ty, ListType):
+            inner = ProveFormatter._type_to_str(ty.element)
+            if inner is None:
+                return None
+            return f"List<{inner}>"
+        if isinstance(ty, GenericInstance):
+            args = []
+            for a in ty.args:
+                s = ProveFormatter._type_to_str(a)
+                if s is None:
+                    return None
+                args.append(s)
+            return f"{ty.base_name}<{', '.join(args)}>"
+        if isinstance(ty, RecordType):
+            return ty.name
+        if isinstance(ty, AlgebraicType):
+            return ty.name
+        if isinstance(ty, RefinementType):
+            return ty.name
+        return None
 
     # ── Helpers ────────────────────────────────────────────────
 

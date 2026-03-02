@@ -579,7 +579,7 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     if ds is None or ds.module is None:
         return None
 
-    fmt = ProveFormatter()
+    fmt = ProveFormatter(symbols=ds.symbols)
     formatted = fmt.format(ds.module)
 
     if formatted == ds.source:
@@ -603,8 +603,8 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
 
 
 def _is_importable_error(diag: lsp.Diagnostic) -> bool:
-    """Match E310 (undefined name) or E300 (undefined type) diagnostics."""
-    return diag.code in ("E310", "E300")
+    """Match E310/W310 (undefined name) or E300 (undefined type) diagnostics."""
+    return diag.code in ("E310", "W310", "E300")
 
 
 # Keep old name as alias for backwards compat in tests
@@ -612,8 +612,8 @@ _is_e310 = _is_importable_error
 
 
 def _extract_undefined_name(message: str) -> str | None:
-    """Extract name from '[E310] undefined name 'foo'' or '[E300] undefined type 'Foo''."""
-    m = re.search(r"undefined (?:name|type) '(\w+)'", message)
+    """Extract name from diagnostic messages about undefined/implicitly typed names."""
+    m = re.search(r"(?:undefined (?:name|type)|implicitly typed) '(\w+)'", message)
     return m.group(1) if m else None
 
 

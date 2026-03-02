@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
@@ -13,6 +14,9 @@ from prove.errors import CompileError, DiagnosticRenderer, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.project import scaffold
+
+if TYPE_CHECKING:
+    from prove.symbols import SymbolTable
 
 
 def _compile_project(
@@ -34,7 +38,6 @@ def _compile_project(
         return True, 0, 0, 0, 0
 
     renderer = DiagnosticRenderer(color=True)
-    formatter = ProveFormatter()
     checked = 0
     errors = 0
     warnings = 0
@@ -55,7 +58,7 @@ def _compile_project(
 
         checked += 1
         checker = Checker()
-        checker.check(module)
+        symbols = checker.check(module)
 
         for diag in checker.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -64,6 +67,7 @@ def _compile_project(
             elif diag.severity == Severity.WARNING:
                 warnings += 1
 
+        formatter = ProveFormatter(symbols=symbols)
         formatted = formatter.format(module)
         if formatted != source:
             format_issues += 1
@@ -131,7 +135,7 @@ def _check_file(filepath: Path) -> tuple[int, int, int]:
         return len(e.diagnostics), 0, 0
 
     checker = Checker()
-    checker.check(module)
+    symbols = checker.check(module)
 
     errors = 0
     warnings = 0
@@ -142,7 +146,7 @@ def _check_file(filepath: Path) -> tuple[int, int, int]:
         elif diag.severity == Severity.WARNING:
             warnings += 1
 
-    formatter = ProveFormatter()
+    formatter = ProveFormatter(symbols=symbols)
     formatted = formatter.format(module)
     format_issues = 0
     if formatted != source:
@@ -372,7 +376,8 @@ def _format_source(source: str, filename: str) -> str | None:
         return None
     from prove.formatter import ProveFormatter
 
-    return ProveFormatter().format(module)
+    symbols = _try_check(source, filename)
+    return ProveFormatter(symbols=symbols).format(module)
 
 
 def _format_md_prove_blocks(text: str) -> str:
@@ -425,6 +430,24 @@ def _format_excerpt(filename: str, original: str, formatted: str) -> str:
     return "\n".join(lines)
 
 
+def _try_check(source: str, filename: str) -> SymbolTable | None:
+    """Run checker on source, returning symbols for type inference.
+
+    Returns the symbol table even when the checker finds errors, because
+    function signatures (registered in pass 1) are still useful for type
+    inference.  Returns None only if parsing fails.
+    """
+    try:
+        tokens = Lexer(source, filename).lex()
+        module = Parser(tokens, filename).parse()
+    except (CompileError, Exception):
+        return None
+
+    checker = Checker()
+    checker.check(module)
+    return checker.symbols
+
+
 @main.command(name="format")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--check", is_flag=True, help="Check formatting without modifying files.")
@@ -436,8 +459,6 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
 
     from prove.formatter import ProveFormatter
 
-    formatter = ProveFormatter()
-
     if use_stdin:
         source = sys.stdin.read()
         try:
@@ -448,6 +469,8 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             for diag in e.diagnostics:
                 click.echo(renderer.render(diag), err=True)
             raise SystemExit(1)
+        symbols = _try_check(source, "<stdin>")
+        formatter = ProveFormatter(symbols=symbols)
         formatted = formatter.format(module)
         if check:
             if formatted != source:
@@ -478,6 +501,8 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             continue
 
         checked += 1
+        symbols = _try_check(source, filename)
+        formatter = ProveFormatter(symbols=symbols)
         formatted = formatter.format(module)
         if formatted != source:
             changed += 1

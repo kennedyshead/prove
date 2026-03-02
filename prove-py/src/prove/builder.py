@@ -54,6 +54,24 @@ def build_project(
             all_diags.extend(e.diagnostics)
             continue
 
+        # Format (type-infer and rewrite), then re-parse the canonical source
+        from prove.formatter import ProveFormatter
+
+        checker = Checker()
+        symbols = checker.check(module)
+        formatter = ProveFormatter(symbols=symbols)
+        formatted = formatter.format(module)
+        if formatted != source:
+            prv_file.write_text(formatted)
+
+        # Re-parse the formatted source for a clean check
+        try:
+            tokens = Lexer(formatted, filename).lex()
+            module = Parser(tokens, filename).parse()
+        except CompileError as e:
+            all_diags.extend(e.diagnostics)
+            continue
+
         # Check
         checker = Checker()
         symbols = checker.check(module)

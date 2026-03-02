@@ -41,10 +41,6 @@ Modules can declare `foreign` blocks to bind C functions. Each block names a C l
 module Math
   narrative: """Mathematical functions via C libm."""
 
-  foreign "libm"
-    c_sqrt(x Decimal) Decimal
-    c_sin(x Decimal) Decimal
-
 transforms sqrt(x Decimal) Decimal
   ensures result >= 0.0
   requires x >= 0.0

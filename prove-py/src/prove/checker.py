@@ -418,7 +418,7 @@ class Checker:
             # Register the module name so we know it was declared,
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
-            self._error(
+            self._warning(
                 "E310",
                 f"unknown module '{imp.module}'",
                 imp.span,
@@ -915,7 +915,18 @@ class Checker:
         """Check an assignment statement."""
         sym = self.symbols.lookup(assign.target)
         if sym is None:
-            self._error("E310", f"undefined name '{assign.target}'", assign.span)
+            # Implicit declaration: `x = expr` without `x as Type = expr`
+            inferred = self._infer_expr(assign.value)
+            self._warning(
+                "W310",
+                f"implicitly typed '{assign.target}' "
+                f"(use '{assign.target} as {type_name(inferred)} = ...')",
+                assign.span,
+            )
+            self.symbols.define(Symbol(
+                name=assign.target, kind=SymbolKind.VARIABLE,
+                resolved_type=inferred, span=assign.span,
+            ))
             return UNIT
 
         sym.used = True
@@ -998,7 +1009,7 @@ class Checker:
         sym = self.symbols.lookup(expr.name)
         if sym is None:
             diag = Diagnostic(
-                severity=Severity.ERROR,
+                severity=Severity.WARNING,
                 code="E310",
                 message=f"undefined name '{expr.name}'",
                 labels=[DiagnosticLabel(span=expr.span, message="")],
@@ -1022,7 +1033,7 @@ class Checker:
         if sym is not None:
             sym.used = True
             return sym.resolved_type
-        self._error("E310", f"undefined name '{expr.name}'", expr.span)
+        self._warning("E310", f"undefined name '{expr.name}'", expr.span)
         return ERROR_TY
 
     def _infer_binary(self, expr: BinaryExpr) -> Type:
@@ -1195,7 +1206,7 @@ class Checker:
             func_name = expr.func.field
             # Verify the module is imported
             if not self._is_module_imported(module_name):
-                self._error(
+                self._warning(
                     "E310",
                     f"module '{module_name}' is not imported",
                     expr.func.obj.span,

@@ -15,6 +15,10 @@ not your gatekeeper.
 ## Quick Start
 
 ```bash
+# Install all workspace dependencies (from repo root)
+../dev-setup.sh
+
+# Or install just the compiler manually
 pip install -e ".[dev]"
 
 prove new myproject
@@ -111,9 +115,13 @@ Console and file I/O through channel dispatch:
 ## Development
 
 ```bash
-python -m pytest tests/ -v    # run tests
-ruff check src/ tests/        # lint
-mypy src/                     # type check
+# One-time setup (installs all deps)
+../dev-setup.sh
+
+# Run tests, lint, type check
+python -m pytest tests/ -v
+ruff check src/ tests/
+mypy src/
 ```
 
 ## Roadmap

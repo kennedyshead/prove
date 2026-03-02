@@ -1273,7 +1273,11 @@ class Parser:
         start = self._current().span
         name_tok = self._advance()  # identifier
         self._advance()  # 'as'
-        type_expr = self._parse_type_expr()
+        # Allow omitted type: `name as = expr` for type inference
+        if self._at(TokenKind.ASSIGN):
+            type_expr = None
+        else:
+            type_expr = self._parse_type_expr()
         self._expect(TokenKind.ASSIGN)
         value = self._parse_expression(0)
         end = value.span
