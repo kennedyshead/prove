@@ -7,9 +7,11 @@ import pytest
 from prove.export import (
     _chroma_regex_line,
     _pygments_verbs,
+    _ts_grammar_literals,
     _ts_grammar_verbs,
     _ts_highlights_builtin_types,
     _ts_highlights_contract,
+    _ts_highlights_keywords,
     _ts_highlights_verbs,
     read_canonical_lists,
     replace_sentinel_section,
@@ -21,6 +23,23 @@ from prove.export import (
 @pytest.fixture
 def lists():
     return read_canonical_lists()
+
+
+@pytest.fixture
+def grammar_lits():
+    from pathlib import Path
+    grammar = Path(__file__).resolve().parent.parent.parent / "tree-sitter-prove" / "grammar.js"
+    if grammar.exists():
+        return _ts_grammar_literals(grammar)
+    # Fallback: all verbs + core grammar keywords
+    return frozenset({
+        "transforms", "inputs", "outputs", "validates", "reads", "creates",
+        "matches", "types", "module", "type", "is", "as", "from", "where",
+        "match", "comptime", "valid", "main", "binary", "ensures", "requires",
+        "explain", "terminates", "trusted", "intent", "narrative", "why_not",
+        "chosen", "near_miss", "know", "assume", "believe", "temporal",
+        "satisfies", "invariant_network",
+    })
 
 
 def test_canonical_lists_complete(lists):
@@ -166,25 +185,39 @@ def test_sentinel_preserves_surrounding():
 
 # ── Generator output validation ──────────────────────────────────
 
-def test_treesitter_verbs_output(lists):
+def test_treesitter_verbs_output(lists, grammar_lits):
     """Generated tree-sitter highlights verb content contains expected keywords."""
-    output = _ts_highlights_verbs(lists)
+    output = _ts_highlights_verbs(lists, grammar_lits)
     assert '"transforms"' in output
     assert '"matches"' in output
     assert '"types"' in output  # extra verb-like keyword
     assert "@keyword.function" in output
 
 
-def test_treesitter_contract_output(lists):
+def test_treesitter_contract_output(lists, grammar_lits):
     """Generated tree-sitter contract keywords are correct."""
-    output = _ts_highlights_contract(lists)
+    output = _ts_highlights_contract(lists, grammar_lits)
     assert '"ensures"' in output
     assert '"explain"' in output
     assert '"terminates"' in output
     assert '"proof"' not in output
     # trusted is handled separately
     assert '"trusted"' not in output
+    # when is not a grammar literal — only used inside explain parsing
+    assert '"when"' not in output
     assert "@keyword.control" in output
+
+
+def test_treesitter_keywords_no_phantom_literals(lists, grammar_lits):
+    """Keywords not in grammar.js are excluded from highlights."""
+    output = _ts_highlights_keywords(lists, grammar_lits)
+    # These exist in the compiler but not as grammar literals
+    assert '"foreign"' not in output
+    assert '"domain"' not in output
+    # These should be present (they are grammar literals)
+    assert '"from"' in output
+    assert '"type"' in output
+    assert '"module"' in output
 
 
 def test_treesitter_builtin_types_output(lists):

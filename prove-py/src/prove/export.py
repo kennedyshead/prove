@@ -7,8 +7,10 @@ replaceable sections.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
+from typing import AbstractSet
 
 import click
 
@@ -38,7 +40,7 @@ _AI_KINDS = frozenset({
 
 _KEYWORD_KINDS = frozenset({
     TokenKind.MAIN, TokenKind.FROM, TokenKind.TYPE, TokenKind.IS,
-    TokenKind.AS, TokenKind.WITH, TokenKind.USE, TokenKind.WHERE,
+    TokenKind.AS, TokenKind.WHERE,
     TokenKind.MATCH, TokenKind.COMPTIME, TokenKind.VALID,
     TokenKind.MODULE, TokenKind.DOMAIN, TokenKind.BINARY,
     TokenKind.TYPES, TokenKind.FOREIGN,
@@ -120,40 +122,51 @@ def replace_sentinel_section(
     return content[:body_start] + replacement + content[end_line_start:]
 
 
-# ── Workspace discovery ───────────────────────────────────────────
-
-def _workspace_root() -> Path:
-    """Find the workspace root (parent of prove-py/)."""
-    return Path(__file__).resolve().parent.parent.parent.parent
-
-
 # ── Tree-sitter generator ─────────────────────────────────────────
 
-def _ts_highlights_verbs(lists: dict) -> str:
+_GRAMMAR_LITERAL_RE = re.compile(r"'([a-z_]+)'")
+
+
+def _ts_grammar_literals(grammar_path: Path) -> frozenset[str]:
+    """Extract all single-quoted string literals from grammar.js.
+
+    Tree-sitter highlights.scm can only reference strings that appear
+    as literal tokens in the grammar rules.  Keywords that exist only
+    in the compiler (e.g. 'when', 'domain') but not as grammar literals
+    will cause tree-sitter to error and disable all highlighting.
+    """
+    text = grammar_path.read_text()
+    return frozenset(_GRAMMAR_LITERAL_RE.findall(text))
+
+
+def _ts_highlights_verbs(lists: dict, grammar_lits: AbstractSet[str]) -> str:
     """Generate tree-sitter highlights.scm verbs section."""
-    items = ['  "' + v + '"' for v in lists["verbs"]]
-    items.append('  "types"')
+    items = ['  "' + v + '"' for v in lists["verbs"] if v in grammar_lits]
+    if "types" in grammar_lits:
+        items.append('  "types"')
     return "[\n" + "\n".join(items) + "\n] @keyword.function\n"
 
 
-def _ts_highlights_keywords(lists: dict) -> str:
+def _ts_highlights_keywords(lists: dict, grammar_lits: AbstractSet[str]) -> str:
     """Generate tree-sitter highlights.scm keywords section."""
+    # main and types are handled in the verbs section
     items = ['  "' + k + '"' for k in lists["keywords"]
-             if k not in ("main", "types", "foreign")]
+             if k in grammar_lits and k not in ("main", "types")]
     return "[\n" + "\n".join(items) + "\n] @keyword\n"
 
 
-def _ts_highlights_contract(lists: dict) -> str:
+def _ts_highlights_contract(lists: dict, grammar_lits: AbstractSet[str]) -> str:
     """Generate tree-sitter highlights.scm contract keywords section."""
     # trusted is handled separately via (trusted_annotation)
     items = ['  "' + k + '"' for k in lists["contract_keywords"]
-             if k != "trusted"]
+             if k in grammar_lits and k != "trusted"]
     return "[\n" + "\n".join(items) + "\n] @keyword.control\n"
 
 
-def _ts_highlights_ai(lists: dict) -> str:
+def _ts_highlights_ai(lists: dict, grammar_lits: AbstractSet[str]) -> str:
     """Generate tree-sitter highlights.scm AI keywords section."""
-    items = ['  "' + k + '"' for k in lists["ai_keywords"]]
+    items = ['  "' + k + '"' for k in lists["ai_keywords"]
+             if k in grammar_lits]
     return "[\n" + "\n".join(items) + "\n] @keyword.directive\n"
 
 
@@ -197,6 +210,10 @@ def generate_treesitter(lists: dict, workspace: Path) -> bool:
     grammar_path.write_text(content)
     click.echo(f"  wrote {grammar_path}")
 
+    # Scan grammar.js for string literals — highlights.scm can only
+    # reference tokens that appear as literals in the grammar.
+    grammar_lits = _ts_grammar_literals(grammar_path)
+
     # highlights.scm files
     for scm_path in [
         ts_dir / "queries" / "highlights.scm",
@@ -206,16 +223,19 @@ def generate_treesitter(lists: dict, workspace: Path) -> bool:
             continue
         content = scm_path.read_text()
         content = replace_sentinel_section(
-            content, "verbs", _ts_highlights_verbs(lists),
+            content, "verbs", _ts_highlights_verbs(lists, grammar_lits),
         )
         content = replace_sentinel_section(
-            content, "keywords", _ts_highlights_keywords(lists),
+            content, "keywords",
+            _ts_highlights_keywords(lists, grammar_lits),
         )
         content = replace_sentinel_section(
-            content, "contract-keywords", _ts_highlights_contract(lists),
+            content, "contract-keywords",
+            _ts_highlights_contract(lists, grammar_lits),
         )
         content = replace_sentinel_section(
-            content, "ai-keywords", _ts_highlights_ai(lists),
+            content, "ai-keywords",
+            _ts_highlights_ai(lists, grammar_lits),
         )
         content = replace_sentinel_section(
             content, "builtin-types", _ts_highlights_builtin_types(lists),

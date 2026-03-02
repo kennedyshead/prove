@@ -25,16 +25,13 @@
   "as"
   "binary"
   "comptime"
-  "domain"
   "from"
   "is"
   "match"
   "module"
   "type"
-  "use"
   "valid"
   "where"
-  "with"
 ] @keyword
 ; PROVE-EXPORT-END: keywords
 
@@ -46,7 +43,6 @@
   "explain"
   "requires"
   "terminates"
-  "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords
 

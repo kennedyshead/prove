@@ -30,8 +30,6 @@ class TokenKind(Enum):
     TYPE = auto()
     IS = auto()
     AS = auto()
-    WITH = auto()
-    USE = auto()
     WHERE = auto()
     MATCH = auto()
     COMPTIME = auto()
@@ -149,8 +147,6 @@ KEYWORDS: dict[str, TokenKind] = {
     "type": TokenKind.TYPE,
     "is": TokenKind.IS,
     "as": TokenKind.AS,
-    "with": TokenKind.WITH,
-    "use": TokenKind.USE,
     "where": TokenKind.WHERE,
     "match": TokenKind.MATCH,
     "comptime": TokenKind.COMPTIME,
