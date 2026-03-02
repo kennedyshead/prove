@@ -51,6 +51,7 @@ prove check docs/tutorial.md --md
 | Flag | Description |
 |------|-------------|
 | `--md` | Also check ` ```prove ` code blocks in Markdown files |
+| `--strict` | Promote warnings to errors (exit 1 on any warning) |
 
 When `path` is a `.prv` file, checks that single file. When `path` is a directory, finds `prove.toml` and checks all files in `src/`. When `path` is a `.md` file (with `--md`), checks all fenced Prove blocks.
 

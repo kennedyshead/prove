@@ -243,7 +243,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 ## Status
 
-v0.7 — IO extensions, Parse module, and C FFI are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 484 tests pass across every stage.
+v0.8.3 — Formatter type inference, lint system overhaul, `proof` → `explain` migration, and remaining lint diagnostics are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 506 tests pass across every stage. Next up: v0.9 (lexer export tool) and v1.0 (self-hosting).
 
 ## Repository
 

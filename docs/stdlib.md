@@ -23,6 +23,8 @@ Verbs fall into two families. **Pure verbs** have no side effects — the compil
 | `validates` | Check a condition, return Boolean | `validates has(key String, table Table<V>)` |
 | `reads` | Extract or query data without changing it | `reads get(key String, table Table<V>) Option<V>` |
 | `creates` | Construct a new value from scratch | `creates builder() Builder` |
+| `matches` | Algebraic dispatch (first param must be algebraic) | `matches area(s Shape) Decimal` |
+
 **IO verbs** interact with the outside world:
 
 | Verb | Intent | Example |
