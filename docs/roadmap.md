@@ -10,7 +10,7 @@
 | v0.4 | Complete | Pure verbs, binary types, namespaced calls, channel dispatch — 394 tests |
 | v0.5 | Complete | Turbo runtime — arena allocator, fast hash, string intern |
 | v0.6 | Complete | Core stdlib — Character, Text, Table — 440 tests |
-| v0.7 | In progress | IO extensions, Parse, C FFI |
+| v0.7 | Complete | IO extensions, Parse, C FFI — 484 tests |
 | v1.0 | Planned | Self-hosting compiler |
 
 ---
