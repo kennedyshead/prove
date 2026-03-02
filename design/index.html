@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A programming language that fights back against AI slop and code scraping">
+        <meta name="description" content="An intent-first programming language designed to mitigate AI slop and code scraping">
       
       
       
@@ -572,6 +572,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../diagnostics-philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../compiler/" class="md-nav__link">
         
   
@@ -1020,8 +1048,8 @@
 
 <h1 id="design-decisions-trade-offs">Design Decisions &amp; Trade-offs<a class="headerlink" href="#design-decisions-trade-offs" title="Permanent link">&para;</a></h1>
 <h2 id="philosophy">Philosophy<a class="headerlink" href="#philosophy" title="Permanent link">&para;</a></h2>
-<p>The compiler is your co-author, not your gatekeeper.</p>
-<p>Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.</p>
+<p>Prove is an <strong>intent-first</strong> language. Every function declares its intent — a verb names the purpose, contracts state the guarantees, and explain documents the reasoning — before a single line of implementation is written. The compiler then enforces that the implementation matches the declared intent.</p>
+<p>The compiler is your co-author, not your gatekeeper. Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.</p>
 <hr />
 <h2 id="implementation-decisions">Implementation Decisions<a class="headerlink" href="#implementation-decisions" title="Permanent link">&para;</a></h2>
 <h3 id="file-extension-prv">File Extension: <code>.prv</code><a class="headerlink" href="#file-extension-prv" title="Permanent link">&para;</a></h3>
@@ -1099,9 +1127,9 @@
 <hr />
 <h2 id="zero-cost-abstractions">Zero-Cost Abstractions<a class="headerlink" href="#zero-cost-abstractions" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Pure functions auto-memoized and inlined</li>
-<li>Region-based memory for short-lived allocations</li>
-<li>Reference counting only where ownership is shared (compiler-inserted)</li>
+<li>Pure functions auto-memoized and inlined <em>(planned — v0.9.4)</em></li>
+<li>Region-based memory for short-lived allocations <em>(planned — v0.9.4)</em></li>
+<li>Reference counting only where ownership is shared (compiler-inserted) <em>(planned — current: arena-based allocation via turbo runtime)</em></li>
 <li>No GC pauses, predictable performance</li>
 <li>Native code output</li>
 </ul>

@@ -6,14 +6,14 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A programming language that fights back against AI slop and code scraping">
+        <meta name="description" content="An intent-first programming language designed to mitigate AI slop and code scraping">
       
       
       
         <link rel="canonical" href="https://kennedyshead.github.io/prove/compiler/">
       
       
-        <link rel="prev" href="../diagnostics/">
+        <link rel="prev" href="../diagnostics-philosophy/">
       
       
         <link rel="next" href="../ai-resistance/">
@@ -569,6 +569,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostics-philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -658,6 +686,17 @@
     <span class="md-ellipsis">
       
         Conversational Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optimizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimizer
       
     </span>
   </a>
@@ -928,7 +967,7 @@
 <td><strong>Prover</strong></td>
 <td>AST + contracts</td>
 <td>Diagnostics</td>
-<td>Proof obligation verification, contract consistency</td>
+<td>Explain entry verification, contract consistency</td>
 </tr>
 <tr>
 <td><strong>C Emitter</strong></td>
@@ -1053,7 +1092,45 @@
 <p>The compiler uses Rust-style diagnostic rendering with ANSI colors, span highlighting, and multi-line context.</p>
 <p>See <a href="../diagnostics/">Diagnostic Codes</a> for the full list of error and warning codes.</p>
 <hr />
+<h2 id="optimizer">Optimizer<a class="headerlink" href="#optimizer" title="Permanent link">&para;</a></h2>
+<p>When <code>optimize = true</code> in <code>prove.toml</code>, the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.</p>
+<table>
+<thead>
+<tr>
+<th>Pass</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tail call optimization</strong></td>
+<td>Rewrites self-recursive tail calls into loops. Only applies to functions with a <code>terminates</code> annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion.</td>
+</tr>
+<tr>
+<td><strong>Dead branch elimination</strong></td>
+<td>Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive.</td>
+</tr>
+<tr>
+<td><strong>Small function inlining</strong></td>
+<td>Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no <code>terminates</code>, no recursion, and a single-expression body. Parameters are substituted with arguments.</td>
+</tr>
+<tr>
+<td><strong>Match compilation</strong></td>
+<td>Merges consecutive match statements on the same subject into a single match expression, combining their arms.</td>
+</tr>
+<tr>
+<td><strong>Copy elision</strong></td>
+<td>Detects <code>transforms</code> functions that return a parameter directly and marks them for the C emitter to skip retain/release. <em>(Placeholder — metadata tracking only.)</em></td>
+</tr>
+<tr>
+<td><strong>Iterator fusion</strong></td>
+<td>Detects <code>map(filter(xs, pred), fn)</code> patterns for fusion into a single pass. <em>(Placeholder — full rewrite pending List runtime support.)</em></td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="comptime-compile-time-computation">Comptime (Compile-Time Computation)<a class="headerlink" href="#comptime-compile-time-computation" title="Permanent link">&para;</a></h2>
+<p><em>The <code>comptime</code> keyword is parsed but not yet executed at compile time. Compile-time evaluation is planned for v0.9.2.</em></p>
 <p>Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="no">MAX_CONNECTIONS</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="k">comptime</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  <span class="k">match</span> <span class="n">cfg</span><span class="o">.</span><span class="n">target</span>
@@ -1075,7 +1152,7 @@
 <li>Cannot be failable with <code>!</code> (E361)</li>
 </ul>
 <p>IO verbs (<code>inputs</code>, <code>outputs</code>) have no such restrictions.</p>
-<p>See <a href="../diagnostics/#verb-enforcement-e360-e364">Diagnostic Codes</a> for details on each enforcement error.</p>
+<p>See <a href="../diagnostics/#e361-pure-function-cannot-be-failable">Diagnostic Codes</a> for details on each enforcement error.</p>
 
 
 

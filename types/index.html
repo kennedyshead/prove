@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A programming language that fights back against AI slop and code scraping">
+        <meta name="description" content="An intent-first programming language designed to mitigate AI slop and code scraping">
       
       
       
@@ -674,6 +674,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../diagnostics-philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../compiler/" class="md-nav__link">
         
   
@@ -896,9 +924,9 @@
 <p>Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no <code>unwrap()</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">type</span> <span class="nc">Port</span> <span class="k">is</span> <span class="kt">Integer</span><span class="p">:[</span><span class="mi">16</span> <span class="nc">Unsigned</span><span class="p">]</span> <span class="k">where</span> <span class="mi">1</span> <span class="o">..</span> <span class="mi">65535</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">type</span> <span class="nc">Email</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span> <span class="kd">matches</span><span class="p">(</span><span class="sr">/^[^@]+@[^@]+\.[^@]+$/</span><span class="p">)</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">type</span> <span class="kt">NonEmpty</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">is</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">where</span> <span class="n">len</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">type</span> <span class="nc">NonEmpty</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">is</span> <span class="kt">List</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">where</span> <span class="n">len</span> <span class="o">&gt;</span> <span class="mi">0</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kd">transforms</span> <span class="n">head</span><span class="p">(</span><span class="n">xs</span> <span class="kt">NonEmpty</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">T</span>    <span class="c1">// no Option needed, emptiness is impossible</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kd">transforms</span> <span class="n">head</span><span class="p">(</span><span class="n">xs</span> <span class="nc">NonEmpty</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">T</span>    <span class="c1">// no Option needed, emptiness is impossible</span>
 </code></pre></div>
 <p>The compiler rejects <code>head([])</code> statically.</p>
 <h2 id="algebraic-types-with-exhaustive-matching">Algebraic Types with Exhaustive Matching<a class="headerlink" href="#algebraic-types-with-exhaustive-matching" title="Permanent link">&para;</a></h2>
@@ -917,11 +945,12 @@
 <p>IO is encoded in the verb, not in annotations. The compiler knows which functions touch the world (<code>inputs</code>/<code>outputs</code>) and which are pure (<code>transforms</code>/<code>validates</code>). Pure functions get automatic memoization and parallelism.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">inputs</span> <span class="n">read_config</span><span class="p">(</span><span class="n">path</span> <span class="nc">Path</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>               <span class="c1">// IO inherent, ! = can fail</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kd">transforms</span> <span class="n">parse</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">Config</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;</span>   <span class="c1">// pure — failure in return type</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kd">transforms</span> <span class="n">parse</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">Config</span><span class="p">,</span> <span class="kt">Error</span><span class="o">&gt;</span>   <span class="c1">// pure — failure in return type</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="kd">transforms</span> <span class="n">rewrite</span><span class="p">(</span><span class="n">c</span> <span class="nc">Config</span><span class="p">)</span> <span class="nc">Config</span>                <span class="c1">// pure, infallible, parallelizable</span>
 </code></pre></div>
 <h2 id="ownership-lite-linear-types-with-compiler-inferred-borrows">Ownership Lite (Linear Types with Compiler-Inferred Borrows)<a class="headerlink" href="#ownership-lite-linear-types-with-compiler-inferred-borrows" title="Permanent link">&para;</a></h2>
+<p><em>Upcoming (v0.9.3) — <code>Own</code>, <code>Mutable</code>, and compiler-inferred borrows are parsed but not yet enforced.</em></p>
 <p>Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">inputs</span> <span class="n">process</span><span class="p">(</span><span class="n">file</span> <span class="nc">File</span><span class="p">:[</span><span class="nc">Own</span><span class="p">])</span> <span class="nc">Data</span><span class="kp">!</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">from</span>

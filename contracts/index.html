@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A programming language that fights back against AI slop and code scraping">
+        <meta name="description" content="An intent-first programming language designed to mitigate AI slop and code scraping">
       
       
       
@@ -587,10 +587,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#level-4-built-in-mutation-testing" class="md-nav__link">
+  <a href="#level-4-built-in-mutation-testing-upcoming-v095" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Level 4: Built-in Mutation Testing
+        Level 4: Built-in Mutation Testing (Upcoming — v0.9.5)
       
     </span>
   </a>
@@ -793,6 +793,34 @@
     
   
     Diagnostic Codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../diagnostics-philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostic Philosophy
   
 
     
@@ -1059,9 +1087,9 @@
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  <span class="kn">ensures</span> <span class="n">result</span> <span class="o">&gt;=</span> <span class="mi">0</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  <span class="kn">requires</span> <span class="n">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  <span class="kn">explain</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">sum</span> <span class="n">all</span> <span class="n">items</span> <span class="o">.</span> <span class="n">price</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">reduce</span> <span class="n">sub</span> <span class="n">by</span> <span class="n">discount</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">add</span> <span class="n">tax</span> <span class="n">to</span> <span class="n">discounted</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>      <span class="n">sum</span> <span class="n">all</span> <span class="n">items</span> <span class="o">.</span> <span class="n">price</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>      <span class="n">reduce</span> <span class="n">sub</span> <span class="n">by</span> <span class="n">discount</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>      <span class="n">add</span> <span class="n">tax</span> <span class="n">to</span> <span class="n">discounted</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="k">from</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">sub</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">subtotal</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">discounted</span> <span class="k">as</span> <span class="nc">Price</span> <span class="o">=</span> <span class="n">apply_discount</span><span class="p">(</span><span class="n">discount</span><span class="p">,</span> <span class="n">sub</span><span class="p">)</span>
@@ -1206,7 +1234,7 @@
 <a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="p">(</span><span class="n">y</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">100</span> <span class="kp">!</span><span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">||</span> <span class="n">y</span> <span class="o">%</span> <span class="mi">400</span> <span class="o">==</span> <span class="mi">0</span>
 </code></pre></div>
 <p>The compiler generates tests that pass each <code>near_miss</code> input to the function and confirms it is rejected by the preconditions. If a <code>near_miss</code> input is accidentally accepted, the test fails — the contract has a gap.</p>
-<h3 id="level-4-built-in-mutation-testing">Level 4: Built-in Mutation Testing<a class="headerlink" href="#level-4-built-in-mutation-testing" title="Permanent link">&para;</a></h3>
+<h3 id="level-4-built-in-mutation-testing-upcoming-v095">Level 4: Built-in Mutation Testing <em>(Upcoming — v0.9.5)</em><a class="headerlink" href="#level-4-built-in-mutation-testing-upcoming-v095" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>$ prove build --mutate
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>Mutation score: 97.2% (347/357 mutants killed)
