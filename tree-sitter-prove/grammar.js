@@ -166,15 +166,17 @@ module.exports = grammar({
 
     // ─── Function Definitions ──────────────────────────────────
 
+    // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
-      'transforms',
-      'inputs',
-      'outputs',
-      'validates',
-      'reads',
       'creates',
+      'inputs',
       'matches',
+      'outputs',
+      'reads',
+      'transforms',
+      'validates',
     ),
+    // PROVE-EXPORT-END: verbs
 
     function_definition: $ => seq(
       optional($.doc_comment_block),
@@ -227,7 +229,6 @@ module.exports = grammar({
     _annotation: $ => choice(
       $.ensures_clause,
       $.requires_clause,
-      $.proof_block,
       $.explain_annotation,
       $.terminates_annotation,
       $.trusted_annotation,
@@ -244,22 +245,6 @@ module.exports = grammar({
     ensures_clause: $ => seq('ensures', $.expression),
 
     requires_clause: $ => seq('requires', $.expression),
-
-    proof_block: $ => seq(
-      'proof',
-      repeat1($.proof_obligation),
-    ),
-
-    proof_obligation: $ => seq(
-      field('name', $.identifier),
-      ':',
-      field('text', $.proof_text),
-    ),
-
-    // Each proof_text line is a single token (rest of line after `:` or
-    // an indented continuation).  Continuations are separate proof_text
-    // tokens so the repeat absorbs them.
-    proof_text: $ => repeat1(token(prec(-1, /[^\n]*[a-zA-Z0-9\)][^\n]*/))),
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
 

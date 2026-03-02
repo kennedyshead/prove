@@ -48,23 +48,29 @@ var (
 				// Fail marker (before operators so ! is not consumed)
 				{`!`, chroma.KeywordPseudo, nil},
 
-				// Intent verbs
-				{`\b(transforms|inputs|outputs|validates|reads|creates|matches)\b`, chroma.KeywordDeclaration, nil},
+				// PROVE-EXPORT-BEGIN: verbs
+				{`\b(creates|inputs|matches|outputs|reads|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
+				// PROVE-EXPORT-END: verbs
 
-				// Contract keywords
-				{`\b(ensures|requires|proof|when|explain|terminates|trusted)\b`, chroma.KeywordNamespace, nil},
+				// PROVE-EXPORT-BEGIN: contract-keywords
+				{`\b(ensures|explain|requires|terminates|trusted|when)\b`, chroma.KeywordNamespace, nil},
+				// PROVE-EXPORT-END: contract-keywords
 
-				// Core keywords
-				{`\b(module|type|is|as|from|match|where|comptime|valid|main|types|with|use|domain|binary)\b`, chroma.Keyword, nil},
+				// PROVE-EXPORT-BEGIN: keywords
+				{`\b(as|binary|comptime|domain|foreign|from|is|main|match|module|type|types|use|valid|where|with)\b`, chroma.Keyword, nil},
+				// PROVE-EXPORT-END: keywords
 
-				// AI-resistance and annotation keywords
-				{`\b(invariant_network|know|assume|believe|intent|narrative|temporal|why_not|chosen|near_miss|satisfies)\b`, chroma.KeywordNamespace, nil},
+				// PROVE-EXPORT-BEGIN: ai-keywords
+				{`\b(assume|believe|chosen|intent|invariant_network|know|narrative|near_miss|satisfies|temporal|why_not)\b`, chroma.KeywordNamespace, nil},
+				// PROVE-EXPORT-END: ai-keywords
 
-				// Boolean literals
+				// PROVE-EXPORT-BEGIN: literals
 				{`\b(true|false)\b`, chroma.KeywordConstant, nil},
+				// PROVE-EXPORT-END: literals
 
-				// Built-in types (synced with tree-sitter highlights.scm)
-				{`\b(Integer|Decimal|Float|Boolean|String|Byte|Character|List|Option|Result|Unit|NonEmpty|Map|Any|Never)\b`, chroma.KeywordType, nil},
+				// PROVE-EXPORT-BEGIN: builtin-types
+				{`\b(Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|String|Table|Unit)\b`, chroma.KeywordType, nil},
+				// PROVE-EXPORT-END: builtin-types
 
 				// Operators (order matters — multi-char before single-char)
 				{`\|>`, chroma.Operator, nil},
@@ -80,7 +86,7 @@ var (
 				// Type identifiers (PascalCase)
 				{`[A-Z][a-zA-Z0-9]*`, chroma.KeywordType, nil},
 
-				// Proof obligation names (identifier followed by colon)
+				// Explain entry names (identifier followed by colon)
 				{`[a-z_][a-z0-9_]+(?=\s*:)`, chroma.NameAttribute, nil},
 
 				// Regular identifiers

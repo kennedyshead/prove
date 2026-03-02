@@ -49,7 +49,7 @@ var proveLexer = chroma.MustNewLexer(
 			{`0o[0-7][0-7_]*`, chroma.NumberOct, nil},
 			{`[0-9][0-9_]*\.[0-9][0-9_]*`, chroma.NumberFloat, nil},
 			{`[0-9][0-9_]*`, chroma.Number, nil},
-			{`\b(module|type|with|use|transforms|inputs|outputs|validates|main|from|if|else|match|proof|ensures|requires|where|comptime)\b`, chroma.Keyword, nil},
+			{`\b(module|type|with|use|transforms|inputs|outputs|validates|main|from|match|ensures|requires|explain|where|comptime)\b`, chroma.Keyword, nil},
 			{`\b(true|false)\b`, chroma.KeywordConstant, nil},
 			{`\b(Integer|String|Decimal|Boolean|List|Option|Result|Any|Never)\b`, chroma.KeywordType, nil},
 			{`[A-Z][A-Za-z0-9_]*`, chroma.KeywordType, nil},

@@ -44,10 +44,10 @@ from
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
   ensures result >= 0
   requires len(items) > 0
-  proof
-    subtotal: sums the items Price
-    apply_discount: deduct discount if > 0
-    apply_tax: adds tax if tax > 0
+  explain
+      subtotal: sums the items Price
+      apply_discount: deduct discount if > 0
+      apply_tax: adds tax if tax > 0
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)
@@ -60,8 +60,8 @@ from
 outputs place_order(db Database, order Order, tax TaxRule) Order!
   ensures result.status == Confirmed
   requires fulfillable(order)
-  proof
-    fulfillment: requires clause guarantees stock sufficiency
+  explain
+      fulfillment: requires clause guarantees stock sufficiency
 from
     total as Price = calculate_total(order.items, FlatOff(0), tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)

@@ -47,103 +47,112 @@ class ProveLexer(RegexLexer):
             (r"[0-9][0-9_]*", Number.Integer),
             # Fail marker (before operators)
             (r"!", Keyword.Pseudo),
+            # PROVE-EXPORT-BEGIN: verbs
             # Intent verbs (function declaration keywords)
             (
                 words(
                     (
-                        "transforms", "inputs", "outputs", "validates",
-                        "reads", "creates", "matches",
+                        "creates", "inputs", "matches", "outputs", "reads", "transforms", "validates",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword.Declaration,
             ),
+            # PROVE-EXPORT-END: verbs
+            # PROVE-EXPORT-BEGIN: contract-keywords
             # Contract keywords
             (
                 words(
                     (
-                        "ensures", "requires", "proof", "when",
-                        "explain", "terminates", "trusted",
+                        "ensures", "explain", "requires", "terminates", "trusted", "when",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword.Namespace,
             ),
+            # PROVE-EXPORT-END: contract-keywords
+            # PROVE-EXPORT-BEGIN: keywords
             # Core keywords
             (
                 words(
                     (
+                        "as",
+                        "binary",
+                        "comptime",
+                        "domain",
+                        "foreign",
+                        "from",
+                        "is",
+                        "main",
+                        "match",
                         "module",
                         "type",
-                        "is",
-                        "as",
-                        "from",
-                        "match",
-                        "where",
-                        "comptime",
-                        "valid",
-                        "main",
                         "types",
-                        "with",
                         "use",
-                        "domain",
-                        "binary",
+                        "valid",
+                        "where",
+                        "with",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword,
             ),
+            # PROVE-EXPORT-END: keywords
+            # PROVE-EXPORT-BEGIN: ai-keywords
             # AI-resistance and annotation keywords
             (
                 words(
                     (
-                        "invariant_network",
-                        "know",
                         "assume",
                         "believe",
-                        "intent",
-                        "narrative",
-                        "temporal",
-                        "why_not",
                         "chosen",
+                        "intent",
+                        "invariant_network",
+                        "know",
+                        "narrative",
                         "near_miss",
                         "satisfies",
+                        "temporal",
+                        "why_not",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword.Namespace,
             ),
+            # PROVE-EXPORT-END: ai-keywords
+            # PROVE-EXPORT-BEGIN: literals
             # Boolean constants
             (r"\b(true|false)\b", Keyword.Constant),
-            # Built-in types (synced with tree-sitter highlights.scm)
+            # PROVE-EXPORT-END: literals
+            # PROVE-EXPORT-BEGIN: builtin-types
+            # Built-in types
             (
                 words(
                     (
-                        "Integer",
-                        "Decimal",
-                        "Float",
                         "Boolean",
-                        "String",
                         "Byte",
                         "Character",
+                        "Decimal",
+                        "Error",
+                        "Float",
+                        "Integer",
                         "List",
                         "Option",
                         "Result",
+                        "String",
+                        "Table",
                         "Unit",
-                        "NonEmpty",
-                        "Map",
-                        "Any",
-                        "Never",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword.Type,
             ),
+            # PROVE-EXPORT-END: builtin-types
             # Operators (multi-char before single-char)
             (r"\|>", Operator),
             (r"=>", Punctuation),
@@ -155,7 +164,7 @@ class ProveLexer(RegexLexer):
             (r"[A-Z][A-Z0-9_]+\b", Name.Constant),
             # User-defined types (PascalCase)
             (r"[A-Z][a-zA-Z0-9]*", Name.Class),
-            # Proof obligation names (word followed by colon)
+            # Explain entry names (word followed by colon)
             (r"[a-z_][a-z0-9_]+(?=\s*:)", Name.Attribute),
             # Identifiers
             (r"[a-z_][a-z0-9_]*", Name),

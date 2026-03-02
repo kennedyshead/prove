@@ -3,43 +3,52 @@
 
 ; ─── Verbs (function declaration keywords) ──────────────────
 
+; PROVE-EXPORT-BEGIN: verbs
 [
-  "transforms"
-  "inputs"
-  "outputs"
-  "validates"
-  "reads"
   "creates"
+  "inputs"
   "matches"
+  "outputs"
+  "reads"
+  "transforms"
+  "validates"
   "types"
 ] @keyword.function
+; PROVE-EXPORT-END: verbs
 
 "main" @keyword.function
 
 ; ─── Core Keywords ──────────────────────────────────────────
 
+; PROVE-EXPORT-BEGIN: keywords
 [
-  "from"
-  "type"
-  "is"
   "as"
-  "where"
-  "match"
-  "comptime"
-  "valid"
-  "module"
   "binary"
+  "comptime"
+  "domain"
+  "from"
+  "is"
+  "match"
+  "module"
+  "type"
+  "use"
+  "valid"
+  "where"
+  "with"
 ] @keyword
+; PROVE-EXPORT-END: keywords
 
 ; ─── Contract Keywords ──────────────────────────────────────
 
+; PROVE-EXPORT-BEGIN: contract-keywords
 [
   "ensures"
-  "requires"
-  "proof"
   "explain"
+  "requires"
   "terminates"
+  "when"
 ] @keyword.control
+; PROVE-EXPORT-END: contract-keywords
 
 (trusted_annotation) @keyword.control
 
@@ -49,19 +58,21 @@
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
 
+; PROVE-EXPORT-BEGIN: ai-keywords
 [
-  "intent"
-  "narrative"
-  "why_not"
-  "chosen"
-  "near_miss"
-  "know"
   "assume"
   "believe"
-  "temporal"
-  "satisfies"
+  "chosen"
+  "intent"
   "invariant_network"
+  "know"
+  "narrative"
+  "near_miss"
+  "satisfies"
+  "temporal"
+  "why_not"
 ] @keyword.directive
+; PROVE-EXPORT-END: ai-keywords
 
 ; ─── Types ──────────────────────────────────────────────────
 
@@ -78,11 +89,12 @@
   (named_modifier
     (type_identifier) @type.qualifier))
 
+; PROVE-EXPORT-BEGIN: builtin-types
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
-  "Integer" "Decimal" "Float" "Boolean" "String" "Byte" "Character"
-  "List" "Option" "Result" "Unit" "NonEmpty" "Map"))
+  "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "String" "Table" "Unit"))
+; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────
 
@@ -176,12 +188,6 @@
 
 (doc_comment) @comment.documentation
 (line_comment) @comment
-
-; ─── Proof Obligations ──────────────────────────────────────
-
-(proof_obligation
-  (identifier) @label
-  (proof_text) @string.documentation)
 
 ; ─── Near-miss annotations ──────────────────────────────────
 
