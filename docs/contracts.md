@@ -177,7 +177,7 @@ from
 
 The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
 
-### Level 4: Built-in Mutation Testing
+### Level 4: Built-in Mutation Testing *(Upcoming — v0.9.5)*
 
 ```
 $ prove build --mutate

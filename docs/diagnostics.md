@@ -156,6 +156,20 @@ A user-defined type has the same name as a built-in type (`Integer`, `String`, `
 
 The operand types of a binary operator are incompatible. Logical operators (`&&`, `||`) require `Boolean`; arithmetic operators require compatible numeric types.
 
+### E321 — Type mismatch in definition
+
+The inferred type of a constant, variable, or assignment does not match the declared type.
+
+```prove
+MAX as Integer = "hello"
+
+port as Port = get_string(config, "port")
+```
+
+### E322 — Return type mismatch
+
+The inferred type of a function body does not match the declared return type. For failable functions, the body can return the success type (e.g., a function returning `String!` can have a body that returns `String`).
+
 ### E325 — Non-stringable type in f-string
 
 An interpolated expression in an f-string must be a stringable type (`String`, `Integer`, `Decimal`, `Float`, `Boolean`, `Character`).
@@ -184,6 +198,16 @@ from
 transforms run(path String) String!
 from
     read_file(path)!
+```
+
+### E352 — Function calls not allowed in `where` constraints
+
+A `where` constraint on a refinement type contains a function call or other complex expression. Only primitive expressions are allowed: comparisons, ranges, boolean operators, literals, identifiers, and field access.
+
+```prove
+type Valid is Integer where is_prime(value)
+
+type Valid is Integer where value > 0 && value < 100
 ```
 
 ### E361 — Pure function cannot be failable
@@ -237,13 +261,49 @@ A match expression on an algebraic type does not cover all variants and has no c
 
 The `ensures` expression is not valid.
 
+### E381 — Requires expression must be Boolean
+
+A `requires` precondition expression does not evaluate to `Boolean`.
+
+```prove
+transforms process(x Integer) Integer
+  requires x + 1
+
+transforms process(x Integer) Integer
+  requires x > 0
+```
+
 ### E382 — Satisfies references undefined type
 
 A `satisfies` annotation references a type that is not defined.
 
+### E384 — Know expression must be Boolean
+
+A `know` expression must evaluate to `Boolean`.
+
+```prove
+transforms process(order Order) Receipt
+  know: len(order.items)
+
+transforms process(order Order) Receipt
+  know: len(order.items) > 0
+```
+
+### E385 — Assume expression must be Boolean
+
+An `assume` expression must evaluate to `Boolean`.
+
+```prove
+transforms process(order Order) Receipt
+  assume: order.total
+
+transforms process(order Order) Receipt
+  assume: order.total > 0
+```
+
 ### E386 — Believe expression must be Boolean
 
-A `believe` expression must evaluate to `Boolean`.
+A `believe` expression must evaluate to `Boolean`. See also E384 (`know`) and E385 (`assume`).
 
 ### E391 — Duplicate explain entry name
 

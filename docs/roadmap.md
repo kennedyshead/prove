@@ -15,7 +15,12 @@
 | v0.8.1 | Complete | Lint system overhaul — diagnostic code splits, doc links, Suggestions |
 | v0.8.2 | Complete | `proof` → `explain` migration |
 | v0.8.3 | Complete | Remaining lints (E316, E317, W302, W303, W323, W326) — 506 tests |
-| v0.9 | Planned | Lexer export tool (`prove export`) |
+| v0.9 | Complete | Lexer export tool (`prove export`) — 612 tests |
+| v0.9.1 | Complete | Documentation parity — mark unimplemented features, add missing diagnostics |
+| v0.9.2 | Planned | Comptime execution |
+| v0.9.3 | Planned | Linear types + ownership (`Own`, `Mutable`, compiler-inferred borrows) |
+| v0.9.4 | Planned | Auto-memoization + memory regions |
+| v0.9.5 | Planned | Mutation testing (`--mutate`) |
 | v1.0 | Planned | Self-hosting compiler |
 | v1.1 | Planned | Formatter + View (native) |
 | v1.2 | Planned | Language server (native) |
@@ -44,6 +49,37 @@ The export tool reads from `tokens.py` (keywords, operators), `types.py`
 sentinel-marked sections in each target file. The `--build` flag also runs
 the target's build step (e.g., `tree-sitter generate`, `pip install`,
 `go build`).
+
+### v0.9.1 — Documentation Parity
+
+Audit and update all documentation pages to accurately reflect the current
+implementation state. Add missing diagnostic codes, document optimizer passes,
+mark unimplemented features as upcoming, and reorganize the AI-resistance page
+by implementation status.
+
+### v0.9.2 — Comptime Execution
+
+Execute `comptime` blocks at compile time. Currently the keyword is parsed
+but expressions are not evaluated during compilation. Adds a compile-time
+interpreter, file dependency tracking, and constant embedding in emitted C.
+
+### v0.9.3 — Linear Types + Ownership
+
+Implement the `Own` type modifier and compiler-inferred borrows. Use-after-move
+detection, the `Mutable` type modifier, and ownership-aware memory management
+in the C emitter.
+
+### v0.9.4 — Auto-Memoization + Memory Regions
+
+Automatic memoization of eligible pure functions and region-based memory
+allocation for short-lived values. Extends the optimizer with memoization
+candidate analysis and adds region allocator support to the C runtime.
+
+### v0.9.5 — Mutation Testing
+
+Implement the `--mutate` flag. The compiler generates mutants (operator swaps,
+branch removals, constant changes), runs the contract-based test suite against
+each, and reports surviving mutants with suggested contracts to kill them.
 
 ### v1.0 — Self-Hosting
 

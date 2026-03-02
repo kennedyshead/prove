@@ -80,7 +80,24 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ---
 
+## Optimizer
+
+When `optimize = true` in `prove.toml`, the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+
+| Pass | What it does |
+|------|-------------|
+| **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a `terminates` annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
+| **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
+| **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
+| **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
+| **Copy elision** | Detects `transforms` functions that return a parameter directly and marks them for the C emitter to skip retain/release. *(Placeholder — metadata tracking only.)* |
+| **Iterator fusion** | Detects `map(filter(xs, pred), fn)` patterns for fusion into a single pass. *(Placeholder — full rewrite pending List runtime support.)* |
+
+---
+
 ## Comptime (Compile-Time Computation)
+
+*The `comptime` keyword is parsed but not yet executed at compile time. Compile-time evaluation is planned for v0.9.2.*
 
 Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.
 

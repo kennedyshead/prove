@@ -32,7 +32,7 @@ Runs the full pipeline: lex, parse, check, prove, emit C, compile with gcc/clang
 
 | Flag | Description |
 |------|-------------|
-| `--mutate` | Enable mutation testing after build |
+| `--mutate` | Enable mutation testing after build *(planned — not yet implemented; see v0.9.5)* |
 
 The project directory must contain a `prove.toml`. Output binary is placed in `build/`.
 

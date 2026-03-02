@@ -485,7 +485,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `terminates` | Required for recursive functions — declares a measure expression that decreases on each call. Compiler error if omitted |
 | `trusted` | Explicitly marks a function as unverified — acknowledges the gap when `ensures` would otherwise be expected |
 | `valid` | References a `validates` function as a predicate |
-| `comptime` | Runs code at compile time instead of runtime |
+| `comptime` | Marks code for compile-time evaluation *(parsed; execution upcoming in v0.9.2)* |
 | `foreign` | Declares a C FFI block inside a module — `foreign "libname"` |
 
 ### Interface Contracts: `requires`, `ensures`
