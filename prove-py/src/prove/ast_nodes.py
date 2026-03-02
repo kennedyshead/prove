@@ -296,16 +296,16 @@ class Param:
 
 
 @dataclass(frozen=True)
-class ProofObligation:
-    name: str
+class ExplainEntry:
+    name: str | None  # None for prose-only entries
     text: str
     condition: Expr | None  # parsed "when <expr>", None if absent
     span: Span
 
 
 @dataclass(frozen=True)
-class ProofBlock:
-    obligations: list[ProofObligation]
+class ExplainBlock:
+    entries: list[ExplainEntry]
     span: Span
 
 
@@ -380,8 +380,7 @@ class FunctionDef:
     can_fail: bool
     ensures: list[Expr]
     requires: list[Expr]
-    proof: ProofBlock | None
-    explain: list[str]
+    explain: ExplainBlock | None
     terminates: Expr | None
     trusted: str | None
     binary: bool

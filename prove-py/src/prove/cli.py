@@ -221,13 +221,17 @@ def _check_summary(name: str, files: int, errors: int, warnings: int,
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
-def check(path: str, md: bool) -> None:
+@click.option("--strict", is_flag=True, help="Treat warnings as errors.")
+def check(path: str, md: bool, strict: bool) -> None:
     """Type-check and lint a Prove project or a single .prv file."""
     target = Path(path)
 
     if target.is_file() and target.suffix == ".prv":
         click.echo(f"checking {target.name}...")
         errors, warnings, fmt = _check_file(target)
+        if strict:
+            errors += warnings
+            warnings = 0
         click.echo(_check_summary(target.name, 1, errors, warnings, fmt))
         if errors:
             raise SystemExit(1)
@@ -236,6 +240,9 @@ def check(path: str, md: bool) -> None:
     if target.is_file() and target.suffix == ".md":
         click.echo(f"checking {target.name}...")
         blocks, errors, warnings = _check_md_prove_blocks(target)
+        if strict:
+            errors += warnings
+            warnings = 0
         click.echo(_check_summary(target.name, 1, errors, warnings, 0,
                                   md_blocks=blocks))
         if errors:
@@ -262,6 +269,10 @@ def check(path: str, md: bool) -> None:
                 md_warnings += w
             errors += md_errors
             warnings += md_warnings
+
+        if strict:
+            errors += warnings
+            warnings = 0
 
         click.echo(_check_summary(config.package.name, checked, errors,
                                   warnings, format_issues,

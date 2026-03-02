@@ -2,9 +2,9 @@
 
 ## Philosophy
 
-The compiler is your co-author, not your gatekeeper.
+Prove is an **intent-first** language. Every function declares its intent — a verb names the purpose, contracts state the guarantees, and explain documents the reasoning — before a single line of implementation is written. The compiler then enforces that the implementation matches the declared intent.
 
-Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
+The compiler is your co-author, not your gatekeeper. Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
 
 ---
 

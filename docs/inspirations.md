@@ -1,5 +1,7 @@
 # Design Inspirations
 
+Prove draws from many languages but combines their ideas into something none of them offer: **intent-first programming**, where every function declares its purpose, guarantees, and reasoning before the implementation begins. The languages below shaped individual features — the verb system, the contracts, the type safety — but the synthesis is uniquely Prove's.
+
 | Language | What Prove borrows | What Prove avoids |
 |---|---|---|
 | **Rust** | Ownership model, exhaustive matching, no null | Lifetime annotation burden, borrow checker complexity |

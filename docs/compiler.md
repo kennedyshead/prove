@@ -13,7 +13,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 | **Lexer** | Source text | Token stream | Indent/dedent tracking, string interpolation, regex disambiguation |
 | **Parser** | Token stream | AST | Pratt expression parsing, recursive descent for declarations |
 | **Checker** | AST | Typed AST + symbol table | Type inference, verb enforcement, match exhaustiveness |
-| **Prover** | AST + contracts | Diagnostics | Proof obligation verification, contract consistency |
+| **Prover** | AST + contracts | Diagnostics | Explain entry verification, contract consistency |
 | **C Emitter** | Typed AST | C source | Type mapping, name mangling, lambda hoisting, reference counting |
 | **gcc/clang** | C source | Native binary | Optimization, linking with C runtime |
 
@@ -109,4 +109,4 @@ The compiler enforces purity rules based on the function's verb. Pure verbs (`tr
 
 IO verbs (`inputs`, `outputs`) have no such restrictions.
 
-See [Diagnostic Codes](diagnostics.md#verb-enforcement-e360-e364) for details on each enforcement error.
+See [Diagnostic Codes](diagnostics.md#verb-enforcement-e360e366) for details on each enforcement error.

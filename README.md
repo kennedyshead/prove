@@ -2,20 +2,20 @@
 
 <img src="./assets/icon.png" alt="Prove" width="100" height="100">
 
-**A programming language that fights back against AI slop and code scraping.**
+**An intent-first programming language designed to mitigate AI slop and code scraping.**
 
-Prove is a strongly typed, compiler-driven language where contracts generate tests, intent verbs enforce purity, and the compiler rejects code that can't demonstrate understanding. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
+Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
 
 ```prove
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
-  proof
-    correctness: result is the sum of a and b
+  explain
+    sum a and b
 from
     a + b
 ```
 
-`ensures` generates property tests. `transforms` guarantees purity. `proof` explains *why* the contract holds. The compiler enforces all of it.
+`ensures` generates property tests. `transforms` guarantees purity. `explain` documents *how* the implementation satisfies the contract. The compiler enforces all of it.
 
 ---
 
@@ -24,7 +24,7 @@ from
 | Problem | How Prove solves it |
 |---|---|
 | AI scrapes your code for training | Binary AST format + anti-training license + semantic normalization |
-| AI slop PRs waste maintainer time | Compiler rejects code without proof obligations and intent |
+| AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
 | Tests are separate from code | Contracts generate tests automatically |
 | "Works on my machine" | Verb system makes IO explicit |
 | Null/nil crashes | No null — `Option<T>` enforced by compiler |

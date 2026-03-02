@@ -113,9 +113,14 @@ def _compile_diag(d: object) -> lsp.Diagnostic:
     sev = _SEVERITY_MAP.get(getattr(d, "severity", None), lsp.DiagnosticSeverity.Error)
     code = getattr(d, "code", "E000")
     msg = getattr(d, "message", str(d))
+    doc_url = getattr(d, "doc_url", None)
+    code_desc = None
+    if doc_url:
+        code_desc = lsp.CodeDescription(href=doc_url)
     return lsp.Diagnostic(
         range=span_range, severity=sev, source="prove",
         code=code, message=f"[{code}] {msg}",
+        code_description=code_desc,
     )
 
 

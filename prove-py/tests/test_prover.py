@@ -1,6 +1,6 @@
-"""Tests for the proof verification module."""
+"""Tests for the explain verification module."""
 
-from prove.ast_nodes import FunctionDef, IntegerLit, ProofBlock, ProofObligation
+from prove.ast_nodes import ExplainBlock, ExplainEntry, FunctionDef, IntegerLit
 from prove.prover import ProofVerifier
 from prove.source import Span
 from tests.helpers import check, check_fails, check_warns
@@ -12,8 +12,8 @@ def _make_fd(**kwargs) -> FunctionDef:
     """Create a minimal FunctionDef for testing."""
     defaults = dict(
         verb="transforms", name="f", params=[], return_type=None,
-        can_fail=False, ensures=[], requires=[], proof=None,
-        explain=[], terminates=None, trusted=None, binary=False,
+        can_fail=False, ensures=[], requires=[],
+        explain=None, terminates=None, trusted=None, binary=False,
         why_not=[], chosen=None, near_misses=[], know=[], assume=[],
         believe=[], intent=None, satisfies=[], body=[], doc_comment=None,
         span=_DUMMY,
@@ -23,18 +23,19 @@ def _make_fd(**kwargs) -> FunctionDef:
 
 
 class TestProofVerification:
-    """Test proof verification errors and warnings."""
+    """Test explain block verification errors and warnings."""
 
-    def test_ensures_without_explain_error(self):
-        check_fails(
+    def test_ensures_without_explain_warning(self):
+        """W323: ensures without explain is now a warning, not an error."""
+        check_warns(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
             "    from\n"
             "        a + b\n",
-            "E390",
+            "W323",
         )
 
-    def test_ensures_with_explain_no_e390(self):
+    def test_ensures_with_explain_no_w323(self):
         check(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
@@ -44,47 +45,44 @@ class TestProofVerification:
             "        a + b\n"
         )
 
-    def test_duplicate_obligation_error_direct(self):
-        """Test duplicate obligation detection using ProofVerifier directly."""
-        obl1 = ProofObligation(name="same", text="first", condition=None, span=_DUMMY)
-        obl2 = ProofObligation(name="same", text="second", condition=None, span=_DUMMY)
-        proof = ProofBlock(obligations=[obl1, obl2], span=_DUMMY)
+    def test_duplicate_entry_error_direct(self):
+        """Test duplicate entry detection using ProofVerifier directly."""
+        e1 = ExplainEntry(name="same", text="first", condition=None, span=_DUMMY)
+        e2 = ExplainEntry(name="same", text="second", condition=None, span=_DUMMY)
+        explain = ExplainBlock(entries=[e1, e2], span=_DUMMY)
         fd = _make_fd(
             ensures=[IntegerLit(value="1", span=_DUMMY)],
-            explain=["some step"],
-            proof=proof,
+            explain=explain,
         )
         verifier = ProofVerifier()
         verifier.verify(fd)
         codes = [d.code for d in verifier.diagnostics]
         assert "E391" in codes
 
-    def test_obligation_coverage_error_direct(self):
-        """Test obligation coverage using ProofVerifier directly."""
-        obl = ProofObligation(name="one", text="covers result", condition=None, span=_DUMMY)
-        proof = ProofBlock(obligations=[obl], span=_DUMMY)
+    def test_entry_coverage_error_direct(self):
+        """Test entry coverage using ProofVerifier directly."""
+        entry = ExplainEntry(name="one", text="covers result", condition=None, span=_DUMMY)
+        explain = ExplainBlock(entries=[entry], span=_DUMMY)
         fd = _make_fd(
             ensures=[
                 IntegerLit(value="1", span=_DUMMY),
                 IntegerLit(value="2", span=_DUMMY),
             ],
-            explain=["step one", "step two"],
-            proof=proof,
+            explain=explain,
         )
         verifier = ProofVerifier()
         verifier.verify(fd)
         codes = [d.code for d in verifier.diagnostics]
         assert "E392" in codes
 
-    def test_proof_text_no_references_warning_direct(self):
-        """Test proof text reference checking using ProofVerifier directly."""
-        obl = ProofObligation(name="vague", text="xyz qrs tuv", condition=None, span=_DUMMY)
-        proof = ProofBlock(obligations=[obl], span=_DUMMY)
+    def test_explain_text_no_references_warning_direct(self):
+        """Test explain text reference checking using ProofVerifier directly."""
+        entry = ExplainEntry(name="vague", text="xyz qrs tuv", condition=None, span=_DUMMY)
+        explain = ExplainBlock(entries=[entry], span=_DUMMY)
         fd = _make_fd(
             name="compute",
             ensures=[IntegerLit(value="1", span=_DUMMY)],
-            explain=["some step"],
-            proof=proof,
+            explain=explain,
         )
         verifier = ProofVerifier()
         verifier.verify(fd)
@@ -148,6 +146,52 @@ class TestProofVerification:
             "    from\n"
             "        a / b\n"
         )
+
+
+class TestRecursionDepth:
+    """Test W326 recursion depth warning."""
+
+    def test_recursion_depth_warning(self):
+        """W326: recursive function with terminates gets depth warning."""
+        fd = _make_fd(
+            name="countdown",
+            terminates=IntegerLit(value="1", span=_DUMMY),
+            body=[],
+        )
+        # Simulate recursion by adding a call to self in body
+        from prove.ast_nodes import CallExpr, ExprStmt, IdentifierExpr
+        call = CallExpr(
+            func=IdentifierExpr(name="countdown", span=_DUMMY),
+            args=[IntegerLit(value="0", span=_DUMMY)],
+            span=_DUMMY,
+        )
+        fd = _make_fd(
+            name="countdown",
+            terminates=IntegerLit(value="1", span=_DUMMY),
+            body=[ExprStmt(expr=call, span=_DUMMY)],
+        )
+        verifier = ProofVerifier()
+        verifier.verify(fd)
+        codes = [d.code for d in verifier.diagnostics]
+        assert "W326" in codes
+
+    def test_no_w326_without_terminates(self):
+        """No W326 if terminates is missing (E366 covers that)."""
+        from prove.ast_nodes import CallExpr, ExprStmt, IdentifierExpr
+        call = CallExpr(
+            func=IdentifierExpr(name="f", span=_DUMMY),
+            args=[],
+            span=_DUMMY,
+        )
+        fd = _make_fd(
+            name="f",
+            terminates=None,
+            body=[ExprStmt(expr=call, span=_DUMMY)],
+        )
+        verifier = ProofVerifier()
+        verifier.verify(fd)
+        codes = [d.code for d in verifier.diagnostics]
+        assert "W326" not in codes
 
 
 class TestAssumeAssertion:

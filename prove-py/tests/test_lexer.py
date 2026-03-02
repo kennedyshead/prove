@@ -43,7 +43,7 @@ class TestLexerBasic:
         for kw in ["transforms", "inputs", "outputs", "validates",
                     "main", "from", "type", "is", "as", "with", "use",
                     "where", "match", "comptime", "valid",
-                    "module", "domain", "ensures", "requires", "proof",
+                    "module", "domain", "ensures", "requires",
                     "when"]:
             result = lex(kw)
             assert len(result) == 1, f"keyword {kw} should lex to one token"

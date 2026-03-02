@@ -2,12 +2,12 @@
 
 <img src="../assets/icon.png" alt="Prove" width="100" height="100">
 
-A statically typed programming language that compiles to native code via C.
+An intent-first programming language that compiles to native code via C.
 
 > "If it compiles, it ships."
 
-Prove features intent verbs, contracts-as-tests, refinement types, proof
-obligations, and AI-resistance mechanisms. The compiler is your co-author,
+Prove features intent verbs, contracts-as-tests, refinement types, explain
+entries, and AI-resistance mechanisms. The compiler is your co-author,
 not your gatekeeper.
 
 **Repository:** [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove)
@@ -42,10 +42,10 @@ prove lsp                       # start language server
 ## Language Features
 
 - **Intent verbs** encode what a function *does*, not just its type:
-  - Pure: `transforms`, `validates`, `reads`, `creates`, `saves`
+  - Pure: `transforms`, `validates`, `reads`, `creates`, `matches`
   - IO: `inputs`, `outputs`
 - **Contracts** — `ensures`, `requires`, `believe` declare guarantees;
-  `proof` blocks explain *why* they hold
+  `explain` blocks document *how* the implementation satisfies them
 - **Refinement types** — `type Price is Decimal where >= 0`
 - **Near-miss testing** — `near_miss: 10 => false` proves you
   understand the boundaries
@@ -65,17 +65,17 @@ prove lsp                       # start language server
 | E362 | pure function cannot call IO builtin |
 | E363 | pure function cannot call IO function |
 | E364 | lambda captures variable (closures not supported) |
-| E390 | `ensures` without `proof` block |
-| E391 | duplicate proof obligation name |
-| E392 | proof obligations < ensures count |
+| E390 | `ensures` without `explain` block |
+| E391 | duplicate explain entry |
+| E392 | explain entries < ensures count |
 | E393 | `believe` without `ensures` |
-| E394 | proof condition must be Boolean |
+| E394 | explain condition must be Boolean |
 
 ### Warnings
 
 | Code | Meaning |
 |------|---------|
-| W321 | proof text doesn't reference function concepts |
+| W321 | explain text doesn't reference function concepts |
 | W322 | duplicate near-miss inputs |
 | W324 | `ensures` without `requires` |
 
@@ -132,9 +132,10 @@ mypy src/
 | v0.2 | ASM backend reference implementation (x86_64) | Complete, archived |
 | v0.3 | Legacy stdlib cleanup, `List` module | Complete |
 | v0.4 | Pure verbs, binary types, namespaced calls, channel dispatch | Complete |
-| v0.5 | Turbo runtime: arena allocator, fast hash, string intern | Planned |
-| v0.6 | Core stdlib: Character, Text, Table | Planned |
-| v0.7 | IO extensions and Parse | Planned |
+| v0.5 | Turbo runtime: arena allocator, fast hash, string intern | Complete |
+| v0.6 | Core stdlib: Character, Text, Table | Complete |
+| v0.7 | IO extensions, Parse, and C FFI | Complete |
+| v0.8 | Formatter type inference | Complete |
 | v1.0 | Self-hosting: rewrite compiler in Prove | Planned |
 
 ## Repository & Access

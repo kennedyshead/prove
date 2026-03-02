@@ -45,9 +45,8 @@ class TokenKind(Enum):
     # Contracts
     ENSURES = auto()
     REQUIRES = auto()
-    PROOF = auto()
-    WHEN = auto()
     EXPLAIN = auto()
+    WHEN = auto()
     TERMINATES = auto()
     TRUSTED = auto()
 
@@ -160,7 +159,6 @@ KEYWORDS: dict[str, TokenKind] = {
     "domain": TokenKind.DOMAIN,
     "ensures": TokenKind.ENSURES,
     "requires": TokenKind.REQUIRES,
-    "proof": TokenKind.PROOF,
     "when": TokenKind.WHEN,
     "explain": TokenKind.EXPLAIN,
     "terminates": TokenKind.TERMINATES,

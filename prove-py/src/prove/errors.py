@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Severity(Enum):
     ERROR = "error"
     WARNING = "warning"
-    NOTE = "note"
+    NOTE = "info"
 
 
 # ANSI color codes
@@ -55,6 +55,74 @@ class Diagnostic:
     labels: list[DiagnosticLabel] = field(default_factory=list)
     suggestions: list[Suggestion] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    doc_url: str | None = None
+
+
+# ── Diagnostic documentation registry ─────────────────────────────
+
+_DOCS_BASE = "https://prove.botwork.se/diagnostics/"
+
+DIAGNOSTIC_DOCS: dict[str, str] = {}
+
+
+def _register_doc_range(prefix: str, start: int, end: int) -> None:
+    for i in range(start, end + 1):
+        code = f"{prefix}{i}"
+        DIAGNOSTIC_DOCS[code] = f"{_DOCS_BASE}#{code}"
+
+
+# Lexer E100-E110
+_register_doc_range("E", 100, 110)
+# Parser
+for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215", "E216"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
+# Definition E300-E302
+_register_doc_range("E", 300, 302)
+# Name resolution E310-E317
+_register_doc_range("E", 310, 317)
+# Type checking
+for _c in ("E320", "E325", "E330", "E331"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
+# Field access E340
+DIAGNOSTIC_DOCS["E340"] = f"{_DOCS_BASE}#E340"
+# Control flow E350
+DIAGNOSTIC_DOCS["E350"] = f"{_DOCS_BASE}#E350"
+# Verb enforcement E360-E366
+_register_doc_range("E", 360, 366)
+# Pattern matching E370-E371
+_register_doc_range("E", 370, 371)
+# Contract checking
+for _c in ("E380", "E382", "E386"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
+# Explain verification E391-E394 (E390 replaced by W323)
+_register_doc_range("E", 391, 394)
+# Warnings — variables
+for _c in ("W300", "W301", "W302", "W303", "W310", "W311"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
+# Warnings — contracts W321-W326
+_register_doc_range("W", 321, 326)
+# Info I201
+DIAGNOSTIC_DOCS["I201"] = f"{_DOCS_BASE}#I201"
+
+
+def make_diagnostic(
+    severity: Severity,
+    code: str,
+    message: str,
+    labels: list[DiagnosticLabel] | None = None,
+    suggestions: list[Suggestion] | None = None,
+    notes: list[str] | None = None,
+) -> Diagnostic:
+    """Create a Diagnostic with auto-populated doc_url from registry."""
+    return Diagnostic(
+        severity=severity,
+        code=code,
+        message=message,
+        labels=labels or [],
+        suggestions=suggestions or [],
+        notes=notes or [],
+        doc_url=DIAGNOSTIC_DOCS.get(code),
+    )
 
 
 class DiagnosticRenderer:
@@ -140,6 +208,12 @@ class DiagnosticRenderer:
         for suggestion in diag.suggestions:
             lines.append(
                 f"  {self._c(_BLUE)}try:{self._c(_RESET)} {suggestion.replacement}"
+            )
+
+        # Doc link
+        if diag.doc_url:
+            lines.append(
+                f"  {self._c(_BLUE)}={self._c(_RESET)} help: {diag.doc_url}"
             )
 
         return "\n".join(lines)

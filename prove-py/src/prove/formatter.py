@@ -46,7 +46,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
-    ProofBlock,
+    ExplainBlock,
     RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
@@ -174,12 +174,8 @@ class ProveFormatter:
             lines.append(f"  ensures {self._format_expr(expr)}")
         for expr in fd.requires:
             lines.append(f"  requires {self._format_expr(expr)}")
-        if fd.proof:
-            lines.extend(self._format_proof_block(fd.proof, 2))
         if fd.explain:
-            lines.append("  explain")
-            for text in fd.explain:
-                lines.append(f"    {text}")
+            lines.extend(self._format_explain_block(fd.explain, 2))
         if fd.terminates is not None:
             lines.append(f"  terminates: {self._format_expr(fd.terminates)}")
         if fd.trusted is not None:
@@ -208,11 +204,17 @@ class ProveFormatter:
             lines.append(f"  satisfies {name}")
         return lines
 
-    def _format_proof_block(self, proof: ProofBlock, indent: int) -> list[str]:
+    def _format_explain_block(self, explain: ExplainBlock, indent: int) -> list[str]:
         prefix = " " * indent
-        lines = [f"{prefix}proof"]
-        for obl in proof.obligations:
-            lines.append(f"{prefix}  {obl.name}: {obl.text}")
+        lines = [f"{prefix}explain"]
+        for entry in explain.entries:
+            if entry.name is not None:
+                line = f"{prefix}    {entry.name}: {entry.text}"
+                if entry.condition is not None:
+                    line += f" when {self._format_expr(entry.condition)}"
+                lines.append(line)
+            else:
+                lines.append(f"{prefix}    {entry.text}")
         return lines
 
     # ── Type definitions ───────────────────────────────────────

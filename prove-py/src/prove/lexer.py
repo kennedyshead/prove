@@ -131,12 +131,12 @@ class Lexer:
         self.prev_token = tok
         return tok
 
-    def _error(self, message: str, line: int, col: int) -> None:
+    def _error(self, message: str, line: int, col: int, code: str = "E100") -> None:
         span = Span(self.filename, line, col, line, col)
         self.diagnostics.append(
             Diagnostic(
                 severity=Severity.ERROR,
-                code="E100",
+                code=code,
                 message=message,
                 labels=[DiagnosticLabel(span=span, message="")],
             )
@@ -146,7 +146,7 @@ class Lexer:
         """Skip spaces and tabs (but not newlines)."""
         while self.pos < len(self.source) and self.source[self.pos] in (' ', '\t'):
             if self.source[self.pos] == '\t':
-                self._error("tabs are not allowed; use spaces", self.line, self.col)
+                self._error("tabs are not allowed; use spaces", self.line, self.col, "E100")
             self._advance()
 
     # ── Indentation ──────────────────────────────────────────────
@@ -160,7 +160,7 @@ class Lexer:
             self.col += 1
 
         if self.pos < len(self.source) and self.source[self.pos] == '\t':
-            self._error("tabs are not allowed; use spaces", self.line, self.col)
+            self._error("tabs are not allowed; use spaces", self.line, self.col, "E100")
 
         # Skip blank lines and comment-only lines
         if self.pos >= len(self.source) or self.source[self.pos] == '\n':
@@ -184,7 +184,7 @@ class Lexer:
                 self._error(
                     f"inconsistent indentation: expected {expected}"
                     f" spaces, got {indent}",
-                    self.line, 1,
+                    self.line, 1, "E110",
                 )
 
     # ── Newlines ─────────────────────────────────────────────────
@@ -246,7 +246,7 @@ class Lexer:
                 self._emit(TokenKind.TRIPLE_STRING_LIT, ''.join(text), start_line, start_col)
                 return
             text.append(self._advance())
-        self._error("unterminated triple-quoted string", start_line, start_col)
+        self._error("unterminated triple-quoted string", start_line, start_col, "E102")
 
     def _lex_string(self) -> None:
         """Lex a plain string literal. No interpolation — { is literal."""
@@ -262,7 +262,7 @@ class Lexer:
                 text.append(self._advance())
 
         if self.pos >= len(self.source):
-            self._error("unterminated string literal", start_line, start_col)
+            self._error("unterminated string literal", start_line, start_col, "E101")
             return
 
         self._advance()  # skip closing "
@@ -314,7 +314,7 @@ class Lexer:
                 text.append(self._advance())
 
         if self.pos >= len(self.source):
-            self._error("unterminated f-string literal", start_line, start_col)
+            self._error("unterminated f-string literal", start_line, start_col, "E106")
             return
 
         self._advance()  # skip closing "
@@ -332,12 +332,12 @@ class Lexer:
 
         while self.pos < len(self.source) and self.source[self.pos] != '"':
             if self.source[self.pos] == '\n':
-                self._error("unterminated raw string literal", start_line, start_col)
+                self._error("unterminated raw string literal", start_line, start_col, "E105")
                 return
             text.append(self._advance())
 
         if self.pos >= len(self.source):
-            self._error("unterminated raw string literal", start_line, start_col)
+            self._error("unterminated raw string literal", start_line, start_col, "E105")
             return
 
         self._advance()  # skip closing "
@@ -346,14 +346,14 @@ class Lexer:
     def _lex_escape_sequence(self) -> str:
         self._advance()  # skip backslash
         if self.pos >= len(self.source):
-            self._error("unexpected end of escape sequence", self.line, self.col)
+            self._error("unexpected end of escape sequence", self.line, self.col, "E108")
             return ""
         ch = self._advance()
         escape_map = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\', '"': '"',
                       '{': '{', '}': '}', '0': '\0'}
         if ch in escape_map:
             return escape_map[ch]
-        self._error(f"unknown escape sequence: \\{ch}", self.line, self.col - 1)
+        self._error(f"unknown escape sequence: \\{ch}", self.line, self.col - 1, "E107")
         return ch
 
     def _lex_char(self) -> None:
@@ -361,7 +361,7 @@ class Lexer:
         start_col = self.col
         self._advance()  # skip opening '
         if self.pos >= len(self.source):
-            self._error("unterminated character literal", start_line, start_col)
+            self._error("unterminated character literal", start_line, start_col, "E103")
             return
         if self.source[self.pos] == '\\':
             ch = self._lex_escape_sequence()
@@ -370,7 +370,7 @@ class Lexer:
         if self.pos < len(self.source) and self.source[self.pos] == "'":
             self._advance()
         else:
-            self._error("unterminated character literal", start_line, start_col)
+            self._error("unterminated character literal", start_line, start_col, "E103")
         self._emit(TokenKind.CHAR_LIT, ch, start_line, start_col)
 
     # ── Regex ────────────────────────────────────────────────────
@@ -391,12 +391,12 @@ class Lexer:
                 if self.pos < len(self.source):
                     text.append(self._advance())  # escaped char
             elif self.source[self.pos] == '\n':
-                self._error("unterminated regex literal", start_line, start_col)
+                self._error("unterminated regex literal", start_line, start_col, "E104")
                 return
             else:
                 text.append(self._advance())
         if self.pos >= len(self.source):
-            self._error("unterminated regex literal", start_line, start_col)
+            self._error("unterminated regex literal", start_line, start_col, "E104")
             return
         self._advance()  # skip closing /
         self._emit(TokenKind.REGEX_LIT, ''.join(text), start_line, start_col)
@@ -653,4 +653,4 @@ class Lexer:
             case '|':
                 self._emit(TokenKind.PIPE, '|', start_line, start_col)
             case _:
-                self._error(f"unexpected character: {ch!r}", start_line, start_col)
+                self._error(f"unexpected character: {ch!r}", start_line, start_col, "E109")

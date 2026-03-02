@@ -57,7 +57,7 @@ from prove.ast_nodes import (
     VariantPattern,
     WildcardPattern,
 )
-from prove.errors import Diagnostic, DiagnosticLabel, Severity
+from prove.errors import Diagnostic, DiagnosticLabel, Severity, Suggestion
 from prove.prover import ProofVerifier
 from prove.source import Span
 from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
@@ -98,6 +98,18 @@ _IO_FUNCTIONS = frozenset({
     "open", "close", "flush", "sleep",
 })
 
+# Built-in function names that user code must not shadow
+_BUILTIN_FUNCTIONS = frozenset({
+    "len", "map", "each", "filter", "reduce", "to_string", "clamp",
+    "println", "print", "readln",
+})
+
+# Built-in type names that user code must not shadow
+_BUILTIN_TYPE_NAMES = frozenset({
+    "Integer", "Decimal", "Float", "Boolean", "String", "Character", "Byte",
+    "Unit", "List", "Option", "Result", "Error", "Table",
+})
+
 
 def _edit_distance(a: str, b: str) -> int:
     """Compute Levenshtein edit distance between two strings."""
@@ -125,6 +137,14 @@ class Checker:
         self._io_function_names: set[str] = set()
         # Track imports: module_name -> set of imported function names
         self._module_imports: dict[str, set[str]] = {}
+        # Track which imports are actually used: (module_name, func_name)
+        self._used_imports: set[tuple[str, str]] = set()
+        # Track import spans for W302 reporting: (module, name) -> span
+        self._import_spans: dict[tuple[str, str], Span] = {}
+        # Track user-defined type names and their spans for W303
+        self._user_types: dict[str, Span] = {}
+        # Track which user-defined types are referenced
+        self._used_types: set[str] = set()
         # Requires-based option narrowing: set of (module, frozenset(arg_names))
         self._requires_narrowings: set[tuple[str, frozenset[str]]] = set()
 
@@ -141,14 +161,14 @@ class Checker:
                 d for d in module.declarations if isinstance(d, ModuleDecl)
             ]
             if not mod_decls:
-                self._error(
-                    "E200",
+                self._info(
+                    "I201",
                     "Prove requires a module declaration with narrative",
                     module.span,
                 )
             elif mod_decls[0].narrative is None:
-                self._error(
-                    "E200",
+                self._info(
+                    "I201",
                     "module declaration requires a narrative",
                     mod_decls[0].span,
                 )
@@ -189,6 +209,12 @@ class Checker:
         # Check unused variables (W300)
         self._check_unused()
 
+        # Check unused imports (W302)
+        self._check_unused_imports()
+
+        # Check unused type definitions (W303)
+        self._check_unused_types()
+
         return self.symbols
 
     def has_errors(self) -> bool:
@@ -219,6 +245,14 @@ class Checker:
     def _warning(self, code: str, message: str, span: Span) -> None:
         self.diagnostics.append(Diagnostic(
             severity=Severity.WARNING,
+            code=code,
+            message=message,
+            labels=[DiagnosticLabel(span=span, message="")],
+        ))
+
+    def _info(self, code: str, message: str, span: Span) -> None:
+        self.diagnostics.append(Diagnostic(
+            severity=Severity.NOTE,
             code=code,
             message=message,
             labels=[DiagnosticLabel(span=span, message="")],
@@ -288,6 +322,15 @@ class Checker:
 
     def _register_type(self, td: TypeDef) -> None:
         """Register a user-defined type."""
+        # E317: type name shadows builtin type
+        if td.name in _BUILTIN_TYPE_NAMES:
+            self._error(
+                "E317",
+                f"'{td.name}' conflicts with the built-in type '{td.name}'. "
+                f"Choose a different name.",
+                td.span,
+            )
+            return
         existing = self.symbols.resolve_type(td.name)
         if existing is not None and not isinstance(existing, TypeVariable):
             self._error("E301", f"duplicate definition of '{td.name}'", td.span)
@@ -336,6 +379,7 @@ class Checker:
             resolved = ERROR_TY
 
         self.symbols.define_type(td.name, resolved)
+        self._user_types[td.name] = td.span
         # Also register in scope as a type symbol
         self.symbols.define(Symbol(
             name=td.name, kind=SymbolKind.TYPE,
@@ -344,6 +388,14 @@ class Checker:
 
     def _register_function(self, fd: FunctionDef) -> None:
         """Register a function signature."""
+        # E316: function name shadows builtin
+        if fd.name in _BUILTIN_FUNCTIONS:
+            self._error(
+                "E316",
+                f"'{fd.name}' shadows the built-in function '{fd.name}'. "
+                f"Choose a different name.",
+                fd.span,
+            )
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
         sig = FunctionSignature(
@@ -419,7 +471,7 @@ class Checker:
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
             self._warning(
-                "E310",
+                "E314",
                 f"unknown module '{imp.module}'",
                 imp.span,
             )
@@ -429,6 +481,7 @@ class Checker:
         names = self._module_imports.setdefault(imp.module, set())
         for item in imp.items:
             names.add(item.name)
+            self._import_spans[(imp.module, item.name)] = item.span
 
         stdlib_sigs = load_stdlib(imp.module)
         # Index by name → all overloads (different verbs)
@@ -470,8 +523,8 @@ class Checker:
             else:
                 # Known stdlib module but function not found — error
                 self._error(
-                    "E311",
-                    f"undefined function '{item.name}' "
+                    "E315",
+                    f"function '{item.name}' not found "
                     f"in module '{imp.module}'",
                     item.span,
                 )
@@ -495,6 +548,14 @@ class Checker:
         # Register parameters
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
         for param, pty in zip(fd.params, param_types):
+            # E316: parameter name shadows builtin function
+            if param.name in _BUILTIN_FUNCTIONS:
+                self._error(
+                    "E316",
+                    f"'{param.name}' shadows the built-in function "
+                    f"'{param.name}'. Choose a different name.",
+                    param.span,
+                )
             self.symbols.define(Symbol(
                 name=param.name, kind=SymbolKind.PARAMETER,
                 resolved_type=pty, span=param.span,
@@ -522,9 +583,16 @@ class Checker:
         if fd.verb == "validates":
             # validates has implicit Boolean return
             if fd.return_type is not None:
-                self._error(
-                    "E360", "validates has implicit Boolean return", fd.span,
-                )
+                self.diagnostics.append(Diagnostic(
+                    severity=Severity.ERROR,
+                    code="E360",
+                    message="validates has implicit Boolean return",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    suggestions=[Suggestion(
+                        message="remove the return type annotation",
+                        replacement=f"validates {fd.name}(...)",
+                    )],
+                ))
         elif not isinstance(body_type, ErrorType) and not types_compatible(return_type, body_type):
             # For failable functions, body can return the success type
             # e.g. Result<Integer, Error>! function body can return Integer
@@ -544,21 +612,21 @@ class Checker:
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
 
-        # ── Proof condition type-checking ──
-        if fd.proof is not None:
-            for obl in fd.proof.obligations:
-                if obl.condition is not None:
-                    cond_type = self._infer_expr(obl.condition)
+        # ── Explain condition type-checking ──
+        if fd.explain is not None:
+            for entry in fd.explain.entries:
+                if entry.condition is not None:
+                    cond_type = self._infer_expr(entry.condition)
                     if (not isinstance(cond_type, ErrorType)
                             and not types_compatible(BOOLEAN, cond_type)):
                         self._error(
                             "E394",
-                            f"proof condition must be Boolean, "
+                            f"explain condition must be Boolean, "
                             f"got '{type_name(cond_type)}'",
-                            obl.condition.span,
+                            entry.condition.span,
                         )
 
-        # ── Proof verification ──
+        # ── Explain verification ──
         verifier = ProofVerifier()
         verifier.verify(fd)
         self.diagnostics.extend(verifier.diagnostics)
@@ -721,7 +789,7 @@ class Checker:
         # Warning: intent set but no ensures/requires
         if fd.intent and not fd.ensures and not fd.requires:
             self._warning(
-                "W310",
+                "W311",
                 "intent declared but no ensures or requires to validate it",
                 fd.span,
             )
@@ -917,12 +985,17 @@ class Checker:
         if sym is None:
             # Implicit declaration: `x = expr` without `x as Type = expr`
             inferred = self._infer_expr(assign.value)
-            self._warning(
-                "W310",
-                f"implicitly typed '{assign.target}' "
-                f"(use '{assign.target} as {type_name(inferred)} = ...')",
-                assign.span,
-            )
+            tn = type_name(inferred)
+            self.diagnostics.append(Diagnostic(
+                severity=Severity.WARNING,
+                code="W310",
+                message=f"implicitly typed variable '{assign.target}'",
+                labels=[DiagnosticLabel(span=assign.span, message="")],
+                suggestions=[Suggestion(
+                    message="add an explicit type annotation",
+                    replacement=f"{assign.target} as {tn} = ...",
+                )],
+            ))
             self.symbols.define(Symbol(
                 name=assign.target, kind=SymbolKind.VARIABLE,
                 resolved_type=inferred, span=assign.span,
@@ -1009,7 +1082,7 @@ class Checker:
         sym = self.symbols.lookup(expr.name)
         if sym is None:
             diag = Diagnostic(
-                severity=Severity.WARNING,
+                severity=Severity.ERROR,
                 code="E310",
                 message=f"undefined name '{expr.name}'",
                 labels=[DiagnosticLabel(span=expr.span, message="")],
@@ -1028,12 +1101,13 @@ class Checker:
         """Type identifiers can be used as constructors or type references."""
         resolved = self.symbols.resolve_type(expr.name)
         if resolved is not None:
+            self._used_types.add(expr.name)
             return resolved
         sym = self.symbols.lookup(expr.name)
         if sym is not None:
             sym.used = True
             return sym.resolved_type
-        self._warning("E310", f"undefined name '{expr.name}'", expr.span)
+        self._error("E310", f"undefined name '{expr.name}'", expr.span)
         return ERROR_TY
 
     def _infer_binary(self, expr: BinaryExpr) -> Type:
@@ -1115,6 +1189,10 @@ class Checker:
                     return ERROR_TY
                 self._error("E311", f"undefined function '{name}'", expr.span)
                 return ERROR_TY
+
+            # Mark import as used for unqualified calls to imported functions
+            if sig.module:
+                self._used_imports.add((sig.module, name))
 
             # Skip strict checks for imported functions (ErrorType return = unknown sig)
             if isinstance(sig.return_type, ErrorType):
@@ -1206,8 +1284,8 @@ class Checker:
             func_name = expr.func.field
             # Verify the module is imported
             if not self._is_module_imported(module_name):
-                self._warning(
-                    "E310",
+                self._error(
+                    "E313",
                     f"module '{module_name}' is not imported",
                     expr.func.obj.span,
                 )
@@ -1215,12 +1293,14 @@ class Checker:
             # Verify the function is explicitly imported from this module
             if not self._is_function_imported(module_name, func_name):
                 self._error(
-                    "E311",
-                    f"undefined function '{func_name}' "
-                    f"in module '{module_name}'",
+                    "E312",
+                    f"function '{func_name}' not imported "
+                    f"from module '{module_name}'",
                     expr.func.span,
                 )
                 return ERROR_TY
+            # Mark import as used
+            self._used_imports.add((module_name, func_name))
             # Resolve the function normally by name
             sig = self.symbols.resolve_function(None, func_name, arg_count)
             cur = self._current_function
@@ -1231,7 +1311,12 @@ class Checker:
             if sig is None:
                 sig = self.symbols.resolve_function_any(func_name, arg_types)
             if sig is None:
-                self._error("E311", f"undefined function '{func_name}'", expr.span)
+                self._error(
+                    "E312",
+                    f"undefined function '{func_name}' "
+                    f"in module '{module_name}'",
+                    expr.span,
+                )
                 return ERROR_TY
             ret = sig.return_type
             # Requires-based option narrowing: if the return type is
@@ -1348,9 +1433,16 @@ class Checker:
             elif isinstance(self._current_function, MainDef):
                 can_fail = self._current_function.can_fail
             if not can_fail:
-                self._error(
-                    "E350", "fail propagation in non-failable function", expr.span,
-                )
+                self.diagnostics.append(Diagnostic(
+                    severity=Severity.ERROR,
+                    code="E350",
+                    message="fail propagation in non-failable function",
+                    labels=[DiagnosticLabel(span=expr.span, message="")],
+                    suggestions=[Suggestion(
+                        message="mark the function as failable",
+                        replacement="add '!' after the return type",
+                    )],
+                ))
 
         # The inner expression should be Result-like; return its success type
         if isinstance(inner, GenericInstance) and inner.base_name == "Result":
@@ -1512,11 +1604,17 @@ class Checker:
             missing = variant_names - covered
             if missing:
                 names = ", ".join(sorted(missing))
-                self._error(
-                    "E371",
-                    f"non-exhaustive match: missing {names}",
-                    expr.span,
-                )
+                arms_str = " | ".join(f"{v} => ..." for v in sorted(missing))
+                self.diagnostics.append(Diagnostic(
+                    severity=Severity.ERROR,
+                    code="E371",
+                    message=f"non-exhaustive match: missing {names}",
+                    labels=[DiagnosticLabel(span=expr.span, message="")],
+                    suggestions=[Suggestion(
+                        message="add the missing arms",
+                        replacement=arms_str,
+                    )],
+                ))
 
     # ── Type resolution ─────────────────────────────────────────
 
@@ -1527,6 +1625,7 @@ class Checker:
             if resolved is None:
                 self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
                 return ERROR_TY
+            self._used_types.add(type_expr.name)
             return resolved
 
         if isinstance(type_expr, GenericType):
@@ -1539,6 +1638,7 @@ class Checker:
             if base is None:
                 self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
                 return ERROR_TY
+            self._used_types.add(type_expr.name)
             return GenericInstance(type_expr.name, args)
 
         if isinstance(type_expr, ModifiedType):
@@ -1546,6 +1646,7 @@ class Checker:
             if base is None:
                 self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
                 return ERROR_TY
+            self._used_types.add(type_expr.name)
             mods = tuple(m.value for m in type_expr.modifiers)
             return PrimitiveType(type_expr.name, mods)
 
@@ -1558,3 +1659,27 @@ class Checker:
         for sym in self.symbols.current_scope.all_symbols():
             if sym.kind == SymbolKind.VARIABLE and not sym.used:
                 self._warning("W300", f"unused variable '{sym.name}'", sym.span)
+
+    def _check_unused_imports(self) -> None:
+        """W302: warn about imported names that are never referenced."""
+        for (module, name), span in self._import_spans.items():
+            if (module, name) not in self._used_imports:
+                # Type imports used in signatures count as used via symbol lookup
+                sym = self.symbols.lookup(name)
+                if sym is not None and sym.used:
+                    continue
+                self._warning(
+                    "W302",
+                    f"'{name}' is imported from '{module}' but never used.",
+                    span,
+                )
+
+    def _check_unused_types(self) -> None:
+        """W303: warn about user-defined types that are never referenced."""
+        for name, span in self._user_types.items():
+            if name not in self._used_types:
+                self._warning(
+                    "W303",
+                    f"Type '{name}' is defined but never used.",
+                    span,
+                )

@@ -489,14 +489,12 @@ class TestHigherOrderFunctions:
         assert "_lambda_" in c_code
 
 
-class TestProofBranching:
-    def test_two_branch_proof(self):
+class TestExplainBranching:
+    def test_two_branch_explain(self):
         source = (
             "transforms abs(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    explain\n"
-            "        return n or its negation\n"
-            "    proof\n"
             "        positive: identity when n >= 0\n"
             "        negative: deducted when n < 0\n"
             "    from\n"
@@ -512,13 +510,11 @@ class TestProofBranching:
         assert "return (0L - n);" in c_code
 
     def test_no_condition_fallback(self):
-        """Proof block without when conditions falls through to regular body."""
+        """Explain block without when conditions falls through to regular body."""
         source = (
             "transforms identity(x Integer) Integer\n"
             "    ensures result == x\n"
             "    explain\n"
-            "        return x unchanged\n"
-            "    proof\n"
             "        trivial: x is returned unchanged\n"
             "    from\n"
             "        x\n"

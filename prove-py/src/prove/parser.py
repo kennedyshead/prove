@@ -48,8 +48,8 @@ from prove.ast_nodes import (
     PathLit,
     Pattern,
     PipeExpr,
-    ProofBlock,
-    ProofObligation,
+    ExplainBlock,
+    ExplainEntry,
     RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
@@ -156,7 +156,11 @@ class Parser:
         if self._current().kind == kind:
             return self._advance()
         tok = self._current()
-        self._error(f"expected {kind.name}, got {tok.kind.name} ({tok.value!r})", tok.span)
+        self._error(
+            f"expected {kind.name}, got {tok.kind.name} ({tok.value!r})",
+            tok.span,
+            code="E210",
+        )
         # Advance past the unexpected token to prevent infinite loops
         if tok.kind != TokenKind.EOF:
             self._advance()
@@ -166,11 +170,11 @@ class Parser:
         while self._at(TokenKind.NEWLINE):
             self._advance()
 
-    def _error(self, message: str, span: Span) -> None:
+    def _error(self, message: str, span: Span, code: str = "E200") -> None:
         self.diagnostics.append(
             Diagnostic(
                 severity=Severity.ERROR,
-                code="E200",
+                code=code,
                 message=message,
                 labels=[DiagnosticLabel(span=span, message="")],
             )
@@ -206,6 +210,7 @@ class Parser:
                 "Prove requires a module declaration with narrative — "
                 "add 'module <Name>' with a narrative as the first line",
                 span,
+                code="E200",
             )
         raise CompileError(self.diagnostics)
 
@@ -295,6 +300,7 @@ class Parser:
                 f"inputs, outputs, main) but found {tok.kind.name} "
                 f"({tok.value!r})",
                 tok.span,
+                code="E211",
             )
             self._recovery_mode = True
         raise _ParseError
@@ -320,8 +326,8 @@ class Parser:
         self._skip_newlines()
 
         # Parse annotations — may be inside an INDENT block
-        ensures, requires, proof = [], [], None
-        explain: list[str] = []
+        ensures, requires = [], []
+        explain: ExplainBlock | None = None
         terminates_expr = None
         is_trusted: str | None = None
         why_not, chosen, near_misses = [], None, []
@@ -345,30 +351,8 @@ class Parser:
             elif self._at(TokenKind.REQUIRES):
                 self._advance()
                 requires.append(self._parse_expression(0))
-            elif self._at(TokenKind.PROOF):
-                proof = self._parse_proof_block()
             elif self._at(TokenKind.EXPLAIN):
-                self._advance()
-                self._skip_newlines()
-                if self._at(TokenKind.INDENT):
-                    self._advance()
-                    while (not self._at(TokenKind.DEDENT)
-                           and not self._at(TokenKind.EOF)):
-                        self._skip_newlines()
-                        if (self._at(TokenKind.DEDENT)
-                                or self._at(TokenKind.EOF)):
-                            break
-                        # Collect all tokens on this line as one
-                        # explain row
-                        parts: list[str] = []
-                        while (not self._at(TokenKind.NEWLINE)
-                               and not self._at(TokenKind.DEDENT)
-                               and not self._at(TokenKind.EOF)):
-                            parts.append(self._advance().value)
-                        explain.append(" ".join(parts))
-                        self._skip_newlines()
-                    if self._at(TokenKind.DEDENT):
-                        self._advance()
+                explain = self._parse_explain_block()
             elif self._at(TokenKind.TERMINATES):
                 self._advance()
                 self._expect(TokenKind.COLON)
@@ -442,7 +426,7 @@ class Parser:
         return FunctionDef(
             verb=verb, name=name, params=params,
             return_type=return_type, can_fail=can_fail,
-            ensures=ensures, requires=requires, proof=proof,
+            ensures=ensures, requires=requires,
             explain=explain, terminates=terminates_expr,
             trusted=is_trusted, binary=is_binary,
             why_not=why_not, chosen=chosen, near_misses=near_misses,
@@ -511,42 +495,60 @@ class Parser:
             return self._parse_type_expr()
         return None
 
-    # ── Proof blocks ─────────────────────────────────────────────
+    # ── Explain blocks ───────────────────────────────────────────
 
-    def _parse_proof_block(self) -> ProofBlock:
+    def _parse_explain_block(self) -> ExplainBlock:
         start = self._current().span
-        self._advance()  # 'proof'
+        self._advance()  # 'explain'
         self._skip_newlines()
 
-        obligations: list[ProofObligation] = []
+        entries: list[ExplainEntry] = []
         if self._at(TokenKind.INDENT):
             self._advance()
             while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
-                obl = self._parse_proof_obligation()
-                obligations.append(obl)
+                entry = self._parse_explain_entry()
+                entries.append(entry)
                 self._skip_newlines()
             if self._at(TokenKind.DEDENT):
                 self._advance()
         else:
-            # Inline single obligation
-            obl = self._parse_proof_obligation()
-            obligations.append(obl)
+            # Inline single entry
+            entry = self._parse_explain_entry()
+            entries.append(entry)
 
         end = self._current().span
-        return ProofBlock(obligations,
-                          self._span(start, end))
+        return ExplainBlock(entries, self._span(start, end))
 
-    def _parse_proof_obligation(self) -> ProofObligation:
+    def _parse_explain_entry(self) -> ExplainEntry:
         start = self._current().span
+
+        # Check if this is a named entry (identifier followed by colon)
+        if (self._current().kind == TokenKind.IDENTIFIER
+                and self._peek(1).kind == TokenKind.COLON):
+            return self._parse_named_explain_entry(start)
+
+        # Prose entry — collect tokens until end of line
+        parts: list[str] = []
+        while (not self._at(TokenKind.NEWLINE)
+               and not self._at(TokenKind.DEDENT)
+               and not self._at(TokenKind.EOF)):
+            parts.append(self._advance().value)
+        text = " ".join(parts).strip()
+        end = self._current().span
+        return ExplainEntry(name=None, text=text,
+                            condition=None,
+                            span=self._span(start, end))
+
+    def _parse_named_explain_entry(self, start: Span) -> ExplainEntry:
         name_tok = self._expect(TokenKind.IDENTIFIER)
         self._expect(TokenKind.COLON)
 
-        # Collect proof text until `when`, next obligation name, or DEDENT.
+        # Collect text until `when`, next named entry, or DEDENT.
         # Track INDENT/DEDENT depth so continuation lines don't
-        # prematurely end the obligation.
+        # prematurely end the entry.
         text_parts: list[str] = []
         condition: Expr | None = None
         depth = 0
@@ -562,7 +564,7 @@ class Parser:
                     continue
                 else:
                     break
-            # Check if this is the start of a new obligation (name followed by colon)
+            # Check if this is the start of a new entry (name followed by colon)
             if (depth == 0
                     and self._current().kind == TokenKind.IDENTIFIER
                     and self._peek(1).kind == TokenKind.COLON):
@@ -578,13 +580,12 @@ class Parser:
             text_parts.append(tok.value)
 
         text = ' '.join(text_parts).strip()
-        # Clean up multiple spaces
         while '  ' in text:
             text = text.replace('  ', ' ')
         end = self._current().span
-        return ProofObligation(name_tok.value, text,
-                               condition=condition,
-                               span=self._span(start, end))
+        return ExplainEntry(name=name_tok.value, text=text,
+                            condition=condition,
+                            span=self._span(start, end))
 
     # ── Type definitions ─────────────────────────────────────────
 
@@ -659,6 +660,7 @@ class Parser:
         self._error(
             f"expected field or variant name in type body, got {first.kind.name}",
             first.span,
+            code="E212",
         )
         raise _ParseError
 
@@ -688,7 +690,11 @@ class Parser:
         """Parse an inline type body (refinement or algebraic)."""
         if not self._at(TokenKind.TYPE_IDENTIFIER):
             tok = self._current()
-            self._error(f"expected type body, got {tok.kind.name}", tok.span)
+            self._error(
+                f"expected type body, got {tok.kind.name}",
+                tok.span,
+                code="E212",
+            )
             raise _ParseError
 
         start = self._current().span
@@ -944,6 +950,7 @@ class Parser:
                 f"duplicate verb '{verb}' in import — "
                 f"group all '{verb}' names together",
                 start,
+                code="E216",
             )
         seen_verbs.add(verb)
 
@@ -1041,6 +1048,7 @@ class Parser:
                                 f"outputs, main) but found {tok.kind.name} "
                                 f"({tok.value!r})",
                                 tok.span,
+                                code="E211",
                             )
                             self._recovery_mode = True
                         self._advance()
@@ -1528,12 +1536,14 @@ class Parser:
                 f"'{tok.value}' is a verb keyword and cannot be "
                 f"used as an identifier",
                 tok.span,
+                code="E214",
             )
             raise _ParseError
 
         self._error(
             f"expected an expression but found {tok.kind.name} ({tok.value!r})",
             tok.span,
+            code="E213",
         )
         raise _ParseError
 
@@ -1704,7 +1714,11 @@ class Parser:
             self._advance()
             return LiteralPattern(tok.value, tok.span)
 
-        self._error(f"expected pattern, got {tok.kind.name}", tok.span)
+        self._error(
+            f"expected pattern, got {tok.kind.name}",
+            tok.span,
+            code="E215",
+        )
         raise _ParseError
 
     def _parse_variant_pattern(self) -> VariantPattern:

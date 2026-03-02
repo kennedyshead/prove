@@ -738,7 +738,7 @@ class TestIntegration:
             "transforms angle(x Integer) Integer\n"
             "    from\n"
             "        sin(x)\n",
-            "E310",
+            "E314",
         )
 
     def test_imports_known_module(self):
@@ -907,7 +907,7 @@ class TestContractChecking:
             "    intent: \"add two numbers\"\n"
             "    from\n"
             "        a + b\n",
-            "W310",
+            "W311",
         )
 
 
@@ -951,7 +951,7 @@ class TestNamespacedCalls:
             "transforms run() Integer\n"
             "    from\n"
             "        Table.new()\n",
-            "E310",
+            "E313",
         )
 
     def test_namespaced_call_unimported_function_errors(self):
@@ -963,20 +963,18 @@ class TestNamespacedCalls:
             "outputs run() Unit\n"
             "    from\n"
             "        InputOutput.file(\"test.txt\")\n",
-            "E311",
+            "E312",
         )
 
 
-class TestProofConditionChecking:
-    """Test type-checking of proof obligation conditions."""
+class TestExplainConditionChecking:
+    """Test type-checking of explain entry conditions."""
 
     def test_boolean_condition_ok(self):
         check(
             "transforms abs(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    explain\n"
-            "        return n or its negation\n"
-            "    proof\n"
             "        positive: identity when n >= 0\n"
             "        negative: deducted when n < 0\n"
             "    from\n"
@@ -988,7 +986,7 @@ class TestProofConditionChecking:
         check_fails(
             "transforms bad(n Integer) Integer\n"
             "    ensures result >= 0\n"
-            "    proof\n"
+            "    explain\n"
             "        wrong: bad when n + 1\n"
             "    from\n"
             "        n\n",
@@ -999,7 +997,7 @@ class TestProofConditionChecking:
         check_fails(
             "transforms bad(n Integer) Integer\n"
             "    ensures result >= 0\n"
-            "    proof\n"
+            "    explain\n"
             "        wrong: bad when x > 0\n"
             "    from\n"
             "        n\n",
@@ -1061,4 +1059,100 @@ class TestRequiresOptionNarrowing:
             "    from\n"
             "        Table.get(k2, table)\n",
             "E322",
+        )
+
+
+class TestShadowing:
+    """Test E316 and E317 shadowing errors."""
+
+    def test_function_shadows_builtin(self):
+        """E316: function name shadows builtin."""
+        check_fails(
+            "transforms len(xs Integer) Integer\n"
+            "    from\n"
+            "        xs\n",
+            "E316",
+        )
+
+    def test_parameter_shadows_builtin(self):
+        """E316: parameter name shadows builtin function."""
+        check_fails(
+            "transforms foo(len Integer) Integer\n"
+            "    from\n"
+            "        len\n",
+            "E316",
+        )
+
+    def test_type_shadows_builtin(self):
+        """E317: type name shadows builtin type."""
+        check_fails(
+            "module M\n"
+            "  type Integer is\n"
+            "    value String\n",
+            "E317",
+        )
+
+    def test_no_shadow_for_normal_names(self):
+        """Normal names should not trigger E316 or E317."""
+        check(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a + b\n"
+        )
+
+
+class TestUnusedImport:
+    """Test W302 unused import warning."""
+
+    def test_unused_import_warns(self):
+        """W302: imported name never used."""
+        check_warns(
+            "module Main\n"
+            "  Text transforms trim\n"
+            "\n"
+            "transforms greet(name String) String\n"
+            "    from\n"
+            "        name\n",
+            "W302",
+        )
+
+    def test_used_import_no_warning(self):
+        """Used import should not trigger W302."""
+        check(
+            "module Main\n"
+            "  Text transforms trim\n"
+            "\n"
+            "transforms clean(s String) String\n"
+            "    from\n"
+            "        Text.trim(s)\n",
+        )
+
+
+class TestUnusedType:
+    """Test W303 unused type definition warning."""
+
+    def test_unused_type_warns(self):
+        """W303: type defined but never used."""
+        check_warns(
+            "module M\n"
+            "  type Unused is\n"
+            "    x Integer\n"
+            "\n"
+            "transforms one() Integer\n"
+            "    from\n"
+            "        1\n",
+            "W303",
+        )
+
+    def test_used_type_no_warning(self):
+        """Used type should not trigger W303."""
+        check(
+            "module M\n"
+            "  type Point is\n"
+            "    x Integer\n"
+            "    y Integer\n"
+            "\n"
+            "transforms origin() Point\n"
+            "    from\n"
+            "        Point(0, 0)\n",
         )

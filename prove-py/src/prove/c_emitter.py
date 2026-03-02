@@ -29,7 +29,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
-    ProofObligation,
+    ExplainEntry,
     RawStringLit,
     RecordTypeDef,
     StringInterp,
@@ -434,14 +434,14 @@ class CEmitter:
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
 
-        # Check if proof block has structured conditions (when)
-        has_proof_conditions = (
-            fd.proof is not None
-            and any(obl.condition is not None for obl in fd.proof.obligations)
+        # Check if explain block has structured conditions (when)
+        has_explain_conditions = (
+            fd.explain is not None
+            and any(e.condition is not None for e in fd.explain.entries)
         )
 
-        if has_proof_conditions:
-            self._emit_proof_branches(fd, ret_type)
+        if has_explain_conditions:
+            self._emit_explain_branches(fd, ret_type)
         else:
             # Emit body
             self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
@@ -450,20 +450,20 @@ class CEmitter:
         self._line("}")
         self._line("")
 
-    def _emit_proof_branches(self, fd: FunctionDef, ret_type: Type) -> None:
-        """Emit if/else-if chains from proof obligations with `when` conditions.
+    def _emit_explain_branches(self, fd: FunctionDef, ret_type: Type) -> None:
+        """Emit if/else-if chains from explain entries with `when` conditions.
 
-        Obligations with conditions map to body expressions by order.
-        An obligation without a condition becomes the else branch.
+        Entries with conditions map to body expressions by order.
+        An entry without a condition becomes the else branch.
         """
-        assert fd.proof is not None
+        assert fd.explain is not None
 
-        # Separate obligations with and without conditions
-        cond_obls: list[tuple[ProofObligation, int]] = []
+        # Separate entries with and without conditions
+        cond_entries: list[tuple[ExplainEntry, int]] = []
         default_idx: int | None = None
-        for i, obl in enumerate(fd.proof.obligations):
-            if obl.condition is not None:
-                cond_obls.append((obl, i))
+        for i, entry in enumerate(fd.explain.entries):
+            if entry.condition is not None:
+                cond_entries.append((entry, i))
             else:
                 default_idx = i
 
@@ -475,9 +475,9 @@ class CEmitter:
         body = fd.body
 
         first = True
-        for obl, idx in cond_obls:
-            assert obl.condition is not None
-            cond = self._emit_expr(obl.condition)
+        for entry, idx in cond_entries:
+            assert entry.condition is not None
+            cond = self._emit_expr(entry.condition)
             keyword = "if" if first else "else if"
             self._line(f"{keyword} (({cond})) {{")
             self._indent += 1

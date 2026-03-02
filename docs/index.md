@@ -2,9 +2,9 @@
 
 <img src="assets/icon.png" alt="Prove" width="100" height="100">
 
-**A programming language that fights back against AI slop and code scraping.**
+**A programming language designed to mitigate AI slop and code scraping.**
 
-Prove is a strongly typed, compiler-driven language where contracts generate tests, intent verbs enforce purity, and the compiler rejects code that can't demonstrate understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
+Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
 
 ```prove
 transforms add(a Integer, b Integer) Integer

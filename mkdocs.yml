@@ -1,5 +1,5 @@
 site_name: Prove
-site_description: A programming language that fights back against AI slop and code scraping
+site_description: An intent-first programming language designed to mitigate AI slop and code scraping
 site_url: https://kennedyshead.github.io/prove/
 
 theme:
@@ -43,6 +43,7 @@ nav:
   - Compiler:
     - CLI Reference: cli.md
     - Diagnostic Codes: diagnostics.md
+    - Diagnostic Philosophy: diagnostics-philosophy.md
     - Compiler Features: compiler.md
   - AI Resistance: ai-resistance.md
   - Project:

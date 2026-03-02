@@ -1,41 +1,43 @@
-"""Structural proof verification for the Prove language.
+"""Structural verification for the Prove language.
 
-Checks proof blocks for completeness and consistency:
-- E390: ensures without explain block (error)
-- E391: duplicate obligation names (error)
-- E392: proof obligations < ensures count (error)
+Checks explain blocks for completeness and consistency:
+- E391: duplicate entry names (error)
+- E392: explain entries < ensures count (error)
 - E393: believe without ensures (error)
 - E366: recursive function missing terminates (error)
-- W321: proof text doesn't reference function concepts
+- W321: explain text doesn't reference function concepts
 - W322: duplicate near-miss inputs
+- W323: ensures without explain (warning, replaces E390)
 - W324: ensures without requires
 - W325: explain without ensures (warning)
+- W326: recursion depth may be unbounded
 """
 
 from __future__ import annotations
 
-from prove.ast_nodes import FunctionDef, IntegerLit, NearMiss
-from prove.errors import Diagnostic, DiagnosticLabel, Severity
+from prove.ast_nodes import FunctionDef, IdentifierExpr, IntegerLit, NearMiss
+from prove.errors import DIAGNOSTIC_DOCS, Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
 
 
 class ProofVerifier:
-    """Verify structural proof obligations for functions."""
+    """Verify structural obligations for functions."""
 
     def __init__(self) -> None:
         self.diagnostics: list[Diagnostic] = []
 
     def verify(self, fd: FunctionDef) -> None:
-        """Run all proof checks on a function."""
-        self._check_ensures_proof(fd)
-        self._check_obligation_uniqueness(fd)
-        self._check_obligation_coverage(fd)
-        self._check_proof_references(fd)
+        """Run all explain verification checks on a function."""
+        self._check_ensures_explain(fd)
+        self._check_entry_uniqueness(fd)
+        self._check_entry_coverage(fd)
+        self._check_explain_references(fd)
         self._check_near_miss_duplicates(fd)
         self._check_believe_without_ensures(fd)
         self._check_ensures_without_requires(fd)
-        self._check_explain_ensures(fd)
+        self._check_explain_without_ensures(fd)
         self._check_terminates(fd)
+        self._check_recursion_depth(fd)
 
     def _error(self, code: str, message: str, span: Span) -> None:
         self.diagnostics.append(Diagnostic(
@@ -43,6 +45,7 @@ class ProofVerifier:
             code=code,
             message=message,
             labels=[DiagnosticLabel(span=span, message="")],
+            doc_url=DIAGNOSTIC_DOCS.get(code),
         ))
 
     def _warning(self, code: str, message: str, span: Span) -> None:
@@ -51,48 +54,55 @@ class ProofVerifier:
             code=code,
             message=message,
             labels=[DiagnosticLabel(span=span, message="")],
+            doc_url=DIAGNOSTIC_DOCS.get(code),
         ))
 
-    def _check_ensures_proof(self, fd: FunctionDef) -> None:
-        """E390: ensures without explain block."""
+    def _check_ensures_explain(self, fd: FunctionDef) -> None:
+        """W323: ensures without explain block (warning, not error)."""
         if fd.trusted:
-            return  # trusted functions opt out of proof requirement
+            return  # trusted functions opt out of verification
         if fd.ensures and not fd.explain:
-            self._error(
-                "E390",
-                f"function '{fd.name}' has ensures but no explain block",
+            self._warning(
+                "W323",
+                f"Function '{fd.name}' has `ensures` but no `explain`. "
+                f"Document how each step satisfies the contract.",
                 fd.span,
             )
 
-    def _check_obligation_uniqueness(self, fd: FunctionDef) -> None:
-        """E391: duplicate obligation names."""
-        if fd.proof is None:
+    def _check_entry_uniqueness(self, fd: FunctionDef) -> None:
+        """E391: duplicate named entry names."""
+        if fd.explain is None:
             return
         seen: set[str] = set()
-        for obl in fd.proof.obligations:
-            if obl.name in seen:
+        for entry in fd.explain.entries:
+            if entry.name is None:
+                continue  # prose entries have no name to clash
+            if entry.name in seen:
                 self._error(
                     "E391",
-                    f"duplicate proof obligation name '{obl.name}'",
-                    obl.span,
+                    f"duplicate explain entry name '{entry.name}'",
+                    entry.span,
                 )
-            seen.add(obl.name)
+            seen.add(entry.name)
 
-    def _check_obligation_coverage(self, fd: FunctionDef) -> None:
-        """E392: obligations must cover ensures count."""
-        if fd.proof is None or not fd.ensures:
+    def _check_entry_coverage(self, fd: FunctionDef) -> None:
+        """E392: named entries must cover ensures count."""
+        if fd.explain is None or not fd.ensures:
             return
-        if len(fd.proof.obligations) < len(fd.ensures):
+        named = [e for e in fd.explain.entries if e.name is not None]
+        if not named:
+            return  # prose-only explain blocks don't need 1:1 coverage
+        if len(named) < len(fd.ensures):
             self._error(
                 "E392",
-                f"proof has {len(fd.proof.obligations)} obligation(s) "
+                f"explain has {len(named)} named entry/entries "
                 f"but {len(fd.ensures)} ensures clause(s)",
-                fd.proof.span,
+                fd.explain.span,
             )
 
-    def _check_proof_references(self, fd: FunctionDef) -> None:
-        """W321: proof text should reference function concepts."""
-        if fd.proof is None:
+    def _check_explain_references(self, fd: FunctionDef) -> None:
+        """W321: explain text should reference function concepts."""
+        if fd.explain is None:
             return
         # Collect relevant names: function name, param names
         concepts = {fd.name}
@@ -100,17 +110,20 @@ class ProofVerifier:
             concepts.add(p.name)
         concepts.add("result")
 
-        for obl in fd.proof.obligations:
+        for entry in fd.explain.entries:
             # Structured conditions reference params directly — skip text check
-            if obl.condition is not None:
+            if entry.condition is not None:
                 continue
-            text_lower = obl.text.lower()
+            # Prose entries are documentation — skip text check
+            if entry.name is None:
+                continue
+            text_lower = entry.text.lower()
             if not any(c.lower() in text_lower for c in concepts):
                 self._warning(
                     "W321",
-                    f"proof obligation '{obl.name}' doesn't reference "
+                    f"explain entry '{entry.name}' doesn't reference "
                     f"any function concepts ({', '.join(sorted(concepts))})",
-                    obl.span,
+                    entry.span,
                 )
 
     def _check_near_miss_duplicates(self, fd: FunctionDef) -> None:
@@ -121,7 +134,8 @@ class ProofVerifier:
                 if self._exprs_equal(nm.input, prev.input):
                     self._warning(
                         "W322",
-                        "duplicate near-miss input",
+                        f"duplicate near-miss input "
+                        f"(first defined at line {prev.span.start_line})",
                         nm.span,
                     )
                     break
@@ -145,7 +159,7 @@ class ProofVerifier:
                 fd.span,
             )
 
-    def _check_explain_ensures(self, fd: FunctionDef) -> None:
+    def _check_explain_without_ensures(self, fd: FunctionDef) -> None:
         """W325: explain without ensures."""
         if fd.trusted:
             return  # trusted functions opt out of verification
@@ -166,6 +180,24 @@ class ProofVerifier:
                 f"recursive function '{fd.name}' missing terminates",
                 fd.span,
             )
+
+    def _check_recursion_depth(self, fd: FunctionDef) -> None:
+        """W326: warn when recursive function may have unbounded call depth."""
+        if fd.trusted:
+            return
+        if fd.terminates is None:
+            return  # E366 already covers missing terminates
+        if not self._calls_self(fd.name, fd.body):
+            return
+        # If any believe references recursion bounds, suppress
+        if fd.believe:
+            return
+        self._warning(
+            "W326",
+            f"Recursive function '{fd.name}' may have O(n) call depth. "
+            f"Consider an iterative approach or a logarithmic reduction.",
+            fd.span,
+        )
 
     def _calls_self(self, name: str, body: list) -> bool:
         """Check if a function body contains a recursive call to itself."""
