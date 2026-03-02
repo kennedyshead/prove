@@ -1,5 +1,11 @@
 module InputOutput
-  narrative: """Handles IO operations"""
+  narrative: """Handles IO operations across console, file, system, dir, and process channels."""
+
+  type ExitCode is binary
+
+  type ProcessResult is binary
+
+  type DirEntry is binary
 
 outputs console(text String)
 binary
@@ -7,8 +13,38 @@ binary
 inputs console() String
 binary
 
+validates console() Boolean
+binary
+
 inputs file(path String) Result<String, Error>!
 binary
 
 outputs file(path String, content String) Result<Unit, Error>!
+binary
+
+validates file(path String) Boolean
+binary
+
+inputs system(cmd String, args List<String>) ProcessResult
+binary
+
+outputs system(code Integer)
+binary
+
+validates system(cmd String) Boolean
+binary
+
+inputs dir(path String) List<DirEntry>
+binary
+
+outputs dir(path String) Result<Unit, Error>!
+binary
+
+validates dir(path String) Boolean
+binary
+
+inputs process() List<String>
+binary
+
+validates process(value String) Boolean
 binary

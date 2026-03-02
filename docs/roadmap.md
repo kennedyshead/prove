@@ -8,9 +8,9 @@
 | v0.2 | Complete (archived) | ASM backend reference implementation (x86_64) |
 | v0.3 | Complete | Legacy stdlib cleanup, `List` module |
 | v0.4 | Complete | Pure verbs, binary types, namespaced calls, channel dispatch — 394 tests |
-| v0.5 | Planned | Turbo runtime — arena allocator, fast hash, string intern |
-| v0.6 | Planned | Core stdlib — Character, Text, Table |
-| v0.7 | Planned | IO extensions and Parse |
+| v0.5 | Complete | Turbo runtime — arena allocator, fast hash, string intern |
+| v0.6 | Complete | Core stdlib — Character, Text, Table — 440 tests |
+| v0.7 | In progress | IO extensions, Parse, C FFI |
 | v1.0 | Planned | Self-hosting compiler |
 
 ---
@@ -30,15 +30,16 @@ High-performance C runtime primitives that the stdlib builds on:
 The three data modules the self-hosted compiler needs most:
 
 - **Character** — character classification (`alpha`, `digit`, `space`, etc.) and indexed access into strings.
-- **Text** — string querying (`contains`, `starts_with`, `index_of`), transformation (`split`, `join`, `trim`, `replace`), and `Builder` for efficient string construction.
+- **Text** — string querying (`contains`, `starts`, `index`), transformation (`split`, `join`, `trim`, `replace`), and `Builder` for efficient string construction.
 - **Table** — hash map from `String` keys to values. Uses the turbo runtime's fast hash internally.
 
-### v0.7 — IO Extensions and Parse
+### v0.7 — IO Extensions, Parse, and C FFI
 
-Extend `InputOutput` with the channels the compiler needs, and add structured format parsing:
+Extend `InputOutput` with the channels the compiler needs, add structured format parsing, and introduce C FFI:
 
 - **InputOutput extensions** — `system` (process execution via fork/exec), `dir` (directory listing and creation), `process` (command-line arguments), and `validates` verbs for existence checks on all channels.
-- **Parse** — format codecs with a two-function pattern: `creates toml(source)` decodes, `reads toml(value)` encodes. Same for JSON. Additional formats follow the same pattern.
+- **Parse** — format codecs with a two-function pattern: `creates toml(source)` decodes, `reads toml(value)` encodes. Same for JSON. Accessor functions for `Value` types (`text`, `number`, `decimal`, `bool`, `array`, `object`) with corresponding validators.
+- **C FFI** — `foreign "libname"` blocks inside modules for calling C libraries directly. Build configuration via `c_flags` and `link_flags` in `prove.toml`.
 
 ### v1.0 — Self-Hosting
 

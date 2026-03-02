@@ -33,6 +33,8 @@ license = ""
 [build]
 target = "native"
 optimize = false
+c_flags = []
+link_flags = []
 
 [test]
 property_rounds = 1000
@@ -49,6 +51,8 @@ line_length = 90
 | | `license` | `""` | License identifier |
 | `[build]` | `target` | `"native"` | Build target |
 | | `optimize` | `false` | Enable compiler optimizations |
+| | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`) |
+| | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`) |
 | `[test]` | `property_rounds` | `1000` | Number of random inputs per property test (overridable with `--property-rounds`) |
 | `[style]` | `line_length` | `90` | Maximum line length for the formatter |
 

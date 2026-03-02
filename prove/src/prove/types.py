@@ -223,3 +223,48 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if isinstance(expected, ListType) and isinstance(actual, ListType):
         return types_compatible(expected.element, actual.element)
     return expected == actual
+
+
+# ── Type variable resolution ───────────────────────────────
+
+
+def resolve_type_vars(
+    sig_params: list[Type], actual_args: list[Type],
+) -> dict[str, Type]:
+    """Unify signature params against actual arg types to bind type variables.
+
+    Walks (sig_param, actual_arg) pairs.  When a TypeVariable is found in the
+    signature tree, it is bound to the corresponding actual type.  For
+    GenericInstance and ListType the function recurses into their arguments.
+    """
+    bindings: dict[str, Type] = {}
+
+    def _unify(sig: Type, actual: Type) -> None:
+        if isinstance(sig, TypeVariable):
+            if sig.name not in bindings:
+                bindings[sig.name] = actual
+            return
+        if isinstance(sig, GenericInstance) and isinstance(actual, GenericInstance):
+            if sig.base_name == actual.base_name:
+                for s, a in zip(sig.args, actual.args):
+                    _unify(s, a)
+            return
+        if isinstance(sig, ListType) and isinstance(actual, ListType):
+            _unify(sig.element, actual.element)
+            return
+
+    for sp, aa in zip(sig_params, actual_args):
+        _unify(sp, aa)
+    return bindings
+
+
+def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
+    """Replace TypeVariable nodes in *ty* using *bindings*."""
+    if isinstance(ty, TypeVariable):
+        return bindings.get(ty.name, ty)
+    if isinstance(ty, GenericInstance):
+        new_args = [substitute_type_vars(a, bindings) for a in ty.args]
+        return GenericInstance(ty.base_name, new_args)
+    if isinstance(ty, ListType):
+        return ListType(substitute_type_vars(ty.element, bindings))
+    return ty

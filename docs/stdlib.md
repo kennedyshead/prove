@@ -52,12 +52,13 @@ The caller's verb determines which function is invoked. This is channel dispatch
 
 ### Console Channel
 
-Console input and output.
+Console input, output, and availability check.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `outputs` | `console(text String)` | Print text to stdout |
 | `inputs` | `console() String` | Read a line from stdin |
+| `validates` | `console() Boolean` | Check if stdin is a terminal |
 
 ```prove
 InputOutput outputs console, inputs console
@@ -71,31 +72,115 @@ from
 
 ### File Channel
 
-Read and write files. File operations are failable — use `!` to propagate errors.
+Read, write, and check files. File operations are failable — use `!` to propagate errors.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `inputs` | `file(path String) String!` | Read file contents |
 | `outputs` | `file(path String, content String)!` | Write file contents |
+| `validates` | `file(path String) Boolean` | Check if file exists |
 
 ```prove
-InputOutput inputs file, outputs file
+InputOutput inputs file, outputs file, validates file
 
 inputs load_config(path String) String!
 from
     InputOutput.file(path)!
 ```
 
+### System Channel
+
+Execute system commands and exit with a status code. Types: `ProcessResult` (binary), `ExitCode` (binary).
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `system(cmd String, args List<String>) ProcessResult` | Run a command |
+| `outputs` | `system(code Integer)` | Exit with status code |
+| `validates` | `system(cmd String) Boolean` | Check if command exists |
+
+### Dir Channel
+
+List and create directories. Type: `DirEntry` (binary).
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `dir(path String) List<DirEntry>` | List directory contents |
+| `outputs` | `dir(path String)!` | Create a directory |
+| `validates` | `dir(path String) Boolean` | Check if directory exists |
+
+### Process Channel
+
+Access command-line arguments.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `process() List<String>` | Get command-line arguments |
+| `validates` | `process(value String) Boolean` | Check if argument is present |
+
 ---
 
-## Upcoming Modules
+## Parse
 
-The standard library grows with each release. Modules are added when the self-hosted compiler needs them.
+**Module:** `Parse` — encoding and decoding of structured data formats.
 
-| Version | Module | Purpose |
-|---------|--------|---------|
-| v0.6 | **Character** | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
-| v0.6 | **Text** | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
-| v0.6 | **Table** | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
-| v0.7 | **InputOutput** (ext) | New channels: `system` (process execution), `dir` (directory operations), `process` (command-line arguments) |
-| v0.7 | **Parse** | Format codecs — `creates toml(source)` to decode, `reads toml(value)` to encode. Same pattern for JSON |
+Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode.
+
+### Formats
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `toml(source String) Result<Value, String>` | Decode TOML to Value |
+| `reads` | `toml(value Value) String` | Encode Value to TOML |
+| `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
+| `reads` | `json(value Value) String` | Encode Value to JSON |
+
+### Value Accessors
+
+Extract typed data from a `Value`. Each accessor has a corresponding validator.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `tag(v Value) String` | Get the type tag (`"string"`, `"number"`, etc.) |
+| `reads` | `text(v Value) String` | Extract string content |
+| `reads` | `number(v Value) Integer` | Extract integer content |
+| `reads` | `decimal(v Value) Float` | Extract floating-point content |
+| `reads` | `bool(v Value) Boolean` | Extract boolean content |
+| `reads` | `array(v Value) List<Value>` | Extract array content |
+| `reads` | `object(v Value) Table<Value>` | Extract object/table content |
+
+### Value Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `text(v Value) Boolean` | Check if Value is a string |
+| `validates` | `number(v Value) Boolean` | Check if Value is an integer |
+| `validates` | `decimal(v Value) Boolean` | Check if Value is a float |
+| `validates` | `bool(v Value) Boolean` | Check if Value is a boolean |
+| `validates` | `array(v Value) Boolean` | Check if Value is an array |
+| `validates` | `object(v Value) Boolean` | Check if Value is an object/table |
+| `validates` | `null(v Value) Boolean` | Check if Value is null |
+
+```prove
+Parse creates toml, reads text object, types Value
+Table reads keys get, types Table
+
+main() Result<Unit, Error>!
+from
+    source as String = InputOutput.file("config.toml")!
+    doc as Value = Parse.toml(source)!
+    root as Table<Value> = Parse.object(doc)
+    names as List<String> = Table.keys(root)
+    InputOutput.console("Keys: " + join(names, ", "))
+```
+
+---
+
+## Module Summary
+
+| Version | Module | Status | Purpose |
+|---------|--------|--------|---------|
+| v0.6 | **Character** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
+| v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
+| v0.6 | **Table** | Complete | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
+| v0.7 | **InputOutput** (ext) | Complete | New channels: `system`, `dir`, `process` with `validates` verbs for existence checks |
+| v0.7 | **Parse** | Complete | Format codecs for TOML and JSON with `Value` type and accessors |

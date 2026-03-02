@@ -527,3 +527,70 @@ class TestProofBranching:
         # Should NOT have if/else branches — just regular body emission
         assert "else if" not in c_code
         assert "= x;" in c_code  # regular return through temp
+
+
+class TestRequiresOptionNarrowing:
+    """Test that requires-based option narrowing emits .value unwrap."""
+
+    def test_narrowed_call_emits_value_unwrap(self):
+        """Table.get with requires Table.has should emit .value cast."""
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) String\n"
+            "    requires Table.has(key, table)\n"
+            "    from\n"
+            "        Table.get(key, table)\n"
+        )
+        c_code = _emit(source)
+        assert ".value" in c_code
+
+    def test_unqualified_narrowed_call_emits_value_unwrap(self):
+        """Unqualified get with requires has should emit .value cast."""
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) String\n"
+            "    requires has(key, table)\n"
+            "    from\n"
+            "        get(key, table)\n"
+        )
+        c_code = _emit(source)
+        assert ".value" in c_code
+
+    def test_non_narrowed_call_no_value_unwrap(self):
+        """Table.get without requires should NOT emit .value."""
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has, reads get\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) Option<String>\n"
+            "    from\n"
+            "        Table.get(key, table)\n"
+        )
+        c_code = _emit(source)
+        # Should use the Option type, not .value
+        assert ".value" not in c_code
+
+    def test_narrowed_var_decl_type(self):
+        """Narrowed call in var decl should use inner type, not Option."""
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "  InputOutput outputs console\n"
+            "\n"
+            "outputs show(key String, table Table<String>)\n"
+            "    requires Table.has(key, table)\n"
+            "    from\n"
+            "        val as String = Table.get(key, table)\n"
+            "        console(val)\n"
+        )
+        c_code = _emit(source)
+        # The var should be Prove_String*, not Prove_Option_*
+        assert "Prove_String* val" in c_code
+        assert ".value" in c_code

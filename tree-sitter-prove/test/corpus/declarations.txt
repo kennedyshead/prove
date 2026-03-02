@@ -196,7 +196,7 @@ Import with types keyword
 ===
 
 module Foo
-  Http types Response Server, inputs listen
+  Http types Response, types Server, inputs listen
 
 ---
 
@@ -206,7 +206,8 @@ module Foo
     (import_declaration
       (type_identifier)
       (import_group
-        (type_identifier)
+        (type_identifier))
+      (import_group
         (type_identifier))
       (import_group
         (verb)

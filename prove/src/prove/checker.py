@@ -22,6 +22,7 @@ from prove.ast_nodes import (
     ExprStmt,
     FailPropExpr,
     FieldExpr,
+    ForeignBlock,
     FunctionDef,
     GenericType,
     IdentifierExpr,
@@ -82,6 +83,8 @@ from prove.types import (
     TypeVariable,
     VariantInfo,
     numeric_widen,
+    resolve_type_vars,
+    substitute_type_vars,
     type_name,
     types_compatible,
 )
@@ -122,6 +125,8 @@ class Checker:
         self._io_function_names: set[str] = set()
         # Track imports: module_name -> set of imported function names
         self._module_imports: dict[str, set[str]] = {}
+        # Requires-based option narrowing: set of (module, frozenset(arg_names))
+        self._requires_narrowings: set[tuple[str, frozenset[str]]] = set()
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -161,6 +166,8 @@ class Checker:
                     self._register_type(td)
                 for cd in decl.constants:
                     self._register_constant(cd)
+                for fb in decl.foreign_blocks:
+                    self._register_foreign_block(fb)
 
         # Collect user-defined IO function names (inputs/outputs verbs)
         for decl in module.declarations:
@@ -250,6 +257,10 @@ class Checker:
                 ListType(TypeVariable("T")),
                 FunctionType([TypeVariable("T")], TypeVariable("U")),
             ], ListType(TypeVariable("U"))),
+            ("each", [
+                ListType(TypeVariable("T")),
+                FunctionType([TypeVariable("T")], TypeVariable("U")),
+            ], UNIT),
             ("filter", [
                 ListType(TypeVariable("T")),
                 FunctionType([TypeVariable("T")], BOOLEAN),
@@ -372,6 +383,31 @@ class Checker:
         if existing is not None:
             self._error("E301", f"duplicate definition of '{cd.name}'", cd.span)
 
+    def _register_foreign_block(self, fb: ForeignBlock) -> None:
+        """Register foreign (C FFI) functions in the symbol table."""
+        for ff in fb.functions:
+            param_types: list[Type] = []
+            param_names: list[str] = []
+            for p in ff.params:
+                param_names.append(p.name)
+                param_types.append(self._resolve_type_expr(p.type_expr))
+
+            ret_type: Type = UNIT
+            if ff.return_type is not None:
+                ret_type = self._resolve_type_expr(ff.return_type)
+
+            sig = FunctionSignature(
+                verb=None,
+                name=ff.name,
+                param_names=param_names,
+                param_types=param_types,
+                return_type=ret_type,
+                can_fail=False,
+                span=ff.span,
+                module=None,
+            )
+            self.symbols.define_function(sig)
+
     def _register_import(self, imp: ImportDecl) -> None:
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib
@@ -395,13 +431,10 @@ class Checker:
             names.add(item.name)
 
         stdlib_sigs = load_stdlib(imp.module)
-        # Index by (verb, name) for exact match and by name for fallback
-        stdlib_by_verb: dict[tuple[str | None, str], FunctionSignature] = {
-            (s.verb, s.name): s for s in stdlib_sigs
-        }
-        stdlib_by_name: dict[str, FunctionSignature] = {
-            s.name: s for s in stdlib_sigs
-        }
+        # Index by name → all overloads (different verbs)
+        stdlib_all_by_name: dict[str, list[FunctionSignature]] = {}
+        for s in stdlib_sigs:
+            stdlib_all_by_name.setdefault(s.name, []).append(s)
 
         for item in imp.items:
             # Type imports (verb="types" or bare CamelCase with no verb)
@@ -410,27 +443,30 @@ class Checker:
                 or (item.verb is None and item.name[:1].isupper())
             )
             if is_type_import:
+                resolved = PrimitiveType(item.name)
                 self.symbols.define(Symbol(
                     name=item.name, kind=SymbolKind.TYPE,
-                    resolved_type=PrimitiveType(item.name), span=item.span,
+                    resolved_type=resolved, span=item.span,
                     verb=item.verb,
                 ))
+                self.symbols.define_type(item.name, resolved)
                 continue
 
-            # Check if stdlib has a real signature for this item
-            # Prefer exact (verb, name) match, fall back to name-only
-            real_sig = stdlib_by_verb.get((item.verb, item.name))
-            if real_sig is None:
-                real_sig = stdlib_by_name.get(item.name)
-            if real_sig is not None:
-                ret_type = real_sig.return_type
-                func_type = FunctionType(real_sig.param_types, ret_type)
-                self.symbols.define(Symbol(
-                    name=item.name, kind=SymbolKind.FUNCTION,
-                    resolved_type=func_type, span=item.span,
-                    verb=real_sig.verb,
-                ))
-                self.symbols.define_function(real_sig)
+            # Register ALL verb overloads of the function so channel
+            # dispatch (same name, different verbs) works at call sites.
+            sigs_to_register = stdlib_all_by_name.get(
+                item.name, [],
+            )
+            if sigs_to_register:
+                for sig in sigs_to_register:
+                    ret = sig.return_type
+                    ft = FunctionType(sig.param_types, ret)
+                    self.symbols.define(Symbol(
+                        name=item.name, kind=SymbolKind.FUNCTION,
+                        resolved_type=ft, span=item.span,
+                        verb=sig.verb,
+                    ))
+                    self.symbols.define_function(sig)
             else:
                 # Known stdlib module but function not found — error
                 self._error(
@@ -463,6 +499,9 @@ class Checker:
                 name=param.name, kind=SymbolKind.PARAMETER,
                 resolved_type=pty, span=param.span,
             ))
+
+        # Collect requires-based option narrowings
+        self._requires_narrowings = self._collect_requires_narrowings(fd)
 
         # Check verb rules
         self._check_verb_rules(fd)
@@ -526,6 +565,7 @@ class Checker:
 
         self.symbols.pop_scope()
         self._current_function = None
+        self._requires_narrowings = set()
 
     def _check_main(self, md: MainDef) -> None:
         """Check the main function body."""
@@ -685,6 +725,61 @@ class Checker:
                 "intent declared but no ensures or requires to validate it",
                 fd.span,
             )
+
+    # ── Requires-based option narrowing ─────────────────────────
+
+    def _collect_requires_narrowings(
+        self, fd: FunctionDef,
+    ) -> set[tuple[str, frozenset[str]]]:
+        """Scan fd.requires for validates calls (qualified or unqualified).
+
+        Returns a set of (module_name, frozenset_of_arg_names) tuples that
+        can be used to narrow Option<V> returns to V in the function body.
+        """
+        narrowings: set[tuple[str, frozenset[str]]] = set()
+        for req_expr in fd.requires:
+            if not isinstance(req_expr, CallExpr):
+                continue
+            func = req_expr.func
+            # Determine function name and optional module
+            module_name: str | None = None
+            func_name: str | None = None
+            if (isinstance(func, FieldExpr)
+                    and isinstance(func.obj, TypeIdentifierExpr)):
+                # Qualified: Table.has(...)
+                module_name = func.obj.name
+                func_name = func.field
+            elif isinstance(func, IdentifierExpr):
+                # Unqualified: has(...)
+                func_name = func.name
+            else:
+                continue
+            # All args must be identifiers
+            arg_names: list[str] = []
+            all_idents = True
+            for arg in req_expr.args:
+                if isinstance(arg, IdentifierExpr):
+                    arg_names.append(arg.name)
+                else:
+                    all_idents = False
+                    break
+            if not all_idents:
+                continue
+            # Resolve the function and check it's a validates verb
+            n_args = len(req_expr.args)
+            sig = self.symbols.resolve_function(
+                "validates", func_name, n_args,
+            )
+            if sig is None:
+                sig = self.symbols.resolve_function_any(
+                    func_name, arity=n_args,
+                )
+            if sig is not None and sig.verb == "validates":
+                # For unqualified calls, get the module from the signature
+                mod = module_name or sig.module
+                if mod:
+                    narrowings.add((mod, frozenset(arg_names)))
+        return narrowings
 
     # ── Verb enforcement ────────────────────────────────────────
 
@@ -997,7 +1092,7 @@ class Checker:
                     self._current_function.verb, name, arg_count,
                 )
             if sig is None:
-                sig = self.symbols.resolve_function_any(name)
+                sig = self.symbols.resolve_function_any(name, arg_types)
 
             if sig is None:
                 # Check if it's a known symbol (might be a variable holding a function)
@@ -1048,14 +1143,34 @@ class Checker:
                         expr.span,
                     )
 
-            return sig.return_type
+            ret = sig.return_type
+            # Requires-based option narrowing for unqualified calls
+            if (isinstance(ret, GenericInstance) and ret.base_name == "Option"
+                    and ret.args and self._requires_narrowings and sig.module):
+                call_arg_names: list[str] = []
+                all_idents = True
+                for a in expr.args:
+                    if isinstance(a, IdentifierExpr):
+                        call_arg_names.append(a.name)
+                    else:
+                        all_idents = False
+                        break
+                if all_idents:
+                    key = (sig.module, frozenset(call_arg_names))
+                    if key in self._requires_narrowings:
+                        bindings = resolve_type_vars(
+                            sig.param_types, arg_types,
+                        )
+                        inner = substitute_type_vars(ret.args[0], bindings)
+                        return inner
+            return ret
 
         if isinstance(expr.func, TypeIdentifierExpr):
             # Type constructor call — try as function first (variant constructors)
             name = expr.func.name
             sig = self.symbols.resolve_function(None, name, arg_count)
             if sig is None:
-                sig = self.symbols.resolve_function_any(name)
+                sig = self.symbols.resolve_function_any(name, arg_types)
             if sig is not None:
                 if not isinstance(sig.return_type, ErrorType):
                     if len(sig.param_types) != arg_count:
@@ -1103,11 +1218,33 @@ class Checker:
                     cur.verb, func_name, arg_count,
                 )
             if sig is None:
-                sig = self.symbols.resolve_function_any(func_name)
+                sig = self.symbols.resolve_function_any(func_name, arg_types)
             if sig is None:
                 self._error("E311", f"undefined function '{func_name}'", expr.span)
                 return ERROR_TY
-            return sig.return_type
+            ret = sig.return_type
+            # Requires-based option narrowing: if the return type is
+            # Option<V> and there is a matching validates call in requires,
+            # narrow to V.
+            if (isinstance(ret, GenericInstance) and ret.base_name == "Option"
+                    and ret.args and self._requires_narrowings):
+                call_arg_names: list[str] = []
+                all_idents = True
+                for a in expr.args:
+                    if isinstance(a, IdentifierExpr):
+                        call_arg_names.append(a.name)
+                    else:
+                        all_idents = False
+                        break
+                if all_idents:
+                    key = (module_name, frozenset(call_arg_names))
+                    if key in self._requires_narrowings:
+                        bindings = resolve_type_vars(
+                            sig.param_types, arg_types,
+                        )
+                        inner = substitute_type_vars(ret.args[0], bindings)
+                        return inner
+            return ret
 
         # For complex expressions (e.g., method-like calls), infer the function type
         func_type = self._infer_expr(expr.func)

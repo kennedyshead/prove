@@ -1,0 +1,24 @@
+module Main
+  narrative: """Read a TOML file and print its content."""
+  InputOutput inputs file, outputs console
+  Parse creates text object, reads toml text, types Value
+  Table reads keys get, types Table, validates has
+
+outputs row(key String, root Table<Value>)
+  requires has(key, root)
+from
+    value as Value = get(key, root)
+    InputOutput.console("  " + key + " = " + text(value))
+
+outputs explode(names List<String>, root Table<Value>)
+from
+    each(names, |key| row(key, root))
+
+main() Result<Unit, Error>!
+from
+    source as String = file("config.toml")!
+    doc as Value = toml(source)!
+    root as Table<Value> = object(doc)
+    names as List<String> = keys(root)
+    console("Parsed TOML keys:")
+    explode(names, root)

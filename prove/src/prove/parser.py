@@ -24,6 +24,8 @@ from prove.ast_nodes import (
     FailPropExpr,
     FieldDef,
     FieldExpr,
+    ForeignBlock,
+    ForeignFunction,
     FunctionDef,
     GenericType,
     IdentifierExpr,
@@ -949,6 +951,16 @@ class Parser:
         # Consume one or more names (identifiers or type identifiers).
         while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER):
             name_tok = self._advance()
+            # Skip optional generic parameters (e.g. Table<V>)
+            if self._at(TokenKind.LESS):
+                self._advance()  # <
+                depth = 1
+                while depth > 0 and not self._at(TokenKind.EOF):
+                    if self._at(TokenKind.LESS):
+                        depth += 1
+                    elif self._at(TokenKind.GREATER):
+                        depth -= 1
+                    self._advance()
             items.append(ImportItem(verb, name_tok.value, name_tok.span))
 
         if not items:
@@ -971,6 +983,7 @@ class Parser:
         types: list[TypeDef] = []
         constants: list[ConstantDef] = []
         invariants: list[InvariantNetwork] = []
+        foreign_blocks: list[ForeignBlock] = []
         body: list[Declaration] = []
 
         if self._at(TokenKind.INDENT):
@@ -1001,6 +1014,8 @@ class Parser:
                     constants.append(self._parse_constant_def())
                 elif self._at(TokenKind.INVARIANT_NETWORK):
                     invariants.append(self._parse_invariant_network())
+                elif self._at(TokenKind.FOREIGN):
+                    foreign_blocks.append(self._parse_foreign_block())
                 elif self._at(TokenKind.TYPE_IDENTIFIER):
                     # Import: ModuleName verb_group (, verb_group)*
                     module_tok = self._advance()
@@ -1037,7 +1052,7 @@ class Parser:
 
         end = self._current().span
         return ModuleDecl(name_tok.value, narrative, temporal, imports,
-                          types, constants, invariants,
+                          types, constants, invariants, foreign_blocks,
                           body, self._span(start, end))
 
     # ── Invariant network ────────────────────────────────────────
@@ -1067,6 +1082,46 @@ class Parser:
         end = self._current().span
         return InvariantNetwork(name_tok.value, constraints,
                                 self._span(start, end))
+
+    # ── Foreign blocks ────────────────────────────────────────────
+
+    def _parse_foreign_block(self) -> ForeignBlock:
+        """Parse: foreign "libname" + indented function declarations."""
+        start = self._current().span
+        self._advance()  # 'foreign'
+
+        # Library name is a string literal
+        lib_tok = self._expect(TokenKind.STRING_LIT)
+        library = lib_tok.value
+        self._skip_newlines()
+
+        functions: list[ForeignFunction] = []
+        if self._at(TokenKind.INDENT):
+            self._advance()
+            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                self._skip_newlines()
+                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                    break
+                functions.append(self._parse_foreign_function())
+                self._skip_newlines()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
+
+        end = self._current().span
+        return ForeignBlock(library, functions, self._span(start, end))
+
+    def _parse_foreign_function(self) -> ForeignFunction:
+        """Parse: name(param_name Type, ...) ReturnType"""
+        start = self._current().span
+        name_tok = self._expect(TokenKind.IDENTIFIER)
+
+        params = self._parse_param_list()
+
+        return_type = self._try_parse_return_type()
+
+        end = self._current().span
+        return ForeignFunction(name_tok.value, params, return_type,
+                               self._span(start, end))
 
     # ── Constant definitions ─────────────────────────────────────
 

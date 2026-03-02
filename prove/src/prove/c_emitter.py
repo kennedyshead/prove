@@ -61,6 +61,8 @@ from prove.types import (
     RecordType,
     Type,
     UnitType,
+    resolve_type_vars,
+    substitute_type_vars,
 )
 
 # Built-in functions that map directly to runtime calls
@@ -72,6 +74,14 @@ _BUILTIN_MAP: dict[str, str] = {
 class CEmitter:
     """Emit C source from a type-checked Prove module."""
 
+    # Known foreign library → C header mapping
+    _FOREIGN_HEADERS: dict[str, str] = {
+        "libm": "math.h",
+        "libpthread": "pthread.h",
+        "libdl": "dlfcn.h",
+        "librt": "time.h",
+    }
+
     def __init__(self, module: Module, symbols: SymbolTable) -> None:
         self._module = module
         self._symbols = symbols
@@ -82,7 +92,21 @@ class CEmitter:
         self._locals: dict[str, Type] = {}  # local var -> type for inference
         self._needed_headers: set[str] = set()
         self._current_func_return: Type = UNIT
+        self._in_main = False
         self._in_tail_loop = False
+        self._foreign_names: set[str] = set()
+        self._foreign_libs: set[str] = set()
+        self._current_requires: list[Expr] = []
+        self._collect_foreign_info()
+
+    def _collect_foreign_info(self) -> None:
+        """Scan module for foreign blocks and collect function names + libraries."""
+        for decl in self._module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for fb in decl.foreign_blocks:
+                    self._foreign_libs.add(fb.library)
+                    for ff in fb.functions:
+                        self._foreign_names.add(ff.name)
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -109,6 +133,9 @@ class CEmitter:
         # Type definitions
         for td in self._all_type_defs():
             self._emit_type_def(td)
+
+        # Forward declarations for user functions
+        self._emit_function_forwards()
 
         # Hoisted lambdas will be inserted here (placeholder position)
         lambda_pos = len(self._out)
@@ -139,6 +166,8 @@ class CEmitter:
         self._needed_headers.add("prove_runtime.h")
         # The hello world always needs strings
         self._needed_headers.add("prove_string.h")
+        # IO init_args is always called in main
+        self._needed_headers.add("prove_input_output.h")
 
         # Scan function signatures and types for what we need
         for (_verb, _name), sigs in self._symbols.all_functions().items():
@@ -156,7 +185,7 @@ class CEmitter:
 
     def _scan_for_hof(self, module: Module) -> None:
         """Pre-scan AST for map/filter/reduce calls to include prove_hof.h."""
-        _hof_names = {"map", "filter", "reduce"}
+        _hof_names = {"map", "filter", "reduce", "each"}
 
         def _scan_expr(expr: Expr) -> bool:
             if isinstance(expr, CallExpr):
@@ -203,6 +232,12 @@ class CEmitter:
         self._line("#include <stdint.h>")
         self._line("#include <stdbool.h>")
         self._line("#include <stdlib.h>")
+        self._line("#include <stdio.h>")
+        # Foreign library headers
+        for lib in sorted(self._foreign_libs):
+            header = self._FOREIGN_HEADERS.get(lib)
+            if header:
+                self._line(f"#include <{header}>")
         for h in sorted(self._needed_headers):
             self._line(f'#include "{h}"')
 
@@ -213,6 +248,38 @@ class CEmitter:
             cname = mangle_type_name(td.name)
             self._line(f"typedef struct {cname} {cname};")
         self._line("")
+
+    def _emit_function_forwards(self) -> None:
+        """Emit forward declarations for all user-defined functions."""
+        any_emitted = False
+        for decl in self._module.declarations:
+            if not isinstance(decl, FunctionDef) or decl.binary:
+                continue
+            sig = self._symbols.resolve_function(
+                decl.verb, decl.name, len(decl.params),
+            )
+            if not sig:
+                continue
+            ret_ct = map_type(sig.return_type)
+            ret_decl = ret_ct.decl
+            if decl.can_fail:
+                if (isinstance(sig.return_type, GenericInstance)
+                        and sig.return_type.base_name == "Result"):
+                    ret_decl = "Prove_Result"
+                elif ret_ct.decl == "void":
+                    ret_decl = "Prove_Result"
+            mangled = mangle_name(
+                decl.verb, decl.name, sig.param_types,
+            )
+            params: list[str] = []
+            for p, pt in zip(decl.params, sig.param_types):
+                ct = map_type(pt)
+                params.append(f"{ct.decl} {p.name}")
+            param_str = ", ".join(params) if params else "void"
+            self._line(f"{ret_decl} {mangled}({param_str});")
+            any_emitted = True
+        if any_emitted:
+            self._line("")
 
     # ── Type definitions ───────────────────────────────────────
 
@@ -317,6 +384,7 @@ class CEmitter:
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         ret_type = sig.return_type if sig else UNIT
         self._current_func_return = ret_type
+        self._current_requires = fd.requires
 
         # Map to C types
         ret_ct = map_type(ret_type)
@@ -429,12 +497,15 @@ class CEmitter:
 
     def _emit_main(self, md: MainDef) -> None:
         self._current_func_return = UNIT
+        self._in_main = True
         self._locals.clear()
+        self._current_requires = []
 
         self._line("int main(int argc, char **argv) {")
         self._indent += 1
 
         self._line("prove_runtime_init();")
+        self._line("prove_io_init_args(argc, argv);")
 
         # Emit body statements
         for stmt in md.body:
@@ -445,6 +516,86 @@ class CEmitter:
         self._indent -= 1
         self._line("}")
         self._line("")
+        self._in_main = False
+
+    # ── Requires-based option narrowing ─────────────────────────
+
+    def _is_option_narrowed(
+        self, func_name: str, args: list[Expr], module_name: str,
+    ) -> bool:
+        """Check if a call matches a requires validates precondition."""
+        if not self._current_requires:
+            return False
+        # All call args must be identifiers
+        call_arg_names: list[str] = []
+        for a in args:
+            if isinstance(a, IdentifierExpr):
+                call_arg_names.append(a.name)
+            else:
+                return False
+        call_key = frozenset(call_arg_names)
+        for req_expr in self._current_requires:
+            if not isinstance(req_expr, CallExpr):
+                continue
+            func = req_expr.func
+            # Qualified: Table.has(...)
+            if (isinstance(func, FieldExpr)
+                    and isinstance(func.obj, TypeIdentifierExpr)):
+                if func.obj.name != module_name:
+                    continue
+                req_name = func.field
+            # Unqualified: has(...)
+            elif isinstance(func, IdentifierExpr):
+                req_name = func.name
+            else:
+                continue
+            # Check the requires call resolves to a validates function
+            n = len(req_expr.args)
+            sig = self._symbols.resolve_function("validates", req_name, n)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(req_name, arity=n)
+            if sig is None or sig.verb != "validates":
+                continue
+            # For unqualified calls, verify the module matches
+            if isinstance(func, IdentifierExpr):
+                req_mod = sig.module
+                if req_mod != module_name:
+                    continue
+            # All requires args must be identifiers matching our call args
+            req_arg_names: list[str] = []
+            all_idents = True
+            for a in req_expr.args:
+                if isinstance(a, IdentifierExpr):
+                    req_arg_names.append(a.name)
+                else:
+                    all_idents = False
+                    break
+            if not all_idents:
+                continue
+            if frozenset(req_arg_names) == call_key:
+                return True
+        return False
+
+    def _maybe_unwrap_option(
+        self, call_str: str, sig, call_args: list[Expr],
+        module_name: str,
+    ) -> str:
+        """If the call returns Option<V> and is narrowed by requires, unwrap."""
+        from prove.symbols import FunctionSignature
+        if not isinstance(sig, FunctionSignature):
+            return call_str
+        ret = sig.return_type
+        if not (isinstance(ret, GenericInstance) and ret.base_name == "Option"
+                and ret.args):
+            return call_str
+        if not self._is_option_narrowed(sig.name, call_args, module_name):
+            return call_str
+        # Resolve type variables against actual arg types
+        actual_types = [self._infer_expr_type(a) for a in call_args]
+        bindings = resolve_type_vars(sig.param_types, actual_types)
+        inner = substitute_type_vars(ret.args[0], bindings)
+        inner_ct = map_type(inner)
+        return f"({inner_ct.decl}){call_str}.value"
 
     # ── Body emission ──────────────────────────────────────────
 
@@ -817,6 +968,8 @@ class CEmitter:
             # Higher-order functions: map, filter, reduce
             if name == "map" and len(expr.args) == 2:
                 return self._emit_hof_map(expr)
+            if name == "each" and len(expr.args) == 2:
+                return self._emit_hof_each(expr)
             if name == "filter" and len(expr.args) == 2:
                 return self._emit_hof_filter(expr)
             if name == "reduce" and len(expr.args) == 3:
@@ -827,21 +980,36 @@ class CEmitter:
                 c_name = _BUILTIN_MAP[name]
                 return f"{c_name}({', '.join(args)})"
 
+            # Foreign (C FFI) functions — emit direct C call, no mangling
+            if name in self._foreign_names:
+                return f"{name}({', '.join(args)})"
+
             # Binary bridge: stdlib binary functions → C runtime
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            n_args = len(expr.args)
+            sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n_args,
+                )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
-                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                pts = sig.param_types
+                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
-                    return f"{c_name}({', '.join(args)})"
+                    call_str = f"{c_name}({', '.join(args)})"
+                    call_str = self._maybe_unwrap_option(
+                        call_str, sig, expr.args, sig.module,
+                    )
+                    return call_str
 
             # User function — resolve and mangle (re-resolve if needed)
             if sig is None:
-                sig = self._symbols.resolve_function(None, name, len(expr.args))
+                sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n_args,
+                )
 
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
@@ -860,18 +1028,32 @@ class CEmitter:
 
         # Namespaced call: Module.function(args)
         if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            module_name = expr.func.obj.name
             name = expr.func.field
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            n_args = len(expr.args)
+            sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n_args,
+                )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
-                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                pts = sig.param_types
+                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
-                    return f"{c_name}({', '.join(args)})"
+                    call_str = f"{c_name}({', '.join(args)})"
+                    call_str = self._maybe_unwrap_option(
+                        call_str, sig, expr.args, module_name,
+                    )
+                    return call_str
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
-                return f"{mangled}({', '.join(args)})"
+                call_str = f"{mangled}({', '.join(args)})"
+                call_str = self._maybe_unwrap_option(
+                    call_str, sig, expr.args, module_name,
+                )
+                return call_str
             return f"{name}({', '.join(args)})"
 
         # Complex callable expression
@@ -910,6 +1092,44 @@ class CEmitter:
         fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "map")
         result_ct = map_type(elem_type)  # map result elem same type for now
         return f"prove_list_map({list_arg}, {fn_name}, sizeof({result_ct.decl}))"
+
+    def _emit_hof_each(self, expr: CallExpr) -> str:
+        """Emit each as inline loop (avoids closure issues)."""
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        lam = expr.args[1]
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_x"
+            idx = self._tmp()
+            self._line(
+                f"for (int64_t {idx} = 0;"
+                f" {idx} < {list_arg}->length; {idx}++) {{"
+            )
+            self._indent += 1
+            self._line(
+                f"{elem_ct.decl} {param} ="
+                f" *({elem_ct.decl}*)prove_list_get("
+                f"{list_arg}, {idx});"
+            )
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"{body_code};")
+            self._indent -= 1
+            self._line("}")
+            return "(void)0"
+        # Non-lambda: fall back to prove_list_each
+        self._needed_headers.add("prove_hof.h")
+        fn_name = self._emit_hof_lambda(lam, elem_type, "each")
+        return f"prove_list_each({list_arg}, {fn_name})"
 
     def _emit_hof_filter(self, expr: CallExpr) -> str:
         """Emit prove_list_filter(list, pred)."""
@@ -1007,6 +1227,19 @@ class CEmitter:
                 f"    *{accum_param} = {body_code};\n"
                 f"}}\n"
             )
+        elif kind == "each":
+            # void fn(const void *_arg)
+            param = expr.params[0] if expr.params else "_x"
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(expr.body)
+            self._locals = saved_locals
+            lam = (
+                f"static void {name}(const void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
+                f"    {body_code};\n"
+                f"}}\n"
+            )
         else:
             return self._emit_expr(expr)
 
@@ -1037,10 +1270,14 @@ class CEmitter:
                 return f"{_BUILTIN_MAP[name]}({left})"
             sig = self._symbols.resolve_function(None, name, 1)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=1,
+                )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
-                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                pts = sig.param_types
+                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     return f"{c_name}({left})"
             if sig and sig.verb is not None:
@@ -1057,10 +1294,14 @@ class CEmitter:
             total = 1 + len(expr.right.args)
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=total,
+                )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
-                c_name = binary_c_name(sig.module, sig.verb, sig.name)
+                pts = sig.param_types
+                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     return f"{c_name}({', '.join(all_args)})"
             if sig and sig.verb is not None:
@@ -1077,16 +1318,40 @@ class CEmitter:
         tmp = self._tmp()
         inner = self._emit_expr(expr.expr)
         self._line(f"Prove_Result {tmp} = {inner};")
-        self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
-        # Use typed unwrap based on the inner result's success type
+        if self._in_main:
+            self._line(f"if (prove_result_is_err({tmp})) {{")
+            self._indent += 1
+            err_str = self._tmp()
+            self._line(
+                f"Prove_String *{err_str} ="
+                f" (Prove_String*){tmp}.data;"
+            )
+            self._line(
+                f"if ({err_str}) fprintf(stderr,"
+                f" \"error: %.*s\\n\","
+                f" (int){err_str}->length,"
+                f" {err_str}->data);"
+            )
+            self._line("prove_runtime_cleanup();")
+            self._line("return 1;")
+            self._indent -= 1
+            self._line("}")
+        else:
+            self._line(
+                f"if (prove_result_is_err({tmp})) return {tmp};"
+            )
+        # Unwrap the success value
         inner_type = self._infer_expr_type(expr.expr)
         if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
             if inner_type.args:
                 success_type = inner_type.args[0]
-                if isinstance(success_type, PrimitiveType) and success_type.name == "Integer":
+                sname = getattr(success_type, "name", "")
+                if sname == "Integer":
                     return f"prove_result_unwrap_int({tmp})"
-                if isinstance(success_type, PrimitiveType) and success_type.name == "String":
-                    return f"(Prove_String*)prove_result_unwrap_ptr({tmp})"
+                # All pointer types: String, Value, etc.
+                ct = map_type(success_type)
+                if ct.is_pointer:
+                    return f"({ct.decl})prove_result_unwrap_ptr({tmp})"
         return f"{tmp}"
 
     # ── Match expressions ──────────────────────────────────────
@@ -1404,30 +1669,64 @@ class CEmitter:
         return ERROR_TY
 
     def _infer_call_type(self, expr: CallExpr) -> Type:
+        n = len(expr.args)
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n,
+                )
             if sig:
-                return sig.return_type
+                ret = sig.return_type
+                if (sig.module and isinstance(ret, GenericInstance)
+                        and ret.base_name == "Option" and ret.args
+                        and self._is_option_narrowed(
+                            name, expr.args, sig.module,
+                        )):
+                    actual_types = [
+                        self._infer_expr_type(a) for a in expr.args
+                    ]
+                    bindings = resolve_type_vars(
+                        sig.param_types, actual_types,
+                    )
+                    return substitute_type_vars(ret.args[0], bindings)
+                return ret
         if isinstance(expr.func, TypeIdentifierExpr):
             name = expr.func.name
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n,
+                )
             if sig:
                 return sig.return_type
             resolved = self._symbols.resolve_type(name)
             if resolved:
                 return resolved
         if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            module_name = expr.func.obj.name
             name = expr.func.field
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
+            sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=n,
+                )
             if sig:
-                return sig.return_type
+                ret = sig.return_type
+                if (isinstance(ret, GenericInstance)
+                        and ret.base_name == "Option" and ret.args
+                        and self._is_option_narrowed(
+                            name, expr.args, module_name,
+                        )):
+                    actual_types = [
+                        self._infer_expr_type(a) for a in expr.args
+                    ]
+                    bindings = resolve_type_vars(
+                        sig.param_types, actual_types,
+                    )
+                    return substitute_type_vars(ret.args[0], bindings)
+                return ret
         return ERROR_TY
 
     def _infer_pipe_type(self, expr: PipeExpr) -> Type:
@@ -1435,7 +1734,9 @@ class CEmitter:
             name = expr.right.name
             sig = self._symbols.resolve_function(None, name, 1)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=1,
+                )
             if sig:
                 return sig.return_type
         if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
@@ -1443,7 +1744,9 @@ class CEmitter:
             total = 1 + len(expr.right.args)
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
-                sig = self._symbols.resolve_function_any(name)
+                sig = self._symbols.resolve_function_any(
+                    name, arity=total,
+                )
             if sig:
                 return sig.return_type
         return ERROR_TY

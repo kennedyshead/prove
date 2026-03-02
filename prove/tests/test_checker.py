@@ -1005,3 +1005,60 @@ class TestProofConditionChecking:
             "        n\n",
             "E310",
         )
+
+
+class TestRequiresOptionNarrowing:
+    """Test that requires Table.has(k, t) narrows Table.get(k, t) from Option<V> to V."""
+
+    def test_narrowed_get_infers_inner_type(self):
+        """With requires Table.has(k, t), Table.get(k, t) should narrow to V."""
+        # If narrowing works, assigning Table.get result to a String var should pass
+        check(
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) String\n"
+            "    requires Table.has(key, table)\n"
+            "    from\n"
+            "        Table.get(key, table)\n"
+        )
+
+    def test_no_narrowing_without_requires(self):
+        """Without requires, Table.get returns Option<V> — E322 mismatch."""
+        check_fails(
+            "module Main\n"
+            "  Table types Table V, creates new, validates has, reads get\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) String\n"
+            "    from\n"
+            "        Table.get(key, table)\n",
+            "E322",
+        )
+
+    def test_unqualified_narrowing(self):
+        """Unqualified has/get should narrow when sig.module matches."""
+        check(
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "\n"
+            "reads lookup(key String, table Table<String>) String\n"
+            "    requires has(key, table)\n"
+            "    from\n"
+            "        get(key, table)\n"
+        )
+
+    def test_narrowing_requires_mismatched_args(self):
+        """Narrowing only applies when call args match requires args."""
+        # Different arg names → no narrowing → E322
+        check_fails(
+            "module Main\n"
+            "  Table types Table V, creates new, validates has, reads get\n"
+            "\n"
+            "reads lookup(k1 String, k2 String, table Table<String>) String\n"
+            "    requires Table.has(k1, table)\n"
+            "    from\n"
+            "        Table.get(k2, table)\n",
+            "E322",
+        )

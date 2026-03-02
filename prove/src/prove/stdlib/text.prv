@@ -9,16 +9,16 @@ binary
 transforms slice(s String, start Integer, end Integer) String
 binary
 
-validates starts_with(s String, prefix String) Boolean
+validates starts(s String, prefix String) Boolean
 binary
 
-validates ends_with(s String, suffix String) Boolean
+validates ends(s String, suffix String) Boolean
 binary
 
 validates contains(s String, sub String) Boolean
 binary
 
-reads index_of(s String, sub String) Option<Integer>
+reads index(s String, sub String) Option<Integer>
 binary
 
 transforms split(s String, sep String) List<String>
@@ -30,10 +30,10 @@ binary
 transforms trim(s String) String
 binary
 
-transforms to_lower(s String) String
+transforms lower(s String) String
 binary
 
-transforms to_upper(s String) String
+transforms upper(s String) String
 binary
 
 transforms replace(s String, old String, new String) String
@@ -45,14 +45,14 @@ binary
 creates builder() Builder
 binary
 
-transforms write(b Builder, s String) Builder
+transforms string(b Builder, s String) Builder
 binary
 
-transforms write_char(b Builder, c Character) Builder
+transforms char(b Builder, c Character) Builder
 binary
 
 reads build(b Builder) String
 binary
 
-reads builder_length(b Builder) Integer
+reads length(b Builder) Integer
 binary

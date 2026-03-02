@@ -210,7 +210,7 @@
   (identifier) @function)
 
 (import_group
-  (type_identifier) @function)
+  (type_identifier) @type)
 
 ; ─── Variable references (fallback) ───────────────────────────
 ; Low priority so more specific patterns above win.

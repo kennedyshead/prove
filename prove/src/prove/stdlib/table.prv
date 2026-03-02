@@ -1,6 +1,8 @@
 module Table
   narrative: """Hash table from String keys to values."""
 
+  type V is binary
+
   type Table<V> is binary
 
 creates new() Table<V>

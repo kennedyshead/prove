@@ -1,0 +1,59 @@
+module Parse
+  narrative: """Encoding and decoding of structured data formats."""
+  Table types Table
+
+  type Value is binary
+
+creates toml(source String) Result<Value, String>
+binary
+
+reads toml(value Value) String
+binary
+
+creates json(source String) Result<Value, String>
+binary
+
+reads json(value Value) String
+binary
+
+reads tag(v Value) String
+binary
+
+reads text(v Value) String
+binary
+
+reads number(v Value) Integer
+binary
+
+reads decimal(v Value) Float
+binary
+
+reads bool(v Value) Boolean
+binary
+
+reads array(v Value) List<Value>
+binary
+
+reads object(v Value) Table<Value>
+binary
+
+validates text(v Value) Boolean
+binary
+
+validates number(v Value) Boolean
+binary
+
+validates decimal(v Value) Boolean
+binary
+
+validates bool(v Value) Boolean
+binary
+
+validates array(v Value) Boolean
+binary
+
+validates object(v Value) Boolean
+binary
+
+validates null(v Value) Boolean
+binary

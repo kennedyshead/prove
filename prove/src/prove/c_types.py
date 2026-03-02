@@ -84,6 +84,20 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_String*", is_pointer=True, header="prove_string.h")
         if name == "Builder":
             return CType("Prove_Builder*", is_pointer=True, header="prove_text.h")
+        if name == "ProcessResult":
+            return CType(
+                "Prove_ProcessResult", is_pointer=False,
+                header="prove_input_output.h",
+            )
+        if name == "DirEntry":
+            return CType(
+                "Prove_DirEntry", is_pointer=False,
+                header="prove_input_output.h",
+            )
+        if name == "ExitCode":
+            return CType("int64_t", is_pointer=False, header=None)
+        if name == "Value":
+            return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

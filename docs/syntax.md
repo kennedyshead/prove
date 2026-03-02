@@ -33,6 +33,30 @@ module InventoryService
 
 A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity.
 
+## Foreign Blocks (C FFI)
+
+Modules can declare `foreign` blocks to call C functions directly. Each block names a C library and lists the functions it provides:
+
+```prove
+module Math
+  narrative: """Mathematical functions via C libm."""
+
+  foreign "m"
+    sqrt(x Float) Float
+    pow(base Float, exp Float) Float
+    sin(x Float) Float
+```
+
+Foreign functions are called like any other function — `Math.sqrt(2.0)`. The string after `foreign` is the library name passed to the linker (e.g., `"m"` links `-lm`).
+
+Configure additional compiler and linker flags in `prove.toml`:
+
+```toml
+[build]
+c_flags = ["-I/usr/local/include"]
+link_flags = ["-L/usr/local/lib", "-lm"]
+```
+
 ## Blocks and Indentation
 
 No curly braces. Indentation defines scope (like Python). No semicolons — newlines terminate statements. Newlines are suppressed after operators, commas, opening brackets, `->`, `=>`.
@@ -459,6 +483,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `trusted` | Explicitly marks a function as unverified — acknowledges the gap when `ensures` would otherwise be expected |
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Runs code at compile time instead of runtime |
+| `foreign` | Declares a C FFI block inside a module — `foreign "libname"` |
 
 ### Interface Contracts: `requires`, `ensures`
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from prove.ast_nodes import Module
+from prove.ast_nodes import Module, ModuleDecl
 from prove.c_compiler import CompileCError, compile_c, find_c_compiler
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
@@ -111,6 +111,19 @@ def _build_c(
             c_error="no C compiler found (install gcc or clang)",
         )
 
+    # Collect foreign library names for linker flags
+    extra_flags: list[str] = list(config.build.c_flags)
+    link_flags: list[str] = list(config.build.link_flags)
+    for module, _symbols in modules_and_symbols:
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for fb in decl.foreign_blocks:
+                    lib = fb.library
+                    if lib.startswith("lib"):
+                        link_flags.append(f"-l{lib[3:]}")
+                    else:
+                        link_flags.append(f"-l{lib}")
+
     # Compile
     runtime_dir = build_dir / "runtime"
     binary_name = config.package.name or "a.out"
@@ -123,6 +136,7 @@ def _build_c(
             compiler=cc,
             optimize=config.build.optimize,
             include_dirs=[runtime_dir],
+            extra_flags=extra_flags + link_flags,
         )
     except CompileCError as e:
         return BuildResult(

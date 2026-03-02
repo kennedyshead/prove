@@ -431,6 +431,21 @@ class ImportDecl:
 
 
 @dataclass(frozen=True)
+class ForeignFunction:
+    name: str           # actual C function name (e.g. "sqrt")
+    params: list[Param]
+    return_type: TypeExpr | None
+    span: Span
+
+
+@dataclass(frozen=True)
+class ForeignBlock:
+    library: str        # e.g. "libm"
+    functions: list[ForeignFunction]
+    span: Span
+
+
+@dataclass(frozen=True)
 class ModuleDecl:
     name: str
     narrative: str | None
@@ -439,6 +454,7 @@ class ModuleDecl:
     types: list[TypeDef]
     constants: list[ConstantDef]
     invariants: list[InvariantNetwork]
+    foreign_blocks: list[ForeignBlock]
     body: list[Declaration]
     span: Span
 

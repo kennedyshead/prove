@@ -16,6 +16,17 @@ Prove_List *prove_list_map(
     return out;
 }
 
+void prove_list_each(
+    Prove_List *list,
+    void (*fn)(const void *)
+) {
+    if (!list) return;
+    for (int64_t i = 0; i < list->length; i++) {
+        void *elem = prove_list_get(list, i);
+        fn(elem);
+    }
+}
+
 Prove_List *prove_list_filter(
     Prove_List *list,
     bool (*pred)(const void *)

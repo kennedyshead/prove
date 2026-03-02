@@ -125,12 +125,53 @@ class SymbolTable:
                 return sigs[0]
         return None
 
-    def resolve_function_any(self, name: str) -> FunctionSignature | None:
-        """Look up a function by name alone (any verb, any arity)."""
+    def resolve_function_any(
+        self,
+        name: str,
+        arg_types: list[Type] | None = None,
+        *,
+        arity: int | None = None,
+    ) -> FunctionSignature | None:
+        """Look up a function by name alone (any verb).
+
+        Disambiguation order:
+        1. Arity match (from *arity* or len(*arg_types*))
+        2. First-argument type match (when *arg_types* given)
+        3. First candidate
+        """
+        candidates: list[FunctionSignature] = []
         for (_, fname), sigs in self._functions.items():
-            if fname == name and sigs:
-                return sigs[0]
-        return None
+            if fname == name:
+                candidates.extend(sigs)
+        if not candidates:
+            return None
+        if len(candidates) == 1:
+            return candidates[0]
+        # Narrow by arity
+        n = arity if arity is not None else (
+            len(arg_types) if arg_types is not None else None
+        )
+        if n is not None:
+            by_arity = [
+                s for s in candidates
+                if len(s.param_types) == n
+            ]
+            if len(by_arity) == 1:
+                return by_arity[0]
+            if by_arity:
+                candidates = by_arity
+        # Disambiguate by first-argument type name
+        if arg_types:
+            first = getattr(arg_types[0], "name", None)
+            if first is not None:
+                for sig in candidates:
+                    if sig.param_types:
+                        pname = getattr(
+                            sig.param_types[0], "name", None,
+                        )
+                        if pname == first:
+                            return sig
+        return candidates[0]
 
     def define_type(self, name: str, resolved: Type) -> None:
         """Register a resolved type in the type registry."""

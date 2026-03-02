@@ -145,10 +145,23 @@
       "type": "PREC_RIGHT",
       "value": 0,
       "content": {
-        "type": "SEQ",
+        "type": "CHOICE",
         "members": [
           {
-            "type": "CHOICE",
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "types"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "type_identifier"
+              }
+            ]
+          },
+          {
+            "type": "SEQ",
             "members": [
               {
                 "type": "CHOICE",
@@ -158,31 +171,18 @@
                     "name": "verb"
                   },
                   {
-                    "type": "STRING",
-                    "value": "types"
+                    "type": "BLANK"
                   }
                 ]
               },
               {
-                "type": "BLANK"
-              }
-            ]
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
-              "type": "CHOICE",
-              "members": [
-                {
+                "type": "REPEAT1",
+                "content": {
                   "type": "SYMBOL",
                   "name": "identifier"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "type_identifier"
                 }
-              ]
-            }
+              }
+            ]
           }
         ]
       }

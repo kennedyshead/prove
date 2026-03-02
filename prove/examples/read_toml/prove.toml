@@ -1,0 +1,15 @@
+[package]
+name = "read_toml"
+version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+optimize = false
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90

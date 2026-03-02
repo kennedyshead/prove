@@ -19,6 +19,8 @@ class PackageConfig:
 class BuildConfig:
     target: str = "native"
     optimize: bool = False
+    c_flags: list[str] = field(default_factory=list)
+    link_flags: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,6 +77,8 @@ def load_config(path: Path) -> ProveConfig:
         config.build = BuildConfig(
             target=bld.get("target", "native"),
             optimize=bld.get("optimize", False),
+            c_flags=bld.get("c_flags", []),
+            link_flags=bld.get("link_flags", []),
         )
 
     if "test" in data:

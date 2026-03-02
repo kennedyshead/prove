@@ -39,6 +39,9 @@ class TokenKind(Enum):
     MODULE = auto()
     DOMAIN = auto()
 
+    # FFI
+    FOREIGN = auto()
+
     # Contracts
     ENSURES = auto()
     REQUIRES = auto()
@@ -132,6 +135,7 @@ class Token:
 
 
 KEYWORDS: dict[str, TokenKind] = {
+    "foreign": TokenKind.FOREIGN,
     "transforms": TokenKind.TRANSFORMS,
     "inputs": TokenKind.INPUTS,
     "outputs": TokenKind.OUTPUTS,

@@ -18,6 +18,12 @@ Prove_List *prove_list_filter(
     bool (*pred)(const void *)
 );
 
+/* Each: call fn for each element (side effects, returns nothing). */
+void prove_list_each(
+    Prove_List *list,
+    void (*fn)(const void *)
+);
+
 /* Reduce: fold list from left with an accumulator. */
 void prove_list_reduce(
     Prove_List *list,

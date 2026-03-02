@@ -34,12 +34,32 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     # InputOutput
     ("io", "outputs", "console"): "prove_println",
     ("io", "inputs", "console"): "prove_readln",
+    ("io", "validates", "console"): "prove_io_console_validates",
     ("io", "inputs", "file"): "prove_file_read",
     ("io", "outputs", "file"): "prove_file_write",
+    ("io", "validates", "file"): "prove_io_file_validates",
+    ("io", "inputs", "system"): "prove_io_system_inputs",
+    ("io", "outputs", "system"): "prove_io_system_outputs",
+    ("io", "validates", "system"): "prove_io_system_validates",
+    ("io", "inputs", "dir"): "prove_io_dir_inputs",
+    ("io", "outputs", "dir"): "prove_io_dir_outputs",
+    ("io", "validates", "dir"): "prove_io_dir_validates",
+    ("io", "inputs", "process"): "prove_io_process_inputs",
+    ("io", "validates", "process"): "prove_io_process_validates",
     ("inputoutput", "outputs", "console"): "prove_println",
     ("inputoutput", "inputs", "console"): "prove_readln",
+    ("inputoutput", "validates", "console"): "prove_io_console_validates",
     ("inputoutput", "inputs", "file"): "prove_file_read",
     ("inputoutput", "outputs", "file"): "prove_file_write",
+    ("inputoutput", "validates", "file"): "prove_io_file_validates",
+    ("inputoutput", "inputs", "system"): "prove_io_system_inputs",
+    ("inputoutput", "outputs", "system"): "prove_io_system_outputs",
+    ("inputoutput", "validates", "system"): "prove_io_system_validates",
+    ("inputoutput", "inputs", "dir"): "prove_io_dir_inputs",
+    ("inputoutput", "outputs", "dir"): "prove_io_dir_outputs",
+    ("inputoutput", "validates", "dir"): "prove_io_dir_validates",
+    ("inputoutput", "inputs", "process"): "prove_io_process_inputs",
+    ("inputoutput", "validates", "process"): "prove_io_process_validates",
     # Character
     ("character", "validates", "alpha"): "prove_character_alpha",
     ("character", "validates", "digit"): "prove_character_digit",
@@ -51,22 +71,21 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     # Text
     ("text", "reads", "length"): "prove_text_length",
     ("text", "transforms", "slice"): "prove_text_slice",
-    ("text", "validates", "starts_with"): "prove_text_starts_with",
-    ("text", "validates", "ends_with"): "prove_text_ends_with",
+    ("text", "validates", "starts"): "prove_text_starts_with",
+    ("text", "validates", "ends"): "prove_text_ends_with",
     ("text", "validates", "contains"): "prove_text_contains",
-    ("text", "reads", "index_of"): "prove_text_index_of",
+    ("text", "reads", "index"): "prove_text_index_of",
     ("text", "transforms", "split"): "prove_text_split",
     ("text", "transforms", "join"): "prove_text_join",
     ("text", "transforms", "trim"): "prove_text_trim",
-    ("text", "transforms", "to_lower"): "prove_text_to_lower",
-    ("text", "transforms", "to_upper"): "prove_text_to_upper",
+    ("text", "transforms", "lower"): "prove_text_to_lower",
+    ("text", "transforms", "upper"): "prove_text_to_upper",
     ("text", "transforms", "replace"): "prove_text_replace",
     ("text", "transforms", "repeat"): "prove_text_repeat",
     ("text", "creates", "builder"): "prove_text_builder",
-    ("text", "transforms", "write"): "prove_text_write",
-    ("text", "transforms", "write_char"): "prove_text_write_char",
+    ("text", "transforms", "string"): "prove_text_write",
+    ("text", "transforms", "char"): "prove_text_write_char",
     ("text", "reads", "build"): "prove_text_build",
-    ("text", "reads", "builder_length"): "prove_text_builder_length",
     # Table
     ("table", "creates", "new"): "prove_table_new",
     ("table", "validates", "has"): "prove_table_has",
@@ -76,12 +95,48 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     ("table", "reads", "keys"): "prove_table_keys",
     ("table", "reads", "values"): "prove_table_values",
     ("table", "reads", "length"): "prove_table_length",
+    # Parse
+    ("parse", "creates", "toml"): "prove_parse_toml",
+    ("parse", "reads", "toml"): "prove_emit_toml",
+    ("parse", "creates", "json"): "prove_parse_json",
+    ("parse", "reads", "json"): "prove_emit_json",
+    ("parse", "reads", "tag"): "prove_value_tag",
+    ("parse", "reads", "text"): "prove_value_as_text",
+    ("parse", "reads", "number"): "prove_value_as_number",
+    ("parse", "reads", "decimal"): "prove_value_as_decimal",
+    ("parse", "reads", "bool"): "prove_value_as_bool",
+    ("parse", "reads", "array"): "prove_value_as_array",
+    ("parse", "reads", "object"): "prove_value_as_object",
+    ("parse", "validates", "text"): "prove_value_is_text",
+    ("parse", "validates", "number"): "prove_value_is_number",
+    ("parse", "validates", "decimal"): "prove_value_is_decimal",
+    ("parse", "validates", "bool"): "prove_value_is_bool",
+    ("parse", "validates", "array"): "prove_value_is_array",
+    ("parse", "validates", "object"): "prove_value_is_object",
+    ("parse", "validates", "null"): "prove_value_is_null",
 }
 
 
-def binary_c_name(module: str, verb: str | None, name: str) -> str | None:
+# Overloaded binary functions: same (module, verb, name) but different first param type.
+# Key: (module_key, verb, function_name, first_param_type_name) → C function name
+_BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {
+    ("text", "reads", "length", "Builder"): "prove_text_builder_length",
+}
+
+
+def binary_c_name(
+    module: str,
+    verb: str | None,
+    name: str,
+    first_param_type: str | None = None,
+) -> str | None:
     """Look up the C runtime function for a binary stdlib function."""
-    return _BINARY_C_MAP.get((module.lower(), verb, name))
+    key = module.lower()
+    if first_param_type is not None:
+        overload = _BINARY_C_OVERLOADS.get((key, verb, name, first_param_type))
+        if overload is not None:
+            return overload
+    return _BINARY_C_MAP.get((key, verb, name))
 
 # Map stdlib module names to .prv filenames
 # Keys are lowercase; lookup normalizes to lowercase.
@@ -91,23 +146,33 @@ _STDLIB_MODULES: dict[str, str] = {
     "character": "character.prv",
     "text": "text.prv",
     "table": "table.prv",
+    "parse": "parse.prv",
 }
 
 # Cache loaded signatures
 _cache: dict[str, list[FunctionSignature]] = {}
 
 
+_KNOWN_TYPES = {
+    "Integer": INTEGER,
+    "String": STRING,
+    "Boolean": BOOLEAN,
+    "Character": CHARACTER,
+    "Unit": UNIT,
+    "Float": PrimitiveType("Float"),
+}
+
+
 def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
-    """Resolve a simple type name to a Type."""
-    mapping = {
-        "Integer": INTEGER,
-        "String": STRING,
-        "Boolean": BOOLEAN,
-        "Character": CHARACTER,
-        "Unit": UNIT,
-    }
-    if name in mapping:
-        return mapping[name]
+    """Resolve a simple type name to a Type.
+
+    Single uppercase letters that are not known types (e.g. V, T, E)
+    are treated as type variables for generic signatures.
+    """
+    if name in _KNOWN_TYPES:
+        return _KNOWN_TYPES[name]
+    if len(name) == 1 and name.isupper():
+        return TypeVariable(name)
     return PrimitiveType(name)
 
 
@@ -185,7 +250,10 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
                         args.append(_resolve_type_name(a.name))
                     else:
                         args.append(TypeVariable("T"))
-                ret_type = GenericInstance(decl.return_type.name, args)
+                if decl.return_type.name == "List" and len(args) == 1:
+                    ret_type = ListType(args[0])
+                else:
+                    ret_type = GenericInstance(decl.return_type.name, args)
             elif hasattr(decl.return_type, "name"):
                 ret_type = _resolve_type_name(decl.return_type.name)
 
@@ -234,6 +302,7 @@ _MODULE_DISPLAY_NAMES: dict[str, str] = {
     "character": "Character",
     "text": "Text",
     "table": "Table",
+    "parse": "Parse",
 }
 
 # Alias keys that should be skipped when building the index
