@@ -441,22 +441,22 @@ def _format_excerpt(filename: str, original: str, formatted: str) -> str:
     return "\n".join(lines)
 
 
-def _try_check(source: str, filename: str) -> SymbolTable | None:
-    """Run checker on source, returning symbols for type inference.
+def _try_check(source: str, filename: str) -> tuple[SymbolTable | None, list]:
+    """Run checker on source, returning symbols and diagnostics.
 
     Returns the symbol table even when the checker finds errors, because
     function signatures (registered in pass 1) are still useful for type
-    inference.  Returns None only if parsing fails.
+    inference.  Returns (None, []) only if parsing fails.
     """
     try:
         tokens = Lexer(source, filename).lex()
         module = Parser(tokens, filename).parse()
     except (CompileError, Exception):
-        return None
+        return None, []
 
     checker = Checker()
     checker.check(module)
-    return checker.symbols
+    return checker.symbols, checker.diagnostics
 
 
 @main.command(name="format")
@@ -480,8 +480,8 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             for diag in e.diagnostics:
                 click.echo(renderer.render(diag), err=True)
             raise SystemExit(1)
-        symbols = _try_check(source, "<stdin>")
-        formatter = ProveFormatter(symbols=symbols)
+        symbols, diagnostics = _try_check(source, "<stdin>")
+        formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
         formatted = formatter.format(module)
         if check:
             if formatted != source:
@@ -512,8 +512,8 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             continue
 
         checked += 1
-        symbols = _try_check(source, filename)
-        formatter = ProveFormatter(symbols=symbols)
+        symbols, diagnostics = _try_check(source, filename)
+        formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
         formatted = formatter.format(module)
         if formatted != source:
             changed += 1

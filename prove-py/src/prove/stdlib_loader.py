@@ -241,7 +241,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
                 param_types.append(ERROR_TY)
 
         # Resolve return type
-        ret_type = UNIT
+        ret_type = BOOLEAN if decl.verb == "validates" else UNIT
         if decl.return_type is not None:
             if isinstance(decl.return_type, GenericType):
                 args = []

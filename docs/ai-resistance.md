@@ -27,10 +27,10 @@ domain Physics
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
   explain
-    split the list at the midpoint
-    recursively sort the first half
-    recursively sort the second half
-    merge both sorted halves preserving order
+      split the list at the midpoint
+      recursively sort the first half
+      recursively sort the second half
+      merge both sorted halves preserving order
   terminates: len(xs)
 from
     halves as Pair<List<T>> = split_at(xs, len(xs) / 2)

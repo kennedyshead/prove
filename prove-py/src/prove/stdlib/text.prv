@@ -9,13 +9,13 @@ binary
 transforms slice(s String, start Integer, end Integer) String
 binary
 
-validates starts(s String, prefix String) Boolean
+validates starts(s String, prefix String)
 binary
 
-validates ends(s String, suffix String) Boolean
+validates ends(s String, suffix String)
 binary
 
-validates contains(s String, sub String) Boolean
+validates contains(s String, sub String)
 binary
 
 reads index(s String, sub String) Option<Integer>

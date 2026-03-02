@@ -331,8 +331,8 @@ class TestFormatterTypeInference:
         result = _format_with_types(source)
         assert "count as Integer = len(items)" in result
 
-    def test_no_inference_for_literals(self):
-        """Literal RHS: no type inferred (out of scope)."""
+    def test_identifier_rhs_infers_type(self):
+        """Identifier RHS infers type from parameter context."""
         source = (
             "transforms id(n Integer) Integer\n"
             "from\n"
@@ -340,8 +340,8 @@ class TestFormatterTypeInference:
             "    x\n"
         )
         result = _format_with_types(source)
-        # No call on RHS, so no type inference — stays bare
-        assert "x as = n" in result
+        # n is Integer param, so x gets inferred as Integer
+        assert "x as Integer = n" in result
 
     def test_no_symbols_no_inference(self):
         """Without symbols, formatter skips type inference."""
@@ -383,8 +383,8 @@ class TestFormatterTypeInference:
         result = _format_with_types(source)
         assert "count as Integer = len(items)" in result
 
-    def test_assignment_without_call_unchanged(self):
-        """Assignment with non-call RHS stays as assignment."""
+    def test_assignment_with_identifier_promotes_to_var_decl(self):
+        """Assignment with identifier RHS promotes to var decl."""
         source = (
             "transforms id(n Integer) Integer\n"
             "from\n"
@@ -392,8 +392,8 @@ class TestFormatterTypeInference:
             "    x\n"
         )
         result = _format_with_types(source)
-        assert "x = n" in result
-        assert "x as" not in result
+        # n is Integer param, so x gets promoted to typed var decl
+        assert "x as Integer = n" in result
 
     def test_failprop_assignment_infers_result_type(self):
         """FailProp call assignment gets Result type annotation."""
@@ -426,4 +426,200 @@ class TestFormatterTypeInference:
         )
         first = _format_with_types(source)
         second = _format_with_types(first)
+        assert first == second
+
+
+def _format_with_fixes(source: str) -> str:
+    """Parse, check, and format with diagnostics for auto-fixes."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker.check(module)
+    return ProveFormatter(
+        symbols=checker.symbols, diagnostics=checker.diagnostics,
+    ).format(module)
+
+
+class TestFormatterAutoFixes:
+    """Auto-fix tests: formatter resolves info-level diagnostics."""
+
+    def test_e360_strips_validates_return_type(self):
+        """E360: validates has implicit Boolean return — strip explicit type."""
+        source = (
+            "validates is_positive(x Integer) Boolean\n"
+            "from\n"
+            "    x > 0\n"
+        )
+        result = _roundtrip(source)
+        assert "validates is_positive(x Integer)\n" in result
+        assert "Boolean" not in result
+
+    def test_e360_preserves_non_validates_return_type(self):
+        """Return types on non-validates verbs are preserved."""
+        source = (
+            "transforms double(x Integer) Integer\n"
+            "from\n"
+            "    x * 2\n"
+        )
+        result = _roundtrip(source)
+        assert "Integer" in result
+
+    def test_w301_drops_unreachable_arms(self):
+        """W301: arms after wildcard are dropped."""
+        source = (
+            "module M\n"
+            "  type Color is Red | Green\n"
+            "\n"
+            "  transforms name(c Color) String\n"
+            "  from\n"
+            "      match c\n"
+            '          _ => "any"\n'
+            '          Red => "red"\n'
+        )
+        result = _roundtrip(source)
+        assert '_ => "any"' in result
+        assert 'Red =>' not in result
+
+    def test_w301_preserves_arms_before_wildcard(self):
+        """Arms before wildcard are kept."""
+        source = (
+            "module M\n"
+            "  type Color is Red | Green\n"
+            "\n"
+            "  transforms name(c Color) String\n"
+            "  from\n"
+            "      match c\n"
+            '          Red => "red"\n'
+            '          _ => "other"\n'
+        )
+        result = _roundtrip(source)
+        assert 'Red =>' in result
+        assert '_ => "other"' in result
+
+    def test_w303_drops_unused_type(self):
+        """W303: unused type definition is removed."""
+        source = (
+            "module M\n"
+            "  type Unused is\n"
+            "    x Integer\n"
+            "\n"
+            "transforms one() Integer\n"
+            "from\n"
+            "    1\n"
+        )
+        result = _format_with_fixes(source)
+        assert "Unused" not in result
+        assert "transforms one() Integer" in result
+
+    def test_w303_keeps_used_type(self):
+        """Used type definitions are preserved."""
+        source = (
+            "module M\n"
+            "  type Point is\n"
+            "    x Integer\n"
+            "    y Integer\n"
+            "\n"
+            "transforms origin() Point\n"
+            "from\n"
+            "    Point(0, 0)\n"
+        )
+        result = _format_with_fixes(source)
+        assert "type Point is" in result
+
+    def test_w300_prefixes_unused_var(self):
+        """W300: formatter prefixes unused variable names with _."""
+        from prove.errors import Diagnostic, DiagnosticLabel, Severity
+        from prove.source import Span
+
+        source = (
+            "transforms one() Integer\n"
+            "from\n"
+            "    unused as Integer = 42\n"
+            "    1\n"
+        )
+        tokens = Lexer(source, "<test>").lex()
+        module = Parser(tokens, "<test>").parse()
+        # The VarDecl for 'unused' is on line 3.  Build a synthetic W300.
+        var_decl = module.declarations[0].body[0]
+        diag = Diagnostic(
+            severity=Severity.NOTE,
+            code="I300",
+            message="unused variable 'unused'",
+            labels=[DiagnosticLabel(span=var_decl.span, message="")],
+        )
+        result = ProveFormatter(diagnostics=[diag]).format(module)
+        assert "_unused as Integer = 42" in result
+
+    def test_w300_skips_already_prefixed(self):
+        """Variable already starting with _ is not double-prefixed."""
+        from prove.errors import Diagnostic, DiagnosticLabel, Severity
+
+        source = (
+            "transforms one() Integer\n"
+            "from\n"
+            "    _ignored as Integer = 42\n"
+            "    1\n"
+        )
+        tokens = Lexer(source, "<test>").lex()
+        module = Parser(tokens, "<test>").parse()
+        var_decl = module.declarations[0].body[0]
+        diag = Diagnostic(
+            severity=Severity.NOTE,
+            code="I300",
+            message="unused variable '_ignored'",
+            labels=[DiagnosticLabel(span=var_decl.span, message="")],
+        )
+        result = ProveFormatter(diagnostics=[diag]).format(module)
+        assert "_ignored" in result
+        assert "__ignored" not in result
+
+    def test_w302_drops_unused_import_item(self):
+        """W302: unused import items are removed."""
+        source = (
+            "module Main\n"
+            "  Text transforms trim upper\n"
+            "\n"
+            "transforms clean(s String) String\n"
+            "from\n"
+            "    Text.trim(s)\n"
+        )
+        result = _format_with_fixes(source)
+        assert "trim" in result
+        assert "upper" not in result
+
+    def test_w302_drops_entire_import_line(self):
+        """W302: when all items unused, entire import line is dropped."""
+        source = (
+            "module Main\n"
+            "  Text transforms trim\n"
+            "\n"
+            "transforms greet(name String) String\n"
+            "from\n"
+            "    name\n"
+        )
+        result = _format_with_fixes(source)
+        assert "Text" not in result
+
+    def test_w302_keeps_used_imports(self):
+        """Used imports are preserved."""
+        source = (
+            "module Main\n"
+            "  Text transforms trim\n"
+            "\n"
+            "transforms clean(s String) String\n"
+            "from\n"
+            "    Text.trim(s)\n"
+        )
+        result = _format_with_fixes(source)
+        assert "Text transforms trim" in result
+
+    def test_autofix_roundtrip_stable(self):
+        """Formatting twice with auto-fixes produces identical output."""
+        source = (
+            "validates is_positive(x Integer) Boolean\n"
+            "from\n"
+            "    x > 0\n"
+        )
+        first = _format_with_fixes(source)
+        second = _format_with_fixes(first)
         assert first == second

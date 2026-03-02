@@ -1,22 +1,22 @@
 module Character
   narrative: """Character classification and access."""
 
-validates alpha(c Character) Boolean
+validates alpha(c Character)
 binary
 
-validates digit(c Character) Boolean
+validates digit(c Character)
 binary
 
-validates alnum(c Character) Boolean
+validates alnum(c Character)
 binary
 
-validates upper(c Character) Boolean
+validates upper(c Character)
 binary
 
-validates lower(c Character) Boolean
+validates lower(c Character)
 binary
 
-validates space(c Character) Boolean
+validates space(c Character)
 binary
 
 reads at(s String, i Integer) Character

@@ -78,8 +78,9 @@ for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215", "E216"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Definition E300-E302
 _register_doc_range("E", 300, 302)
-# Name resolution E310-E317
-_register_doc_range("E", 310, 317)
+# Name resolution E310-E317 (E314 moved to I314)
+for _c in ("E310", "E311", "E312", "E313", "E315", "E316", "E317"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Type checking
 for _c in ("E320", "E325", "E330", "E331"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
@@ -87,8 +88,8 @@ for _c in ("E320", "E325", "E330", "E331"):
 DIAGNOSTIC_DOCS["E340"] = f"{_DOCS_BASE}#E340"
 # Control flow E350
 DIAGNOSTIC_DOCS["E350"] = f"{_DOCS_BASE}#E350"
-# Verb enforcement E360-E366
-_register_doc_range("E", 360, 366)
+# Verb enforcement E361-E366 (E360 moved to I360)
+_register_doc_range("E", 361, 366)
 # Pattern matching E370-E371
 _register_doc_range("E", 370, 371)
 # Contract checking
@@ -96,13 +97,14 @@ for _c in ("E380", "E382", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Explain verification E391-E394 (E390 replaced by W323)
 _register_doc_range("E", 391, 394)
-# Warnings — variables
-for _c in ("W300", "W301", "W302", "W303", "W310", "W311"):
+# Warnings
+for _c in ("W304", "W311"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Warnings — contracts W321-W326
 _register_doc_range("W", 321, 326)
-# Info I201
-DIAGNOSTIC_DOCS["I201"] = f"{_DOCS_BASE}#I201"
+# Info
+for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I360"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 
 
 def make_diagnostic(

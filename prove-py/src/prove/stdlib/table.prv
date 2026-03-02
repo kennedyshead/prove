@@ -8,7 +8,7 @@ module Table
 creates new() Table<V>
 binary
 
-validates has(key String, table Table<V>) Boolean
+validates has(key String, table Table<V>)
 binary
 
 transforms add(key String, value V, table Table<V>) Table<V>

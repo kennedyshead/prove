@@ -55,3 +55,39 @@ def check_warns(source: str, warning_code: str) -> list:
         f"{[f'{d.code}: {d.message}' for d in checker.diagnostics] or 'no diagnostics'}"
     )
     return matching
+
+
+def check_info(source: str, info_code: str) -> list:
+    """Parse and check source, asserting the given info-level diagnostic appears."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker.check(module)
+    matching = [d for d in checker.diagnostics if d.code == info_code]
+    assert matching, (
+        f"Expected info {info_code} but got: "
+        f"{[f'{d.code}: {d.message}' for d in checker.diagnostics] or 'no diagnostics'}"
+    )
+    return matching
+
+
+def check_all(source: str) -> list:
+    """Parse and check source, return all diagnostics."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker.check(module)
+    return list(checker.diagnostics)
+
+
+def check_and_format(source: str) -> str:
+    """Parse, check, and format with diagnostics for auto-fixes."""
+    from prove.formatter import ProveFormatter
+
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker.check(module)
+    return ProveFormatter(
+        symbols=checker.symbols, diagnostics=checker.diagnostics,
+    ).format(module)

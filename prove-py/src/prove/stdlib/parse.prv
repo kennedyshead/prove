@@ -37,23 +37,23 @@ binary
 reads object(v Value) Table<Value>
 binary
 
-validates text(v Value) Boolean
+validates text(v Value)
 binary
 
-validates number(v Value) Boolean
+validates number(v Value)
 binary
 
-validates decimal(v Value) Boolean
+validates decimal(v Value)
 binary
 
-validates bool(v Value) Boolean
+validates bool(v Value)
 binary
 
-validates array(v Value) Boolean
+validates array(v Value)
 binary
 
-validates object(v Value) Boolean
+validates object(v Value)
 binary
 
-validates null(v Value) Boolean
+validates null(v Value)
 binary

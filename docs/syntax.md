@@ -45,7 +45,7 @@ transforms sqrt(x Decimal) Decimal
   ensures result >= 0.0
   requires x >= 0.0
   explain
-    delegate to C sqrt
+      delegate to C sqrt
 from
     c_sqrt(x)
 ```
@@ -520,9 +520,9 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   ensures result >= 0
   requires len(items) > 0
   explain
-    sum all items . price
-    reduce sub by discount
-    add tax to discounted
+      sum all items . price
+      reduce sub by discount
+      add tax to discounted
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)
@@ -545,9 +545,9 @@ Compiler parses: `sum` (operation) + `all` (connector) + `items.price` (referenc
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
   explain
-    split the list at the midpoint
-    recursively sort both halves
-    merge the sorted halves back together
+      split the list at the midpoint
+      recursively sort both halves
+      merge the sorted halves back together
   terminates: len(xs)
 from
     halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
@@ -578,9 +578,9 @@ matches apply_discount(discount Discount, amount Price) Price
   ensures result >= 0
   ensures result <= amount
   explain
-    clamp the difference to zero
-    scale amount by complement of rate
-    subtract bulk discount from amount
+      clamp the difference to zero
+      scale amount by complement of rate
+      subtract bulk discount from amount
 from
     FlatOff(off) => max(0, amount - off)
     PercentOff(rate) => amount * (1 - rate)
@@ -607,10 +607,10 @@ Recursive functions must declare `terminates` with a measure expression — an e
 ```prove
 transforms merge_sort(xs List<T>) Sorted<List<T>>
   explain
-    split the list at the midpoint
-    recursively sort the first half
-    recursively sort the second half
-    merge both sorted halves preserving order
+      split the list at the midpoint
+      recursively sort the first half
+      recursively sort the second half
+      merge both sorted halves preserving order
   terminates: len(xs)
 from
     halves as Pair<List<T>> = split_at(xs, len(xs) / 2)

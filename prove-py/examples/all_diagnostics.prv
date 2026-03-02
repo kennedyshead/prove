@@ -1,0 +1,74 @@
+module AllDiagnostics
+  narrative: """Triggers all warnings and info diagnostics"""
+  Text transforms upper
+
+  type Color is Red
+    | Green
+
+transforms no_explain(n Integer) Integer
+  ensures result >= 0
+from
+    n
+
+/// Comment
+transforms no_ensures(n Integer) Integer
+  explain
+      just return n
+from
+    n
+
+transforms redundant_match(n Integer) Integer
+  requires n >= 0
+from
+    match n >= 0
+        true => n
+        false => 0 - n
+
+validates is_positive(x Integer)
+from
+    x > 0
+
+transforms unreachable(c Color) String
+from
+    match c
+        _ => "any"
+
+transforms infer_me(n Integer) Integer
+from
+    result as Integer = n * 2
+    result
+
+transforms bad_explain(n Integer) Integer
+  ensures result == n
+  requires n == n
+  explain
+      n: hello world
+from
+    n
+
+transforms no_contracts(n Integer) Integer
+  intent: "double n"
+from
+    n * 2
+
+transforms guarded(n Integer) Integer
+  ensures result >= 0
+  requires n >= 0
+  explain
+      return n
+  near_miss: 0  => 0
+  near_miss: 0  => 1
+from
+    n
+
+transforms countdown(n Integer) Integer
+  terminates: n
+from
+    match n
+        0 => 0
+        _ => countdown(n - 1)
+
+main()
+from
+    no_explain(1)
+    Text.upper("hello")

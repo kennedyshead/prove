@@ -65,6 +65,7 @@ from prove.ast_nodes import (
 )
 
 if TYPE_CHECKING:
+    from prove.errors import Diagnostic
     from prove.symbols import SymbolTable
     from prove.types import Type
 
@@ -83,8 +84,45 @@ _PRECEDENCE: dict[str, int] = {
 class ProveFormatter:
     """Format a parsed Prove Module back to canonical source text."""
 
-    def __init__(self, symbols: SymbolTable | None = None) -> None:
+    def __init__(
+        self,
+        symbols: SymbolTable | None = None,
+        diagnostics: list[Diagnostic] | None = None,
+    ) -> None:
         self._symbols = symbols
+        # Local type context: maps variable/parameter names to type strings
+        # within the currently-formatted function body.
+        self._local_types: dict[str, str] = {}
+        # Build span lookup sets for auto-fixable diagnostics
+        self._unused_var_spans: set[tuple[str, int, int]] = set()
+        self._unused_type_spans: set[tuple[str, int, int]] = set()
+        self._unused_import_spans: set[tuple[str, int, int]] = set()
+        self._unknown_module_spans: set[tuple[str, int, int]] = set()
+        for d in diagnostics or []:
+            if d.code == "I300":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unused_var_spans.add(
+                        (s.file, s.start_line, s.start_col)
+                    )
+            elif d.code == "I302":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unused_import_spans.add(
+                        (s.file, s.start_line, s.start_col)
+                    )
+            elif d.code == "I303":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unused_type_spans.add(
+                        (s.file, s.start_line, s.start_col)
+                    )
+            elif d.code == "I314":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unknown_module_spans.add(
+                        (s.file, s.start_line, s.start_col)
+                    )
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -128,7 +166,7 @@ class ProveFormatter:
             for p in fd.params
         )
         sig = f"{fd.verb} {fd.name}({params})"
-        if fd.return_type:
+        if fd.return_type and fd.verb != "validates":
             sig += f" {self._format_type_expr(fd.return_type)}"
         if fd.can_fail:
             sig += "!"
@@ -141,9 +179,14 @@ class ProveFormatter:
         if fd.binary:
             lines.append("binary")
         else:
+            # Register parameter types for expression-level inference
+            self._local_types.clear()
+            for p in fd.params:
+                self._local_types[p.name] = self._format_type_expr(p.type_expr)
             lines.append("from")
             for stmt in fd.body:
                 lines.append(self._indent(self._format_stmt(stmt), 1))
+            self._local_types.clear()
 
         return "\n".join(lines)
 
@@ -282,11 +325,18 @@ class ProveFormatter:
 
     # ── Import declarations ────────────────────────────────────
 
-    def _format_import_decl(self, imp: ImportDecl) -> str:
+    def _format_import_decl(self, imp: ImportDecl) -> str | None:
+        # Filter out unused import items (W302)
+        items = [
+            item for item in imp.items
+            if not self._is_unused_import(item.span)
+        ]
+        if not items:
+            return None  # entire import line is unused
         # Group items by verb, preserving order of first appearance.
         groups: list[tuple[str | None, list[str]]] = []
         seen: dict[str | None, int] = {}
-        for item in imp.items:
+        for item in items:
             if item.verb in seen:
                 groups[seen[item.verb]][1].append(item.name)
             else:
@@ -312,9 +362,15 @@ class ProveFormatter:
             lines.append(f"  temporal: {' -> '.join(mod.temporal)}")
 
         for imp in mod.imports:
-            lines.append(f"  {self._format_import_decl(imp)}")
+            if self._is_unknown_module(imp.span):
+                continue  # I314: drop unknown module imports
+            formatted_imp = self._format_import_decl(imp)
+            if formatted_imp is not None:
+                lines.append(f"  {formatted_imp}")
 
         for td in mod.types:
+            if self._is_unused_type(td.span):
+                continue  # W303: drop unused type definitions
             lines.append("")
             formatted = self._format_type_def(td)
             # Indent type definition by 2 spaces inside module
@@ -362,24 +418,33 @@ class ProveFormatter:
         type_ann = ""
         if vd.type_expr:
             type_ann = f" {self._format_type_expr(vd.type_expr)}"
+            self._local_types[vd.name] = self._format_type_expr(vd.type_expr)
         elif self._symbols is not None:
             inferred = self._infer_var_type(vd.value)
             if inferred:
                 type_ann = f" {inferred}"
-        return f"{vd.name} as{type_ann} = {self._format_expr(vd.value)}"
+                self._local_types[vd.name] = inferred
+        name = vd.name
+        if not name.startswith("_") and self._is_unused_var(vd.span):
+            name = f"_{name}"
+        return f"{name} as{type_ann} = {self._format_expr(vd.value)}"
 
     def _format_assignment(self, assign: Assignment) -> str:
         """Format an assignment, promoting to VarDecl syntax when possible.
 
-        When the RHS is a function call and we can infer the return type,
-        emit ``name as Type = expr`` (variable declaration) instead of
-        plain ``name = expr``.
+        When the RHS type can be inferred (function call, binary expression,
+        literal, etc.), emit ``name as Type = expr`` (variable declaration)
+        instead of plain ``name = expr``.
         """
+        name = assign.target
+        if not name.startswith("_") and self._is_unused_var(assign.span):
+            name = f"_{name}"
         if self._symbols is not None:
             inferred = self._infer_var_type(assign.value)
             if inferred:
-                return f"{assign.target} as {inferred} = {self._format_expr(assign.value)}"
-        return f"{assign.target} = {self._format_expr(assign.value)}"
+                self._local_types[assign.target] = inferred
+                return f"{name} as {inferred} = {self._format_expr(assign.value)}"
+        return f"{name} = {self._format_expr(assign.value)}"
 
     # ── Expression formatting ──────────────────────────────────
 
@@ -478,10 +543,14 @@ class ProveFormatter:
             lines.append(f"match {self._format_expr(expr.subject)}")
             for arm in expr.arms:
                 lines.append(self._indent(self._format_arm(arm), 1))
+                if isinstance(arm.pattern, WildcardPattern):
+                    break  # W301: drop unreachable arms after wildcard
         else:
             # Implicit match — arms at current level (no extra indent)
             for arm in expr.arms:
                 lines.append(self._format_arm(arm))
+                if isinstance(arm.pattern, WildcardPattern):
+                    break  # W301: drop unreachable arms after wildcard
         return "\n".join(lines)
 
     def _format_arm(self, arm: MatchArm) -> str:
@@ -538,19 +607,77 @@ class ProveFormatter:
     def _infer_var_type(self, value: object) -> str | None:
         """Infer a type annotation string from a value expression.
 
-        Only handles function calls (direct and module-qualified) and
-        FailProp wrapping a call.  Returns None if no inference is possible.
+        Handles literals, identifiers (via local type context), binary and
+        unary expressions, function calls, and FailProp.  Returns None if
+        no inference is possible.
         """
         assert self._symbols is not None
+        return self._infer_expr_type_str(value)
 
-        # FailProp: expr! — unwrap to get the inner call, then unwrap Result
-        if isinstance(value, FailPropExpr):
-            inner_type = self._resolve_call_return(value.expr, prefer_result=True)
-            if inner_type is not None:
-                return self._unwrap_result(inner_type)
+    def _infer_expr_type_str(self, expr: object) -> str | None:
+        """Infer a type string for an arbitrary expression.
+
+        Returns the source-level type name (e.g. "Integer") or None.
+        """
+        # Literals
+        if isinstance(expr, IntegerLit):
+            return "Integer"
+        if isinstance(expr, DecimalLit):
+            return "Decimal"
+        if isinstance(expr, (StringLit, RawStringLit, TripleStringLit,
+                             PathLit, RegexLit, StringInterp)):
+            return "String"
+        if isinstance(expr, BooleanLit):
+            return "Boolean"
+        if isinstance(expr, CharLit):
+            return "Character"
+
+        # Identifier — look up in local type context
+        if isinstance(expr, IdentifierExpr):
+            return self._local_types.get(expr.name)
+
+        # Binary expression
+        if isinstance(expr, BinaryExpr):
+            # Comparison and logical operators always return Boolean
+            if expr.op in ("==", "!=", "<", ">", "<=", ">=", "&&", "||"):
+                return "Boolean"
+            # Arithmetic — infer from operands
+            if expr.op in ("+", "-", "*", "/", "%"):
+                left = self._infer_expr_type_str(expr.left)
+                right = self._infer_expr_type_str(expr.right)
+                if left is not None:
+                    return left
+                if right is not None:
+                    return right
             return None
 
-        return self._resolve_call_return_str(value)
+        # Unary expression
+        if isinstance(expr, UnaryExpr):
+            if expr.op == "!":
+                return "Boolean"
+            return self._infer_expr_type_str(expr.operand)
+
+        # FailProp: expr! — unwrap Result
+        if isinstance(expr, FailPropExpr):
+            inner_type = self._resolve_call_return(expr.expr, prefer_result=True)
+            if inner_type is not None:
+                return self._unwrap_result(inner_type)
+            # Try general inference for non-call FailProp
+            return self._infer_expr_type_str(expr.expr)
+
+        # Function/constructor calls — existing logic
+        if isinstance(expr, CallExpr):
+            return self._resolve_call_return_str(expr)
+
+        # List literal
+        if isinstance(expr, ListLiteral):
+            if expr.elements:
+                elem = self._infer_expr_type_str(expr.elements[0])
+                if elem is not None:
+                    return f"List<{elem}>"
+            return None
+
+        return None
 
     def _resolve_call_return_str(self, expr: object) -> str | None:
         """If expr is a call, resolve and stringify its return type."""
@@ -679,6 +806,24 @@ class ProveFormatter:
         if isinstance(ty, RefinementType):
             return ty.name
         return None
+
+    # ── Diagnostic-driven fixes ─────────────────────────────────
+
+    def _is_unused_var(self, span: object) -> bool:
+        """Check if a variable declaration span was flagged as W300."""
+        return (span.file, span.start_line, span.start_col) in self._unused_var_spans
+
+    def _is_unused_type(self, span: object) -> bool:
+        """Check if a type definition span was flagged as W303."""
+        return (span.file, span.start_line, span.start_col) in self._unused_type_spans
+
+    def _is_unused_import(self, span: object) -> bool:
+        """Check if an import item span was flagged as I302."""
+        return (span.file, span.start_line, span.start_col) in self._unused_import_spans
+
+    def _is_unknown_module(self, span: object) -> bool:
+        """Check if an import declaration span was flagged as I314."""
+        return (span.file, span.start_line, span.start_col) in self._unknown_module_spans
 
     # ── Helpers ────────────────────────────────────────────────
 

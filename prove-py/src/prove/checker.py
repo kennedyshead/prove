@@ -57,7 +57,13 @@ from prove.ast_nodes import (
     VariantPattern,
     WildcardPattern,
 )
-from prove.errors import Diagnostic, DiagnosticLabel, Severity, Suggestion
+from prove.errors import (
+    Diagnostic,
+    DiagnosticLabel,
+    Severity,
+    Suggestion,
+    make_diagnostic,
+)
 from prove.prover import ProofVerifier
 from prove.source import Span
 from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
@@ -139,8 +145,8 @@ class Checker:
         self._module_imports: dict[str, set[str]] = {}
         # Track which imports are actually used: (module_name, func_name)
         self._used_imports: set[tuple[str, str]] = set()
-        # Track import spans for W302 reporting: (module, name) -> span
-        self._import_spans: dict[tuple[str, str], Span] = {}
+        # Track import spans for I302 reporting: (module, name) -> spans
+        self._import_spans: dict[tuple[str, str], list[Span]] = {}
         # Track user-defined type names and their spans for W303
         self._user_types: dict[str, Span] = {}
         # Track which user-defined types are referenced
@@ -470,8 +476,8 @@ class Checker:
             # Register the module name so we know it was declared,
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
-            self._warning(
-                "E314",
+            self._info(
+                "I314",
                 f"unknown module '{imp.module}'",
                 imp.span,
             )
@@ -481,7 +487,9 @@ class Checker:
         names = self._module_imports.setdefault(imp.module, set())
         for item in imp.items:
             names.add(item.name)
-            self._import_spans[(imp.module, item.name)] = item.span
+            self._import_spans.setdefault(
+                (imp.module.lower(), item.name), [],
+            ).append(item.span)
 
         stdlib_sigs = load_stdlib(imp.module)
         # Index by name → all overloads (different verbs)
@@ -584,8 +592,8 @@ class Checker:
             # validates has implicit Boolean return
             if fd.return_type is not None:
                 self.diagnostics.append(Diagnostic(
-                    severity=Severity.ERROR,
-                    code="E360",
+                    severity=Severity.NOTE,
+                    code="I360",
                     message="validates has implicit Boolean return",
                     labels=[DiagnosticLabel(span=fd.span, message="")],
                     suggestions=[Suggestion(
@@ -788,11 +796,17 @@ class Checker:
 
         # Warning: intent set but no ensures/requires
         if fd.intent and not fd.ensures and not fd.requires:
-            self._warning(
+            diag = make_diagnostic(
+                Severity.WARNING,
                 "W311",
                 "intent declared but no ensures or requires to validate it",
-                fd.span,
+                labels=[DiagnosticLabel(span=fd.span, message="")],
+                notes=[
+                    "Add `ensures` or `requires` clauses so the "
+                    "compiler can verify the intent.",
+                ],
             )
+            self.diagnostics.append(diag)
 
     # ── Requires-based option narrowing ─────────────────────────
 
@@ -987,8 +1001,8 @@ class Checker:
             inferred = self._infer_expr(assign.value)
             tn = type_name(inferred)
             self.diagnostics.append(Diagnostic(
-                severity=Severity.WARNING,
-                code="W310",
+                severity=Severity.NOTE,
+                code="I310",
                 message=f"implicitly typed variable '{assign.target}'",
                 labels=[DiagnosticLabel(span=assign.span, message="")],
                 suggestions=[Suggestion(
@@ -1300,7 +1314,7 @@ class Checker:
                 )
                 return ERROR_TY
             # Mark import as used
-            self._used_imports.add((module_name, func_name))
+            self._used_imports.add((module_name.lower(), func_name))
             # Resolve the function normally by name
             sig = self.symbols.resolve_function(None, func_name, arg_count)
             cur = self._current_function
@@ -1450,10 +1464,62 @@ class Checker:
                 return inner.args[0]
         return ERROR_TY
 
+    @staticmethod
+    def _exprs_equal(a: Expr, b: Expr) -> bool:
+        """Structurally compare two expressions ignoring spans."""
+        if type(a) is not type(b):
+            return False
+        if isinstance(a, IdentifierExpr):
+            return a.name == b.name
+        if isinstance(a, (IntegerLit, DecimalLit, StringLit)):
+            return a.value == b.value
+        if isinstance(a, BooleanLit):
+            return a.value == b.value
+        if isinstance(a, BinaryExpr):
+            return (a.op == b.op
+                    and Checker._exprs_equal(a.left, b.left)
+                    and Checker._exprs_equal(a.right, b.right))
+        if isinstance(a, UnaryExpr):
+            return (a.op == b.op
+                    and Checker._exprs_equal(a.operand, b.operand))
+        if isinstance(a, CallExpr):
+            return (Checker._exprs_equal(a.func, b.func)
+                    and len(a.args) == len(b.args)
+                    and all(Checker._exprs_equal(x, y)
+                            for x, y in zip(a.args, b.args)))
+        if isinstance(a, FieldExpr):
+            return (a.field == b.field
+                    and Checker._exprs_equal(a.obj, b.obj))
+        if isinstance(a, TypeIdentifierExpr):
+            return a.name == b.name
+        return False
+
     def _infer_match(self, expr: MatchExpr) -> Type:
         subject_type = ERROR_TY
         if expr.subject is not None:
             subject_type = self._infer_expr(expr.subject)
+
+        # W304: match on condition already guaranteed by requires
+        if (expr.subject is not None
+                and isinstance(self._current_function, FunctionDef)):
+            for req in self._current_function.requires:
+                if self._exprs_equal(expr.subject, req):
+                    diag = make_diagnostic(
+                        Severity.WARNING,
+                        "W304",
+                        "match condition is always true "
+                        "(guaranteed by requires)",
+                        labels=[DiagnosticLabel(
+                            span=expr.span, message="",
+                        )],
+                        notes=[
+                            "The `requires` clause already guarantees this "
+                            "condition. Remove the `match` and use the "
+                            "`true` branch directly.",
+                        ],
+                    )
+                    self.diagnostics.append(diag)
+                    break
 
         # Check exhaustiveness for algebraic types
         if isinstance(subject_type, AlgebraicType):
@@ -1586,7 +1652,7 @@ class Checker:
 
         for arm in expr.arms:
             if wildcard_seen:
-                self._warning("W301", "unreachable match arm after wildcard", arm.span)
+                self._info("I301", "unreachable match arm after wildcard", arm.span)
 
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name in variant_names:
@@ -1658,28 +1724,33 @@ class Checker:
         """Warn about unused variables in module scope."""
         for sym in self.symbols.current_scope.all_symbols():
             if sym.kind == SymbolKind.VARIABLE and not sym.used:
-                self._warning("W300", f"unused variable '{sym.name}'", sym.span)
+                self._info("I300", f"unused variable '{sym.name}'", sym.span)
 
     def _check_unused_imports(self) -> None:
-        """W302: warn about imported names that are never referenced."""
-        for (module, name), span in self._import_spans.items():
+        """I302: warn about imported names that are never referenced."""
+        for (module, name), spans in self._import_spans.items():
             if (module, name) not in self._used_imports:
-                # Type imports used in signatures count as used via symbol lookup
+                # Type imports used in type annotations
+                if name in self._used_types:
+                    continue
+                # Symbol marked used via lookup (e.g. unqualified calls)
                 sym = self.symbols.lookup(name)
                 if sym is not None and sym.used:
                     continue
-                self._warning(
-                    "W302",
-                    f"'{name}' is imported from '{module}' but never used.",
-                    span,
-                )
+                for span in spans:
+                    self._info(
+                        "I302",
+                        f"'{name}' is imported from '{module}' "
+                        f"but never used.",
+                        span,
+                    )
 
     def _check_unused_types(self) -> None:
         """W303: warn about user-defined types that are never referenced."""
         for name, span in self._user_types.items():
             if name not in self._used_types:
-                self._warning(
-                    "W303",
+                self._info(
+                    "I303",
                     f"Type '{name}' is defined but never used.",
                     span,
                 )

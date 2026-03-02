@@ -109,4 +109,4 @@ The compiler enforces purity rules based on the function's verb. Pure verbs (`tr
 
 IO verbs (`inputs`, `outputs`) have no such restrictions.
 
-See [Diagnostic Codes](diagnostics.md#verb-enforcement-e360e366) for details on each enforcement error.
+See [Diagnostic Codes](diagnostics.md#e361-pure-function-cannot-be-failable) for details on each enforcement error.

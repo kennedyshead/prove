@@ -1,14 +1,16 @@
 # Diagnostic Codes
 
-The Prove compiler emits diagnostics with unique codes, source locations, and suggestions. Diagnostics are organized into three severity levels:
+The Prove compiler emits diagnostics with unique codes, source locations, and suggestions. Each diagnostic has a severity level:
 
-- **Error** (`E` prefix) — must be fixed before compilation succeeds
-- **Warning** (`W` prefix) — potential issues that don't prevent compilation
-- **Info** (`I` prefix) — informational suggestions
+- **Error** — compilation fails; must be fixed
+- **Warning** — code compiles but the compiler could use this information (e.g., optimization, contract reasoning)
+- **Info** — good practice suggestions or issues that `prove format` fixes automatically
+
+Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer, 2xx = parser, 3xx = checker, etc.).
 
 ---
 
-## Lexer Errors (E100–E110)
+## Errors
 
 ### E100 — Tab character not allowed
 
@@ -54,17 +56,13 @@ A character that doesn't belong to any valid token.
 
 Mixed indentation widths within the same file.
 
----
-
-## Parser Errors (E200–E216)
-
 ### E200 — Missing module declaration
 
 Every `.prv` file must begin with a `module` declaration and narrative.
 
 ```prove
 module MyModule
-  narrative: "Description of this module"
+  narrative: """Description of this module"""
 ```
 
 ### E210 — Expected token
@@ -104,10 +102,6 @@ module Main
   Text transforms trim upper
 ```
 
----
-
-## Definition Errors (E300–E302)
-
 ### E300 — Undefined type
 
 A type name used in a type expression could not be resolved.
@@ -119,10 +113,6 @@ A type with the same name was already defined.
 ### E302 — Variable already defined
 
 A variable with the same name was already defined in this scope.
-
----
-
-## Name Resolution (E310–E317)
 
 ### E310 — Undefined name
 
@@ -140,10 +130,6 @@ A qualified call (`Module.function()`) references a function that was not explic
 
 A qualified call references a module that has no import declaration.
 
-### E314 — Unknown module in import
-
-An import declaration references a module that is not part of the standard library.
-
 ### E315 — Function not found in module
 
 An import declaration names a function that does not exist in the specified stdlib module.
@@ -153,12 +139,10 @@ An import declaration names a function that does not exist in the specified stdl
 A user-defined function or parameter has the same name as a built-in function (`len`, `map`, `filter`, `reduce`, `each`, `to_string`, `clamp`, `println`, `print`, `readln`).
 
 ```prove
-// Wrong — 'len' shadows built-in
 transforms len(xs List<Integer>) Integer
 from
     0
 
-// Correct
 transforms length(xs List<Integer>) Integer
 from
     0
@@ -167,20 +151,6 @@ from
 ### E317 — Name shadows builtin type
 
 A user-defined type has the same name as a built-in type (`Integer`, `String`, `Boolean`, `List`, `Option`, `Result`, etc.).
-
-```prove
-// Wrong — 'String' is a built-in type
-type String is
-    value Integer
-
-// Correct
-type Label is
-    value Integer
-```
-
----
-
-## Type Checking (E320–E331)
 
 ### E320 — Type mismatch in binary expression
 
@@ -198,50 +168,22 @@ A function call has a different number of arguments than the function signature 
 
 An argument type does not match the corresponding parameter type in the function signature.
 
----
-
-## Field Access (E340)
-
 ### E340 — Field not found
 
 Field access (`.field`) on a type that either doesn't have that field or doesn't support field access.
-
----
-
-## Control Flow (E350–E352)
 
 ### E350 — Fail propagation in non-failable function
 
 The `!` operator (fail propagation) can only be used inside functions marked as failable with `!` in their signature.
 
 ```prove
-// Wrong — function not marked failable
 transforms run(path String) String
 from
     read_file(path)!
 
-// Correct
 transforms run(path String) String!
 from
     read_file(path)!
-```
-
----
-
-## Verb Enforcement (E360–E366)
-
-These errors enforce the purity rules of the verb system. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects.
-
-### E360 — `validates` has implicit Boolean return
-
-A `validates` function always returns `Boolean`. Declaring an explicit return type is an error.
-
-```prove
-// Wrong
-validates is_active(u User) Boolean
-
-// Correct
-validates is_active(u User)
 ```
 
 ### E361 — Pure function cannot be failable
@@ -269,14 +211,12 @@ A `matches` function must take an algebraic type as its first parameter for disp
 Every recursive function must declare a `terminates` measure expression.
 
 ```prove
-// Wrong
 transforms factorial(n Integer) Integer
 from
     match n
         0 => 1
         _ => n * factorial(n - 1)
 
-// Correct
 transforms factorial(n Integer) Integer
   terminates: n
 from
@@ -285,10 +225,6 @@ from
         _ => n * factorial(n - 1)
 ```
 
----
-
-## Pattern Matching (E370–E371)
-
 ### E370 — Unknown variant
 
 A match arm references a variant that does not exist in the algebraic type.
@@ -296,10 +232,6 @@ A match arm references a variant that does not exist in the algebraic type.
 ### E371 — Non-exhaustive match
 
 A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
-
----
-
-## Contract Checking (E380–E386)
 
 ### E380 — Invalid ensures expression
 
@@ -312,10 +244,6 @@ A `satisfies` annotation references a type that is not defined.
 ### E386 — Believe expression must be Boolean
 
 A `believe` expression must evaluate to `Boolean`.
-
----
-
-## Explain Verification (E391–E394)
 
 ### E391 — Duplicate explain entry name
 
@@ -335,49 +263,29 @@ A `when` condition in an explain entry must evaluate to `Boolean`.
 
 ---
 
-## Warnings — Code Quality (W300–W303)
+## Warnings
 
-### W300 — Unused variable
+### W304 — Match condition guaranteed by requires
 
-A declared variable is never referenced.
-
-### W301 — Unreachable match arm
-
-A match arm after a wildcard (`_`) or binding pattern is unreachable.
-
-### W302 — Unused import
-
-An imported name is never referenced in the module body.
+A `match` expression tests a condition identical to a `requires` precondition. Since `requires` guarantees the condition is true, the match is redundant and the compiler could optimize it away.
 
 ```prove
-module Main
-  // 'trim' is imported but never called
-  Text transforms trim upper
-
-transforms shout(s String) String
+transforms abs_val(n Integer) Integer
+  requires n >= 0
 from
-    Text.upper(s)
+    match n >= 0
+        true => n
+        false => 0 - n
+
+transforms abs_val(n Integer) Integer
+  requires n >= 0
+from
+    n
 ```
-
-### W303 — Unused type definition
-
-A user-defined type is declared but never referenced in any parameter, return type, variable annotation, or pattern.
-
----
-
-## Warnings — Variables (W310–W311)
-
-### W310 — Implicitly typed variable
-
-A variable is declared via assignment (`x = expr`) without an explicit type annotation. Use `x as Type = expr` instead.
 
 ### W311 — Intent without contracts
 
 A function has an `intent` declaration but no `ensures` or `requires` to validate it.
-
----
-
-## Warnings — Contracts (W321–W326)
 
 ### W321 — Explain text missing concept references
 
@@ -389,11 +297,11 @@ Two `near_miss` declarations on the same function have identical input expressio
 
 ### W323 — Ensures without explain
 
-A function has postconditions but no `explain` block. The LSP suggests adding `explain` to document how the postconditions are satisfied.
+A function has postconditions but no `explain` block.
 
 ### W324 — Ensures without requires
 
-A function has postconditions but no preconditions. This may indicate missing input constraints.
+A function has postconditions but no preconditions.
 
 ### W325 — Explain without ensures
 
@@ -405,13 +313,60 @@ A recursive function's `terminates` measure suggests O(n) call depth. Consider u
 
 ---
 
-## Info (I201)
+## Info
+
+Info diagnostics are suggestions for good practice. Most can be auto-fixed by `prove format`.
 
 ### I201 — Module missing narrative
 
-A module declaration exists but has no `narrative:` string, or no module declaration was found. The narrative documents the module's purpose.
+A module declaration has no `narrative:` string. The narrative documents the module's purpose.
 
 ```prove
 module MyModule
-  narrative: "Handles user authentication and session management"
+  narrative: """Handles user authentication and session management"""
+```
+
+### I300 — Unused variable
+
+A declared variable is never referenced. The formatter prefixes the name with `_`.
+
+### I301 — Unreachable match arm
+
+A match arm after a wildcard (`_`) pattern is unreachable. The formatter removes it.
+
+### I302 — Unused import
+
+An imported name is never referenced in the module body. The formatter removes unused import items, or the entire import line if all items are unused.
+
+```prove
+module Main
+  Text transforms trim upper
+
+transforms shout(s String) String
+from
+    Text.upper(s)
+```
+
+### I303 — Unused type definition
+
+A user-defined type is declared but never referenced. The formatter removes it.
+
+### I310 — Implicitly typed variable
+
+A variable declared via `x = expr` without a type annotation. The formatter adds `as Type` based on type inference.
+
+### I314 — Unknown module in import
+
+An import references a module that is not part of the standard library. The formatter removes the import line.
+
+### I360 — `validates` has implicit Boolean return
+
+A `validates` function always returns `Boolean`. The formatter strips the redundant return type.
+
+```prove
+// Before formatting
+validates is_active(u User) Boolean
+
+// After formatting
+validates is_active(u User)
 ```

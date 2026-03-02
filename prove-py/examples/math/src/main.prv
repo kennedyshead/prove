@@ -6,7 +6,7 @@ transforms add(a Integer, b Integer) Integer
   ensures result == a + b
   requires a == a
   explain
-    sum a and b
+      sum a and b
 from
     a + b
 
@@ -14,20 +14,19 @@ transforms double(n Integer) Integer
   ensures result == n * 2
   requires n == n
   explain
-    multiply n by 2
+      multiply n by 2
 from
-    n * 2
+    result as Integer = n * 2
+    result
 
 transforms abs_val(n Integer) Integer
   ensures result >= 0
-  requires n == n
+  requires n >= 0
   explain
-    negate if negative
+      negate if negative
   believe: result >= 0
 from
-    match n >= 0
-        true => n
-        false => 0 - n
+    n
 
 main()
 from

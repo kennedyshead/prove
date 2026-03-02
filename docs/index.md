@@ -133,9 +133,9 @@ transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule
   ensures result >= 0
   requires len(items) > 0
   explain
-    sum all items . price
-    reduce sub by discount
-    add tax to discounted
+      sum all items . price
+      reduce sub by discount
+      add tax to discounted
 from
     sub as Price = subtotal(items)
     discounted as Price = apply_discount(discount, sub)

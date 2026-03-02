@@ -609,7 +609,7 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
 
 def _is_importable_error(diag: lsp.Diagnostic) -> bool:
     """Match E310/W310 (undefined name) or E300 (undefined type) diagnostics."""
-    return diag.code in ("E310", "W310", "E300")
+    return diag.code in ("E310", "I310", "E300")
 
 
 # Keep old name as alias for backwards compat in tests

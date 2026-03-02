@@ -9,7 +9,7 @@ from prove.types import (
     RecordType,
     RefinementType,
 )
-from tests.helpers import check, check_fails, check_warns
+from tests.helpers import check, check_fails, check_info, check_warns
 
 
 class TestTypeResolution:
@@ -390,12 +390,12 @@ class TestVerbEnforcement:
             "        x > 0\n"
         )
 
-    def test_validates_explicit_return_error(self):
-        check_fails(
+    def test_validates_explicit_return_info(self):
+        check_info(
             "validates bad(x Integer) String\n"
             "    from\n"
             "        \"oops\"\n",
-            "E360",
+            "I360",
         )
 
     def test_pure_failable_error(self):
@@ -638,7 +638,7 @@ class TestMatchExhaustiveness:
         )
 
     def test_unreachable_after_wildcard(self):
-        check_warns(
+        check_info(
             "module M\n"
             "  type Color is Red | Green\n"
             "transforms name(c Color) String\n"
@@ -646,7 +646,43 @@ class TestMatchExhaustiveness:
             "        match c\n"
             "            _ => \"any\"\n"
             "            Red => \"red\"\n",
-            "W301",
+            "I301",
+        )
+
+
+class TestRequiresRedundantMatch:
+    """Test W304: match condition guaranteed by requires."""
+
+    def test_match_on_requires_condition(self):
+        check_warns(
+            "module M\n"
+            "  narrative: \"t\"\n"
+            "transforms abs_val(n Integer) Integer\n"
+            "  requires n >= 0\n"
+            "from\n"
+            "    match n >= 0\n"
+            "        true => n\n"
+            "        false => 0 - n\n",
+            "W304",
+        )
+
+    def test_match_on_different_condition_no_warning(self):
+        check(
+            "transforms f(n Integer) Integer\n"
+            "  requires n >= 0\n"
+            "from\n"
+            "    match n > 5\n"
+            "        true => n\n"
+            "        false => 0\n"
+        )
+
+    def test_match_without_requires_no_warning(self):
+        check(
+            "transforms f(n Integer) Integer\n"
+            "from\n"
+            "    match n >= 0\n"
+            "        true => n\n"
+            "        false => 0 - n\n"
         )
 
 
@@ -738,7 +774,7 @@ class TestIntegration:
             "transforms angle(x Integer) Integer\n"
             "    from\n"
             "        sin(x)\n",
-            "E314",
+            "I314",
         )
 
     def test_imports_known_module(self):
@@ -1104,16 +1140,16 @@ class TestShadowing:
 class TestUnusedImport:
     """Test W302 unused import warning."""
 
-    def test_unused_import_warns(self):
-        """W302: imported name never used."""
-        check_warns(
+    def test_unused_import_info(self):
+        """W302: imported name never used (info — formatter removes)."""
+        check_info(
             "module Main\n"
             "  Text transforms trim\n"
             "\n"
             "transforms greet(name String) String\n"
             "    from\n"
             "        name\n",
-            "W302",
+            "I302",
         )
 
     def test_used_import_no_warning(self):
@@ -1131,9 +1167,9 @@ class TestUnusedImport:
 class TestUnusedType:
     """Test W303 unused type definition warning."""
 
-    def test_unused_type_warns(self):
-        """W303: type defined but never used."""
-        check_warns(
+    def test_unused_type_info(self):
+        """W303: type defined but never used (info — formatter removes it)."""
+        check_info(
             "module M\n"
             "  type Unused is\n"
             "    x Integer\n"
@@ -1141,7 +1177,7 @@ class TestUnusedType:
             "transforms one() Integer\n"
             "    from\n"
             "        1\n",
-            "W303",
+            "I303",
         )
 
     def test_used_type_no_warning(self):

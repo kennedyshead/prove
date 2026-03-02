@@ -16,7 +16,13 @@ Checks explain blocks for completeness and consistency:
 from __future__ import annotations
 
 from prove.ast_nodes import FunctionDef, IdentifierExpr, IntegerLit, NearMiss
-from prove.errors import DIAGNOSTIC_DOCS, Diagnostic, DiagnosticLabel, Severity
+from prove.errors import (
+    DIAGNOSTIC_DOCS,
+    Diagnostic,
+    DiagnosticLabel,
+    Severity,
+    Suggestion,
+)
 from prove.source import Span
 
 
@@ -59,15 +65,23 @@ class ProofVerifier:
 
     def _check_ensures_explain(self, fd: FunctionDef) -> None:
         """W323: ensures without explain block (warning, not error)."""
-        if fd.trusted:
+        if fd.trusted is not None:
             return  # trusted functions opt out of verification
         if fd.ensures and not fd.explain:
-            self._warning(
-                "W323",
-                f"Function '{fd.name}' has `ensures` but no `explain`. "
-                f"Document how each step satisfies the contract.",
-                fd.span,
-            )
+            self.diagnostics.append(Diagnostic(
+                severity=Severity.WARNING,
+                code="W323",
+                message=(
+                    f"Function '{fd.name}' has `ensures` but no `explain`. "
+                    f"Document how each step satisfies the contract."
+                ),
+                labels=[DiagnosticLabel(span=fd.span, message="")],
+                notes=[
+                    "Add an `explain` block with entries describing how "
+                    "the implementation satisfies each postcondition.",
+                ],
+                doc_url=DIAGNOSTIC_DOCS.get("W323"),
+            ))
 
     def _check_entry_uniqueness(self, fd: FunctionDef) -> None:
         """E391: duplicate named entry names."""
@@ -119,12 +133,22 @@ class ProofVerifier:
                 continue
             text_lower = entry.text.lower()
             if not any(c.lower() in text_lower for c in concepts):
-                self._warning(
-                    "W321",
-                    f"explain entry '{entry.name}' doesn't reference "
-                    f"any function concepts ({', '.join(sorted(concepts))})",
-                    entry.span,
-                )
+                self.diagnostics.append(Diagnostic(
+                    severity=Severity.WARNING,
+                    code="W321",
+                    message=(
+                        f"explain entry '{entry.name}' doesn't reference "
+                        f"any function concepts "
+                        f"({', '.join(sorted(concepts))})"
+                    ),
+                    labels=[DiagnosticLabel(span=entry.span, message="")],
+                    notes=[
+                        "Mention at least one of the listed concepts "
+                        "(parameter names, function name, or `result`) "
+                        "so the explanation ties back to the code.",
+                    ],
+                    doc_url=DIAGNOSTIC_DOCS.get("W321"),
+                ))
 
     def _check_near_miss_duplicates(self, fd: FunctionDef) -> None:
         """W322: duplicate near-miss inputs."""
@@ -132,12 +156,23 @@ class ProofVerifier:
         for nm in fd.near_misses:
             for prev in seen:
                 if self._exprs_equal(nm.input, prev.input):
-                    self._warning(
-                        "W322",
-                        f"duplicate near-miss input "
-                        f"(first defined at line {prev.span.start_line})",
-                        nm.span,
-                    )
+                    self.diagnostics.append(Diagnostic(
+                        severity=Severity.WARNING,
+                        code="W322",
+                        message=(
+                            f"duplicate near-miss input "
+                            f"(first defined at line "
+                            f"{prev.span.start_line})"
+                        ),
+                        labels=[DiagnosticLabel(
+                            span=nm.span, message="",
+                        )],
+                        notes=[
+                            "Remove the duplicate or change "
+                            "the input to test a different edge case.",
+                        ],
+                        doc_url=DIAGNOSTIC_DOCS.get("W322"),
+                    ))
                     break
             seen.append(nm)
 
@@ -153,26 +188,44 @@ class ProofVerifier:
     def _check_ensures_without_requires(self, fd: FunctionDef) -> None:
         """W324: ensures without requires."""
         if fd.ensures and not fd.requires:
-            self._warning(
-                "W324",
-                f"function '{fd.name}' has ensures but no requires",
-                fd.span,
-            )
+            self.diagnostics.append(Diagnostic(
+                severity=Severity.WARNING,
+                code="W324",
+                message=(
+                    f"function '{fd.name}' has ensures but no requires"
+                ),
+                labels=[DiagnosticLabel(span=fd.span, message="")],
+                notes=[
+                    "Add a `requires` clause to specify input "
+                    "constraints. The compiler uses requires/ensures "
+                    "pairs to reason about correctness.",
+                ],
+                doc_url=DIAGNOSTIC_DOCS.get("W324"),
+            ))
 
     def _check_explain_without_ensures(self, fd: FunctionDef) -> None:
         """W325: explain without ensures."""
-        if fd.trusted:
+        if fd.trusted is not None:
             return  # trusted functions opt out of verification
         if fd.explain and not fd.ensures:
-            self._warning(
-                "W325",
-                f"function '{fd.name}' has explain but no ensures",
-                fd.span,
-            )
+            self.diagnostics.append(Diagnostic(
+                severity=Severity.WARNING,
+                code="W325",
+                message=(
+                    f"function '{fd.name}' has explain but no ensures"
+                ),
+                labels=[DiagnosticLabel(span=fd.span, message="")],
+                notes=[
+                    "Add `ensures` clauses so the `explain` block has "
+                    "contracts to document. Without postconditions, "
+                    "the explanation is unverifiable.",
+                ],
+                doc_url=DIAGNOSTIC_DOCS.get("W325"),
+            ))
 
     def _check_terminates(self, fd: FunctionDef) -> None:
         """E366: recursive function missing terminates."""
-        if fd.trusted:
+        if fd.trusted is not None:
             return  # trusted functions opt out
         if self._calls_self(fd.name, fd.body) and fd.terminates is None:
             self._error(
@@ -183,7 +236,7 @@ class ProofVerifier:
 
     def _check_recursion_depth(self, fd: FunctionDef) -> None:
         """W326: warn when recursive function may have unbounded call depth."""
-        if fd.trusted:
+        if fd.trusted is not None:
             return
         if fd.terminates is None:
             return  # E366 already covers missing terminates

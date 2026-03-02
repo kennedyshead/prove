@@ -10,7 +10,7 @@ Prove is an intent-first programming language — every function declares its pu
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
   explain
-    sum a and b
+      sum a and b
 from
     a + b
 ```

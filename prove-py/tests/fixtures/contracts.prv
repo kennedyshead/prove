@@ -5,8 +5,7 @@ transforms abs_val(n Integer) Integer
   ensures result >= 0
   requires n > -1000000
   explain
-    n: deducted
-    negate n
+      n: deducted negate n
   believe: result >= 0
 from
     0 - n
