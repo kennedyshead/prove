@@ -42,7 +42,7 @@ transforms bad_explain(n Integer) Integer
   ensures result == n
   requires n == n
   explain
-      n: hello world
+      step_one: hello world
 from
     n
 
