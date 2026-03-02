@@ -243,7 +243,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 ## Status
 
-v0.4 — pure verb enforcement, binary types, namespaced calls, and channel dispatch are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 394 tests pass across every stage.
+v0.7 — IO extensions, Parse module, and C FFI are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 484 tests pass across every stage.
 
 ## Repository
 

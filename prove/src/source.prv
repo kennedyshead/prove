@@ -1,0 +1,9 @@
+module Source
+  narrative: """Source file representation and span tracking for diagnostics."""
+
+  type Span is
+    file String
+    start_line Integer
+    start_col Integer
+    end_line Integer
+    end_col Integer

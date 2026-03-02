@@ -1,0 +1,7 @@
+module Main
+  narrative: """Main module for the compiler."""
+  InputOutput outputs console
+
+main() Result<Unit, Error>!
+from
+    console("Hello from Prove!")

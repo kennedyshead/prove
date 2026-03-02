@@ -1,0 +1,15 @@
+[package]
+name = "prove-prv"
+version = "0.1.0"
+authors = ["Magnus Knutas<magnusknutas@botwork.se>"]
+license = "Prove Source License v1.0"
+
+[build]
+target = "native"
+optimize = false
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90

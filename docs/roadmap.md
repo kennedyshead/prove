@@ -7,7 +7,7 @@
 | v0.1 | Complete | Core pipeline — lexer, parser, checker, prover, C emitter, native binaries |
 | v0.2 | Complete (archived) | ASM backend reference implementation (x86_64) |
 | v0.3 | Complete | Legacy stdlib cleanup, `List` module |
-| v0.4 | Complete | Pure verbs, binary types, namespaced calls, channel dispatch — 394 tests |
+| v0.4 | Complete | Pure verbs, binary types, namespaced calls, channel dispatch |
 | v0.5 | Complete | Turbo runtime — arena allocator, fast hash, string intern |
 | v0.6 | Complete | Core stdlib — Character, Text, Table — 440 tests |
 | v0.7 | Complete | IO extensions, Parse, C FFI — 484 tests |

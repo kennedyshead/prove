@@ -160,6 +160,14 @@ class CEmitter:
 
     # ── Header collection ──────────────────────────────────────
 
+    # Stdlib module name → C runtime header
+    _STDLIB_HEADERS: dict[str, str] = {
+        "Character": "prove_character.h",
+        "Text": "prove_text.h",
+        "Table": "prove_table.h",
+        "Parse": "prove_parse.h",
+    }
+
     def _collect_needed_headers(self) -> None:
         """Pre-scan to determine which runtime headers are needed."""
         # Always include the base runtime
@@ -168,6 +176,14 @@ class CEmitter:
         self._needed_headers.add("prove_string.h")
         # IO init_args is always called in main
         self._needed_headers.add("prove_input_output.h")
+
+        # Include headers for imported stdlib modules
+        for decl in self._module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    header = self._STDLIB_HEADERS.get(imp.module)
+                    if header:
+                        self._needed_headers.add(header)
 
         # Scan function signatures and types for what we need
         for (_verb, _name), sigs in self._symbols.all_functions().items():
