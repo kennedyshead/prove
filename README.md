@@ -55,7 +55,7 @@ prove test     # run auto-generated tests
 
 Full language reference, type system, contracts, AI-resistance details, and design decisions:
 
-**[code.botwork.se/Botwork/prove — Docs](https://code.botwork.se/Botwork/prove)**
+**[prove.botwork.se — Docs](https://prove.botwork.se)**
 
 ---
 
