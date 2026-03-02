@@ -559,16 +559,99 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#system-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dir-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dir Channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process Channel
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#upcoming-modules" class="md-nav__link">
+  <a href="#parse" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Upcoming Modules
+        Parse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#value-accessors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Value Accessors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#value-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Value Validators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module Summary
       
     </span>
   </a>
@@ -1007,7 +1090,7 @@
 <h2 id="inputoutput">InputOutput<a class="headerlink" href="#inputoutput" title="Permanent link">&para;</a></h2>
 <p><strong>Module:</strong> <code>InputOutput</code> — handles IO operations.</p>
 <h3 id="console-channel">Console Channel<a class="headerlink" href="#console-channel" title="Permanent link">&para;</a></h3>
-<p>Console input and output.</p>
+<p>Console input, output, and availability check.</p>
 <table>
 <thead>
 <tr>
@@ -1027,6 +1110,11 @@
 <td><code>console() String</code></td>
 <td>Read a line from stdin</td>
 </tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>console() Boolean</code></td>
+<td>Check if stdin is a terminal</td>
+</tr>
 </tbody>
 </table>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nc">InputOutput</span> <span class="kd">outputs</span> <span class="n">console</span><span class="p">,</span> <span class="kd">inputs</span> <span class="n">console</span>
@@ -1038,7 +1126,7 @@
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="nc">InputOutput</span><span class="o">.</span><span class="n">console</span><span class="p">(</span><span class="sa">f&quot;Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="sa">!&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="file-channel">File Channel<a class="headerlink" href="#file-channel" title="Permanent link">&para;</a></h3>
-<p>Read and write files. File operations are failable — use <code>!</code> to propagate errors.</p>
+<p>Read, write, and check files. File operations are failable — use <code>!</code> to propagate errors.</p>
 <table>
 <thead>
 <tr>
@@ -1058,22 +1146,248 @@
 <td><code>file(path String, content String)!</code></td>
 <td>Write file contents</td>
 </tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>file(path String) Boolean</code></td>
+<td>Check if file exists</td>
+</tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nc">InputOutput</span> <span class="kd">inputs</span> <span class="n">file</span><span class="p">,</span> <span class="kd">outputs</span> <span class="n">file</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nc">InputOutput</span> <span class="kd">inputs</span> <span class="n">file</span><span class="p">,</span> <span class="kd">outputs</span> <span class="n">file</span><span class="p">,</span> <span class="kd">validates</span> <span class="n">file</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kd">inputs</span> <span class="n">load_config</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">from</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="nc">InputOutput</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="kp">!</span>
 </code></pre></div>
+<h3 id="system-channel">System Channel<a class="headerlink" href="#system-channel" title="Permanent link">&para;</a></h3>
+<p>Execute system commands and exit with a status code. Types: <code>ProcessResult</code> (binary), <code>ExitCode</code> (binary).</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inputs</code></td>
+<td><code>system(cmd String, args List&lt;String&gt;) ProcessResult</code></td>
+<td>Run a command</td>
+</tr>
+<tr>
+<td><code>outputs</code></td>
+<td><code>system(code Integer)</code></td>
+<td>Exit with status code</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>system(cmd String) Boolean</code></td>
+<td>Check if command exists</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dir-channel">Dir Channel<a class="headerlink" href="#dir-channel" title="Permanent link">&para;</a></h3>
+<p>List and create directories. Type: <code>DirEntry</code> (binary).</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inputs</code></td>
+<td><code>dir(path String) List&lt;DirEntry&gt;</code></td>
+<td>List directory contents</td>
+</tr>
+<tr>
+<td><code>outputs</code></td>
+<td><code>dir(path String)!</code></td>
+<td>Create a directory</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>dir(path String) Boolean</code></td>
+<td>Check if directory exists</td>
+</tr>
+</tbody>
+</table>
+<h3 id="process-channel">Process Channel<a class="headerlink" href="#process-channel" title="Permanent link">&para;</a></h3>
+<p>Access command-line arguments.</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inputs</code></td>
+<td><code>process() List&lt;String&gt;</code></td>
+<td>Get command-line arguments</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>process(value String) Boolean</code></td>
+<td>Check if argument is present</td>
+</tr>
+</tbody>
+</table>
 <hr />
-<h2 id="upcoming-modules">Upcoming Modules<a class="headerlink" href="#upcoming-modules" title="Permanent link">&para;</a></h2>
-<p>The standard library grows with each release. Modules are added when the self-hosted compiler needs them.</p>
+<h2 id="parse">Parse<a class="headerlink" href="#parse" title="Permanent link">&para;</a></h2>
+<p><strong>Module:</strong> <code>Parse</code> — encoding and decoding of structured data formats.</p>
+<p>Parse uses a universal <code>Value</code> type (binary) that represents any parsed value. The same two-function pattern applies to each format: <code>creates</code> to decode, <code>reads</code> to encode.</p>
+<h3 id="formats">Formats<a class="headerlink" href="#formats" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>creates</code></td>
+<td><code>toml(source String) Result&lt;Value, String&gt;</code></td>
+<td>Decode TOML to Value</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>toml(value Value) String</code></td>
+<td>Encode Value to TOML</td>
+</tr>
+<tr>
+<td><code>creates</code></td>
+<td><code>json(source String) Result&lt;Value, String&gt;</code></td>
+<td>Decode JSON to Value</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>json(value Value) String</code></td>
+<td>Encode Value to JSON</td>
+</tr>
+</tbody>
+</table>
+<h3 id="value-accessors">Value Accessors<a class="headerlink" href="#value-accessors" title="Permanent link">&para;</a></h3>
+<p>Extract typed data from a <code>Value</code>. Each accessor has a corresponding validator.</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reads</code></td>
+<td><code>tag(v Value) String</code></td>
+<td>Get the type tag (<code>"string"</code>, <code>"number"</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>text(v Value) String</code></td>
+<td>Extract string content</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>number(v Value) Integer</code></td>
+<td>Extract integer content</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>decimal(v Value) Float</code></td>
+<td>Extract floating-point content</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>bool(v Value) Boolean</code></td>
+<td>Extract boolean content</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>array(v Value) List&lt;Value&gt;</code></td>
+<td>Extract array content</td>
+</tr>
+<tr>
+<td><code>reads</code></td>
+<td><code>object(v Value) Table&lt;Value&gt;</code></td>
+<td>Extract object/table content</td>
+</tr>
+</tbody>
+</table>
+<h3 id="value-validators">Value Validators<a class="headerlink" href="#value-validators" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>validates</code></td>
+<td><code>text(v Value) Boolean</code></td>
+<td>Check if Value is a string</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>number(v Value) Boolean</code></td>
+<td>Check if Value is an integer</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>decimal(v Value) Boolean</code></td>
+<td>Check if Value is a float</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>bool(v Value) Boolean</code></td>
+<td>Check if Value is a boolean</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>array(v Value) Boolean</code></td>
+<td>Check if Value is an array</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>object(v Value) Boolean</code></td>
+<td>Check if Value is an object/table</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>null(v Value) Boolean</code></td>
+<td>Check if Value is null</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nc">Parse</span> <span class="kd">creates</span> <span class="n">toml</span><span class="p">,</span> <span class="kd">reads</span> <span class="n">text</span> <span class="n">object</span><span class="p">,</span> <span class="k">types</span> <span class="nc">Value</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nc">Table</span> <span class="kd">reads</span> <span class="n">keys</span> <span class="n">get</span><span class="p">,</span> <span class="k">types</span> <span class="nc">Table</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">main</span><span class="p">()</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="kt">Unit</span><span class="p">,</span> <span class="nc">Error</span><span class="o">&gt;</span><span class="kp">!</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">from</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">source</span> <span class="k">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">InputOutput</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s">&quot;config.toml&quot;</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">doc</span> <span class="k">as</span> <span class="nc">Value</span> <span class="o">=</span> <span class="nc">Parse</span><span class="o">.</span><span class="n">toml</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">root</span> <span class="k">as</span> <span class="nc">Table</span><span class="o">&lt;</span><span class="nc">Value</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nc">Parse</span><span class="o">.</span><span class="n">object</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">names</span> <span class="k">as</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span> <span class="o">=</span> <span class="nc">Table</span><span class="o">.</span><span class="n">keys</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="nc">InputOutput</span><span class="o">.</span><span class="n">console</span><span class="p">(</span><span class="s">&quot;Keys: &quot;</span> <span class="o">+</span> <span class="n">join</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="s">&quot;, &quot;</span><span class="p">))</span>
+</code></pre></div>
+<hr />
+<h2 id="module-summary">Module Summary<a class="headerlink" href="#module-summary" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Version</th>
 <th>Module</th>
+<th>Status</th>
 <th>Purpose</th>
 </tr>
 </thead>
@@ -1081,27 +1395,32 @@
 <tr>
 <td>v0.6</td>
 <td><strong>Character</strong></td>
+<td>Complete</td>
 <td>Character classification (<code>alpha</code>, <code>digit</code>, <code>space</code>, etc.) and string-to-char access</td>
 </tr>
 <tr>
 <td>v0.6</td>
 <td><strong>Text</strong></td>
+<td>Complete</td>
 <td>String operations (<code>slice</code>, <code>contains</code>, <code>split</code>, <code>join</code>, <code>trim</code>, <code>replace</code>) and <code>Builder</code> for efficient string construction</td>
 </tr>
 <tr>
 <td>v0.6</td>
 <td><strong>Table</strong></td>
+<td>Complete</td>
 <td>Hash map <code>Table&lt;V&gt;</code> with <code>creates new</code>, <code>reads get</code>, <code>transforms add</code>, <code>validates has</code></td>
 </tr>
 <tr>
 <td>v0.7</td>
 <td><strong>InputOutput</strong> (ext)</td>
-<td>New channels: <code>system</code> (process execution), <code>dir</code> (directory operations), <code>process</code> (command-line arguments)</td>
+<td>Complete</td>
+<td>New channels: <code>system</code>, <code>dir</code>, <code>process</code> with <code>validates</code> verbs for existence checks</td>
 </tr>
 <tr>
 <td>v0.7</td>
 <td><strong>Parse</strong></td>
-<td>Format codecs — <code>creates toml(source)</code> to decode, <code>reads toml(value)</code> to encode. Same pattern for JSON</td>
+<td>Complete</td>
+<td>Format codecs for TOML and JSON with <code>Value</code> type and accessors</td>
 </tr>
 </tbody>
 </table>

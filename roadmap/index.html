@@ -821,10 +821,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#v07-io-extensions-and-parse" class="md-nav__link">
+  <a href="#v07-io-extensions-parse-and-c-ffi" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v0.7 — IO Extensions and Parse
+        v0.7 — IO Extensions, Parse, and C FFI
       
     </span>
   </a>
@@ -952,18 +952,18 @@
 </tr>
 <tr>
 <td>v0.5</td>
-<td>Planned</td>
+<td>Complete</td>
 <td>Turbo runtime — arena allocator, fast hash, string intern</td>
 </tr>
 <tr>
 <td>v0.6</td>
-<td>Planned</td>
-<td>Core stdlib — Character, Text, Table</td>
+<td>Complete</td>
+<td>Core stdlib — Character, Text, Table — 440 tests</td>
 </tr>
 <tr>
 <td>v0.7</td>
-<td>Planned</td>
-<td>IO extensions and Parse</td>
+<td>Complete</td>
+<td>IO extensions, Parse, C FFI — 484 tests</td>
 </tr>
 <tr>
 <td>v1.0</td>
@@ -985,14 +985,15 @@
 <p>The three data modules the self-hosted compiler needs most:</p>
 <ul>
 <li><strong>Character</strong> — character classification (<code>alpha</code>, <code>digit</code>, <code>space</code>, etc.) and indexed access into strings.</li>
-<li><strong>Text</strong> — string querying (<code>contains</code>, <code>starts_with</code>, <code>index_of</code>), transformation (<code>split</code>, <code>join</code>, <code>trim</code>, <code>replace</code>), and <code>Builder</code> for efficient string construction.</li>
+<li><strong>Text</strong> — string querying (<code>contains</code>, <code>starts</code>, <code>index</code>), transformation (<code>split</code>, <code>join</code>, <code>trim</code>, <code>replace</code>), and <code>Builder</code> for efficient string construction.</li>
 <li><strong>Table</strong> — hash map from <code>String</code> keys to values. Uses the turbo runtime's fast hash internally.</li>
 </ul>
-<h3 id="v07-io-extensions-and-parse">v0.7 — IO Extensions and Parse<a class="headerlink" href="#v07-io-extensions-and-parse" title="Permanent link">&para;</a></h3>
-<p>Extend <code>InputOutput</code> with the channels the compiler needs, and add structured format parsing:</p>
+<h3 id="v07-io-extensions-parse-and-c-ffi">v0.7 — IO Extensions, Parse, and C FFI<a class="headerlink" href="#v07-io-extensions-parse-and-c-ffi" title="Permanent link">&para;</a></h3>
+<p>Extend <code>InputOutput</code> with the channels the compiler needs, add structured format parsing, and introduce C FFI:</p>
 <ul>
 <li><strong>InputOutput extensions</strong> — <code>system</code> (process execution via fork/exec), <code>dir</code> (directory listing and creation), <code>process</code> (command-line arguments), and <code>validates</code> verbs for existence checks on all channels.</li>
-<li><strong>Parse</strong> — format codecs with a two-function pattern: <code>creates toml(source)</code> decodes, <code>reads toml(value)</code> encodes. Same for JSON. Additional formats follow the same pattern.</li>
+<li><strong>Parse</strong> — format codecs with a two-function pattern: <code>creates toml(source)</code> decodes, <code>reads toml(value)</code> encodes. Same for JSON. Accessor functions for <code>Value</code> types (<code>text</code>, <code>number</code>, <code>decimal</code>, <code>bool</code>, <code>array</code>, <code>object</code>) with corresponding validators.</li>
+<li><strong>C FFI</strong> — <code>foreign "libname"</code> blocks inside modules for calling C libraries directly. Build configuration via <code>c_flags</code> and <code>link_flags</code> in <code>prove.toml</code>.</li>
 </ul>
 <h3 id="v10-self-hosting">v1.0 — Self-Hosting<a class="headerlink" href="#v10-self-hosting" title="Permanent link">&para;</a></h3>
 <p>Rewrite the Prove compiler in Prove and compile it with the Python bootstrap compiler:</p>
