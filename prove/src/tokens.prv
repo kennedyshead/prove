@@ -44,36 +44,19 @@ module Tokens
     BooleanLit | "true"
                | "false"
 
-  type Suppressed is Comma
-   | Plus
-   | Minus
-   | Star
-   | Slash
-   | Percent
-   | Equal
-   | NotEqual
-   | Less
-   | Greater
-   | LessEqual
-   | GreaterEqual
-   | And
-   | Or
-   | PipeArrow
-   | FatArrow
-   | Arrow
-   | Colon
-   | Pipe
-   | Lparen
-   | Lbracket
-   | Assign
-   | Dot
-   | DotDot
-
   type Token is
     kind TokenKind
     value String
     span Span
 
-validates suppressed(kind TokenKind)
+reads value(token Token) String
 from
-    kind in Suppressed
+    token.value
+
+reads kind(token Token) TokenKind
+from
+    token.kind
+
+reads span(token Token) Span
+from
+    token.span

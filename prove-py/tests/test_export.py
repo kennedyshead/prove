@@ -20,6 +20,7 @@ from prove.export import (
 
 # ── Canonical lists ────────────────────────────────────────────────
 
+
 @pytest.fixture
 def lists():
     return read_canonical_lists()
@@ -28,25 +29,63 @@ def lists():
 @pytest.fixture
 def grammar_lits():
     from pathlib import Path
+
     grammar = Path(__file__).resolve().parent.parent.parent / "tree-sitter-prove" / "grammar.js"
     if grammar.exists():
         return _ts_grammar_literals(grammar)
     # Fallback: all verbs + core grammar keywords
-    return frozenset({
-        "transforms", "inputs", "outputs", "validates", "reads", "creates",
-        "matches", "types", "module", "type", "is", "as", "from", "where",
-        "match", "comptime", "valid", "main", "binary", "ensures", "requires",
-        "explain", "terminates", "trusted", "intent", "narrative", "why_not",
-        "chosen", "near_miss", "know", "assume", "believe", "temporal",
-        "satisfies", "invariant_network",
-    })
+    return frozenset(
+        {
+            "transforms",
+            "inputs",
+            "outputs",
+            "validates",
+            "reads",
+            "creates",
+            "matches",
+            "types",
+            "module",
+            "type",
+            "is",
+            "as",
+            "from",
+            "where",
+            "match",
+            "comptime",
+            "valid",
+            "main",
+            "binary",
+            "ensures",
+            "requires",
+            "explain",
+            "terminates",
+            "trusted",
+            "intent",
+            "narrative",
+            "why_not",
+            "chosen",
+            "near_miss",
+            "know",
+            "assume",
+            "believe",
+            "temporal",
+            "satisfies",
+            "invariant_network",
+        }
+    )
 
 
 def test_canonical_lists_complete(lists):
     """All expected categories are present and non-empty."""
     expected = {
-        "verbs", "keywords", "contract_keywords", "ai_keywords",
-        "builtin_types", "generic_types", "builtin_functions", "literals",
+        "verbs",
+        "keywords",
+        "contract_keywords",
+        "ai_keywords",
+        "builtin_types",
+        "generic_types",
+        "builtin_functions",
+        "literals",
     }
     assert set(lists.keys()) == expected
     for key in expected:
@@ -78,16 +117,20 @@ def test_matches_present(lists):
 def test_verbs_complete(lists):
     """All 7 verbs are present."""
     expected = {
-        "transforms", "inputs", "outputs", "validates",
-        "reads", "creates", "matches",
+        "transforms",
+        "inputs",
+        "outputs",
+        "validates",
+        "reads",
+        "creates",
+        "matches",
     }
     assert set(lists["verbs"]) == expected
 
 
 def test_builtin_types_include_primitives(lists):
     """Primitive types are in builtin_types."""
-    for t in ["Integer", "String", "Boolean", "Decimal", "Float",
-              "Character", "Byte"]:
+    for t in ["Integer", "String", "Boolean", "Decimal", "Float", "Character", "Byte"]:
         assert t in lists["builtin_types"], f"{t} missing from builtin_types"
 
 
@@ -112,14 +155,11 @@ def test_lists_are_sorted(lists):
 
 # ── Sentinel replacement ──────────────────────────────────────────
 
+
 def test_sentinel_replacement():
     """replace_sentinel_section correctly replaces content between markers."""
     content = (
-        "before\n"
-        "// PROVE-EXPORT-BEGIN: verbs\n"
-        "old content\n"
-        "// PROVE-EXPORT-END: verbs\n"
-        "after\n"
+        "before\n// PROVE-EXPORT-BEGIN: verbs\nold content\n// PROVE-EXPORT-END: verbs\nafter\n"
     )
     result = replace_sentinel_section(content, "verbs", "new content\n")
     assert "new content" in result
@@ -133,11 +173,7 @@ def test_sentinel_replacement():
 def test_sentinel_python_comments():
     """Sentinel works with # comment syntax."""
     content = (
-        "before\n"
-        "# PROVE-EXPORT-BEGIN: keywords\n"
-        "old stuff\n"
-        "# PROVE-EXPORT-END: keywords\n"
-        "after\n"
+        "before\n# PROVE-EXPORT-BEGIN: keywords\nold stuff\n# PROVE-EXPORT-END: keywords\nafter\n"
     )
     result = replace_sentinel_section(content, "keywords", "new stuff\n")
     assert "new stuff" in result
@@ -154,7 +190,9 @@ def test_sentinel_scheme_comments():
         "after\n"
     )
     result = replace_sentinel_section(
-        content, "contract-keywords", "new\n",
+        content,
+        "contract-keywords",
+        "new\n",
     )
     assert "new" in result
     assert result.count("old") == 0
@@ -170,13 +208,7 @@ def test_sentinel_missing_raises():
 def test_sentinel_preserves_surrounding():
     """Replacement preserves all content outside sentinel markers."""
     content = (
-        "line1\n"
-        "line2\n"
-        "; PROVE-EXPORT-BEGIN: test\n"
-        "old\n"
-        "; PROVE-EXPORT-END: test\n"
-        "line3\n"
-        "line4\n"
+        "line1\nline2\n; PROVE-EXPORT-BEGIN: test\nold\n; PROVE-EXPORT-END: test\nline3\nline4\n"
     )
     result = replace_sentinel_section(content, "test", "new\n")
     assert result.startswith("line1\nline2\n")
@@ -184,6 +216,7 @@ def test_sentinel_preserves_surrounding():
 
 
 # ── Generator output validation ──────────────────────────────────
+
 
 def test_treesitter_verbs_output(lists, grammar_lits):
     """Generated tree-sitter highlights verb content contains expected keywords."""
@@ -212,12 +245,14 @@ def test_treesitter_keywords_no_phantom_literals(lists, grammar_lits):
     """Keywords not in grammar.js are excluded from highlights."""
     output = _ts_highlights_keywords(lists, grammar_lits)
     # These exist in the compiler but not as grammar literals
-    assert '"foreign"' not in output
+    # when and domain are not grammar literals
+    assert '"when"' not in output
     assert '"domain"' not in output
     # These should be present (they are grammar literals)
     assert '"from"' in output
     assert '"type"' in output
     assert '"module"' in output
+    assert '"foreign"' in output
 
 
 def test_treesitter_builtin_types_output(lists):

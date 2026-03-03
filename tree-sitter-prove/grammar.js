@@ -24,8 +24,6 @@ module.exports = grammar({
     $.line_comment,
   ],
 
-  word: $ => $.identifier,
-
   conflicts: $ => [
     [$.expression, $.pattern],
   ],
@@ -57,6 +55,7 @@ module.exports = grammar({
         $.invariant_network,
         $.narrative_annotation,
         $.temporal_annotation,
+        $.foreign_block,
       )),
     ),
 
@@ -280,6 +279,11 @@ module.exports = grammar({
       $.identifier,
       repeat(seq('->', $.identifier)),
     ),
+
+    foreign_block: $ => prec(1, seq(
+      'foreign',
+      $.string_literal,
+    )),
 
     // ─── Invariant Networks ────────────────────────────────────
 
