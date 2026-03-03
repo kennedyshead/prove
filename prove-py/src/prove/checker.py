@@ -1264,6 +1264,11 @@ class Checker:
         if isinstance(expr, IndexExpr):
             return self._infer_index(expr)
         if isinstance(expr, ValidExpr):
+            if expr.args is None:
+                # Function reference: valid error → FunctionType([Diagnostic], Boolean)
+                sig = self.symbols.resolve_function_any(expr.name)
+                if sig is not None and sig.param_types:
+                    return FunctionType(list(sig.param_types), BOOLEAN)
             return BOOLEAN
         if isinstance(expr, ComptimeExpr):
             return self._infer_comptime(expr)

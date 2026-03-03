@@ -35,4 +35,4 @@ from
 
 validates has_errors(diagnostics List<Diagnostic>)
 from
-    len(filter(diagnostics, |diagnostic| error)) > 0
+    len(filter(diagnostics, valid error)) > 0

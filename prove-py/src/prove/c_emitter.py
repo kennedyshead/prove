@@ -42,6 +42,7 @@ from prove.ast_nodes import (
     TypeDef,
     TypeIdentifierExpr,
     UnaryExpr,
+    ValidExpr,
     VarDecl,
     VariantPattern,
     WildcardPattern,
@@ -437,7 +438,8 @@ class CEmitter:
                             if mangled in seen:
                                 continue
                             seen.add(mangled)
-                            ret_ct = map_type(sig.return_type)
+                            ret_type = BOOLEAN if sig.verb == "validates" else sig.return_type
+                            ret_ct = map_type(ret_type)
                             ret_decl = ret_ct.decl
                             if sig.can_fail:
                                 if (
@@ -470,7 +472,8 @@ class CEmitter:
             )
             if not sig:
                 continue
-            ret_ct = map_type(sig.return_type)
+            ret_type = BOOLEAN if decl.verb == "validates" else sig.return_type
+            ret_ct = map_type(ret_type)
             ret_decl = ret_ct.decl
             if decl.can_fail:
                 if (
@@ -646,6 +649,9 @@ class CEmitter:
 
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         ret_type = sig.return_type if sig else UNIT
+        # validates has implicit Boolean return
+        if fd.verb == "validates":
+            ret_type = BOOLEAN
         self._current_func_return = ret_type
         self._current_func = fd
         self._current_requires = fd.requires
@@ -1233,6 +1239,18 @@ class CEmitter:
         if isinstance(expr, LookupAccessExpr):
             return self._emit_lookup_access(expr)
 
+        if isinstance(expr, ValidExpr):
+            sig = self._symbols.resolve_function_any(expr.name)
+            if expr.args is not None:
+                # valid error(x) → call the validates function
+                args_c = ", ".join(self._emit_expr(a) for a in expr.args)
+                pt = list(sig.param_types) if sig else None
+                fn = mangle_name("validates", expr.name, pt)
+                return f"{fn}({args_c})"
+            # valid error → function reference (used as HOF predicate)
+            pt = list(sig.param_types) if sig else None
+            return mangle_name("validates", expr.name, pt)
+
         return "/* unsupported expr */ 0"
 
     # ── Binary expressions ─────────────────────────────────────
@@ -1253,6 +1271,12 @@ class CEmitter:
             if isinstance(lt, PrimitiveType) and lt.name == "String":
                 eq = f"prove_string_eq({left}, {right})"
                 return eq if expr.op == "==" else f"(!{eq})"
+            # Algebraic type tag comparison: severity == Error → .tag == TAG
+            if isinstance(lt, AlgebraicType) and isinstance(expr.right, TypeIdentifierExpr):
+                cname = mangle_type_name(lt.name)
+                tag = f"{cname}_TAG_{expr.right.name.upper()}"
+                cmp = "==" if expr.op == "==" else "!="
+                return f"({left}.tag {cmp} {tag})"
 
         # Map Prove operators to C
         op_map = {
@@ -1556,6 +1580,22 @@ class CEmitter:
         accum_type: Type | None = None,
     ) -> str:
         """Emit a lambda for HOF use with correct C signature."""
+        if isinstance(expr, ValidExpr) and expr.args is None and kind == "filter":
+            # valid error → wrap validates function as filter predicate
+            sig = self._symbols.resolve_function_any(expr.name)
+            pt = list(sig.param_types) if sig else None
+            fn = mangle_name("validates", expr.name, pt)
+            wrapper = f"_lambda_{self._tmp_counter}"
+            self._tmp_counter += 1
+            elem_ct = map_type(elem_type)
+            lam = (
+                f"static bool {wrapper}(const void *_arg) {{\n"
+                f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
+                f"    return {fn}(_x);\n"
+                f"}}\n"
+            )
+            self._lambdas.append(lam)
+            return wrapper
         if not isinstance(expr, LambdaExpr):
             # Not a lambda — assume it's an identifier referencing a function
             return self._emit_expr(expr)

@@ -219,8 +219,10 @@
 
 ; ─── Import items ───────────────────────────────────────────
 
+; Only highlight imports that have the 'types' keyword
 (import_declaration
-  (type_identifier) @module)
+  (import_group
+    (type_identifier) @module))
 
 (import_group
   (identifier) @function)

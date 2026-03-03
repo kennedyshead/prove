@@ -49,8 +49,8 @@ module.exports = grammar({
       'module',
       $.type_identifier,
       repeat(choice(
-        prec(-1, $.import_declaration),
         $.type_definition,
+        prec(-1, $.import_declaration),
         $.constant_definition,
         $.invariant_network,
         $.narrative_annotation,
@@ -63,7 +63,8 @@ module.exports = grammar({
 
     import_declaration: $ => seq(
       $.type_identifier,
-      sep1($.import_group, ','),
+      $.import_group,
+      repeat(seq(',', $.import_group)),
     ),
 
     import_group: $ => prec.right(choice(
@@ -131,8 +132,7 @@ module.exports = grammar({
       $.type_expression,
       'where',
       $.lookup_variant,
-      $.lookup_variant,
-      repeat($.lookup_variant),
+      repeat1($.lookup_variant),
     )),
 
     lookup_variant: $ => prec.left(seq(
