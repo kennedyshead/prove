@@ -272,7 +272,11 @@ class CEmitter:
     def _emit_type_forwards(self) -> None:
         for td in self._all_type_defs():
             cname = mangle_type_name(td.name)
-            self._line(f"typedef struct {cname} {cname};")
+            # Lookup types use enum, not struct
+            if isinstance(td.body, LookupTypeDef):
+                self._line(f"typedef enum {cname} {cname};")
+            else:
+                self._line(f"typedef struct {cname} {cname};")
         # Forward declarations for imported local types
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
@@ -294,9 +298,19 @@ class CEmitter:
             if isinstance(ty, (RecordType, AlgebraicType)):
                 # Only include types that aren't builtins
                 if name not in (
-                    "Integer", "Decimal", "Float", "Boolean",
-                    "String", "Character", "Byte", "Unit",
-                    "Error", "Result", "Option", "List", "Table",
+                    "Integer",
+                    "Decimal",
+                    "Float",
+                    "Boolean",
+                    "String",
+                    "Character",
+                    "Byte",
+                    "Unit",
+                    "Error",
+                    "Result",
+                    "Option",
+                    "List",
+                    "Table",
                 ):
                     result.append((name, ty))
                     seen.add(name)
@@ -405,9 +419,8 @@ class CEmitter:
                     continue
                 for item in imp.items:
                     # Skip type imports
-                    is_type_import = (
-                        item.verb == "types"
-                        or (item.verb is None and item.name[:1].isupper())
+                    is_type_import = item.verb == "types" or (
+                        item.verb is None and item.name[:1].isupper()
                     )
                     if is_type_import:
                         continue
@@ -427,8 +440,10 @@ class CEmitter:
                             ret_ct = map_type(sig.return_type)
                             ret_decl = ret_ct.decl
                             if sig.can_fail:
-                                if (isinstance(sig.return_type, GenericInstance)
-                                        and sig.return_type.base_name == "Result"):
+                                if (
+                                    isinstance(sig.return_type, GenericInstance)
+                                    and sig.return_type.base_name == "Result"
+                                ):
                                     ret_decl = "Prove_Result"
                                 elif ret_ct.decl == "void":
                                     ret_decl = "Prove_Result"
@@ -449,20 +464,26 @@ class CEmitter:
             if not isinstance(decl, FunctionDef) or decl.binary:
                 continue
             sig = self._symbols.resolve_function(
-                decl.verb, decl.name, len(decl.params),
+                decl.verb,
+                decl.name,
+                len(decl.params),
             )
             if not sig:
                 continue
             ret_ct = map_type(sig.return_type)
             ret_decl = ret_ct.decl
             if decl.can_fail:
-                if (isinstance(sig.return_type, GenericInstance)
-                        and sig.return_type.base_name == "Result"):
+                if (
+                    isinstance(sig.return_type, GenericInstance)
+                    and sig.return_type.base_name == "Result"
+                ):
                     ret_decl = "Prove_Result"
                 elif ret_ct.decl == "void":
                     ret_decl = "Prove_Result"
             mangled = mangle_name(
-                decl.verb, decl.name, sig.param_types,
+                decl.verb,
+                decl.name,
+                sig.param_types,
             )
             params: list[str] = []
             for p, pt in zip(decl.params, sig.param_types):
@@ -484,7 +505,7 @@ class CEmitter:
             self._line(f"struct {cname} {{")
             self._indent += 1
             for f in body.fields:
-                te_name = f.type_expr.name if hasattr(f.type_expr, 'name') else "Integer"
+                te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
                 ft = self._symbols.resolve_type(te_name)
                 ct = map_type(ft) if ft else CType("int64_t", False, None)
                 self._line(f"{ct.decl} {f.name};")
@@ -495,7 +516,7 @@ class CEmitter:
             params: list[str] = []
             field_names: list[str] = []
             for f in body.fields:
-                te_name = f.type_expr.name if hasattr(f.type_expr, 'name') else "Integer"
+                te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
                 ft = self._symbols.resolve_type(te_name)
                 ct = map_type(ft) if ft else CType("int64_t", False, None)
                 params.append(f"{ct.decl} {f.name}")
@@ -534,7 +555,7 @@ class CEmitter:
                     self._indent += 1
                     for f in v.fields:
                         ft = self._symbols.resolve_type(
-                            f.type_expr.name if hasattr(f.type_expr, 'name') else "Integer"
+                            f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
                         )
                         ct = map_type(ft) if ft else CType("int64_t", False, None)
                         self._line(f"{ct.decl} {f.name};")
@@ -554,7 +575,7 @@ class CEmitter:
                 params: list[str] = []
                 for f in v.fields:
                     ft = self._symbols.resolve_type(
-                        f.type_expr.name if hasattr(f.type_expr, 'name') else "Integer"
+                        f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
                     )
                     ct = map_type(ft) if ft else CType("int64_t", False, None)
                     params.append(f"{ct.decl} {f.name}")
@@ -574,6 +595,36 @@ class CEmitter:
             # Opaque pointer typedef for C-backed types
             self._line(f"typedef struct {cname}_impl* {cname};")
             self._line("")
+
+        elif isinstance(body, LookupTypeDef):
+            # Lookup type: generate C enum from entries
+            # Build unique variant names (skip duplicates with same variant name)
+            seen_variants: set[str] = set()
+            variant_names: list[str] = []
+            for entry in body.entries:
+                if entry.variant not in seen_variants:
+                    seen_variants.add(entry.variant)
+                    variant_names.append(entry.variant)
+            # Generate enum
+            self._line(f"enum {cname} {{")
+            self._indent += 1
+            for i, vname in enumerate(variant_names):
+                tag = f"{cname}_{vname.upper()}"
+                self._line(f"{tag} = {i},")
+            self._indent -= 1
+            self._line("};")
+            self._line("")
+            # Constructor functions for each variant (zero-arg constructors)
+            for vname in variant_names:
+                tag = f"{cname}_{vname.upper()}"
+                self._line(f"static inline {cname} {vname}(void) {{")
+                self._indent += 1
+                self._line(f"{cname} _v;")
+                self._line(f"_v = {tag};")
+                self._line("return _v;")
+                self._indent -= 1
+                self._line("}")
+                self._line("")
 
     # ── Function emission ──────────────────────────────────────
 
@@ -632,9 +683,8 @@ class CEmitter:
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
 
         # Check if explain block has structured conditions (when)
-        has_explain_conditions = (
-            fd.explain is not None
-            and any(e.condition is not None for e in fd.explain.entries)
+        has_explain_conditions = fd.explain is not None and any(
+            e.condition is not None for e in fd.explain.entries
         )
 
         if has_explain_conditions:
@@ -734,7 +784,10 @@ class CEmitter:
     # ── Requires-based option narrowing ─────────────────────────
 
     def _is_option_narrowed(
-        self, func_name: str, args: list[Expr], module_name: str,
+        self,
+        func_name: str,
+        args: list[Expr],
+        module_name: str,
     ) -> bool:
         """Check if a call matches a requires validates precondition."""
         if not self._current_requires:
@@ -752,8 +805,7 @@ class CEmitter:
                 continue
             func = req_expr.func
             # Qualified: Table.has(...)
-            if (isinstance(func, FieldExpr)
-                    and isinstance(func.obj, TypeIdentifierExpr)):
+            if isinstance(func, FieldExpr) and isinstance(func.obj, TypeIdentifierExpr):
                 if func.obj.name != module_name:
                     continue
                 req_name = func.field
@@ -790,16 +842,19 @@ class CEmitter:
         return False
 
     def _maybe_unwrap_option(
-        self, call_str: str, sig, call_args: list[Expr],
+        self,
+        call_str: str,
+        sig,
+        call_args: list[Expr],
         module_name: str,
     ) -> str:
         """If the call returns Option<V> and is narrowed by requires, unwrap."""
         from prove.symbols import FunctionSignature
+
         if not isinstance(sig, FunctionSignature):
             return call_str
         ret = sig.return_type
-        if not (isinstance(ret, GenericInstance) and ret.base_name == "Option"
-                and ret.args):
+        if not (isinstance(ret, GenericInstance) and ret.base_name == "Option" and ret.args):
             return call_str
         if not self._is_option_narrowed(sig.name, call_args, module_name):
             return call_str
@@ -879,11 +934,59 @@ class CEmitter:
             self._emit_match_stmt(stmt)
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
-        ty = self._infer_expr_type(vd.value)
-        self._locals[vd.name] = ty
-        ct = map_type(ty)
+        # Determine target type: from annotation if present, else from value
+        target_ty = self._infer_expr_type(vd.value)
+        if vd.type_expr:
+            # Resolve type from annotation
+            # SimpleType has 'name', GenericType has 'name' and 'args', ModifiedType has 'base_type'
+            type_name = getattr(vd.type_expr, "name", None)
+            if type_name is None:
+                # Could be ModifiedType with base_type
+                base = getattr(vd.type_expr, "base_type", None)
+                if base:
+                    type_name = getattr(base, "name", None)
+            if type_name:
+                resolved = self._symbols.resolve_type(type_name)
+                if resolved:
+                    target_ty = resolved
+
+        # Check if value is a failable call returning Result and target is the success type
+        value_ty = self._infer_expr_type(vd.value)
+        needs_unwrap = False
+        if isinstance(value_ty, GenericInstance) and value_ty.base_name == "Result":
+            if isinstance(target_ty, GenericInstance) and target_ty.base_name == "Result":
+                # Target is also Result, no unwrapping needed
+                pass
+            else:
+                # Target is the success type, need to unwrap
+                needs_unwrap = True
+
+        ct = map_type(target_ty)
         val = self._emit_expr(vd.value)
-        self._line(f"{ct.decl} {vd.name} = {val};")
+
+        if needs_unwrap:
+            # For failable function returning Result, unwrap before assignment
+            tmp = self._tmp()
+            self._line(f"Prove_Result {tmp} = {val};")
+            # Check for error - panic if non-failable function, return error if failable
+            is_failable = (
+                getattr(self._current_func, "can_fail", False) if self._current_func else False
+            )
+            if is_failable:
+                self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+            else:
+                self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
+            # Unwrap the success value
+            if ct.is_pointer:
+                self._line(f"{ct.decl} {vd.name} = ({ct.decl})prove_result_unwrap_ptr({tmp});")
+            else:
+                # For integer types
+                self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_{ct.decl}({tmp});")
+        else:
+            self._line(f"{ct.decl} {vd.name} = {val};")
+
+        # Update locals with target type
+        self._locals[vd.name] = target_ty
         # Retain pointer types
         if ct.is_pointer:
             self._line(f"prove_retain({vd.name});")
@@ -1084,6 +1187,17 @@ class CEmitter:
             return self._emit_list_literal(expr)
 
         if isinstance(expr, IdentifierExpr):
+            # Check if this identifier is an outputs function with no args (zero-arg call)
+            sig = self._symbols.resolve_function("outputs", expr.name, 0)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(expr.name, arity=0)
+            if sig and sig.verb == "outputs" and sig.module:
+                # This is a zero-arg call to an outputs function
+                from prove.stdlib_loader import binary_c_name
+
+                c_name = binary_c_name(sig.module, sig.verb, sig.name, None)
+                if c_name:
+                    return f"{c_name}()"
             return expr.name
 
         if isinstance(expr, TypeIdentifierExpr):
@@ -1142,10 +1256,19 @@ class CEmitter:
 
         # Map Prove operators to C
         op_map = {
-            "&&": "&&", "||": "||",
-            "==": "==", "!=": "!=",
-            "<": "<", ">": ">", "<=": "<=", ">=": ">=",
-            "+": "+", "-": "-", "*": "*", "/": "/", "%": "%",
+            "&&": "&&",
+            "||": "||",
+            "==": "==",
+            "!=": "!=",
+            "<": "<",
+            ">": ">",
+            "<=": "<=",
+            ">=": ">=",
+            "+": "+",
+            "-": "-",
+            "*": "*",
+            "/": "/",
+            "%": "%",
         }
         c_op = op_map.get(expr.op, expr.op)
         return f"({left} {c_op} {right})"
@@ -1210,17 +1333,22 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n_args,
+                    name,
+                    arity=n_args,
                 )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
+
                 pts = sig.param_types
                 fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
-                        call_str, sig, expr.args, sig.module,
+                        call_str,
+                        sig,
+                        expr.args,
+                        sig.module,
                     )
                     return call_str
 
@@ -1229,7 +1357,8 @@ class CEmitter:
                 sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n_args,
+                    name,
+                    arity=n_args,
                 )
 
             if sig and sig.verb is not None:
@@ -1244,7 +1373,7 @@ class CEmitter:
             # Pad record constructors with missing fields using defaults
             resolved = self._symbols.resolve_type(name)
             if isinstance(resolved, RecordType) and len(args) < len(resolved.fields):
-                for fname, ftype in list(resolved.fields.items())[len(args):]:
+                for fname, ftype in list(resolved.fields.items())[len(args) :]:
                     args.append(self._default_for_type(ftype))
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))
@@ -1260,24 +1389,32 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n_args,
+                    name,
+                    arity=n_args,
                 )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
+
                 pts = sig.param_types
                 fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
-                        call_str, sig, expr.args, module_name,
+                        call_str,
+                        sig,
+                        expr.args,
+                        module_name,
                     )
                     return call_str
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 call_str = f"{mangled}({', '.join(args)})"
                 call_str = self._maybe_unwrap_option(
-                    call_str, sig, expr.args, module_name,
+                    call_str,
+                    sig,
+                    expr.args,
+                    module_name,
                 )
                 return call_str
             return f"{name}({', '.join(args)})"
@@ -1349,15 +1486,10 @@ class CEmitter:
         if isinstance(lam, LambdaExpr):
             param = lam.params[0] if lam.params else "_x"
             idx = self._tmp()
-            self._line(
-                f"for (int64_t {idx} = 0;"
-                f" {idx} < {list_arg}->length; {idx}++) {{"
-            )
+            self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
             self._indent += 1
             self._line(
-                f"{elem_ct.decl} {param} ="
-                f" *({elem_ct.decl}*)prove_list_get("
-                f"{list_arg}, {idx});"
+                f"{elem_ct.decl} {param} = *({elem_ct.decl}*)prove_list_get({list_arg}, {idx});"
             )
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
@@ -1407,14 +1539,21 @@ class CEmitter:
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
         fn_name = self._emit_hof_lambda(
-            expr.args[2], elem_type, "reduce", accum_type=accum_type,
+            expr.args[2],
+            elem_type,
+            "reduce",
+            accum_type=accum_type,
         )
         self._line(f"prove_list_reduce({list_arg}, &{accum_tmp}, {fn_name});")
         return accum_tmp
 
     def _emit_hof_lambda(
-        self, expr: Expr, elem_type: Type, kind: str,
-        *, accum_type: Type | None = None,
+        self,
+        expr: Expr,
+        elem_type: Type,
+        kind: str,
+        *,
+        accum_type: Type | None = None,
     ) -> str:
         """Emit a lambda for HOF use with correct C signature."""
         if not isinstance(expr, LambdaExpr):
@@ -1515,10 +1654,12 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, 1)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=1,
+                    name,
+                    arity=1,
                 )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
+
                 pts = sig.param_types
                 fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
@@ -1539,10 +1680,12 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=total,
+                    name,
+                    arity=total,
                 )
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
+
                 pts = sig.param_types
                 fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
@@ -1566,13 +1709,10 @@ class CEmitter:
             self._line(f"if (prove_result_is_err({tmp})) {{")
             self._indent += 1
             err_str = self._tmp()
-            self._line(
-                f"Prove_String *{err_str} ="
-                f" (Prove_String*){tmp}.error;"
-            )
+            self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
             self._line(
                 f"if ({err_str}) fprintf(stderr,"
-                f" \"error: %.*s\\n\","
+                f' "error: %.*s\\n",'
                 f" (int){err_str}->length,"
                 f" {err_str}->data);"
             )
@@ -1581,9 +1721,7 @@ class CEmitter:
             self._indent -= 1
             self._line("}")
         else:
-            self._line(
-                f"if (prove_result_is_err({tmp})) return {tmp};"
-            )
+            self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
         # Unwrap the success value
         inner_type = self._infer_expr_type(expr.expr)
         if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
@@ -1603,9 +1741,11 @@ class CEmitter:
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
             # Implicit subject: for `matches` verb, use first parameter
-            if (self._current_func is not None
-                    and self._current_func.verb == "matches"
-                    and self._current_func.params):
+            if (
+                self._current_func is not None
+                and self._current_func.verb == "matches"
+                and self._current_func.params
+            ):
                 first_param = self._current_func.params[0].name
                 implicit_subj = MatchExpr(
                     subject=IdentifierExpr(first_param, m.span),
@@ -1794,7 +1934,8 @@ class CEmitter:
                 elif isinstance(part_type, PrimitiveType) and part_type.name == "Integer":
                     parts.append(f"prove_string_from_int({val})")
                 elif isinstance(part_type, PrimitiveType) and part_type.name in (
-                    "Decimal", "Float",
+                    "Decimal",
+                    "Float",
                 ):
                     parts.append(f"prove_string_from_double({val})")
                 elif isinstance(part_type, PrimitiveType) and part_type.name == "Boolean":
@@ -1933,20 +2074,26 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n,
+                    name,
+                    arity=n,
                 )
             if sig:
                 ret = sig.return_type
-                if (sig.module and isinstance(ret, GenericInstance)
-                        and ret.base_name == "Option" and ret.args
-                        and self._is_option_narrowed(
-                            name, expr.args, sig.module,
-                        )):
-                    actual_types = [
-                        self._infer_expr_type(a) for a in expr.args
-                    ]
+                if (
+                    sig.module
+                    and isinstance(ret, GenericInstance)
+                    and ret.base_name == "Option"
+                    and ret.args
+                    and self._is_option_narrowed(
+                        name,
+                        expr.args,
+                        sig.module,
+                    )
+                ):
+                    actual_types = [self._infer_expr_type(a) for a in expr.args]
                     bindings = resolve_type_vars(
-                        sig.param_types, actual_types,
+                        sig.param_types,
+                        actual_types,
                     )
                     return substitute_type_vars(ret.args[0], bindings)
                 return ret
@@ -1955,7 +2102,8 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n,
+                    name,
+                    arity=n,
                 )
             if sig:
                 return sig.return_type
@@ -1968,20 +2116,25 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=n,
+                    name,
+                    arity=n,
                 )
             if sig:
                 ret = sig.return_type
-                if (isinstance(ret, GenericInstance)
-                        and ret.base_name == "Option" and ret.args
-                        and self._is_option_narrowed(
-                            name, expr.args, module_name,
-                        )):
-                    actual_types = [
-                        self._infer_expr_type(a) for a in expr.args
-                    ]
+                if (
+                    isinstance(ret, GenericInstance)
+                    and ret.base_name == "Option"
+                    and ret.args
+                    and self._is_option_narrowed(
+                        name,
+                        expr.args,
+                        module_name,
+                    )
+                ):
+                    actual_types = [self._infer_expr_type(a) for a in expr.args]
                     bindings = resolve_type_vars(
-                        sig.param_types, actual_types,
+                        sig.param_types,
+                        actual_types,
                     )
                     return substitute_type_vars(ret.args[0], bindings)
                 return ret
@@ -1993,7 +2146,8 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, 1)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=1,
+                    name,
+                    arity=1,
                 )
             if sig:
                 return sig.return_type
@@ -2003,7 +2157,8 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    name, arity=total,
+                    name,
+                    arity=total,
                 )
             if sig:
                 return sig.return_type
@@ -2053,7 +2208,7 @@ class CEmitter:
             return resolved if resolved else ERROR_TY
         if isinstance(operand, TypeIdentifierExpr):
             # Reverse: variant -> value type
-            name = lookup.value_type.name if hasattr(lookup.value_type, 'name') else ""
+            name = lookup.value_type.name if hasattr(lookup.value_type, "name") else ""
             resolved = self._symbols.resolve_type(name)
             return resolved if resolved else ERROR_TY
         return ERROR_TY

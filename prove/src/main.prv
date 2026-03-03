@@ -6,4 +6,4 @@ module Main
 main() Result<Unit, Error>!
 from
     source as SourceFile = SourceFile("src/main.prv")
-    each(source_lines(source), |line| console)
+    each(source_lines(source), |line| console(line))

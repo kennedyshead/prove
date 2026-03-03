@@ -1,5 +1,74 @@
 # Type System
 
+## Type Modifiers
+
+Type modifiers describe **how** a value is stored and represented — size, signedness, encoding, precision. They use bracket syntax after the type name: `Type:[Modifier ...]`. Value constraints (what values are valid) belong in refinement types with `where`, not modifiers.
+
+```prove
+// Modifier: how it's stored (16-bit, unsigned)
+raw_port as Integer:[16 Unsigned] = 8080
+
+// Refinement: what values are valid
+type Port is Integer where 1..65535
+
+// Combined: storage + value constraint
+type Port is Integer:[16 Unsigned] where 1..65535
+```
+
+### Modifier Axes
+
+Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). Rules:
+
+- **Order-independent** — `Integer:[Signed 64]` and `Integer:[64 Signed]` are identical. The compiler normalizes internally.
+- **One per axis** — two modifiers on the same axis is a compile error: `Integer:[32 64]` → conflicting size modifiers.
+- **Positional** when the kind is unambiguous. **Named** (`Key:Value`) when a bare value could be confused: `Decimal:[128 Scale:2]`.
+- **Bare type uses defaults** — `Integer` means `Integer:[64 Signed]`, `String` means `String:[UTF8]`, `Decimal` means `Decimal:[64]`.
+
+### Primitive Type Modifiers
+
+| Type | Modifier Axes | Default | Examples |
+|------|---------------|---------|----------|
+| `Integer` | size (8/16/32/64/128), signedness (Signed/Unsigned) | `Integer:[64 Signed]` | `Integer:[32 Unsigned]`, `Integer:[8]` |
+| `Decimal` | precision (32/64/128), scale (Scale:N) | `Decimal:[64]` | `Decimal:[128 Scale:2]` |
+| `Float` | precision (32/64) | `Float:[64]` | `Float:[32]` |
+| `String` | encoding (UTF8/ASCII/UTF16), max length | `String:[UTF8]` | `String:[UTF8 15]`, `String:[ASCII 255]` |
+| `Character` | encoding (UTF8/UTF16/ASCII) | `Character:[UTF8]` | `Character:[ASCII]` |
+| `Boolean` | — | — | — |
+| `Byte` | — | — | — |
+
+`Float` is **opt-in** — `Decimal` is the default for fractional numbers. `Float:[64]` uses IEEE 754 hardware floats for performance-critical domains (scientific computing, graphics, signal processing) where speed matters more than exact precision. Mixing `Float` and `Decimal` requires explicit conversion.
+
+```prove
+count as Integer = 42                          // Integer:[64 Signed]
+flags as Integer:[8 Unsigned] = 0xFF
+price as Decimal:[128 Scale:2] = 19.99         // financial precision
+name as String = "Alice"                        // String:[UTF8]
+code as String:[ASCII 4] = "US01"              // ASCII, max 4 characters
+letter as Character = 'A'                       // Character:[UTF8]
+```
+
+### Storage Modifiers
+
+Beyond representation, modifiers also express storage concerns like mutability and ownership. These use the same bracket syntax — storage is a property of the type, not a separate keyword.
+
+**`Mutable`** — variables are immutable by default. `Mutable` enables reassignment:
+
+```prove
+counter as Integer:[Mutable] = 0
+counter = counter + 1
+```
+
+**`Own`** — linear ownership. The value is consumed on use. See [Ownership Lite](#ownership-lite-linear-types-with-compiler-inferred-borrows) below.
+
+```prove
+inputs process(file File:[Own]) Data!
+from
+    content as String = read(file)
+    close(file)                        // file consumed here
+```
+
+*`Mutable` and `Own` are parsed but not yet enforced (upcoming v0.9.3).*
+
 ## Refinement Types
 
 Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no `unwrap()`.
