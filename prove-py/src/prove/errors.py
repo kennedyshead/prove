@@ -82,12 +82,13 @@ _register_doc_range("E", 300, 302)
 for _c in ("E310", "E311", "E312", "E313", "E315", "E316", "E317"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Type checking
-for _c in ("E320", "E325", "E330", "E331"):
+for _c in ("E320", "E321", "E322", "E325", "E330", "E331"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Field access E340
 DIAGNOSTIC_DOCS["E340"] = f"{_DOCS_BASE}#E340"
-# Control flow E350
-DIAGNOSTIC_DOCS["E350"] = f"{_DOCS_BASE}#E350"
+# Control flow E350, E352
+for _c in ("E350", "E352"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E367 (E360 moved to I360)
 _register_doc_range("E", 361, 367)
 # Pattern matching E370-E371
@@ -95,7 +96,7 @@ _register_doc_range("E", 370, 371)
 # Lookup tables E375-E378
 _register_doc_range("E", 375, 378)
 # Contract checking
-for _c in ("E380", "E382", "E386"):
+for _c in ("E380", "E381", "E382", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Explain verification E391-E394 (E390 replaced by W323)
 _register_doc_range("E", 391, 394)

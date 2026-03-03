@@ -285,6 +285,12 @@ class TestGenerator:
             param_gen.append(gen)
             lines.append(f"    {gen}")
 
+        # Skip inputs that violate requires preconditions
+        for req in fd.requires:
+            req_c = self._expr_to_c_bool(req, "_unused")
+            if req_c:
+                lines.append(f"    if (!({req_c})) continue;")
+
         # Call function
         arg_names = [p.name for p in fd.params]
         arg_str = ", ".join(arg_names)
@@ -379,6 +385,12 @@ class TestGenerator:
             for p, pt in zip(fd.params, param_types):
                 gen = self._random_gen(p.name, pt)
                 lines.append(f"    {gen}")
+
+            # Skip inputs that violate requires preconditions
+            for req in fd.requires:
+                req_c = self._expr_to_c_bool(req, "_unused")
+                if req_c:
+                    lines.append(f"    if (!({req_c})) continue;")
 
             # Call function
             arg_names = [p.name for p in fd.params]
