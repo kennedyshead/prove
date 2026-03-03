@@ -212,3 +212,40 @@ module Foo
       (import_group
         (verb)
         (identifier)))))
+
+===
+Lookup type with multiple variants
+===
+
+module Test
+  type Color:[Lookup] is String where
+    Red | "red"
+    Green | "green"
+    Blue | "blue"
+    YesNo | "yes"
+          | "no"
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (type_definition
+      (type_identifier)
+      (type_modifier_bracket
+        (type_identifier))
+      (lookup_type_body
+        (type_expression (simple_type (type_identifier)))
+        (lookup_variant
+          (type_identifier)
+          (string_literal))
+        (lookup_variant
+          (type_identifier)
+          (string_literal))
+        (lookup_variant
+          (type_identifier)
+          (string_literal))
+        (lookup_variant
+          (type_identifier)
+          (string_literal)
+          (string_literal))))))

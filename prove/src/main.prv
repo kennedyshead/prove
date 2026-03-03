@@ -1,9 +1,0 @@
-module Main
-  narrative: """Main module for the compiler."""
-  InputOutput outputs console
-  Source inputs source_lines, types SourceFile
-
-main() Result<Unit, Error>!
-from
-    source as SourceFile = SourceFile("src/main.prv")
-    each(source_lines(source), |line| console(line))
