@@ -102,22 +102,36 @@ _INFIX_BP: dict[TokenKind, tuple[int, int]] = {
 _PREFIX_BP = 15  # right bp for unary ! and -
 _POSTFIX_BP = 17  # left bp for !, ., (), []
 
-_VERBS = frozenset({
-    TokenKind.TRANSFORMS, TokenKind.INPUTS,
-    TokenKind.OUTPUTS, TokenKind.VALIDATES,
-    TokenKind.READS, TokenKind.CREATES, TokenKind.MATCHES,
-})
+_VERBS = frozenset(
+    {
+        TokenKind.TRANSFORMS,
+        TokenKind.INPUTS,
+        TokenKind.OUTPUTS,
+        TokenKind.VALIDATES,
+        TokenKind.READS,
+        TokenKind.CREATES,
+        TokenKind.MATCHES,
+    }
+)
 
 _IMPORT_VERBS = _VERBS | {TokenKind.TYPES}
 
 _OP_STRINGS: dict[TokenKind, str] = {
-    TokenKind.PLUS: '+', TokenKind.MINUS: '-', TokenKind.STAR: '*',
-    TokenKind.SLASH: '/', TokenKind.PERCENT: '%',
-    TokenKind.EQUAL: '==', TokenKind.NOT_EQUAL: '!=',
-    TokenKind.LESS: '<', TokenKind.GREATER: '>',
-    TokenKind.LESS_EQUAL: '<=', TokenKind.GREATER_EQUAL: '>=',
-    TokenKind.AND: '&&', TokenKind.OR: '||',
-    TokenKind.DOT_DOT: '..', TokenKind.PIPE_ARROW: '|>',
+    TokenKind.PLUS: "+",
+    TokenKind.MINUS: "-",
+    TokenKind.STAR: "*",
+    TokenKind.SLASH: "/",
+    TokenKind.PERCENT: "%",
+    TokenKind.EQUAL: "==",
+    TokenKind.NOT_EQUAL: "!=",
+    TokenKind.LESS: "<",
+    TokenKind.GREATER: ">",
+    TokenKind.LESS_EQUAL: "<=",
+    TokenKind.GREATER_EQUAL: ">=",
+    TokenKind.AND: "&&",
+    TokenKind.OR: "||",
+    TokenKind.DOT_DOT: "..",
+    TokenKind.PIPE_ARROW: "|>",
 }
 
 
@@ -187,8 +201,10 @@ class Parser:
         """Build a Span from a start span to an end span."""
         return Span(
             self.filename,
-            start.start_line, start.start_col,
-            end.end_line, end.end_col,
+            start.start_line,
+            start.start_col,
+            end.end_line,
+            end.end_col,
         )
 
     def _check_progress(self, last_pos: int) -> bool:
@@ -266,7 +282,11 @@ class Parser:
 
         end = self._current().span
         span = Span(
-            self.filename, 1, 1, end.end_line, end.end_col,
+            self.filename,
+            1,
+            1,
+            end.end_line,
+            end.end_col,
         )
         if self.diagnostics:
             raise CompileError(self.diagnostics)
@@ -281,7 +301,7 @@ class Parser:
         while self._at(TokenKind.DOC_COMMENT):
             doc_lines.append(self._advance().value)
             self._skip_newlines()
-        doc_comment = '\n'.join(doc_lines) if doc_lines else None
+        doc_comment = "\n".join(doc_lines) if doc_lines else None
 
         tok = self._current()
 
@@ -344,9 +364,11 @@ class Parser:
             in_indent = True
             self._advance()
 
-        while (not self._at(TokenKind.FROM)
-               and not self._at(TokenKind.BINARY)
-               and not self._at(TokenKind.EOF)):
+        while (
+            not self._at(TokenKind.FROM)
+            and not self._at(TokenKind.BINARY)
+            and not self._at(TokenKind.EOF)
+        ):
             _loop_pos = self.pos
             if self._at(TokenKind.ENSURES):
                 self._advance()
@@ -427,15 +449,28 @@ class Parser:
         end = self._current().span
         span = self._span(start, end)
         return FunctionDef(
-            verb=verb, name=name, params=params,
-            return_type=return_type, can_fail=can_fail,
-            ensures=ensures, requires=requires,
-            explain=explain, terminates=terminates_expr,
-            trusted=is_trusted, binary=is_binary,
-            why_not=why_not, chosen=chosen, near_misses=near_misses,
-            know=know, assume=assume, believe=believe,
-            intent=intent, satisfies=satisfies,
-            body=body, doc_comment=doc_comment, span=span,
+            verb=verb,
+            name=name,
+            params=params,
+            return_type=return_type,
+            can_fail=can_fail,
+            ensures=ensures,
+            requires=requires,
+            explain=explain,
+            terminates=terminates_expr,
+            trusted=is_trusted,
+            binary=is_binary,
+            why_not=why_not,
+            chosen=chosen,
+            near_misses=near_misses,
+            know=know,
+            assume=assume,
+            believe=believe,
+            intent=intent,
+            satisfies=satisfies,
+            body=body,
+            doc_comment=doc_comment,
+            span=span,
         )
 
     def _parse_main_def(self, doc_comment: str | None) -> MainDef:
@@ -465,8 +500,11 @@ class Parser:
         end = self._current().span
         span = self._span(start, end)
         return MainDef(
-            return_type=return_type, can_fail=can_fail,
-            body=body, doc_comment=doc_comment, span=span,
+            return_type=return_type,
+            can_fail=can_fail,
+            body=body,
+            doc_comment=doc_comment,
+            span=span,
         )
 
     def _parse_param_list(self) -> list[Param]:
@@ -489,8 +527,7 @@ class Parser:
             self._advance()
             constraint = self._parse_refinement_constraint()
         end = self._current().span
-        return Param(name_tok.value, type_expr, constraint,
-                     self._span(start, end))
+        return Param(name_tok.value, type_expr, constraint, self._span(start, end))
 
     def _try_parse_return_type(self) -> TypeExpr | None:
         """Try to parse a return type. Returns None if next token isn't a type start."""
@@ -529,21 +566,20 @@ class Parser:
         start = self._current().span
 
         # Check if this is a named entry (identifier followed by colon)
-        if (self._current().kind == TokenKind.IDENTIFIER
-                and self._peek(1).kind == TokenKind.COLON):
+        if self._current().kind == TokenKind.IDENTIFIER and self._peek(1).kind == TokenKind.COLON:
             return self._parse_named_explain_entry(start)
 
         # Prose entry — collect tokens until end of line
         parts: list[str] = []
-        while (not self._at(TokenKind.NEWLINE)
-               and not self._at(TokenKind.DEDENT)
-               and not self._at(TokenKind.EOF)):
+        while (
+            not self._at(TokenKind.NEWLINE)
+            and not self._at(TokenKind.DEDENT)
+            and not self._at(TokenKind.EOF)
+        ):
             parts.append(self._advance().value)
         text = " ".join(parts).strip()
         end = self._current().span
-        return ExplainEntry(name=None, text=text,
-                            condition=None,
-                            span=self._span(start, end))
+        return ExplainEntry(name=None, text=text, condition=None, span=self._span(start, end))
 
     def _parse_named_explain_entry(self, start: Span) -> ExplainEntry:
         name_tok = self._expect(TokenKind.IDENTIFIER)
@@ -568,9 +604,11 @@ class Parser:
                 else:
                     break
             # Check if this is the start of a new entry (name followed by colon)
-            if (depth == 0
-                    and self._current().kind == TokenKind.IDENTIFIER
-                    and self._peek(1).kind == TokenKind.COLON):
+            if (
+                depth == 0
+                and self._current().kind == TokenKind.IDENTIFIER
+                and self._peek(1).kind == TokenKind.COLON
+            ):
                 break
             # Check for `when <expr>` — parse condition
             if depth == 0 and self._at(TokenKind.WHEN):
@@ -582,13 +620,13 @@ class Parser:
                 continue
             text_parts.append(tok.value)
 
-        text = ' '.join(text_parts).strip()
-        while '  ' in text:
-            text = text.replace('  ', ' ')
+        text = " ".join(text_parts).strip()
+        while "  " in text:
+            text = text.replace("  ", " ")
         end = self._current().span
-        return ExplainEntry(name=name_tok.value, text=text,
-                            condition=condition,
-                            span=self._span(start, end))
+        return ExplainEntry(
+            name=name_tok.value, text=text, condition=condition, span=self._span(start, end)
+        )
 
     # ── Type definitions ─────────────────────────────────────────
 
@@ -629,8 +667,9 @@ class Parser:
 
         end = self._current().span
         span = self._span(start, end)
-        return TypeDef(name=name, type_params=type_params,
-                       modifiers=modifiers, body=body, span=span)
+        return TypeDef(
+            name=name, type_params=type_params, modifiers=modifiers, body=body, span=span
+        )
 
     def _parse_type_body(self) -> TypeBody:
         """Determine and parse the type body kind."""
@@ -737,8 +776,7 @@ class Parser:
                 # Bare type alias (e.g. String:[Reg]) — no constraint
                 constraint = BooleanLit(True, type_expr.span)
             end = self._current().span
-            return RefinementTypeDef(type_expr, constraint,
-                                    self._span(start, end))
+            return RefinementTypeDef(type_expr, constraint, self._span(start, end))
 
         # Algebraic type: parse variants
         first_variant = self._parse_variant()
@@ -782,9 +820,11 @@ class Parser:
             tok = self.tokens[idx]
             if tok.kind == TokenKind.WHERE:
                 return True
-            if (tok.kind == TokenKind.COLON
-                    and idx + 1 < len(self.tokens)
-                    and self.tokens[idx + 1].kind == TokenKind.LBRACKET):
+            if (
+                tok.kind == TokenKind.COLON
+                and idx + 1 < len(self.tokens)
+                and self.tokens[idx + 1].kind == TokenKind.LBRACKET
+            ):
                 # Modified type — skip past :[...]
                 saw_modifier = True
                 idx += 2  # skip : and [
@@ -812,8 +852,7 @@ class Parser:
             if tok.kind in (TokenKind.LPAREN, TokenKind.PIPE):
                 return False
             # End of the type body — if we saw a modifier it's an alias
-            if tok.kind in (TokenKind.NEWLINE, TokenKind.EOF,
-                            TokenKind.INDENT, TokenKind.DEDENT):
+            if tok.kind in (TokenKind.NEWLINE, TokenKind.EOF, TokenKind.INDENT, TokenKind.DEDENT):
                 return saw_modifier
             idx += 1
         return saw_modifier
@@ -824,9 +863,12 @@ class Parser:
         Handles shorthand like `>= 0` (implicit self) and `matches(...)` and `1..65535`.
         """
         _COMPARISON_OPS = {
-            TokenKind.GREATER_EQUAL, TokenKind.LESS_EQUAL,
-            TokenKind.GREATER, TokenKind.LESS,
-            TokenKind.EQUAL, TokenKind.NOT_EQUAL,
+            TokenKind.GREATER_EQUAL,
+            TokenKind.LESS_EQUAL,
+            TokenKind.GREATER,
+            TokenKind.LESS,
+            TokenKind.EQUAL,
+            TokenKind.NOT_EQUAL,
         }
         if self._current().kind in _COMPARISON_OPS:
             # Shorthand: `>= 0` means `self >= 0`
@@ -834,7 +876,9 @@ class Parser:
             right = self._parse_expression(0)
             op_str = _OP_STRINGS.get(op_tok.kind, op_tok.value)
             return BinaryExpr(
-                IdentifierExpr("self", op_tok.span), op_str, right,
+                IdentifierExpr("self", op_tok.span),
+                op_str,
+                right,
                 self._span(op_tok.span, right.span),
             )
         return self._parse_expression(0)
@@ -865,21 +909,46 @@ class Parser:
             self._expect(TokenKind.RPAREN)
 
         end = self._current().span
-        return Variant(name_tok.value, fields,
-                       self._span(start, end))
+        return Variant(name_tok.value, fields, self._span(start, end))
 
     def _parse_field_def(self) -> FieldDef:
         """Parse a field definition: name Type [where expr]."""
         start = self._current().span
-        name_tok = self._expect(TokenKind.IDENTIFIER)
+        tok = self._current()
+        if tok.kind == TokenKind.IDENTIFIER:
+            self._advance()
+        elif tok.value in (
+            "requires",
+            "ensures",
+            "terminates",
+            "trusted",
+            "know",
+            "assume",
+            "believe",
+            "why_not",
+            "chosen",
+            "satisfies",
+            "explain",
+            "intent",
+            "narrative",
+            "temporal",
+            "types",
+        ):
+            self._advance()
+        else:
+            self._error(
+                f"expected field name, got {tok.kind.name}",
+                tok.span,
+                code="E210",
+            )
+        name_tok = tok
         type_expr = self._parse_type_expr()
         constraint = None
         if self._at(TokenKind.WHERE):
             self._advance()
             constraint = self._parse_refinement_constraint()
         end = self._current().span
-        return FieldDef(name_tok.value, type_expr, constraint,
-                        self._span(start, end))
+        return FieldDef(name_tok.value, type_expr, constraint, self._span(start, end))
 
     # ── Type expressions ─────────────────────────────────────────
 
@@ -899,8 +968,7 @@ class Parser:
                 modifiers.append(mod)
             self._expect(TokenKind.RBRACKET)
             end = self._current().span
-            return ModifiedType(name, modifiers,
-                                self._span(start, end))
+            return ModifiedType(name, modifiers, self._span(start, end))
 
         # Generic type: Type<A, B>
         if self._at(TokenKind.LESS):
@@ -912,8 +980,7 @@ class Parser:
                 args.append(self._parse_type_expr())
             self._expect(TokenKind.GREATER)
             end = self._current().span
-            return GenericType(name, args,
-                               self._span(start, end))
+            return GenericType(name, args, self._span(start, end))
 
         return SimpleType(name, name_tok.span)
 
@@ -952,11 +1019,11 @@ class Parser:
             self._advance()
 
         end = self._current().span
-        return ImportDecl(module_tok.value, items,
-                          self._span(start, end))
+        return ImportDecl(module_tok.value, items, self._span(start, end))
 
     def _parse_import_group(
-        self, seen_verbs: set[str | None],
+        self,
+        seen_verbs: set[str | None],
     ) -> list[ImportItem]:
         """Parse a verb group: [verb] name+ (space-separated names share the verb)."""
         start = self._current().span
@@ -966,8 +1033,7 @@ class Parser:
 
         if verb in seen_verbs:
             self._error(
-                f"duplicate verb '{verb}' in import — "
-                f"group all '{verb}' names together",
+                f"duplicate verb '{verb}' in import — group all '{verb}' names together",
                 start,
                 code="E216",
             )
@@ -1052,7 +1118,7 @@ class Parser:
                     while self._at(TokenKind.DOC_COMMENT):
                         doc_lines.append(self._advance().value)
                         self._skip_newlines()
-                    doc = '\n'.join(doc_lines) if doc_lines else None
+                    doc = "\n".join(doc_lines) if doc_lines else None
 
                     if self._current().kind in _VERBS:
                         body.append(self._parse_function_def(doc))
@@ -1078,9 +1144,18 @@ class Parser:
                 self._advance()
 
         end = self._current().span
-        return ModuleDecl(name_tok.value, narrative, temporal, imports,
-                          types, constants, invariants, foreign_blocks,
-                          body, self._span(start, end))
+        return ModuleDecl(
+            name_tok.value,
+            narrative,
+            temporal,
+            imports,
+            types,
+            constants,
+            invariants,
+            foreign_blocks,
+            body,
+            self._span(start, end),
+        )
 
     # ── Invariant network ────────────────────────────────────────
 
@@ -1107,8 +1182,7 @@ class Parser:
                 self._advance()
 
         end = self._current().span
-        return InvariantNetwork(name_tok.value, constraints,
-                                self._span(start, end))
+        return InvariantNetwork(name_tok.value, constraints, self._span(start, end))
 
     # ── Lookup type body ────────────────────────────────────────────
 
@@ -1175,8 +1249,7 @@ class Parser:
         # Right side: string, integer, or boolean literal
         return self._parse_lookup_value(variant_tok.value, start)
 
-    def _parse_lookup_value(self, variant: str,
-                            start: Span | None = None) -> LookupEntry:
+    def _parse_lookup_value(self, variant: str, start: Span | None = None) -> LookupEntry:
         """Parse the value part of a lookup entry."""
         if start is None:
             start = self._current().span
@@ -1202,8 +1275,7 @@ class Parser:
                 self._advance()
 
         end = self._current().span
-        return LookupEntry(variant, value, value_kind,
-                           self._span(start, end))
+        return LookupEntry(variant, value, value_kind, self._span(start, end))
 
     # ── Foreign blocks ────────────────────────────────────────────
 
@@ -1242,8 +1314,7 @@ class Parser:
         return_type = self._try_parse_return_type()
 
         end = self._current().span
-        return ForeignFunction(name_tok.value, params, return_type,
-                               self._span(start, end))
+        return ForeignFunction(name_tok.value, params, return_type, self._span(start, end))
 
     # ── Constant definitions ─────────────────────────────────────
 
@@ -1264,8 +1335,7 @@ class Parser:
             value = self._parse_expression(0)
 
         end = self._current().span
-        return ConstantDef(name_tok.value, type_expr, value,
-                           self._span(start, end))
+        return ConstantDef(name_tok.value, type_expr, value, self._span(start, end))
 
     def _parse_comptime_expr(self) -> ComptimeExpr:
         start = self._current().span
@@ -1335,11 +1405,15 @@ class Parser:
         if tok.kind == TokenKind.TYPE_IDENTIFIER:
             # Look for => after variant pattern
             return self._scan_for_fat_arrow()
-        if tok.kind == TokenKind.IDENTIFIER and tok.value == '_':
+        if tok.kind == TokenKind.IDENTIFIER and tok.value == "_":
             return self._peek(1).kind == TokenKind.FAT_ARROW
-        if tok.kind in (TokenKind.INTEGER_LIT, TokenKind.DECIMAL_LIT,
-                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT,
-                        TokenKind.PATH_LIT):
+        if tok.kind in (
+            TokenKind.INTEGER_LIT,
+            TokenKind.DECIMAL_LIT,
+            TokenKind.STRING_LIT,
+            TokenKind.BOOLEAN_LIT,
+            TokenKind.PATH_LIT,
+        ):
             return self._peek(1).kind == TokenKind.FAT_ARROW
         return False
 
@@ -1378,13 +1452,11 @@ class Parser:
     def _parse_statement(self) -> Stmt:
         """Parse a statement: var decl, assignment, or expression."""
         # Variable declaration: identifier 'as' Type '=' expr
-        if (self._at(TokenKind.IDENTIFIER)
-                and self._peek(1).kind == TokenKind.AS):
+        if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.AS:
             return self._parse_var_decl()
 
         # Assignment: identifier '=' expr (but not ==)
-        if (self._at(TokenKind.IDENTIFIER)
-                and self._peek(1).kind == TokenKind.ASSIGN):
+        if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.ASSIGN:
             return self._parse_assignment()
 
         # Expression statement
@@ -1403,8 +1475,7 @@ class Parser:
         self._expect(TokenKind.ASSIGN)
         value = self._parse_expression(0)
         end = value.span
-        return VarDecl(name_tok.value, type_expr, value,
-                       self._span(start, end))
+        return VarDecl(name_tok.value, type_expr, value, self._span(start, end))
 
     def _parse_assignment(self) -> Assignment:
         start = self._current().span
@@ -1412,8 +1483,7 @@ class Parser:
         self._advance()  # '='
         value = self._parse_expression(0)
         end = value.span
-        return Assignment(name_tok.value, value,
-                          self._span(start, end))
+        return Assignment(name_tok.value, value, self._span(start, end))
 
     # ── Pratt expression parser ──────────────────────────────────
 
@@ -1431,7 +1501,8 @@ class Parser:
                     break
                 self._advance()
                 left = FailPropExpr(
-                    left, self._span(left.span, tok.span),
+                    left,
+                    self._span(left.span, tok.span),
                 )
                 continue
 
@@ -1441,13 +1512,15 @@ class Parser:
                 self._advance()
                 field_tok = self._expect(TokenKind.IDENTIFIER)
                 left = FieldExpr(
-                    left, field_tok.value,
+                    left,
+                    field_tok.value,
                     self._span(left.span, field_tok.span),
                 )
                 continue
 
-            if (tok.kind == TokenKind.LPAREN
-                    and isinstance(left, (IdentifierExpr, TypeIdentifierExpr, FieldExpr))):
+            if tok.kind == TokenKind.LPAREN and isinstance(
+                left, (IdentifierExpr, TypeIdentifierExpr, FieldExpr)
+            ):
                 if _POSTFIX_BP < min_bp:
                     break
                 left = self._parse_call_expr(left)
@@ -1460,15 +1533,15 @@ class Parser:
                 index = self._parse_expression(0)
                 self._expect(TokenKind.RBRACKET)
                 left = IndexExpr(
-                    left, index,
+                    left,
+                    index,
                     self._span(left.span, self._current().span),
                 )
                 continue
 
             # Generic type args after TypeIdentifier: Type<A, B>
             # In expression context, < after TypeIdentifier is generic args, not comparison
-            if (tok.kind == TokenKind.LESS
-                    and isinstance(left, TypeIdentifierExpr)):
+            if tok.kind == TokenKind.LESS and isinstance(left, TypeIdentifierExpr):
                 if _POSTFIX_BP < min_bp:
                     break
                 # Try to parse as generic type args for a call
@@ -1506,12 +1579,15 @@ class Parser:
                 op_str = _OP_STRINGS.get(op_tok.kind, op_tok.value)
                 if op_tok.kind == TokenKind.PIPE_ARROW:
                     left = PipeExpr(
-                        left, right,
+                        left,
+                        right,
                         self._span(left.span, right.span),
                     )
                 else:
                     left = BinaryExpr(
-                        left, op_str, right,
+                        left,
+                        op_str,
+                        right,
                         self._span(left.span, right.span),
                     )
                 continue
@@ -1559,7 +1635,8 @@ class Parser:
             self._advance()
             operand = self._parse_expression(_PREFIX_BP)
             return UnaryExpr(
-                '!', operand,
+                "!",
+                operand,
                 self._span(tok.span, operand.span),
             )
 
@@ -1567,7 +1644,8 @@ class Parser:
             self._advance()
             operand = self._parse_expression(_PREFIX_BP)
             return UnaryExpr(
-                '-', operand,
+                "-",
+                operand,
                 self._span(tok.span, operand.span),
             )
 
@@ -1593,7 +1671,7 @@ class Parser:
 
         if tok.kind == TokenKind.BOOLEAN_LIT:
             self._advance()
-            return BooleanLit(tok.value == 'true', tok.span)
+            return BooleanLit(tok.value == "true", tok.span)
 
         if tok.kind == TokenKind.CHAR_LIT:
             self._advance()
@@ -1637,8 +1715,7 @@ class Parser:
 
         if tok.kind == TokenKind.TYPE_IDENTIFIER:
             # Check for lookup access: TypeName:"literal" or TypeName:Variant
-            if (self._peek(1).kind == TokenKind.COLON
-                    and self._peek(2).kind != TokenKind.LBRACKET):
+            if self._peek(1).kind == TokenKind.COLON and self._peek(2).kind != TokenKind.LBRACKET:
                 return self._parse_lookup_access_expr()
             self._advance()
             return TypeIdentifierExpr(tok.value, tok.span)
@@ -1649,8 +1726,7 @@ class Parser:
 
         if tok.kind in _VERBS:
             self._error(
-                f"'{tok.value}' is a verb keyword and cannot be "
-                f"used as an identifier",
+                f"'{tok.value}' is a verb keyword and cannot be used as an identifier",
                 tok.span,
                 code="E214",
             )
@@ -1696,7 +1772,9 @@ class Parser:
             args.append(self._parse_expression(0))
         end_tok = self._expect(TokenKind.RPAREN)
         return CallExpr(
-            func, args, self._span(func.span, end_tok.span),
+            func,
+            args,
+            self._span(func.span, end_tok.span),
         )
 
     def _parse_list_literal(self) -> ListLiteral:
@@ -1709,7 +1787,8 @@ class Parser:
             elements.append(self._parse_expression(0))
         end_tok = self._expect(TokenKind.RBRACKET)
         return ListLiteral(
-            elements, self._span(start, end_tok.span),
+            elements,
+            self._span(start, end_tok.span),
         )
 
     def _parse_valid_expr(self) -> ValidExpr:
@@ -1726,8 +1805,7 @@ class Parser:
                 args.append(self._parse_expression(0))
             self._expect(TokenKind.RPAREN)
         end = self._current().span
-        return ValidExpr(name_tok.value, args,
-                         self._span(start, end))
+        return ValidExpr(name_tok.value, args, self._span(start, end))
 
     def _parse_lookup_access_expr(self) -> LookupAccessExpr:
         """Parse TypeName:"literal" or TypeName:VariantName."""
@@ -1744,7 +1822,7 @@ class Parser:
             operand = IntegerLit(tok.value, tok.span)
         elif tok.kind == TokenKind.BOOLEAN_LIT:
             self._advance()
-            operand = BooleanLit(tok.value == 'true', tok.span)
+            operand = BooleanLit(tok.value == "true", tok.span)
         elif tok.kind == TokenKind.TYPE_IDENTIFIER:
             self._advance()
             operand = TypeIdentifierExpr(tok.value, tok.span)
@@ -1754,8 +1832,7 @@ class Parser:
             operand = IdentifierExpr(tok.value, tok.span)
         else:
             self._error(
-                f"expected literal or variant name after "
-                f"{type_name}:, got {tok.kind.name}",
+                f"expected literal or variant name after {type_name}:, got {tok.kind.name}",
                 tok.span,
                 code="E213",
             )
@@ -1799,8 +1876,7 @@ class Parser:
                     break
 
         end = self._current().span
-        return MatchExpr(subject, arms,
-                         self._span(start, end))
+        return MatchExpr(subject, arms, self._span(start, end))
 
     def _parse_match_arm(self) -> MatchArm:
         start = self._current().span
@@ -1826,8 +1902,7 @@ class Parser:
             body.append(self._parse_statement())
 
         end = self._current().span
-        return MatchArm(pattern, body,
-                        self._span(start, end))
+        return MatchArm(pattern, body, self._span(start, end))
 
     def _parse_lambda(self) -> LambdaExpr:
         start = self._current().span
@@ -1840,7 +1915,9 @@ class Parser:
         self._expect(TokenKind.PIPE)
         body = self._parse_expression(0)
         return LambdaExpr(
-            params, body, self._span(start, body.span),
+            params,
+            body,
+            self._span(start, body.span),
         )
 
     # ── Patterns ─────────────────────────────────────────────────
@@ -1851,7 +1928,7 @@ class Parser:
         if tok.kind == TokenKind.TYPE_IDENTIFIER:
             return self._parse_variant_pattern()
 
-        if tok.kind == TokenKind.IDENTIFIER and tok.value == '_':
+        if tok.kind == TokenKind.IDENTIFIER and tok.value == "_":
             self._advance()
             return WildcardPattern(tok.span)
 
@@ -1891,8 +1968,7 @@ class Parser:
             self._expect(TokenKind.RPAREN)
 
         end = self._current().span
-        return VariantPattern(name_tok.value, fields,
-                              self._span(start, end))
+        return VariantPattern(name_tok.value, fields, self._span(start, end))
 
 
 class _ParseError(Exception):

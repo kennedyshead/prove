@@ -128,10 +128,9 @@ module.exports = grammar({
       $.expression,
     ),
 
-    lookup_type_body: $ => prec.left(seq(
+    lookup_type_body: $ => prec.right(seq(
       $.type_expression,
       'where',
-      $.lookup_variant,
       repeat1($.lookup_variant),
     )),
 

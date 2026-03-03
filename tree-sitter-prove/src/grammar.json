@@ -1,5 +1,4 @@
 {
-  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
   "name": "prove",
   "rules": {
     "source_file": {
@@ -419,7 +418,7 @@
       ]
     },
     "lookup_type_body": {
-      "type": "PREC_LEFT",
+      "type": "PREC_RIGHT",
       "value": 0,
       "content": {
         "type": "SEQ",
@@ -431,10 +430,6 @@
           {
             "type": "STRING",
             "value": "where"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "lookup_variant"
           },
           {
             "type": "REPEAT1",
@@ -2578,6 +2573,5 @@
   "precedences": [],
   "externals": [],
   "inline": [],
-  "supertypes": [],
-  "reserved": {}
+  "supertypes": []
 }
