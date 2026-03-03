@@ -48,7 +48,8 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
-    LookupExpr,
+    LookupAccessExpr,
+    LookupTypeDef,
     MainDef,
     MatchArm,
     MatchExpr,
@@ -278,9 +279,23 @@ class ProveFormatter:
         if td.type_params:
             params = "<" + ", ".join(td.type_params) + ">"
 
+        # Format modifiers (e.g., :[Lookup])
+        mods = ""
+        if td.modifiers:
+            mod_parts = []
+            for m in td.modifiers:
+                if m.name is not None:
+                    mod_parts.append(f"{m.name}:{m.value}")
+                else:
+                    mod_parts.append(m.value)
+            mods = ":[" + ", ".join(mod_parts) + "]"
+
         body = td.body
+        if isinstance(body, LookupTypeDef):
+            return self._format_lookup_type_def(td.name, mods, params, body)
+
         if isinstance(body, RecordTypeDef):
-            lines = [f"type {td.name}{params} is"]
+            lines = [f"type {td.name}{mods}{params} is"]
             for f in body.fields:
                 constraint = ""
                 if f.constraint:
@@ -301,23 +316,54 @@ class ProveFormatter:
                 else:
                     parts.append(v.name)
             if len(parts) == 1:
-                return f"type {td.name}{params} is {parts[0]}"
+                return f"type {td.name}{mods}{params} is {parts[0]}"
             # Multi-variant: first on same line, rest with | prefix
             variant_str = parts[0]
             for p in parts[1:]:
                 variant_str += f"\n  | {p}"
-            return f"type {td.name}{params} is {variant_str}"
+            return f"type {td.name}{mods}{params} is {variant_str}"
 
         if isinstance(body, RefinementTypeDef):
             base = self._format_type_expr(body.base_type)
             constraint = self._format_expr(body.constraint)
-            return f"type {td.name}{params} is {base} where {constraint}"
+            return f"type {td.name}{mods}{params} is {base} where {constraint}"
 
         from prove.ast_nodes import BinaryDef
         if isinstance(body, BinaryDef):
-            return f"type {td.name}{params} is binary"
+            return f"type {td.name}{mods}{params} is binary"
 
-        return f"type {td.name}{params} is ..."
+        return f"type {td.name}{mods}{params} is ..."
+
+    def _format_lookup_type_def(self, name: str, mods: str,
+                                params: str, body: LookupTypeDef) -> str:
+        """Format a [Lookup] type definition with stacking support."""
+        value_type = self._format_type_expr(body.value_type)
+        lines = [f"type {name}{mods}{params} is {value_type} where"]
+
+        # Group entries by variant for stacking
+        i = 0
+        while i < len(body.entries):
+            entry = body.entries[i]
+            val = self._format_lookup_value(entry)
+            lines.append(f"  {entry.variant} | {val}")
+            # Check for stacked entries (same variant)
+            pad = " " * len(entry.variant)
+            i += 1
+            while i < len(body.entries) and body.entries[i].variant == entry.variant:
+                stacked = body.entries[i]
+                val = self._format_lookup_value(stacked)
+                lines.append(f"  {pad} | {val}")
+                i += 1
+
+        return "\n".join(lines)
+
+    def _format_lookup_value(self, entry: object) -> str:
+        """Format a lookup entry value."""
+        from prove.ast_nodes import LookupEntry
+        assert isinstance(entry, LookupEntry)
+        if entry.value_kind == "string":
+            return f'"{_escape_string(entry.value)}"'
+        return entry.value
 
     # ── Constant definitions ───────────────────────────────────
 
@@ -397,10 +443,6 @@ class ProveFormatter:
             formatted = self._format_invariant_network(inv)
             lines.append(self._indent_spaces(formatted, 2))
 
-        if mod.lookup is not None:
-            lines.append("")
-            formatted = self._format_lookup_decl(mod.lookup)
-            lines.append(self._indent_spaces(formatted, 2))
 
         for decl in mod.body:
             lines.append("")
@@ -418,18 +460,6 @@ class ProveFormatter:
         return "\n".join(lines)
 
     # ── Lookup declarations ─────────────────────────────────────
-
-    def _format_lookup_decl(self, lookup: object) -> str:
-        from prove.ast_nodes import LookupDecl
-        assert isinstance(lookup, LookupDecl)
-        value_type = self._format_type_expr(lookup.value_type)
-        lines = [f"lookup {lookup.name} | {value_type}"]
-        for entry in lookup.entries:
-            if entry.value_kind == "string":
-                lines.append(f'    {entry.variant} | "{_escape_string(entry.value)}"')
-            else:
-                lines.append(f"    {entry.variant} | {entry.value}")
-        return "\n".join(lines)
 
     # ── Statement formatting ───────────────────────────────────
 
@@ -531,8 +561,8 @@ class ProveFormatter:
             return self._format_comptime(expr)
         if isinstance(expr, IndexExpr):
             return f"{self._format_expr(expr.obj, 99)}[{self._format_expr(expr.index)}]"
-        if isinstance(expr, LookupExpr):
-            return f"${self._format_expr(expr.operand, 99)}"
+        if isinstance(expr, LookupAccessExpr):
+            return f"{expr.type_name}:{self._format_expr(expr.operand, 99)}"
         return "???"
 
     def _format_binary(self, expr: BinaryExpr, parent_prec: int) -> str:

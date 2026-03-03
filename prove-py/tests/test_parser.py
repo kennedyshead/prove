@@ -23,8 +23,8 @@ from prove.ast_nodes import (
     InvariantNetwork,
     LambdaExpr,
     ListLiteral,
-    LookupDecl,
-    LookupExpr,
+    LookupAccessExpr,
+    LookupTypeDef,
     MainDef,
     MatchExpr,
     ModifiedType,
@@ -705,14 +705,14 @@ class TestParserIntegration:
 
 
 class TestParserLookup:
-    """Tests for lookup table parsing."""
+    """Tests for [Lookup] type modifier parsing."""
 
-    def test_lookup_decl_basic(self):
-        """Parse a basic lookup declaration."""
+    def test_lookup_type_basic(self):
+        """Parse a basic [Lookup] type definition."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             '      Type | "type"\n'
@@ -724,60 +724,93 @@ class TestParserLookup:
         mod = parse(source)
         decl = mod.declarations[0]
         assert isinstance(decl, ModuleDecl)
-        assert decl.lookup is not None
-        assert isinstance(decl.lookup, LookupDecl)
-        assert decl.lookup.name == "TokenKind"
-        assert len(decl.lookup.entries) == 3
-        assert decl.lookup.entries[0].variant == "Main"
-        assert decl.lookup.entries[0].value == "main"
-        assert decl.lookup.entries[0].value_kind == "string"
+        assert len(decl.types) == 1
+        td = decl.types[0]
+        assert isinstance(td, TypeDef)
+        assert td.name == "TokenKind"
+        assert len(td.modifiers) == 1
+        assert td.modifiers[0].value == "Lookup"
+        assert isinstance(td.body, LookupTypeDef)
+        assert len(td.body.entries) == 3
+        assert td.body.entries[0].variant == "Main"
+        assert td.body.entries[0].value == "main"
+        assert td.body.entries[0].value_kind == "string"
 
-    def test_lookup_expr_string(self):
-        """Parse $"main" as a LookupExpr."""
+    def test_lookup_access_string(self):
+        """Parse TokenKind:"main" as a LookupAccessExpr."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            '        $"main"\n'
+            '        TokenKind:"main"\n'
         )
         mod = parse(source)
         main_def = mod.declarations[1]
         assert isinstance(main_def, MainDef)
         stmt = main_def.body[0]
         assert isinstance(stmt, ExprStmt)
-        assert isinstance(stmt.expr, LookupExpr)
+        assert isinstance(stmt.expr, LookupAccessExpr)
+        assert stmt.expr.type_name == "TokenKind"
         assert isinstance(stmt.expr.operand, StringLit)
         assert stmt.expr.operand.value == "main"
 
-    def test_lookup_expr_variant(self):
-        """Parse $Main as a LookupExpr."""
+    def test_lookup_access_variant(self):
+        """Parse TokenKind:Main as a LookupAccessExpr."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            "        $Main\n"
+            "        TokenKind:Main\n"
         )
         mod = parse(source)
         main_def = mod.declarations[1]
         assert isinstance(main_def, MainDef)
         stmt = main_def.body[0]
         assert isinstance(stmt, ExprStmt)
-        assert isinstance(stmt.expr, LookupExpr)
+        assert isinstance(stmt.expr, LookupAccessExpr)
+        assert stmt.expr.type_name == "TokenKind"
         assert isinstance(stmt.expr.operand, TypeIdentifierExpr)
         assert stmt.expr.operand.name == "Main"
 
+    def test_lookup_stacking(self):
+        """Parse stacked entries: BooleanLit | "true" / | "false"."""
+        source = (
+            "module M\n"
+            "\n"
+            "  type BoolLit:[Lookup] is String where\n"
+            '      BooleanLit | "true"\n'
+            '                 | "false"\n'
+            '      Foreign | "foreign"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td.body, LookupTypeDef)
+        assert len(td.body.entries) == 3
+        assert td.body.entries[0].variant == "BooleanLit"
+        assert td.body.entries[0].value == "true"
+        assert td.body.entries[1].variant == "BooleanLit"
+        assert td.body.entries[1].value == "false"
+        assert td.body.entries[2].variant == "Foreign"
+        assert td.body.entries[2].value == "foreign"
+
     def test_lookup_as_function_name(self):
-        """'lookup' can still be used as a function name."""
+        """'lookup' can be used as a function name (no longer a keyword)."""
         source = (
             "module M\n"
             "\n"

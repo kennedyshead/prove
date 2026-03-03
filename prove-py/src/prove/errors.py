@@ -92,8 +92,8 @@ DIAGNOSTIC_DOCS["E350"] = f"{_DOCS_BASE}#E350"
 _register_doc_range("E", 361, 367)
 # Pattern matching E370-E371
 _register_doc_range("E", 370, 371)
-# Lookup tables E375-E377
-_register_doc_range("E", 375, 377)
+# Lookup tables E375-E378
+_register_doc_range("E", 375, 378)
 # Contract checking
 for _c in ("E380", "E382", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"

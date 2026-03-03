@@ -32,8 +32,8 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
-    LookupDecl,
-    LookupExpr,
+    LookupAccessExpr,
+    LookupTypeDef,
     MainDef,
     MatchExpr,
     ModifiedType,
@@ -160,8 +160,8 @@ class Checker:
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
         # Local (sibling) module info for cross-file imports
         self._local_modules = local_modules
-        # Module-level lookup table for $ resolution
-        self._current_lookup: LookupDecl | None = None
+        # Lookup tables per type name for TypeName: resolution
+        self._lookup_tables: dict[str, LookupTypeDef] = {}
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -203,9 +203,6 @@ class Checker:
                     self._register_constant(cd)
                 for fb in decl.foreign_blocks:
                     self._register_foreign_block(fb)
-                if decl.lookup is not None:
-                    self._current_lookup = decl.lookup
-                    self._register_lookup(decl.lookup)
 
         # Collect user-defined IO function names (inputs/outputs verbs)
         for decl in module.declarations:
@@ -223,8 +220,6 @@ class Checker:
                     self._check_constant(cd)
                 for td in decl.types:
                     self._check_type_def(td)
-                if decl.lookup is not None:
-                    self._check_lookup_decl(decl.lookup, decl)
 
         # Check unused variables (W300)
         self._check_unused()
@@ -395,6 +390,37 @@ class Checker:
             # Binary types are opaque C-backed types — no fields visible to Prove
             resolved = PrimitiveType(td.name)
 
+        elif isinstance(body, LookupTypeDef):
+            # Lookup types: build AlgebraicType from entries
+            seen_variants: dict[str, None] = {}
+            for entry in body.entries:
+                seen_variants[entry.variant] = None
+            variant_names = list(seen_variants.keys())
+            variants = [VariantInfo(name, {}) for name in variant_names]
+            resolved = AlgebraicType(td.name, variants, type_params)
+            # Store lookup table for accessor resolution
+            self._lookup_tables[td.name] = body
+            # Register each variant as a zero-arg constructor
+            for name in variant_names:
+                vsig = FunctionSignature(
+                    verb=None, name=name,
+                    param_names=[], param_types=[],
+                    return_type=resolved,
+                    can_fail=False,
+                    span=td.span,
+                )
+                self.symbols.define_function(vsig)
+            # Validate: check for duplicate values (E375)
+            seen_values: set[str] = set()
+            for entry in body.entries:
+                if entry.value in seen_values:
+                    self._error(
+                        "E375",
+                        f"duplicate value '{entry.value}' in lookup table",
+                        entry.span,
+                    )
+                seen_values.add(entry.value)
+
         else:
             resolved = ERROR_TY
 
@@ -405,36 +431,6 @@ class Checker:
             name=td.name, kind=SymbolKind.TYPE,
             resolved_type=resolved, span=td.span,
         ))
-
-    def _register_lookup(self, lookup: LookupDecl) -> None:
-        """Register an algebraic type from a lookup table declaration."""
-        # Collect unique variant names from entries (preserving order)
-        seen: dict[str, None] = {}
-        for entry in lookup.entries:
-            seen[entry.variant] = None
-        variant_names = list(seen.keys())
-
-        # Build AlgebraicType with zero-field variants
-        variants = [VariantInfo(name, {}) for name in variant_names]
-        resolved: Type = AlgebraicType(lookup.name, variants, ())
-
-        self.symbols.define_type(lookup.name, resolved)
-        self._user_types[lookup.name] = lookup.span
-        self.symbols.define(Symbol(
-            name=lookup.name, kind=SymbolKind.TYPE,
-            resolved_type=resolved, span=lookup.span,
-        ))
-
-        # Register each variant as a zero-arg constructor
-        for name in variant_names:
-            vsig = FunctionSignature(
-                verb=None, name=name,
-                param_names=[], param_types=[],
-                return_type=resolved,
-                can_fail=False,
-                span=lookup.span,
-            )
-            self.symbols.define_function(vsig)
 
     def _register_function(self, fd: FunctionDef) -> None:
         """Register a function signature."""
@@ -1271,8 +1267,8 @@ class Checker:
             return BOOLEAN
         if isinstance(expr, ComptimeExpr):
             return self._infer_comptime(expr)
-        if isinstance(expr, LookupExpr):
-            return self._check_lookup_expr(expr)
+        if isinstance(expr, LookupAccessExpr):
+            return self._check_lookup_access_expr(expr)
         return ERROR_TY
 
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:
@@ -1855,66 +1851,63 @@ class Checker:
 
     # ── Lookup table checking ────────────────────────────────────
 
-    def _check_lookup_decl(self, lookup: LookupDecl, mod_decl: ModuleDecl) -> None:
-        """Validate a lookup table declaration (E375)."""
-        # Check for duplicate values (many-to-one variant→value is fine,
-        # but duplicate values would make value→variant ambiguous)
-        seen_values: set[str] = set()
-        for entry in lookup.entries:
-            if entry.value in seen_values:
-                self._error(
-                    "E375",
-                    f"duplicate value '{entry.value}' in lookup table",
-                    entry.span,
-                )
-            seen_values.add(entry.value)
+    def _check_lookup_access_expr(self, expr: LookupAccessExpr) -> Type:
+        """Resolve a TypeName:operand lookup expression (E376, E377, E378)."""
+        type_name = expr.type_name
 
-    def _check_lookup_expr(self, expr: LookupExpr) -> Type:
-        """Resolve a $ lookup expression at check time (E376, E377)."""
-        lookup = self._current_lookup
+        # Find the lookup table for this type
+        lookup = self._lookup_tables.get(type_name)
         if lookup is None:
             self._error(
                 "E377",
-                "$ used but no lookup table declared in module",
+                f"'{type_name}' is not a [Lookup] type",
                 expr.span,
             )
             return ERROR_TY
 
         operand = expr.operand
 
-        # Operand must be a literal or variant name — not a variable
+        # Forward: literal -> variant
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
-            # Forward lookup: literal → variant (returns the algebraic type)
             value = operand.value
             if isinstance(operand, BooleanLit):
                 value = "true" if operand.value else "false"
             for entry in lookup.entries:
                 if entry.value == str(value):
-                    # Resolve the lookup's own algebraic type
-                    resolved = self.symbols.resolve_type(lookup.name)
+                    resolved = self.symbols.resolve_type(type_name)
                     if resolved is not None:
-                        self._used_types.add(lookup.name)
+                        self._used_types.add(type_name)
                     return resolved if resolved else ERROR_TY
             self._error(
                 "E377",
-                f"value {value!r} not found in lookup table '{lookup.name}'",
+                f"value {value!r} not found in lookup table '{type_name}'",
                 expr.span,
             )
             return ERROR_TY
 
+        # Reverse: variant -> value
         if isinstance(operand, TypeIdentifierExpr):
-            # Reverse lookup: variant → value (returns the value type)
-            for entry in lookup.entries:
-                if entry.variant == operand.name:
-                    value_type = self._resolve_type_expr(lookup.value_type)
-                    return value_type
-            self._error(
-                "E377",
-                f"variant '{operand.name}' not found in lookup table "
-                f"'{lookup.name}'",
-                expr.span,
-            )
-            return ERROR_TY
+            matches = [e for e in lookup.entries if e.variant == operand.name]
+            if len(matches) > 1:
+                values = ", ".join(f'"{e.value}"' for e in matches)
+                self._error(
+                    "E378",
+                    f"'{operand.name}' has {len(matches)} values ({values}) — "
+                    f"reverse lookup is ambiguous. "
+                    f"Use a matches function instead.",
+                    expr.span,
+                )
+                return ERROR_TY
+            if not matches:
+                self._error(
+                    "E377",
+                    f"variant '{operand.name}' not found in lookup table "
+                    f"'{type_name}'",
+                    expr.span,
+                )
+                return ERROR_TY
+            value_type = self._resolve_type_expr(lookup.value_type)
+            return value_type
 
         # Anything else (variable, call, etc.) is E376
         self._error(

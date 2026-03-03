@@ -1355,14 +1355,14 @@ class TestMatchRestriction:
 
 
 class TestLookupTable:
-    """Tests for lookup table checking (E375, E376, E377)."""
+    """Tests for [Lookup] type modifier checking (E375, E376, E377, E378)."""
 
     def test_valid_lookup(self):
-        """A valid lookup should produce no errors."""
+        """A valid [Lookup] type should produce no errors."""
         check(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             '      Type | "type"\n'
@@ -1377,7 +1377,7 @@ class TestLookupTable:
         check_fails(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "main"\n'
             "\n"
@@ -1388,13 +1388,13 @@ class TestLookupTable:
         )
 
     def test_many_to_one_mapping_allowed(self):
-        """Many-to-one: same variant with multiple values is allowed."""
+        """Many-to-one: same variant with stacked values is allowed."""
         check(
             "module M\n"
             "\n"
-            "  lookup BoolLit | String\n"
+            "  type BoolLit:[Lookup] is String where\n"
             '      True | "true"\n'
-            '      True | "yes"\n'
+            '           | "yes"\n'
             '      False | "false"\n'
             "\n"
             "main()\n"
@@ -1403,74 +1403,102 @@ class TestLookupTable:
         )
 
     def test_e376_variable_operand(self):
-        """E376: $ with a variable (not a literal or variant)."""
+        """E376: TypeName:variable (not a literal or variant)."""
         check_fails(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "transforms resolve(s String) String\n"
             "    from\n"
-            "        $s\n",
+            "        TokenKind:s\n",
             "E376",
         )
 
     def test_e377_value_not_found(self):
-        """E377: $ with a literal not in the table."""
+        """E377: TypeName:"unknown" not in the table."""
         check_fails(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            '        $"unknown"\n',
+            '        TokenKind:"unknown"\n',
             "E377",
         )
 
     def test_e377_variant_not_found(self):
-        """E377: $ with a variant not in the table."""
+        """E377: TypeName:Missing variant not in table."""
         check_fails(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            "        $Type\n",
+            "        TokenKind:Type\n",
             "E377",
         )
 
     def test_forward_lookup_returns_algebraic_type(self):
-        """$"main" should resolve to the algebraic type."""
+        """TokenKind:"main" should resolve to the algebraic type."""
         check(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            '        $"main"\n'
+            '        TokenKind:"main"\n'
         )
 
     def test_reverse_lookup_returns_value_type(self):
-        """$Main should resolve to String."""
+        """TokenKind:Main should resolve to String."""
         check(
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            "        $Main\n"
+            "        TokenKind:Main\n"
+        )
+
+    def test_e378_reverse_stacked_variant(self):
+        """E378: reverse lookup on stacked variant is ambiguous."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  type BoolLit:[Lookup] is String where\n"
+            '      BooleanLit | "true"\n'
+            '                 | "false"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        BoolLit:BooleanLit\n",
+            "E378",
+        )
+
+    def test_e377_not_a_lookup_type(self):
+        """E377: accessing a type that is not [Lookup]."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  type Color is Red | Blue\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        Color:"red"\n',
+            "E377",
         )

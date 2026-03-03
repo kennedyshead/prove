@@ -237,9 +237,17 @@ class IndexExpr:
 
 @dataclass(frozen=True)
 class LookupExpr:
-    """Compile-time lookup: $"main" or $Main."""
+    """Compile-time lookup: $"main" or $Main (legacy, kept for compat)."""
     operand: Expr  # the literal or variant being looked up
     resolved_value: object | None  # filled in by checker: Expr or None
+    span: Span
+
+
+@dataclass(frozen=True)
+class LookupAccessExpr:
+    """Compile-time lookup: TokenKind:"main" or TokenKind:Main."""
+    type_name: str     # "TokenKind"
+    operand: Expr      # the literal or variant being looked up
     span: Span
 
 
@@ -249,7 +257,7 @@ Expr = Union[
     IdentifierExpr, TypeIdentifierExpr,
     BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
     FailPropExpr, LambdaExpr, ValidExpr,
-    MatchExpr, ComptimeExpr, IndexExpr, LookupExpr,
+    MatchExpr, ComptimeExpr, IndexExpr, LookupExpr, LookupAccessExpr,
 ]
 
 
@@ -374,7 +382,15 @@ class BinaryDef:
     span: Span
 
 
-TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef]
+@dataclass(frozen=True)
+class LookupTypeDef:
+    """Type body for [Lookup] types: algebraic + bidirectional mapping."""
+    value_type: TypeExpr          # String, Integer, or Boolean
+    entries: list[LookupEntry]    # variant | value rows
+    span: Span
+
+
+TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef, LookupTypeDef]
 
 
 # ── Top-level declarations ───────────────────────────────────────
@@ -419,6 +435,7 @@ class MainDef:
 class TypeDef:
     name: str
     type_params: list[str]
+    modifiers: list[TypeModifier]
     body: TypeBody
     span: Span
 
@@ -462,14 +479,6 @@ class LookupEntry:
     span: Span
 
 
-@dataclass(frozen=True)
-class LookupDecl:
-    """Module-level bidirectional lookup table."""
-    name: str              # "TokenKind" — the algebraic type being declared
-    value_type: TypeExpr   # String — the value type
-    entries: list[LookupEntry]
-    span: Span
-
 
 @dataclass(frozen=True)
 class ModuleDecl:
@@ -481,7 +490,6 @@ class ModuleDecl:
     constants: list[ConstantDef]
     invariants: list[InvariantNetwork]
     foreign_blocks: list[ForeignBlock]
-    lookup: LookupDecl | None  # one per module
     body: list[Declaration]
     span: Span
 

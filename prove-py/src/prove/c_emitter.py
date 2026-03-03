@@ -23,7 +23,8 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
-    LookupExpr,
+    LookupAccessExpr,
+    LookupTypeDef,
     MainDef,
     MatchExpr,
     Module,
@@ -99,7 +100,7 @@ class CEmitter:
         self._foreign_names: set[str] = set()
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
-        self._current_lookup = None  # LookupDecl | None
+        self._lookup_tables: dict[str, LookupTypeDef] = {}
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -110,8 +111,9 @@ class CEmitter:
                     self._foreign_libs.add(fb.library)
                     for ff in fb.functions:
                         self._foreign_names.add(ff.name)
-                if decl.lookup is not None:
-                    self._current_lookup = decl.lookup
+                for td in decl.types:
+                    if isinstance(td.body, LookupTypeDef):
+                        self._lookup_tables[td.name] = td.body
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -1114,8 +1116,8 @@ class CEmitter:
         if isinstance(expr, IndexExpr):
             return self._emit_index(expr)
 
-        if isinstance(expr, LookupExpr):
-            return self._emit_lookup(expr)
+        if isinstance(expr, LookupAccessExpr):
+            return self._emit_lookup_access(expr)
 
         return "/* unsupported expr */ 0"
 
@@ -1919,7 +1921,7 @@ class CEmitter:
                 return obj_type.element
             return ERROR_TY
 
-        if isinstance(expr, LookupExpr):
+        if isinstance(expr, LookupAccessExpr):
             return self._infer_lookup_type(expr)
 
         return ERROR_TY
@@ -2009,14 +2011,14 @@ class CEmitter:
 
     # ── Lookup expressions ─────────────────────────────────────
 
-    def _emit_lookup(self, expr: LookupExpr) -> str:
-        """Emit a compile-time lookup: $"main" → Main(), $Main → string."""
-        lookup = self._current_lookup
+    def _emit_lookup_access(self, expr: LookupAccessExpr) -> str:
+        """Emit a compile-time lookup: TypeName:"main" -> Main(), TypeName:Main -> string."""
+        lookup = self._lookup_tables.get(expr.type_name)
         if lookup is None:
             return "/* no lookup table */ 0"
         operand = expr.operand
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
-            # Forward: literal → variant constructor
+            # Forward: literal -> variant constructor
             value = operand.value
             if isinstance(operand, BooleanLit):
                 value = "true" if operand.value else "false"
@@ -2025,7 +2027,7 @@ class CEmitter:
                     return f"{entry.variant}()"
             return "/* lookup miss */ 0"
         if isinstance(operand, TypeIdentifierExpr):
-            # Reverse: variant → value
+            # Reverse: variant -> value
             for entry in lookup.entries:
                 if entry.variant == operand.name:
                     if entry.value_kind == "string":
@@ -2039,18 +2041,18 @@ class CEmitter:
             return "/* lookup miss */ 0"
         return "/* unsupported lookup */ 0"
 
-    def _infer_lookup_type(self, expr: LookupExpr) -> Type:
-        """Infer the type of a lookup expression."""
-        lookup = self._current_lookup
+    def _infer_lookup_type(self, expr: LookupAccessExpr) -> Type:
+        """Infer the type of a lookup access expression."""
+        lookup = self._lookup_tables.get(expr.type_name)
         if lookup is None:
             return ERROR_TY
         operand = expr.operand
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
-            # Forward: literal → algebraic type (the lookup itself)
-            resolved = self._symbols.resolve_type(lookup.name)
+            # Forward: literal -> algebraic type
+            resolved = self._symbols.resolve_type(expr.type_name)
             return resolved if resolved else ERROR_TY
         if isinstance(operand, TypeIdentifierExpr):
-            # Reverse: variant → value type
+            # Reverse: variant -> value type
             name = lookup.value_type.name if hasattr(lookup.value_type, 'name') else ""
             resolved = self._symbols.resolve_type(name)
             return resolved if resolved else ERROR_TY

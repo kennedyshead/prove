@@ -37,9 +37,9 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
-    LookupDecl,
+    LookupAccessExpr,
     LookupEntry,
-    LookupExpr,
+    LookupTypeDef,
     MainDef,
     MatchArm,
     MatchExpr,
@@ -315,13 +315,7 @@ class Parser:
         verb_tok = self._advance()
         verb = verb_tok.value
 
-        # Allow soft keywords (e.g. 'lookup') as function names
-        if self._at(TokenKind.IDENTIFIER):
-            name_tok = self._advance()
-        elif self._at(TokenKind.LOOKUP):
-            name_tok = self._advance()
-        else:
-            name_tok = self._expect(TokenKind.IDENTIFIER)
+        name_tok = self._expect(TokenKind.IDENTIFIER)
         name = name_tok.value
 
         params = self._parse_param_list()
@@ -604,6 +598,16 @@ class Parser:
         name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
         name = name_tok.value
 
+        # Parse type modifiers: :[Lookup]
+        modifiers: list[TypeModifier] = []
+        if self._at(TokenKind.COLON) and self._peek(1).kind == TokenKind.LBRACKET:
+            self._advance()  # :
+            self._advance()  # [
+            while not self._at(TokenKind.RBRACKET) and not self._at(TokenKind.EOF):
+                mod = self._parse_type_modifier()
+                modifiers.append(mod)
+            self._expect(TokenKind.RBRACKET)
+
         type_params: list[str] = []
         if self._at(TokenKind.LESS):
             self._advance()
@@ -616,11 +620,17 @@ class Parser:
         self._expect(TokenKind.IS)
         self._skip_newlines()
 
-        body = self._parse_type_body()
+        # Check for Lookup modifier -> parse LookupTypeDef body
+        is_lookup = any(m.value == "Lookup" for m in modifiers)
+        if is_lookup:
+            body = self._parse_lookup_type_body()
+        else:
+            body = self._parse_type_body()
 
         end = self._current().span
         span = self._span(start, end)
-        return TypeDef(name=name, type_params=type_params, body=body, span=span)
+        return TypeDef(name=name, type_params=type_params,
+                       modifiers=modifiers, body=body, span=span)
 
     def _parse_type_body(self) -> TypeBody:
         """Determine and parse the type body kind."""
@@ -1000,7 +1010,6 @@ class Parser:
         constants: list[ConstantDef] = []
         invariants: list[InvariantNetwork] = []
         foreign_blocks: list[ForeignBlock] = []
-        lookup: LookupDecl | None = None
         body: list[Declaration] = []
 
         if self._at(TokenKind.INDENT):
@@ -1033,8 +1042,6 @@ class Parser:
                     invariants.append(self._parse_invariant_network())
                 elif self._at(TokenKind.FOREIGN):
                     foreign_blocks.append(self._parse_foreign_block())
-                elif self._at(TokenKind.LOOKUP):
-                    lookup = self._parse_lookup_decl()
                 elif self._at(TokenKind.TYPE_IDENTIFIER):
                     # Import: ModuleName verb_group (, verb_group)*
                     module_tok = self._advance()
@@ -1073,7 +1080,7 @@ class Parser:
         end = self._current().span
         return ModuleDecl(name_tok.value, narrative, temporal, imports,
                           types, constants, invariants, foreign_blocks,
-                          lookup, body, self._span(start, end))
+                          body, self._span(start, end))
 
     # ── Invariant network ────────────────────────────────────────
 
@@ -1103,33 +1110,58 @@ class Parser:
         return InvariantNetwork(name_tok.value, constraints,
                                 self._span(start, end))
 
-    # ── Lookup declarations ────────────────────────────────────────
+    # ── Lookup type body ────────────────────────────────────────────
 
-    def _parse_lookup_decl(self) -> LookupDecl:
-        """Parse: lookup Name | ValueType + indented entries."""
+    def _parse_lookup_type_body(self) -> LookupTypeDef:
+        """Parse: ValueType where + indented Variant | value rows."""
         start = self._current().span
-        self._advance()  # 'lookup'
-        name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
-        self._expect(TokenKind.PIPE)
         value_type = self._parse_type_expr()
+        self._expect(TokenKind.WHERE)
         self._skip_newlines()
 
         entries: list[LookupEntry] = []
+        last_variant: str | None = None
         if self._at(TokenKind.INDENT):
             self._advance()
             while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
-                entry = self._parse_lookup_entry()
-                entries.append(entry)
+                # Stacking: continuation | "value" may be at deeper indent
+                if self._at(TokenKind.INDENT):
+                    self._advance()
+                    while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                        self._skip_newlines()
+                        if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                            break
+                        if self._at(TokenKind.PIPE) and last_variant is not None:
+                            self._advance()  # |
+                            entry = self._parse_lookup_value(last_variant)
+                            entries.append(entry)
+                        else:
+                            break
+                        self._skip_newlines()
+                    if self._at(TokenKind.DEDENT):
+                        self._advance()
+                    continue
+                # Stacking at same indent: | "value" (reuses previous variant)
+                if self._at(TokenKind.PIPE) and last_variant is not None:
+                    self._advance()  # |
+                    entry = self._parse_lookup_value(last_variant)
+                    entries.append(entry)
+                elif self._at(TokenKind.TYPE_IDENTIFIER):
+                    # Normal: Variant | "value"
+                    entry = self._parse_lookup_entry()
+                    entries.append(entry)
+                    last_variant = entry.variant
+                else:
+                    break
                 self._skip_newlines()
             if self._at(TokenKind.DEDENT):
                 self._advance()
 
         end = self._current().span
-        return LookupDecl(name_tok.value, value_type,
-                          entries, self._span(start, end))
+        return LookupTypeDef(value_type, entries, self._span(start, end))
 
     def _parse_lookup_entry(self) -> LookupEntry:
         """Parse a single lookup entry: Variant | literal."""
@@ -1141,6 +1173,13 @@ class Parser:
         self._expect(TokenKind.PIPE)
 
         # Right side: string, integer, or boolean literal
+        return self._parse_lookup_value(variant_tok.value, start)
+
+    def _parse_lookup_value(self, variant: str,
+                            start: Span | None = None) -> LookupEntry:
+        """Parse the value part of a lookup entry."""
+        if start is None:
+            start = self._current().span
         tok = self._current()
         _LIT_KINDS = {
             TokenKind.STRING_LIT: "string",
@@ -1163,7 +1202,7 @@ class Parser:
                 self._advance()
 
         end = self._current().span
-        return LookupEntry(variant_tok.value, value, value_kind,
+        return LookupEntry(variant, value, value_kind,
                            self._span(start, end))
 
     # ── Foreign blocks ────────────────────────────────────────────
@@ -1587,10 +1626,6 @@ class Parser:
         if tok.kind == TokenKind.VALID:
             return self._parse_valid_expr()
 
-        # Lookup expression: $"main" or $Main
-        if tok.kind == TokenKind.DOLLAR:
-            return self._parse_lookup_expr()
-
         # match expression
         if tok.kind == TokenKind.MATCH:
             return self._parse_match_expr()
@@ -1601,6 +1636,10 @@ class Parser:
             return IdentifierExpr(tok.value, tok.span)
 
         if tok.kind == TokenKind.TYPE_IDENTIFIER:
+            # Check for lookup access: TypeName:"literal" or TypeName:Variant
+            if (self._peek(1).kind == TokenKind.COLON
+                    and self._peek(2).kind != TokenKind.LBRACKET):
+                return self._parse_lookup_access_expr()
             self._advance()
             return TypeIdentifierExpr(tok.value, tok.span)
 
@@ -1690,15 +1729,16 @@ class Parser:
         return ValidExpr(name_tok.value, args,
                          self._span(start, end))
 
-    def _parse_lookup_expr(self) -> LookupExpr:
-        """Parse $"literal" or $VariantName."""
+    def _parse_lookup_access_expr(self) -> LookupAccessExpr:
+        """Parse TypeName:"literal" or TypeName:VariantName."""
         start = self._current().span
-        self._advance()  # DOLLAR
+        type_name = self._advance().value  # TYPE_IDENTIFIER
+        self._advance()  # COLON
         tok = self._current()
 
         if tok.kind == TokenKind.STRING_LIT:
             self._advance()
-            operand = StringLit(tok.value, tok.span)
+            operand: Expr = StringLit(tok.value, tok.span)
         elif tok.kind == TokenKind.INTEGER_LIT:
             self._advance()
             operand = IntegerLit(tok.value, tok.span)
@@ -1714,15 +1754,15 @@ class Parser:
             operand = IdentifierExpr(tok.value, tok.span)
         else:
             self._error(
-                f"expected literal or variant name after $, "
-                f"got {tok.kind.name}",
+                f"expected literal or variant name after "
+                f"{type_name}:, got {tok.kind.name}",
                 tok.span,
                 code="E213",
             )
             raise _ParseError
 
         end = tok.span
-        return LookupExpr(operand, None, self._span(start, end))
+        return LookupAccessExpr(type_name, operand, self._span(start, end))
 
     def _parse_match_expr(self) -> MatchExpr:
         start = self._current().span

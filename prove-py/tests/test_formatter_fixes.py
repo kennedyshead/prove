@@ -349,60 +349,80 @@ class TestFixRoundtrip:
 
 
 class TestFormatLookup:
-    """Tests for lookup table and $expr formatting."""
+    """Tests for [Lookup] type and TypeName:expr formatting."""
 
-    def test_lookup_decl_roundtrip(self):
-        """Lookup declaration should format correctly and survive a roundtrip."""
+    def test_lookup_type_roundtrip(self):
+        """[Lookup] type definition should format correctly and survive a roundtrip."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             '      Type | "type"\n'
             "\n"
             "main()\n"
             "    from\n"
-            "        0\n"
+            '        TokenKind:"main"\n'
         )
         first = check_and_format(source)
-        assert "lookup TokenKind | String" in first
+        assert "type TokenKind:[Lookup] is String where" in first
         assert 'Main | "main"' in first
         second = check_and_format(first)
         assert first == second
 
-    def test_lookup_expr_string_roundtrip(self):
-        """$"main" should format as $"main" and survive roundtrip."""
+    def test_lookup_access_string_roundtrip(self):
+        """TokenKind:"main" should format correctly and survive roundtrip."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            '        $"main"\n'
+            '        TokenKind:"main"\n'
         )
         first = check_and_format(source)
-        assert '$"main"' in first
+        assert 'TokenKind:"main"' in first
         second = check_and_format(first)
         assert first == second
 
-    def test_lookup_expr_variant_roundtrip(self):
-        """$Main should format as $Main and survive roundtrip."""
+    def test_lookup_access_variant_roundtrip(self):
+        """TokenKind:Main should format correctly and survive roundtrip."""
         source = (
             "module M\n"
             "\n"
-            "  lookup TokenKind | String\n"
+            "  type TokenKind:[Lookup] is String where\n"
             '      Main | "main"\n'
             '      From | "from"\n'
             "\n"
             "main()\n"
             "    from\n"
-            "        $Main\n"
+            "        TokenKind:Main\n"
         )
         first = check_and_format(source)
-        assert "$Main" in first
+        assert "TokenKind:Main" in first
+        second = check_and_format(first)
+        assert first == second
+
+    def test_lookup_stacking_roundtrip(self):
+        """Stacked lookup entries should format with alignment."""
+        source = (
+            "module M\n"
+            "\n"
+            "  type BoolLit:[Lookup] is String where\n"
+            '      BooleanLit | "true"\n'
+            '                 | "false"\n'
+            '      Foreign | "foreign"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        BoolLit:"true"\n'
+        )
+        first = check_and_format(source)
+        assert 'BooleanLit | "true"' in first
+        assert 'Foreign | "foreign"' in first
         second = check_and_format(first)
         assert first == second
