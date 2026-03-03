@@ -91,7 +91,7 @@ class TestProofVerification:
 
     def test_believe_without_ensures_error(self):
         check_fails(
-            "transforms abs_val(n Integer) Integer\n"
+            "matches abs_val(n Integer) Integer\n"
             "    believe: result >= 0\n"
             "    from\n"
             "        match n >= 0\n"
@@ -107,7 +107,7 @@ class TestProofVerification:
         from prove.parser import Parser
 
         source = (
-            "transforms abs_val(n Integer) Integer\n"
+            "matches abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
             "    explain\n"

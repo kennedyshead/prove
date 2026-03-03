@@ -32,6 +32,8 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
+    LookupDecl,
+    LookupExpr,
     MainDef,
     MatchExpr,
     ModifiedType,
@@ -136,7 +138,10 @@ def _edit_distance(a: str, b: str) -> int:
 class Checker:
     """Semantic analyzer for a single module."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        local_modules: dict[str, object] | None = None,
+    ) -> None:
         self.symbols = SymbolTable()
         self.diagnostics: list[Diagnostic] = []
         self._current_function: FunctionDef | MainDef | None = None
@@ -151,8 +156,12 @@ class Checker:
         self._user_types: dict[str, Span] = {}
         # Track which user-defined types are referenced
         self._used_types: set[str] = set()
-        # Requires-based option narrowing: set of (module, frozenset(arg_names))
-        self._requires_narrowings: set[tuple[str, frozenset[str]]] = set()
+        # Requires-based narrowing: list of (module, args)
+        self._requires_narrowings: list[tuple[str, list[Expr]]] = []
+        # Local (sibling) module info for cross-file imports
+        self._local_modules = local_modules
+        # Module-level lookup table for $ resolution
+        self._current_lookup: LookupDecl | None = None
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -194,6 +203,9 @@ class Checker:
                     self._register_constant(cd)
                 for fb in decl.foreign_blocks:
                     self._register_foreign_block(fb)
+                if decl.lookup is not None:
+                    self._current_lookup = decl.lookup
+                    self._register_lookup(decl.lookup)
 
         # Collect user-defined IO function names (inputs/outputs verbs)
         for decl in module.declarations:
@@ -211,6 +223,8 @@ class Checker:
                     self._check_constant(cd)
                 for td in decl.types:
                     self._check_type_def(td)
+                if decl.lookup is not None:
+                    self._check_lookup_decl(decl.lookup, decl)
 
         # Check unused variables (W300)
         self._check_unused()
@@ -392,6 +406,36 @@ class Checker:
             resolved_type=resolved, span=td.span,
         ))
 
+    def _register_lookup(self, lookup: LookupDecl) -> None:
+        """Register an algebraic type from a lookup table declaration."""
+        # Collect unique variant names from entries (preserving order)
+        seen: dict[str, None] = {}
+        for entry in lookup.entries:
+            seen[entry.variant] = None
+        variant_names = list(seen.keys())
+
+        # Build AlgebraicType with zero-field variants
+        variants = [VariantInfo(name, {}) for name in variant_names]
+        resolved: Type = AlgebraicType(lookup.name, variants, ())
+
+        self.symbols.define_type(lookup.name, resolved)
+        self._user_types[lookup.name] = lookup.span
+        self.symbols.define(Symbol(
+            name=lookup.name, kind=SymbolKind.TYPE,
+            resolved_type=resolved, span=lookup.span,
+        ))
+
+        # Register each variant as a zero-arg constructor
+        for name in variant_names:
+            vsig = FunctionSignature(
+                verb=None, name=name,
+                param_names=[], param_types=[],
+                return_type=resolved,
+                can_fail=False,
+                span=lookup.span,
+            )
+            self.symbols.define_function(vsig)
+
     def _register_function(self, fd: FunctionDef) -> None:
         """Register a function signature."""
         # E316: function name shadows builtin
@@ -473,6 +517,10 @@ class Checker:
         # Try loading real signatures from stdlib
         is_known = is_stdlib_module(imp.module)
         if not is_known:
+            # Check local (sibling) modules before giving up
+            if self._local_modules and imp.module in self._local_modules:
+                self._register_local_import(imp)
+                return
             # Register the module name so we know it was declared,
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
@@ -530,6 +578,69 @@ class Checker:
                     self.symbols.define_function(sig)
             else:
                 # Known stdlib module but function not found — error
+                self._error(
+                    "E315",
+                    f"function '{item.name}' not found "
+                    f"in module '{imp.module}'",
+                    item.span,
+                )
+
+    def _register_local_import(self, imp: ImportDecl) -> None:
+        """Register imports from a local (sibling) module."""
+        local_info = self._local_modules[imp.module]  # type: ignore[index]
+
+        names = self._module_imports.setdefault(imp.module, set())
+        for item in imp.items:
+            names.add(item.name)
+            self._import_spans.setdefault(
+                (imp.module.lower(), item.name), [],
+            ).append(item.span)
+
+        for item in imp.items:
+            # Type imports (verb="types" or bare CamelCase with no verb)
+            is_type_import = (
+                item.verb == "types"
+                or (item.verb is None and item.name[:1].isupper())
+            )
+            if is_type_import:
+                resolved = local_info.types.get(item.name)
+                if resolved is not None:
+                    self.symbols.define_type(item.name, resolved)
+                    self.symbols.define(Symbol(
+                        name=item.name, kind=SymbolKind.TYPE,
+                        resolved_type=resolved, span=item.span,
+                        verb=item.verb,
+                    ))
+                    # Register variant constructors for algebraic types
+                    if isinstance(resolved, AlgebraicType):
+                        for vsig in local_info.functions:
+                            if vsig.verb is None and any(
+                                v.name == vsig.name for v in resolved.variants
+                            ):
+                                self.symbols.define_function(vsig)
+                else:
+                    self._error(
+                        "E315",
+                        f"type '{item.name}' not found "
+                        f"in module '{imp.module}'",
+                        item.span,
+                    )
+                continue
+
+            # Function imports — register all verb overloads
+            found = False
+            for sig in local_info.functions:
+                if sig.name == item.name:
+                    found = True
+                    ft = FunctionType(sig.param_types, sig.return_type)
+                    self.symbols.define(Symbol(
+                        name=item.name, kind=SymbolKind.FUNCTION,
+                        resolved_type=ft, span=item.span,
+                        verb=sig.verb,
+                    ))
+                    self.symbols.define_function(sig)
+
+            if not found:
                 self._error(
                     "E315",
                     f"function '{item.name}' not found "
@@ -641,7 +752,7 @@ class Checker:
 
         self.symbols.pop_scope()
         self._current_function = None
-        self._requires_narrowings = set()
+        self._requires_narrowings = []
 
     def _check_main(self, md: MainDef) -> None:
         """Check the main function body."""
@@ -812,56 +923,70 @@ class Checker:
 
     def _collect_requires_narrowings(
         self, fd: FunctionDef,
-    ) -> set[tuple[str, frozenset[str]]]:
-        """Scan fd.requires for validates calls (qualified or unqualified).
+    ) -> list[tuple[str, list[Expr]]]:
+        """Scan fd.requires for validates calls and valid expressions.
 
-        Returns a set of (module_name, frozenset_of_arg_names) tuples that
-        can be used to narrow Option<V> returns to V in the function body.
+        Returns a list of (module_name, args) tuples that can be used to
+        narrow Option<V> → V and Result<T, E> → T in the function body.
         """
-        narrowings: set[tuple[str, frozenset[str]]] = set()
+        narrowings: list[tuple[str, list[Expr]]] = []
         for req_expr in fd.requires:
+            # valid file(path) → ValidExpr
+            if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
+                func_name = req_expr.name
+                args = req_expr.args
+                n_args = len(args)
+                sig = self.symbols.resolve_function(
+                    "validates", func_name, n_args,
+                )
+                if sig is None:
+                    sig = self.symbols.resolve_function_any(
+                        func_name, arity=n_args,
+                    )
+                if sig is not None and sig.verb == "validates" and sig.module:
+                    narrowings.append((sig.module, args))
+                continue
+            # has(key, table) or Table.has(key, table)
             if not isinstance(req_expr, CallExpr):
                 continue
             func = req_expr.func
-            # Determine function name and optional module
             module_name: str | None = None
-            func_name: str | None = None
+            func_name_: str | None = None
             if (isinstance(func, FieldExpr)
                     and isinstance(func.obj, TypeIdentifierExpr)):
-                # Qualified: Table.has(...)
                 module_name = func.obj.name
-                func_name = func.field
+                func_name_ = func.field
             elif isinstance(func, IdentifierExpr):
-                # Unqualified: has(...)
-                func_name = func.name
+                func_name_ = func.name
             else:
                 continue
-            # All args must be identifiers
-            arg_names: list[str] = []
-            all_idents = True
-            for arg in req_expr.args:
-                if isinstance(arg, IdentifierExpr):
-                    arg_names.append(arg.name)
-                else:
-                    all_idents = False
-                    break
-            if not all_idents:
-                continue
-            # Resolve the function and check it's a validates verb
             n_args = len(req_expr.args)
             sig = self.symbols.resolve_function(
-                "validates", func_name, n_args,
+                "validates", func_name_, n_args,
             )
             if sig is None:
                 sig = self.symbols.resolve_function_any(
-                    func_name, arity=n_args,
+                    func_name_, arity=n_args,
                 )
             if sig is not None and sig.verb == "validates":
-                # For unqualified calls, get the module from the signature
                 mod = module_name or sig.module
                 if mod:
-                    narrowings.add((mod, frozenset(arg_names)))
+                    narrowings.append((mod, req_expr.args))
         return narrowings
+
+    def _has_requires_narrowing(
+        self, module: str, call_args: list[Expr],
+    ) -> bool:
+        """Check if a matching validates precondition exists."""
+        for mod, req_args in self._requires_narrowings:
+            if mod != module:
+                continue
+            if len(req_args) != len(call_args):
+                continue
+            if all(self._exprs_equal(a, b)
+                   for a, b in zip(req_args, call_args)):
+                return True
+        return False
 
     # ── Verb enforcement ────────────────────────────────────────
 
@@ -875,15 +1000,21 @@ class Checker:
             # Check body for IO calls
             self._check_pure_body(fd.body, fd.span)
 
-        # matches verb: first parameter must be an algebraic type
+        # matches verb: first parameter must be a matchable type
         if verb == "matches":
             if fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
-                if not isinstance(first_type, (AlgebraicType, ErrorType)):
+                is_matchable = (
+                    isinstance(first_type, (AlgebraicType, ErrorType))
+                    or (isinstance(first_type, PrimitiveType)
+                        and first_type.name in ("String", "Integer"))
+                )
+                if not is_matchable:
                     self._error(
                         "E365",
                         f"matches verb requires first parameter to be "
-                        f"an algebraic type, got '{type_name(first_type)}'",
+                        f"a matchable type (algebraic, String, or "
+                        f"Integer), got '{type_name(first_type)}'",
                         fd.params[0].span,
                     )
             else:
@@ -892,6 +1023,10 @@ class Checker:
                     "matches verb requires at least one parameter",
                     fd.span,
                 )
+
+        # E367: match expression only allowed in matches verb
+        if verb != "matches":
+            self._check_match_restriction(fd.body, fd.span)
 
     def _check_pure_body(self, body: list[Stmt | MatchExpr], span: Span) -> None:
         """Check that a body doesn't contain IO calls."""
@@ -953,6 +1088,52 @@ class Checker:
             self._check_pure_expr(expr.expr)
         elif isinstance(expr, LambdaExpr):
             self._check_pure_expr(expr.body)
+
+    # ── Match restriction (E367) ────────────────────────────────
+
+    def _check_match_restriction(
+        self, body: list[Stmt | MatchExpr], span: Span,
+    ) -> None:
+        """E367: match expression only allowed in matches verb."""
+        for stmt in body:
+            if isinstance(stmt, MatchExpr):
+                self._error(
+                    "E367",
+                    "match expression is only allowed in "
+                    "`matches` verb functions",
+                    stmt.span,
+                )
+            elif isinstance(stmt, VarDecl):
+                self._check_match_in_expr(stmt.value)
+            elif isinstance(stmt, Assignment):
+                self._check_match_in_expr(stmt.value)
+            elif isinstance(stmt, ExprStmt):
+                self._check_match_in_expr(stmt.expr)
+
+    def _check_match_in_expr(self, expr: Expr) -> None:
+        """Walk an expression looking for MatchExpr nodes."""
+        if isinstance(expr, MatchExpr):
+            self._error(
+                "E367",
+                "match expression is only allowed in "
+                "`matches` verb functions",
+                expr.span,
+            )
+        elif isinstance(expr, CallExpr):
+            for arg in expr.args:
+                self._check_match_in_expr(arg)
+        elif isinstance(expr, BinaryExpr):
+            self._check_match_in_expr(expr.left)
+            self._check_match_in_expr(expr.right)
+        elif isinstance(expr, UnaryExpr):
+            self._check_match_in_expr(expr.operand)
+        elif isinstance(expr, PipeExpr):
+            self._check_match_in_expr(expr.left)
+            self._check_match_in_expr(expr.right)
+        elif isinstance(expr, LambdaExpr):
+            self._check_match_in_expr(expr.body)
+        elif isinstance(expr, FailPropExpr):
+            self._check_match_in_expr(expr.expr)
 
     # ── Statement checking ──────────────────────────────────────
 
@@ -1090,6 +1271,8 @@ class Checker:
             return BOOLEAN
         if isinstance(expr, ComptimeExpr):
             return self._infer_comptime(expr)
+        if isinstance(expr, LookupExpr):
+            return self._check_lookup_expr(expr)
         return ERROR_TY
 
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:
@@ -1247,25 +1430,20 @@ class Checker:
                     )
 
             ret = sig.return_type
-            # Requires-based option narrowing for unqualified calls
-            if (isinstance(ret, GenericInstance) and ret.base_name == "Option"
-                    and ret.args and self._requires_narrowings and sig.module):
-                call_arg_names: list[str] = []
-                all_idents = True
-                for a in expr.args:
-                    if isinstance(a, IdentifierExpr):
-                        call_arg_names.append(a.name)
-                    else:
-                        all_idents = False
-                        break
-                if all_idents:
-                    key = (sig.module, frozenset(call_arg_names))
-                    if key in self._requires_narrowings:
-                        bindings = resolve_type_vars(
-                            sig.param_types, arg_types,
-                        )
-                        inner = substitute_type_vars(ret.args[0], bindings)
-                        return inner
+            # Requires-based narrowing for unqualified calls:
+            # Option<V> → V, Result<T, E> → T
+            if (isinstance(ret, GenericInstance)
+                    and ret.base_name in ("Option", "Result")
+                    and ret.args and self._requires_narrowings
+                    and sig.module):
+                if self._has_requires_narrowing(
+                    sig.module, expr.args,
+                ):
+                    bindings = resolve_type_vars(
+                        sig.param_types, arg_types,
+                    )
+                    inner = substitute_type_vars(ret.args[0], bindings)
+                    return inner
             return ret
 
         if isinstance(expr.func, TypeIdentifierExpr):
@@ -1333,27 +1511,20 @@ class Checker:
                 )
                 return ERROR_TY
             ret = sig.return_type
-            # Requires-based option narrowing: if the return type is
-            # Option<V> and there is a matching validates call in requires,
-            # narrow to V.
-            if (isinstance(ret, GenericInstance) and ret.base_name == "Option"
+            # Requires-based narrowing: if the return type is Option<V>
+            # or Result<T, E> and there is a matching validates call in
+            # requires, narrow to V or T respectively.
+            if (isinstance(ret, GenericInstance)
+                    and ret.base_name in ("Option", "Result")
                     and ret.args and self._requires_narrowings):
-                call_arg_names: list[str] = []
-                all_idents = True
-                for a in expr.args:
-                    if isinstance(a, IdentifierExpr):
-                        call_arg_names.append(a.name)
-                    else:
-                        all_idents = False
-                        break
-                if all_idents:
-                    key = (module_name, frozenset(call_arg_names))
-                    if key in self._requires_narrowings:
-                        bindings = resolve_type_vars(
-                            sig.param_types, arg_types,
-                        )
-                        inner = substitute_type_vars(ret.args[0], bindings)
-                        return inner
+                if self._has_requires_narrowing(
+                    module_name, expr.args,
+                ):
+                    bindings = resolve_type_vars(
+                        sig.param_types, arg_types,
+                    )
+                    inner = substitute_type_vars(ret.args[0], bindings)
+                    return inner
             return ret
 
         # For complex expressions (e.g., method-like calls), infer the function type
@@ -1681,6 +1852,77 @@ class Checker:
                         replacement=arms_str,
                     )],
                 ))
+
+    # ── Lookup table checking ────────────────────────────────────
+
+    def _check_lookup_decl(self, lookup: LookupDecl, mod_decl: ModuleDecl) -> None:
+        """Validate a lookup table declaration (E375)."""
+        # Check for duplicate values (many-to-one variant→value is fine,
+        # but duplicate values would make value→variant ambiguous)
+        seen_values: set[str] = set()
+        for entry in lookup.entries:
+            if entry.value in seen_values:
+                self._error(
+                    "E375",
+                    f"duplicate value '{entry.value}' in lookup table",
+                    entry.span,
+                )
+            seen_values.add(entry.value)
+
+    def _check_lookup_expr(self, expr: LookupExpr) -> Type:
+        """Resolve a $ lookup expression at check time (E376, E377)."""
+        lookup = self._current_lookup
+        if lookup is None:
+            self._error(
+                "E377",
+                "$ used but no lookup table declared in module",
+                expr.span,
+            )
+            return ERROR_TY
+
+        operand = expr.operand
+
+        # Operand must be a literal or variant name — not a variable
+        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
+            # Forward lookup: literal → variant (returns the algebraic type)
+            value = operand.value
+            if isinstance(operand, BooleanLit):
+                value = "true" if operand.value else "false"
+            for entry in lookup.entries:
+                if entry.value == str(value):
+                    # Resolve the lookup's own algebraic type
+                    resolved = self.symbols.resolve_type(lookup.name)
+                    if resolved is not None:
+                        self._used_types.add(lookup.name)
+                    return resolved if resolved else ERROR_TY
+            self._error(
+                "E377",
+                f"value {value!r} not found in lookup table '{lookup.name}'",
+                expr.span,
+            )
+            return ERROR_TY
+
+        if isinstance(operand, TypeIdentifierExpr):
+            # Reverse lookup: variant → value (returns the value type)
+            for entry in lookup.entries:
+                if entry.variant == operand.name:
+                    value_type = self._resolve_type_expr(lookup.value_type)
+                    return value_type
+            self._error(
+                "E377",
+                f"variant '{operand.name}' not found in lookup table "
+                f"'{lookup.name}'",
+                expr.span,
+            )
+            return ERROR_TY
+
+        # Anything else (variable, call, etc.) is E376
+        self._error(
+            "E376",
+            "lookup operand must be a literal or variant name",
+            expr.span,
+        )
+        return ERROR_TY
 
     # ── Type resolution ─────────────────────────────────────────
 

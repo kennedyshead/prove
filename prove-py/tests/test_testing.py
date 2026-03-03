@@ -27,7 +27,7 @@ class TestTestGenerator:
 
     def test_generates_from_believe(self):
         source = (
-            "transforms abs_val(n Integer) Integer\n"
+            "matches abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
             "    explain\n"

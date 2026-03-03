@@ -184,6 +184,10 @@ class SymbolTable:
     def all_functions(self) -> dict[tuple[str | None, str], list[FunctionSignature]]:
         return dict(self._functions)
 
+    def all_types(self) -> dict[str, Type]:
+        """Return all registered types."""
+        return dict(self._types)
+
     def all_known_names(self) -> set[str]:
         """Return all names visible in current scope + types + functions."""
         names: set[str] = set()

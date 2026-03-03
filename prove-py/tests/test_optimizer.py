@@ -194,7 +194,7 @@ class TestTCOIntegration:
             "module TcoTest\n"
             '  narrative: """TCO test"""\n'
             "  InputOutput outputs console\n"
-            "transforms count(n Integer, acc Integer) Integer\n"
+            "matches count(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
             "    match n\n"

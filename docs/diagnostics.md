@@ -226,9 +226,29 @@ A function with a pure verb cannot call a function that uses an IO verb (`inputs
 
 Lambdas cannot reference variables from an enclosing scope (closures not supported). All values must be passed as arguments.
 
-### E365 — `matches` verb requires algebraic first parameter
+### E365 — `matches` verb requires matchable first parameter
 
-A `matches` function must take an algebraic type as its first parameter for dispatch.
+A `matches` function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, `String`, and `Integer`.
+
+### E367 — `match` expression only allowed in `matches` verb
+
+The `match` expression can only appear inside functions with the `matches` verb. Other verbs should call a `matches` helper or use `explain when` conditions for branching.
+
+```prove
+// Wrong — match in transforms
+transforms classify(n Integer) String
+from
+    match n > 0
+        true => "positive"
+        false => "non-positive"
+
+// Correct — use matches verb
+matches classify(n Integer) String
+from
+    match n > 0
+        true => "positive"
+        false => "non-positive"
+```
 
 ### E366 — Recursive function missing `terminates`
 
@@ -256,6 +276,61 @@ A match arm references a variant that does not exist in the algebraic type.
 ### E371 — Non-exhaustive match
 
 A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
+
+### E375 — Non-exhaustive lookup table
+
+A `[Lookup]` type does not cover all variants, contains duplicate values, or is missing entries. Every variant must have at least one value, and every value must be unique across the table.
+
+```prove
+// Error — Type is missing from the table
+type TokenKind:[Lookup] is String where
+    Main | "main"
+    From | "from"
+    // Type variant has no entry → E375
+
+// Error — duplicate value
+type TokenKind:[Lookup] is String where
+    Main | "main"
+    From | "main"   // "main" already used → E375
+```
+
+### E376 — Lookup operand must be literal or variant
+
+The lookup accessor (`TypeName:operand`) requires a compile-time constant: a string literal, integer literal, boolean literal, or variant name. Variables and expressions are not allowed.
+
+```prove
+TokenKind:"main"    // ok — string literal
+TokenKind:Main      // ok — variant name
+TokenKind:some_var  // E376 — variable not allowed
+```
+
+### E377 — Value not found in lookup table
+
+The operand of a lookup accessor does not match any entry in the table.
+
+```prove
+type TokenKind:[Lookup] is String where
+    Main | "main"
+
+TokenKind:"unknown"  // E377 — "unknown" not in table
+TokenKind:Missing    // E377 — Missing is not a variant of TokenKind
+```
+
+### E378 — Reverse lookup on stacked variant
+
+A reverse lookup was attempted on a variant that maps to multiple values. When a variant has stacked values (like match arms), the reverse direction is ambiguous.
+
+```prove
+type TokenKind:[Lookup] is String where
+    Foreign | "foreign"
+    BooleanLit | "true"
+               | "false"
+
+TokenKind:Foreign     // ok → "foreign"
+TokenKind:BooleanLit  // E378 — BooleanLit has 2 values ("true", "false")
+```
+
+Wrap the reverse lookup in a `matches` function if you need to handle stacked variants.
 
 ### E380 — Invalid ensures expression
 

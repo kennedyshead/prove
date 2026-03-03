@@ -36,6 +36,7 @@ class TokenKind(Enum):
     VALID = auto()
     MODULE = auto()
     DOMAIN = auto()
+    LOOKUP = auto()
 
     # FFI
     FOREIGN = auto()
@@ -97,6 +98,7 @@ class TokenKind(Enum):
     DOT = auto()
     ASSIGN = auto()
     ARROW = auto()
+    DOLLAR = auto()
 
     # Punctuation
     LPAREN = auto()
@@ -153,6 +155,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "valid": TokenKind.VALID,
     "module": TokenKind.MODULE,
     "domain": TokenKind.DOMAIN,
+    "lookup": TokenKind.LOOKUP,
     "ensures": TokenKind.ENSURES,
     "requires": TokenKind.REQUIRES,
     "when": TokenKind.WHEN,

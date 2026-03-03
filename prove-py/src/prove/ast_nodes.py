@@ -59,6 +59,7 @@ class WildcardPattern:
 class LiteralPattern:
     value: str
     span: Span
+    kind: str = "integer"  # "integer", "decimal", "string", "boolean", "path"
 
 
 @dataclass(frozen=True)
@@ -234,13 +235,21 @@ class IndexExpr:
     span: Span
 
 
+@dataclass(frozen=True)
+class LookupExpr:
+    """Compile-time lookup: $"main" or $Main."""
+    operand: Expr  # the literal or variant being looked up
+    resolved_value: object | None  # filled in by checker: Expr or None
+    span: Span
+
+
 Expr = Union[
     IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit,
     RawStringLit, PathLit, TripleStringLit, StringInterp, ListLiteral,
     IdentifierExpr, TypeIdentifierExpr,
     BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
     FailPropExpr, LambdaExpr, ValidExpr,
-    MatchExpr, ComptimeExpr, IndexExpr,
+    MatchExpr, ComptimeExpr, IndexExpr, LookupExpr,
 ]
 
 
@@ -445,6 +454,24 @@ class ForeignBlock:
 
 
 @dataclass(frozen=True)
+class LookupEntry:
+    """One row in a lookup table: Variant | value."""
+    variant: str           # variant name (Main)
+    value: str             # literal value ("main")
+    value_kind: str        # "string", "integer", "boolean"
+    span: Span
+
+
+@dataclass(frozen=True)
+class LookupDecl:
+    """Module-level bidirectional lookup table."""
+    name: str              # "TokenKind" — the algebraic type being declared
+    value_type: TypeExpr   # String — the value type
+    entries: list[LookupEntry]
+    span: Span
+
+
+@dataclass(frozen=True)
 class ModuleDecl:
     name: str
     narrative: str | None
@@ -454,6 +481,7 @@ class ModuleDecl:
     constants: list[ConstantDef]
     invariants: list[InvariantNetwork]
     foreign_blocks: list[ForeignBlock]
+    lookup: LookupDecl | None  # one per module
     body: list[Declaration]
     span: Span
 

@@ -37,6 +37,9 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
+    LookupDecl,
+    LookupEntry,
+    LookupExpr,
     MainDef,
     MatchArm,
     MatchExpr,
@@ -312,7 +315,13 @@ class Parser:
         verb_tok = self._advance()
         verb = verb_tok.value
 
-        name_tok = self._expect(TokenKind.IDENTIFIER)
+        # Allow soft keywords (e.g. 'lookup') as function names
+        if self._at(TokenKind.IDENTIFIER):
+            name_tok = self._advance()
+        elif self._at(TokenKind.LOOKUP):
+            name_tok = self._advance()
+        else:
+            name_tok = self._expect(TokenKind.IDENTIFIER)
         name = name_tok.value
 
         params = self._parse_param_list()
@@ -991,6 +1000,7 @@ class Parser:
         constants: list[ConstantDef] = []
         invariants: list[InvariantNetwork] = []
         foreign_blocks: list[ForeignBlock] = []
+        lookup: LookupDecl | None = None
         body: list[Declaration] = []
 
         if self._at(TokenKind.INDENT):
@@ -1023,6 +1033,8 @@ class Parser:
                     invariants.append(self._parse_invariant_network())
                 elif self._at(TokenKind.FOREIGN):
                     foreign_blocks.append(self._parse_foreign_block())
+                elif self._at(TokenKind.LOOKUP):
+                    lookup = self._parse_lookup_decl()
                 elif self._at(TokenKind.TYPE_IDENTIFIER):
                     # Import: ModuleName verb_group (, verb_group)*
                     module_tok = self._advance()
@@ -1061,7 +1073,7 @@ class Parser:
         end = self._current().span
         return ModuleDecl(name_tok.value, narrative, temporal, imports,
                           types, constants, invariants, foreign_blocks,
-                          body, self._span(start, end))
+                          lookup, body, self._span(start, end))
 
     # ── Invariant network ────────────────────────────────────────
 
@@ -1090,6 +1102,69 @@ class Parser:
         end = self._current().span
         return InvariantNetwork(name_tok.value, constraints,
                                 self._span(start, end))
+
+    # ── Lookup declarations ────────────────────────────────────────
+
+    def _parse_lookup_decl(self) -> LookupDecl:
+        """Parse: lookup Name | ValueType + indented entries."""
+        start = self._current().span
+        self._advance()  # 'lookup'
+        name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+        self._expect(TokenKind.PIPE)
+        value_type = self._parse_type_expr()
+        self._skip_newlines()
+
+        entries: list[LookupEntry] = []
+        if self._at(TokenKind.INDENT):
+            self._advance()
+            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                self._skip_newlines()
+                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                    break
+                entry = self._parse_lookup_entry()
+                entries.append(entry)
+                self._skip_newlines()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
+
+        end = self._current().span
+        return LookupDecl(name_tok.value, value_type,
+                          entries, self._span(start, end))
+
+    def _parse_lookup_entry(self) -> LookupEntry:
+        """Parse a single lookup entry: Variant | literal."""
+        start = self._current().span
+
+        # Left side: variant name (TYPE_IDENTIFIER)
+        variant_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+
+        self._expect(TokenKind.PIPE)
+
+        # Right side: string, integer, or boolean literal
+        tok = self._current()
+        _LIT_KINDS = {
+            TokenKind.STRING_LIT: "string",
+            TokenKind.INTEGER_LIT: "integer",
+            TokenKind.BOOLEAN_LIT: "boolean",
+        }
+        if tok.kind in _LIT_KINDS:
+            value = tok.value
+            value_kind = _LIT_KINDS[tok.kind]
+            self._advance()
+        else:
+            self._error(
+                f"expected literal in lookup entry, got {tok.kind.name}",
+                tok.span,
+                code="E210",
+            )
+            value = ""
+            value_kind = "string"
+            if tok.kind != TokenKind.EOF:
+                self._advance()
+
+        end = self._current().span
+        return LookupEntry(variant_tok.value, value, value_kind,
+                           self._span(start, end))
 
     # ── Foreign blocks ────────────────────────────────────────────
 
@@ -1512,7 +1587,9 @@ class Parser:
         if tok.kind == TokenKind.VALID:
             return self._parse_valid_expr()
 
-
+        # Lookup expression: $"main" or $Main
+        if tok.kind == TokenKind.DOLLAR:
+            return self._parse_lookup_expr()
 
         # match expression
         if tok.kind == TokenKind.MATCH:
@@ -1613,6 +1690,40 @@ class Parser:
         return ValidExpr(name_tok.value, args,
                          self._span(start, end))
 
+    def _parse_lookup_expr(self) -> LookupExpr:
+        """Parse $"literal" or $VariantName."""
+        start = self._current().span
+        self._advance()  # DOLLAR
+        tok = self._current()
+
+        if tok.kind == TokenKind.STRING_LIT:
+            self._advance()
+            operand = StringLit(tok.value, tok.span)
+        elif tok.kind == TokenKind.INTEGER_LIT:
+            self._advance()
+            operand = IntegerLit(tok.value, tok.span)
+        elif tok.kind == TokenKind.BOOLEAN_LIT:
+            self._advance()
+            operand = BooleanLit(tok.value == 'true', tok.span)
+        elif tok.kind == TokenKind.TYPE_IDENTIFIER:
+            self._advance()
+            operand = TypeIdentifierExpr(tok.value, tok.span)
+        elif tok.kind == TokenKind.IDENTIFIER:
+            # Accept identifiers so the checker can report E376
+            self._advance()
+            operand = IdentifierExpr(tok.value, tok.span)
+        else:
+            self._error(
+                f"expected literal or variant name after $, "
+                f"got {tok.kind.name}",
+                tok.span,
+                code="E213",
+            )
+            raise _ParseError
+
+        end = tok.span
+        return LookupExpr(operand, None, self._span(start, end))
+
     def _parse_match_expr(self) -> MatchExpr:
         start = self._current().span
         self._advance()  # 'match'
@@ -1708,11 +1819,16 @@ class Parser:
             self._advance()
             return BindingPattern(tok.value, tok.span)
 
-        if tok.kind in (TokenKind.INTEGER_LIT, TokenKind.DECIMAL_LIT,
-                        TokenKind.STRING_LIT, TokenKind.BOOLEAN_LIT,
-                        TokenKind.PATH_LIT):
+        _LIT_KIND_MAP = {
+            TokenKind.INTEGER_LIT: "integer",
+            TokenKind.DECIMAL_LIT: "decimal",
+            TokenKind.STRING_LIT: "string",
+            TokenKind.BOOLEAN_LIT: "boolean",
+            TokenKind.PATH_LIT: "path",
+        }
+        if tok.kind in _LIT_KIND_MAP:
             self._advance()
-            return LiteralPattern(tok.value, tok.span)
+            return LiteralPattern(tok.value, tok.span, _LIT_KIND_MAP[tok.kind])
 
         self._error(
             f"expected pattern, got {tok.kind.name}",

@@ -12,6 +12,16 @@ Limitation (v0.1): Regular ``//`` comments are not preserved in the AST
 
 from __future__ import annotations
 
+_STRING_ESCAPE_MAP = {
+    '\\': '\\\\', '\n': '\\n', '\r': '\\r', '\t': '\\t',
+    '"': '\\"', '\0': '\\0',
+}
+
+
+def _escape_string(value: str) -> str:
+    """Re-escape a string value for source output."""
+    return value.translate(str.maketrans(_STRING_ESCAPE_MAP))
+
 from typing import TYPE_CHECKING
 
 from prove.ast_nodes import (
@@ -38,6 +48,7 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
+    LookupExpr,
     MainDef,
     MatchArm,
     MatchExpr,
@@ -386,6 +397,11 @@ class ProveFormatter:
             formatted = self._format_invariant_network(inv)
             lines.append(self._indent_spaces(formatted, 2))
 
+        if mod.lookup is not None:
+            lines.append("")
+            formatted = self._format_lookup_decl(mod.lookup)
+            lines.append(self._indent_spaces(formatted, 2))
+
         for decl in mod.body:
             lines.append("")
             formatted = self._format_declaration(decl)
@@ -399,6 +415,20 @@ class ProveFormatter:
         lines = [f"invariant_network {inv.name}"]
         for constraint in inv.constraints:
             lines.append(f"  {self._format_expr(constraint)}")
+        return "\n".join(lines)
+
+    # ── Lookup declarations ─────────────────────────────────────
+
+    def _format_lookup_decl(self, lookup: object) -> str:
+        from prove.ast_nodes import LookupDecl
+        assert isinstance(lookup, LookupDecl)
+        value_type = self._format_type_expr(lookup.value_type)
+        lines = [f"lookup {lookup.name} | {value_type}"]
+        for entry in lookup.entries:
+            if entry.value_kind == "string":
+                lines.append(f'    {entry.variant} | "{_escape_string(entry.value)}"')
+            else:
+                lines.append(f"    {entry.variant} | {entry.value}")
         return "\n".join(lines)
 
     # ── Statement formatting ───────────────────────────────────
@@ -454,11 +484,11 @@ class ProveFormatter:
         if isinstance(expr, DecimalLit):
             return expr.value
         if isinstance(expr, StringLit):
-            return f'"{expr.value}"'
+            return f'"{_escape_string(expr.value)}"'
         if isinstance(expr, BooleanLit):
             return "true" if expr.value else "false"
         if isinstance(expr, CharLit):
-            return f"'{expr.value}'"
+            return f"'{_escape_string(expr.value)}'"
         if isinstance(expr, RegexLit):
             return f"/{expr.pattern}/"
         if isinstance(expr, RawStringLit):
@@ -501,6 +531,8 @@ class ProveFormatter:
             return self._format_comptime(expr)
         if isinstance(expr, IndexExpr):
             return f"{self._format_expr(expr.obj, 99)}[{self._format_expr(expr.index)}]"
+        if isinstance(expr, LookupExpr):
+            return f"${self._format_expr(expr.operand, 99)}"
         return "???"
 
     def _format_binary(self, expr: BinaryExpr, parent_prec: int) -> str:
@@ -532,7 +564,7 @@ class ProveFormatter:
         parts: list[str] = []
         for part in expr.parts:
             if isinstance(part, StringLit):
-                parts.append(part.value)
+                parts.append(_escape_string(part.value))
             else:
                 parts.append("{" + self._format_expr(part) + "}")
         return 'f"' + "".join(parts) + '"'
@@ -581,6 +613,8 @@ class ProveFormatter:
         if isinstance(pat, WildcardPattern):
             return "_"
         if isinstance(pat, LiteralPattern):
+            if pat.kind == "string":
+                return f'"{_escape_string(pat.value)}"'
             return pat.value
         if isinstance(pat, BindingPattern):
             return pat.name

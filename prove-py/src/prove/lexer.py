@@ -652,5 +652,7 @@ class Lexer:
                 self._emit(TokenKind.COLON, ':', start_line, start_col)
             case '|':
                 self._emit(TokenKind.PIPE, '|', start_line, start_col)
+            case '$':
+                self._emit(TokenKind.DOLLAR, '$', start_line, start_col)
             case _:
                 self._error(f"unexpected character: {ch!r}", start_line, start_col, "E109")

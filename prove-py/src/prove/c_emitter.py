@@ -23,6 +23,7 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
+    LookupExpr,
     MainDef,
     MatchExpr,
     Module,
@@ -92,11 +93,13 @@ class CEmitter:
         self._locals: dict[str, Type] = {}  # local var -> type for inference
         self._needed_headers: set[str] = set()
         self._current_func_return: Type = UNIT
+        self._current_func: FunctionDef | None = None
         self._in_main = False
         self._in_tail_loop = False
         self._foreign_names: set[str] = set()
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
+        self._current_lookup = None  # LookupDecl | None
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -107,6 +110,8 @@ class CEmitter:
                     self._foreign_libs.add(fb.library)
                     for ff in fb.functions:
                         self._foreign_names.add(ff.name)
+                if decl.lookup is not None:
+                    self._current_lookup = decl.lookup
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -136,6 +141,9 @@ class CEmitter:
 
         # Forward declarations for user functions
         self._emit_function_forwards()
+
+        # Forward declarations for imported local functions
+        self._emit_imported_function_forwards()
 
         # Hoisted lambdas will be inserted here (placeholder position)
         lambda_pos = len(self._out)
@@ -263,7 +271,174 @@ class CEmitter:
         for td in self._all_type_defs():
             cname = mangle_type_name(td.name)
             self._line(f"typedef struct {cname} {cname};")
+        # Forward declarations for imported local types
+        for name, ty in self._imported_local_types():
+            cname = mangle_type_name(name)
+            self._line(f"typedef struct {cname} {cname};")
         self._line("")
+        # Full struct definitions for imported local types
+        self._emit_imported_type_defs()
+
+    def _imported_local_types(self) -> list[tuple[str, Type]]:
+        """Collect types imported from local modules (not defined in this module)."""
+        local_type_names = {td.name for td in self._all_type_defs()}
+        result: list[tuple[str, Type]] = []
+        seen: set[str] = set()
+        for name, ty in self._symbols.all_types().items():
+            if name in local_type_names:
+                continue
+            if name in seen:
+                continue
+            if isinstance(ty, (RecordType, AlgebraicType)):
+                # Only include types that aren't builtins
+                if name not in (
+                    "Integer", "Decimal", "Float", "Boolean",
+                    "String", "Character", "Byte", "Unit",
+                    "Error", "Result", "Option", "List", "Table",
+                ):
+                    result.append((name, ty))
+                    seen.add(name)
+        return result
+
+    def _emit_imported_type_defs(self) -> None:
+        """Emit full struct definitions for imported local types."""
+        for name, ty in self._imported_local_types():
+            cname = mangle_type_name(name)
+            if isinstance(ty, RecordType):
+                self._line(f"struct {cname} {{")
+                self._indent += 1
+                for fname, ftype in ty.fields.items():
+                    ct = map_type(ftype)
+                    self._line(f"{ct.decl} {fname};")
+                self._indent -= 1
+                self._line("};")
+                self._line("")
+                # Constructor function for imported record types
+                params: list[str] = []
+                field_names: list[str] = []
+                for fname, ftype in ty.fields.items():
+                    ct = map_type(ftype)
+                    params.append(f"{ct.decl} {fname}")
+                    field_names.append(fname)
+                param_str = ", ".join(params) if params else "void"
+                self._line(f"static inline {cname} {name}({param_str}) {{")
+                self._indent += 1
+                self._line(f"{cname} _v;")
+                for fname in field_names:
+                    self._line(f"_v.{fname} = {fname};")
+                self._line("return _v;")
+                self._indent -= 1
+                self._line("}")
+                self._line("")
+            elif isinstance(ty, AlgebraicType):
+                # Tag enum
+                self._line("enum {")
+                self._indent += 1
+                for i, v in enumerate(ty.variants):
+                    tag = f"{cname}_TAG_{v.name.upper()}"
+                    self._line(f"{tag} = {i},")
+                self._indent -= 1
+                self._line("};")
+                self._line("")
+                # Tagged union struct
+                self._line(f"struct {cname} {{")
+                self._indent += 1
+                self._line("uint8_t tag;")
+                self._line("union {")
+                self._indent += 1
+                for v in ty.variants:
+                    if v.fields:
+                        self._line("struct {")
+                        self._indent += 1
+                        for fname, ftype in v.fields.items():
+                            ct = map_type(ftype)
+                            self._line(f"{ct.decl} {fname};")
+                        self._indent -= 1
+                        self._line(f"}} {v.name};")
+                    else:
+                        self._line(f"uint8_t _{v.name};  /* unit variant */")
+                self._indent -= 1
+                self._line("};")
+                self._indent -= 1
+                self._line("};")
+                self._line("")
+                # Constructor functions for each variant
+                for i, v in enumerate(ty.variants):
+                    tag = f"{cname}_TAG_{v.name.upper()}"
+                    params: list[str] = []
+                    for fname, ftype in v.fields.items():
+                        ct = map_type(ftype)
+                        params.append(f"{ct.decl} {fname}")
+                    param_str = ", ".join(params) if params else "void"
+                    self._line(f"static inline {cname} {v.name}({param_str}) {{")
+                    self._indent += 1
+                    self._line(f"{cname} _v;")
+                    self._line(f"_v.tag = {tag};")
+                    for fname in v.fields:
+                        self._line(f"_v.{v.name}.{fname} = {fname};")
+                    self._line("return _v;")
+                    self._indent -= 1
+                    self._line("}")
+                    self._line("")
+
+    def _emit_imported_function_forwards(self) -> None:
+        """Emit forward declarations for functions imported from local modules."""
+        from prove.stdlib_loader import is_stdlib_module
+
+        # Collect local function names defined in THIS module to avoid duplicates
+        local_func_names: set[tuple[str | None, str]] = set()
+        for decl in self._module.declarations:
+            if isinstance(decl, FunctionDef) and not decl.binary:
+                local_func_names.add((decl.verb, decl.name))
+
+        any_emitted = False
+        seen: set[str] = set()  # track by mangled name to avoid duplicates
+
+        for decl in self._module.declarations:
+            if not isinstance(decl, ModuleDecl):
+                continue
+            for imp in decl.imports:
+                # Skip stdlib modules — they use C runtime functions
+                if is_stdlib_module(imp.module):
+                    continue
+                for item in imp.items:
+                    # Skip type imports
+                    is_type_import = (
+                        item.verb == "types"
+                        or (item.verb is None and item.name[:1].isupper())
+                    )
+                    if is_type_import:
+                        continue
+                    # Find all verb overloads for this imported function
+                    for (verb, fname), sigs in self._symbols.all_functions().items():
+                        if fname != item.name:
+                            continue
+                        if (verb, fname) in local_func_names:
+                            continue
+                        for sig in sigs:
+                            if sig.name in self._foreign_names:
+                                continue
+                            mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                            if mangled in seen:
+                                continue
+                            seen.add(mangled)
+                            ret_ct = map_type(sig.return_type)
+                            ret_decl = ret_ct.decl
+                            if sig.can_fail:
+                                if (isinstance(sig.return_type, GenericInstance)
+                                        and sig.return_type.base_name == "Result"):
+                                    ret_decl = "Prove_Result"
+                                elif ret_ct.decl == "void":
+                                    ret_decl = "Prove_Result"
+                            params: list[str] = []
+                            for pname, pt in zip(sig.param_names, sig.param_types):
+                                ct = map_type(pt)
+                                params.append(f"{ct.decl} {pname}")
+                            param_str = ", ".join(params) if params else "void"
+                            self._line(f"{ret_decl} {mangled}({param_str});")
+                            any_emitted = True
+        if any_emitted:
+            self._line("")
 
     def _emit_function_forwards(self) -> None:
         """Emit forward declarations for all user-defined functions."""
@@ -313,6 +488,25 @@ class CEmitter:
                 self._line(f"{ct.decl} {f.name};")
             self._indent -= 1
             self._line("};")
+            self._line("")
+            # Constructor function for record types
+            params: list[str] = []
+            field_names: list[str] = []
+            for f in body.fields:
+                te_name = f.type_expr.name if hasattr(f.type_expr, 'name') else "Integer"
+                ft = self._symbols.resolve_type(te_name)
+                ct = map_type(ft) if ft else CType("int64_t", False, None)
+                params.append(f"{ct.decl} {f.name}")
+                field_names.append(f.name)
+            param_str = ", ".join(params) if params else "void"
+            self._line(f"static inline {cname} {td.name}({param_str}) {{")
+            self._indent += 1
+            self._line(f"{cname} _v;")
+            for fname in field_names:
+                self._line(f"_v.{fname} = {fname};")
+            self._line("return _v;")
+            self._indent -= 1
+            self._line("}")
             self._line("")
 
         elif isinstance(body, AlgebraicTypeDef):
@@ -400,6 +594,7 @@ class CEmitter:
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         ret_type = sig.return_type if sig else UNIT
         self._current_func_return = ret_type
+        self._current_func = fd
         self._current_requires = fd.requires
 
         # Map to C types
@@ -919,6 +1114,9 @@ class CEmitter:
         if isinstance(expr, IndexExpr):
             return self._emit_index(expr)
 
+        if isinstance(expr, LookupExpr):
+            return self._emit_lookup(expr)
+
         return "/* unsupported expr */ 0"
 
     # ── Binary expressions ─────────────────────────────────────
@@ -1041,6 +1239,11 @@ class CEmitter:
 
         if isinstance(expr.func, TypeIdentifierExpr):
             name = expr.func.name
+            # Pad record constructors with missing fields using defaults
+            resolved = self._symbols.resolve_type(name)
+            if isinstance(resolved, RecordType) and len(args) < len(resolved.fields):
+                for fname, ftype in list(resolved.fields.items())[len(args):]:
+                    args.append(self._default_for_type(ftype))
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
@@ -1397,7 +1600,18 @@ class CEmitter:
 
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
-            # No subject — just emit first arm body
+            # Implicit subject: for `matches` verb, use first parameter
+            if (self._current_func is not None
+                    and self._current_func.verb == "matches"
+                    and self._current_func.params):
+                first_param = self._current_func.params[0].name
+                implicit_subj = MatchExpr(
+                    subject=IdentifierExpr(first_param, m.span),
+                    arms=m.arms,
+                    span=m.span,
+                )
+                return self._emit_match_expr(implicit_subj)
+            # No subject and not matches verb — just emit arm bodies
             for arm in m.arms:
                 for s in arm.body:
                     self._emit_stmt(s)
@@ -1705,6 +1919,9 @@ class CEmitter:
                 return obj_type.element
             return ERROR_TY
 
+        if isinstance(expr, LookupExpr):
+            return self._infer_lookup_type(expr)
+
         return ERROR_TY
 
     def _infer_call_type(self, expr: CallExpr) -> Type:
@@ -1790,15 +2007,73 @@ class CEmitter:
                 return sig.return_type
         return ERROR_TY
 
+    # ── Lookup expressions ─────────────────────────────────────
+
+    def _emit_lookup(self, expr: LookupExpr) -> str:
+        """Emit a compile-time lookup: $"main" → Main(), $Main → string."""
+        lookup = self._current_lookup
+        if lookup is None:
+            return "/* no lookup table */ 0"
+        operand = expr.operand
+        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
+            # Forward: literal → variant constructor
+            value = operand.value
+            if isinstance(operand, BooleanLit):
+                value = "true" if operand.value else "false"
+            for entry in lookup.entries:
+                if entry.value == str(value):
+                    return f"{entry.variant}()"
+            return "/* lookup miss */ 0"
+        if isinstance(operand, TypeIdentifierExpr):
+            # Reverse: variant → value
+            for entry in lookup.entries:
+                if entry.variant == operand.name:
+                    if entry.value_kind == "string":
+                        escaped = self._escape_c_string(entry.value)
+                        return f'prove_string_from_cstr("{escaped}")'
+                    if entry.value_kind == "integer":
+                        return f"{entry.value}L"
+                    if entry.value_kind == "boolean":
+                        return entry.value
+                    return f'prove_string_from_cstr("{entry.value}")'
+            return "/* lookup miss */ 0"
+        return "/* unsupported lookup */ 0"
+
+    def _infer_lookup_type(self, expr: LookupExpr) -> Type:
+        """Infer the type of a lookup expression."""
+        lookup = self._current_lookup
+        if lookup is None:
+            return ERROR_TY
+        operand = expr.operand
+        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
+            # Forward: literal → algebraic type (the lookup itself)
+            resolved = self._symbols.resolve_type(lookup.name)
+            return resolved if resolved else ERROR_TY
+        if isinstance(operand, TypeIdentifierExpr):
+            # Reverse: variant → value type
+            name = lookup.value_type.name if hasattr(lookup.value_type, 'name') else ""
+            resolved = self._symbols.resolve_type(name)
+            return resolved if resolved else ERROR_TY
+        return ERROR_TY
+
     def _emit_literal_cond(self, subj: str, pat: LiteralPattern) -> str:
         """Generate a C condition comparing subj to a literal pattern."""
         val = pat.value
-        if val in ("true", "false"):
+        if pat.kind == "boolean" or val in ("true", "false"):
             return subj if val == "true" else f"!({subj})"
-        if val.startswith('"'):
-            escaped = self._escape_c_string(val[1:-1])
-            return f'prove_string_eq({subj}, "{escaped}")'
+        if pat.kind == "string":
+            escaped = self._escape_c_string(val)
+            return f'prove_string_eq({subj}, prove_string_from_cstr("{escaped}"))'
         return f"{subj} == {val}L"
+
+    def _default_for_type(self, ty: Type) -> str:
+        """Return a C default value expression for a type."""
+        if isinstance(ty, PrimitiveType):
+            if ty.name == "String":
+                return 'prove_string_from_cstr("")'
+            if ty.name == "Boolean":
+                return "false"
+        return "0"
 
     # ── Utilities ──────────────────────────────────────────────
 

@@ -593,7 +593,7 @@ class TestMatchExhaustiveness:
         check(
             "module M\n"
             "  type Color is Red | Green | Blue\n"
-            "transforms name(c Color) String\n"
+            "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
             "            Red => \"red\"\n"
@@ -605,7 +605,7 @@ class TestMatchExhaustiveness:
         check_fails(
             "module M\n"
             "  type Color is Red | Green | Blue\n"
-            "transforms name(c Color) String\n"
+            "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
             "            Red => \"red\"\n"
@@ -617,7 +617,7 @@ class TestMatchExhaustiveness:
         check(
             "module M\n"
             "  type Color is Red | Green | Blue\n"
-            "transforms name(c Color) String\n"
+            "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
             "            Red => \"red\"\n"
@@ -628,7 +628,7 @@ class TestMatchExhaustiveness:
         check_fails(
             "module M\n"
             "  type Color is Red | Green\n"
-            "transforms bad(c Color) String\n"
+            "matches bad(c Color) String\n"
             "    from\n"
             "        match c\n"
             "            Red => \"red\"\n"
@@ -641,7 +641,7 @@ class TestMatchExhaustiveness:
         check_info(
             "module M\n"
             "  type Color is Red | Green\n"
-            "transforms name(c Color) String\n"
+            "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
             "            _ => \"any\"\n"
@@ -657,7 +657,7 @@ class TestRequiresRedundantMatch:
         check_warns(
             "module M\n"
             "  narrative: \"t\"\n"
-            "transforms abs_val(n Integer) Integer\n"
+            "matches abs_val(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
             "    match n >= 0\n"
@@ -668,7 +668,7 @@ class TestRequiresRedundantMatch:
 
     def test_match_on_different_condition_no_warning(self):
         check(
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
             "    match n > 5\n"
@@ -678,7 +678,7 @@ class TestRequiresRedundantMatch:
 
     def test_match_without_requires_no_warning(self):
         check(
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "from\n"
             "    match n >= 0\n"
             "        true => n\n"
@@ -746,7 +746,7 @@ class TestIntegration:
             "  type MyResult is\n"
             "    Ok(value Integer)\n"
             "    | Err(message String)\n"
-            "transforms safe_divide(a Integer, b Integer) MyResult\n"
+            "matches safe_divide(a Integer, b Integer) MyResult\n"
             "    from\n"
             "        match b == 0\n"
             "            true => Err(\"division by zero\")\n"
@@ -898,7 +898,7 @@ class TestContractChecking:
 
     def test_believe_boolean_ok(self):
         check(
-            "transforms abs_val(n Integer) Integer\n"
+            "matches abs_val(n Integer) Integer\n"
             "    ensures result >= 0\n"
             "    believe: result >= 0\n"
             "    explain\n"
@@ -1191,4 +1191,286 @@ class TestUnusedType:
             "transforms origin() Point\n"
             "    from\n"
             "        Point(0, 0)\n",
+        )
+
+
+class TestMatchesVerbRelaxation:
+    """Test E365 relaxation: matches accepts String and Integer."""
+
+    def test_matches_string_first_param(self):
+        """matches verb accepts String as first parameter."""
+        check(
+            "matches greet(name String) String\n"
+            "    from\n"
+            "        match name == \"world\"\n"
+            "            true => \"Hello, world!\"\n"
+            "            false => \"Hello!\"\n"
+        )
+
+    def test_matches_integer_first_param(self):
+        """matches verb accepts Integer as first parameter."""
+        check(
+            "matches classify(n Integer) String\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => \"positive\"\n"
+            "            false => \"non-positive\"\n"
+        )
+
+    def test_matches_algebraic_first_param(self):
+        """matches verb still accepts algebraic as first parameter."""
+        check(
+            "module M\n"
+            "  type Shape is\n"
+            "    Circle(radius Integer)\n"
+            "    | Square(side Integer)\n"
+            "matches area(s Shape) Integer\n"
+            "    from\n"
+            "        match s\n"
+            "            Circle(r) => r\n"
+            "            Square(s) => s\n"
+        )
+
+    def test_matches_boolean_first_param_rejected(self):
+        """matches verb rejects Boolean as first parameter."""
+        check_fails(
+            "matches bad(flag Boolean) String\n"
+            "    from\n"
+            "        \"nope\"\n",
+            "E365",
+        )
+
+    def test_matches_decimal_first_param_rejected(self):
+        """matches verb rejects Decimal as first parameter."""
+        check_fails(
+            "matches bad(x Decimal) String\n"
+            "    from\n"
+            "        \"nope\"\n",
+            "E365",
+        )
+
+    def test_matches_no_params_rejected(self):
+        """matches verb still requires at least one parameter."""
+        check_fails(
+            "matches bad() String\n"
+            "    from\n"
+            "        \"nope\"\n",
+            "E365",
+        )
+
+
+class TestMatchRestriction:
+    """Test E367: match expression only allowed in matches verb."""
+
+    def test_match_in_transforms_error(self):
+        """E367: match in transforms body."""
+        check_fails(
+            "transforms bad(n Integer) String\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => \"yes\"\n"
+            "            false => \"no\"\n",
+            "E367",
+        )
+
+    def test_match_in_matches_ok(self):
+        """match in matches body is allowed."""
+        check(
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
+            "matches name(c Color) String\n"
+            "    from\n"
+            "        match c\n"
+            "            Red => \"red\"\n"
+            "            Green => \"green\"\n"
+            "            Blue => \"blue\"\n"
+        )
+
+    def test_match_in_validates_error(self):
+        """E367: match in validates body."""
+        check_fails(
+            "validates bad(n Integer)\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => true\n"
+            "            false => false\n",
+            "E367",
+        )
+
+    def test_match_in_reads_error(self):
+        """E367: match in reads body."""
+        check_fails(
+            "reads bad(n Integer) Integer\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => n\n"
+            "            false => 0\n",
+            "E367",
+        )
+
+    def test_match_in_creates_error(self):
+        """E367: match in creates body."""
+        check_fails(
+            "creates bad(n Integer) Integer\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => n\n"
+            "            false => 0\n",
+            "E367",
+        )
+
+    def test_match_in_inputs_error(self):
+        """E367: match in inputs body."""
+        check_fails(
+            "inputs bad(n Integer) Integer\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => n\n"
+            "            false => 0\n",
+            "E367",
+        )
+
+    def test_match_in_outputs_error(self):
+        """E367: match in outputs body."""
+        check_fails(
+            "outputs bad(n Integer) Integer\n"
+            "    from\n"
+            "        match n > 0\n"
+            "            true => n\n"
+            "            false => 0\n",
+            "E367",
+        )
+
+    def test_match_in_main_ok(self):
+        """match in main is exempt from E367."""
+        check(
+            "module M\n"
+            "  type Color is Red | Green\n"
+            "main() Unit\n"
+            "    from\n"
+            "        match true\n"
+            "            true => 0\n"
+            "            false => 1\n"
+        )
+
+
+class TestLookupTable:
+    """Tests for lookup table checking (E375, E376, E377)."""
+
+    def test_valid_lookup(self):
+        """A valid lookup should produce no errors."""
+        check(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            '      Type | "type"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_e375_duplicate_value(self):
+        """E375: duplicate value in lookup table."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "main"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n",
+            "E375",
+        )
+
+    def test_many_to_one_mapping_allowed(self):
+        """Many-to-one: same variant with multiple values is allowed."""
+        check(
+            "module M\n"
+            "\n"
+            "  lookup BoolLit | String\n"
+            '      True | "true"\n'
+            '      True | "yes"\n'
+            '      False | "false"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_e376_variable_operand(self):
+        """E376: $ with a variable (not a literal or variant)."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "transforms resolve(s String) String\n"
+            "    from\n"
+            "        $s\n",
+            "E376",
+        )
+
+    def test_e377_value_not_found(self):
+        """E377: $ with a literal not in the table."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        $"unknown"\n',
+            "E377",
+        )
+
+    def test_e377_variant_not_found(self):
+        """E377: $ with a variant not in the table."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        $Type\n",
+            "E377",
+        )
+
+    def test_forward_lookup_returns_algebraic_type(self):
+        """$"main" should resolve to the algebraic type."""
+        check(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        $"main"\n'
+        )
+
+    def test_reverse_lookup_returns_value_type(self):
+        """$Main should resolve to String."""
+        check(
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        $Main\n"
         )

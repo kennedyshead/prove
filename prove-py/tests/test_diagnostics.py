@@ -32,7 +32,7 @@ class TestW304:
 
     def test_fires_when_match_equals_requires(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
             "    match n >= 0\n"
@@ -44,7 +44,7 @@ class TestW304:
 
     def test_not_fired_when_condition_differs(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
             "    match n > 10\n"
@@ -56,7 +56,7 @@ class TestW304:
 
     def test_not_fired_without_requires(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "from\n"
             "    match n >= 0\n"
             "        true => n\n"
@@ -67,7 +67,7 @@ class TestW304:
 
     def test_has_note(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
             "    match n >= 0\n"
@@ -79,7 +79,7 @@ class TestW304:
 
     def test_matches_complex_expression(self):
         source = (
-            "transforms f(a Integer, b Integer) Integer\n"
+            "matches f(a Integer, b Integer) Integer\n"
             "  requires a + b > 0\n"
             "from\n"
             "    match a + b > 0\n"
@@ -412,7 +412,7 @@ class TestW326:
 
     def test_fires_for_simple_recursion(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
             "    match n\n"
@@ -424,7 +424,7 @@ class TestW326:
 
     def test_not_fired_with_believe(self):
         source = (
-            "transforms f(n Integer) Integer\n"
+            "matches f(n Integer) Integer\n"
             "  ensures result >= 0\n"
             "  terminates: n\n"
             "  believe: result >= 0\n"
@@ -456,7 +456,7 @@ class TestI301:
         source = (
             "module M\n"
             "  type Color is Red | Green\n"
-            "transforms f(c Color) String\n"
+            "matches f(c Color) String\n"
             "from\n"
             "    match c\n"
             '        _ => "any"\n'
@@ -469,7 +469,7 @@ class TestI301:
         source = (
             "module M\n"
             "  type Color is Red | Green\n"
-            "transforms f(c Color) String\n"
+            "matches f(c Color) String\n"
             "from\n"
             "    match c\n"
             '        Red => "red"\n'

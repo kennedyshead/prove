@@ -13,14 +13,12 @@ module Source
   type SourceFile is
     path String
     content String
-    lines List<String>
 
-inputs source_lines(source_file SourceFile) List<String>!
+inputs source_lines(source_file SourceFile) List<String>
   requires valid file(source_file.path)
 from
-    content as String = file(source_file.path)!
-    split(content, "
-    ")
+    content as String = file(source_file.path)
+    split(content, "\\n")
 
 transforms dummy_span() Span
 from

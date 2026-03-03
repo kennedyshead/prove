@@ -17,7 +17,7 @@ transforms no_ensures(n Integer) Integer
 from
     n
 
-transforms redundant_match(n Integer) Integer
+matches redundant_match(n Integer) Integer
   requires n >= 0
 from
     match n >= 0
@@ -28,7 +28,7 @@ validates is_positive(x Integer)
 from
     x > 0
 
-transforms unreachable(c Color) String
+matches unreachable(c Color) String
 from
     match c
         _ => "any"
@@ -61,7 +61,7 @@ transforms guarded(n Integer) Integer
 from
     n
 
-transforms countdown(n Integer) Integer
+matches countdown(n Integer) Integer
   terminates: n
 from
     match n

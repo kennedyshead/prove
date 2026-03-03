@@ -94,6 +94,9 @@ class DocumentState:
     module: Module | None = None
     symbols: SymbolTable | None = None
     diagnostics: list[lsp.Diagnostic] = field(default_factory=list)
+    local_import_index: dict[str, list[ImportSuggestion]] = field(
+        default_factory=dict,
+    )
 
 
 # ── Server ────────────────────────────────────────────────────────
@@ -122,6 +125,64 @@ def _compile_diag(d: object) -> lsp.Diagnostic:
         code=code, message=f"[{code}] {msg}",
         code_description=code_desc,
     )
+
+
+def _resolve_local_modules(uri: str) -> dict | None:
+    """Discover sibling .prv files and build a local module registry.
+
+    Returns None if the URI is not a file:// path or has no siblings.
+    """
+    from pathlib import Path
+
+    from prove.module_resolver import build_module_registry
+
+    # Convert file:// URI to a local path
+    if uri.startswith("file://"):
+        file_path = Path(uri[7:])
+    elif uri.startswith("/"):
+        file_path = Path(uri)
+    else:
+        return None
+
+    if not file_path.exists():
+        return None
+
+    # Look for sibling .prv files in the same directory
+    parent = file_path.parent
+    prv_files = sorted(parent.glob("*.prv"))
+    if len(prv_files) <= 1:
+        return None
+
+    try:
+        return build_module_registry(prv_files)
+    except Exception:
+        return None
+
+
+def _build_local_import_index(
+    local_modules: dict | None,
+) -> dict[str, list[ImportSuggestion]]:
+    """Build an import suggestion index from local (sibling) modules."""
+    if not local_modules:
+        return {}
+
+    from prove.module_resolver import LocalModuleInfo
+
+    index: dict[str, list[ImportSuggestion]] = {}
+    for module_name, info in local_modules.items():
+        # Index exported types
+        for type_name in info.types:
+            index.setdefault(type_name, []).append(
+                ImportSuggestion(module=module_name, verb="types", name=type_name),
+            )
+
+        # Index exported functions
+        for sig in info.functions:
+            index.setdefault(sig.name, []).append(
+                ImportSuggestion(module=module_name, verb=sig.verb, name=sig.name),
+            )
+
+    return index
 
 
 def _analyze(uri: str, source: str) -> DocumentState:
@@ -170,9 +231,11 @@ def _analyze(uri: str, source: str) -> DocumentState:
 
     # Phase 3: Check
     try:
-        checker = Checker()
+        local_modules = _resolve_local_modules(uri)
+        checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
         ds.symbols = symbols
+        ds.local_import_index = _build_local_import_index(local_modules)
         diags.extend(_compile_diag(d) for d in checker.diagnostics)
     except Exception as e:
         diags.append(lsp.Diagnostic(
@@ -327,8 +390,8 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             kind=lsp.CompletionItemKind.Class,
         ))
 
-    # Stdlib functions and types (always available, even with parse errors)
-    index = build_import_index()
+    # Stdlib + local module functions and types
+    index = _merged_import_index(ds)
     for name, suggestions in index.items():
         if suggestions:
             s = suggestions[0]
@@ -628,6 +691,17 @@ _IMPORT_VERBS = {
 }
 
 
+def _merged_import_index(
+    ds: DocumentState | None,
+) -> dict[str, list[ImportSuggestion]]:
+    """Merge stdlib import index with local module imports."""
+    index = dict(build_import_index())  # shallow copy
+    if ds is not None and ds.local_import_index:
+        for name, suggestions in ds.local_import_index.items():
+            index.setdefault(name, []).extend(suggestions)
+    return index
+
+
 def _build_import_edit_text(
     source: str, suggestion: ImportSuggestion,
 ) -> lsp.TextEdit | None:
@@ -788,7 +862,7 @@ def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
     if ds is None:
         return None
 
-    index = build_import_index()
+    index = _merged_import_index(ds)
     actions: list[lsp.CodeAction] = []
 
     for diag in params.context.diagnostics:

@@ -88,10 +88,12 @@ for _c in ("E320", "E325", "E330", "E331"):
 DIAGNOSTIC_DOCS["E340"] = f"{_DOCS_BASE}#E340"
 # Control flow E350
 DIAGNOSTIC_DOCS["E350"] = f"{_DOCS_BASE}#E350"
-# Verb enforcement E361-E366 (E360 moved to I360)
-_register_doc_range("E", 361, 366)
+# Verb enforcement E361-E367 (E360 moved to I360)
+_register_doc_range("E", 361, 367)
 # Pattern matching E370-E371
 _register_doc_range("E", 370, 371)
+# Lookup tables E375-E377
+_register_doc_range("E", 375, 377)
 # Contract checking
 for _c in ("E380", "E382", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"

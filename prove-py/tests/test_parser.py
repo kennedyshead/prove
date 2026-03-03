@@ -23,6 +23,8 @@ from prove.ast_nodes import (
     InvariantNetwork,
     LambdaExpr,
     ListLiteral,
+    LookupDecl,
+    LookupExpr,
     MainDef,
     MatchExpr,
     ModifiedType,
@@ -700,3 +702,90 @@ class TestParserIntegration:
         assert isinstance(mod.declarations[0], ModuleDecl)
         assert len(mod.declarations[0].types) == 1
         assert isinstance(mod.declarations[1], FunctionDef)
+
+
+class TestParserLookup:
+    """Tests for lookup table parsing."""
+
+    def test_lookup_decl_basic(self):
+        """Parse a basic lookup declaration."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            '      Type | "type"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        assert decl.lookup is not None
+        assert isinstance(decl.lookup, LookupDecl)
+        assert decl.lookup.name == "TokenKind"
+        assert len(decl.lookup.entries) == 3
+        assert decl.lookup.entries[0].variant == "Main"
+        assert decl.lookup.entries[0].value == "main"
+        assert decl.lookup.entries[0].value_kind == "string"
+
+    def test_lookup_expr_string(self):
+        """Parse $"main" as a LookupExpr."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        $"main"\n'
+        )
+        mod = parse(source)
+        main_def = mod.declarations[1]
+        assert isinstance(main_def, MainDef)
+        stmt = main_def.body[0]
+        assert isinstance(stmt, ExprStmt)
+        assert isinstance(stmt.expr, LookupExpr)
+        assert isinstance(stmt.expr.operand, StringLit)
+        assert stmt.expr.operand.value == "main"
+
+    def test_lookup_expr_variant(self):
+        """Parse $Main as a LookupExpr."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        $Main\n"
+        )
+        mod = parse(source)
+        main_def = mod.declarations[1]
+        assert isinstance(main_def, MainDef)
+        stmt = main_def.body[0]
+        assert isinstance(stmt, ExprStmt)
+        assert isinstance(stmt.expr, LookupExpr)
+        assert isinstance(stmt.expr.operand, TypeIdentifierExpr)
+        assert stmt.expr.operand.name == "Main"
+
+    def test_lookup_as_function_name(self):
+        """'lookup' can still be used as a function name."""
+        source = (
+            "module M\n"
+            "\n"
+            "reads lookup(key String) String\n"
+            "    from\n"
+            '        "value"\n'
+        )
+        mod = parse(source)
+        func = mod.declarations[1]
+        assert isinstance(func, FunctionDef)
+        assert func.name == "lookup"

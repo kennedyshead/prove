@@ -42,6 +42,11 @@ def build_project(
     all_diags: list[Diagnostic] = []
     modules_and_symbols = []
 
+    # Build local module registry for cross-file imports
+    from prove.module_resolver import build_module_registry
+
+    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
     for prv_file in prv_files:
         source = prv_file.read_text()
         filename = str(prv_file)
@@ -57,7 +62,7 @@ def build_project(
         # Format (type-infer and rewrite), then re-parse the canonical source
         from prove.formatter import ProveFormatter
 
-        checker = Checker()
+        checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
         formatter = ProveFormatter(symbols=symbols)
         formatted = formatter.format(module)
@@ -73,7 +78,7 @@ def build_project(
             continue
 
         # Check
-        checker = Checker()
+        checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
         all_diags.extend(checker.diagnostics)
 

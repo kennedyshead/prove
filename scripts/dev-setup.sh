@@ -5,6 +5,7 @@ set -euo pipefail
 # Run this script to install all dependencies needed for development.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKSPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "==> Setting up Prove development environment..."
 
@@ -79,12 +80,12 @@ fi
 # --- Bootstrap compiler (prove-py) ---
 
 echo "==> Installing Prove bootstrap compiler (prove-py) in dev mode..."
-pip3 install -e "$SCRIPT_DIR/prove-py[dev]" "${PIP_FLAGS[@]}"
+pip3 install -e "$WORKSPACE_DIR/prove-py[dev]" "${PIP_FLAGS[@]}"
 
 # --- Pygments lexer (needed for docs) ---
 
 echo "==> Installing pygments-prove lexer..."
-pip3 install -e "$SCRIPT_DIR/pygments-prove" "${PIP_FLAGS[@]}"
+pip3 install -e "$WORKSPACE_DIR/pygments-prove" "${PIP_FLAGS[@]}"
 
 # --- MkDocs + Material theme (docs) ---
 
@@ -98,7 +99,7 @@ pip3 install "${PIP_FLAGS[@]}" \
 
 if command -v node &>/dev/null && command -v npm &>/dev/null; then
     echo "==> Installing tree-sitter-prove dependencies..."
-    (cd "$SCRIPT_DIR/tree-sitter-prove" && npm install)
+    (cd "$WORKSPACE_DIR/tree-sitter-prove" && npm install)
 else
     echo "==> Skipping tree-sitter-prove (node/npm not found — optional)"
 fi

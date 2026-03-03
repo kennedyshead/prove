@@ -225,7 +225,7 @@ class TestMatchExpression:
             "        Green\n"
             "        Blue\n"
             "\n"
-            "transforms name(c Color) String\n"
+            "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
             '            Red => "red"\n'
@@ -245,7 +245,7 @@ class TestMatchExpression:
             "        Circle(radius Integer)\n"
             "        Square(side Integer)\n"
             "\n"
-            "transforms area(s Shape) Integer\n"
+            "matches area(s Shape) Integer\n"
             "    from\n"
             "        match s\n"
             "            Circle(r) => r * r\n"
@@ -268,7 +268,7 @@ class TestMatchExpression:
             "        Get(path String)\n"
             "        Post(path String)\n"
             "\n"
-            "transforms handle(route Route) String\n"
+            "matches handle(route Route) String\n"
             "    from\n"
             "        match route\n"
             '            Get(path) => "GET " + path\n'

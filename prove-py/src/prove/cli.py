@@ -37,6 +37,11 @@ def _compile_project(
         click.echo("warning: no .prv files found", err=True)
         return True, 0, 0, 0, 0
 
+    # Build local module registry for cross-file imports
+    from prove.module_resolver import build_module_registry
+
+    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
     renderer = DiagnosticRenderer(color=True)
     checked = 0
     errors = 0
@@ -57,7 +62,7 @@ def _compile_project(
             continue
 
         checked += 1
-        checker = Checker()
+        checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
 
         for diag in checker.diagnostics:
@@ -308,6 +313,11 @@ def test(path: str, property_rounds: int | None) -> None:
             click.echo("warning: no .prv files found", err=True)
             return
 
+        # Build local module registry for cross-file imports
+        from prove.module_resolver import build_module_registry
+
+        local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
         renderer = DiagnosticRenderer(color=True)
         modules = []
         had_errors = False
@@ -324,7 +334,7 @@ def test(path: str, property_rounds: int | None) -> None:
                     click.echo(renderer.render(diag), err=True)
                 continue
 
-            checker = Checker()
+            checker = Checker(local_modules=local_modules)
             symbols = checker.check(module)
             for diag in checker.diagnostics:
                 click.echo(renderer.render(diag), err=True)
@@ -441,7 +451,11 @@ def _format_excerpt(filename: str, original: str, formatted: str) -> str:
     return "\n".join(lines)
 
 
-def _try_check(source: str, filename: str) -> tuple[SymbolTable | None, list]:
+def _try_check(
+    source: str,
+    filename: str,
+    local_modules: dict | None = None,
+) -> tuple[SymbolTable | None, list]:
     """Run checker on source, returning symbols and diagnostics.
 
     Returns the symbol table even when the checker finds errors, because
@@ -454,7 +468,7 @@ def _try_check(source: str, filename: str) -> tuple[SymbolTable | None, list]:
     except (CompileError, Exception):
         return None, []
 
-    checker = Checker()
+    checker = Checker(local_modules=local_modules)
     checker.check(module)
     return checker.symbols, checker.diagnostics
 
@@ -495,6 +509,13 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
     # --- .prv files ---
     prv_files = sorted(target.rglob("*.prv")) if target.is_dir() else [target]
 
+    # Build local module registry for cross-file type inference
+    local_modules: dict | None = None
+    if target.is_dir() and len(prv_files) > 1:
+        from prove.module_resolver import build_module_registry
+
+        local_modules = build_module_registry(prv_files)
+
     changed = 0
     checked = 0
     skipped = 0
@@ -512,7 +533,7 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             continue
 
         checked += 1
-        symbols, diagnostics = _try_check(source, filename)
+        symbols, diagnostics = _try_check(source, filename, local_modules=local_modules)
         formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
         formatted = formatter.format(module)
         if formatted != source:

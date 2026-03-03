@@ -25,7 +25,7 @@ class TestFixI301:
             "module M\n"
             "  type Color is Red | Green\n"
             "\n"
-            "  transforms name(c Color) String\n"
+            "  matches name(c Color) String\n"
             "  from\n"
             "      match c\n"
             '          _ => "any"\n'
@@ -40,7 +40,7 @@ class TestFixI301:
             "module M\n"
             "  type Color is Red | Green\n"
             "\n"
-            "  transforms name(c Color) String\n"
+            "  matches name(c Color) String\n"
             "  from\n"
             "      match c\n"
             '          Red => "red"\n'
@@ -55,7 +55,7 @@ class TestFixI301:
             "module M\n"
             "  type Color is Red | Green | Blue\n"
             "\n"
-            "  transforms name(c Color) String\n"
+            "  matches name(c Color) String\n"
             "  from\n"
             "      match c\n"
             '          _ => "any"\n'
@@ -341,5 +341,68 @@ class TestFixRoundtrip:
             "      Text.upper(s)\n"
         )
         first = check_and_format(source)
+        second = check_and_format(first)
+        assert first == second
+
+
+# ── Lookup table formatting ───────────────────────────────────────
+
+
+class TestFormatLookup:
+    """Tests for lookup table and $expr formatting."""
+
+    def test_lookup_decl_roundtrip(self):
+        """Lookup declaration should format correctly and survive a roundtrip."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            '      Type | "type"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        first = check_and_format(source)
+        assert "lookup TokenKind | String" in first
+        assert 'Main | "main"' in first
+        second = check_and_format(first)
+        assert first == second
+
+    def test_lookup_expr_string_roundtrip(self):
+        """$"main" should format as $"main" and survive roundtrip."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        $"main"\n'
+        )
+        first = check_and_format(source)
+        assert '$"main"' in first
+        second = check_and_format(first)
+        assert first == second
+
+    def test_lookup_expr_variant_roundtrip(self):
+        """$Main should format as $Main and survive roundtrip."""
+        source = (
+            "module M\n"
+            "\n"
+            "  lookup TokenKind | String\n"
+            '      Main | "main"\n'
+            '      From | "from"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        $Main\n"
+        )
+        first = check_and_format(source)
+        assert "$Main" in first
         second = check_and_format(first)
         assert first == second
