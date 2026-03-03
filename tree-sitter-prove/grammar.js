@@ -49,7 +49,7 @@ module.exports = grammar({
       'module',
       $.type_identifier,
       repeat(choice(
-        $.import_declaration,
+        prec(-1, $.import_declaration),
         $.type_definition,
         $.constant_definition,
         $.invariant_network,
@@ -76,9 +76,16 @@ module.exports = grammar({
     type_definition: $ => seq(
       'type',
       $.type_identifier,
+      optional(seq(':', $.type_modifier_bracket)),
       optional($.type_parameters),
       'is',
       $._type_body,
+    ),
+
+    type_modifier_bracket: $ => seq(
+      '[',
+      repeat1($.type_identifier),
+      ']',
     ),
 
     _type_body: $ => choice(
@@ -86,6 +93,7 @@ module.exports = grammar({
       $.record_type_body,
       $.refinement_type_body,
       $.binary_type_body,
+      $.lookup_type_body,
     ),
 
     binary_type_body: $ => 'binary',
@@ -118,6 +126,21 @@ module.exports = grammar({
       'where',
       $.expression,
     ),
+
+    lookup_type_body: $ => prec.left(seq(
+      $.type_expression,
+      'where',
+      $.lookup_variant,
+      $.lookup_variant,
+      repeat($.lookup_variant),
+    )),
+
+    lookup_variant: $ => prec.left(seq(
+      $.type_identifier,
+      '|',
+      $.string_literal,
+      repeat(seq('|', $.string_literal)),
+    )),
 
     // ─── Type Expressions ──────────────────────────────────────
 
@@ -157,10 +180,9 @@ module.exports = grammar({
       choice($.integer_literal, $.identifier),
     ),
 
-    type_parameters: $ => seq(
-      '<',
-      sep1($.type_identifier, ','),
-      '>',
+    type_parameters: $ => choice(
+      seq('<', sep1($.type_identifier, ','), '>'),
+      seq('[', sep1($.type_identifier, ','), ']'),
     ),
 
     // ─── Function Definitions ──────────────────────────────────
@@ -239,11 +261,14 @@ module.exports = grammar({
       $.believe_annotation,
       $.intent_annotation,
       $.satisfies_clause,
+      $.when_annotation,
     ),
 
     ensures_clause: $ => seq('ensures', $.expression),
 
     requires_clause: $ => seq('requires', $.expression),
+
+    when_annotation: $ => seq('when', $.expression),
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
 

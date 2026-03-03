@@ -1,7 +1,14 @@
 ; Tree-sitter highlight queries for Prove
 ; ========================================
 
+; Strings must be captured first to prevent keyword highlighting inside strings
+(string_literal) @string
+
 ; ─── Verbs (function declaration keywords) ──────────────────
+
+; Only highlight verbs when they appear in function definitions
+; (not in type definitions where they're used as variant names)
+(function_definition (verb) @keyword.function)
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
@@ -25,6 +32,7 @@
   "as"
   "binary"
   "comptime"
+  "foreign"
   "from"
   "is"
   "match"
@@ -43,6 +51,7 @@
   "explain"
   "requires"
   "terminates"
+  "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords
 
@@ -53,6 +62,22 @@
 (explain_line) @string.documentation
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
+
+; Only highlight AI keywords in annotation contexts
+(ensures_clause) @keyword.control
+(requires_clause) @keyword.control
+(trusted_annotation) @keyword.control
+(terminates_annotation) @keyword.control
+(why_not_annotation) @keyword.control
+(chosen_annotation) @keyword.control
+(near_miss_annotation) @keyword.control
+(know_annotation) @keyword.control
+(assume_annotation) @keyword.control
+(believe_annotation) @keyword.control
+(intent_annotation) @keyword.directive
+(satisfies_clause) @keyword.directive
+(narrative_annotation) @keyword.directive
+(temporal_annotation) @keyword.directive
 
 ; PROVE-EXPORT-BEGIN: ai-keywords
 [
@@ -130,8 +155,6 @@
 
 ; ─── Literals ───────────────────────────────────────────────
 
-(string_literal) @string
-
 (interpolation
   "{" @punctuation.special
   "}" @punctuation.special)
@@ -141,6 +164,10 @@
 (integer_literal) @number
 (decimal_literal) @number.float
 
+; Only highlight booleans in expressions, not in type definitions
+(expression (boolean_literal) @boolean)
+
+; Fallback for other contexts - lower priority
 (boolean_literal) @boolean
 
 ; ─── Operators ──────────────────────────────────────────────
@@ -201,7 +228,7 @@
 ; ─── Algebraic Variants (in type definitions) ───────────────
 
 (algebraic_variant
-  (type_identifier) @constructor)
+  (type_identifier) @type)
 
 ; ─── Import items ───────────────────────────────────────────
 

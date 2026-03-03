@@ -1,0 +1,38 @@
+module Errors
+  narrative: """Compiler diagnostic types and rendering."""
+  Source types Span SourceFile
+  InputOutput outputs console
+
+  type Severity is Error
+    | Warning
+    | Info
+
+  type DiagnosticLabel is
+    span Span
+    message String
+
+  type Suggestion is
+    message String
+
+  type Diagnostic is
+    severity Severity
+    code String
+    message String
+    labels List<DiagnosticLabel>
+    suggestions List<Suggestion>
+
+outputs render_line(diagnostic Diagnostic, source SourceFile)
+from
+    console(f"[{diagnostic.code}] {diagnostic.message}")
+
+outputs render(diagnostics List<Diagnostic>, source SourceFile)
+from
+    each(diagnostics, |diagnostic| render_line(diagnostic, source))
+
+validates error(diagnostic Diagnostic)
+from
+    diagnostic.severity == Error
+
+validates has_errors(diagnostics List<Diagnostic>)
+from
+    len(filter(diagnostics, |diagnostic| error)) > 0

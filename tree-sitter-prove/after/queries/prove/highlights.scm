@@ -1,18 +1,13 @@
 ; Tree-sitter highlight queries for Prove
 ; ========================================
 
+; Strings must be captured first to prevent keyword highlighting inside strings
+(string_literal) @string
+
 ; ─── Verbs (function declaration keywords) ──────────────────
 
-[
-  "transforms"
-  "inputs"
-  "outputs"
-  "validates"
-  "reads"
-  "creates"
-  "matches"
-  "types"
-] @keyword.function
+; Only highlight verbs in function definition context
+(function_definition (verb) @keyword.function)
 
 "main" @keyword.function
 
@@ -39,9 +34,14 @@
   "proof"
   "explain"
   "terminates"
+  "trusted"
+  "when"
 ] @keyword.control
 
+(ensures_clause) @keyword.control
+(requires_clause) @keyword.control
 (trusted_annotation) @keyword.control
+(terminates_annotation) @keyword.control
 
 ; ─── Explain Lines ─────────────────────────────────────────
 
@@ -49,6 +49,19 @@
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
 
+; Only highlight AI keywords in annotation contexts
+(why_not_annotation) @keyword.directive
+(chosen_annotation) @keyword.directive
+(near_miss_annotation) @keyword.directive
+(know_annotation) @keyword.directive
+(assume_annotation) @keyword.directive
+(believe_annotation) @keyword.directive
+(intent_annotation) @keyword.directive
+(narrative_annotation) @keyword.directive
+(temporal_annotation) @keyword.directive
+(satisfies_clause) @keyword.directive
+
+; These are only keywords in annotation positions
 [
   "intent"
   "narrative"
@@ -133,6 +146,9 @@
 (integer_literal) @number
 (decimal_literal) @number.float
 
+; Only highlight booleans in expression contexts
+(expression (boolean_literal) @boolean)
+
 (boolean_literal) @boolean
 
 ; ─── Operators ──────────────────────────────────────────────
@@ -199,7 +215,7 @@
 ; ─── Algebraic Variants (in type definitions) ───────────────
 
 (algebraic_variant
-  (type_identifier) @constructor)
+  (type_identifier) @type)
 
 ; ─── Import items ───────────────────────────────────────────
 
