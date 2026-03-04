@@ -56,7 +56,7 @@ outputs update_email(id Option<Integer>)!
       and we update if email changed
 from
     email as Option<Email> = email()
-    user as User:[Mutable] = user(id)
+    user as User:[Mutable] = user(id)!
     user as User = set_email(user, email)
     console(f"{user.name} now have email {user.email}")
     file(USER_FILE, text(user))!
