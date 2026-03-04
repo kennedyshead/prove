@@ -6,11 +6,10 @@ module Example
   List reads first
   Parse reads object, validates object
   Table types Table
-  Convert creates integer, validates integer
 
   type Email is String where r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
 
-  type User:[Mutable] is
+  type User is
     id Integer
     name String
     email String
@@ -29,7 +28,7 @@ from
     data as Table<Value> = object(json_data)
     User(data.id, data.name, data.email)
 
-inputs user(user_id Integer) User:[Mutable]!
+inputs user(user_id Integer) User!
 from
     raw as String = file(USER_FILE)!
     json_data as Result<Value, String> = json(raw)
@@ -39,9 +38,9 @@ from
 validates id(id Option<Integer>)
   requires valid integer(id)
 from
-    integer(id)
+    id > 0
 
-transforms set_email(user User:[Mutable], email Option<Email>) User:[Mutable]
+transforms set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
     user.email = email
@@ -57,7 +56,7 @@ outputs update_email(id Option<Integer>)!
       and we update if email changed
 from
     email as Option<Email> = email()
-    user as User:[Mutable] = user(id)!
+    user as User:[Mutable] = user(id)
     user as User = set_email(user, email)
     console(f"{user.name} now have email {user.email}")
     file(USER_FILE, text(user))!

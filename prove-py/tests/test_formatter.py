@@ -428,6 +428,73 @@ class TestFormatterTypeInference:
         second = _format_with_types(first)
         assert first == second
 
+    def test_mutable_type_inferred_from_call(self):
+        """Auto-typed variable should include :[Mutable] modifier."""
+        source = (
+            "module Main\n"
+            '  narrative: """test"""\n'
+            "\n"
+            "  type User:[Mutable] is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "transforms make_user(id Integer, name String) User:[Mutable]\n"
+            "from\n"
+            "    User(id, name)\n"
+            "\n"
+            "transforms test_it(id Integer) User:[Mutable]\n"
+            "from\n"
+            '    u as = make_user(id, "test")\n'
+            "    u\n"
+        )
+        result = _format_with_types(source)
+        assert 'u as User:[Mutable] = make_user(id, "test")' in result
+
+    def test_mutable_type_preserved_when_already_annotated(self):
+        """Existing User:[Mutable] annotation must not be stripped."""
+        source = (
+            "module Main\n"
+            '  narrative: """test"""\n'
+            "\n"
+            "  type User:[Mutable] is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "transforms make_user(id Integer, name String) User:[Mutable]\n"
+            "from\n"
+            "    User(id, name)\n"
+            "\n"
+            "transforms test_it(id Integer) User:[Mutable]\n"
+            "from\n"
+            '    u as User:[Mutable] = make_user(id, "test")\n'
+            "    u\n"
+        )
+        result = _format_with_types(source)
+        assert 'u as User:[Mutable] = make_user(id, "test")' in result
+
+    def test_mutable_type_roundtrip_stable(self):
+        """Formatting twice with mutable type inference is stable."""
+        source = (
+            "module Main\n"
+            '  narrative: """test"""\n'
+            "\n"
+            "  type User:[Mutable] is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "transforms make_user(id Integer, name String) User:[Mutable]\n"
+            "from\n"
+            "    User(id, name)\n"
+            "\n"
+            "transforms test_it(id Integer) User:[Mutable]\n"
+            "from\n"
+            '    u as = make_user(id, "test")\n'
+            "    u\n"
+        )
+        first = _format_with_types(source)
+        second = _format_with_types(first)
+        assert first == second
+
 
 def _format_with_fixes(source: str) -> str:
     """Parse, check, and format with diagnostics for auto-fixes."""

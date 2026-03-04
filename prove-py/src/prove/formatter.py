@@ -856,6 +856,9 @@ class ProveFormatter:
         if isinstance(ty, ErrorType):
             return None  # Unknown type — skip
         if isinstance(ty, PrimitiveType):
+            if ty.modifiers:
+                mods = " ".join(ty.modifiers)
+                return f"{ty.name}:[{mods}]"
             return ty.name
         if isinstance(ty, TypeVariable):
             return ty.name
