@@ -67,9 +67,6 @@ else
 
     echo "==> Pushing to origin/$BRANCH..."
     git -C "$WORK_DIR" push origin "$BRANCH"
-
-    echo "==> Pushing to github/$BRANCH..."
-    git -C "$WORK_DIR" push github "$BRANCH" || echo "Warning: github push failed (non-fatal)"
 fi
 
 # Clean up worktree
