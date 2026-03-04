@@ -82,6 +82,17 @@ def _types_display(sig: FunctionSignature) -> str:
     return f"{verb}{sig.name}({params}) {ret}{fail}"
 
 
+def _sig_params_display(sig: FunctionSignature) -> str:
+    """Format just the parameter list and return type: '(a: Integer, b: Integer) Integer'."""
+    from prove.types import type_name
+    params = ", ".join(
+        f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
+    )
+    ret = type_name(sig.return_type)
+    fail = "!" if sig.can_fail else ""
+    return f"({params}) {ret}{fail}"
+
+
 # ── Per-document state ────────────────────────────────────────────
 
 
@@ -179,7 +190,10 @@ def _build_local_import_index(
         # Index exported functions
         for sig in info.functions:
             index.setdefault(sig.name, []).append(
-                ImportSuggestion(module=module_name, verb=sig.verb, name=sig.name),
+                ImportSuggestion(
+                    module=module_name, verb=sig.verb, name=sig.name,
+                    signature=_sig_params_display(sig),
+                ),
             )
 
     return index
@@ -369,11 +383,22 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         ))
 
     # Builtins (runtime intrinsics — C-backed, not .prv)
+    _BUILTIN_SIGS: dict[str, str] = {
+        "len": "(list: List<T>) Integer",
+        "map": "(list: List<T>, fn: (T) -> U) List<U>",
+        "filter": "(list: List<T>, fn: (T) -> Boolean) List<T>",
+        "reduce": "(list: List<T>, init: U, fn: (U, T) -> U) U",
+        "to_string": "(value: T) String",
+        "clamp": "(value: Integer, low: Integer, high: Integer) Integer",
+    }
     for name in _BUILTINS:
         items.append(lsp.CompletionItem(
             label=name,
             kind=lsp.CompletionItemKind.Function,
-            detail="builtin",
+            detail=_BUILTIN_SIGS.get(name, "builtin"),
+            label_details=lsp.CompletionItemLabelDetails(
+                description="builtin",
+            ),
         ))
 
     # Built-in types (always available)
@@ -382,19 +407,20 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         items.append(lsp.CompletionItem(
             label=type_name,
             kind=lsp.CompletionItemKind.Class,
+            detail="type",
         ))
     # Generic types
     for type_name in ("List", "Result", "Option"):
         items.append(lsp.CompletionItem(
             label=type_name,
             kind=lsp.CompletionItemKind.Class,
+            detail="type",
         ))
 
-    # Stdlib + local module functions and types
+    # Stdlib + local module functions and types — one item per verb variant
     index = _merged_import_index(ds)
     for name, suggestions in index.items():
-        if suggestions:
-            s = suggestions[0]
+        for s in suggestions:
             is_type = s.verb == "types"
             # Compute auto-import edit if we have document state
             additional_edits: list[lsp.TextEdit] | None = None
@@ -408,9 +434,13 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     lsp.CompletionItemKind.Struct if is_type
                     else lsp.CompletionItemKind.Function
                 ),
-                detail=f"from {s.module}" + (
-                    f" ({s.verb})" if s.verb else ""
+                detail=s.signature if s.signature else None,
+                label_details=lsp.CompletionItemLabelDetails(
+                    detail=f" {s.verb}" if s.verb and s.verb != "types" else None,
+                    description=s.module,
                 ),
+                filter_text=name,
+                sort_text=f"{name}_{s.verb}" if s.verb else name,
                 additional_text_edits=additional_edits,
             ))
 
@@ -420,6 +450,7 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         for name in ds.symbols.all_known_names():
             sym = ds.symbols.lookup(name)
             if sym is not None:
+                from prove.types import type_name as _tn
                 kind_map = {
                     SymbolKind.FUNCTION: lsp.CompletionItemKind.Function,
                     SymbolKind.TYPE: lsp.CompletionItemKind.Class,
@@ -427,9 +458,11 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     SymbolKind.VARIABLE: lsp.CompletionItemKind.Variable,
                     SymbolKind.PARAMETER: lsp.CompletionItemKind.Variable,
                 }
+                verb_prefix = f"{sym.verb} " if sym.verb else ""
                 items.append(lsp.CompletionItem(
                     label=name,
                     kind=kind_map.get(sym.kind, lsp.CompletionItemKind.Text),
+                    detail=f"{verb_prefix}{_tn(sym.resolved_type)}",
                 ))
             else:
                 items.append(lsp.CompletionItem(
@@ -444,17 +477,22 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                 items.append(lsp.CompletionItem(
                     label=fname,
                     kind=lsp.CompletionItemKind.Function,
-                    detail=_types_display(sig),
+                    detail=_sig_params_display(sig),
+                    label_details=lsp.CompletionItemLabelDetails(
+                        detail=f" {sig.verb}" if sig.verb else None,
+                    ),
+                    sort_text=f"{fname}_{sig.verb}" if sig.verb else fname,
                 ))
 
-    # Deduplicate by label (prefer items with detail over bare ones)
-    seen: dict[str, lsp.CompletionItem] = {}
+    # Deduplicate by (label, sort_text) — verb variants are distinct
+    seen: dict[tuple[str, str], lsp.CompletionItem] = {}
     for item in items:
-        existing = seen.get(item.label)
+        key = (item.label, item.sort_text or item.label)
+        existing = seen.get(key)
         if existing is None:
-            seen[item.label] = item
+            seen[key] = item
         elif item.detail and not existing.detail:
-            seen[item.label] = item
+            seen[key] = item
 
     return lsp.CompletionList(
         is_incomplete=False, items=list(seen.values()),

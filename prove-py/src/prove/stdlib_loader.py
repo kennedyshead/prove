@@ -391,6 +391,7 @@ class ImportSuggestion:
     module: str  # display-cased: "InputOutput", etc.
     verb: str | None  # "outputs", "transforms", etc.
     name: str  # "println", "decode", etc.
+    signature: str = ""  # "(path: String) String!" display string
 
 
 # Canonical module keys → display names used in `with <Name> use ...`
@@ -414,6 +415,34 @@ _MODULE_DISPLAY_NAMES: dict[str, str] = {
 _ALIAS_KEYS = {"inputoutput"}
 
 _import_index: dict[str, list[ImportSuggestion]] | None = None
+
+
+def _type_expr_display(te: object) -> str:
+    """Convert an AST TypeExpr to a display string."""
+    from prove.ast_nodes import GenericType, ModifiedType, SimpleType
+
+    if isinstance(te, SimpleType):
+        return te.name
+    if isinstance(te, GenericType):
+        args = ", ".join(_type_expr_display(a) for a in te.args)
+        return f"{te.name}<{args}>"
+    if isinstance(te, ModifiedType):
+        return te.name
+    return str(te)
+
+
+def _function_signature_display(decl: object) -> str:
+    """Build a display signature string like '(path: String) String!' from a FunctionDef."""
+    from prove.ast_nodes import FunctionDef
+
+    if not isinstance(decl, FunctionDef):
+        return ""
+    params = ", ".join(
+        f"{p.name}: {_type_expr_display(p.type_expr)}" for p in decl.params
+    )
+    ret = _type_expr_display(decl.return_type) if decl.return_type else "Unit"
+    fail = "!" if decl.can_fail else ""
+    return f"({params}) {ret}{fail}"
 
 
 def _parse_stdlib_module(module_name: str) -> Module | None:
@@ -476,6 +505,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                     module=display,
                     verb=decl.verb,
                     name=decl.name,
+                    signature=_function_signature_display(decl),
                 )
                 index.setdefault(decl.name, []).append(suggestion)
 

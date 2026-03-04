@@ -13,6 +13,7 @@ from prove.lsp import (
     _extract_undefined_name,
     _get_word_at,
     _is_e310,
+    _sig_params_display,
     _types_display,
     completion,
     span_to_range,
@@ -361,14 +362,14 @@ class TestCompletion:
         assert "file" in labels
 
     def test_stdlib_completions_have_detail(self):
-        """Stdlib items should show which module they come from."""
+        """Stdlib items should show module name in label_details.description."""
         _analyze("<test://det>", "")
         result = _complete("<test://det>")
-        by_label = {item.label: item for item in result.items}
-        item = by_label.get("console")
-        assert item is not None
-        assert item.detail is not None
-        assert "InputOutput" in item.detail
+        console_items = [i for i in result.items if i.label == "console"]
+        assert len(console_items) >= 1
+        item = console_items[0]
+        assert item.label_details is not None
+        assert item.label_details.description == "InputOutput"
 
     def test_symbol_table_completions_when_parsed(self):
         """User-defined names should appear when the file parses."""
@@ -384,14 +385,14 @@ class TestCompletion:
         labels = _complete_labels("<test://sym>")
         assert "add" in labels
 
-    def test_no_duplicate_labels(self):
-        """Each label should appear at most once."""
+    def test_no_duplicate_verb_label_pairs(self):
+        """Each (label, sort_text) pair should appear at most once."""
         _analyze("<test://dup>", "")
         result = _complete("<test://dup>")
-        labels = [item.label for item in result.items]
-        assert len(labels) == len(set(labels)), (
+        keys = [(item.label, item.sort_text or item.label) for item in result.items]
+        assert len(keys) == len(set(keys)), (
             f"duplicate completions: "
-            f"{[x for x in labels if labels.count(x) > 1]}"
+            f"{[x for x in keys if keys.count(x) > 1]}"
         )
 
     def test_stdlib_completion_auto_imports(self):
@@ -405,11 +406,11 @@ class TestCompletion:
             '    console("hi")\n',
         )
         result = _complete("file:///auto.prv")
-        by_label = {item.label: item for item in result.items}
+        file_items = [i for i in result.items if i.label == "file"]
 
-        # file should have an additional edit adding the import
-        item = by_label.get("file")
-        assert item is not None
+        # file should have multiple verb variants, each with an auto-import edit
+        assert len(file_items) >= 1
+        item = file_items[0]
         assert item.additional_text_edits is not None
         assert len(item.additional_text_edits) == 1
         edit = item.additional_text_edits[0]
@@ -428,10 +429,16 @@ class TestCompletion:
             '    console("hi")\n',
         )
         result = _complete("file:///noimport.prv")
-        by_label = {item.label: item for item in result.items}
-
-        item = by_label.get("console")
-        assert item is not None
+        # Find the outputs variant of console
+        console_items = [
+            i for i in result.items
+            if i.label == "console"
+            and i.label_details is not None
+            and i.label_details.detail is not None
+            and "outputs" in i.label_details.detail
+        ]
+        assert len(console_items) >= 1
+        item = console_items[0]
         # Already imported — no additional edit
         assert item.additional_text_edits is None
 
@@ -467,10 +474,10 @@ class TestCompletion:
             "        Get => ok()\n",
         )
         result = _complete("file:///parseerr.prv")
-        by_label = {item.label: item for item in result.items}
+        file_items = [i for i in result.items if i.label == "file"]
 
-        item = by_label.get("file")
-        assert item is not None
+        assert len(file_items) >= 1
+        item = file_items[0]
         assert item.additional_text_edits is not None, (
             "auto-import should work even when file has parse errors"
         )
@@ -494,11 +501,57 @@ class TestCompletion:
             "        Get => ok()\n",
         )
         result = _complete("file:///afterimport.prv")
-        by_label = {item.label: item for item in result.items}
+        file_items = [i for i in result.items if i.label == "file"]
 
-        item = by_label.get("file")
-        assert item is not None
+        assert len(file_items) >= 1
+        item = file_items[0]
         assert item.additional_text_edits is not None
         edit = item.additional_text_edits[0]
         # Should insert after "InputOutput outputs console" (line 2), so at line 3
         assert edit.range.start.line == 3
+
+    def test_channel_dispatch_shows_all_verbs(self):
+        """file has inputs, outputs, validates — all should appear."""
+        _analyze("<test://dispatch>", "")
+        result = _complete("<test://dispatch>")
+        file_items = [i for i in result.items if i.label == "file"]
+        verbs_found = set()
+        for item in file_items:
+            if item.label_details and item.label_details.detail:
+                verbs_found.add(item.label_details.detail.strip())
+        for verb in ("inputs", "outputs", "validates"):
+            assert verb in verbs_found, (
+                f"verb '{verb}' missing from file completions; found {verbs_found}"
+            )
+
+    def test_stdlib_completions_show_signature(self):
+        """Stdlib function completions should show parameter types in detail."""
+        _analyze("<test://sig>", "")
+        result = _complete("<test://sig>")
+        console_items = [i for i in result.items if i.label == "console"]
+        assert len(console_items) >= 1
+        item = console_items[0]
+        # Signature should contain param types
+        assert item.detail is not None
+        assert "String" in item.detail
+
+    def test_user_defined_function_detail(self):
+        """User-defined functions should show their signature in detail."""
+        _analyze(
+            "<test://userfn>",
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n",
+        )
+        result = _complete("<test://userfn>")
+        add_items = [i for i in result.items if i.label == "add"]
+        assert len(add_items) >= 1
+        # At least one should have a detail with the signature
+        detailed = [i for i in add_items if i.detail and "Integer" in i.detail]
+        assert len(detailed) >= 1, (
+            f"expected 'add' to have detail with 'Integer', got: "
+            f"{[(i.detail, i.label_details) for i in add_items]}"
+        )
