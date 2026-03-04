@@ -82,7 +82,7 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ## Optimizer
 
-When `optimize = true` in `prove.toml`, the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+When `optimize = true` in `prove.toml` (the default), the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
 
 | Pass | What it does |
 |------|-------------|

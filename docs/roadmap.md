@@ -32,7 +32,7 @@ after V1.0 is stable.
 | v0.8.1 | Complete | Lint system overhaul — diagnostic code splits, doc links, Suggestions |
 | v0.8.2 | Complete | `proof` → `explain` migration |
 | v0.8.3 | Complete | Remaining lints (E316, E317, W302, W303, W323, W326) — 506 tests |
-| v0.9 | Complete | Lexer export tool (`prove export`) — 612 tests |
+| v0.9 | Complete | Lexer export tool — 612 tests |
 | v0.9.1 | Complete | Documentation parity — mark unimplemented features, add missing diagnostics |
 | v0.9.6 | Complete | Stdlib: List, Math, Convert — 747 tests |
 | v0.9.7 | Complete | Stdlib: Path, Pattern |
@@ -54,13 +54,13 @@ Implement the `Own` type modifier and compiler-inferred borrows. Use-after-move
 detection, the `Mutable` type modifier, and ownership-aware memory management
 in the C emitter.
 
-### v0.9.4 — Auto-Memoization + Memory Regions
+### v0.9.5 — Auto-Memoization + Memory Regions
 
 Automatic memoization of eligible pure functions and region-based memory
 allocation for short-lived values. Extends the optimizer with memoization
 candidate analysis and adds region allocator support to the C runtime.
 
-### v0.9.5 — Mutation Testing
+### v0.9.6 — Mutation Testing
 
 Implement the `--mutate` flag. The compiler generates mutants (operator swaps,
 branch removals, constant changes), runs the contract-based test suite against
@@ -148,5 +148,5 @@ standard library dependencies.
 | [pygments-prove](https://code.botwork.se/Botwork/pygments-prove) | Pygments lexer for MkDocs and Sphinx code rendering |
 | [chroma-lexer-prove](https://code.botwork.se/Botwork/chroma-lexer-prove) | Chroma lexer for Gitea and Hugo code rendering |
 
-Starting with v0.9, the `prove export` command keeps all three lexer projects
+Starting with v0.9, the `scripts/export-lexers.py` script keeps all three lexer projects
 in sync with the compiler's canonical keyword lists automatically.

@@ -28,7 +28,10 @@ class BuildResult:
 
 
 def build_project(
-    project_dir: Path, config: ProveConfig,
+    project_dir: Path,
+    config: ProveConfig,
+    *,
+    debug: bool = False,
 ) -> BuildResult:
     """Run the full pipeline: discover -> lex -> parse -> check -> emit -> compile."""
     src_dir = project_dir / "src"
@@ -92,7 +95,7 @@ def build_project(
     if has_errors:
         return BuildResult(ok=False, diagnostics=all_diags)
 
-    return _build_c(project_dir, config, modules_and_symbols, all_diags)
+    return _build_c(project_dir, config, modules_and_symbols, all_diags, debug=debug)
 
 
 def _build_c(
@@ -100,12 +103,15 @@ def _build_c(
     config: ProveConfig,
     modules_and_symbols: list[tuple[Module, SymbolTable]],
     all_diags: list[Diagnostic],
+    *,
+    debug: bool = False,
 ) -> BuildResult:
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
     for module, symbols in modules_and_symbols:
         if config.build.optimize:
             from prove.optimizer import Optimizer
+
             optimizer = Optimizer(module, symbols)
             module = optimizer.optimize()
         emitter = CEmitter(module, symbols)
@@ -130,7 +136,8 @@ def _build_c(
     cc = find_c_compiler()
     if cc is None:
         return BuildResult(
-            ok=False, diagnostics=all_diags,
+            ok=False,
+            diagnostics=all_diags,
             c_error="no C compiler found (install gcc or clang)",
         )
 
@@ -150,6 +157,7 @@ def _build_c(
                         link_flags.append(f"-l{lib}")
                 # Add stdlib-required linker flags
                 from prove.stdlib_loader import stdlib_link_flags
+
                 for imp in decl.imports:
                     for flag in stdlib_link_flags(imp.module):
                         if flag not in link_flags:
@@ -165,13 +173,15 @@ def _build_c(
             c_files=runtime_c_files + gen_c_files,
             output=binary_path,
             compiler=cc,
-            optimize=config.build.optimize,
+            optimize=config.build.optimize and not debug,
+            debug=debug,
             include_dirs=[runtime_dir],
             extra_flags=extra_flags + link_flags,
         )
     except CompileCError as e:
         return BuildResult(
-            ok=False, diagnostics=all_diags,
+            ok=False,
+            diagnostics=all_diags,
             c_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
         )
 

@@ -1819,6 +1819,28 @@ class Checker:
         if isinstance(subject_type, AlgebraicType):
             self._check_exhaustiveness(expr, subject_type)
 
+        # I301: detect unreachable arms after always-matching record pattern
+        resolved_subj = subject_type
+        if isinstance(resolved_subj, PrimitiveType):
+            rt = self.symbols.resolve_type(resolved_subj.name)
+            if isinstance(rt, RecordType):
+                resolved_subj = rt
+        if isinstance(resolved_subj, RecordType):
+            record_seen = False
+            for arm in expr.arms:
+                if record_seen:
+                    self._info(
+                        "I301",
+                        "unreachable match arm after always-matching "
+                        f"'{resolved_subj.name}' pattern",
+                        arm.span,
+                    )
+                if (
+                    isinstance(arm.pattern, VariantPattern)
+                    and arm.pattern.name == resolved_subj.name
+                ):
+                    record_seen = True
+
         # Infer arm types
         result_type: Type = UNIT
         for arm in expr.arms:

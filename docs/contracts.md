@@ -10,15 +10,14 @@ transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Index>
   ensures is_none(result) implies target not_in xs
 ```
 
-## Contracts by Example — Why This Matters
+## Contracts by Example — What Makes Prove Different
 
-Prove's contract system is not syntactic sugar for assertions. It is a fundamentally different relationship between programmer intent and compiler enforcement. To see why, compare the same function — `calculate_total` — across four languages.
+Prove's contract system is not syntactic sugar for assertions. It is a fundamentally different relationship between programmer intent and compiler enforcement.
 
-### Prove
+### Compiler-Enforced Preconditions
 
 ```prove
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
-  ensures result >= 0
   requires len(items) > 0
 from
     sub as Price = subtotal(items)
@@ -26,12 +25,24 @@ from
     apply_tax(tax, discounted)
 ```
 
-Two things happen at compile time:
+The `requires` clause is compile-time enforced — the compiler rejects any call site that cannot prove `len(items) > 0`. This is not a runtime check. If your list might be empty, the code does not compile.
 
-- **`requires`** — The compiler rejects any call site that cannot prove `len(items) > 0`. This is not a runtime check. If your list might be empty, the code does not compile.
-- **`ensures`** — The compiler verifies that every code path produces `result >= 0`. If it cannot prove this statically, it generates property tests that exercise thousands of inputs.
+### Compiler-Verified Postconditions
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+The `ensures` clause is verified at compile time. The compiler checks that every code path produces `result >= 0`. If it cannot prove this statically, it automatically generates property tests that exercise thousands of random inputs.
 
 These are hard rules — the compiler enforces them automatically.
+
+### Implementation Reasoning
 
 When the implementation has multiple steps, `explain` documents the chain of operations using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and the compiler verifies references against contracts:
 
@@ -57,76 +68,23 @@ from
 
 `explain` is LSP-suggested, not compiler-required. Simple functions with `ensures` don't need it — the LSP suggests it when complexity warrants documentation. However, `ensures` without `explain` produces a warning: if you promise, explain how.
 
-### Python
+### Bidirectional Lookup Types
 
-```python
-def calculate_total(items: list[OrderItem], discount: Discount, tax: TaxRule) -> Price:
-    """Calculate order total after discount and tax.
+Algebraic types can use the `[Lookup]` modifier to create a bidirectional map in a single declaration:
 
-    Args:
-        items: must be non-empty
-        discount: discount to apply
-        tax: tax rule to apply
-
-    Returns:
-        total price, always >= 0
-    """
-    assert len(items) > 0  # only checked if -O is not set
-    sub = subtotal(items)
-    discounted = apply_discount(discount, sub)
-    result = apply_tax(tax, discounted)
-    assert result >= 0  # also stripped by -O
-    return result
+```prove
+type Status:[Lookup] is String where
+    Pending | "pending"
+    Active  | "active"
+    Done    | "done"
 ```
 
-- **Preconditions** — `assert` statements, stripped by `python -O`. The type hint `list[OrderItem]` says nothing about length. An empty list passes type checking and reaches runtime.
-- **Postconditions** — Another `assert`, also stripped in production. The docstring says "always >= 0" but nothing enforces it.
-- **Proof** — Does not exist. The docstring is a comment. Tests are a separate file written by a separate person at a separate time.
+Access works both ways:
 
-### Haskell
+- `Status:Active` → returns `"active"` (forward lookup)
+- `Status:"active"` → returns the `Active` variant (reverse lookup)
 
-```haskell
-calculateTotal :: NonEmpty OrderItem -> Discount -> TaxRule -> Price
--- | Precondition: items is non-empty (enforced by NonEmpty type)
--- | Postcondition: result >= 0 (NOT enforced — Price is just a newtype)
-calculateTotal items discount tax =
-  let sub = subtotal (toList items)
-      discounted = applyDiscount discount sub
-  in applyTax tax discounted
-```
-
-- **Preconditions** — `NonEmpty` enforces non-emptiness at the type level. This is genuinely good. But most preconditions ("discount is valid", "tax rate is between 0 and 1") require dependent types that Haskell does not have.
-- **Postconditions** — Comments. The type `Price` does not carry the invariant `>= 0` unless you build a custom smart constructor, and even then the compiler does not verify that `applyTax` preserves it.
-- **Proof** — Does not exist in the language. QuickCheck can test properties, but it is a library, it is opt-in, and the properties are written in test files separate from the function.
-
-### Rust
-
-```rust
-fn calculate_total(items: &[OrderItem], discount: &Discount, tax: &TaxRule) -> Price {
-    debug_assert!(!items.is_empty(), "items must be non-empty");
-    let sub = subtotal(items);
-    let discounted = apply_discount(discount, sub);
-    let result = apply_tax(tax, discounted);
-    debug_assert!(result >= Price::ZERO, "result must be non-negative");
-    result
-}
-```
-
-- **Preconditions** — `debug_assert!`, compiled out in release builds. The slice type `&[OrderItem]` permits empty slices. A `NonEmpty` wrapper exists in crates but is not standard.
-- **Postconditions** — Another `debug_assert!`, also absent in release. The type system enforces memory safety but says nothing about business logic invariants.
-- **Proof** — Does not exist. Tests are in a `#[cfg(test)]` module. Property testing requires `proptest` or `quickcheck` crates, and properties are written manually in test files.
-
-### Summary
-
-| Capability | Prove | Python | Haskell | Rust |
-|---|---|---|---|---|
-| **Preconditions** | `requires` — compile-time enforced | `assert` — runtime, strippable | Types cover some; rest are comments | `debug_assert!` — stripped in release |
-| **Postconditions** | `ensures` — compiler-verified or auto-tested | `assert` — runtime, strippable | Comments or smart constructors (manual) | `debug_assert!` — stripped in release |
-| **Implementation reasoning** | `explain` — checked by compiler | Does not exist | Does not exist | Does not exist |
-| **Test generation** | Automatic from contracts | Manual (pytest, hypothesis) | Manual (QuickCheck) | Manual (proptest) |
-| **Contracts are...** | Part of the function signature, compiler-enforced | Optional, easily ignored | Convention, not enforced | Convention, not enforced |
-
-The gap is not about syntax. Python, Haskell, and Rust all have *mechanisms* for expressing some of these ideas. The difference is that in Prove, contracts are **compiler-enforced** and **self-testing**. You cannot write a function that silently ignores its own guarantees.
+This is impossible in most languages without separate maps in both directions. In Python you'd need two dictionaries, maintaining consistency manually. In Rust you'd define the enum, a `HashMap` for each direction, and hope they stay in sync. In Prove, it's a single declaration that the compiler verifies is exhaustive and unique.
 
 ---
 
@@ -181,7 +139,7 @@ from
 
 The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
 
-### Level 4: Built-in Mutation Testing *(Upcoming — v0.9.5)*
+### Level 4: Built-in Mutation Testing *(Upcoming — v0.9.6)*
 
 ```
 $ prove build --mutate

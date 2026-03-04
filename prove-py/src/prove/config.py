@@ -18,7 +18,7 @@ class PackageConfig:
 @dataclass
 class BuildConfig:
     target: str = "native"
-    optimize: bool = False
+    optimize: bool = True
     c_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
 

@@ -478,6 +478,20 @@ class TestI301:
         diags = check_all(source)
         assert "I301" not in _codes(diags)
 
+    def test_fires_after_record_type_pattern(self):
+        source = (
+            "module M\n"
+            "  type User is\n"
+            "    name String\n"
+            "transforms f(u User) String\n"
+            "from\n"
+            "    match u\n"
+            '        User => "found"\n'
+            '        _ => "nope"\n'
+        )
+        diags = check_info(source, "I301")
+        assert len(diags) == 1
+
 
 # ── I302: unused import ─────────────────────────────────────────────
 

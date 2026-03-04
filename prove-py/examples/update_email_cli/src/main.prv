@@ -88,6 +88,4 @@ from
     // get the first argument
     id as Option<Integer> = first(process())
     user as User:[Mutable] = update_email(id)
-    match user
-        User => console(f"Saved user email {user.email}")
-        _ => console(f"{to_string(id)} is not a correct id")
+    console(f"Saved user email {user.email}")

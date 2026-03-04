@@ -29,6 +29,7 @@ def compile_c(
     *,
     compiler: str | None = None,
     optimize: bool = False,
+    debug: bool = False,
     extra_flags: list[str] | None = None,
     include_dirs: list[Path] | None = None,
 ) -> Path:
@@ -44,6 +45,11 @@ def compile_c(
 
     # Optimization
     cmd.append("-O2" if optimize else "-O0")
+
+    # Debug symbols
+    if debug:
+        cmd.append("-g")
+        cmd.append("-rdynamic")  # Export symbols for backtrace
 
     # Warnings
     cmd.extend(["-Wall", "-Wextra", "-Wno-unused-parameter"])

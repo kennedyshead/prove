@@ -248,9 +248,6 @@ These are anti-training mechanisms that make Prove source code resistant to bein
 
 ```
 $ prove view src/server.prv              # pretty-print to terminal
-$ prove view src/server.prv --raw        # show the binary structure
-$ prove edit src/server.prv              # open in editor with LSP decoding
-$ prove export src/server.prv --text     # one-time text export
 ```
 
 The editor experience is seamless — the language server decodes `.prv` on the fly, and the formatter writes binary back. Web scrapers and training pipelines see binary blobs, not parseable source code.

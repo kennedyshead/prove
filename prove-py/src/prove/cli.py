@@ -91,7 +91,8 @@ def main() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--mutate", is_flag=True, help="Enable mutation testing.")
-def build(path: str, mutate: bool) -> None:
+@click.option("--debug", is_flag=True, help="Compile with debug symbols (-g) and no optimization.")
+def build(path: str, mutate: bool, debug: bool) -> None:
     """Compile a Prove project."""
     from prove.builder import build_project
 
@@ -102,7 +103,7 @@ def build(path: str, mutate: bool) -> None:
         project_dir = config_path.parent
 
         renderer = DiagnosticRenderer(color=True)
-        result = build_project(project_dir, config)
+        result = build_project(project_dir, config, debug=debug)
 
         for diag in result.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -178,7 +179,7 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
 
     for match in fence_re.finditer(text):
         code = match.group(1)
-        block_line = text[:match.start()].count("\n") + 2
+        block_line = text[: match.start()].count("\n") + 2
         filename = f"{md_file}:{block_line}"
         blocks += 1
 
@@ -203,8 +204,9 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
     return blocks, errors, warnings
 
 
-def _check_summary(name: str, files: int, errors: int, warnings: int,
-                    format_issues: int, md_blocks: int = 0) -> str:
+def _check_summary(
+    name: str, files: int, errors: int, warnings: int, format_issues: int, md_blocks: int = 0
+) -> str:
     """Build a unified check summary line."""
     parts = [f"{files} file(s)"]
     if md_blocks:
@@ -248,8 +250,7 @@ def check(path: str, md: bool, strict: bool) -> None:
         if strict:
             errors += warnings
             warnings = 0
-        click.echo(_check_summary(target.name, 1, errors, warnings, 0,
-                                  md_blocks=blocks))
+        click.echo(_check_summary(target.name, 1, errors, warnings, 0, md_blocks=blocks))
         if errors:
             raise SystemExit(1)
         return
@@ -279,9 +280,11 @@ def check(path: str, md: bool, strict: bool) -> None:
             errors += warnings
             warnings = 0
 
-        click.echo(_check_summary(config.package.name, checked, errors,
-                                  warnings, format_issues,
-                                  md_blocks=md_blocks))
+        click.echo(
+            _check_summary(
+                config.package.name, checked, errors, warnings, format_issues, md_blocks=md_blocks
+            )
+        )
         if errors:
             raise SystemExit(1)
     except FileNotFoundError:
@@ -348,7 +351,9 @@ def test(path: str, property_rounds: int | None) -> None:
             raise SystemExit(1)
 
         result = run_tests(
-            project_dir, modules, property_rounds=rounds,
+            project_dir,
+            modules,
+            property_rounds=rounds,
         )
 
         if result.output:
@@ -366,8 +371,7 @@ def test(path: str, property_rounds: int | None) -> None:
             )
         else:
             click.echo(
-                f"tested {config.package.name} — "
-                f"{result.tests_failed} FAILED",
+                f"tested {config.package.name} — {result.tests_failed} FAILED",
                 err=True,
             )
             raise SystemExit(1)
