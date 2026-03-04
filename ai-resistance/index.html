@@ -773,10 +773,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#anti-training-license-as-default" class="md-nav__link">
+  <a href="#anti-training-license-for-prove-code" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Anti-Training License as Default
+        Anti-Training License for Prove Code
       
     </span>
   </a>
@@ -1227,7 +1227,7 @@
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">from</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="c1">// implementation</span>
 </code></pre></div>
-<h3 id="anti-training-license-as-default">Anti-Training License as Default<a class="headerlink" href="#anti-training-license-as-default" title="Permanent link">&para;</a></h3>
+<h3 id="anti-training-license-for-prove-code">Anti-Training License for Prove Code<a class="headerlink" href="#anti-training-license-for-prove-code" title="Permanent link">&para;</a></h3>
 <p>Every <code>prove new</code> project is initialized with the <strong>Prove Source License v1.0</strong>. It is a permissive MIT-style license with comprehensive AI restrictions covering:</p>
 <ul>
 <li><strong>Training, fine-tuning, and distillation</strong> (Section 3.1)</li>
@@ -1238,6 +1238,7 @@
 <li><strong>Technical protection circumvention</strong> — bypassing binary format, normalization, or signatures for AI training is a breach (Section 4)</li>
 </ul>
 <p>The license explicitly permits using AI tools <em>to write</em> Prove code and building AI-powered applications <em>with</em> Prove — it only prohibits using Prove source <em>as training data</em>.</p>
+<p>The Prove Source License covers the language, its specification, and <code>.prv</code> source code. The compiler tooling (Python bootstrap, docs, editor integrations) is separately licensed under Apache-2.0 — see <a href="../design/#ai-transparency">AI Transparency</a> for the reasoning behind this split.</p>
 <hr />
 <h2 id="parsed-syntax-ready-enforcement-upcoming">Parsed (Syntax Ready, Enforcement Upcoming)<a class="headerlink" href="#parsed-syntax-ready-enforcement-upcoming" title="Permanent link">&para;</a></h2>
 <p>These keywords are parsed and stored in the AST, but the compiler does not yet enforce their semantic claims. They currently serve as documentation.</p>
