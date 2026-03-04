@@ -8,6 +8,7 @@ from prove.types import (
     INTEGER,
     STRING,
     AlgebraicType,
+    GenericInstance,
     PrimitiveType,
     RecordType,
     RefinementType,
@@ -1573,3 +1574,128 @@ class TestFunctionResolutionArity:
         st.define_function(sig2)
         result = st.resolve_function("transforms", "process", 1)
         assert result is sig2
+
+
+# ── Fix: Option<Refinement(T)> compatibility ─────────────────────────
+
+
+class TestOptionRefinementCompat:
+    """Test that T → Option<Refinement(T)> is allowed."""
+
+    def test_option_refinement_compat(self):
+        """String should be assignable to Option<Email> where Email = String where ..."""
+        email = RefinementType(name="Email", base=STRING)
+        option_email = GenericInstance(base_name="Option", args=[email])
+        assert types_compatible(option_email, STRING) is True
+
+    def test_option_plain_not_compat(self):
+        """String should NOT be assignable to Option<String> (no refinement)."""
+        option_string = GenericInstance(base_name="Option", args=[STRING])
+        assert types_compatible(option_string, STRING) is False
+
+    def test_option_refinement_wrong_base(self):
+        """Integer should NOT be assignable to Option<Email> where Email = String."""
+        email = RefinementType(name="Email", base=STRING)
+        option_email = GenericInstance(base_name="Option", args=[email])
+        assert types_compatible(option_email, INTEGER) is False
+
+
+# ── Fix: arity mismatch falls through to resolve_function_any ────────
+
+
+class TestArityMismatchFallthrough:
+    """Test that function resolution tries resolve_function_any on arity mismatch."""
+
+    def test_resolves_correct_arity_overload(self):
+        """When verb-based resolution returns wrong arity, fall through to any."""
+        # Two functions with the same name but different arities and verbs.
+        # Calling with 1 arg from an inputs context should NOT match
+        # inputs fetch() (0-arg) — it should fall through and find
+        # outputs fetch(msg String).
+        check(
+            "module Main\n"
+            "  InputOutput inputs console\n"
+            "  InputOutput outputs console\n"
+            "inputs fetch() String\n"
+            "    from\n"
+            "        console()\n"
+            "\n"
+            "outputs fetch(msg String) Unit\n"
+            "    from\n"
+            "        console(msg)\n"
+            "\n"
+            "inputs run() Unit\n"
+            "    from\n"
+            '        fetch("hello")\n'
+        )
+
+
+# ── Fix: requires valid narrows parameter types ──────────────────────
+
+
+class TestRequiresValidNarrowing:
+    """Test that requires valid narrows Result/Option params in function body."""
+
+    def test_result_param_narrowed(self):
+        """requires valid object(json_data) should narrow Result<T,E> param to T."""
+        # We test this indirectly: if narrowing works, the body type-checks
+        check(
+            "module M\n"
+            "  type Value is\n"
+            "    data String\n"
+            "\n"
+            "validates object(v Value) Boolean\n"
+            "    from\n"
+            "        true\n"
+            "\n"
+            "transforms extract(data Result<Value, String>) String\n"
+            "    requires valid object(data)\n"
+            "    from\n"
+            "        data.data\n"
+        )
+
+
+# ── Fix: verb-aware recursion detection ──────────────────────────────
+
+
+class TestVerbAwareRecursion:
+    """Test that recursion detection is verb-aware."""
+
+    def test_same_verb_detected_as_recursive(self):
+        """Calling same-name same-verb function is recursion → E366."""
+        check_fails(
+            "matches f(n Integer) Integer\n"
+            "    from\n"
+            "        match n\n"
+            "            0 => 0\n"
+            "            _ => f(n - 1)\n",
+            "E366",
+        )
+
+    def test_same_verb_with_terminates_warns_w326(self):
+        """Recursive function with terminates → W326."""
+        check_warns(
+            "matches f(n Integer) Integer\n"
+            "    terminates: n\n"
+            "    from\n"
+            "        match n\n"
+            "            0 => 0\n"
+            "            _ => f(n - 1)\n",
+            "W326",
+        )
+
+    def test_different_verb_not_recursive(self):
+        """Calling same-name different-verb function is NOT recursion."""
+        check(
+            "module M\n"
+            "  type Item is\n"
+            "    name String\n"
+            "\n"
+            "transforms item(name String) Item\n"
+            "    from\n"
+            "        Item(name)\n"
+            "\n"
+            "reads item(i Item) String\n"
+            "    from\n"
+            "        i.name\n"
+        )

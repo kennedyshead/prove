@@ -659,6 +659,7 @@ class Checker:
     def _check_function(self, fd: FunctionDef) -> None:
         """Check a function body."""
         self._current_function = fd
+        self._is_recursive = False
         self.symbols.push_scope(fd.name)
 
         # Register parameters
@@ -679,6 +680,17 @@ class Checker:
 
         # Collect requires-based option narrowings
         self._requires_narrowings = self._collect_requires_narrowings(fd)
+
+        # Narrow parameter types based on requires valid clauses
+        for _mod, req_args in self._requires_narrowings:
+            for arg in req_args:
+                if isinstance(arg, IdentifierExpr):
+                    sym = self.symbols.lookup(arg.name)
+                    if (sym is not None
+                            and isinstance(sym.resolved_type, GenericInstance)
+                            and sym.resolved_type.base_name in ("Result", "Option")
+                            and sym.resolved_type.args):
+                        sym.resolved_type = sym.resolved_type.args[0]
 
         # Check verb rules
         self._check_verb_rules(fd)
@@ -741,6 +753,22 @@ class Checker:
                             f"got '{type_name(cond_type)}'",
                             entry.condition.span,
                         )
+
+        # ── Recursion checks (verb-aware, using resolved signatures) ──
+        if self._is_recursive:
+            if fd.terminates is None and fd.trusted is None:
+                self._error(
+                    "E366",
+                    f"recursive function '{fd.name}' missing terminates",
+                    fd.span,
+                )
+            elif fd.trusted is None and not fd.believe:
+                self._warning(
+                    "W326",
+                    f"Recursive function '{fd.name}' may have O(n) call depth. "
+                    f"Consider an iterative approach or a logarithmic reduction.",
+                    fd.span,
+                )
 
         # ── Explain verification ──
         verifier = ProofVerifier()
@@ -1383,8 +1411,10 @@ class Checker:
                 sig = self.symbols.resolve_function(
                     self._current_function.verb, name, arg_count,
                 )
-            if sig is None:
-                sig = self.symbols.resolve_function_any(name, arg_types)
+            if sig is None or len(sig.param_types) != arg_count:
+                any_sig = self.symbols.resolve_function_any(name, arg_types)
+                if any_sig is not None:
+                    sig = any_sig
 
             if sig is None:
                 # Check if it's a known symbol (might be a variable holding a function)
@@ -1400,6 +1430,13 @@ class Checker:
             # Mark import as used for unqualified calls to imported functions
             if sig.module:
                 self._used_imports.add((sig.module, name))
+
+            # Track verb-aware recursion
+            if (self._current_function
+                    and isinstance(self._current_function, FunctionDef)
+                    and sig.name == self._current_function.name
+                    and sig.verb == self._current_function.verb):
+                self._is_recursive = True
 
             # Skip strict checks for imported functions (ErrorType return = unknown sig)
             if isinstance(sig.return_type, ErrorType):

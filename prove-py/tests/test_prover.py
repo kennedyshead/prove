@@ -148,52 +148,6 @@ class TestProofVerification:
         )
 
 
-class TestRecursionDepth:
-    """Test W326 recursion depth warning."""
-
-    def test_recursion_depth_warning(self):
-        """W326: recursive function with terminates gets depth warning."""
-        fd = _make_fd(
-            name="countdown",
-            terminates=IntegerLit(value="1", span=_DUMMY),
-            body=[],
-        )
-        # Simulate recursion by adding a call to self in body
-        from prove.ast_nodes import CallExpr, ExprStmt, IdentifierExpr
-        call = CallExpr(
-            func=IdentifierExpr(name="countdown", span=_DUMMY),
-            args=[IntegerLit(value="0", span=_DUMMY)],
-            span=_DUMMY,
-        )
-        fd = _make_fd(
-            name="countdown",
-            terminates=IntegerLit(value="1", span=_DUMMY),
-            body=[ExprStmt(expr=call, span=_DUMMY)],
-        )
-        verifier = ProofVerifier()
-        verifier.verify(fd)
-        codes = [d.code for d in verifier.diagnostics]
-        assert "W326" in codes
-
-    def test_no_w326_without_terminates(self):
-        """No W326 if terminates is missing (E366 covers that)."""
-        from prove.ast_nodes import CallExpr, ExprStmt, IdentifierExpr
-        call = CallExpr(
-            func=IdentifierExpr(name="f", span=_DUMMY),
-            args=[],
-            span=_DUMMY,
-        )
-        fd = _make_fd(
-            name="f",
-            terminates=None,
-            body=[ExprStmt(expr=call, span=_DUMMY)],
-        )
-        verifier = ProofVerifier()
-        verifier.verify(fd)
-        codes = [d.code for d in verifier.diagnostics]
-        assert "W326" not in codes
-
-
 class TestAssumeAssertion:
     """Test that assume expressions emit runtime assertions."""
 

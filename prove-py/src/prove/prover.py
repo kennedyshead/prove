@@ -4,24 +4,25 @@ Checks explain blocks for completeness and consistency:
 - E391: duplicate entry names (error)
 - E392: explain entries < ensures count (error)
 - E393: believe without ensures (error)
-- E366: recursive function missing terminates (error)
 - W321: explain text doesn't reference function concepts
 - W322: duplicate near-miss inputs
 - W323: ensures without explain (warning, replaces E390)
 - W324: ensures without requires
 - W325: explain without ensures (warning)
-- W326: recursion depth may be unbounded
+
+Note: E366 (recursive function missing terminates) and W326 (recursion depth)
+are now handled by the Checker, which has access to the symbol table for
+verb-aware function resolution.
 """
 
 from __future__ import annotations
 
-from prove.ast_nodes import FunctionDef, IdentifierExpr, IntegerLit, NearMiss
+from prove.ast_nodes import FunctionDef, IntegerLit, NearMiss
 from prove.errors import (
     DIAGNOSTIC_DOCS,
     Diagnostic,
     DiagnosticLabel,
     Severity,
-    Suggestion,
 )
 from prove.source import Span
 
@@ -42,8 +43,6 @@ class ProofVerifier:
         self._check_believe_without_ensures(fd)
         self._check_ensures_without_requires(fd)
         self._check_explain_without_ensures(fd)
-        self._check_terminates(fd)
-        self._check_recursion_depth(fd)
 
     def _error(self, code: str, message: str, span: Span) -> None:
         self.diagnostics.append(Diagnostic(
@@ -222,105 +221,6 @@ class ProofVerifier:
                 ],
                 doc_url=DIAGNOSTIC_DOCS.get("W325"),
             ))
-
-    def _check_terminates(self, fd: FunctionDef) -> None:
-        """E366: recursive function missing terminates."""
-        if fd.trusted is not None:
-            return  # trusted functions opt out
-        if self._calls_self(fd.name, fd.body) and fd.terminates is None:
-            self._error(
-                "E366",
-                f"recursive function '{fd.name}' missing terminates",
-                fd.span,
-            )
-
-    def _check_recursion_depth(self, fd: FunctionDef) -> None:
-        """W326: warn when recursive function may have unbounded call depth."""
-        if fd.trusted is not None:
-            return
-        if fd.terminates is None:
-            return  # E366 already covers missing terminates
-        if not self._calls_self(fd.name, fd.body):
-            return
-        # If any believe references recursion bounds, suppress
-        if fd.believe:
-            return
-        self._warning(
-            "W326",
-            f"Recursive function '{fd.name}' may have O(n) call depth. "
-            f"Consider an iterative approach or a logarithmic reduction.",
-            fd.span,
-        )
-
-    def _calls_self(self, name: str, body: list) -> bool:
-        """Check if a function body contains a recursive call to itself."""
-        from prove.ast_nodes import (
-            Assignment,
-            ExprStmt,
-            MatchExpr,
-            VarDecl,
-        )
-        for stmt in body:
-            if isinstance(stmt, ExprStmt):
-                if self._expr_calls(name, stmt.expr):
-                    return True
-            elif isinstance(stmt, VarDecl):
-                if self._expr_calls(name, stmt.value):
-                    return True
-            elif isinstance(stmt, Assignment):
-                if self._expr_calls(name, stmt.value):
-                    return True
-            elif isinstance(stmt, MatchExpr):
-                if stmt.subject and self._expr_calls(name, stmt.subject):
-                    return True
-                for arm in stmt.arms:
-                    if self._calls_self(name, arm.body):
-                        return True
-        return False
-
-    def _expr_calls(self, name: str, expr) -> bool:
-        """Check if an expression contains a call to the named function."""
-        from prove.ast_nodes import (
-            Assignment,
-            BinaryExpr,
-            CallExpr,
-            ExprStmt,
-            FailPropExpr,
-            IdentifierExpr,
-            LambdaExpr,
-            MatchExpr,
-            PipeExpr,
-            UnaryExpr,
-            VarDecl,
-        )
-        if isinstance(expr, CallExpr):
-            if isinstance(expr.func, IdentifierExpr) and expr.func.name == name:
-                return True
-            for arg in expr.args:
-                if self._expr_calls(name, arg):
-                    return True
-        elif isinstance(expr, BinaryExpr):
-            return self._expr_calls(name, expr.left) or self._expr_calls(name, expr.right)
-        elif isinstance(expr, UnaryExpr):
-            return self._expr_calls(name, expr.operand)
-        elif isinstance(expr, PipeExpr):
-            return self._expr_calls(name, expr.left) or self._expr_calls(name, expr.right)
-        elif isinstance(expr, FailPropExpr):
-            return self._expr_calls(name, expr.expr)
-        elif isinstance(expr, LambdaExpr):
-            return self._expr_calls(name, expr.body)
-        elif isinstance(expr, MatchExpr):
-            if expr.subject and self._expr_calls(name, expr.subject):
-                return True
-            for arm in expr.arms:
-                for s in arm.body:
-                    if isinstance(s, ExprStmt) and self._expr_calls(name, s.expr):
-                        return True
-                    elif isinstance(s, VarDecl) and self._expr_calls(name, s.value):
-                        return True
-                    elif isinstance(s, Assignment) and self._expr_calls(name, s.value):
-                        return True
-        return False
 
     @staticmethod
     def _exprs_equal(a, b) -> bool:

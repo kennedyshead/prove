@@ -104,7 +104,7 @@ Types carry constraints, not just shapes.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1..65535
-type Email is String where matches(/^[^@]+@[^@]+\.[^@]+$/)
+type Email is String where r"^[^@]+@[^@]+\.[^@]+$"
 type NonEmpty<T> is List<T> where len > 0
 
 transforms head(xs NonEmpty<T>) T         // no Option needed — emptiness is impossible
@@ -186,7 +186,7 @@ module InventoryService
 
 type Port is Integer:[16 Unsigned] where 1..65535
 type Price is Decimal:[128 Scale:2] where >= 0
-type Sku is String where matches(/^[A-Z]{2,4}-[0-9]{4,8}$/)
+type Sku is String where r"^[A-Z]{2,4}-[0-9]{4,8}$"
 
 type Product is
     sku Sku
