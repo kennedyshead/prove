@@ -1,0 +1,9 @@
+module Main
+  narrative: """Demonstrates Pattern module operations."""
+  InputOutput outputs console
+  Pattern validates test, transforms replace
+
+main() Result<Unit, Error>!
+from
+  console(f"test 'hello' '[a-z]+' = {test("hello", "[a-z]+")}")
+  console(f"replace = {replace("hello world", "world", "prove")}")

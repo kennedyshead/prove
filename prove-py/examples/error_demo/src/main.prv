@@ -1,0 +1,8 @@
+module Main
+  narrative: """Demonstrates Error module operations."""
+  InputOutput outputs console
+  Error validates ok err
+
+main() Result<Unit, Error>!
+from
+    console("Error module demo")

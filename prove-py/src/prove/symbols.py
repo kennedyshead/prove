@@ -171,6 +171,16 @@ class SymbolTable:
                         )
                         if pname == first:
                             return sig
+            # Fall back to structural type equality for generics (e.g. ListType)
+            from prove.types import TypeVariable, types_compatible
+
+            for sig in candidates:
+                if len(sig.param_types) == len(arg_types):
+                    if all(
+                        isinstance(p, TypeVariable) or types_compatible(p, a)
+                        for p, a in zip(sig.param_types, arg_types)
+                    ):
+                        return sig
         return candidates[0]
 
     def define_type(self, name: str, resolved: Type) -> None:

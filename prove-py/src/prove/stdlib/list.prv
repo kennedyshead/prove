@@ -1,0 +1,41 @@
+module List
+  narrative: """Operations on lists."""
+
+reads length(items List<T>) Integer
+binary
+
+reads first(items List<T>) Option<T>
+binary
+
+reads last(items List<T>) Option<T>
+binary
+
+validates empty(items List<T>)
+binary
+
+validates contains(items List<Integer>, value Integer)
+binary
+
+validates contains(items List<String>, value String)
+binary
+
+reads index(items List<Integer>, value Integer) Option<Integer>
+binary
+
+reads index(items List<String>, value String) Option<Integer>
+binary
+
+transforms slice(items List<T>, start Integer, end Integer) List<T>
+binary
+
+transforms reverse(items List<T>) List<T>
+binary
+
+transforms sort(items List<Integer>) List<Integer>
+binary
+
+transforms sort(items List<String>) List<String>
+binary
+
+creates range(start Integer, end Integer) List<Integer>
+binary

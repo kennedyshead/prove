@@ -98,6 +98,8 @@ def map_type(ty: Type) -> CType:
             return CType("int64_t", is_pointer=False, header=None)
         if name == "Value":
             return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
+        if name == "Match":
+            return CType("Prove_Match*", is_pointer=True, header="prove_pattern.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

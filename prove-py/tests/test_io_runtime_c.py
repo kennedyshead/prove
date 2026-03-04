@@ -44,6 +44,7 @@ def _compile_and_run(
         "-I", str(_RUNTIME_DIR),
         str(src), *[str(f) for f in runtime_c],
         "-o", str(binary),
+        "-lm",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, f"Compile failed:\n{result.stderr}"

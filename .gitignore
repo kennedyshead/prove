@@ -1,4 +1,5 @@
 CLAUDE.md
+AGENTS.md
 .claude
 .ruff_cache
 .ropeproject
@@ -8,4 +9,4 @@ site/
 __pycache__/
 *.pyc
 *.egg-info/
-ideas-*.md
+tmp

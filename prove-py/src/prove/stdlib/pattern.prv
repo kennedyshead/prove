@@ -1,0 +1,28 @@
+module Pattern
+  narrative: """Regular expression matching."""
+
+  type Match is binary
+
+validates test(text String, pattern String)
+binary
+
+reads search(text String, pattern String) Option<Match>
+binary
+
+reads find_all(text String, pattern String) List<Match>
+binary
+
+transforms replace(text String, pattern String, replacement String) String
+binary
+
+transforms split(text String, pattern String) List<String>
+binary
+
+reads text(m Match) String
+binary
+
+reads start(m Match) Integer
+binary
+
+reads end(m Match) Integer
+binary

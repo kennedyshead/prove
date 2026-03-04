@@ -253,4 +253,6 @@ The Gitea instance is a paid service for issue creators. Developers who want con
 
 ## License
 
-[Prove Source License v1.0](https://code.botwork.se/Botwork/prove/src/branch/main/LICENSE) — permissive for developers, prohibits use as AI training data.
+The Prove language, its specification, and all `.prv` source code are covered by the [Prove Source License v1.0](https://code.botwork.se/Botwork/prove/src/branch/main/LICENSE) — permissive for developers, prohibits use as AI training data.
+
+The compiler tooling (bootstrap compiler, documentation, editor integrations) is licensed under [Apache-2.0](https://code.botwork.se/Botwork/prove/src/branch/main/prove-py/LICENSE). See [AI Transparency](design.md#ai-transparency) for why the licenses differ.

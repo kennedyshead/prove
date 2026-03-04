@@ -1,0 +1,9 @@
+module Main
+  narrative: """Demonstrates Format module operations."""
+  InputOutput outputs console
+  Format transforms hex pad_left
+
+main() Result<Unit, Error>!
+from
+  console(f"hex(255) = {hex(255)}")
+  console(f"pad_left('hi', 10, '*') = {pad_left("hi", 10, '*')}")

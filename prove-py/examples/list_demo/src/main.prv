@@ -1,0 +1,10 @@
+module Main
+  narrative: """Demonstrates List module operations."""
+  InputOutput outputs console
+  List reads length, creates range, validates empty
+
+main() Result<Unit, Error>!
+from
+    numbers as List<Integer> = range(1, 6)
+    console(f"length = {length(numbers)}")
+    console(f"empty = {empty(numbers)}")

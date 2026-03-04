@@ -628,6 +628,7 @@ def run_tests(
             output=test_binary,
             compiler=cc,
             include_dirs=[runtime_dir],
+            extra_flags=["-lm"],
         )
     except CompileCError as e:
         return TestResult(

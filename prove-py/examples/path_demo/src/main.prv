@@ -1,0 +1,11 @@
+module Main
+  narrative: """Demonstrates Path module operations."""
+  InputOutput outputs console
+  Path reads parent stem extension
+
+main() Result<Unit, Error>!
+from
+    p as String = "/home/user/file.txt"
+    console(f"parent = {parent(p)}")
+    console(f"stem = {stem(p)}")
+    console(f"extension = {extension(p)}")

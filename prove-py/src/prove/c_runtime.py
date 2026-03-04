@@ -34,6 +34,19 @@ _RUNTIME_FILES = [
     "prove_parse.h",
     "prove_parse_toml.c",
     "prove_parse_json.c",
+    "prove_math.h",
+    "prove_math.c",
+    "prove_convert.h",
+    "prove_convert.c",
+    "prove_list_ops.h",
+    "prove_list_ops.c",
+    "prove_format.h",
+    "prove_format.c",
+    "prove_path.h",
+    "prove_path.c",
+    "prove_error.h",
+    "prove_pattern.h",
+    "prove_pattern.c",
 ]
 
 

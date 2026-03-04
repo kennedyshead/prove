@@ -74,6 +74,23 @@ _BUILTIN_MAP: dict[str, str] = {
 }
 
 
+def _get_type_key(ty: Type | None) -> str | None:
+    """Get a type key string for overload dispatch.
+
+    For generic types (ListType, GenericInstance), produces richer keys
+    like "List<Integer>" instead of just "List".
+    """
+    if ty is None:
+        return None
+    if isinstance(ty, ListType):
+        inner = getattr(ty.element, "name", "T")
+        return f"List<{inner}>"
+    if isinstance(ty, GenericInstance):
+        args = ",".join(getattr(a, "name", "T") for a in ty.args)
+        return f"{ty.base_name}<{args}>"
+    return getattr(ty, "name", None)
+
+
 class CEmitter:
     """Emit C source from a type-checked Prove module."""
 
@@ -177,6 +194,13 @@ class CEmitter:
         "Text": "prove_text.h",
         "Table": "prove_table.h",
         "Parse": "prove_parse.h",
+        "Math": "prove_math.h",
+        "Convert": "prove_convert.h",
+        "List": "prove_list_ops.h",
+        "Format": "prove_format.h",
+        "Path": "prove_path.h",
+        "Error": "prove_error.h",
+        "Pattern": "prove_pattern.h",
     }
 
     def _collect_needed_headers(self) -> None:
@@ -1364,7 +1388,7 @@ class CEmitter:
                 from prove.stdlib_loader import binary_c_name
 
                 pts = sig.param_types
-                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                fpt = _get_type_key(pts[0]) if pts else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
@@ -1420,7 +1444,7 @@ class CEmitter:
                 from prove.stdlib_loader import binary_c_name
 
                 pts = sig.param_types
-                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                fpt = _get_type_key(pts[0]) if pts else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
@@ -1701,7 +1725,7 @@ class CEmitter:
                 from prove.stdlib_loader import binary_c_name
 
                 pts = sig.param_types
-                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                fpt = _get_type_key(pts[0]) if pts else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     return f"{c_name}({left})"
@@ -1727,7 +1751,7 @@ class CEmitter:
                 from prove.stdlib_loader import binary_c_name
 
                 pts = sig.param_types
-                fpt = pts[0].name if pts and hasattr(pts[0], "name") else None
+                fpt = _get_type_key(pts[0]) if pts else None
                 c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
                 if c_name:
                     return f"{c_name}({', '.join(all_args)})"

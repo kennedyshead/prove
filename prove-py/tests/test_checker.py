@@ -770,10 +770,10 @@ class TestIntegration:
     def test_imports_unknown_module(self):
         check_fails(
             "module Main\n"
-            "  Math transforms sin cos\n"
+            "  Quantum transforms spin flip\n"
             "transforms angle(x Integer) Integer\n"
             "    from\n"
-            "        sin(x)\n",
+            "        spin(x)\n",
             "I314",
         )
 

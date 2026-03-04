@@ -1,0 +1,44 @@
+module Math
+  narrative: """Numeric operations."""
+
+reads abs(n Integer) Integer
+binary
+
+reads abs(x Float) Float
+binary
+
+reads min(a Integer, b Integer) Integer
+binary
+
+reads min(a Float, b Float) Float
+binary
+
+reads max(a Integer, b Integer) Integer
+binary
+
+reads max(a Float, b Float) Float
+binary
+
+transforms clamp(val Integer, lo Integer, hi Integer) Integer
+binary
+
+transforms clamp(val Float, lo Float, hi Float) Float
+binary
+
+reads sqrt(x Float) Float
+binary
+
+reads pow(base Float, exp Float) Float
+binary
+
+reads floor(x Float) Integer
+binary
+
+reads ceil(x Float) Integer
+binary
+
+reads round(x Float) Integer
+binary
+
+reads log(x Float) Float
+binary

@@ -137,6 +137,8 @@ def _build_c(
     # Collect foreign library names for linker flags
     extra_flags: list[str] = list(config.build.c_flags)
     link_flags: list[str] = list(config.build.link_flags)
+    # Math runtime always needs libm
+    link_flags.append("-lm")
     for module, _symbols in modules_and_symbols:
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
@@ -146,6 +148,12 @@ def _build_c(
                         link_flags.append(f"-l{lib[3:]}")
                     else:
                         link_flags.append(f"-l{lib}")
+                # Add stdlib-required linker flags
+                from prove.stdlib_loader import stdlib_link_flags
+                for imp in decl.imports:
+                    for flag in stdlib_link_flags(imp.module):
+                        if flag not in link_flags:
+                            link_flags.append(flag)
 
     # Compile
     runtime_dir = build_dir / "runtime"

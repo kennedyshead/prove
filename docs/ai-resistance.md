@@ -76,7 +76,7 @@ from
     // implementation
 ```
 
-### Anti-Training License as Default
+### Anti-Training License for Prove Code
 
 Every `prove new` project is initialized with the **Prove Source License v1.0**. It is a permissive MIT-style license with comprehensive AI restrictions covering:
 
@@ -88,6 +88,8 @@ Every `prove new` project is initialized with the **Prove Source License v1.0**.
 - **Technical protection circumvention** — bypassing binary format, normalization, or signatures for AI training is a breach (Section 4)
 
 The license explicitly permits using AI tools *to write* Prove code and building AI-powered applications *with* Prove — it only prohibits using Prove source *as training data*.
+
+The Prove Source License covers the language, its specification, and `.prv` source code. The compiler tooling (Python bootstrap, docs, editor integrations) is separately licensed under Apache-2.0 — see [AI Transparency](design.md#ai-transparency) for the reasoning behind this split.
 
 ---
 

@@ -95,6 +95,49 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     ("table", "reads", "keys"): "prove_table_keys",
     ("table", "reads", "values"): "prove_table_values",
     ("table", "reads", "length"): "prove_table_length",
+    # Pattern
+    ("pattern", "validates", "test"): "prove_pattern_match",
+    ("pattern", "reads", "search"): "prove_pattern_search",
+    ("pattern", "reads", "find_all"): "prove_pattern_find_all",
+    ("pattern", "transforms", "replace"): "prove_pattern_replace",
+    ("pattern", "transforms", "split"): "prove_pattern_split",
+    ("pattern", "reads", "text"): "prove_pattern_text",
+    ("pattern", "reads", "start"): "prove_pattern_start",
+    ("pattern", "reads", "end"): "prove_pattern_end",
+    # Error
+    ("error", "validates", "ok"): "prove_error_ok",
+    ("error", "validates", "err"): "prove_error_err",
+    # Path
+    ("path", "transforms", "join"): "prove_path_join",
+    ("path", "reads", "parent"): "prove_path_parent",
+    ("path", "reads", "name"): "prove_path_name",
+    ("path", "reads", "stem"): "prove_path_stem",
+    ("path", "reads", "extension"): "prove_path_extension",
+    ("path", "validates", "absolute"): "prove_path_absolute",
+    ("path", "transforms", "normalize"): "prove_path_normalize",
+    # Format
+    ("format", "transforms", "pad_left"): "prove_format_pad_left",
+    ("format", "transforms", "pad_right"): "prove_format_pad_right",
+    ("format", "transforms", "center"): "prove_format_center",
+    ("format", "transforms", "hex"): "prove_format_hex",
+    ("format", "transforms", "bin"): "prove_format_binary",
+    ("format", "transforms", "octal"): "prove_format_octal",
+    ("format", "transforms", "decimal"): "prove_format_decimal",
+    # List (non-overloaded, generic operations)
+    ("list", "reads", "length"): "prove_list_ops_length",
+    ("list", "validates", "empty"): "prove_list_ops_empty",
+    ("list", "transforms", "slice"): "prove_list_ops_slice",
+    ("list", "transforms", "reverse"): "prove_list_ops_reverse",
+    ("list", "creates", "range"): "prove_list_ops_range",
+    # Convert (non-overloaded)
+    ("convert", "reads", "code"): "prove_convert_code",
+    # Math (non-overloaded, Float-only functions)
+    ("math", "reads", "sqrt"): "prove_math_sqrt",
+    ("math", "reads", "pow"): "prove_math_pow",
+    ("math", "reads", "floor"): "prove_math_floor",
+    ("math", "reads", "ceil"): "prove_math_ceil",
+    ("math", "reads", "round"): "prove_math_round",
+    ("math", "reads", "log"): "prove_math_log",
     # Parse
     ("parse", "creates", "toml"): "prove_parse_toml",
     ("parse", "reads", "toml"): "prove_emit_toml",
@@ -121,6 +164,42 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
 # Key: (module_key, verb, function_name, first_param_type_name) → C function name
 _BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {
     ("text", "reads", "length", "Builder"): "prove_text_builder_length",
+    # Error: Option overloads
+    ("error", "validates", "some", "Option<Integer>"): "prove_error_some_int",
+    ("error", "validates", "some", "Option<String>"): "prove_error_some_str",
+    ("error", "validates", "none", "Option<Integer>"): "prove_error_none_int",
+    ("error", "validates", "none", "Option<String>"): "prove_error_none_str",
+    ("error", "reads", "unwrap_or", "Option<Integer>"): "prove_error_unwrap_or_int",
+    ("error", "reads", "unwrap_or", "Option<String>"): "prove_error_unwrap_or_str",
+    # List: type-specific overloads
+    ("list", "reads", "first", "List<Integer>"): "prove_list_ops_first_int",
+    ("list", "reads", "first", "List<String>"): "prove_list_ops_first_str",
+    ("list", "reads", "last", "List<Integer>"): "prove_list_ops_last_int",
+    ("list", "reads", "last", "List<String>"): "prove_list_ops_last_str",
+    ("list", "validates", "contains", "List<Integer>"): "prove_list_ops_contains_int",
+    ("list", "validates", "contains", "List<String>"): "prove_list_ops_contains_str",
+    ("list", "reads", "index", "List<Integer>"): "prove_list_ops_index_int",
+    ("list", "reads", "index", "List<String>"): "prove_list_ops_index_str",
+    ("list", "transforms", "sort", "List<Integer>"): "prove_list_ops_sort_int",
+    ("list", "transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
+    # Convert: overloaded functions
+    ("convert", "creates", "integer", "String"): "prove_convert_integer_str",
+    ("convert", "creates", "integer", "Float"): "prove_convert_integer_float",
+    ("convert", "creates", "float", "String"): "prove_convert_float_str",
+    ("convert", "creates", "float", "Integer"): "prove_convert_float_int",
+    ("convert", "reads", "string", "Integer"): "prove_convert_string_int",
+    ("convert", "reads", "string", "Float"): "prove_convert_string_float",
+    ("convert", "reads", "string", "Boolean"): "prove_convert_string_bool",
+    ("convert", "creates", "character", "Integer"): "prove_convert_character",
+    # Math: Integer vs Float overloads
+    ("math", "reads", "abs", "Integer"): "prove_math_abs_int",
+    ("math", "reads", "abs", "Float"): "prove_math_abs_float",
+    ("math", "reads", "min", "Integer"): "prove_math_min_int",
+    ("math", "reads", "min", "Float"): "prove_math_min_float",
+    ("math", "reads", "max", "Integer"): "prove_math_max_int",
+    ("math", "reads", "max", "Float"): "prove_math_max_float",
+    ("math", "transforms", "clamp", "Integer"): "prove_math_clamp_int",
+    ("math", "transforms", "clamp", "Float"): "prove_math_clamp_float",
 }
 
 
@@ -147,6 +226,13 @@ _STDLIB_MODULES: dict[str, str] = {
     "text": "text.prv",
     "table": "table.prv",
     "parse": "parse.prv",
+    "math": "math.prv",
+    "convert": "convert.prv",
+    "list": "list.prv",
+    "format": "format.prv",
+    "path": "path.prv",
+    "error": "error.prv",
+    "pattern": "pattern.prv",
 }
 
 # Cache loaded signatures
@@ -160,6 +246,7 @@ _KNOWN_TYPES = {
     "Character": CHARACTER,
     "Unit": UNIT,
     "Float": PrimitiveType("Float"),
+    "Match": PrimitiveType("Match"),
 }
 
 
@@ -273,6 +360,17 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     return sigs
 
 
+# Stdlib modules that require extra linker flags
+_STDLIB_LINK_FLAGS: dict[str, list[str]] = {
+    "math": ["-lm"],
+}
+
+
+def stdlib_link_flags(module_name: str) -> list[str]:
+    """Return linker flags required by a stdlib module."""
+    return _STDLIB_LINK_FLAGS.get(module_name.lower(), [])
+
+
 def is_stdlib_module(module_name: str) -> bool:
     """Return True if module_name is a known stdlib module."""
     return module_name.lower() in _STDLIB_MODULES
@@ -303,6 +401,13 @@ _MODULE_DISPLAY_NAMES: dict[str, str] = {
     "text": "Text",
     "table": "Table",
     "parse": "Parse",
+    "math": "Math",
+    "convert": "Convert",
+    "list": "List",
+    "format": "Format",
+    "path": "Path",
+    "error": "Error",
+    "pattern": "Pattern",
 }
 
 # Alias keys that should be skipped when building the index

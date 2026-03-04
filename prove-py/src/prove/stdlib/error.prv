@@ -1,0 +1,20 @@
+module Error
+  narrative: """Result and Option utilities."""
+
+validates ok(r Result<T, E>)
+binary
+
+validates err(r Result<T, E>)
+binary
+
+validates some(o Option<T>)
+binary
+
+validates none(o Option<T>)
+binary
+
+reads unwrap_or(o Option<Integer>, default Integer) Integer
+binary
+
+reads unwrap_or(o Option<String>, default String) String
+binary

@@ -1,0 +1,10 @@
+module Main
+  narrative: """Demonstrates Convert module operations."""
+  InputOutput outputs console
+  Convert reads string, reads code
+
+main() Result<Unit, Error>!
+from
+  console(f"string(42) = {string(42)}")
+  console(f"string(true) = {string(true)}")
+  console(f"code('A') = {code('A')}")

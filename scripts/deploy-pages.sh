@@ -36,11 +36,24 @@ git worktree add "$WORK_DIR" "$BRANCH" 2>/dev/null || {
     git -C "$WORK_DIR" checkout --orphan "$BRANCH"
 }
 
+# Preserve CNAME if it exists (GitHub creates this for custom domains)
+CNAME_CONTENT=""
+if [ -f "$WORK_DIR/CNAME" ]; then
+    CNAME_CONTENT=$(cat "$WORK_DIR/CNAME")
+fi
+
 # Clear everything in the worktree (except .git)
 find "$WORK_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
 # Copy built site into the worktree
-cp -r "$SITE_DIR"/. "$WORK_DIR"/
+cp -r "$SITE_DIR"/. "$WORK_DIR/"
+
+# Restore CNAME if it existed (preserves custom domain), otherwise create with custom domain
+if [ -n "$CNAME_CONTENT" ]; then
+    echo "$CNAME_CONTENT" > "$WORK_DIR/CNAME"
+elif [ ! -f "$WORK_DIR/CNAME" ]; then
+    echo "prove.botwork.se" > "$WORK_DIR/CNAME"
+fi
 
 # Add a .nojekyll for GitHub Pages
 touch "$WORK_DIR/.nojekyll"

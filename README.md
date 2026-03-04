@@ -86,6 +86,37 @@ Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se
 
 The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
 
+## AI Transparency
+
+The Prove language — its syntax, semantics, type system, verb model, contract
+system, and all novel design ideas — is entirely human-invented.
+
+AI tools (various LLMs and open source models) have been used as implementation
+aids for the tooling surrounding the language: the Python bootstrap compiler,
+C runtime, documentation, and editor integration (tree-sitter grammar, Pygments
+and Chroma lexers). No single AI tool is credited — multiple have been used
+across the project's development as conceptual partners and coding assistants.
+
+Once the compiler is self-hosted (V2.0), AI involvement will be limited to
+documentation maintenance and conceptual discussion.
+
+This distinction is reflected in the licensing: the language itself is covered
+by the Prove Source License (which prohibits AI training use), while the
+AI-assisted tooling is licensed under Apache-2.0.
+
 ## License
 
-[Prove Source License v1.0](LICENSE) — permissive for developers, prohibits use as AI training data.
+This repository contains sub-projects under different licenses:
+
+| Project | License | Why |
+|---------|---------|-----|
+| **Language spec & .prv code** | [Prove Source License v1.0](LICENSE) | Human-authored language; prohibits AI training use |
+| **prove-py/** (bootstrap compiler) | [Apache-2.0](prove-py/LICENSE) | AI-assisted tooling |
+| **docs/** | [Apache-2.0](docs/LICENSE) | AI-assisted documentation |
+| **tree-sitter-prove/** | [Apache-2.0](tree-sitter-prove/LICENSE) | AI-assisted editor integration |
+| **pygments-prove/** | [Apache-2.0](pygments-prove/LICENSE) | AI-assisted editor integration |
+| **chroma-lexer-prove/** | [Apache-2.0](chroma-lexer-prove/LICENSE) | AI-assisted editor integration |
+
+The root [LICENSE](LICENSE) (Prove Source License v1.0) covers the Prove
+language, its specification, and any `.prv` source files not covered by a
+sub-project license.

@@ -1,0 +1,12 @@
+module Main
+  narrative: """Demonstrates Math module operations."""
+  InputOutput outputs console
+  Math reads abs min max sqrt floor
+
+main() Result<Unit, Error>!
+from
+    console(f"abs(-42) = {abs(-42)}")
+    console(f"min(3, 7) = {min(3, 7)}")
+    console(f"max(3, 7) = {max(3, 7)}")
+    console(f"sqrt(16.0) = {sqrt(16.0)}")
+    console(f"floor(3.7) = {floor(3.7)}")

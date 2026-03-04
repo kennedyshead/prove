@@ -1,0 +1,23 @@
+module Path
+  narrative: """File path manipulation."""
+
+transforms join(base String, part String) String
+binary
+
+reads parent(path String) String
+binary
+
+reads name(path String) String
+binary
+
+reads stem(path String) String
+binary
+
+reads extension(path String) String
+binary
+
+validates absolute(path String)
+binary
+
+transforms normalize(path String) String
+binary

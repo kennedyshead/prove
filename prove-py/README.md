@@ -144,6 +144,17 @@ Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se
 
 The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
 
+## AI Transparency
+
+This bootstrap compiler is built with the help of AI tools (various LLMs and
+open source models) for Python implementation, C runtime code, and
+documentation. The language design, syntax, semantics, and all novel ideas are
+entirely human-invented. See the [workspace README](../README.md) for full
+details.
+
 ## License
 
-Prove Source License v1.0 — permissive use with AI training prohibition.
+[Apache-2.0](LICENSE)
+
+The Prove language specification and `.prv` source code are covered by the
+[Prove Source License v1.0](../LICENSE) at the workspace root.

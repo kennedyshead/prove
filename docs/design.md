@@ -127,3 +127,32 @@ An honest assessment of the costs:
 4. **Not every property is provable** — For complex invariants the compiler falls back to runtime property tests, which is still better than nothing but not a proof.
 
 **The core bet:** Making the compiler do more work upfront saves orders of magnitude more time than writing and maintaining tests by hand.
+
+---
+
+## AI Transparency
+
+Prove is built with honesty about where AI tools are and aren't used.
+
+### What is human-authored
+
+The Prove language itself — its syntax, semantics, type system, intent verbs, contract model, explain verification, AI-resistance mechanisms, refinement types, and every other novel design idea — is entirely human-invented. All `.prv` source code (including the planned self-hosted compiler) is written by humans.
+
+### Where AI tools help
+
+AI tools have been used as implementation aids for the surrounding tooling:
+
+- **Bootstrap compiler** — the Python CLI, checker, emitter, and supporting infrastructure
+- **C runtime** — the stdlib implementations backing binary functions
+- **Documentation** — writing and maintaining these docs
+- **Editor integration** — tree-sitter grammar, Pygments lexer, Chroma lexer
+
+No single AI tool is credited. Multiple LLMs and open source models have been used throughout development as conceptual partners and coding assistants.
+
+### After self-hosting
+
+Once the compiler is self-hosted (V2.0, written in Prove and compiled by the V1.0 bootstrap), AI involvement will be limited to documentation maintenance and conceptual discussion. The self-hosted compiler will be human-authored Prove code.
+
+### Licensing reflects this
+
+The language and `.prv` source code are covered by the **Prove Source License v1.0**, which prohibits use as AI training data. The AI-assisted tooling (bootstrap compiler, docs, lexers) is licensed under **Apache-2.0**. This separation ensures legal clarity: the parts built with AI help use a license compatible with that workflow, while the human-authored language retains its protections.
