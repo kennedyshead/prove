@@ -21,15 +21,28 @@ from
 
 ## Why Prove?
 
+> "If it compiles, you understood what you wrote. If it's AI-generated, it won't."
+
 | Problem | How Prove solves it |
 |---|---|
-| AI scrapes your code for training | Binary AST format + anti-training license + semantic normalization |
+| AI scrapes your code for training | Binary AST — can't be scraped, normalized, or licensed for training |
 | AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
-| Tests are separate from code | Contracts generate tests automatically |
-| "Works on my machine" | Verb system makes IO explicit |
+| Tests are an afterthought | Contracts generate tests automatically — testing is in the code |
+| "Works on my machine" | Verb system makes IO explicit and trackable |
 | Null/nil crashes | No null — `Option<T>` enforced by compiler |
-| "I forgot an edge case" | Compiler generates edge cases from types |
+| Edge cases slip through | Compiler generates edge cases from refinement types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
+
+**Self-hosting compiler**: Prove compiles itself. That's rare — most languages can't say that.
+
+---
+
+## Sponsor
+
+Prove is free and open source. If it adds value to your work, consider sponsoring:
+
+- **GitHub Sponsors**: https://github.com/sponsors/kennedyshead
+- **Direct**: Reach out at magnusknutas[at]botwork.se
 
 ---
 
