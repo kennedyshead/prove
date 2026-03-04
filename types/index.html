@@ -492,6 +492,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#lookup-types-bidirectional-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lookup Types (Bidirectional Maps)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lookup Types (Bidirectional Maps)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-type-lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-Type Lookup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csv-declaration-upcoming-v1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSV Declaration (Upcoming v1.X)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-type-lookup-upcoming-v1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Type Lookup (Upcoming v1.X)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#algebraic-types-with-exhaustive-matching" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1074,33 +1124,71 @@
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kd">transforms</span> <span class="n">head</span><span class="p">(</span><span class="n">xs</span> <span class="nc">NonEmpty</span><span class="o">&lt;</span><span class="nc">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="nc">T</span>    <span class="c1">// no Option needed, emptiness is impossible</span>
 </code></pre></div>
 <p>The compiler rejects <code>head([])</code> statically.</p>
+<h2 id="lookup-types-bidirectional-maps">Lookup Types (Bidirectional Maps)<a class="headerlink" href="#lookup-types-bidirectional-maps" title="Permanent link">&para;</a></h2>
+<p>A <code>[Lookup]</code> type is a bidirectional map combining an algebraic type with its value representations in a single declaration — normally you'd need three separate declarations (the type, variant→value map, and value→variant map).</p>
+<h3 id="single-type-lookup">Single-Type Lookup<a class="headerlink" href="#single-type-lookup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="nc">NotMain</span> <span class="p">|</span> <span class="s">&quot;not_main&quot;</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nc">TrueLit</span> <span class="p">|</span> <span class="s">&quot;true&quot;</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            <span class="p">|</span> <span class="s">&quot;false&quot;</span>
+</code></pre></div>
+<p>Access is bidirectional:</p>
+<ul>
+<li><strong>Reverse lookup</strong> — <code>TokenKind:"main"</code> → returns the <code>TokenKind</code> variant (<code>Main</code>)</li>
+<li><strong>Forward lookup</strong> — <code>TokenKind:Main</code> → returns the <code>String</code> value (<code>"main"</code>)</li>
+</ul>
+<p>A variant can have multiple values (stacked entries like <code>TrueLit</code>), but reverse lookup on such variants is ambiguous and produces an error at compile time.</p>
+<p>Lookup tables must be exhaustive — every variant needs at least one value, and all values must be unique across the table.</p>
+<h3 id="csv-declaration-upcoming-v1x">CSV Declaration (Upcoming v1.X)<a class="headerlink" href="#csv-declaration-upcoming-v1x" title="Permanent link">&para;</a></h3>
+<p><em>CSV-based lookup declaration is planned for version 1.X and not yet implemented.</em></p>
+<p>For large lookup tables, data can be loaded from a CSV file at compile time instead of manual declaration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span> <span class="err">@</span><span class="p">(</span><span class="s">&quot;tokens.csv&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>The CSV must have columns matching the variant names and values.</p>
+<p>Once the compiler is self-hosted (written in Prove), a compiled program can generate CSV files which then get embedded into a new binary at compile time. This creates a binary-table lookup system that could eventually form the foundation of a database built on binary lookup files.</p>
+<h3 id="multi-type-lookup-upcoming-v1x">Multi-Type Lookup (Upcoming v1.X)<a class="headerlink" href="#multi-type-lookup-upcoming-v1x" title="Permanent link">&para;</a></h3>
+<p><em>Multi-type lookups are planned for version 1.X and not yet implemented.</em></p>
+<p>A lookup can map to multiple primitive types simultaneously:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="p">|</span> <span class="kt">Integer</span> <span class="k">where</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="nc">One</span> <span class="p">|</span> <span class="s">&quot;one&quot;</span> <span class="p">|</span> <span class="mi">1</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="nc">Two</span> <span class="p">|</span> <span class="s">&quot;two&quot;</span> <span class="p">|</span> <span class="mi">2</span>
+</code></pre></div>
+<p>The lookup is contextual — the result type depends on the context it's used in:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">var</span> <span class="k">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">TokenKind</span><span class="p">:</span><span class="nc">One</span>     <span class="err">#</span> <span class="n">var</span> <span class="k">is</span> <span class="s">&quot;one&quot;</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">var</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="nc">TokenKind</span><span class="p">:</span><span class="nc">One</span>    <span class="err">#</span> <span class="n">var</span> <span class="k">is</span> <span class="mi">1</span>
+</code></pre></div>
+<p>Rules:
+- <strong>No overlapping types</strong> — each type can only appear once: <code>String | Integer | String</code> is invalid
+- <strong>Native types only</strong> — only primitive types are supported (String, Integer, Boolean, Byte)
+- <strong>Compile-time only</strong> — this is not a runtime type; the lookup type is resolved at compile time based on usage context</p>
 <h2 id="algebraic-types-with-exhaustive-matching">Algebraic Types with Exhaustive Matching<a class="headerlink" href="#algebraic-types-with-exhaustive-matching" title="Permanent link">&para;</a></h2>
 <p>Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a variant.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">type</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">T</span><span class="p">,</span> <span class="nc">E</span><span class="o">&gt;</span> <span class="k">is</span> <span class="nc">Ok</span><span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Err</span><span class="p">(</span><span class="nc">E</span><span class="p">)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">type</span> <span class="nc">Shape</span> <span class="k">is</span> <span class="nc">Circle</span><span class="p">(</span><span class="n">radius</span> <span class="kt">Decimal</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Rect</span><span class="p">(</span><span class="n">w</span> <span class="kt">Decimal</span><span class="p">,</span> <span class="n">h</span> <span class="kt">Decimal</span><span class="p">)</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1">// compiler error if you forget a variant</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="kd">transforms</span> <span class="n">area</span><span class="p">(</span><span class="n">s</span> <span class="nc">Shape</span><span class="p">)</span> <span class="kt">Decimal</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">from</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="k">match</span> <span class="n">s</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="nc">Circle</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">r</span> <span class="o">*</span> <span class="n">r</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="nc">Rect</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">w</span> <span class="o">*</span> <span class="n">h</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">type</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">T</span><span class="p">,</span> <span class="nc">E</span><span class="o">&gt;</span> <span class="k">is</span> <span class="nc">Ok</span><span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Err</span><span class="p">(</span><span class="nc">E</span><span class="p">)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">type</span> <span class="nc">Shape</span> <span class="k">is</span> <span class="nc">Circle</span><span class="p">(</span><span class="n">radius</span> <span class="kt">Decimal</span><span class="p">)</span> <span class="p">|</span> <span class="nc">Rect</span><span class="p">(</span><span class="n">w</span> <span class="kt">Decimal</span><span class="p">,</span> <span class="n">h</span> <span class="kt">Decimal</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="err">#</span> <span class="n">compiler</span> <span class="n">error</span> <span class="n">if</span> <span class="n">you</span> <span class="n">forget</span> <span class="n">a</span> <span class="n">variant</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="kd">transforms</span> <span class="n">area</span><span class="p">(</span><span class="n">s</span> <span class="nc">Shape</span><span class="p">)</span> <span class="kt">Decimal</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">from</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="k">match</span> <span class="n">s</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        <span class="nc">Circle</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">r</span> <span class="o">*</span> <span class="n">r</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        <span class="nc">Rect</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">w</span> <span class="o">*</span> <span class="n">h</span>
 </code></pre></div>
 <h2 id="effect-types">Effect Types<a class="headerlink" href="#effect-types" title="Permanent link">&para;</a></h2>
 <p>IO is encoded in the verb, not in annotations. The compiler knows which functions touch the world (<code>inputs</code>/<code>outputs</code>) and which are pure (<code>transforms</code>/<code>validates</code>). Pure functions get automatic memoization and parallelism.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">inputs</span> <span class="n">read_config</span><span class="p">(</span><span class="n">path</span> <span class="nc">Path</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>               <span class="c1">// IO inherent, ! = can fail</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kd">transforms</span> <span class="n">parse</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">Config</span><span class="p">,</span> <span class="kt">Error</span><span class="o">&gt;</span>   <span class="c1">// pure — failure in return type</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kd">transforms</span> <span class="n">rewrite</span><span class="p">(</span><span class="n">c</span> <span class="nc">Config</span><span class="p">)</span> <span class="nc">Config</span>                <span class="c1">// pure, infallible, parallelizable</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kd">inputs</span> <span class="n">read_config</span><span class="p">(</span><span class="n">path</span> <span class="nc">Path</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>               <span class="c1">// IO inherent, ! = can fail</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kd">transforms</span> <span class="n">parse</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">Result</span><span class="o">&lt;</span><span class="nc">Config</span><span class="p">,</span> <span class="kt">Error</span><span class="o">&gt;</span>   <span class="c1">// pure — failure in return type</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="kd">transforms</span> <span class="n">rewrite</span><span class="p">(</span><span class="n">c</span> <span class="nc">Config</span><span class="p">)</span> <span class="nc">Config</span>                <span class="c1">// pure, infallible, parallelizable</span>
 </code></pre></div>
 <h2 id="ownership-lite-linear-types-with-compiler-inferred-borrows">Ownership Lite (Linear Types with Compiler-Inferred Borrows)<a class="headerlink" href="#ownership-lite-linear-types-with-compiler-inferred-borrows" title="Permanent link">&para;</a></h2>
 <p><em>Upcoming (v0.9.3) — <code>Own</code>, <code>Mutable</code>, and compiler-inferred borrows are parsed but not yet enforced.</em></p>
 <p>Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">inputs</span> <span class="n">process</span><span class="p">(</span><span class="n">file</span> <span class="nc">File</span><span class="p">:[</span><span class="nc">Own</span><span class="p">])</span> <span class="nc">Data</span><span class="kp">!</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">from</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">content</span> <span class="k">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">close</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">inputs</span> <span class="n">process</span><span class="p">(</span><span class="n">file</span> <span class="nc">File</span><span class="p">:[</span><span class="nc">Own</span><span class="p">])</span> <span class="nc">Data</span><span class="kp">!</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">from</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">content</span> <span class="k">as</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">close</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="no-null">No Null<a class="headerlink" href="#no-null" title="Permanent link">&para;</a></h2>
 <p>No null — use <code>Option&lt;T&gt;</code>, enforced by the compiler.</p>
