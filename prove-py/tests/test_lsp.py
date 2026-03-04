@@ -13,7 +13,6 @@ from prove.lsp import (
     _extract_undefined_name,
     _get_word_at,
     _is_e310,
-    _sig_params_display,
     _types_display,
     completion,
     span_to_range,
