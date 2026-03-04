@@ -101,7 +101,7 @@ for _c in ("E380", "E381", "E382", "E384", "E385", "E386"):
 # Explain verification E391-E394 (E390 replaced by W323)
 _register_doc_range("E", 391, 394)
 # Warnings
-for _c in ("W304", "W311"):
+for _c in ("W304", "W311", "W312"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Warnings — contracts W321-W326
 _register_doc_range("W", 321, 326)

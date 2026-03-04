@@ -329,3 +329,13 @@ Prove_String *prove_emit_json(Prove_Value *value) {
     _json_emit_value(value, &out);
     return out;
 }
+
+bool prove_validates_json(Prove_String *source) {
+    JsonParser p;
+    p.src = source->data;
+    p.len = source->length;
+    p.pos = 0;
+    p.err[0] = '\0';
+    Prove_Value *val = _json_parse_value(&p);
+    return val != NULL;
+}

@@ -129,17 +129,77 @@ from
 `explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and references are verified against contracts. Without `ensures` (loose mode), explain is free-form documentation:
 
 ```prove
-transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
-  ensures result >= 0
-  requires len(items) > 0
-  explain
-      sum all items . price
-      reduce sub by discount
-      add tax to discounted
+module Example
+  narrative: """An example of email update"""
+  InputOutput inputs console file, outputs console
+  Parse creates json value, types Value, reads json, validates object
+  InputOutput inputs process
+  List reads first
+  Parse reads object, validates object
+  Table types Table
+
+  type Email is String where r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+
+  type User is
+    id Integer
+    name String
+    email String
+
+  USER_FILE as String = "user.json"
+
+inputs email() Option<Email>!
 from
-    sub as Price = subtotal(items)
-    discounted as Price = apply_discount(discount, sub)
-    apply_tax(tax, discounted)
+    console("What is your email?")
+
+transforms user(json_data Result<Value, String>) User
+  requires valid object(json_data)
+from
+    data as Table<Value> = object(json_data)
+    User(data.id, data.name, data.email)
+
+matches ensure_user(raw String) User
+from
+    Some(raw) =>
+        json_data as Result<Value, String> = json(raw)
+        user(json_data)
+    _ => User()
+
+validates id(id Option<Integer>)
+  requires valid integer(id)
+from
+    id > 0
+
+transforms set_email(user User, email Option<Email>) User
+  requires valid email(email)
+from
+    user.email = email
+    user
+
+transforms dump_user(user User) String
+  requires valid value(user)
+from
+    json(value(user))
+
+outputs save(json_data String)!
+  requires valid string(json_data)
+from
+    file(USER_FILE, json_data)!
+
+outputs update_email(id Option<Integer>) User:[Mutable]!
+  ensures valid user(user)
+  requires valid id(id)
+  explain
+      we get an email address
+      we fetch the user
+      we set the email to user
+      change the user to json string and save it 
+      return the user
+from
+    email as Option<Email> = email()
+    user as User:[Mutable] = user(id)!
+    set_email(user, email)
+    save(dump_user(user))
+    user
 ```
 
 `explain` is LSP-suggested, not compiler-required — but `ensures` without `explain` produces a warning, since promises should be documented.
@@ -178,17 +238,17 @@ A RESTful inventory service demonstrating the full feature set:
 
 ```prove
 module InventoryService
-    narrative: """
+  narrative: """
     Products are added to inventory with validated stock levels.
     Orders consume stock. The system ensures stock never goes negative
     and all monetary calculations use exact decimal arithmetic.
     """
 
-type Port is Integer:[16 Unsigned] where 1..65535
-type Price is Decimal:[128 Scale:2] where >= 0
-type Sku is String where r"^[A-Z]{2,4}-[0-9]{4,8}$"
+  type Port is Integer:[16 Unsigned] where 1..65535
+  type Price is Decimal:[128 Scale:2] where >= 0
+  type Sku is String where r"^[A-Z]{2,4}-[0-9]{4,8}$"
 
-type Product is
+  type Product is
     sku Sku
     name String
     price Price

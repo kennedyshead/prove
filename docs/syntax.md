@@ -516,29 +516,35 @@ from
 The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
 
 ```prove
-transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
-  ensures result >= 0
-  requires len(items) > 0
+outputs update_email(id Option<Integer>) User:[Mutable]!
+  ensures valid user(user)
+  requires valid id(id)
   explain
-      sum all items . price
-      reduce sub by discount
-      add tax to discounted
+      we get an email address
+      we fetch the user
+      then we validate the email format
+      we set the email to user
+      save and return the user
 from
-    sub as Price = subtotal(items)
-    discounted as Price = apply_discount(discount, sub)
-    apply_tax(tax, discounted)
+    email as Option<Email> = email()
+    user as User:[Mutable] = user(id)!
+    set_email(user, email)
+    save(dump_user(user))
+    user
 ```
 
 Sugar words keep it readable — the compiler sees the same thing:
 
 ```prove
   explain
-    sum all the items.price
-    reduce the sub by discount
-    add applicable tax to the discounted total
+    we get an applicable email address from console
+    we fetch the corresponding user from storage
+    then we validate the email format against the regex pattern
+    we set the new email to user
+    save the updated user and return it
 ```
 
-Compiler parses: `sum` (operation) + `all` (connector) + `items.price` (reference), ignoring "the". Both forms are equivalent.
+The compiler parses each row for operations (`get`, `fetch`, `validate`, `set`, `save`), connectors (`we`, `then`, `the`), and references (`email`, `user`, `format`). Operations are verified against called functions' contracts — if the claimed operation doesn't match the function's behavior, the compiler warns.
 
 **Loose mode** (no `ensures`): Row count is flexible. Free-form text. Documentation value only.
 

@@ -161,12 +161,16 @@ class SymbolTable:
                 candidates = by_arity
         # Disambiguate by first-argument type name
         if arg_types:
-            first = getattr(arg_types[0], "name", None)
+            first = getattr(arg_types[0], "name", None) or getattr(
+                arg_types[0], "base_name", None,
+            )
             if first is not None:
                 for sig in candidates:
                     if sig.param_types:
                         pname = getattr(
                             sig.param_types[0], "name", None,
+                        ) or getattr(
+                            sig.param_types[0], "base_name", None,
                         )
                         if pname == first:
                             return sig
@@ -180,6 +184,11 @@ class SymbolTable:
                         for p, a in zip(sig.param_types, arg_types)
                     ):
                         return sig
+        # Tiebreaker: prefer failable signature when disambiguation fails
+        # (e.g. user(id)! should resolve to `inputs user` not `transforms user`)
+        failable = [s for s in candidates if s.can_fail]
+        if len(failable) == 1:
+            return failable[0]
         return candidates[0]
 
     def define_type(self, name: str, resolved: Type) -> None:

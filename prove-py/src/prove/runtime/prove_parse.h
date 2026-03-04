@@ -74,4 +74,17 @@ Prove_String *prove_emit_toml(Prove_Value *value);
 Prove_Result prove_parse_json(Prove_String *source);
 Prove_String *prove_emit_json(Prove_Value *value);
 
+/* ── String validation ───────────────────────────────────────── */
+
+bool prove_validates_json(Prove_String *source);
+bool prove_validates_toml(Prove_String *source);
+
+/* ── Record → Value conversion ───────────────────────────────── */
+
+/* Identity passthrough when source is already a Value. */
+Prove_Value *prove_creates_value(Prove_Value *v);
+
+/* Validates that a Value is non-null (always true for records). */
+bool prove_validates_value(Prove_Value *v);
+
 #endif /* PROVE_PARSE_H */

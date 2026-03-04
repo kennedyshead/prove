@@ -36,17 +36,21 @@ These are hard rules — the compiler enforces them automatically.
 When the implementation has multiple steps, `explain` documents the chain of operations using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and the compiler verifies references against contracts:
 
 ```prove
-transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
-  ensures result >= 0
-  requires len(items) > 0
+outputs update_email(id Option<Integer>) User:[Mutable]!
+  ensures valid user(user)
+  requires valid id(id)
   explain
-      sum all items . price
-      reduce sub by discount
-      add tax to discounted
+      we get an email address
+      we fetch the user
+      then we validate the email format
+      we set the email to user
+      save and return the user
 from
-    sub as Price = subtotal(items)
-    discounted as Price = apply_discount(discount, sub)
-    apply_tax(tax, discounted)
+    email as Option<Email> = email()
+    user as User:[Mutable] = user(id)!
+    set_email(user, email)
+    save(dump_user(user))
+    user
 ```
 
 `requires` and `ensures` are about the function's *interface*. `explain` is about the function's *implementation* — it documents *how* each step satisfies the promises.

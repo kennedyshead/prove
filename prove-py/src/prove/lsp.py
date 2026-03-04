@@ -446,8 +446,16 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
 
     # Symbol table completions (when file parses successfully)
     if ds is not None and ds.symbols is not None:
-        # All known names from symbol table
+        # Collect function names so we skip them in all_known_names
+        # (they're handled more thoroughly by the all_functions loop below)
+        func_names = {
+            fname for (_verb, fname) in ds.symbols.all_functions()
+        }
+
+        # All known names from symbol table (excluding function names)
         for name in ds.symbols.all_known_names():
+            if name in func_names:
+                continue
             sym = ds.symbols.lookup(name)
             if sym is not None:
                 from prove.types import type_name as _tn
@@ -484,14 +492,16 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     sort_text=f"{fname}_{sig.verb}" if sig.verb else fname,
                 ))
 
-    # Deduplicate by (label, sort_text) — verb variants are distinct
+    # Deduplicate by (label, sort_text) — verb variants are distinct.
+    # Later items (symbol table) override earlier ones (stdlib index)
+    # when both have detail, because local definitions are more specific.
     seen: dict[tuple[str, str], lsp.CompletionItem] = {}
     for item in items:
         key = (item.label, item.sort_text or item.label)
         existing = seen.get(key)
         if existing is None:
             seen[key] = item
-        elif item.detail and not existing.detail:
+        elif item.detail:
             seen[key] = item
 
     return lsp.CompletionList(

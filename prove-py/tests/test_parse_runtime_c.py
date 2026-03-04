@@ -447,3 +447,132 @@ class TestValueTag:
         result = _compile_and_run(tmp_path, code, name="value_tags")
         assert result.returncode == 0
         assert "OK" in result.stdout
+
+
+class TestValidatesJson:
+    """Tests for prove_validates_json."""
+
+    def test_valid_json_object(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("{\\"key\\": 42}");
+                if (!prove_validates_json(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_json_ok")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+    def test_invalid_json(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("{bad json");
+                if (prove_validates_json(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_json_bad")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+    def test_valid_json_array(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("[1, 2, 3]");
+                if (!prove_validates_json(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_json_arr")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+    def test_empty_string_invalid(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("");
+                if (prove_validates_json(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_json_empty")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+
+class TestValidatesToml:
+    """Tests for prove_validates_toml."""
+
+    def test_valid_toml(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("name = \\"hello\\"\\n");
+                if (!prove_validates_toml(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_toml_ok")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+    def test_invalid_toml(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr("= no key");
+                if (prove_validates_toml(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_toml_bad")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+    def test_valid_toml_with_section(self, tmp_path):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_String *src = prove_string_from_cstr(
+                    "[server]\\nport = 8080\\n"
+                );
+                if (!prove_validates_toml(src)) return 1;
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = _compile_and_run(tmp_path, code, name="validates_toml_sec")
+        assert result.returncode == 0
+        assert "OK" in result.stdout

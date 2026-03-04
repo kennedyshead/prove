@@ -91,6 +91,7 @@ from prove.types import (
     Type,
     TypeVariable,
     VariantInfo,
+    is_json_serializable,
     numeric_widen,
     resolve_type_vars,
     substitute_type_vars,
@@ -564,6 +565,17 @@ class Checker:
                 item.name, [],
             )
             if sigs_to_register:
+                # Warn if the import specifies a verb that doesn't
+                # match any available signature for this function.
+                if item.verb and item.verb != "types":
+                    verbs = {s.verb for s in sigs_to_register}
+                    if item.verb not in verbs:
+                        self._warning(
+                            "W312",
+                            f"'{imp.module}' has no '{item.verb} {item.name}'; "
+                            f"available: {', '.join(sorted(v for v in verbs if v))}",
+                            item.span,
+                        )
                 for sig in sigs_to_register:
                     ret = sig.return_type
                     ft = FunctionType(sig.param_types, ret)
@@ -968,8 +980,9 @@ class Checker:
                     sig = self.symbols.resolve_function_any(
                         func_name, arity=n_args,
                     )
-                if sig is not None and sig.verb == "validates" and sig.module:
-                    narrowings.append((sig.module, args))
+                if sig is not None and sig.verb == "validates":
+                    mod = sig.module or "_local"
+                    narrowings.append((mod, args))
                 continue
             # has(key, table) or Table.has(key, table)
             if not isinstance(req_expr, CallExpr):
@@ -1053,6 +1066,13 @@ class Checker:
         if verb != "matches":
             self._check_match_restriction(fd.body, fd.span)
 
+    def _has_pure_overload(self, name: str) -> bool:
+        """Check if a function name has at least one pure verb overload."""
+        for (verb, fname) in self.symbols.all_functions():
+            if fname == name and verb in _PURE_VERBS:
+                return True
+        return False
+
     def _check_pure_body(self, body: list[Stmt | MatchExpr], span: Span) -> None:
         """Check that a body doesn't contain IO calls."""
         for stmt in body:
@@ -1087,11 +1107,15 @@ class Checker:
                         expr.span,
                     )
                 elif fname in self._io_function_names:
-                    self._error(
-                        "E363",
-                        f"pure function cannot call IO function '{fname}'",
-                        expr.span,
-                    )
+                    # Skip if the name also has a pure overload (channel
+                    # dispatch) — the actual verb check will happen in
+                    # _infer_call once the correct overload is resolved.
+                    if not self._has_pure_overload(fname):
+                        self._error(
+                            "E363",
+                            f"pure function cannot call IO function '{fname}'",
+                            expr.span,
+                        )
                 else:
                     # Also check if resolved function has an IO verb
                     sig = self.symbols.resolve_function_any(fname)
@@ -1411,7 +1435,10 @@ class Checker:
                 sig = self.symbols.resolve_function(
                     self._current_function.verb, name, arg_count,
                 )
-            if sig is None or len(sig.param_types) != arg_count:
+            if sig is None or len(sig.param_types) != arg_count or not all(
+                types_compatible(p, a)
+                for p, a in zip(sig.param_types, arg_types)
+            ):
                 any_sig = self.symbols.resolve_function_any(name, arg_types)
                 if any_sig is not None:
                     sig = any_sig
@@ -1437,6 +1464,18 @@ class Checker:
                     and sig.name == self._current_function.name
                     and sig.verb == self._current_function.verb):
                 self._is_recursive = True
+
+            # Verb-aware purity check for channel dispatch: if the
+            # resolved overload is IO but the caller is pure, emit E363.
+            if (self._current_function
+                    and isinstance(self._current_function, FunctionDef)
+                    and self._current_function.verb in _PURE_VERBS
+                    and sig.verb in ("inputs", "outputs")):
+                self._error(
+                    "E363",
+                    f"pure function cannot call IO function '{name}'",
+                    expr.span,
+                )
 
             # Skip strict checks for imported functions (ErrorType return = unknown sig)
             if isinstance(sig.return_type, ErrorType):
@@ -1473,6 +1512,20 @@ class Checker:
                         f"argument type mismatch: expected "
                         f"'{type_name(expected)}', "
                         f"got '{type_name(actual)}'",
+                        expr.span,
+                    )
+
+            # Verb-gated serialization: creates/validates value(V)
+            # requires the argument to be json-serializable.
+            if (sig.module and sig.module == "parse"
+                    and sig.verb in ("creates", "validates")
+                    and sig.name == "value" and arg_types):
+                actual_arg = arg_types[0]
+                if not is_json_serializable(actual_arg):
+                    self._error(
+                        "E320",
+                        f"type '{type_name(actual_arg)}' is not "
+                        f"serializable to Value",
                         expr.span,
                     )
 
@@ -1627,14 +1680,23 @@ class Checker:
 
     def _infer_pipe(self, expr: PipeExpr) -> Type:
         """a |> f desugars to f(a)."""
-        self._infer_expr(expr.left)  # check left side for errors
+        left_type = self._infer_expr(expr.left)
 
         # The right side should be a function name or call
         if isinstance(expr.right, IdentifierExpr):
             name = expr.right.name
             sig = self.symbols.resolve_function(None, name, 1)
-            if sig is None:
-                sig = self.symbols.resolve_function_any(name)
+            # Type-based fallthrough: if first match has wrong param type,
+            # try resolve_function_any with the piped arg type.
+            if sig is None or (
+                sig.param_types
+                and not types_compatible(sig.param_types[0], left_type)
+            ):
+                any_sig = self.symbols.resolve_function_any(
+                    name, [left_type],
+                )
+                if any_sig is not None:
+                    sig = any_sig
             if sig is None:
                 self._error("E311", f"undefined function '{name}'", expr.right.span)
                 return ERROR_TY
@@ -1644,9 +1706,18 @@ class Checker:
             # a |> f(b, c) desugars to f(a, b, c)
             name = expr.right.func.name
             total_args = 1 + len(expr.right.args)
+            extra_types = [self._infer_expr(a) for a in expr.right.args]
+            all_types = [left_type] + extra_types
             sig = self.symbols.resolve_function(None, name, total_args)
-            if sig is None:
-                sig = self.symbols.resolve_function_any(name)
+            if sig is None or (
+                sig.param_types
+                and not types_compatible(sig.param_types[0], left_type)
+            ):
+                any_sig = self.symbols.resolve_function_any(
+                    name, all_types,
+                )
+                if any_sig is not None:
+                    sig = any_sig
             if sig is None:
                 self._error("E311", f"undefined function '{name}'", expr.right.span)
                 return ERROR_TY

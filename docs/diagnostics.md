@@ -422,6 +422,16 @@ from
 
 A function has an `intent` declaration but no `ensures` or `requires` to validate it.
 
+### W312 — Import verb mismatch
+
+The verb specified in an import does not match any overload of the function in the imported module.
+
+```prove
+module Example
+  narrative: "Just an example of imports"
+  Parse transforms json   -- W312: Parse has no 'transforms json'; available: creates, reads
+```
+
 ### W321 — Explain text missing concept references
 
 An explain entry doesn't reference any function concepts (parameter names, variable names, or `result`).

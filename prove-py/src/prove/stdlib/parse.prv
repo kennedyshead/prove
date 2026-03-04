@@ -4,6 +4,9 @@ module Parse
 
   type Value is binary
 
+creates value(source V) Value
+binary
+
 creates toml(source String) Result<Value, String>
 binary
 
@@ -56,4 +59,13 @@ validates object(v Value)
 binary
 
 validates null(v Value)
+binary
+
+validates value(source V)
+binary
+
+validates json(source String)
+binary
+
+validates toml(source String)
 binary

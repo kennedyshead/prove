@@ -1,7 +1,7 @@
 module Example
   narrative: """An example of email update"""
   InputOutput inputs console file, outputs console
-  Parse transforms json, types Value, reads json text
+  Parse creates json value, types Value, reads json, validates object
   InputOutput inputs process
   List reads first
   Parse reads object, validates object
@@ -19,21 +19,28 @@ module Example
 inputs email() Option<Email>!
 from
     console("What is your email?")
+    // The Email type is a String with boundries and console return String, so Option<Email>
     user_input as Option<Email> = console()
     user_input
 
 transforms user(json_data Result<Value, String>) User
   requires valid object(json_data)
 from
+    // as requires already checked and unwrapped we only need to cast to Table
     data as Table<Value> = object(json_data)
     User(data.id, data.name, data.email)
+
+matches ensure_user(raw String) User
+from
+    Some(raw) =>
+        json_data as Result<Value, String> = json(raw)
+        user(json_data)
+    _ => User()
 
 inputs user(user_id Integer) User!
 from
     raw as String = file(USER_FILE)!
-    json_data as Result<Value, String> = json(raw)
-    user as User = user(json_data)
-    user
+    ensure_user(raw)
 
 validates id(id Option<Integer>)
   requires valid integer(id)
@@ -46,22 +53,41 @@ from
     user.email = email
     user
 
-outputs update_email(id Option<Integer>)!
+transforms dump_user(user User) String
+  requires valid value(user)
+from
+    json(value(user))
+
+outputs save(json_data String)!
+  requires valid string(json_data)
+from
+    file(USER_FILE, json_data)!
+
+outputs update_email(id Option<Integer>) User:[Mutable]!
   ensures valid user(user)
   requires valid id(id)
   explain
       we get an email address
       we fetch the user
       then we validate the email format
-      and we update if email changed
+      we set the email to user
+      save and return the user
 from
+    // this is inputs email that reads from stdin, the validation of email is done through the type boundries
     email as Option<Email> = email()
+    // this is inputs user that reads from user.json
     user as User:[Mutable] = user(id)!
-    user as User = set_email(user, email)
-    console(f"{user.name} now have email {user.email}")
-    file(USER_FILE, text(user))!
+    // Set the new email on the mutable user object
+    set_email(user, email)
+    // save user.json
+    save(dump_user(user))
+    user
 
 main()
 from
+    // get the first argument
     id as Option<Integer> = first(process())
-    update_email(id)
+    user as User:[Mutable] = update_email(id)
+    match user
+        User => console(f"Saved user email {user.email}")
+        _ => console(f"{to_string(id)} is not a correct id")

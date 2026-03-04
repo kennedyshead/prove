@@ -157,6 +157,10 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     ("parse", "validates", "array"): "prove_value_is_array",
     ("parse", "validates", "object"): "prove_value_is_object",
     ("parse", "validates", "null"): "prove_value_is_null",
+    ("parse", "validates", "value"): "prove_validates_value",
+    ("parse", "validates", "json"): "prove_validates_json",
+    ("parse", "validates", "toml"): "prove_validates_toml",
+    ("parse", "creates", "value"): "prove_creates_value",
 }
 
 

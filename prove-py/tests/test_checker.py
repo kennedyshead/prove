@@ -5,13 +5,17 @@ from __future__ import annotations
 from prove.source import Span
 from prove.symbols import FunctionSignature, SymbolTable
 from prove.types import (
+    FLOAT,
     INTEGER,
     STRING,
     AlgebraicType,
+    FunctionType,
     GenericInstance,
     PrimitiveType,
     RecordType,
     RefinementType,
+    VariantInfo,
+    is_json_serializable,
     types_compatible,
 )
 from tests.helpers import check, check_fails, check_info, check_warns
@@ -1698,4 +1702,162 @@ class TestVerbAwareRecursion:
             "reads item(i Item) String\n"
             "    from\n"
             "        i.name\n"
+        )
+
+
+class TestImportVerbWarning:
+    """Test W312: import verb mismatch warning."""
+
+    def test_w312_fires_for_wrong_verb(self):
+        """Parse has creates/reads json but no 'transforms json'."""
+        check_warns(
+            "module Main\n"
+            "  Parse transforms json\n"
+            "main() Unit\n"
+            "    from\n"
+            "        0\n",
+            "W312",
+        )
+
+    def test_no_w312_for_correct_verb(self):
+        """'creates json' matches, no warning expected."""
+        st = check(
+            "module Main\n"
+            "  Parse creates json\n"
+            "main() Unit\n"
+            "    from\n"
+            "        0\n"
+        )
+        # No error or warning about verb mismatch
+        assert st is not None
+
+
+class TestRecordValueSerializable:
+    """Test is_json_serializable() — used by creates value(V) gate."""
+
+    def test_record_with_primitives_serializable(self):
+        user = RecordType("User", {"id": INTEGER, "name": STRING})
+        assert is_json_serializable(user) is True
+
+    def test_record_not_implicitly_compatible_with_value(self):
+        """Record is NOT implicitly compatible with Value anymore."""
+        user = RecordType("User", {"id": INTEGER, "name": STRING})
+        value = PrimitiveType("Value")
+        assert types_compatible(value, user) is False
+
+    def test_algebraic_not_serializable(self):
+        color = AlgebraicType("Color", [
+            VariantInfo("Red"),
+            VariantInfo("Green"),
+            VariantInfo("Blue"),
+        ])
+        assert is_json_serializable(color) is False
+
+    def test_record_with_function_field_not_serializable(self):
+        bad = RecordType("Bad", {
+            "fn": FunctionType([INTEGER], STRING),
+        })
+        assert is_json_serializable(bad) is False
+
+    def test_nested_record_serializable(self):
+        inner = RecordType("Address", {"city": STRING})
+        outer = RecordType("Person", {"name": STRING, "addr": inner})
+        assert is_json_serializable(outer) is True
+
+    def test_record_with_float_serializable(self):
+        point = RecordType("Point", {"x": FLOAT, "y": FLOAT})
+        assert is_json_serializable(point) is True
+
+    def test_is_json_serializable_primitives(self):
+        assert is_json_serializable(STRING) is True
+        assert is_json_serializable(INTEGER) is True
+        assert is_json_serializable(FLOAT) is True
+        assert is_json_serializable(PrimitiveType("Boolean")) is True
+        assert is_json_serializable(PrimitiveType("Value")) is True
+
+    def test_is_json_serializable_rejects_function(self):
+        assert is_json_serializable(FunctionType([INTEGER], STRING)) is False
+
+    def test_is_json_serializable_rejects_algebraic(self):
+        color = AlgebraicType("Color", [VariantInfo("Red")])
+        assert is_json_serializable(color) is False
+
+
+class TestCreatesValue:
+    """Test creates value(V) — explicit verb-gated Record→Value conversion."""
+
+    def test_creates_value_accepts_record(self):
+        """creates value(user) should type-check for serializable records."""
+        check(
+            "module Main\n"
+            "  Parse types Value\n"
+            "  Parse creates value\n"
+            "  type User is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "creates wrap(u User) Value\n"
+            "    from\n"
+            "        value(u)\n"
+        )
+
+    def test_creates_value_pipe_to_json(self):
+        """user |> value |> json pattern should type-check."""
+        check(
+            "module Main\n"
+            "  Parse types Value\n"
+            "  Parse creates value\n"
+            "  Parse reads json\n"
+            "  type User is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "reads render(u User) String\n"
+            "    from\n"
+            "        u |> value |> json\n"
+        )
+
+    def test_creates_value_rejects_non_serializable(self):
+        """Algebraic types are not serializable — should error."""
+        check_fails(
+            "module Main\n"
+            "  Parse types Value\n"
+            "  Parse creates value\n"
+            "  type Color is\n"
+            "    Red\n"
+            "    | Green\n"
+            "\n"
+            "creates wrap(c Color) Value\n"
+            "    from\n"
+            "        value(c)\n",
+            "E320",
+        )
+
+    def test_validates_value_accepts_record(self):
+        """validates value(user) should type-check for serializable records."""
+        check(
+            "module Main\n"
+            "  Parse validates value\n"
+            "  type User is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "validates ok(u User) Boolean\n"
+            "    from\n"
+            "        value(u)\n"
+        )
+
+    def test_validates_value_rejects_non_serializable(self):
+        """Algebraic types are not serializable — should error."""
+        check_fails(
+            "module Main\n"
+            "  Parse validates value\n"
+            "  type Color is\n"
+            "    Red\n"
+            "    | Green\n"
+            "\n"
+            "validates ok(c Color) Boolean\n"
+            "    from\n"
+            "        value(c)\n",
+            "E320",
         )

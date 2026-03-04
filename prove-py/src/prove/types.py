@@ -178,6 +178,34 @@ def _unwrap_refinement(ty: Type) -> Type:
     return ty
 
 
+_JSON_SERIALIZABLE_PRIMITIVES = frozenset({
+    "String", "Integer", "Float", "Decimal", "Boolean",
+    "Character", "Byte", "Value",
+})
+
+
+def is_json_serializable(ty: Type) -> bool:
+    """Return True if *ty* can be automatically converted to Value.
+
+    Serializable types: primitives in _JSON_SERIALIZABLE_PRIMITIVES,
+    records whose fields are all serializable, List/Option/Table of
+    serializable inner types, and refinements of serializable bases.
+    """
+    if isinstance(ty, PrimitiveType):
+        return ty.name in _JSON_SERIALIZABLE_PRIMITIVES
+    if isinstance(ty, RecordType):
+        return all(is_json_serializable(ft) for ft in ty.fields.values())
+    if isinstance(ty, GenericInstance):
+        if ty.base_name in ("List", "Option", "Table"):
+            return all(is_json_serializable(a) for a in ty.args)
+        return False
+    if isinstance(ty, ListType):
+        return is_json_serializable(ty.element)
+    if isinstance(ty, RefinementType):
+        return ty.base is not None and is_json_serializable(ty.base)
+    return False
+
+
 def types_compatible(expected: Type, actual: Type) -> bool:
     """Check structural compatibility between two types.
 

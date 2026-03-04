@@ -590,3 +590,128 @@ class TestRequiresOptionNarrowing:
         # The var should be Prove_String*, not Prove_Option_*
         assert "Prove_String* val" in c_code
         assert ".value" in c_code
+
+
+class TestModuleConstants:
+    """Test that module constants emit #define macros."""
+
+    def test_string_constant(self):
+        source = (
+            "module Test\n"
+            '  MY_FILE as String = "data.json"\n'
+            "\n"
+            "transforms get_path() String\n"
+            "    from\n"
+            "        MY_FILE\n"
+        )
+        c_code = _emit(source)
+        assert '#define MY_FILE prove_string_from_cstr("data.json")' in c_code
+
+    def test_integer_constant(self):
+        source = (
+            "module Test\n"
+            "  MAX_SIZE as Integer = 100\n"
+            "\n"
+            "transforms limit() Integer\n"
+            "    from\n"
+            "        MAX_SIZE\n"
+        )
+        c_code = _emit(source)
+        assert "#define MAX_SIZE 100L" in c_code
+
+    def test_boolean_constant(self):
+        source = (
+            "module Test\n"
+            "  DEBUG as Boolean = true\n"
+            "\n"
+            "transforms flag() Boolean\n"
+            "    from\n"
+            "        DEBUG\n"
+        )
+        c_code = _emit(source)
+        assert "#define DEBUG true" in c_code
+
+
+class TestFailableNonResultReturn:
+    """Test failable functions with non-Result return types."""
+
+    def test_failable_returns_prove_result(self):
+        """A failable function with concrete return should use Prove_Result."""
+        source = (
+            "module Main\n"
+            "  InputOutput inputs console\n"
+            "\n"
+            "inputs greeting() String!\n"
+            "    from\n"
+            "        console()\n"
+        )
+        c_code = _emit(source)
+        assert "Prove_Result prv_inputs_greeting" in c_code
+
+    def test_failable_unit_return(self):
+        """A failable function with unit return should use Prove_Result."""
+        source = (
+            "module Main\n"
+            "  InputOutput outputs console\n"
+            "\n"
+            "outputs greet()!\n"
+            "    from\n"
+            '        console("hi")\n'
+        )
+        c_code = _emit(source)
+        assert "Prove_Result prv_outputs_greet" in c_code
+        assert "return prove_result_ok();" in c_code
+
+
+class TestTableFieldAccess:
+    """Test field access on Table<V> types."""
+
+    def test_table_field_emits_prove_table_get(self):
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "  Parse reads object, validates object\n"
+            "\n"
+            "transforms extract(data Table<Integer>) Integer\n"
+            "    from\n"
+            "        data.count\n"
+        )
+        c_code = _emit(source)
+        assert "prove_table_get" in c_code
+        assert '"count"' in c_code
+
+
+class TestOptionUnwrap:
+    """Test Option unwrapping in binary ops and field assignments."""
+
+    def test_option_unwrap_in_comparison(self):
+        """Option<Integer> compared to Integer should unwrap."""
+        source = (
+            "module Main\n"
+            "  Table types Table V, creates new, validates has,"
+            " reads get, transforms add\n"
+            "\n"
+            "validates check(id Option<Integer>)\n"
+            "    requires valid integer(id)\n"
+            "    from\n"
+            "        id > 0\n"
+        )
+        c_code = _emit(source)
+        assert ".value" in c_code
+
+
+class TestVariantPatternNonAlgebraic:
+    """Test VariantPattern in non-algebraic match (e.g. match on String)."""
+
+    def test_variant_pattern_some_on_string(self):
+        """matches verb with String param and Some/wildcard patterns."""
+        source = (
+            "matches check(raw String) Integer\n"
+            "    from\n"
+            "        Some(r) => 1\n"
+            "        _ => 0\n"
+        )
+        c_code = _emit(source)
+        # Should emit Some check as pointer null check (String is pointer)
+        assert "!= NULL" in c_code or ".tag == 1" in c_code

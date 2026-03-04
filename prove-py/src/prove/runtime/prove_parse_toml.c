@@ -114,6 +114,11 @@ bool prove_value_is_array(Prove_Value *v)   { return v && v->tag == PROVE_VALUE_
 bool prove_value_is_object(Prove_Value *v)  { return v && v->tag == PROVE_VALUE_OBJECT; }
 bool prove_value_is_null(Prove_Value *v)    { return !v || v->tag == PROVE_VALUE_NULL; }
 
+/* ── Record → Value identity passthrough ─────────────────────── */
+
+Prove_Value *prove_creates_value(Prove_Value *v) { return v; }
+bool prove_validates_value(Prove_Value *v) { return v != NULL; }
+
 /* ── TOML parser state ───────────────────────────────────────── */
 
 typedef struct {
@@ -501,4 +506,44 @@ Prove_String *prove_emit_toml(Prove_Value *value) {
     Prove_String *out = prove_string_from_cstr("");
     _toml_emit_table(value->object, prove_string_from_cstr(""), &out);
     return out;
+}
+
+bool prove_validates_toml(Prove_String *source) {
+    TomlParser p;
+    p.src = source->data;
+    p.len = source->length;
+    p.pos = 0;
+    p.err[0] = '\0';
+
+    /* Attempt to parse key=value pairs and sections */
+    while (!_toml_at_end(&p)) {
+        _toml_skip_ws_nl(&p);
+        if (_toml_at_end(&p)) break;
+
+        char c = _toml_peek(&p);
+
+        /* Section header [name] */
+        if (c == '[') {
+            p.pos++;
+            Prove_String *section_name = _toml_parse_key(&p);
+            if (!section_name) return false;
+            _toml_skip_ws(&p);
+            if (_toml_peek(&p) != ']') return false;
+            p.pos++;
+            continue;
+        }
+
+        /* Key = Value */
+        Prove_String *key = _toml_parse_key(&p);
+        if (!key) return false;
+        _toml_skip_ws(&p);
+        if (_toml_peek(&p) != '=') return false;
+        p.pos++; /* skip = */
+        _toml_skip_ws(&p);
+        Prove_Value *val = _toml_parse_value(&p);
+        if (!val) return false;
+        _toml_skip_ws(&p);
+        if (!_toml_at_end(&p) && _toml_peek(&p) == '\n') p.pos++;
+    }
+    return true;
 }
