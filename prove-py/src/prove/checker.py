@@ -21,6 +21,7 @@ from prove.ast_nodes import (
     Expr,
     ExprStmt,
     FailPropExpr,
+    FieldAssignment,
     FieldExpr,
     ForeignBlock,
     FunctionDef,
@@ -1035,6 +1036,8 @@ class Checker:
             self._check_pure_expr(stmt.value)
         elif isinstance(stmt, Assignment):
             self._check_pure_expr(stmt.value)
+        elif isinstance(stmt, FieldAssignment):
+            self._check_pure_expr(stmt.value)
         elif isinstance(stmt, ExprStmt):
             self._check_pure_expr(stmt.expr)
         elif isinstance(stmt, MatchExpr):
@@ -1103,6 +1106,8 @@ class Checker:
                 self._check_match_in_expr(stmt.value)
             elif isinstance(stmt, Assignment):
                 self._check_match_in_expr(stmt.value)
+            elif isinstance(stmt, FieldAssignment):
+                self._check_match_in_expr(stmt.value)
             elif isinstance(stmt, ExprStmt):
                 self._check_match_in_expr(stmt.expr)
 
@@ -1139,6 +1144,10 @@ class Checker:
             return self._check_var_decl(stmt)
         if isinstance(stmt, Assignment):
             return self._check_assignment(stmt)
+        if isinstance(stmt, FieldAssignment):
+            self._infer_expr(stmt.target)
+            self._infer_expr(stmt.value)
+            return UNIT
         if isinstance(stmt, ExprStmt):
             return self._infer_expr(stmt.expr)
         if isinstance(stmt, MatchExpr):

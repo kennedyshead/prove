@@ -1,0 +1,68 @@
+module Example
+  narrative: """An example of email update"""
+  InputOutput inputs console file, outputs console
+  Parse transforms json, types Value, reads json text
+  InputOutput inputs process
+  List reads first
+  Parse reads object, validates object
+  Table types Table
+  Convert creates integer, validates integer
+
+  type Email is String where r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+
+  type User:[Mutable] is
+    id Integer
+    name String
+    email String
+
+  USER_FILE as String = "user.json"
+
+inputs email() Option<Email>!
+from
+    console("What is your email?")
+    user_input as Option<Email> = console()
+    user_input
+
+transforms user(json_data Result<Value, String>) User
+  requires valid object(json_data)
+from
+    data as Table<Value> = object(json_data)
+    User(data.id, data.name, data.email)
+
+inputs user(user_id Integer) User:[Mutable]!
+from
+    raw as String = file(USER_FILE)!
+    json_data as Result<Value, String> = json(raw)
+    user as User = user(json_data)
+    user
+
+validates id(id Option<Integer>)
+  requires valid integer(id)
+from
+    integer(id)
+
+transforms set_email(user User:[Mutable], email Option<Email>) User:[Mutable]
+  requires valid email(email)
+from
+    user.email = email
+    user
+
+outputs update_email(id Option<Integer>)!
+  ensures valid user(user)
+  requires valid id(id)
+  explain
+      we get an email address
+      we fetch the user
+      then we validate the email format
+      and we update if email changed
+from
+    email as Option<Email> = email()
+    user as User:[Mutable] = user(id)!
+    user as User = set_email(user, email)
+    console(f"{user.name} now have email {user.email}")
+    file(USER_FILE, text(user))!
+
+main()
+from
+    id as Option<Integer> = first(process())
+    update_email(id)

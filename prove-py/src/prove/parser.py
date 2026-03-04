@@ -24,6 +24,7 @@ from prove.ast_nodes import (
     Expr,
     ExprStmt,
     FailPropExpr,
+    FieldAssignment,
     FieldDef,
     FieldExpr,
     ForeignBlock,
@@ -1480,7 +1481,7 @@ class Parser:
     # ── Statements ───────────────────────────────────────────────
 
     def _parse_statement(self) -> Stmt:
-        """Parse a statement: var decl, assignment, or expression."""
+        """Parse a statement: var decl, assignment, field assignment, or expression."""
         # Variable declaration: identifier 'as' Type '=' expr
         if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.AS:
             return self._parse_var_decl()
@@ -1489,8 +1490,14 @@ class Parser:
         if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.ASSIGN:
             return self._parse_assignment()
 
-        # Expression statement
+        # Field assignment: expr.field = expr
+        # Parse as expression first, then check for trailing '='
         expr = self._parse_expression(0)
+        if isinstance(expr, FieldExpr) and self._at(TokenKind.ASSIGN):
+            self._advance()  # '='
+            value = self._parse_expression(0)
+            return FieldAssignment(expr.obj, expr.field, value, self._span(expr.span, value.span))
+
         return ExprStmt(expr, expr.span)
 
     def _parse_var_decl(self) -> VarDecl:
@@ -1692,7 +1699,7 @@ class Parser:
             self._advance()
             return DecimalLit(tok.value, tok.span)
 
-        if tok.kind == TokenKind.STRING_LIT:
+        if tok.kind in (TokenKind.STRING_LIT, TokenKind.INTERP_START):
             return self._parse_string_or_interp()
 
         if tok.kind == TokenKind.TRIPLE_STRING_LIT:

@@ -11,10 +11,12 @@ from prove.ast_nodes import (
     BooleanLit,
     CallExpr,
     CharLit,
+    CommentStmt,
     DecimalLit,
     Expr,
     ExprStmt,
     FailPropExpr,
+    FieldAssignment,
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
@@ -954,6 +956,8 @@ class CEmitter:
             self._emit_var_decl(stmt)
         elif isinstance(stmt, Assignment):
             self._emit_assignment(stmt)
+        elif isinstance(stmt, FieldAssignment):
+            self._emit_field_assignment(stmt)
         elif isinstance(stmt, ExprStmt):
             self._emit_expr_stmt(stmt)
         elif isinstance(stmt, TailLoop):
@@ -962,6 +966,8 @@ class CEmitter:
             self._emit_tail_continue(stmt)
         elif isinstance(stmt, MatchExpr):
             self._emit_match_stmt(stmt)
+        elif isinstance(stmt, CommentStmt):
+            pass  # comments don't emit C code
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
         # Determine target type: from annotation if present, else from value
@@ -1024,6 +1030,11 @@ class CEmitter:
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)
         self._line(f"{assign.target} = {val};")
+
+    def _emit_field_assignment(self, fa: FieldAssignment) -> None:
+        target = self._emit_expr(fa.target)
+        val = self._emit_expr(fa.value)
+        self._line(f"{target}.{fa.field} = {val};")
 
     def _emit_expr_stmt(self, es: ExprStmt) -> None:
         val = self._emit_expr(es.expr)
