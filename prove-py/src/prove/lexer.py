@@ -67,7 +67,7 @@ class Lexer:
             elif ch == '/' and self._peek(1) == '/' and self._peek(2) == '/':
                 self._lex_doc_comment()
             elif ch == '/' and self._peek(1) == '/':
-                self._skip_line_comment()
+                self._lex_line_comment()
             elif ch == '"' and self._peek(1) == '"' and self._peek(2) == '"':
                 self._lex_triple_string()
             elif ch == '"':
@@ -162,13 +162,8 @@ class Lexer:
         if self.pos < len(self.source) and self.source[self.pos] == '\t':
             self._error("tabs are not allowed; use spaces", self.line, self.col, "E100")
 
-        # Skip blank lines and comment-only lines
+        # Skip blank lines
         if self.pos >= len(self.source) or self.source[self.pos] == '\n':
-            return
-        if (self.pos + 1 < len(self.source)
-                and self.source[self.pos] == '/'
-                and self.source[self.pos + 1] == '/'
-                and (self.pos + 2 >= len(self.source) or self.source[self.pos + 2] != '/')):
             return
 
         current = self.indent_stack[-1]
@@ -222,9 +217,19 @@ class Lexer:
             text.append(self._advance())
         self._emit(TokenKind.DOC_COMMENT, ''.join(text), start_line, start_col)
 
-    def _skip_line_comment(self) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] != '\n':
+    def _lex_line_comment(self) -> None:
+        start_line = self.line
+        start_col = self.col
+        # Skip //
+        self._advance()
+        self._advance()
+        # Skip optional leading space
+        if self.pos < len(self.source) and self.source[self.pos] == ' ':
             self._advance()
+        text: list[str] = []
+        while self.pos < len(self.source) and self.source[self.pos] != '\n':
+            text.append(self._advance())
+        self._emit(TokenKind.COMMENT, ''.join(text), start_line, start_col)
 
     # ── Strings ──────────────────────────────────────────────────
 

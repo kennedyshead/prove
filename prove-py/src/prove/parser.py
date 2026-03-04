@@ -15,6 +15,8 @@ from prove.ast_nodes import (
     BooleanLit,
     CallExpr,
     CharLit,
+    CommentDecl,
+    CommentStmt,
     ComptimeExpr,
     ConstantDef,
     DecimalLit,
@@ -296,6 +298,11 @@ class Parser:
         """Parse a single top-level declaration."""
         self._skip_newlines()
 
+        # Collect standalone // comments as CommentDecl
+        if self._at(TokenKind.COMMENT):
+            tok = self._advance()
+            return CommentDecl(tok.value, tok.span)
+
         # Collect doc comments
         doc_lines: list[str] = []
         while self._at(TokenKind.DOC_COMMENT):
@@ -422,6 +429,8 @@ class Parser:
             elif self._at(TokenKind.SATISFIES):
                 self._advance()
                 satisfies.append(self._expect(TokenKind.TYPE_IDENTIFIER).value)
+            elif self._at(TokenKind.COMMENT):
+                self._advance()  # skip comments between annotations
             elif self._at(TokenKind.DEDENT):
                 # Annotations indented under function, `from` back at column 0
                 self._advance()
@@ -1085,7 +1094,10 @@ class Parser:
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
 
-                if self._at(TokenKind.NARRATIVE):
+                if self._at(TokenKind.COMMENT):
+                    tok = self._advance()
+                    body.append(CommentDecl(tok.value, tok.span))
+                elif self._at(TokenKind.NARRATIVE):
                     self._advance()
                     self._expect(TokenKind.COLON)
                     if self._at(TokenKind.TRIPLE_STRING_LIT):
@@ -1349,6 +1361,11 @@ class Parser:
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
+                if self._at(TokenKind.COMMENT):
+                    tok = self._advance()
+                    stmts.append(CommentStmt(tok.value, tok.span))
+                    self._skip_newlines()
+                    continue
                 stmt = self._parse_statement()
                 stmts.append(stmt)
                 self._skip_newlines()
@@ -1378,6 +1395,15 @@ class Parser:
             self._skip_newlines()
             if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                 break
+
+            # Collect standalone comments as CommentStmt
+            if self._at(TokenKind.COMMENT):
+                tok = self._advance()
+                stmts.append(CommentStmt(tok.value, tok.span))
+                self._skip_newlines()
+                if not self._check_progress(_loop_pos):
+                    break
+                continue
 
             # Check for implicit match arms
             if self._looks_like_match_arm():
@@ -1440,6 +1466,10 @@ class Parser:
             self._skip_newlines()
             if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                 break
+            # Skip comments between match arms
+            if self._at(TokenKind.COMMENT):
+                self._advance()
+                continue
             if not self._looks_like_match_arm():
                 break
             arm = self._parse_match_arm()
@@ -1855,6 +1885,12 @@ class Parser:
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
+                # Skip comments between match arms (no AST slot for them)
+                if self._at(TokenKind.COMMENT):
+                    self._advance()
+                    if not self._check_progress(_loop_pos):
+                        break
+                    continue
                 arm = self._parse_match_arm()
                 arms.append(arm)
                 self._skip_newlines()
@@ -1892,6 +1928,13 @@ class Parser:
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
+                if self._at(TokenKind.COMMENT):
+                    tok = self._advance()
+                    body.append(CommentStmt(tok.value, tok.span))
+                    self._skip_newlines()
+                    if not self._check_progress(_loop_pos):
+                        break
+                    continue
                 body.append(self._parse_statement())
                 self._skip_newlines()
                 if not self._check_progress(_loop_pos):

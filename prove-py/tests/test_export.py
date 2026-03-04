@@ -236,8 +236,7 @@ def test_treesitter_contract_output(lists, grammar_lits):
     assert '"proof"' not in output
     # trusted is handled separately
     assert '"trusted"' not in output
-    # when is not a grammar literal — only used inside explain parsing
-    assert '"when"' not in output
+    assert '"when"' in output
     assert "@keyword.control" in output
 
 

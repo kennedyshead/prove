@@ -279,6 +279,14 @@ class Assignment:
     span: Span
 
 
+
+@dataclass(frozen=True)
+class FieldAssignment:
+    target: Expr
+    field: str
+    value: Expr
+    span: Span
+
 @dataclass(frozen=True)
 class ExprStmt:
     expr: Expr
@@ -298,7 +306,13 @@ class TailContinue:
     span: Span
 
 
-Stmt = Union[VarDecl, Assignment, ExprStmt, TailLoop, TailContinue]
+@dataclass(frozen=True)
+class CommentStmt:
+    text: str
+    span: Span
+
+
+Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, CommentStmt]
 
 
 # ── Function parts ───────────────────────────────────────────────
@@ -501,7 +515,13 @@ class InvariantNetwork:
     span: Span
 
 
-Declaration = Union[FunctionDef, MainDef, ModuleDecl]
+@dataclass(frozen=True)
+class CommentDecl:
+    text: str
+    span: Span
+
+
+Declaration = Union[FunctionDef, MainDef, ModuleDecl, CommentDecl]
 
 
 @dataclass(frozen=True)

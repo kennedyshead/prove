@@ -6,8 +6,8 @@ emits source text using the same isinstance-dispatch pattern as c_emitter.py.
 v0.8: When a SymbolTable is provided, the formatter infers type annotations
 for variable declarations whose RHS is a function call.
 
-Limitation (v0.1): Regular ``//`` comments are not preserved in the AST
-(discarded by the lexer). Doc comments (``///``) are preserved and emitted.
+Standalone ``//`` comments (between declarations and inside function bodies)
+are preserved. Trailing comments on the same line as code are not preserved.
 """
 
 from __future__ import annotations
@@ -32,10 +32,13 @@ from prove.ast_nodes import (
     BooleanLit,
     CallExpr,
     CharLit,
+    CommentDecl,
+    CommentStmt,
     ComptimeExpr,
     ConstantDef,
     DecimalLit,
     ExprStmt,
+    FieldAssignment,
     FailPropExpr,
     FieldExpr,
     FunctionDef,
@@ -159,6 +162,8 @@ class ProveFormatter:
             return self._format_main_def(decl)
         if isinstance(decl, ModuleDecl):
             return self._format_module_decl(decl)
+        if isinstance(decl, CommentDecl):
+            return f"// {decl.text}" if decl.text else "//"
         return ""
 
     # ── Function definitions ───────────────────────────────────
@@ -468,10 +473,14 @@ class ProveFormatter:
             return self._format_var_decl(stmt)
         if isinstance(stmt, Assignment):
             return self._format_assignment(stmt)
+        if isinstance(stmt, FieldAssignment):
+            return f"{self._format_expr(stmt.target)}.{stmt.field} = {self._format_expr(stmt.value)}"
         if isinstance(stmt, ExprStmt):
             return self._format_expr(stmt.expr)
         if isinstance(stmt, MatchExpr):
             return self._format_match_expr(stmt)
+        if isinstance(stmt, CommentStmt):
+            return f"// {stmt.text}" if stmt.text else "//"
         return ""
 
     def _format_var_decl(self, vd: VarDecl) -> str:

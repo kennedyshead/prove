@@ -114,6 +114,7 @@ class TokenKind(Enum):
 
     # Comments
     DOC_COMMENT = auto()
+    COMMENT = auto()
 
     # Identifiers
     IDENTIFIER = auto()
