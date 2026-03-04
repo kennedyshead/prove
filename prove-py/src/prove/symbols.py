@@ -114,16 +114,15 @@ class SymbolTable:
 
         Tries (verb, name) first, then (None, name) as fallback for builtins.
         """
+        best = None
         for key in [(verb, name), (None, name)]:
             sigs = self._functions.get(key, [])
             for sig in sigs:
                 if len(sig.param_types) == arg_count:
                     return sig
-            # If we found sigs but none matched arity, still return
-            # first match so caller can report arity mismatch
-            if sigs:
-                return sigs[0]
-        return None
+            if sigs and best is None:
+                best = sigs[0]
+        return best
 
     def resolve_function_any(
         self,

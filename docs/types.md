@@ -83,6 +83,67 @@ transforms head(xs NonEmpty<T>) T    // no Option needed, emptiness is impossibl
 
 The compiler rejects `head([])` statically.
 
+## Lookup Types (Bidirectional Maps)
+
+A `[Lookup]` type is a bidirectional map combining an algebraic type with its value representations in a single declaration — normally you'd need three separate declarations (the type, variant→value map, and value→variant map).
+
+### Single-Type Lookup
+
+```prove
+type TokenKind:[Lookup] is String where
+    Main | "main"
+    NotMain | "not_main"
+    TrueLit | "true"
+            | "false"
+```
+
+Access is bidirectional:
+
+- **Reverse lookup** — `TokenKind:"main"` → returns the `TokenKind` variant (`Main`)
+- **Forward lookup** — `TokenKind:Main` → returns the `String` value (`"main"`)
+
+A variant can have multiple values (stacked entries like `TrueLit`), but reverse lookup on such variants is ambiguous and produces an error at compile time.
+
+Lookup tables must be exhaustive — every variant needs at least one value, and all values must be unique across the table.
+
+### CSV Declaration (Upcoming v1.X)
+
+*CSV-based lookup declaration is planned for version 1.X and not yet implemented.*
+
+For large lookup tables, data can be loaded from a CSV file at compile time instead of manual declaration:
+
+```prove
+type TokenKind:[Lookup] is String where @("tokens.csv")
+```
+
+The CSV must have columns matching the variant names and values.
+
+Once the compiler is self-hosted (written in Prove), a compiled program can generate CSV files which then get embedded into a new binary at compile time. This creates a binary-table lookup system that could eventually form the foundation of a database built on binary lookup files.
+
+### Multi-Type Lookup (Upcoming v1.X)
+
+*Multi-type lookups are planned for version 1.X and not yet implemented.*
+
+A lookup can map to multiple primitive types simultaneously:
+
+```prove
+type TokenKind:[Lookup] is String | Integer where
+    One | "one" | 1
+    Two | "two" | 2
+```
+
+The lookup is contextual — the result type depends on the context it's used in:
+
+```prove
+var as String = TokenKind:One     # var is "one"
+var as Integer = TokenKind:One    # var is 1
+```
+
+Rules:
+- **No overlapping types** — each type can only appear once: `String | Integer | String` is invalid
+- **Native types only** — only primitive types are supported (String, Integer, Boolean, Byte)
+- **Compile-time only** — this is not a runtime type; the lookup type is resolved at compile time based on usage context
+
 ## Algebraic Types with Exhaustive Matching
 
 Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a variant.
@@ -91,7 +152,7 @@ Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a va
 type Result<T, E> is Ok(T) | Err(E)
 type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
-// compiler error if you forget a variant
+# compiler error if you forget a variant
 transforms area(s Shape) Decimal
 from
     match s

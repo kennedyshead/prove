@@ -600,6 +600,18 @@ connectors = ["across", "between", "within"]
 
 `explain` is independent of `requires` and `ensures`. A function can have any combination — though the strictness mode depends on whether `ensures` is present.
 
+### Why explain matters
+
+Unlike AI prompt-pong — where each change requires a fresh conversation to *maybe* get a working result — an `explain` statement is **source code**. You edit it like any other line. One small change propagates consistently across your entire codebase.
+
+**Editable, not conversational.** When you need to refactor, you tweak the explain text and the implementation follows. No prompting, no retry loops, no hoping the AI "understands" this time.
+
+**LSP/compiler suggestions as the ecosystem grows.** As your codebase accumulates well-documented functions, the compiler can suggest operations that already exist and match your intent. The explain text becomes a *query* against your library — "I need to X the Y" auto-completes to functions that actually do that. This gets more powerful with every function you write.
+
+**Foundation-first code generation.** AI can generate correct code from intent, but only if the building blocks exist. Each `explain` + implementation pair you write is a new block the compiler understands. Over time, explain statements generate most of the boilerplate automatically — you provide the high-level intent, the ecosystem provides the implementation.
+
+This is the inverse of typical AI workflows. Instead of fishing for working code through conversation, you're building a vocabulary the compiler uses to help you. The more complete your library, the less you need to write explicitly.
+
 ### Termination: `terminates`
 
 Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error.

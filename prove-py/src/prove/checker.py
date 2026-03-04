@@ -1549,6 +1549,11 @@ class Checker:
         if isinstance(obj_type, ErrorType):
             return ERROR_TY
 
+        if isinstance(obj_type, PrimitiveType) and obj_type.modifiers:
+            base = self.symbols.resolve_type(obj_type.name)
+            if base is not None:
+                obj_type = base
+
         if isinstance(obj_type, RecordType):
             field_type = obj_type.fields.get(expr.field)
             if field_type is None:

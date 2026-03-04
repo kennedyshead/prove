@@ -193,6 +193,12 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     # compatible with Decimal and with other Decimal refinements.
     expected = _unwrap_refinement(expected)
     actual = _unwrap_refinement(actual)
+    if isinstance(expected, PrimitiveType) and expected.modifiers:
+        if isinstance(actual, (RecordType, AlgebraicType)):
+            return expected.name == actual.name
+    if isinstance(actual, PrimitiveType) and actual.modifiers:
+        if isinstance(expected, (RecordType, AlgebraicType)):
+            return actual.name == expected.name
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):

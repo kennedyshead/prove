@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from prove.source import Span
+from prove.symbols import FunctionSignature, SymbolTable
 from prove.types import (
     INTEGER,
     STRING,
     AlgebraicType,
+    PrimitiveType,
     RecordType,
     RefinementType,
+    types_compatible,
 )
 from tests.helpers import check, check_fails, check_info, check_warns
 
@@ -1502,3 +1506,70 @@ class TestLookupTable:
             '        Color:"red"\n',
             "E377",
         )
+
+
+class TestModifiedTypeCompat:
+    """PrimitiveType with modifiers should be compatible with underlying named types."""
+
+    def test_mutable_primitive_compat_with_record(self):
+        rec = RecordType("User", {"name": STRING})
+        prim = PrimitiveType("User", ("Mutable",))
+        assert types_compatible(rec, prim)
+
+    def test_record_compat_with_mutable_primitive(self):
+        rec = RecordType("User", {"name": STRING})
+        prim = PrimitiveType("User", ("Mutable",))
+        assert types_compatible(prim, rec)
+
+    def test_mutable_primitive_compat_with_algebraic(self):
+        alg = AlgebraicType("Shape", [])
+        prim = PrimitiveType("Shape", ("Mutable",))
+        assert types_compatible(alg, prim)
+
+    def test_name_mismatch_still_fails(self):
+        rec = RecordType("User", {"name": STRING})
+        prim = PrimitiveType("Admin", ("Mutable",))
+        assert not types_compatible(rec, prim)
+
+    def test_no_modifiers_still_incompatible(self):
+        rec = RecordType("User", {"name": STRING})
+        prim = PrimitiveType("User")
+        assert not types_compatible(rec, prim)
+
+
+class TestFieldAccessOnModifiedType:
+    """Field access on User:[Mutable] should resolve through underlying RecordType."""
+
+    def test_field_access_on_mutable_record(self):
+        check(
+            "module M\n"
+            "  type Person is\n"
+            "    name String\n"
+            "    age Integer\n"
+            "\n"
+            "transforms get_name(p Person:[Mutable]) String\n"
+            "    from\n"
+            "        p.name\n"
+        )
+
+
+class TestFunctionResolutionArity:
+    """resolve_function should prefer arity-matching verb over arity-mismatched verb."""
+
+    def test_arity_match_across_verbs(self):
+        dummy_span = Span("<test>", 0, 0, 1, 1)
+        st = SymbolTable()
+        sig1 = FunctionSignature(
+            verb="transforms", name="process",
+            param_names=["a", "b"], param_types=[INTEGER, INTEGER],
+            return_type=INTEGER, can_fail=False, span=dummy_span,
+        )
+        sig2 = FunctionSignature(
+            verb=None, name="process",
+            param_names=["a"], param_types=[INTEGER],
+            return_type=STRING, can_fail=False, span=dummy_span,
+        )
+        st.define_function(sig1)
+        st.define_function(sig2)
+        result = st.resolve_function("transforms", "process", 1)
+        assert result is sig2
