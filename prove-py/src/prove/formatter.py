@@ -13,14 +13,19 @@ are preserved. Trailing comments on the same line as code are not preserved.
 from __future__ import annotations
 
 _STRING_ESCAPE_MAP = {
-    '\\': '\\\\', '\n': '\\n', '\r': '\\r', '\t': '\\t',
-    '"': '\\"', '\0': '\\0',
+    "\\": "\\\\",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    '"': '\\"',
+    "\0": "\\0",
 }
 
 
 def _escape_string(value: str) -> str:
     """Re-escape a string value for source output."""
     return value.translate(str.maketrans(_STRING_ESCAPE_MAP))
+
 
 from typing import TYPE_CHECKING
 
@@ -88,11 +93,18 @@ if TYPE_CHECKING:
 _PRECEDENCE: dict[str, int] = {
     "||": 1,
     "&&": 2,
-    "==": 3, "!=": 3,
-    "<": 4, ">": 4, "<=": 4, ">=": 4,
+    "==": 3,
+    "!=": 3,
+    "<": 4,
+    ">": 4,
+    "<=": 4,
+    ">=": 4,
     "..": 5,
-    "+": 6, "-": 6,
-    "*": 7, "/": 7, "%": 7,
+    "+": 6,
+    "-": 6,
+    "*": 7,
+    "/": 7,
+    "%": 7,
 }
 
 
@@ -117,27 +129,19 @@ class ProveFormatter:
             if d.code == "I300":
                 for lbl in d.labels:
                     s = lbl.span
-                    self._unused_var_spans.add(
-                        (s.file, s.start_line, s.start_col)
-                    )
+                    self._unused_var_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I302":
                 for lbl in d.labels:
                     s = lbl.span
-                    self._unused_import_spans.add(
-                        (s.file, s.start_line, s.start_col)
-                    )
+                    self._unused_import_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I303":
                 for lbl in d.labels:
                     s = lbl.span
-                    self._unused_type_spans.add(
-                        (s.file, s.start_line, s.start_col)
-                    )
+                    self._unused_type_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I314":
                 for lbl in d.labels:
                     s = lbl.span
-                    self._unknown_module_spans.add(
-                        (s.file, s.start_line, s.start_col)
-                    )
+                    self._unknown_module_spans.add((s.file, s.start_line, s.start_col))
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -249,8 +253,7 @@ class ProveFormatter:
             lines.append(f'  chosen: "{fd.chosen}"')
         for nm in fd.near_misses:
             lines.append(
-                f"  near_miss: {self._format_expr(nm.input)}"
-                f"  => {self._format_expr(nm.expected)}"
+                f"  near_miss: {self._format_expr(nm.input)}  => {self._format_expr(nm.expected)}"
             )
         for expr in fd.know:
             lines.append(f"  know: {self._format_expr(expr)}")
@@ -334,13 +337,15 @@ class ProveFormatter:
             return f"type {td.name}{mods}{params} is {base} where {constraint}"
 
         from prove.ast_nodes import BinaryDef
+
         if isinstance(body, BinaryDef):
             return f"type {td.name}{mods}{params} is binary"
 
         return f"type {td.name}{mods}{params} is ..."
 
-    def _format_lookup_type_def(self, name: str, mods: str,
-                                params: str, body: LookupTypeDef) -> str:
+    def _format_lookup_type_def(
+        self, name: str, mods: str, params: str, body: LookupTypeDef
+    ) -> str:
         """Format a [Lookup] type definition with stacking support."""
         value_type = self._format_type_expr(body.value_type)
         lines = [f"type {name}{mods}{params} is {value_type} where"]
@@ -365,6 +370,7 @@ class ProveFormatter:
     def _format_lookup_value(self, entry: object) -> str:
         """Format a lookup entry value."""
         from prove.ast_nodes import LookupEntry
+
         assert isinstance(entry, LookupEntry)
         if entry.value_kind == "string":
             return f'"{_escape_string(entry.value)}"'
@@ -387,12 +393,11 @@ class ProveFormatter:
 
     # ── Import declarations ────────────────────────────────────
 
+    MAX_LINE_LENGTH = 90
+
     def _format_import_decl(self, imp: ImportDecl) -> str | None:
         # Filter out unused import items (W302)
-        items = [
-            item for item in imp.items
-            if not self._is_unused_import(item.span)
-        ]
+        items = [item for item in imp.items if not self._is_unused_import(item.span)]
         if not items:
             return None  # entire import line is unused
         # Group items by verb, preserving order of first appearance.
@@ -404,13 +409,70 @@ class ProveFormatter:
             else:
                 seen[item.verb] = len(groups)
                 groups.append((item.verb, [item.name]))
+        # Build parts and calculate total length
         parts = []
         for verb, names in groups:
             if verb:
                 parts.append(f"{verb} {' '.join(names)}")
             else:
                 parts.append(" ".join(names))
-        return f"{imp.module} {', '.join(parts)}"
+        line = f"{imp.module} {', '.join(parts)}"
+        # If within 90 chars, use single line
+        if len(line) <= self.MAX_LINE_LENGTH:
+            return line
+        # Over 90 chars: first verb stays on module line if it fits alone
+        lines = []
+        first_verb, first_names = groups[0]
+        first_part = f"{imp.module} {first_verb} {' '.join(first_names)}"
+        if len(first_part) <= self.MAX_LINE_LENGTH:
+            # First part fits, put it on module line
+            lines.append(first_part)
+            # Remaining verbs on separate lines
+            for verb, names in groups[1:]:
+                verb_part = f"{verb} {' '.join(names)}"
+                if len(verb_part) + 8 > self.MAX_LINE_LENGTH:
+                    name_lines = self._split_item_names(names, self.MAX_LINE_LENGTH - 8)
+                    lines.append(f"  {verb} {name_lines[0]}")
+                    for name_line in name_lines[1:]:
+                        lines.append(f"        {name_line}")
+                else:
+                    lines.append(f"  {verb_part}")
+        else:
+            # First verb too long for same line, put module on its own line
+            lines.append(imp.module)
+            name_lines = self._split_item_names(first_names, self.MAX_LINE_LENGTH - 8)
+            lines.append(f"  {first_verb} {name_lines[0]}")
+            for name_line in name_lines[1:]:
+                lines.append(f"        {name_line}")
+            # Process remaining verbs
+            for verb, names in groups[1:]:
+                verb_part = f"{verb} {' '.join(names)}"
+                if len(verb_part) + 8 > self.MAX_LINE_LENGTH:
+                    name_lines = self._split_item_names(names, self.MAX_LINE_LENGTH - 8)
+                    lines.append(f"  {verb} {name_lines[0]}")
+                    for name_line in name_lines[1:]:
+                        lines.append(f"        {name_line}")
+                else:
+                    lines.append(f"  {verb_part}")
+        return "\n".join(lines)
+
+    def _split_item_names(self, names: list[str], max_len: int) -> list[str]:
+        """Split a list of item names across multiple lines if needed."""
+        if not names:
+            return []
+        lines = []
+        current = ""
+        for name in names:
+            if not current:
+                current = name
+            elif len(current) + len(name) + 2 <= max_len:
+                current += f", {name}"
+            else:
+                lines.append(current)
+                current = name
+        if current:
+            lines.append(current)
+        return lines
 
     # ── Module declarations ────────────────────────────────────
 
@@ -448,7 +510,6 @@ class ProveFormatter:
             formatted = self._format_invariant_network(inv)
             lines.append(self._indent_spaces(formatted, 2))
 
-
         for decl in mod.body:
             lines.append("")
             formatted = self._format_declaration(decl)
@@ -474,7 +535,9 @@ class ProveFormatter:
         if isinstance(stmt, Assignment):
             return self._format_assignment(stmt)
         if isinstance(stmt, FieldAssignment):
-            return f"{self._format_expr(stmt.target)}.{stmt.field} = {self._format_expr(stmt.value)}"
+            return (
+                f"{self._format_expr(stmt.target)}.{stmt.field} = {self._format_expr(stmt.value)}"
+            )
         if isinstance(stmt, ExprStmt):
             return self._format_expr(stmt.expr)
         if isinstance(stmt, MatchExpr):
@@ -668,10 +731,7 @@ class ProveFormatter:
             args = ", ".join(self._format_type_expr(a) for a in te.args)
             return f"{te.name}<{args}>"
         if isinstance(te, ModifiedType):
-            mods = " ".join(
-                (f"{m.name}:{m.value}" if m.name else m.value)
-                for m in te.modifiers
-            )
+            mods = " ".join((f"{m.name}:{m.value}" if m.name else m.value) for m in te.modifiers)
             return f"{te.name}:[{mods}]"
         return "???"
 
@@ -697,8 +757,9 @@ class ProveFormatter:
             return "Integer"
         if isinstance(expr, DecimalLit):
             return "Decimal"
-        if isinstance(expr, (StringLit, RawStringLit, TripleStringLit,
-                             PathLit, RegexLit, StringInterp)):
+        if isinstance(
+            expr, (StringLit, RawStringLit, TripleStringLit, PathLit, RegexLit, StringInterp)
+        ):
             return "String"
         if isinstance(expr, BooleanLit):
             return "Boolean"
@@ -760,7 +821,10 @@ class ProveFormatter:
         return self._type_to_str(ty)
 
     def _resolve_call_return(
-        self, expr: object, *, prefer_result: bool = False,
+        self,
+        expr: object,
+        *,
+        prefer_result: bool = False,
     ) -> Type | None:
         """Resolve the return type of a call expression.
 
