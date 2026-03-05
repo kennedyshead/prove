@@ -44,7 +44,10 @@ def compile_c(
     cmd: list[str] = [cc]
 
     # Optimization
-    cmd.append("-O2" if optimize else "-O0")
+    if optimize:
+        cmd.extend(["-O2", "-flto"])
+    else:
+        cmd.append("-O0")
 
     # Debug symbols
     if debug:
@@ -53,6 +56,9 @@ def compile_c(
 
     # Warnings
     cmd.extend(["-Wall", "-Wextra", "-Wno-unused-parameter"])
+
+    # Safety: runtime casts between void*, Prove_Header*, and concrete types
+    cmd.append("-fno-strict-aliasing")
 
     # Include dirs
     if include_dirs:

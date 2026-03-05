@@ -4,6 +4,7 @@
  */
 
 #include "prove_parse.h"
+#include "prove_text.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
@@ -38,40 +39,40 @@ static char _json_peek(JsonParser *p) {
 /* Forward declaration */
 static Prove_Value *_json_parse_value(JsonParser *p);
 
-/* Parse a JSON string */
+/* Parse a JSON string (dynamic buffer via Builder) */
 static Prove_String *_json_parse_string(JsonParser *p) {
     if (_json_peek(p) != '"') return NULL;
     p->pos++; /* skip " */
 
-    char buf[4096];
-    int64_t bi = 0;
+    Prove_Builder *b = prove_text_builder();
     while (p->pos < p->len && p->src[p->pos] != '"') {
         if (p->src[p->pos] == '\\' && p->pos + 1 < p->len) {
             p->pos++;
             char esc = p->src[p->pos];
             switch (esc) {
-                case 'n':  buf[bi++] = '\n'; break;
-                case 't':  buf[bi++] = '\t'; break;
-                case 'r':  buf[bi++] = '\r'; break;
-                case '\\': buf[bi++] = '\\'; break;
-                case '"':  buf[bi++] = '"';  break;
-                case '/':  buf[bi++] = '/';  break;
+                case 'n':  b = prove_text_write_char(b, '\n'); break;
+                case 't':  b = prove_text_write_char(b, '\t'); break;
+                case 'r':  b = prove_text_write_char(b, '\r'); break;
+                case '\\': b = prove_text_write_char(b, '\\'); break;
+                case '"':  b = prove_text_write_char(b, '"');  break;
+                case '/':  b = prove_text_write_char(b, '/');  break;
                 case 'u': {
                     /* \uXXXX — just pass through as-is for now */
-                    buf[bi++] = '\\';
-                    buf[bi++] = 'u';
+                    b = prove_text_write_char(b, '\\');
+                    b = prove_text_write_char(b, 'u');
                     break;
                 }
-                default: buf[bi++] = esc; break;
+                default: b = prove_text_write_char(b, esc); break;
             }
         } else {
-            buf[bi++] = p->src[p->pos];
+            b = prove_text_write_char(b, p->src[p->pos]);
         }
         p->pos++;
-        if (bi >= 4095) break;
     }
     if (p->pos < p->len) p->pos++; /* skip closing " */
-    return prove_string_new(buf, bi);
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return result;
 }
 
 /* Parse a JSON number */
@@ -235,99 +236,95 @@ Prove_Result prove_parse_json(Prove_String *source) {
     return prove_result_ok_ptr(val);
 }
 
-/* ── JSON emitter ────────────────────────────────────────────── */
+/* ── JSON emitter (uses Builder for O(n) emission) ───────────── */
 
-static void _json_emit_value(Prove_Value *v, Prove_String **out);
+static void _json_emit_value(Prove_Value *v, Prove_Builder **b);
 
-static void _jappend(Prove_String **out, const char *cstr) {
-    *out = prove_string_concat(*out, prove_string_from_cstr(cstr));
-}
-
-static void _json_emit_string(Prove_String *s, Prove_String **out) {
-    _jappend(out, "\"");
+static void _json_emit_string(Prove_String *s, Prove_Builder **b) {
+    *b = prove_text_write_char(*b, '"');
     /* Escape special characters */
     for (int64_t i = 0; i < s->length; i++) {
         char c = s->data[i];
         switch (c) {
-            case '"':  _jappend(out, "\\\""); break;
-            case '\\': _jappend(out, "\\\\"); break;
-            case '\n': _jappend(out, "\\n"); break;
-            case '\r': _jappend(out, "\\r"); break;
-            case '\t': _jappend(out, "\\t"); break;
-            default: {
-                char buf[2] = {c, '\0'};
-                _jappend(out, buf);
+            case '"':  *b = prove_text_write_cstr(*b, "\\\""); break;
+            case '\\': *b = prove_text_write_cstr(*b, "\\\\"); break;
+            case '\n': *b = prove_text_write_cstr(*b, "\\n"); break;
+            case '\r': *b = prove_text_write_cstr(*b, "\\r"); break;
+            case '\t': *b = prove_text_write_cstr(*b, "\\t"); break;
+            default:
+                *b = prove_text_write_char(*b, c);
                 break;
-            }
         }
     }
-    _jappend(out, "\"");
+    *b = prove_text_write_char(*b, '"');
 }
 
-static void _json_emit_value(Prove_Value *v, Prove_String **out) {
+static void _json_emit_value(Prove_Value *v, Prove_Builder **b) {
     if (!v || v->tag == PROVE_VALUE_NULL) {
-        _jappend(out, "null");
+        *b = prove_text_write_cstr(*b, "null");
         return;
     }
     switch (v->tag) {
         case PROVE_VALUE_TEXT:
-            _json_emit_string(v->text, out);
+            _json_emit_string(v->text, b);
             break;
         case PROVE_VALUE_NUMBER: {
             char buf[32];
             snprintf(buf, sizeof(buf), "%lld", (long long)v->number);
-            _jappend(out, buf);
+            *b = prove_text_write_cstr(*b, buf);
             break;
         }
         case PROVE_VALUE_DECIMAL: {
             char buf[64];
             snprintf(buf, sizeof(buf), "%g", v->decimal);
-            _jappend(out, buf);
+            *b = prove_text_write_cstr(*b, buf);
             break;
         }
         case PROVE_VALUE_BOOL:
-            _jappend(out, v->boolean ? "true" : "false");
+            *b = prove_text_write_cstr(*b, v->boolean ? "true" : "false");
             break;
         case PROVE_VALUE_ARRAY: {
-            _jappend(out, "[");
+            *b = prove_text_write_char(*b, '[');
             int64_t n = prove_list_len(v->array);
             for (int64_t i = 0; i < n; i++) {
-                if (i > 0) _jappend(out, ",");
+                if (i > 0) *b = prove_text_write_char(*b, ',');
                 Prove_Value *elem = *(Prove_Value **)prove_list_get(v->array, i);
-                _json_emit_value(elem, out);
+                _json_emit_value(elem, b);
             }
-            _jappend(out, "]");
+            *b = prove_text_write_char(*b, ']');
             break;
         }
         case PROVE_VALUE_OBJECT: {
-            _jappend(out, "{");
+            *b = prove_text_write_char(*b, '{');
             Prove_List *keys = prove_table_keys(v->object);
             int64_t nkeys = prove_list_len(keys);
             for (int64_t i = 0; i < nkeys; i++) {
-                if (i > 0) _jappend(out, ",");
+                if (i > 0) *b = prove_text_write_char(*b, ',');
                 Prove_String *key = *(Prove_String **)prove_list_get(keys, i);
-                _json_emit_string(key, out);
-                _jappend(out, ":");
+                _json_emit_string(key, b);
+                *b = prove_text_write_char(*b, ':');
                 Prove_Option_voidptr opt = prove_table_get(key, v->object);
                 if (Prove_Option_voidptr_is_some(opt)) {
-                    _json_emit_value((Prove_Value *)opt.value, out);
+                    _json_emit_value((Prove_Value *)opt.value, b);
                 } else {
-                    _jappend(out, "null");
+                    *b = prove_text_write_cstr(*b, "null");
                 }
             }
-            _jappend(out, "}");
+            *b = prove_text_write_char(*b, '}');
             break;
         }
         default:
-            _jappend(out, "null");
+            *b = prove_text_write_cstr(*b, "null");
             break;
     }
 }
 
 Prove_String *prove_emit_json(Prove_Value *value) {
-    Prove_String *out = prove_string_from_cstr("");
-    _json_emit_value(value, &out);
-    return out;
+    Prove_Builder *b = prove_text_builder();
+    _json_emit_value(value, &b);
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return result;
 }
 
 bool prove_validates_json(Prove_String *source) {

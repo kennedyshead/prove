@@ -1,6 +1,7 @@
 /* Prove InputOutput runtime — file, system, dir, process channels. */
 
 #include "prove_input_output.h"
+#include "prove_text.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -13,19 +14,12 @@
 /* ── File I/O ────────────────────────────────────────────────── */
 
 Prove_Result prove_file_read(Prove_String *path) {
-    /* Build null-terminated path */
-    char *cpath = (char *)malloc((size_t)path->length + 1);
-    if (!cpath) return prove_result_err(prove_string_from_cstr("out of memory"));
-    memcpy(cpath, path->data, (size_t)path->length);
-    cpath[path->length] = '\0';
-
-    FILE *f = fopen(cpath, "rb");
+    /* Prove_String.data is already null-terminated */
+    FILE *f = fopen(path->data, "rb");
     if (!f) {
         Prove_String *msg = prove_string_from_cstr(strerror(errno));
-        free(cpath);
         return prove_result_err(msg);
     }
-    free(cpath);
 
     /* Read entire file */
     fseek(f, 0, SEEK_END);
@@ -52,18 +46,11 @@ Prove_Result prove_file_read(Prove_String *path) {
 }
 
 Prove_Result prove_file_write(Prove_String *path, Prove_String *content) {
-    char *cpath = (char *)malloc((size_t)path->length + 1);
-    if (!cpath) return prove_result_err(prove_string_from_cstr("out of memory"));
-    memcpy(cpath, path->data, (size_t)path->length);
-    cpath[path->length] = '\0';
-
-    FILE *f = fopen(cpath, "wb");
+    FILE *f = fopen(path->data, "wb");
     if (!f) {
         Prove_String *msg = prove_string_from_cstr(strerror(errno));
-        free(cpath);
         return prove_result_err(msg);
     }
-    free(cpath);
 
     size_t written = fwrite(content->data, 1, (size_t)content->length, f);
     fclose(f);
@@ -83,24 +70,7 @@ bool prove_io_console_validates(void) {
 /* ── File validates ──────────────────────────────────────────── */
 
 bool prove_io_file_validates(Prove_String *path) {
-    char *cpath = (char *)malloc((size_t)path->length + 1);
-    if (!cpath) return false;
-    memcpy(cpath, path->data, (size_t)path->length);
-    cpath[path->length] = '\0';
-
-    int ok = access(cpath, F_OK) == 0;
-    free(cpath);
-    return ok;
-}
-
-/* ── Helper: extract C string from Prove_String ──────────────── */
-
-static char *_to_cstr(Prove_String *s) {
-    char *buf = (char *)malloc((size_t)s->length + 1);
-    if (!buf) return NULL;
-    memcpy(buf, s->data, (size_t)s->length);
-    buf[s->length] = '\0';
-    return buf;
+    return access(path->data, F_OK) == 0;
 }
 
 /* ── System channel ──────────────────────────────────────────── */
@@ -111,25 +81,21 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
     result.standard_output = prove_string_from_cstr("");
     result.standard_error = prove_string_from_cstr("");
 
-    char *ccmd = _to_cstr(cmd);
-    if (!ccmd) return result;
-
-    /* Build argv array: [cmd, args..., NULL] */
+    /* Build argv array using s->data directly (already null-terminated) */
     int64_t nargs = args ? prove_list_len(args) : 0;
     char **argv = (char **)calloc((size_t)(nargs + 2), sizeof(char *));
-    if (!argv) { free(ccmd); return result; }
+    if (!argv) return result;
 
-    argv[0] = ccmd;
+    argv[0] = cmd->data;
     for (int64_t i = 0; i < nargs; i++) {
         Prove_String *arg = *(Prove_String **)prove_list_get(args, i);
-        argv[i + 1] = _to_cstr(arg);
+        argv[i + 1] = arg->data;
     }
     argv[nargs + 1] = NULL;
 
     /* Create pipes for stdout and stderr */
     int out_pipe[2], err_pipe[2];
     if (pipe(out_pipe) != 0 || pipe(err_pipe) != 0) {
-        for (int64_t i = 0; i <= nargs; i++) free(argv[i]);
         free(argv);
         return result;
     }
@@ -139,7 +105,6 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
         /* Fork failed */
         close(out_pipe[0]); close(out_pipe[1]);
         close(err_pipe[0]); close(err_pipe[1]);
-        for (int64_t i = 0; i <= nargs; i++) free(argv[i]);
         free(argv);
         return result;
     }
@@ -152,7 +117,7 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
         dup2(err_pipe[1], STDERR_FILENO);
         close(out_pipe[1]);
         close(err_pipe[1]);
-        execvp(ccmd, argv);
+        execvp(cmd->data, argv);
         _exit(127);  /* exec failed */
     }
 
@@ -160,23 +125,23 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
     close(out_pipe[1]);
     close(err_pipe[1]);
 
-    /* Read stdout */
+    /* Read stdout using Builder (O(n) instead of O(n²) concat) */
     char buf[4096];
     ssize_t n;
-    Prove_String *out_str = prove_string_from_cstr("");
+    Prove_Builder *ob = prove_text_builder();
     while ((n = read(out_pipe[0], buf, sizeof(buf))) > 0) {
         Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-        Prove_String *tmp = prove_string_concat(out_str, chunk);
-        out_str = tmp;
+        ob = prove_text_write(ob, chunk);
+        prove_release(chunk);
     }
     close(out_pipe[0]);
 
-    /* Read stderr */
-    Prove_String *err_str = prove_string_from_cstr("");
+    /* Read stderr using Builder */
+    Prove_Builder *eb = prove_text_builder();
     while ((n = read(err_pipe[0], buf, sizeof(buf))) > 0) {
         Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-        Prove_String *tmp = prove_string_concat(err_str, chunk);
-        err_str = tmp;
+        eb = prove_text_write(eb, chunk);
+        prove_release(chunk);
     }
     close(err_pipe[0]);
 
@@ -185,10 +150,11 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
     waitpid(pid, &status, 0);
 
     result.exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-    result.standard_output = out_str;
-    result.standard_error = err_str;
+    result.standard_output = prove_text_build(ob);
+    result.standard_error = prove_text_build(eb);
 
-    for (int64_t i = 0; i <= nargs; i++) free(argv[i]);
+    free(ob);
+    free(eb);
     free(argv);
     return result;
 }
@@ -198,48 +164,37 @@ void prove_io_system_outputs(int64_t code) {
 }
 
 bool prove_io_system_validates(Prove_String *cmd) {
-    char *ccmd = _to_cstr(cmd);
-    if (!ccmd) return false;
-
     /* Check if command contains a path separator */
-    if (strchr(ccmd, '/')) {
-        int ok = access(ccmd, X_OK) == 0;
-        free(ccmd);
-        return ok;
+    if (strchr(cmd->data, '/')) {
+        return access(cmd->data, X_OK) == 0;
     }
 
     /* Search PATH */
     const char *path_env = getenv("PATH");
-    if (!path_env) { free(ccmd); return false; }
+    if (!path_env) return false;
 
     char *path_copy = strdup(path_env);
-    if (!path_copy) { free(ccmd); return false; }
+    if (!path_copy) return false;
 
     char *dir = strtok(path_copy, ":");
     while (dir) {
         char full[4096];
-        snprintf(full, sizeof(full), "%s/%s", dir, ccmd);
+        snprintf(full, sizeof(full), "%s/%s", dir, cmd->data);
         if (access(full, X_OK) == 0) {
             free(path_copy);
-            free(ccmd);
             return true;
         }
         dir = strtok(NULL, ":");
     }
     free(path_copy);
-    free(ccmd);
     return false;
 }
 
 /* ── Dir channel ─────────────────────────────────────────────── */
 
 Prove_List *prove_io_dir_inputs(Prove_String *path) {
-    char *cpath = _to_cstr(path);
-    if (!cpath) return prove_list_new(sizeof(Prove_DirEntry), 4);
-
-    DIR *d = opendir(cpath);
+    DIR *d = opendir(path->data);
     if (!d) {
-        free(cpath);
         return prove_list_new(sizeof(Prove_DirEntry), 4);
     }
 
@@ -256,11 +211,11 @@ Prove_List *prove_io_dir_inputs(Prove_String *path) {
         entry.name = prove_string_from_cstr(ent->d_name);
 
         /* Build full path */
-        size_t plen = strlen(cpath);
+        size_t plen = (size_t)path->length;
         size_t nlen = strlen(ent->d_name);
         char *full = (char *)malloc(plen + 1 + nlen + 1);
         if (full) {
-            memcpy(full, cpath, plen);
+            memcpy(full, path->data, plen);
             full[plen] = '/';
             memcpy(full + plen + 1, ent->d_name, nlen + 1);
             entry.path = prove_string_from_cstr(full);
@@ -271,42 +226,29 @@ Prove_List *prove_io_dir_inputs(Prove_String *path) {
 
         /* Determine type */
         struct stat st;
-        char *entry_path = _to_cstr(entry.path);
-        if (entry_path && stat(entry_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+        if (stat(entry.path->data, &st) == 0 && S_ISDIR(st.st_mode)) {
             entry.tag = 1;  /* Directory */
         } else {
             entry.tag = 0;  /* File */
         }
-        free(entry_path);
 
         prove_list_push(&list, &entry);
     }
     closedir(d);
-    free(cpath);
     return list;
 }
 
 Prove_Result prove_io_dir_outputs(Prove_String *path) {
-    char *cpath = _to_cstr(path);
-    if (!cpath) return prove_result_err(prove_string_from_cstr("out of memory"));
-
-    if (mkdir(cpath, 0755) != 0 && errno != EEXIST) {
+    if (mkdir(path->data, 0755) != 0 && errno != EEXIST) {
         Prove_String *msg = prove_string_from_cstr(strerror(errno));
-        free(cpath);
         return prove_result_err(msg);
     }
-    free(cpath);
     return prove_result_ok();
 }
 
 bool prove_io_dir_validates(Prove_String *path) {
-    char *cpath = _to_cstr(path);
-    if (!cpath) return false;
-
     struct stat st;
-    bool ok = (stat(cpath, &st) == 0 && S_ISDIR(st.st_mode));
-    free(cpath);
-    return ok;
+    return (stat(path->data, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
 /* ── Process channel (argv) ──────────────────────────────────── */
@@ -329,15 +271,10 @@ Prove_List *prove_io_process_inputs(void) {
 }
 
 bool prove_io_process_validates(Prove_String *value) {
-    char *cval = _to_cstr(value);
-    if (!cval) return false;
-
     for (int i = 0; i < _prove_argc; i++) {
-        if (strcmp(_prove_argv[i], cval) == 0) {
-            free(cval);
+        if (strcmp(_prove_argv[i], value->data) == 0) {
             return true;
         }
     }
-    free(cval);
     return false;
 }

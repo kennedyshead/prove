@@ -1,3 +1,4 @@
+#define _GNU_SOURCE  /* memmem */
 #include "prove_text.h"
 #include <ctype.h>
 #include <string.h>
@@ -67,13 +68,8 @@ Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
     while (start <= end) {
         const char *found = NULL;
         if (start < end) {
-            /* Search within remaining data */
-            for (const char *p = start; p + sep_len <= end; p++) {
-                if (memcmp(p, sep->data, sep_len) == 0) {
-                    found = p;
-                    break;
-                }
-            }
+            found = (const char *)memmem(start, (size_t)(end - start),
+                                         sep->data, sep_len);
         }
         if (found) {
             Prove_String *part = prove_string_new(start, (int64_t)(found - start));
@@ -258,6 +254,19 @@ Prove_Builder *prove_text_write_char(Prove_Builder *b, char c) {
     }
     b->data[b->length] = c;
     b->length++;
+    return b;
+}
+
+Prove_Builder *prove_text_write_cstr(Prove_Builder *b, const char *cstr) {
+    if (!b) prove_panic("Builder.write_cstr: null builder");
+    if (!cstr) return b;
+    int64_t len = (int64_t)strlen(cstr);
+    if (len == 0) return b;
+    if (b->length + len > b->capacity) {
+        b = _builder_grow(b, len);
+    }
+    memcpy(b->data + b->length, cstr, (size_t)len);
+    b->length += len;
     return b;
 }
 

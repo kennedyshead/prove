@@ -20,8 +20,8 @@ Prove_String *prove_string_from_cstr(const char *src) {
 }
 
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b) {
-    if (!a) return b;
-    if (!b) return a;
+    if (!a) { if (b) prove_retain(b); return b; }
+    if (!b) { prove_retain(a); return a; }
     int64_t new_len = a->length + b->length;
     Prove_String *s = (Prove_String *)prove_alloc(sizeof(Prove_String) + (size_t)new_len + 1);
     s->length = new_len;
@@ -54,8 +54,17 @@ Prove_String *prove_string_from_double(double val) {
     return prove_string_new(buf, (int64_t)n);
 }
 
+static Prove_String *_str_true = NULL;
+static Prove_String *_str_false = NULL;
+
 Prove_String *prove_string_from_bool(bool val) {
-    return val ? prove_string_from_cstr("true") : prove_string_from_cstr("false");
+    if (!_str_true) {
+        _str_true = prove_string_from_cstr("true");
+        _str_true->header.refcount = INT32_MAX;
+        _str_false = prove_string_from_cstr("false");
+        _str_false->header.refcount = INT32_MAX;
+    }
+    return val ? _str_true : _str_false;
 }
 
 Prove_String *prove_string_from_char(char val) {

@@ -244,6 +244,8 @@ def copy_runtime(
     needed_files.add("prove_list.c")
     needed_files.add("prove_option.h")
     needed_files.add("prove_result.h")
+    needed_files.add("prove_text.h")
+    needed_files.add("prove_text.c")
 
     c_files: list[Path] = []
     pkg = importlib.resources.files("prove.runtime")

@@ -5,6 +5,7 @@
  */
 
 #include "prove_parse.h"
+#include "prove_text.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
@@ -61,16 +62,43 @@ Prove_Value *prove_value_object(Prove_Table *obj) {
 
 /* ── Accessors ───────────────────────────────────────────────── */
 
+static Prove_String *_tag_null = NULL;
+static Prove_String *_tag_text = NULL;
+static Prove_String *_tag_number = NULL;
+static Prove_String *_tag_decimal = NULL;
+static Prove_String *_tag_bool = NULL;
+static Prove_String *_tag_array = NULL;
+static Prove_String *_tag_object = NULL;
+
+static void _init_tag_strings(void) {
+    if (_tag_null) return;
+    _tag_null = prove_string_from_cstr("null");
+    _tag_null->header.refcount = INT32_MAX;
+    _tag_text = prove_string_from_cstr("text");
+    _tag_text->header.refcount = INT32_MAX;
+    _tag_number = prove_string_from_cstr("number");
+    _tag_number->header.refcount = INT32_MAX;
+    _tag_decimal = prove_string_from_cstr("decimal");
+    _tag_decimal->header.refcount = INT32_MAX;
+    _tag_bool = prove_string_from_cstr("bool");
+    _tag_bool->header.refcount = INT32_MAX;
+    _tag_array = prove_string_from_cstr("array");
+    _tag_array->header.refcount = INT32_MAX;
+    _tag_object = prove_string_from_cstr("object");
+    _tag_object->header.refcount = INT32_MAX;
+}
+
 Prove_String *prove_value_tag(Prove_Value *v) {
-    if (!v) return prove_string_from_cstr("null");
+    _init_tag_strings();
+    if (!v) return _tag_null;
     switch (v->tag) {
-        case PROVE_VALUE_TEXT:    return prove_string_from_cstr("text");
-        case PROVE_VALUE_NUMBER:  return prove_string_from_cstr("number");
-        case PROVE_VALUE_DECIMAL: return prove_string_from_cstr("decimal");
-        case PROVE_VALUE_BOOL:    return prove_string_from_cstr("bool");
-        case PROVE_VALUE_ARRAY:   return prove_string_from_cstr("array");
-        case PROVE_VALUE_OBJECT:  return prove_string_from_cstr("object");
-        default:                  return prove_string_from_cstr("null");
+        case PROVE_VALUE_TEXT:    return _tag_text;
+        case PROVE_VALUE_NUMBER:  return _tag_number;
+        case PROVE_VALUE_DECIMAL: return _tag_decimal;
+        case PROVE_VALUE_BOOL:    return _tag_bool;
+        case PROVE_VALUE_ARRAY:   return _tag_array;
+        case PROVE_VALUE_OBJECT:  return _tag_object;
+        default:                  return _tag_null;
     }
 }
 
@@ -197,7 +225,7 @@ static Prove_String *_toml_parse_key(TomlParser *p) {
 /* Forward declaration */
 static Prove_Value *_toml_parse_value(TomlParser *p);
 
-/* Parse a TOML string value */
+/* Parse a TOML string value (dynamic buffer via Builder) */
 static Prove_Value *_toml_parse_string(TomlParser *p) {
     p->pos++; /* skip opening " */
 
@@ -219,29 +247,29 @@ static Prove_Value *_toml_parse_string(TomlParser *p) {
         return NULL;
     }
 
-    /* Regular string with escape handling */
-    char buf[4096];
-    int64_t bi = 0;
+    /* Regular string with escape handling (dynamic buffer) */
+    Prove_Builder *b = prove_text_builder();
     while (p->pos < p->len && p->src[p->pos] != '"') {
         if (p->src[p->pos] == '\\' && p->pos + 1 < p->len) {
             p->pos++;
             char esc = p->src[p->pos];
             switch (esc) {
-                case 'n':  buf[bi++] = '\n'; break;
-                case 't':  buf[bi++] = '\t'; break;
-                case 'r':  buf[bi++] = '\r'; break;
-                case '\\': buf[bi++] = '\\'; break;
-                case '"':  buf[bi++] = '"';  break;
-                default:   buf[bi++] = esc;  break;
+                case 'n':  b = prove_text_write_char(b, '\n'); break;
+                case 't':  b = prove_text_write_char(b, '\t'); break;
+                case 'r':  b = prove_text_write_char(b, '\r'); break;
+                case '\\': b = prove_text_write_char(b, '\\'); break;
+                case '"':  b = prove_text_write_char(b, '"');  break;
+                default:   b = prove_text_write_char(b, esc);  break;
             }
         } else {
-            buf[bi++] = p->src[p->pos];
+            b = prove_text_write_char(b, p->src[p->pos]);
         }
         p->pos++;
-        if (bi >= 4095) break;
     }
     if (p->pos < p->len) p->pos++; /* skip closing " */
-    return prove_value_text(prove_string_new(buf, bi));
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return prove_value_text(result);
 }
 
 /* Parse a TOML array */
@@ -399,68 +427,59 @@ Prove_Result prove_parse_toml(Prove_String *source) {
     return prove_result_ok_ptr(result);
 }
 
-/* ── TOML emitter ────────────────────────────────────────────── */
+/* ── TOML emitter (uses Builder for O(n) emission) ───────────── */
 
-static void _toml_emit_value(Prove_Value *v, Prove_String **out);
-static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_String **out);
+static void _toml_emit_value(Prove_Value *v, Prove_Builder **b);
+static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder **b);
 
-static void _append(Prove_String **out, const char *cstr) {
-    Prove_String *s = prove_string_from_cstr(cstr);
-    *out = prove_string_concat(*out, s);
-}
-
-static void _append_str(Prove_String **out, Prove_String *s) {
-    *out = prove_string_concat(*out, s);
-}
-
-static void _toml_emit_value(Prove_Value *v, Prove_String **out) {
+static void _toml_emit_value(Prove_Value *v, Prove_Builder **b) {
     if (!v || v->tag == PROVE_VALUE_NULL) {
-        _append(out, "\"\"");
+        *b = prove_text_write_cstr(*b, "\"\"");
         return;
     }
     switch (v->tag) {
         case PROVE_VALUE_TEXT:
-            _append(out, "\"");
-            _append_str(out, v->text);
-            _append(out, "\"");
+            *b = prove_text_write_char(*b, '"');
+            *b = prove_text_write(*b, v->text);
+            *b = prove_text_write_char(*b, '"');
             break;
         case PROVE_VALUE_NUMBER: {
             char buf[32];
             snprintf(buf, sizeof(buf), "%lld", (long long)v->number);
-            _append(out, buf);
+            *b = prove_text_write_cstr(*b, buf);
             break;
         }
         case PROVE_VALUE_DECIMAL: {
             char buf[64];
             snprintf(buf, sizeof(buf), "%g", v->decimal);
-            _append(out, buf);
+            *b = prove_text_write_cstr(*b, buf);
             break;
         }
         case PROVE_VALUE_BOOL:
-            _append(out, v->boolean ? "true" : "false");
+            *b = prove_text_write_cstr(*b, v->boolean ? "true" : "false");
             break;
         case PROVE_VALUE_ARRAY: {
-            _append(out, "[");
+            *b = prove_text_write_char(*b, '[');
             int64_t n = prove_list_len(v->array);
             for (int64_t i = 0; i < n; i++) {
-                if (i > 0) _append(out, ", ");
+                if (i > 0) *b = prove_text_write_cstr(*b, ", ");
                 Prove_Value *elem = *(Prove_Value **)prove_list_get(v->array, i);
-                _toml_emit_value(elem, out);
+                _toml_emit_value(elem, b);
             }
-            _append(out, "]");
+            *b = prove_text_write_char(*b, ']');
             break;
         }
         case PROVE_VALUE_OBJECT:
             /* Inline tables not emitted here — handled by section headers */
-            _append(out, "{}");
+            *b = prove_text_write_cstr(*b, "{}");
             break;
         default:
-            _append(out, "\"\"");
+            *b = prove_text_write_cstr(*b, "\"\"");
             break;
     }
 }
 
-static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_String **out) {
+static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder **b) {
     /* First emit simple key-value pairs */
     Prove_List *keys = prove_table_keys(t);
     int64_t nkeys = prove_list_len(keys);
@@ -471,10 +490,10 @@ static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_String 
         if (Prove_Option_voidptr_is_none(opt)) continue;
         Prove_Value *val = (Prove_Value *)opt.value;
         if (val && val->tag == PROVE_VALUE_OBJECT) continue; /* sections later */
-        _append_str(out, key);
-        _append(out, " = ");
-        _toml_emit_value(val, out);
-        _append(out, "\n");
+        *b = prove_text_write(*b, key);
+        *b = prove_text_write_cstr(*b, " = ");
+        _toml_emit_value(val, b);
+        *b = prove_text_write_char(*b, '\n');
     }
 
     /* Then emit sections */
@@ -492,10 +511,10 @@ static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_String 
         } else {
             section = key;
         }
-        _append(out, "\n[");
-        _append_str(out, section);
-        _append(out, "]\n");
-        _toml_emit_table(val->object, section, out);
+        *b = prove_text_write_cstr(*b, "\n[");
+        *b = prove_text_write(*b, section);
+        *b = prove_text_write_cstr(*b, "]\n");
+        _toml_emit_table(val->object, section, b);
     }
 }
 
@@ -503,9 +522,11 @@ Prove_String *prove_emit_toml(Prove_Value *value) {
     if (!value || value->tag != PROVE_VALUE_OBJECT)
         return prove_string_from_cstr("");
 
-    Prove_String *out = prove_string_from_cstr("");
-    _toml_emit_table(value->object, prove_string_from_cstr(""), &out);
-    return out;
+    Prove_Builder *b = prove_text_builder();
+    _toml_emit_table(value->object, prove_string_from_cstr(""), &b);
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return result;
 }
 
 bool prove_validates_toml(Prove_String *source) {

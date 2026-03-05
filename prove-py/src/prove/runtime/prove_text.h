@@ -43,6 +43,7 @@ Prove_String *prove_text_repeat(Prove_String *s, int64_t n);
 Prove_Builder *prove_text_builder(void);
 Prove_Builder *prove_text_write(Prove_Builder *b, Prove_String *s);
 Prove_Builder *prove_text_write_char(Prove_Builder *b, char c);
+Prove_Builder *prove_text_write_cstr(Prove_Builder *b, const char *cstr);
 Prove_String  *prove_text_build(Prove_Builder *b);
 int64_t        prove_text_builder_length(Prove_Builder *b);
 

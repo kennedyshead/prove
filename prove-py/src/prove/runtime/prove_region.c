@@ -8,12 +8,9 @@ typedef struct ProveRegionFrame {
     struct ProveRegionFrame *prev;
     size_t capacity;
     size_t used;
+    bool is_boundary;  /* true for frames pushed by prove_region_enter */
     char data[];
 } ProveRegionFrame;
-
-struct ProveRegion {
-    ProveRegionFrame *current;
-};
 
 ProveRegion *prove_region_new(void) {
     ProveRegion *r = (ProveRegion *)malloc(sizeof(ProveRegion));
@@ -50,6 +47,7 @@ void *prove_region_alloc(ProveRegion *r, size_t size) {
     frame->prev = r->current;
     frame->capacity = chunk_size - sizeof(ProveRegionFrame);
     frame->used = size;
+    frame->is_boundary = false;
 
     r->current = frame;
 
@@ -70,6 +68,7 @@ void prove_region_enter(ProveRegion *r) {
     frame->prev = r->current;
     frame->capacity = chunk_size - sizeof(ProveRegionFrame);
     frame->used = 0;
+    frame->is_boundary = true;
 
     r->current = frame;
 }
@@ -79,13 +78,20 @@ void prove_region_exit(ProveRegion *r) {
         return;
     }
 
+    /* Free frames until we reach the boundary frame from prove_region_enter */
     ProveRegionFrame *frame = r->current;
-    while (frame) {
+    while (frame && !frame->is_boundary) {
         ProveRegionFrame *prev = frame->prev;
         free(frame);
         frame = prev;
     }
-    r->current = NULL;
+    /* Free the boundary frame itself and restore the previous state */
+    if (frame && frame->is_boundary) {
+        r->current = frame->prev;
+        free(frame);
+    } else {
+        r->current = NULL;
+    }
 }
 
 void prove_region_free(ProveRegion *r) {

@@ -107,33 +107,55 @@ Prove_String *prove_path_normalize(Prove_String *path) {
 
     bool is_abs = path->data[0] == '/';
 
-    /* Split into segments */
-    char *segments[256];
-    int seg_count = 0;
-
     /* Work on a copy */
     char *buf = (char *)malloc((size_t)path->length + 1);
     memcpy(buf, path->data, (size_t)path->length);
     buf[path->length] = '\0';
 
+    /* Dynamic segments array */
+    int seg_cap = 32;
+    int seg_count = 0;
+    char **segments = (char **)malloc((size_t)seg_cap * sizeof(char *));
+
     char *tok = strtok(buf, "/");
-    while (tok && seg_count < 256) {
+    while (tok) {
         if (strcmp(tok, ".") == 0) {
             /* skip */
         } else if (strcmp(tok, "..") == 0) {
             if (seg_count > 0 && strcmp(segments[seg_count - 1], "..") != 0) {
                 seg_count--;
             } else if (!is_abs) {
+                if (seg_count >= seg_cap) {
+                    seg_cap *= 2;
+                    segments = (char **)realloc(segments, (size_t)seg_cap * sizeof(char *));
+                }
                 segments[seg_count++] = "..";
             }
         } else {
+            if (seg_count >= seg_cap) {
+                seg_cap *= 2;
+                segments = (char **)realloc(segments, (size_t)seg_cap * sizeof(char *));
+            }
             segments[seg_count++] = tok;
         }
         tok = strtok(NULL, "/");
     }
 
-    /* Reconstruct */
-    char result[4096];
+    /* Calculate result size */
+    size_t result_len = is_abs ? 1 : 0;
+    for (int i = 0; i < seg_count; i++) {
+        if (i > 0) result_len++;
+        result_len += strlen(segments[i]);
+    }
+
+    if (result_len == 0) {
+        free(segments);
+        free(buf);
+        return prove_string_from_cstr(".");
+    }
+
+    /* Build result */
+    char *result = (char *)malloc(result_len + 1);
     int pos = 0;
 
     if (is_abs) result[pos++] = '/';
@@ -144,9 +166,11 @@ Prove_String *prove_path_normalize(Prove_String *path) {
         memcpy(result + pos, segments[i], (size_t)slen);
         pos += slen;
     }
+    result[pos] = '\0';
 
+    Prove_String *ret = prove_string_new(result, pos);
+    free(result);
+    free(segments);
     free(buf);
-
-    if (pos == 0) return prove_string_from_cstr(".");
-    return prove_string_new(result, pos);
+    return ret;
 }

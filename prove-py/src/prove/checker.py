@@ -74,6 +74,7 @@ from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
 from prove.types import (
     BOOLEAN,
     BUILTINS,
+    BorrowType,
     CHARACTER,
     DECIMAL,
     ERROR_TY,
@@ -776,6 +777,15 @@ class Checker:
 
         # Register parameters
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
+
+        # Infer borrows for read-only parameter usage
+        borrowed_params = self._infer_param_borrows(fd.params, param_types, fd.body)
+
+        # Update parameter types with inferred borrows
+        for i, p in enumerate(fd.params):
+            if p.name in borrowed_params:
+                param_types[i] = borrowed_params[p.name]
+
         for param, pty in zip(fd.params, param_types):
             # E316: parameter name shadows builtin function
             if param.name in _BUILTIN_FUNCTIONS:
@@ -1814,6 +1824,10 @@ class Checker:
         if isinstance(obj_type, ErrorType):
             return ERROR_TY
 
+        # Unwrap borrowed types to get inner type for field access
+        if isinstance(obj_type, BorrowType):
+            obj_type = obj_type.inner
+
         if isinstance(obj_type, PrimitiveType) and obj_type.modifiers:
             base = self.symbols.resolve_type(obj_type.name)
             if base is not None:
@@ -2303,6 +2317,16 @@ class Checker:
         for arg, param_ty in zip(args, param_types):
             if has_own_modifier(param_ty):
                 self._track_moved_expr(arg)
+            # Check: can't pass a borrow to a mutable parameter
+            if isinstance(arg, IdentifierExpr):
+                sym = self.symbols.lookup(arg.name)
+                if sym is not None and isinstance(sym.resolved_type, BorrowType):
+                    if has_mutable_modifier(param_ty):
+                        self._error(
+                            "E341",
+                            f"cannot pass borrowed value '{arg.name}' to mutable parameter",
+                            arg.span,
+                        )
 
     def _track_moved_expr(self, expr: Expr) -> None:
         """Mark variables as moved based on expression type."""
@@ -2314,7 +2338,7 @@ class Checker:
             self._track_moved_expr(expr.base)
 
     def _infer_param_borrows(
-        self, params: list[Param], param_types: list[Type], body: list[Stmt]
+        self, params: list[Param], param_types: list[Type], body: list[Stmt | MatchExpr]
     ) -> dict[str, Type]:
         """Analyze function body to infer which parameters are used in read-only mode.
 
