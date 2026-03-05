@@ -769,7 +769,26 @@ def signature_help(params: lsp.SignatureHelpParams) -> lsp.SignatureHelp | None:
     if not func_name:
         return None
 
-    sig = ds.symbols.resolve_function_any(func_name)
+    # Look backwards from the function name to find the verb
+    verb = None
+    verbs = ("transforms", "inputs", "outputs", "reads", "validates", "creates", "matches")
+    search_start = max(0, end - 20)  # Look at most 20 chars before
+    before_func = text[search_start:end].strip()
+    for v in verbs:
+        if before_func.endswith(v):
+            verb = v
+            break
+
+    # Count current arguments to match by arity
+    arg_count = text[pos:col].count(",") + 1 if col > pos else 0
+
+    # Use verb-aware lookup if we found one, otherwise fall back to any
+    if verb:
+        sig = ds.symbols.resolve_function(verb, func_name, arg_count)
+        if sig is None:
+            sig = ds.symbols.resolve_function_any(func_name)
+    else:
+        sig = ds.symbols.resolve_function_any(func_name)
     if sig is None:
         return None
 
