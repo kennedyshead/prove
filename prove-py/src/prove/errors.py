@@ -19,9 +19,9 @@ class Severity(Enum):
 
 # ANSI color codes
 _COLORS = {
-    Severity.ERROR: "\033[1;31m",    # bold red
+    Severity.ERROR: "\033[1;31m",  # bold red
     Severity.WARNING: "\033[1;33m",  # bold yellow
-    Severity.NOTE: "\033[1;36m",     # bold cyan
+    Severity.NOTE: "\033[1;36m",  # bold cyan
 }
 _BOLD = "\033[1m"
 _BLUE = "\033[1;34m"
@@ -176,18 +176,14 @@ class DiagnosticRenderer:
         for label in diag.labels:
             span = label.span
             loc = f"{span.file}:{span.start_line}:{span.start_col}"
-            lines.append(
-                f"  {self._c(_BLUE)}-->{self._c(_RESET)} {loc}"
-            )
+            lines.append(f"  {self._c(_BLUE)}-->{self._c(_RESET)} {loc}")
             gutter = f"{span.start_line:>4}"
             lines.append(f"  {self._c(_BLUE)}   |{self._c(_RESET)}")
 
             # Show the source line if available
             source_line = self._get_source_line(span.file, span.start_line)
             if source_line is not None:
-                lines.append(
-                    f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)} {source_line}"
-                )
+                lines.append(f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)} {source_line}")
 
             # Show carets underneath
             if span.start_line == span.end_line:
@@ -200,9 +196,7 @@ class DiagnosticRenderer:
                 )
             else:
                 if source_line is None:
-                    lines.append(
-                        f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)}"
-                    )
+                    lines.append(f"  {self._c(_BLUE)}{gutter} |{self._c(_RESET)}")
 
             if label.message:
                 lines.append(
@@ -216,15 +210,11 @@ class DiagnosticRenderer:
 
         # Suggestions
         for suggestion in diag.suggestions:
-            lines.append(
-                f"  {self._c(_BLUE)}try:{self._c(_RESET)} {suggestion.replacement}"
-            )
+            lines.append(f"  {self._c(_BLUE)}try:{self._c(_RESET)} {suggestion.replacement}")
 
         # Doc link
         if diag.doc_url:
-            lines.append(
-                f"  {self._c(_BLUE)}={self._c(_RESET)} help: {diag.doc_url}"
-            )
+            lines.append(f"  {self._c(_BLUE)}={self._c(_RESET)} help: {diag.doc_url}")
 
         return "\n".join(lines)
 

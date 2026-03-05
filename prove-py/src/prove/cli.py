@@ -16,8 +16,8 @@ from prove.parser import Parser
 from prove.project import scaffold
 
 if TYPE_CHECKING:
-    from prove.symbols import SymbolTable
     from prove.ast_nodes import Module
+    from prove.symbols import SymbolTable
 
 
 def _collect_verification_stats(module: Module) -> dict:
@@ -102,7 +102,7 @@ def _compile_project(
             elif diag.severity == Severity.WARNING:
                 warnings += 1
 
-        formatter = ProveFormatter(symbols=symbols)
+        formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
         formatted = formatter.format(module)
         if formatted != source:
             format_issues += 1
@@ -174,6 +174,10 @@ def build(path: str, mutate: bool, debug: bool) -> None:
                 max_mutants=50,
                 property_rounds=100,
             )
+
+            from prove.mutator import get_survivors_path
+
+            get_survivors_path(project_dir).unlink(missing_ok=True)
 
             from prove.mutator import save_survivors
 
@@ -459,6 +463,21 @@ def test(path: str, property_rounds: int | None) -> None:
         if result.c_error:
             click.echo(f"error: {result.c_error}", err=True)
             raise SystemExit(1)
+
+        if result.test_details:
+            click.echo("\nTested functions:")
+            for tc in result.test_details:
+                type_labels = {
+                    "property": "property-based",
+                    "near_miss": "near-miss case",
+                    "boundary": "boundary values",
+                    "believe": "adversarial",
+                }
+                type_label = type_labels.get(tc.test_type, tc.test_type)
+                verb_display = f"[{tc.verb}] " if tc.verb else ""
+                click.echo(f"  • {verb_display}{tc.function_name} ({type_label})")
+            click.echo(f"  rounds per test: {rounds}")
+            click.echo("")
 
         if result.ok:
             click.echo(

@@ -2,7 +2,7 @@ module Example
   narrative: """An example of email update"""
   InputOutput inputs console file, outputs console
   Parse creates json value, types Value, reads json object, validates object, json
-  Types validates string, integer, creates integer
+  Types validates string
   Table types Table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
@@ -48,11 +48,6 @@ inputs user() User!
 from
     raw as String = file(USER_FILE)!
     ensure_user(raw)
-
-validates id(id Option<Integer>)
-  requires valid integer(id)
-from
-    id > 0
 
 validates email(email Option<Email>)
 from

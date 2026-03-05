@@ -109,9 +109,10 @@ class Mutator:
         mutants: list[Mutant] = []
         body = fd.body
 
-        # Skip single-return validators - their return type already encodes the contract
-        # (Option<T>! means must be Some, Result<T, E>! means must be Ok)
+        # Skip single-line validators - their return value already encodes the property
         # Also skip inputs with no parameters - nothing meaningful to mutate
+        if len(body) == 1 and fd.verb == "validates":
+            return mutants
         if len(body) == 1 and fd.can_fail:
             return mutants
         if fd.verb == "inputs" and not fd.params:
@@ -284,13 +285,15 @@ class Mutator:
             elif isinstance(e, IdentifierExpr):
                 pass
 
-        from prove.ast_nodes import Assignment, ExprStmt, VarDecl
+        from prove.ast_nodes import Assignment, ExprStmt, FieldAssignment, VarDecl
 
         if isinstance(stmt, ExprStmt):
             walk(stmt.expr)
         elif isinstance(stmt, VarDecl):
             walk(stmt.value)
         elif isinstance(stmt, Assignment):
+            walk(stmt.value)
+        elif isinstance(stmt, FieldAssignment):
             walk(stmt.value)
 
         return exprs

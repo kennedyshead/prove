@@ -129,14 +129,16 @@ module Auth
 
 ### Intent Annotations
 
-`intent` annotates a statement with its purpose.
+`intent` documents the purpose of a function.
 
 ```prove
-intent: "keep only valid records"
-result as List<Record> = filter(records, valid record)
+transforms filter_valid(records List<Record>) List<Record>
+  intent: "keep only valid records"
+from
+  filter(records, valid record)
 ```
 
-*Upcoming:* Compiler verification using controlled natural language (similar to `explain`).
+It goes in the function **header**, not inside the body.
 
 ### Invariant Networks: `invariant_network`, `satisfies`
 

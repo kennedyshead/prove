@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
@@ -23,7 +24,7 @@ from prove.ast_nodes import (
     TypeDef,
 )
 from prove.checker import Checker
-from prove.errors import CompileError, Severity
+from prove.errors import CompileError, Diagnostic, Severity
 from prove.formatter import ProveFormatter
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -107,6 +108,7 @@ class DocumentState:
     module: Module | None = None
     symbols: SymbolTable | None = None
     diagnostics: list[lsp.Diagnostic] = field(default_factory=list)
+    prove_diagnostics: list[Diagnostic] = field(default_factory=list)
     local_import_index: dict[str, list[ImportSuggestion]] = field(
         default_factory=dict,
     )
@@ -176,14 +178,33 @@ def _resolve_local_modules(uri: str) -> dict | None:
         return None
 
 
+def _find_project_dir(uri: str) -> Path | None:
+    """Walk up directories from file to find prove.toml (project root)."""
+    from prove.config import find_config
+
+    if uri.startswith("file://"):
+        file_path = Path(uri[7:])
+    elif uri.startswith("/"):
+        file_path = Path(uri)
+    else:
+        return None
+
+    if not file_path.exists():
+        return None
+
+    try:
+        config_path = find_config(file_path.parent)
+        return config_path.parent
+    except FileNotFoundError:
+        return None
+
+
 def _build_local_import_index(
     local_modules: dict | None,
 ) -> dict[str, list[ImportSuggestion]]:
     """Build an import suggestion index from local (sibling) modules."""
     if not local_modules:
         return {}
-
-    from prove.module_resolver import LocalModuleInfo
 
     index: dict[str, list[ImportSuggestion]] = {}
     for module_name, info in local_modules.items():
@@ -260,10 +281,12 @@ def _analyze(uri: str, source: str) -> DocumentState:
     # Phase 3: Check
     try:
         local_modules = _resolve_local_modules(uri)
-        checker = Checker(local_modules=local_modules)
+        project_dir = _find_project_dir(uri)
+        checker = Checker(local_modules=local_modules, project_dir=project_dir)
         symbols = checker.check(module)
         ds.symbols = symbols
         ds.local_import_index = _build_local_import_index(local_modules)
+        ds.prove_diagnostics = checker.diagnostics
         diags.extend(_compile_diag(d) for d in checker.diagnostics)
     except Exception as e:
         diags.append(
@@ -836,7 +859,9 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     if ds is None or ds.module is None:
         return None
 
-    fmt = ProveFormatter(symbols=ds.symbols)
+    # Filter to only I302 (unused imports) for formatting - don't remove unused types
+    fmt_diags = [d for d in ds.prove_diagnostics if d.code == "I302"]
+    fmt = ProveFormatter(symbols=ds.symbols, diagnostics=fmt_diags)
     formatted = fmt.format(ds.module)
 
     if formatted == ds.source:

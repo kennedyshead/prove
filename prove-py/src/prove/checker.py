@@ -971,16 +971,25 @@ class Checker:
         for survivor in self._survivors:
             loc = survivor.get("location", "")
             if loc and ":" in loc:
-                line_str = loc.split(":")[0]
+                parts = loc.split(":")
                 try:
-                    if fd.span.start_line == int(line_str):
+                    line_num = int(parts[0])
+                    col_num = int(parts[1]) if len(parts) > 1 else 0
+                    # Check if survivor location falls within function span
+                    in_line_range = fd.span.start_line <= line_num <= fd.span.end_line
+                    in_col_range = (
+                        fd.span.start_col <= col_num <= fd.span.end_col
+                        if line_num == fd.span.start_line
+                        else True
+                    )
+                    if in_line_range and in_col_range:
                         self._warning(
                             "W330",
                             f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "
                             "Add contracts to catch this mutation.",
                             fd.span,
                         )
-                except ValueError:
+                except (ValueError, IndexError):
                     pass
 
         self.symbols.pop_scope()

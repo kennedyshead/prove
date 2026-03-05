@@ -736,14 +736,13 @@ Functions outside any verification chain and with no callers that have `ensures`
 ### Intent: `intent`
 
 ```prove
-intent: "keep only valid records"
-result as List<Record> = filter(records, valid record)
-
-intent: "remove corrupt entries"
-result as List<Record> = filter(records, valid corrupt)
+transforms filter_valid(records List<Record>) List<Record>
+  intent: "keep only valid records"
+from
+  filter(records, valid record)
 ```
 
-`intent` annotates a statement with its purpose. Currently a **documentation keyword** — the compiler records it but does not yet verify that the intent matches the code's behavior. Verification using controlled natural language (similar to `explain`) is planned for a future release.
+`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it but does not yet verify that the intent matches the code's behavior.
 
 ### Invariants: `invariant_network`, `satisfies`
 

@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     NearMiss,
     RawStringLit,
     StringLit,
+    TypeIdentifierExpr,
 )
 from prove.c_emitter import CEmitter
 from prove.c_types import mangle_name, map_type
@@ -35,6 +36,7 @@ from prove.symbols import SymbolTable
 from prove.types import (
     ErrorType,
     GenericInstance,
+    ListType,
     PrimitiveType,
     Type,
 )
@@ -46,6 +48,9 @@ class TestCase:
 
     name: str
     code: str  # C code for the test body
+    function_name: str = ""  # Name of the function being tested
+    verb: str = ""  # Verb (transforms, matches, etc.)
+    test_type: str = "property"  # property, near_miss, believe
 
 
 @dataclass
@@ -100,22 +105,15 @@ class TestGenerator:
         lines.append("static int _tests_passed = 0;")
         lines.append("static int _tests_failed = 0;")
         lines.append("")
-        lines.append(
-            "static void _test_pass(const char *name) {"
-        )
+        lines.append("static void _test_pass(const char *name) {")
         lines.append("    _tests_run++;")
         lines.append("    _tests_passed++;")
         lines.append("}")
         lines.append("")
-        lines.append(
-            "static void _test_fail(const char *name, "
-            "const char *msg) {"
-        )
+        lines.append("static void _test_fail(const char *name, const char *msg) {")
         lines.append("    _tests_run++;")
         lines.append("    _tests_failed++;")
-        lines.append(
-            '    fprintf(stderr, "FAIL %s: %s\\n", name, msg);'
-        )
+        lines.append('    fprintf(stderr, "FAIL %s: %s\\n", name, msg);')
         lines.append("}")
         lines.append("")
 
@@ -133,20 +131,14 @@ class TestGenerator:
         lines.append("    return (int64_t)_rng_next();")
         lines.append("}")
         lines.append("")
-        lines.append("static int64_t _rng_int_range("
-                     "int64_t lo, int64_t hi) {")
+        lines.append("static int64_t _rng_int_range(int64_t lo, int64_t hi) {")
         lines.append("    if (lo >= hi) return lo;")
-        lines.append(
-            "    uint64_t range = (uint64_t)(hi - lo + 1);"
-        )
+        lines.append("    uint64_t range = (uint64_t)(hi - lo + 1);")
         lines.append("    return lo + (int64_t)(_rng_next() % range);")
         lines.append("}")
         lines.append("")
         lines.append("static double _rng_double(void) {")
-        lines.append(
-            "    return (double)_rng_next() / "
-            "(double)UINT64_MAX * 200.0 - 100.0;"
-        )
+        lines.append("    return (double)_rng_next() / (double)UINT64_MAX * 200.0 - 100.0;")
         lines.append("}")
         lines.append("")
 
@@ -168,7 +160,7 @@ class TestGenerator:
         lines.append(
             '    fprintf(stdout, "\\n%d tests, %d passed, '
             '%d failed\\n", _tests_run, _tests_passed, '
-            '_tests_failed);'
+            "_tests_failed);"
         )
         lines.append("    return _tests_failed > 0 ? 1 : 0;")
         lines.append("}")
@@ -179,10 +171,14 @@ class TestGenerator:
     # ── Per-function test generation ───────────────────────────
 
     def _generate_function_tests(
-        self, fd: FunctionDef, suite: TestSuite,
+        self,
+        fd: FunctionDef,
+        suite: TestSuite,
     ) -> None:
         sig = self._symbols.resolve_function(
-            fd.verb, fd.name, len(fd.params),
+            fd.verb,
+            fd.name,
+            len(fd.params),
         )
         if sig is None:
             return
@@ -191,6 +187,12 @@ class TestGenerator:
         ret_type = sig.return_type
         mangled = mangle_name(fd.verb, fd.name, param_types)
 
+        # validates functions implicitly return Boolean
+        from prove.types import BOOLEAN
+
+        if fd.verb == "validates":
+            ret_type = BOOLEAN
+
         # Skip functions that return void or Result (hard to test)
         if isinstance(ret_type, (ErrorType, GenericInstance)):
             return
@@ -198,27 +200,54 @@ class TestGenerator:
         # Near-miss tests
         for nm in fd.near_misses:
             self._gen_near_miss_test(
-                fd, nm, mangled, param_types, ret_type, suite,
+                fd,
+                nm,
+                mangled,
+                param_types,
+                ret_type,
+                suite,
             )
 
         # Property tests from ensures
-        if fd.ensures and self._all_testable(param_types):
+        # Skip for validators - their return value IS the property, mutation testing is redundant
+        if fd.verb != "validates" and fd.ensures and self._all_testable(param_types):
             self._gen_property_tests(
-                fd, mangled, param_types, ret_type, suite,
+                fd,
+                mangled,
+                param_types,
+                ret_type,
+                suite,
             )
 
         # Believe annotations → adversarial tests
         if fd.believe and self._all_testable(param_types):
             self._gen_believe_tests(
-                fd, mangled, param_types, ret_type, suite,
+                fd,
+                mangled,
+                param_types,
+                ret_type,
+                suite,
             )
 
     def _all_testable(self, types: list[Type]) -> bool:
         """Check if all parameter types can be randomly generated."""
         for t in types:
-            if not isinstance(t, PrimitiveType):
-                return False
-            if t.name not in ("Integer", "Decimal", "Float", "Boolean"):
+            if isinstance(t, PrimitiveType):
+                if t.name not in ("Integer", "Decimal", "Float", "Boolean", "String"):
+                    return False
+            elif isinstance(t, GenericInstance):
+                if t.base_name == "Option":
+                    if len(t.args) != 1 or not self._all_testable(t.args):
+                        return False
+                elif t.base_name == "Result":
+                    if len(t.args) != 2 or not self._all_testable(t.args):
+                        return False
+                else:
+                    return False
+            elif isinstance(t, ListType):
+                if not self._all_testable([t.element]):
+                    return False
+            else:
                 return False
         return True
 
@@ -247,15 +276,23 @@ class TestGenerator:
             return
 
         code = (
-            f'int64_t _result = {mangled}({input_c});\n'
-            f'if (_result != {expected_c}) {{\n'
+            f"int64_t _result = {mangled}({input_c});\n"
+            f"if (_result != {expected_c}) {{\n"
             f'    _test_pass("{name}");\n'
-            f'}} else {{\n'
+            f"}} else {{\n"
             f'    _test_fail("{name}", '
             f'"near-miss matched unexpectedly");\n'
-            f'}}'
+            f"}}"
         )
-        suite.cases.append(TestCase(name=name, code=code))
+        suite.cases.append(
+            TestCase(
+                name=name,
+                code=code,
+                function_name=fd.name,
+                verb=fd.verb or "",
+                test_type="near_miss",
+            )
+        )
 
     # ── Property tests (from ensures) ──────────────────────────
 
@@ -299,13 +336,16 @@ class TestGenerator:
 
         # Check ensures conditions
         for i, ens in enumerate(fd.ensures):
-            check_c = self._ensures_to_c(ens, "_result")
+            # For validators, the ensures is already encoded in the return value.
+            # The validator returns true when its body (the validation condition) passes.
+            # So we just need to check _result is true when requires is satisfied.
+            if fd.verb == "validates":
+                check_c = "_result"
+            else:
+                check_c = self._ensures_to_c(ens, "_result")
             if check_c:
                 lines.append(f"    if (!({check_c})) {{")
-                lines.append(
-                    f'        _test_fail("{name}", '
-                    f'"ensures[{i}] violated");'
-                )
+                lines.append(f'        _test_fail("{name}", "ensures[{i}] violated");')
                 lines.append("        return;")
                 lines.append("    }")
 
@@ -313,11 +353,23 @@ class TestGenerator:
         lines.append(f'_test_pass("{name}");')
 
         code = "\n".join(lines)
-        suite.cases.append(TestCase(name=name, code=code))
+        suite.cases.append(
+            TestCase(
+                name=name,
+                code=code,
+                function_name=fd.name,
+                verb=fd.verb or "",
+                test_type="property",
+            )
+        )
 
         # Also add boundary value tests
         self._gen_boundary_tests(
-            fd, mangled, param_types, ret_type, suite,
+            fd,
+            mangled,
+            param_types,
+            ret_type,
+            suite,
         )
 
     def _gen_boundary_tests(
@@ -339,8 +391,7 @@ class TestGenerator:
         # For each boundary, call function with all params set to it
         for bv in boundaries:
             for pt in param_types:
-                if not (isinstance(pt, PrimitiveType)
-                        and pt.name == "Integer"):
+                if not (isinstance(pt, PrimitiveType) and pt.name == "Integer"):
                     break
             else:
                 args = ", ".join([bv] * len(param_types))
@@ -350,7 +401,15 @@ class TestGenerator:
         lines.append(f'_test_pass("{name}");')
 
         code = "\n".join(lines)
-        suite.cases.append(TestCase(name=name, code=code))
+        suite.cases.append(
+            TestCase(
+                name=name,
+                code=code,
+                function_name=fd.name,
+                verb=fd.verb or "",
+                test_type="boundary",
+            )
+        )
 
     # ── Believe tests (adversarial) ────────────────────────────
 
@@ -369,17 +428,13 @@ class TestGenerator:
         """
         for bi, belief in enumerate(fd.believe):
             self._test_counter += 1
-            name = (
-                f"_test_believe_{fd.name}_{self._test_counter}"
-            )
+            name = f"_test_believe_{fd.name}_{self._test_counter}"
 
             lines: list[str] = []
             # Adversarial: 3x the normal rounds
             adv_rounds = self._rounds * 3
 
-            lines.append(
-                f"for (int _i = 0; _i < {adv_rounds}; _i++) {{"
-            )
+            lines.append(f"for (int _i = 0; _i < {adv_rounds}; _i++) {{")
 
             # Generate random inputs with adversarial bias
             for p, pt in zip(fd.params, param_types):
@@ -396,27 +451,29 @@ class TestGenerator:
             arg_names = [p.name for p in fd.params]
             arg_str = ", ".join(arg_names)
             ret_ct = map_type(ret_type)
-            lines.append(
-                f"    {ret_ct.decl} _result = "
-                f"{mangled}({arg_str});"
-            )
+            lines.append(f"    {ret_ct.decl} _result = {mangled}({arg_str});")
 
             # Check believe condition
             check = self._ensures_to_c(belief, "_result")
             if check:
                 lines.append(f"    if (!({check})) {{")
-                lines.append(
-                    f'        _test_fail("{name}", '
-                    f'"believe[{bi}] violated");'
-                )
+                lines.append(f'        _test_fail("{name}", "believe[{bi}] violated");')
                 lines.append("        return;")
                 lines.append("    }")
 
             lines.append("}")
             lines.append(f'_test_pass("{name}");')
 
-            code = "\n".join(lines)
-            suite.cases.append(TestCase(name=name, code=code))
+        code = "\n".join(lines)
+        suite.cases.append(
+            TestCase(
+                name=name,
+                code=code,
+                function_name=fd.name,
+                verb=fd.verb or "",
+                test_type="property",
+            )
+        )
 
     # ── Helpers ────────────────────────────────────────────────
 
@@ -429,7 +486,71 @@ class TestGenerator:
                 return f"double {name} = _rng_double();"
             if ty.name == "Boolean":
                 return f"bool {name} = _rng_next() % 2 == 0;"
+            if ty.name == "String":
+                return self._random_string_gen(name)
+        if isinstance(ty, GenericInstance):
+            if ty.base_name == "Option":
+                return self._random_option_gen(name, ty.args[0])
+            if ty.base_name == "Result":
+                return self._random_result_gen(name)
+        if isinstance(ty, ListType):
+            return self._random_list_gen(name)
         return f"int64_t {name} = 0; /* untestable type */"
+
+    def _random_string_gen(self, name: str) -> str:
+        """Generate C code for a random string (valid JSON for testing)."""
+        return f"""Prove_String* {name};
+    do {{
+        // Generate random JSON object for testing
+        int64_t id_val = _rng_int();
+        char buf[128];
+        snprintf(buf, sizeof(buf),
+            "{{\\"id\\": %ld, \\"name\\": \\"t\\", \\"email\\": \\"t@t.com\\"}}", id_val);
+        {name} = prove_string_from_cstr(buf);
+    }} while(0);"""
+
+    def _random_option_gen(self, name: str, inner_ty: Type) -> str:
+        """Generate C code for a random Option<T> (50% Some, 50% None)."""
+        from prove.c_types import map_type
+        from prove.types import PrimitiveType
+
+        inner_c = map_type(inner_ty)
+        safe = inner_c.decl.replace("*", "ptr").replace(" ", "_")
+        if isinstance(inner_ty, PrimitiveType):
+            if inner_ty.name == "Integer":
+                return f"""Prove_Option_{safe} {name};
+        if (_rng_next() % 2 == 0) {{
+            {name} = Prove_Option_{safe}_some(_rng_int());
+        }} else {{
+            {name} = Prove_Option_{safe}_none();
+        }}"""
+            if inner_ty.name == "String":
+                return f"""Prove_Option_{safe} {name};
+        if (_rng_next() % 2 == 0) {{
+            {name} = Prove_Option_{safe}_some(prove_string_from_cstr("test"));
+        }} else {{
+            {name} = Prove_Option_{safe}_none();
+        }}"""
+            if inner_ty.name == "Boolean":
+                return f"""Prove_Option_{safe} {name};
+        if (_rng_next() % 2 == 0) {{
+            {name} = Prove_Option_{safe}_some(true);
+        }} else {{
+            {name} = Prove_Option_{safe}_none();
+        }}"""
+        return f"Prove_Option_{safe} {name} = Prove_Option_{safe}_none();"
+
+    def _random_result_gen(self, name: str) -> str:
+        """Generate C code for a random Result<T, E> (default to Err)."""
+        return (
+            f"Prove_Result_int64_t_Prove_Stringptr {name} = "
+            f"Prove_Result_int64_t_Prove_Stringptr_err("
+            f'prove_string_from_cstr("err"));'
+        )
+
+    def _random_list_gen(self, name: str) -> str:
+        """Generate C code for a random List<T> (empty list)."""
+        return f"Prove_List* {name} = prove_list_new();"
 
     def _ensures_to_c(self, expr: Expr, result_var: str) -> str | None:
         """Convert an ensures expression to a C boolean expression.
@@ -440,7 +561,9 @@ class TestGenerator:
         return self._expr_to_c_bool(expr, result_var)
 
     def _expr_to_c_bool(
-        self, expr: Expr, result_var: str,
+        self,
+        expr: Expr,
+        result_var: str,
     ) -> str | None:
         """Convert an AST Expr to a C expression string."""
         if isinstance(expr, BinaryExpr):
@@ -449,10 +572,14 @@ class TestGenerator:
             if left is None or right is None:
                 return None
             op_map = {
-                "==": "==", "!=": "!=",
-                "<": "<", ">": ">",
-                "<=": "<=", ">=": ">=",
-                "&&": "&&", "||": "||",
+                "==": "==",
+                "!=": "!=",
+                "<": "<",
+                ">": ">",
+                "<=": "<=",
+                ">=": ">=",
+                "&&": "&&",
+                "||": "||",
             }
             c_op = op_map.get(expr.op)
             if c_op is None:
@@ -472,7 +599,9 @@ class TestGenerator:
         return val
 
     def _expr_to_c_inner(
-        self, expr: Expr, result_var: str,
+        self,
+        expr: Expr,
+        result_var: str,
     ) -> str | None:
         """Convert an inner expression to C."""
         if isinstance(expr, IntegerLit):
@@ -489,17 +618,27 @@ class TestGenerator:
             if expr.name == "result":
                 return result_var
             return expr.name
+        if isinstance(expr, TypeIdentifierExpr):
+            return expr.name
         if isinstance(expr, BinaryExpr):
             left = self._expr_to_c_inner(expr.left, result_var)
             right = self._expr_to_c_inner(expr.right, result_var)
             if left is None or right is None:
                 return None
             op_map = {
-                "+": "+", "-": "-", "*": "*", "/": "/", "%": "%",
-                "==": "==", "!=": "!=",
-                "<": "<", ">": ">",
-                "<=": "<=", ">=": ">=",
-                "&&": "&&", "||": "||",
+                "+": "+",
+                "-": "-",
+                "*": "*",
+                "/": "/",
+                "%": "%",
+                "==": "==",
+                "!=": "!=",
+                "<": "<",
+                ">": ">",
+                "<=": "<=",
+                ">=": ">=",
+                "&&": "&&",
+                "||": "||",
             }
             c_op = op_map.get(expr.op, expr.op)
             return f"({left} {c_op} {right})"
@@ -529,8 +668,7 @@ class TestGenerator:
 
         for line in lines:
             stripped = line.strip()
-            if (stripped.startswith("int main(")
-                    and not in_main):
+            if stripped.startswith("int main(") and not in_main:
                 in_main = True
                 brace_depth = 0
                 if "{" in stripped:
@@ -563,6 +701,7 @@ class TestResult:
     tests_failed: int = 0
     output: str = ""
     c_error: str | None = None
+    test_details: list[TestCase] = field(default_factory=list)
 
 
 def run_tests(
@@ -580,7 +719,9 @@ def run_tests(
 
     for module, symbols in modules:
         gen = TestGenerator(
-            module, symbols, property_rounds=property_rounds,
+            module,
+            symbols,
+            property_rounds=property_rounds,
         )
         suite = gen.generate()
         preamble = suite.preamble  # last module's preamble
@@ -588,14 +729,19 @@ def run_tests(
 
     if not all_cases:
         return TestResult(
-            ok=True, tests_run=0, tests_passed=0,
-            tests_failed=0, output="no testable functions found",
+            ok=True,
+            tests_run=0,
+            tests_passed=0,
+            tests_failed=0,
+            output="no testable functions found",
+            test_details=[],
         )
 
     # Build combined suite
     combined = TestSuite(cases=all_cases, preamble=preamble)
     gen_dummy = TestGenerator(
-        modules[0][0], modules[0][1],
+        modules[0][0],
+        modules[0][1],
         property_rounds=property_rounds,
     )
     test_c = gen_dummy.emit_test_c(combined)
@@ -617,6 +763,7 @@ def run_tests(
         return TestResult(
             ok=False,
             c_error="no C compiler found (install gcc or clang)",
+            test_details=all_cases,
         )
 
     runtime_dir = build_dir / "runtime"
@@ -634,10 +781,12 @@ def run_tests(
         return TestResult(
             ok=False,
             c_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
+            test_details=all_cases,
         )
 
     # Run tests
     import subprocess
+
     try:
         proc = subprocess.run(
             [str(test_binary)],
@@ -647,7 +796,9 @@ def run_tests(
         )
     except subprocess.TimeoutExpired:
         return TestResult(
-            ok=False, output="test runner timed out",
+            ok=False,
+            output="test runner timed out",
+            test_details=all_cases,
         )
 
     output = proc.stdout + proc.stderr
@@ -684,4 +835,5 @@ def run_tests(
         tests_passed=tests_passed,
         tests_failed=tests_failed,
         output=output,
+        test_details=all_cases,
     )
