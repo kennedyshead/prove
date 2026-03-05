@@ -4,55 +4,55 @@ module Text
   type Builder is binary
 
 /// Get the length of a string
-reads length(s String) Integer
+reads length(text String) Integer
 binary
 
 /// Get a substring from start to end (exclusive)
-transforms slice(s String, start Integer, end Integer) String
+transforms slice(text String, start Integer, end Integer) String
 binary
 
 /// Check if a string starts with a prefix
-validates starts(s String, prefix String)
+validates starts(text String, prefix String)
 binary
 
 /// Check if a string ends with a suffix
-validates ends(s String, suffix String)
+validates ends(text String, suffix String)
 binary
 
 /// Check if a string contains a substring
-validates contains(s String, sub String)
+validates contains(text String, substring String)
 binary
 
 /// Find the index of a substring
-reads index(s String, sub String) Option<Integer>
+reads index(text String, substring String) Option<Integer>
 binary
 
 /// Split a string by a separator
-transforms split(s String, sep String) List<String>
+transforms split(text String, separator String) List<String>
 binary
 
 /// Join a list of strings with a separator
-transforms join(parts List<String>, sep String) String
+transforms join(parts List<String>, separator String) String
 binary
 
 /// Trim whitespace from both ends of a string
-transforms trim(s String) String
+transforms trim(text String) String
 binary
 
 /// Convert a string to lowercase
-transforms lower(s String) String
+transforms lower(text String) String
 binary
 
 /// Convert a string to uppercase
-transforms upper(s String) String
+transforms upper(text String) String
 binary
 
 /// Replace all occurrences of a substring
-transforms replace(s String, old String, new String) String
+transforms replace(text String, old String, new String) String
 binary
 
-/// Repeat a string n times
-transforms repeat(s String, n Integer) String
+/// Repeat a string count times
+transforms repeat(text String, count Integer) String
 binary
 
 /// Create a new string builder
@@ -60,17 +60,17 @@ creates builder() Builder
 binary
 
 /// Append a string to a builder
-transforms string(b Builder, s String) Builder
+transforms string(builder Builder, text String) Builder
 binary
 
 /// Append a character to a builder
-transforms char(b Builder, c Character) Builder
+transforms char(builder Builder, character Character) Builder
 binary
 
 /// Build the final string from a builder
-reads build(b Builder) String
+reads build(builder Builder) String
 binary
 
 /// Get the length of a builder
-reads length(b Builder) Integer
+reads length(builder Builder) Integer
 binary

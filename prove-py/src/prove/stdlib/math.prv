@@ -2,57 +2,57 @@ module Math
   narrative: """Numeric operations."""
 
 /// Absolute value of an integer
-reads abs(n Integer) Integer
+reads abs(number Integer) Integer
 binary
 
 /// Absolute value of a float
-reads abs(x Float) Float
+reads abs(value Float) Float
 binary
 
 /// Minimum of two integers
-reads min(a Integer, b Integer) Integer
+reads min(first Integer, second Integer) Integer
 binary
 
 /// Minimum of two floats
-reads min(a Float, b Float) Float
+reads min(first Float, second Float) Float
 binary
 
 /// Maximum of two integers
-reads max(a Integer, b Integer) Integer
+reads max(first Integer, second Integer) Integer
 binary
 
 /// Maximum of two floats
-reads max(a Float, b Float) Float
+reads max(first Float, second Float) Float
 binary
 
 /// Clamp an integer between lo and hi (inclusive)
-transforms clamp(val Integer, lo Integer, hi Integer) Integer
+transforms clamp(value Integer, minimum Integer, maximum Integer) Integer
 binary
 
 /// Clamp a float between lo and hi (inclusive)
-transforms clamp(val Float, lo Float, hi Float) Float
+transforms clamp(value Float, minimum Float, maximum Float) Float
 binary
 
 /// Square root of a float
-reads sqrt(x Float) Float
+reads sqrt(value Float) Float
 binary
 
 /// Base raised to the power of exp
-reads pow(base Float, exp Float) Float
+reads power(base Float, exponent Float) Float
 binary
 
-/// Floor of a float (largest integer <= x)
-reads floor(x Float) Integer
+/// Floor of a float (largest integer <= value)
+reads floor(value Float) Integer
 binary
 
-/// Ceiling of a float (smallest integer >= x)
-reads ceil(x Float) Integer
+/// Ceiling of a float (smallest integer >= value)
+reads ceil(value Float) Integer
 binary
 
 /// Round a float to the nearest integer
-reads round(x Float) Integer
+reads round(value Float) Integer
 binary
 
 /// Natural logarithm of a float
-reads log(x Float) Float
+reads log(value Float) Float
 binary

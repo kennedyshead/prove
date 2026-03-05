@@ -1,23 +1,30 @@
 module Character
   narrative: """Character classification and access."""
 
+/// Checks if a character is alphabetic (a-z, A-Z).
 validates alpha(c Character)
 binary
 
+/// Checks if a character is a digit (0-9).
 validates digit(c Character)
 binary
 
+/// Checks if a character is alphanumeric (a-z, A-Z, 0-9).
 validates alnum(c Character)
 binary
 
+/// Checks if a character is uppercase (A-Z).
 validates upper(c Character)
 binary
 
+/// Checks if a character is lowercase (a-z).
 validates lower(c Character)
 binary
 
+/// Checks if a character is whitespace.
 validates space(c Character)
 binary
 
-reads at(s String, i Integer) Character
+/// Gets the character at a specific index in a string.
+reads at(s String, index Integer) Character
 binary

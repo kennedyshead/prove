@@ -1,23 +1,30 @@
 module Path
   narrative: """File path manipulation."""
 
+/// Join path components together
 transforms join(base String, part String) String
 binary
 
+/// Get the parent directory of a path
 reads parent(path String) String
 binary
 
+/// Get the filename component of a path
 reads name(path String) String
 binary
 
+/// Get the filename without extension
 reads stem(path String) String
 binary
 
+/// Get the file extension
 reads extension(path String) String
 binary
 
+/// Check if a path is absolute
 validates absolute(path String)
 binary
 
+/// Normalize a path (resolve .. and .)
 transforms normalize(path String) String
 binary

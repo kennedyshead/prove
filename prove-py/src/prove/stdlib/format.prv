@@ -1,23 +1,30 @@
 module Format
   narrative: """String formatting and numeric display."""
 
-transforms pad_left(s String, width Integer, fill Character) String
+/// Pads a string on the left to reach the specified width.
+transforms pad_left(text String, width Integer, fill Character) String
 binary
 
-transforms pad_right(s String, width Integer, fill Character) String
+/// Pads a string on the right to reach the specified width.
+transforms pad_right(text String, width Integer, fill Character) String
 binary
 
-transforms center(s String, width Integer, fill Character) String
+/// Centers a string within the specified width.
+transforms center(text String, width Integer, fill Character) String
 binary
 
-transforms hex(n Integer) String
+/// Converts an integer to hexadecimal string.
+transforms hex(number Integer) String
 binary
 
-transforms bin(n Integer) String
+/// Converts an integer to binary string.
+transforms bin(number Integer) String
 binary
 
-transforms octal(n Integer) String
+/// Converts an integer to octal string.
+transforms octal(number Integer) String
 binary
 
-transforms decimal(x Float, places Integer) String
+/// Formats a float with the specified decimal places.
+transforms decimal(value Float, places Integer) String
 binary

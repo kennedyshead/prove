@@ -4,68 +4,92 @@ module Parse
 
   type Value is binary
 
-creates value(source V) Value
+  type Source is binary
+
+/// Parse a source string into a Value
+creates value(source Source) Value
 binary
 
+/// Parse a TOML string into a Value
 creates toml(source String) Result<Value, String>
 binary
 
+/// Serialize a Value to TOML string
 reads toml(value Value) String
 binary
 
+/// Parse a JSON string into a Value
 creates json(source String) Result<Value, String>
 binary
 
+/// Serialize a Value to JSON string
 reads json(value Value) String
 binary
 
-reads tag(v Value) String
+/// Get the tag (type name) of a Value
+reads tag(value Value) String
 binary
 
-reads text(v Value) String
+/// Get the text content of a Value
+reads text(value Value) String
 binary
 
-reads number(v Value) Integer
+/// Get the numeric content of a Value
+reads number(value Value) Integer
 binary
 
-reads decimal(v Value) Float
+/// Get the decimal content of a Value
+reads decimal(value Value) Float
 binary
 
-reads bool(v Value) Boolean
+/// Get the boolean content of a Value
+reads bool(value Value) Boolean
 binary
 
-reads array(v Value) List<Value>
+/// Get the array content of a Value
+reads array(value Value) List<Value>
 binary
 
-reads object(v Value) Table<Value>
+/// Get the object content of a Value
+reads object(value Value) Table<Value>
 binary
 
-validates text(v Value)
+/// Check if a Value is text
+validates text(value Value)
 binary
 
-validates number(v Value)
+/// Check if a Value is a number
+validates number(value Value)
 binary
 
-validates decimal(v Value)
+/// Check if a Value is a decimal
+validates decimal(value Value)
 binary
 
-validates bool(v Value)
+/// Check if a Value is a boolean
+validates bool(value Value)
 binary
 
-validates array(v Value)
+/// Check if a Value is an array
+validates array(value Value)
 binary
 
-validates object(v Value)
+/// Check if a Value is an object
+validates object(value Value)
 binary
 
-validates null(v Value)
+/// Check if a Value is null
+validates null(value Value)
 binary
 
-validates value(source V)
+/// Validate a source string
+validates value(source Source)
 binary
 
+/// Validate a JSON string
 validates json(source String)
 binary
 
+/// Validate a TOML string
 validates toml(source String)
 binary

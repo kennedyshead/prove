@@ -1,47 +1,62 @@
 module Types
   narrative: """Type validation and conversion functions."""
 
-validates string(s String)
+/// Check if a value is a string
+validates string(value String)
 binary
 
-validates integer(n Integer)
+/// Check if a value is an integer
+validates integer(value Integer)
 binary
 
-validates float(n Float)
+/// Check if a value is a float
+validates float(value Float)
 binary
 
-validates decimal(n Float)
+/// Check if a value is a decimal
+validates decimal(value Float)
 binary
 
-validates boolean(b Boolean)
+/// Check if a value is a boolean
+validates boolean(value Boolean)
 binary
 
-validates character(c Character)
+/// Check if a value is a character
+validates character(value Character)
 binary
 
-creates integer(s String) Result<Integer, String>
+/// Parse a string as an integer
+creates integer(source String) Result<Integer, String>
 binary
 
-creates integer(x Float) Integer
+/// Convert a float to an integer (truncates)
+creates integer(value Float) Integer
 binary
 
-creates float(s String) Result<Float, String>
+/// Parse a string as a float
+creates float(source String) Result<Float, String>
 binary
 
-creates float(n Integer) Float
+/// Convert an integer to a float
+creates float(value Integer) Float
 binary
 
-reads string(n Integer) String
+/// Convert an integer to a string
+reads string(value Integer) String
 binary
 
-reads string(x Float) String
+/// Convert a float to a string
+reads string(value Float) String
 binary
 
-reads string(b Boolean) String
+/// Convert a boolean to a string
+reads string(value Boolean) String
 binary
 
-reads code(c Character) Integer
+/// Get the Unicode code point of a character
+reads code(character Character) Integer
 binary
 
-creates character(n Integer) Character
+/// Create a character from a Unicode code point
+creates character(code Integer) Character
 binary
