@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from prove.ast_nodes import Module
+    from prove.ast_nodes import Module, TypeDef, TypeExpr
 
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -474,7 +474,7 @@ def _parse_stdlib_module(module_name: str) -> Module | None:
         return None
 
 
-def _format_type_def(td) -> str:
+def _format_type_def(td: TypeDef) -> str:
     """Format a type definition as a multiline string."""
     from prove import ast_nodes
 
@@ -521,7 +521,7 @@ def _format_type_def(td) -> str:
     return "\n".join(lines)
 
 
-def _type_expr_to_str(te) -> str:
+def _type_expr_to_str(te: TypeExpr) -> str:
     """Convert a TypeExpr to string representation."""
     from prove import ast_nodes
 
@@ -530,11 +530,14 @@ def _type_expr_to_str(te) -> str:
     TypeApply = getattr(ast_nodes, "TypeApply", None)
 
     if PrimitiveType and isinstance(te, PrimitiveType):
-        return te.name
+        name: object = te.name
+        return str(name)
     elif TypeParam and isinstance(te, TypeParam):
-        return te.name
+        name: object = te.name
+        return str(name)
     elif TypeApply and isinstance(te, TypeApply):
-        return te.name
+        name: object = te.name
+        return str(name)
     elif hasattr(te, "inner") and hasattr(te, "ok"):
         # Result type
         return f"Result<{_type_expr_to_str(te.ok)}, {_type_expr_to_str(te.err)}>"
@@ -557,7 +560,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
     if _import_index is not None:
         return _import_index
 
-    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, ModuleDecl, TypeDef
+    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, ModuleDecl
 
     index: dict[str, list[ImportSuggestion]] = {}
     for key, _filename in _STDLIB_MODULES.items():
@@ -601,11 +604,6 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                 ),
             )
             # Index variant constructors for algebraic types
-            AlgebraicTypeDef = getattr(
-                __import__("prove.ast_nodes", fromlist=["AlgebraicTypeDef"]),
-                "AlgebraicTypeDef",
-                None,
-            )
             if AlgebraicTypeDef and isinstance(td.body, AlgebraicTypeDef):
                 for variant in td.body.variants:
                     index.setdefault(variant.name, []).append(

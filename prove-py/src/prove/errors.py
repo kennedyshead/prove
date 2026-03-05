@@ -71,10 +71,10 @@ def _register_doc_range(prefix: str, start: int, end: int) -> None:
         DIAGNOSTIC_DOCS[code] = f"{_DOCS_BASE}#{code}"
 
 
-# Lexer E100-E110
-_register_doc_range("E", 100, 110)
+# Lexer E101-E109
+_register_doc_range("E", 101, 109)
 # Parser
-for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215", "E216"):
+for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Definition E300-E302
 _register_doc_range("E", 300, 302)

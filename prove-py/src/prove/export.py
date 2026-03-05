@@ -22,7 +22,6 @@ import click
 
 from prove.tokens import KEYWORDS, TokenKind
 
-
 # ── Canonical data sources ─────────────────────────────────────────
 
 # TokenKind groups for categorization

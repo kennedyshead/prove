@@ -244,10 +244,10 @@ def copy_runtime(
     for name in _RUNTIME_FILES:
         if name not in needed_files:
             continue
-        src = pkg.joinpath(name)
+        src_path = pkg.joinpath(name)
         dst = dest / name
-        with importlib.resources.as_file(src) as src_path:
-            shutil.copy2(src_path, dst)
+        with importlib.resources.as_file(src_path) as resolved:
+            shutil.copy2(resolved, dst)
         if name.endswith(".c"):
             c_files.append(dst)
 

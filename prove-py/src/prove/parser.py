@@ -21,6 +21,8 @@ from prove.ast_nodes import (
     ConstantDef,
     DecimalLit,
     Declaration,
+    ExplainBlock,
+    ExplainEntry,
     Expr,
     ExprStmt,
     FailPropExpr,
@@ -54,8 +56,6 @@ from prove.ast_nodes import (
     PathLit,
     Pattern,
     PipeExpr,
-    ExplainBlock,
-    ExplainEntry,
     RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
@@ -138,6 +138,60 @@ _OP_STRINGS: dict[TokenKind, str] = {
 }
 
 
+def _token_display(kind: TokenKind, value: str = "") -> str:
+    """Human-readable display string for a token."""
+    _DISPLAY: dict[TokenKind, str] = {
+        TokenKind.COLON: "`:`",
+        TokenKind.COMMA: "`,`",
+        TokenKind.DOT: "`.`",
+        TokenKind.LPAREN: "`(`",
+        TokenKind.RPAREN: "`)`",
+        TokenKind.LBRACKET: "`[`",
+        TokenKind.RBRACKET: "`]`",
+        TokenKind.PIPE: "`|`",
+        TokenKind.ASSIGN: "`=`",
+        TokenKind.EQUAL: "`==`",
+        TokenKind.NOT_EQUAL: "`!=`",
+        TokenKind.LESS: "`<`",
+        TokenKind.GREATER: "`>`",
+        TokenKind.LESS_EQUAL: "`<=`",
+        TokenKind.GREATER_EQUAL: "`>=`",
+        TokenKind.PLUS: "`+`",
+        TokenKind.MINUS: "`-`",
+        TokenKind.STAR: "`*`",
+        TokenKind.SLASH: "`/`",
+        TokenKind.PERCENT: "`%`",
+        TokenKind.AND: "`&&`",
+        TokenKind.OR: "`||`",
+        TokenKind.BANG: "`!`",
+        TokenKind.PIPE_ARROW: "`|>`",
+        TokenKind.FAT_ARROW: "`=>`",
+        TokenKind.DOT_DOT: "`..`",
+        TokenKind.ARROW: "`->`",
+        TokenKind.NEWLINE: "end of line",
+        TokenKind.INDENT: "indented block",
+        TokenKind.DEDENT: "end of block",
+        TokenKind.EOF: "end of file",
+    }
+    if kind in _DISPLAY:
+        return _DISPLAY[kind]
+    # Keywords and verbs — use backtick-quoted value
+    if kind in _VERBS or kind in (
+        TokenKind.FROM, TokenKind.TYPE, TokenKind.IS, TokenKind.AS,
+        TokenKind.WHERE, TokenKind.MATCH, TokenKind.MODULE, TokenKind.MAIN,
+        TokenKind.ENSURES, TokenKind.REQUIRES, TokenKind.EXPLAIN,
+        TokenKind.WHEN, TokenKind.COMPTIME, TokenKind.FOREIGN,
+        TokenKind.TERMINATES, TokenKind.TRUSTED, TokenKind.BINARY,
+        TokenKind.DOMAIN, TokenKind.VALID, TokenKind.TYPES,
+    ):
+        name = value or kind.name.lower()
+        return f"`{name}`"
+    # Identifiers and literals — quote the value
+    if value:
+        return f"`{value}`"
+    return kind.name.lower()
+
+
 class Parser:
     """Parses a list of tokens into a Prove AST."""
 
@@ -176,8 +230,10 @@ class Parser:
         if self._current().kind == kind:
             return self._advance()
         tok = self._current()
+        expected = _token_display(kind)
+        got = _token_display(tok.kind, tok.value)
         self._error(
-            f"expected {kind.name}, got {tok.kind.name} ({tok.value!r})",
+            f"expected {expected}, got {got}",
             tok.span,
             code="E210",
         )
@@ -228,13 +284,31 @@ class Parser:
         """
         if not self.diagnostics:
             span = Span(self.filename, 1, 1, 1, 1)
-            self._error(
-                "Prove requires a module declaration with narrative — "
-                "add 'module <Name>' with a narrative as the first line",
-                span,
-                code="E200",
-            )
+            suggestion = self._suggest_module_name()
+            if suggestion:
+                msg = (
+                    "Prove requires a module declaration with narrative — "
+                    f"add `module {suggestion}` with a narrative as the first line"
+                )
+            else:
+                msg = (
+                    "Prove requires a module declaration with narrative — "
+                    "add `module <Name>` with a narrative as the first line"
+                )
+            self._error(msg, span, code="E200")
         raise CompileError(self.diagnostics)
+
+    def _suggest_module_name(self) -> str | None:
+        """Derive a module name from the filename, if available."""
+        if not self.filename or self.filename.startswith("<"):
+            return None
+        import os
+        base = os.path.basename(self.filename)
+        name, _ = os.path.splitext(base)
+        if not name or not name[0].isalpha():
+            return None
+        # Convert snake_case to PascalCase
+        return "".join(part.capitalize() for part in name.split("_"))
 
     def _synchronize(self) -> None:
         """Skip tokens until we find a reasonable recovery point."""
@@ -726,7 +800,8 @@ class Parser:
             return self._parse_multiline_algebraic()
 
         self._error(
-            f"expected field or variant name in type body, got {first.kind.name}",
+            f"expected a field definition or variant name after `is`, "
+            f"got {_token_display(first.kind, first.value)}",
             first.span,
             code="E212",
         )
@@ -759,7 +834,8 @@ class Parser:
         if not self._at(TokenKind.TYPE_IDENTIFIER):
             tok = self._current()
             self._error(
-                f"expected type body, got {tok.kind.name}",
+                f"expected a variant name (like `Some` or `None`) after `is`, "
+                f"got {_token_display(tok.kind, tok.value)}",
                 tok.span,
                 code="E212",
             )
@@ -947,7 +1023,7 @@ class Parser:
             self._advance()
         else:
             self._error(
-                f"expected field name, got {tok.kind.name}",
+                f"expected field name, got {_token_display(tok.kind, tok.value)}",
                 tok.span,
                 code="E210",
             )
@@ -1036,17 +1112,10 @@ class Parser:
         seen_verbs: set[str | None],
     ) -> list[ImportItem]:
         """Parse a verb group: [verb] name+ (space-separated names share the verb)."""
-        start = self._current().span
         verb: str | None = None
         if self._current().kind in _IMPORT_VERBS:
             verb = self._advance().value
 
-        if verb in seen_verbs:
-            self._error(
-                f"duplicate verb '{verb}' in import — group all '{verb}' names together",
-                start,
-                code="E216",
-            )
         seen_verbs.add(verb)
 
         items: list[ImportItem] = []
@@ -1278,7 +1347,7 @@ class Parser:
             self._advance()
         else:
             self._error(
-                f"expected literal in lookup entry, got {tok.kind.name}",
+                f"expected literal in lookup entry, got {_token_display(tok.kind, tok.value)}",
                 tok.span,
                 code="E210",
             )
@@ -1763,14 +1832,16 @@ class Parser:
 
         if tok.kind in _VERBS:
             self._error(
-                f"'{tok.value}' is a verb keyword and cannot be used as an identifier",
+                f"`{tok.value}` is a verb keyword and cannot be used as a "
+                f"variable or function name — declare it with a verb instead",
                 tok.span,
                 code="E214",
             )
             raise _ParseError
 
         self._error(
-            f"expected an expression but found {tok.kind.name} ({tok.value!r})",
+            f"expected an expression (name, literal, or parenthesized group) "
+            f"but found {_token_display(tok.kind, tok.value)}",
             tok.span,
             code="E213",
         )
@@ -1869,7 +1940,8 @@ class Parser:
             operand = IdentifierExpr(tok.value, tok.span)
         else:
             self._error(
-                f"expected literal or variant name after {type_name}:, got {tok.kind.name}",
+                f"expected a literal or variant name after `{type_name}:`, "
+                f"got {_token_display(tok.kind, tok.value)}",
                 tok.span,
                 code="E213",
             )
@@ -1998,7 +2070,8 @@ class Parser:
             return LiteralPattern(tok.value, tok.span, _LIT_KIND_MAP[tok.kind])
 
         self._error(
-            f"expected pattern, got {tok.kind.name}",
+            f"expected a pattern (variant name, literal, binding, or `_`) "
+            f"but found {_token_display(tok.kind, tok.value)}",
             tok.span,
             code="E215",
         )

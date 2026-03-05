@@ -45,42 +45,48 @@ class ProofVerifier:
         self._check_explain_without_ensures(fd)
 
     def _error(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(Diagnostic(
-            severity=Severity.ERROR,
-            code=code,
-            message=message,
-            labels=[DiagnosticLabel(span=span, message="")],
-            doc_url=DIAGNOSTIC_DOCS.get(code),
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                severity=Severity.ERROR,
+                code=code,
+                message=message,
+                labels=[DiagnosticLabel(span=span, message="")],
+                doc_url=DIAGNOSTIC_DOCS.get(code),
+            )
+        )
 
     def _warning(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(Diagnostic(
-            severity=Severity.WARNING,
-            code=code,
-            message=message,
-            labels=[DiagnosticLabel(span=span, message="")],
-            doc_url=DIAGNOSTIC_DOCS.get(code),
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                severity=Severity.WARNING,
+                code=code,
+                message=message,
+                labels=[DiagnosticLabel(span=span, message="")],
+                doc_url=DIAGNOSTIC_DOCS.get(code),
+            )
+        )
 
     def _check_ensures_explain(self, fd: FunctionDef) -> None:
         """W323: ensures without explain block (warning, not error)."""
         if fd.trusted is not None:
             return  # trusted functions opt out of verification
         if fd.ensures and not fd.explain:
-            self.diagnostics.append(Diagnostic(
-                severity=Severity.WARNING,
-                code="W323",
-                message=(
-                    f"Function '{fd.name}' has `ensures` but no `explain`. "
-                    f"Document how each step satisfies the contract."
-                ),
-                labels=[DiagnosticLabel(span=fd.span, message="")],
-                notes=[
-                    "Add an `explain` block with entries describing how "
-                    "the implementation satisfies each postcondition.",
-                ],
-                doc_url=DIAGNOSTIC_DOCS.get("W323"),
-            ))
+            self.diagnostics.append(
+                Diagnostic(
+                    severity=Severity.WARNING,
+                    code="W323",
+                    message=(
+                        f"Function '{fd.name}' has `ensures` but no `explain`. "
+                        f"Document how each step satisfies the contract."
+                    ),
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        "Add an `explain` block with entries describing how "
+                        "the implementation satisfies each postcondition.",
+                    ],
+                    doc_url=DIAGNOSTIC_DOCS.get("W323"),
+                )
+            )
 
     def _check_entry_uniqueness(self, fd: FunctionDef) -> None:
         """E391: duplicate named entry names."""
@@ -132,22 +138,24 @@ class ProofVerifier:
                 continue
             text_lower = entry.text.lower()
             if not any(c.lower() in text_lower for c in concepts):
-                self.diagnostics.append(Diagnostic(
-                    severity=Severity.WARNING,
-                    code="W321",
-                    message=(
-                        f"explain entry '{entry.name}' doesn't reference "
-                        f"any function concepts "
-                        f"({', '.join(sorted(concepts))})"
-                    ),
-                    labels=[DiagnosticLabel(span=entry.span, message="")],
-                    notes=[
-                        "Mention at least one of the listed concepts "
-                        "(parameter names, function name, or `result`) "
-                        "so the explanation ties back to the code.",
-                    ],
-                    doc_url=DIAGNOSTIC_DOCS.get("W321"),
-                ))
+                self.diagnostics.append(
+                    Diagnostic(
+                        severity=Severity.WARNING,
+                        code="W321",
+                        message=(
+                            f"explain entry '{entry.name}' doesn't reference "
+                            f"any function concepts "
+                            f"({', '.join(sorted(concepts))})"
+                        ),
+                        labels=[DiagnosticLabel(span=entry.span, message="")],
+                        notes=[
+                            "Mention at least one of the listed concepts "
+                            "(parameter names, function name, or `result`) "
+                            "so the explanation ties back to the code.",
+                        ],
+                        doc_url=DIAGNOSTIC_DOCS.get("W321"),
+                    )
+                )
 
     def _check_near_miss_duplicates(self, fd: FunctionDef) -> None:
         """W322: duplicate near-miss inputs."""
@@ -155,23 +163,28 @@ class ProofVerifier:
         for nm in fd.near_misses:
             for prev in seen:
                 if self._exprs_equal(nm.input, prev.input):
-                    self.diagnostics.append(Diagnostic(
-                        severity=Severity.WARNING,
-                        code="W322",
-                        message=(
-                            f"duplicate near-miss input "
-                            f"(first defined at line "
-                            f"{prev.span.start_line})"
-                        ),
-                        labels=[DiagnosticLabel(
-                            span=nm.span, message="",
-                        )],
-                        notes=[
-                            "Remove the duplicate or change "
-                            "the input to test a different edge case.",
-                        ],
-                        doc_url=DIAGNOSTIC_DOCS.get("W322"),
-                    ))
+                    self.diagnostics.append(
+                        Diagnostic(
+                            severity=Severity.WARNING,
+                            code="W322",
+                            message=(
+                                f"duplicate near-miss input "
+                                f"(first defined at line "
+                                f"{prev.span.start_line})"
+                            ),
+                            labels=[
+                                DiagnosticLabel(
+                                    span=nm.span,
+                                    message="",
+                                )
+                            ],
+                            notes=[
+                                "Remove the duplicate or change "
+                                "the input to test a different edge case.",
+                            ],
+                            doc_url=DIAGNOSTIC_DOCS.get("W322"),
+                        )
+                    )
                     break
             seen.append(nm)
 
@@ -187,46 +200,46 @@ class ProofVerifier:
     def _check_ensures_without_requires(self, fd: FunctionDef) -> None:
         """W324: ensures without requires."""
         if fd.ensures and not fd.requires:
-            self.diagnostics.append(Diagnostic(
-                severity=Severity.WARNING,
-                code="W324",
-                message=(
-                    f"function '{fd.name}' has ensures but no requires"
-                ),
-                labels=[DiagnosticLabel(span=fd.span, message="")],
-                notes=[
-                    "Add a `requires` clause to specify input "
-                    "constraints. The compiler uses requires/ensures "
-                    "pairs to reason about correctness.",
-                ],
-                doc_url=DIAGNOSTIC_DOCS.get("W324"),
-            ))
+            self.diagnostics.append(
+                Diagnostic(
+                    severity=Severity.WARNING,
+                    code="W324",
+                    message=(f"function '{fd.name}' has ensures but no requires"),
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        "Add a `requires` clause to specify input "
+                        "constraints. The compiler uses requires/ensures "
+                        "pairs to reason about correctness.",
+                    ],
+                    doc_url=DIAGNOSTIC_DOCS.get("W324"),
+                )
+            )
 
     def _check_explain_without_ensures(self, fd: FunctionDef) -> None:
         """W325: explain without ensures."""
         if fd.trusted is not None:
             return  # trusted functions opt out of verification
         if fd.explain and not fd.ensures:
-            self.diagnostics.append(Diagnostic(
-                severity=Severity.WARNING,
-                code="W325",
-                message=(
-                    f"function '{fd.name}' has explain but no ensures"
-                ),
-                labels=[DiagnosticLabel(span=fd.span, message="")],
-                notes=[
-                    "Add `ensures` clauses so the `explain` block has "
-                    "contracts to document. Without postconditions, "
-                    "the explanation is unverifiable.",
-                ],
-                doc_url=DIAGNOSTIC_DOCS.get("W325"),
-            ))
+            self.diagnostics.append(
+                Diagnostic(
+                    severity=Severity.WARNING,
+                    code="W325",
+                    message=(f"function '{fd.name}' has explain but no ensures"),
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        "Add `ensures` clauses so the `explain` block has "
+                        "contracts to document. Without postconditions, "
+                        "the explanation is unverifiable.",
+                    ],
+                    doc_url=DIAGNOSTIC_DOCS.get("W325"),
+                )
+            )
 
     @staticmethod
-    def _exprs_equal(a, b) -> bool:
+    def _exprs_equal(a: object, b: object) -> bool:
         """Simple structural equality check for expressions."""
         if type(a) is not type(b):
             return False
-        if isinstance(a, IntegerLit):
+        if isinstance(a, IntegerLit) and isinstance(b, IntegerLit):
             return a.value == b.value
         return False

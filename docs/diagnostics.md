@@ -12,10 +12,6 @@ Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` =
 
 ## Errors
 
-### E100 — Tab character not allowed
-
-Prove uses spaces for indentation. Tab characters are not permitted.
-
 ### E101 — Unterminated string literal
 
 A string opened with `"` was not closed before end of line or file.
@@ -42,7 +38,7 @@ An f-string opened with `f"` was not closed.
 
 ### E107 — Unknown escape sequence
 
-A backslash followed by an unrecognized character inside a string.
+A backslash followed by an unrecognized character inside a string. The error message shows the problematic sequence (e.g., `` `\q` ``). Valid escapes: `\n`, `\r`, `\t`, `\\`, `\"`, `\{`, `\}`, `\0`.
 
 ### E108 — Unexpected end of escape sequence
 
@@ -50,15 +46,11 @@ A backslash at the end of a string with no character following it.
 
 ### E109 — Unexpected character
 
-A character that doesn't belong to any valid token.
-
-### E110 — Inconsistent indentation
-
-Mixed indentation widths within the same file.
+A character that doesn't belong to any valid token. The error message shows the problematic character (e.g., `` `@` ``, `` `#` ``, `` `$` ``).
 
 ### E200 — Missing module declaration
 
-Every `.prv` file must begin with a `module` declaration and narrative.
+Every `.prv` file must begin with a `module` declaration and narrative. When a filename is available, the compiler suggests a module name derived from it (e.g., `my_utils.prv` suggests `module MyUtils`).
 
 ```prove
 module MyModule
@@ -67,7 +59,7 @@ module MyModule
 
 ### E210 — Expected token
 
-The parser expected a specific token (e.g., `)`, `:`, `from`) but found something else.
+The parser expected a specific token (e.g., `)`, `:`, `from`) but found something else. The error message shows both the expected and actual tokens.
 
 ### E211 — Expected declaration
 
@@ -75,36 +67,23 @@ The parser expected a top-level declaration (`module`, `transforms`, `validates`
 
 ### E212 — Expected type body
 
-After `type Name is`, the parser expected a type body (field definitions, variant names, or `binary`) but found something else.
+After `type Name is`, the parser expected a field definition (like `name String`), a variant name (like `Some` or `None`), or `binary`, but found something else.
 
 ### E213 — Expected expression
 
-The parser expected an expression but found an unexpected token.
+The parser expected an expression (a name, literal, or parenthesized group) but found an unexpected token. The error message shows what was found instead.
 
 ### E214 — Verb used as identifier
 
-A verb keyword (`transforms`, `validates`, `reads`, `creates`, `matches`, `inputs`, `outputs`) cannot be used as an identifier.
+A verb keyword (`transforms`, `validates`, `reads`, `creates`, `matches`, `inputs`, `outputs`) cannot be used as a variable or function name. Use a different name, or declare it as a verb.
 
 ### E215 — Expected pattern
 
-In a `match` arm, the parser expected a pattern (variant name, literal, binding, or wildcard `_`).
-
-### E216 — Duplicate verb in import
-
-The same verb appears twice in an import declaration. Group all names under a single verb.
-
-```prove
-module Main
-  // Wrong — duplicate 'transforms'
-  Text transforms trim, transforms upper
-
-  // Correct
-  Text transforms trim upper
-```
+In a `match` arm, the parser expected a pattern (variant name like `Some`, literal like `0` or `"hello"`, binding name, or wildcard `_`) but found something else.
 
 ### E300 — Undefined type
 
-A type name used in a type expression could not be resolved.
+A type name used in a type expression could not be resolved. If the name is similar to a known type, the compiler suggests a correction (e.g., `Intger` → did you mean `Integer`?).
 
 ### E301 — Duplicate type definition
 
@@ -128,15 +107,15 @@ A qualified call (`Module.function()`) references a function that was not explic
 
 ### E313 — Module not imported
 
-A qualified call references a module that has no import declaration.
+A qualified call references a module that has no import declaration. If the module exists (in stdlib or as a local module), the compiler tells you to add an import. If the module name is misspelled, it suggests the closest match.
 
 ### E315 — Function not found in module
 
-An import declaration names a function that does not exist in the specified stdlib module.
+An import declaration names a function or type that does not exist in the specified module (stdlib or local).
 
 ### E316 — Name shadows builtin function
 
-A user-defined function or parameter has the same name as a built-in function (`len`, `map`, `filter`, `reduce`, `each`, `to_string`, `clamp`, `println`, `print`, `readln`).
+A user-defined function or parameter has the same name as a built-in function (`len`, `map`, `filter`, `reduce`, `each`).
 
 ```prove
 transforms len(xs List<Integer>) Integer
@@ -206,12 +185,17 @@ from
 
 ### E352 — Function calls not allowed in `where` constraints
 
-A `where` constraint on a refinement type contains a function call or other complex expression. Only primitive expressions are allowed: comparisons, ranges, boolean operators, literals, identifiers, and field access.
+A `where` constraint on a refinement type contains a function call or other complex expression. Only primitive expressions are allowed: comparisons, ranges, boolean operators, literals, regex patterns, identifiers, and field access.
 
 ```prove
+// Error — function call in constraint
 type Valid is Integer where is_prime(value)
 
+// Correct — comparison
 type Valid is Integer where value > 0 && value < 100
+
+// Correct — regex pattern for String
+type Email is String where r".+@.+\..+"
 ```
 
 ### E361 — Pure function cannot be failable
@@ -220,7 +204,7 @@ Functions with pure verbs cannot use the `!` fail marker.
 
 ### E362 — Pure function cannot call IO builtin
 
-A function with a pure verb cannot call built-in IO functions (`read_file`, `write_file`, `open`, `close`, `flush`, `sleep`).
+A function with a pure verb cannot call the built-in IO function `sleep`. Other IO operations (file read/write, console output) are accessed through stdlib modules with IO verbs and are caught by E363.
 
 ### E363 — Pure function cannot call user-defined IO function
 

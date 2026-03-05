@@ -557,13 +557,16 @@ def save_survivors(project_dir: Path, result: MutationTestResult) -> None:
     path.write_text(json.dumps(data, indent=2))
 
 
-def load_survivors(project_dir: Path) -> list[dict]:
+def load_survivors(project_dir: Path) -> list[dict[str, object]]:
     """Load saved mutation survivors."""
     path = get_survivors_path(project_dir)
     if not path.exists():
         return []
     try:
         data = json.loads(path.read_text())
-        return data.get("survivors", [])
+        result = data.get("survivors", [])
+        if isinstance(result, list):
+            return result
+        return []
     except (json.JSONDecodeError, IOError):
         return []

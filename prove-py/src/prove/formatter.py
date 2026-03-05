@@ -27,8 +27,6 @@ def _escape_string(value: str) -> str:
     return value.translate(str.maketrans(_STRING_ESCAPE_MAP))
 
 
-from typing import TYPE_CHECKING
-
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -42,9 +40,10 @@ from prove.ast_nodes import (
     ComptimeExpr,
     ConstantDef,
     DecimalLit,
+    ExplainBlock,
     ExprStmt,
-    FieldAssignment,
     FailPropExpr,
+    FieldAssignment,
     FieldExpr,
     FunctionDef,
     GenericType,
@@ -66,7 +65,6 @@ from prove.ast_nodes import (
     ModuleDecl,
     PathLit,
     PipeExpr,
-    ExplainBlock,
     RawStringLit,
     RecordTypeDef,
     RefinementTypeDef,
@@ -84,11 +82,6 @@ from prove.ast_nodes import (
     WildcardPattern,
 )
 
-if TYPE_CHECKING:
-    from prove.errors import Diagnostic
-    from prove.symbols import SymbolTable
-    from prove.types import Type
-
 # Operator precedence table (higher binds tighter)
 _PRECEDENCE: dict[str, int] = {
     "||": 1,
@@ -104,8 +97,14 @@ _PRECEDENCE: dict[str, int] = {
     "-": 6,
     "*": 7,
     "/": 7,
-    "%": 7,
 }
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from prove.errors import Diagnostic
+    from prove.symbols import SymbolTable
+    from prove.types import Type
 
 
 class ProveFormatter:

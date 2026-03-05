@@ -53,14 +53,8 @@ def build_module_registry(
     """
     from prove.ast_nodes import (
         AlgebraicTypeDef,
-        BinaryDef,
         FunctionDef,
-        GenericType,
         ModuleDecl,
-        RecordTypeDef,
-        RefinementTypeDef,
-        SimpleType,
-        TypeDef,
     )
 
     registry: dict[str, LocalModuleInfo] = {}

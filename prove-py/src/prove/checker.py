@@ -7,6 +7,7 @@ Pass 2: Check each declaration body (type inference, verb enforcement, exhaustiv
 from __future__ import annotations
 
 from pathlib import Path
+
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -43,6 +44,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     Param,
     PathLit,
+    Pattern,
     PipeExpr,
     RawStringLit,
     RecordTypeDef,
@@ -115,11 +117,6 @@ _VERBS_NEED_OWNERSHIP = frozenset(
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset(
     {
-        "read_file",
-        "write_file",
-        "open",
-        "close",
-        "flush",
         "sleep",
     }
 )
@@ -132,11 +129,6 @@ _BUILTIN_FUNCTIONS = frozenset(
         "each",
         "filter",
         "reduce",
-        "to_string",
-        "clamp",
-        "println",
-        "print",
-        "readln",
     }
 )
 
@@ -1890,11 +1882,21 @@ class Checker:
             func_name = expr.func.field
             # Verify the module is imported
             if not self._is_module_imported(module_name):
-                self._error(
-                    "E313",
-                    f"module '{module_name}' is not imported",
-                    expr.func.obj.span,
-                )
+                from prove.stdlib_loader import is_stdlib_module
+
+                known_modules = set(self._module_imports.keys())
+                if self._local_modules:
+                    known_modules.update(self._local_modules.keys())
+                suggestion = self._fuzzy_match(module_name, known_modules)
+                if is_stdlib_module(module_name) or (
+                    self._local_modules and module_name in self._local_modules
+                ):
+                    msg = f"module `{module_name}` is not imported — add it to your module imports"
+                elif suggestion:
+                    msg = f"module `{module_name}` does not exist; did you mean `{suggestion}`?"
+                else:
+                    msg = f"module `{module_name}` does not exist"
+                self._error("E313", msg, expr.func.obj.span)
                 return ERROR_TY
             # Verify the function is explicitly imported from this module
             if not self._is_function_imported(module_name, func_name):
@@ -2264,7 +2266,7 @@ class Checker:
 
     # ── Pattern checking ────────────────────────────────────────
 
-    def _check_pattern(self, pattern, subject_type: Type) -> None:
+    def _check_pattern(self, pattern: Pattern, subject_type: Type) -> None:
         """Check a pattern and bind names."""
         if isinstance(pattern, BindingPattern):
             self.symbols.define(
@@ -2412,12 +2414,21 @@ class Checker:
 
     # ── Type resolution ─────────────────────────────────────────
 
+    def _error_undefined_type(self, name: str, span: Span) -> None:
+        """Emit E300 with a 'did you mean' suggestion when possible."""
+        candidates = set(self.symbols.all_types().keys())
+        suggestion = self._fuzzy_match(name, candidates)
+        msg = f"undefined type `{name}`"
+        if suggestion:
+            msg += f"; did you mean `{suggestion}`?"
+        self._error("E300", msg, span)
+
     def _resolve_type_expr(self, type_expr: TypeExpr) -> Type:
         """Resolve a syntactic TypeExpr to a semantic Type."""
         if isinstance(type_expr, SimpleType):
             resolved = self.symbols.resolve_type(type_expr.name)
             if resolved is None:
-                self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
+                self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
             return resolved
@@ -2430,7 +2441,7 @@ class Checker:
             # Check base type exists
             base = self.symbols.resolve_type(type_expr.name)
             if base is None:
-                self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
+                self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
             return GenericInstance(type_expr.name, args)
@@ -2438,7 +2449,7 @@ class Checker:
         if isinstance(type_expr, ModifiedType):
             base = self.symbols.resolve_type(type_expr.name)
             if base is None:
-                self._error("E300", f"undefined type '{type_expr.name}'", type_expr.span)
+                self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
             mods = tuple(m.value for m in type_expr.modifiers)

@@ -200,8 +200,8 @@ class TestIsE310:
     def test_rejects_other_code(self):
         diag = lsp.Diagnostic(
             range=lsp.Range(lsp.Position(0, 0), lsp.Position(0, 5)),
-            message="[E100] some other error",
-            code="E100",
+            message="[E200] some other error",
+            code="E200",
         )
         assert not _is_e310(diag)
 
@@ -221,7 +221,7 @@ class TestExtractUndefinedName:
         assert _extract_undefined_name("[E310] undefined name 'my_func'") == "my_func"
 
     def test_no_match(self):
-        assert _extract_undefined_name("[E100] type mismatch") is None
+        assert _extract_undefined_name("[E200] type mismatch") is None
 
 
 class TestBuildImportEdit:

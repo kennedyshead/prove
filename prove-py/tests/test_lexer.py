@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
-from prove.errors import CompileError
 from prove.lexer import Lexer
 from prove.tokens import TokenKind
 
@@ -370,7 +367,8 @@ class TestLexerIntegration:
         assert TokenKind.FROM in k
         assert TokenKind.STRING_LIT in k
 
-    def test_tabs_rejected(self):
+    def test_tabs_accepted(self):
         source = "\tx\n"
-        with pytest.raises(CompileError):
-            Lexer(source).lex()
+        tokens = Lexer(source).lex()
+        kinds = [t.kind for t in tokens]
+        assert TokenKind.IDENTIFIER in kinds

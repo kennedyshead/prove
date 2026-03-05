@@ -145,8 +145,6 @@ class Lexer:
     def _skip_spaces(self) -> None:
         """Skip spaces and tabs (but not newlines)."""
         while self.pos < len(self.source) and self.source[self.pos] in (' ', '\t'):
-            if self.source[self.pos] == '\t':
-                self._error("tabs are not allowed; use spaces", self.line, self.col, "E100")
             self._advance()
 
     # ── Indentation ──────────────────────────────────────────────
@@ -154,13 +152,13 @@ class Lexer:
     def _handle_indentation(self) -> None:
         """Process indentation at the start of a line."""
         indent = 0
-        while self.pos < len(self.source) and self.source[self.pos] == ' ':
-            indent += 1
+        while self.pos < len(self.source) and self.source[self.pos] in (' ', '\t'):
+            if self.source[self.pos] == '\t':
+                indent += 4
+            else:
+                indent += 1
             self.pos += 1
             self.col += 1
-
-        if self.pos < len(self.source) and self.source[self.pos] == '\t':
-            self._error("tabs are not allowed; use spaces", self.line, self.col, "E100")
 
         # Skip blank lines
         if self.pos >= len(self.source) or self.source[self.pos] == '\n':
@@ -175,12 +173,8 @@ class Lexer:
                 self.indent_stack.pop()
                 self._emit(TokenKind.DEDENT, "", self.line, 1)
             if self.indent_stack[-1] != indent:
-                expected = self.indent_stack[-1]
-                self._error(
-                    f"inconsistent indentation: expected {expected}"
-                    f" spaces, got {indent}",
-                    self.line, 1, "E110",
-                )
+                # Accept the actual indent level instead of erroring
+                self.indent_stack.append(indent)
 
     # ── Newlines ─────────────────────────────────────────────────
 
@@ -358,7 +352,7 @@ class Lexer:
                       '{': '{', '}': '}', '0': '\0'}
         if ch in escape_map:
             return escape_map[ch]
-        self._error(f"unknown escape sequence: \\{ch}", self.line, self.col - 1, "E107")
+        self._error(f"unknown escape sequence `\\{ch}`", self.line, self.col - 1, "E107")
         return ch
 
     def _lex_char(self) -> None:
@@ -658,4 +652,4 @@ class Lexer:
             case '|':
                 self._emit(TokenKind.PIPE, '|', start_line, start_col)
             case _:
-                self._error(f"unexpected character: {ch!r}", start_line, start_col, "E109")
+                self._error(f"unexpected character `{ch}`", start_line, start_col, "E109")

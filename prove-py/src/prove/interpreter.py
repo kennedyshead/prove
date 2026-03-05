@@ -308,7 +308,7 @@ class ComptimeInterpreter:
             ]
         )
 
-    def _match_pattern(self, pattern, value: object) -> bool:
+    def _match_pattern(self, pattern: object, value: object) -> bool:
         from prove.ast_nodes import BindingPattern, LiteralPattern, VariantPattern, WildcardPattern
 
         if isinstance(pattern, WildcardPattern):
@@ -325,13 +325,11 @@ class ComptimeInterpreter:
                 return pattern.value == value
             if pattern.kind == "boolean":
                 return (pattern.value == "true") == value
-        if isinstance(pattern, VariantPattern):
-            if not hasattr(value, "variant") or not hasattr(value, "name"):
-                return False
-            return pattern.name == value.name
+        if isinstance(pattern, VariantPattern) and hasattr(value, "name"):
+            return pattern.name == (value.name if hasattr(value, "name") else None)
         return False
 
-    def _eval_arm_body(self, body: list) -> object:
+    def _eval_arm_body(self, body: list[object]) -> object:
         result: object = None
         for stmt in body:
             result = self._eval_stmt(stmt)

@@ -15,6 +15,7 @@ from prove.ast_nodes import (
     CharLit,
     CommentStmt,
     ComptimeExpr,
+    ConstantDef,
     DecimalLit,
     ExplainEntry,
     Expr,
@@ -40,6 +41,7 @@ from prove.ast_nodes import (
     RawStringLit,
     RecordTypeDef,
     RegexLit,
+    Stmt,
     StringInterp,
     StringLit,
     TailContinue,
@@ -56,7 +58,7 @@ from prove.ast_nodes import (
 from prove.c_types import CType, mangle_name, mangle_type_name, map_type
 from prove.errors import Diagnostic, Severity
 from prove.optimizer import MemoizationInfo
-from prove.symbols import SymbolTable
+from prove.symbols import FunctionSignature, SymbolTable
 from prove.types import (
     BOOLEAN,
     DECIMAL,
@@ -535,7 +537,7 @@ class CEmitter:
                 self._scan_expr_for_record_value(s.value)
 
     @staticmethod
-    def _is_value_conversion(sig) -> bool:
+    def _is_value_conversion(sig: FunctionSignature) -> bool:
         """Return True if sig is Parse.creates/validates value(V)."""
         return (
             sig.module
@@ -709,7 +711,7 @@ class CEmitter:
         if any_emitted:
             self._line("")
 
-    def _eval_comptime(self, const, expr: ComptimeExpr) -> object | None:
+    def _eval_comptime(self, const: ConstantDef, expr: ComptimeExpr) -> object | None:
         """Evaluate a comptime expression and return the result."""
         from pathlib import Path
 
@@ -1220,7 +1222,7 @@ class CEmitter:
     def _maybe_unwrap_option(
         self,
         call_str: str,
-        sig,
+        sig: FunctionSignature,
         call_args: list[Expr],
         module_name: str,
     ) -> str:
@@ -1253,7 +1255,7 @@ class CEmitter:
                 return resolved
         return ty
 
-    def _resolve_call_sig(self, expr: Expr):
+    def _resolve_call_sig(self, expr: Expr) -> FunctionSignature | None:
         """Resolve the FunctionSignature for a call expression, if any."""
         from prove.symbols import FunctionSignature
 
@@ -1314,7 +1316,7 @@ class CEmitter:
         self,
         args: list[str],
         arg_exprs: list[Expr],
-        sig,
+        sig: FunctionSignature,
     ) -> list[str]:
         """Coerce call arguments to match parameter types.
 
@@ -1476,7 +1478,7 @@ class CEmitter:
             if ct.is_pointer:
                 self._line(f"prove_release({name});")
 
-    def _stmt_expr(self, stmt) -> Expr | None:
+    def _stmt_expr(self, stmt: Stmt) -> Expr | None:
         """Extract the expression from a statement, if it is an ExprStmt."""
         if isinstance(stmt, ExprStmt):
             return stmt.expr
@@ -1486,7 +1488,7 @@ class CEmitter:
 
     # ── Statement emission ─────────────────────────────────────
 
-    def _emit_stmt(self, stmt) -> None:
+    def _emit_stmt(self, stmt: Stmt) -> None:
         if isinstance(stmt, VarDecl):
             self._emit_var_decl(stmt)
         elif isinstance(stmt, Assignment):
@@ -1721,7 +1723,7 @@ class CEmitter:
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
             )
             self._indent += 1
-            self._line(f'prove_panic("constraint failed: value does not match pattern");')
+            self._line('prove_panic("constraint failed: value does not match pattern");')
             self._indent -= 1
             self._line("}")
         elif isinstance(constraint, RawStringLit):
@@ -1731,7 +1733,7 @@ class CEmitter:
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
             )
             self._indent += 1
-            self._line(f'prove_panic("constraint failed: value does not match pattern");')
+            self._line('prove_panic("constraint failed: value does not match pattern");')
             self._indent -= 1
             self._line("}")
 
@@ -1852,7 +1854,7 @@ class CEmitter:
                         if isinstance(arg, IdentifierExpr):
                             arg_names.append(arg.name)
                     first_arg = es.expr.args[0].name
-                    self._line(f"// Guarded transforms call")
+                    self._line("// Guarded transforms call")
                     for i, arg_name in enumerate(arg_names[1:], start=1):
                         if i < len(sig.param_types):
                             param_ty = sig.param_types[i]
