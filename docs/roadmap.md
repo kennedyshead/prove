@@ -35,7 +35,7 @@ after V1.0 is stable.
 | v0.9 | Complete | Lexer export tool — 612 tests |
 | v0.9.1 | Complete | Documentation parity — mark unimplemented features, add missing diagnostics |
 | v0.9.5 | Complete | Auto-Memoization + Memory Regions |
-| v0.9.6 | Complete | Stdlib: List, Math, Convert — 747 tests |
+| v0.9.6 | Complete | Mutation Testing (`--mutate` flag), Stdlib: List, Math, Convert |
 | v0.9.7 | Complete | Stdlib: Path, Pattern |
 | v0.9.8 | Complete | Stdlib: Format, Error |
 

@@ -1017,6 +1017,9 @@ class CEmitter:
         self._line(f"{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 
+        # Enter region for short-lived allocations
+        self._line("prove_region_enter(prove_global_region());")
+
         # Reset locals
         self._locals.clear()
         for p, pt in zip(fd.params, param_types):
@@ -1038,6 +1041,8 @@ class CEmitter:
             # Emit body
             self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
 
+        # Exit region
+        self._line("prove_region_exit(prove_global_region());")
         self._indent -= 1
         self._line("}")
         self._line("")

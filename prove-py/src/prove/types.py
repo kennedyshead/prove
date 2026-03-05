@@ -82,6 +82,13 @@ class ErrorType:
     pass
 
 
+@dataclass(frozen=True)
+class BorrowType:
+    """Type representing a borrowed reference (compiler-inferred read-only borrow)."""
+
+    inner: Type
+
+
 Type = (
     PrimitiveType
     | UnitType
@@ -94,6 +101,7 @@ Type = (
     | ListType
     | ErrorType
     | VariantInfo
+    | BorrowType
 )
 
 
@@ -179,6 +187,8 @@ def type_name(ty: Type) -> str:
         return "<error>"
     if isinstance(ty, VariantInfo):
         return ty.name
+    if isinstance(ty, BorrowType):
+        return f"&{type_name(ty.inner)}"
     return str(ty)
 
 
@@ -251,6 +261,11 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return True
     expected = _unwrap_refinement(expected)
     actual = _unwrap_refinement(actual)
+    # BorrowType is compatible with its inner type for read-only access
+    if isinstance(expected, BorrowType):
+        return types_compatible(expected.inner, actual)
+    if isinstance(actual, BorrowType):
+        return types_compatible(expected, actual.inner)
     if isinstance(expected, PrimitiveType) and expected.modifiers:
         if isinstance(actual, (RecordType, AlgebraicType)):
             return expected.name == actual.name

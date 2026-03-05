@@ -31,14 +31,14 @@ def tmp_project(tmp_path):
     toml = tmp_path / "prove.toml"
     toml.write_text(
         '[package]\nname = "testproj"\nversion = "1.0.0"\n'
-        "[build]\ntarget = \"native\"\n"
+        '[build]\ntarget = "native"\n'
         "[test]\nproperty_rounds = 500\n"
     )
     src = tmp_path / "src"
     src.mkdir()
     (src / "main.prv").write_text(
         'module Main\n  narrative: """Test project"""\n'
-        '  InputOutput outputs console\n\n'
+        "  InputOutput outputs console\n\n"
         'main() Result<Unit, Error>!\nfrom\n    console("hi")\n'
     )
     return tmp_path
@@ -104,7 +104,8 @@ class TestCLI:
     def test_build_mutate_flag(self, runner, tmp_project, needs_cc):
         result = runner.invoke(main, ["build", str(tmp_project), "--mutate"])
         assert result.exit_code == 0
-        assert "mutation testing not yet implemented" in result.output
+        assert "mutation testing" in result.output
+        assert "mutation score" in result.output or "no mutants" in result.output
 
     def test_check_with_project(self, runner, tmp_project):
         result = runner.invoke(main, ["check", str(tmp_project)])
@@ -307,11 +308,7 @@ class TestDiagnosticNotes:
     def test_source_line_in_render(self, tmp_path):
         """Diagnostics should show the source line from a real file."""
         prv = tmp_path / "test.prv"
-        prv.write_text(
-            "transforms identity(x Integer) Integer\n"
-            "    from\n"
-            "        y\n"
-        )
+        prv.write_text("transforms identity(x Integer) Integer\n    from\n        y\n")
         from prove.checker import Checker
         from prove.lexer import Lexer
         from prove.parser import Parser

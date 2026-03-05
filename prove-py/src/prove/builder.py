@@ -108,16 +108,21 @@ def _build_c(
 ) -> BuildResult:
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
+    stdlib_libs: set[str] = set()
     for module, symbols in modules_and_symbols:
         memo_info = None
+        runtime_deps = None
         if config.build.optimize:
             from prove.optimizer import Optimizer
 
             optimizer = Optimizer(module, symbols)
             module = optimizer.optimize()
             memo_info = optimizer.get_memo_info()
+            runtime_deps = optimizer.get_runtime_deps()
         emitter = CEmitter(module, symbols, memo_info)
         c_sources.append(emitter.emit())
+        if runtime_deps:
+            stdlib_libs.update(runtime_deps.get_libs())
 
     # Set up build directory
     build_dir = project_dir / "build"
@@ -132,7 +137,7 @@ def _build_c(
         gen_c_files.append(c_path)
 
     # Copy runtime
-    runtime_c_files = copy_runtime(build_dir)
+    runtime_c_files = copy_runtime(build_dir, c_sources=c_sources, stdlib_libs=stdlib_libs or None)
 
     # Find compiler
     cc = find_c_compiler()

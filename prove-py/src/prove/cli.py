@@ -114,7 +114,50 @@ def build(path: str, mutate: bool, debug: bool) -> None:
             raise SystemExit(1)
 
         if mutate:
-            click.echo("(mutation testing not yet implemented)")
+            click.echo("running mutation testing...")
+            from prove.module_resolver import build_module_registry
+            from prove.mutator import run_mutation_tests
+
+            src_dir = project_dir / "src"
+            if not src_dir.is_dir():
+                src_dir = project_dir
+            prv_files = sorted(src_dir.rglob("*.prv"))
+
+            local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+            modules = []
+            for prv_file in prv_files:
+                source = prv_file.read_text()
+                filename = str(prv_file)
+                try:
+                    tokens = Lexer(source, filename).lex()
+                    module = Parser(tokens, filename).parse()
+                    checker = Checker(local_modules=local_modules)
+                    symbols = checker.check(module)
+                    if not checker.has_errors():
+                        modules.append((module, symbols))
+                except CompileError:
+                    continue
+
+            mutation_result = run_mutation_tests(
+                project_dir,
+                modules,
+                max_mutants=50,
+                property_rounds=100,
+            )
+
+            if mutation_result.total_mutants == 0:
+                click.echo("no mutants generated")
+            else:
+                click.echo(
+                    f"mutation score: {mutation_result.mutation_score:.1%} "
+                    f"({mutation_result.killed_mutants}/{mutation_result.total_mutants} killed)"
+                )
+                if mutation_result.survivors:
+                    click.echo(f"\nsurviving mutants ({len(mutation_result.survivors)}):")
+                    for s in mutation_result.survivors:
+                        click.echo(f"  {s['id']}: {s['description']} at {s['location']}")
+                        click.echo("    suggestion: add contract to kill this mutant")
+
         click.echo(f"built {config.package.name} -> {result.binary}")
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)

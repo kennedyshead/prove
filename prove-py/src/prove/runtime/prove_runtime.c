@@ -7,9 +7,11 @@
 #include "prove_runtime.h"
 #include "prove_arena.h"
 #include "prove_intern.h"
+#include "prove_region.h"
 
 static ProveArena *_global_arena = NULL;
 static ProveInternTable *_global_intern = NULL;
+static ProveRegion *_global_region = NULL;
 
 #define MAX_BACKTRACE 64
 
@@ -44,9 +46,14 @@ void prove_runtime_init(void) {
     
     _global_arena = prove_arena_new(0);
     _global_intern = prove_intern_table_new(_global_arena);
+    _global_region = prove_region_new();
 }
 
 void prove_runtime_cleanup(void) {
+    if (_global_region) {
+        prove_region_free(_global_region);
+        _global_region = NULL;
+    }
     if (_global_intern) {
         prove_intern_table_free(_global_intern);
         _global_intern = NULL;
@@ -55,4 +62,8 @@ void prove_runtime_cleanup(void) {
         prove_arena_free(_global_arena);
         _global_arena = NULL;
     }
+}
+
+ProveRegion *prove_global_region(void) {
+    return _global_region;
 }

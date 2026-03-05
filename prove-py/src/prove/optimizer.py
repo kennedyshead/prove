@@ -32,6 +32,27 @@ from prove.ast_nodes import (
 )
 from prove.symbols import SymbolTable
 
+# Mapping of stdlib module names to the C runtime libraries they require.
+# Used by RuntimeDeps to track which runtime files to include in builds.
+# Keys are lowercase stdlib module names (both "io" and "inputoutput" map to prove_input_output).
+_STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
+    "io": {"prove_input_output"},
+    "inputoutput": {"prove_input_output"},
+    "character": {"prove_character"},
+    "text": {"prove_text", "prove_string"},
+    "table": {"prove_table", "prove_hash"},
+    "parse": {"prove_parse"},
+    "math": {"prove_math"},
+    "convert": {"prove_convert"},
+    "list": {"prove_list", "prove_list_ops"},
+    "format": {"prove_format"},
+    "path": {"prove_path"},
+    "error": {"prove_error"},
+    "pattern": {"prove_pattern"},
+    "result": {"prove_result"},
+    "option": {"prove_option"},
+}
+
 
 @dataclass
 class MemoizationCandidate:
@@ -66,6 +87,25 @@ class MemoizationInfo:
         return list(self._candidates.values())
 
 
+class RuntimeDeps:
+    """Tracks which C runtime libraries are required based on stdlib imports."""
+
+    def __init__(self) -> None:
+        self._libs: set[str] = set()
+
+    def add_lib(self, lib: str) -> None:
+        self._libs.add(lib)
+
+    def add_module(self, module: str) -> None:
+        """Add all runtime libs needed for a stdlib module."""
+        normalized = module.lower()
+        if normalized in _STDLIB_RUNTIME_LIBS:
+            self._libs.update(_STDLIB_RUNTIME_LIBS[normalized])
+
+    def get_libs(self) -> set[str]:
+        return self._libs
+
+
 class Optimizer:
     """Multi-pass AST optimizer."""
 
@@ -73,9 +113,11 @@ class Optimizer:
         self._module = module
         self._symbols = symbols
         self._memo_info = MemoizationInfo()
+        self._runtime_deps = RuntimeDeps()
 
     def optimize(self) -> Module:
-        module = self._tail_call_optimization(self._module)
+        module = self._collect_runtime_deps(self._module)
+        module = self._tail_call_optimization(module)
         module = self._dead_branch_elimination(module)
         module = self._inline_small_functions(module)
         module = self._identify_memoization_candidates(module)
@@ -87,6 +129,20 @@ class Optimizer:
     def get_memo_info(self) -> MemoizationInfo:
         """Return memoization candidates discovered during optimization."""
         return self._memo_info
+
+    def get_runtime_deps(self) -> RuntimeDeps:
+        """Return runtime dependencies discovered during optimization."""
+        return self._runtime_deps
+
+    # ── Pass 0: Runtime Dependency Collection ─────────────────────
+
+    def _collect_runtime_deps(self, module: Module) -> Module:
+        """Collect which C runtime libraries are needed based on stdlib imports."""
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    self._runtime_deps.add_module(imp.module)
+        return module
 
     # ── Pass 1: Tail Call Optimization ────────────────────────────
 

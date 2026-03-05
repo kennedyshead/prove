@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "prove_region.h"
+
 /* ── Reference-counted header ─────────────────────────────────── */
 
 typedef struct {
@@ -56,5 +58,6 @@ static inline int64_t prove_clamp(int64_t val, int64_t lo, int64_t hi) {
 
 void prove_runtime_init(void);
 void prove_runtime_cleanup(void);
+ProveRegion *prove_global_region(void);
 
 #endif /* PROVE_RUNTIME_H */

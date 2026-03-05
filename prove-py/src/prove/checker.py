@@ -40,6 +40,7 @@ from prove.ast_nodes import (
     ModifiedType,
     Module,
     ModuleDecl,
+    Param,
     PathLit,
     PipeExpr,
     RawStringLit,
@@ -91,6 +92,7 @@ from prove.types import (
     Type,
     TypeVariable,
     VariantInfo,
+    has_mutable_modifier,
     has_own_modifier,
     is_json_serializable,
     numeric_widen,
@@ -1400,6 +1402,12 @@ class Checker:
 
         sym.used = True
         value_type = self._infer_expr(assign.value)
+        # Track moves for assignment: if assigning an owned variable to another variable,
+        # the source is moved
+        if isinstance(assign.value, IdentifierExpr):
+            value_sym = self.symbols.lookup(assign.value.name)
+            if value_sym is not None and has_own_modifier(value_sym.resolved_type):
+                self._moved_vars.add(assign.value.name)
         if not types_compatible(sym.resolved_type, value_type):
             self._error(
                 "E321",
@@ -2294,8 +2302,99 @@ class Checker:
         """Mark arguments as moved if passed to parameters with Own modifier."""
         for arg, param_ty in zip(args, param_types):
             if has_own_modifier(param_ty):
-                if isinstance(arg, IdentifierExpr):
-                    self._moved_vars.add(arg.name)
+                self._track_moved_expr(arg)
+
+    def _track_moved_expr(self, expr: Expr) -> None:
+        """Mark variables as moved based on expression type."""
+        if isinstance(expr, IdentifierExpr):
+            sym = self.symbols.lookup(expr.name)
+            if sym is not None and has_own_modifier(sym.resolved_type):
+                self._moved_vars.add(expr.name)
+        elif isinstance(expr, FieldExpr):
+            self._track_moved_expr(expr.base)
+
+    def _infer_param_borrows(
+        self, params: list[Param], param_types: list[Type], body: list[Stmt]
+    ) -> dict[str, Type]:
+        """Analyze function body to infer which parameters are used in read-only mode.
+
+        Returns a mapping from parameter name to its borrowed type if the parameter
+        is only used in read-only contexts (passed to other functions without mutation).
+        """
+        from prove.types import BorrowType
+
+        param_readonly_usage: dict[str, bool] = {}
+        for p in params:
+            param_readonly_usage[p.name] = True
+        param_names = {p.name for p in params}
+
+        def check_expr_readonly(expr: Expr) -> bool:
+            """Check if an expression involves mutating any parameter."""
+            if isinstance(expr, IdentifierExpr):
+                if expr.name in param_names:
+                    sym = self.symbols.lookup(expr.name)
+                    if sym is not None and has_mutable_modifier(sym.resolved_type):
+                        return False
+                return True
+            if isinstance(expr, CallExpr):
+                for arg in expr.args:
+                    if not check_expr_readonly(arg):
+                        return False
+                return True
+            if isinstance(expr, BinaryExpr):
+                return check_expr_readonly(expr.left) and check_expr_readonly(expr.right)
+            if isinstance(expr, UnaryExpr):
+                return check_expr_readonly(expr.operand)
+            if isinstance(expr, FieldExpr):
+                return check_expr_readonly(expr.base)
+            if isinstance(expr, ListLiteral):
+                return all(check_expr_readonly(e) for e in expr.elements)
+            return True
+
+        for stmt in body:
+            if not self._check_stmt_readonly(stmt, param_names):
+                for p in params:
+                    param_readonly_usage[p.name] = False
+
+        result: dict[str, Type] = {}
+        for p, pty in zip(params, param_types):
+            if param_readonly_usage.get(p.name, False):
+                result[p.name] = BorrowType(pty)
+        return result
+
+    def _check_stmt_readonly(self, stmt: Stmt, param_names: set[str]) -> bool:
+        """Check if a statement only uses parameters in read-only mode."""
+        from prove.ast_nodes import Assignment, VarDecl
+
+        if isinstance(stmt, Assignment):
+            if stmt.target in param_names:
+                return False
+            return True
+        if isinstance(stmt, VarDecl):
+            return True
+        if isinstance(stmt, ExprStmt):
+            return True
+        if isinstance(stmt, MatchExpr):
+            return True
+        return True
+
+    def _check_expr_readonly(self, expr: Expr, param_names: set[str]) -> bool:
+        """Check if an expression only uses parameters in read-only mode."""
+        if isinstance(expr, IdentifierExpr):
+            if expr.name in param_names:
+                sym = self.symbols.lookup(expr.name)
+                if sym is not None and has_mutable_modifier(sym.resolved_type):
+                    return False
+            return True
+        if isinstance(expr, CallExpr):
+            return all(self._check_expr_readonly(arg, param_names) for arg in expr.args)
+        if isinstance(expr, BinaryExpr):
+            return self._check_expr_readonly(expr.left, param_names) and self._check_expr_readonly(
+                expr.right, param_names
+            )
+        if isinstance(expr, FieldExpr):
+            return self._check_expr_readonly(expr.base, param_names)
+        return True
 
     def _check_moved_var(self, name: str, span: Span) -> None:
         """Check if a variable has been moved and report error if so."""
