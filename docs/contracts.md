@@ -5,7 +5,7 @@
 The compiler proves properties when it can, and generates tests when it can't:
 
 ```prove
-transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Index>
+transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Integer>
   ensures is_some(result) implies xs[unwrap(result)] == target
   ensures is_none(result) implies target not_in xs
 ```
@@ -110,7 +110,7 @@ from
 Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:
 
 ```prove
-transforms divide(a Integer, b NonZero<Integer>) Integer
+transforms divide(a Integer, b Integer where != 0) Integer
 // Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),
 // (MIN_INT, -1), (7, 3), ...
 // Derived from type bounds + heuristic edge-case generation

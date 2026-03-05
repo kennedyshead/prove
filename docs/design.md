@@ -45,7 +45,7 @@ Compile-time computation (`comptime`) allows IO operations. This enables reading
 
 The `prove` CLI is the central interface for all development:
 
-```
+```bash
 prove build          # compile the project
 prove build --debug  # compile with debug symbols
 prove test           # run auto-generated + manual tests

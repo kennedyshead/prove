@@ -2,10 +2,10 @@
 
 ## Pipeline
 
-Prove compiles `.prv` source files to native binaries through a six-stage pipeline:
+Prove compiles `.prv` source files to native binaries through a seven-stage pipeline:
 
 ```
-Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
+Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
 ```
 
 | Stage | Input | Output | Key responsibility |
@@ -14,7 +14,8 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 | **Parser** | Token stream | AST | Pratt expression parsing, recursive descent for declarations |
 | **Checker** | AST | Typed AST + symbol table | Type inference, verb enforcement, match exhaustiveness |
 | **Prover** | AST + contracts | Diagnostics | Explain entry verification, contract consistency |
-| **C Emitter** | Typed AST | C source | Type mapping, name mangling, lambda hoisting, reference counting |
+| **Optimizer** | Typed AST | Optimized AST | Tail call optimization, inlining, dead branch elimination, runtime dependency tracking |
+| **C Emitter** | Optimized AST | C source | Type mapping, name mangling, lambda hoisting, reference counting |
 | **gcc/clang** | C source | Native binary | Optimization, linking with C runtime |
 
 The build system performs **runtime stripping** — only the C runtime modules actually used by the program are compiled and linked. A CLI that parses JSON, reads/writes console, and saves a file with guarded contracts produces a **37 KB** binary.
@@ -34,7 +35,7 @@ license = ""
 
 [build]
 target = "native"
-optimize = false
+optimize = true
 c_flags = []
 link_flags = []
 
@@ -84,13 +85,14 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ## Optimizer
 
-When `optimize = true` in `prove.toml` (the default), the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+When `optimize = true` in `prove.toml` (the default), the compiler runs seven optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
 
 | Pass | What it does |
 |------|-------------|
 | **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a `terminates` annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
+| **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
 | **Copy elision** | Detects `transforms` functions that return a parameter directly and marks them for the C emitter to skip retain/release. *(Placeholder — metadata tracking only.)* |
 | **Iterator fusion** | Detects `map(filter(xs, pred), fn)` patterns for fusion into a single pass. *(Placeholder — full rewrite pending List runtime support.)* |

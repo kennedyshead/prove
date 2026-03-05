@@ -6,7 +6,7 @@ The Prove compiler emits diagnostics with unique codes, source locations, and su
 - **Warning** — code compiles but the compiler could use this information (e.g., optimization, contract reasoning)
 - **Info** — good practice suggestions or issues that `prove format` fixes automatically
 
-Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer, 2xx = parser, 3xx = checker, etc.).
+Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer, 2xx = parser, 3xx = checker, 4xx = comptime).
 
 ---
 
@@ -186,6 +186,10 @@ An argument type does not match the corresponding parameter type in the function
 
 Field access (`.field`) on a type that either doesn't have that field or doesn't support field access.
 
+### E341 — Cannot pass borrowed value to mutable parameter
+
+A borrowed value cannot be passed to a parameter that requires mutability.
+
 ### E350 — Fail propagation in non-failable function
 
 The `!` operator (fail propagation) can only be used inside functions marked as failable with `!` in their signature.
@@ -277,21 +281,20 @@ A match arm references a variant that does not exist in the algebraic type.
 
 A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
 
-### E375 — Non-exhaustive lookup table
+### E375 — Duplicate value in lookup table
 
-A `[Lookup]` type does not cover all variants, contains duplicate values, or is missing entries. Every variant must have at least one value, and every value must be unique across the table.
+A `[Lookup]` type contains duplicate values. Every value in the table must be unique so that reverse lookups are unambiguous.
 
 ```prove
-// Error — Type is missing from the table
-type TokenKind:[Lookup] is String where
-    Main | "main"
-    From | "from"
-    // Type variant has no entry → E375
-
 // Error — duplicate value
 type TokenKind:[Lookup] is String where
     Main | "main"
     From | "main"   // "main" already used → E375
+
+// Correct — unique values
+type TokenKind:[Lookup] is String where
+    Main | "main"
+    From | "from"
 ```
 
 ### E376 — Lookup operand must be literal or variant
@@ -396,6 +399,58 @@ The `believe` keyword requires `ensures` to be present on the function.
 
 A `when` condition in an explain entry must evaluate to `Boolean`.
 
+### E410 — Tail recursion not supported in comptime
+
+A `comptime` block contains a tail-recursive construct. Comptime evaluation does not support tail recursion.
+
+### E411 — Unsupported expression in comptime
+
+A `comptime` block contains an expression type that the compile-time interpreter cannot evaluate.
+
+### E412 — Comptime `++` operand type mismatch
+
+The `++` operator in a `comptime` block requires both operands to be lists or both to be strings.
+
+### E413 — Unsupported binary operator in comptime
+
+A binary operator used in a `comptime` block is not supported by the compile-time interpreter.
+
+### E414 — Unsupported unary operator in comptime
+
+A unary operator used in a `comptime` block is not supported by the compile-time interpreter.
+
+### E415 — Implicit match not supported in comptime
+
+A `match` expression without an explicit subject is not supported in `comptime` blocks.
+
+### E416 — Non-exhaustive match in comptime
+
+A `match` expression in a `comptime` block did not match any arm at evaluation time.
+
+### E417 — Comptime evaluation failed
+
+A `comptime` block failed during evaluation. The error message includes the underlying cause.
+
+### E418 — Undefined variable in comptime
+
+A variable referenced in a `comptime` block is not defined in the comptime scope.
+
+### E419 — Only simple function calls in comptime
+
+A `comptime` block contains a complex call expression (e.g., method call or qualified call). Only simple function calls are supported.
+
+### E420 — `read()` expects a single string argument
+
+The `read()` function in a `comptime` block must be called with exactly one string argument (a file path).
+
+### E421 — File not found in comptime `read()`
+
+The file path passed to `read()` in a `comptime` block does not exist relative to the module's source directory.
+
+### E422 — Unknown function in comptime
+
+A `comptime` block calls a function that is not available in the compile-time interpreter. Currently only `read` is supported.
+
 ---
 
 ## Warnings
@@ -456,6 +511,10 @@ An `explain` block is present but there are no `ensures` clauses. Without contra
 
 A recursive function's `terminates` measure suggests O(n) call depth. Consider using `map`, `filter`, or `reduce` via the pipe operator instead.
 
+### W330 — Surviving mutant
+
+A previous `prove build --mutate` run found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
+
 ---
 
 ## Info
@@ -503,6 +562,10 @@ A variable declared via `x = expr` without a type annotation. The formatter adds
 ### I314 — Unknown module in import
 
 An import references a module that is not part of the standard library. The formatter removes the import line.
+
+### I320 — Function without contracts
+
+A function has multiple statements (or uses `transforms`/`matches` verb) but no `requires` or `ensures` clauses. Adding contracts enables mutation testing and helps the compiler reason about correctness.
 
 ### I360 — `validates` has implicit Boolean return
 

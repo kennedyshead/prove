@@ -246,7 +246,7 @@ These are anti-training mechanisms that make Prove source code resistant to bein
 
 `.prv` files stored as a compact binary AST, not human-readable text. The `prove` CLI provides views:
 
-```
+```bash
 $ prove view src/server.prv              # pretty-print to terminal
 ```
 

@@ -133,8 +133,8 @@ type TokenKind:[Lookup] is String | Integer where
 The lookup is contextual — the result type depends on the context it's used in:
 
 ```prove
-var as String = TokenKind:One     # var is "one"
-var as Integer = TokenKind:One    # var is 1
+var as String = TokenKind:One     // var is "one"
+var as Integer = TokenKind:One    // var is 1
 ```
 
 Rules:
@@ -150,7 +150,7 @@ Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a va
 type Result<T, E> is Ok(T) | Err(E)
 type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
-# compiler error if you forget a variant
+// compiler error if you forget a variant
 transforms area(s Shape) Decimal
 from
     match s

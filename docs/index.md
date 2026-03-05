@@ -292,7 +292,7 @@ from
 ## Compiler Pipeline
 
 ```
-Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
+Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
 ```
 
 The example above — JSON parsing, console I/O, guarded file writes — compiles to a **37 KB** native binary. The runtime is stripped to only the modules actually used.

@@ -178,7 +178,7 @@ Console input, output, and availability check.
 |------|-----------|-------------|
 | `outputs` | `console(text String)` | Print text to stdout |
 | `inputs` | `console() String` | Read a line from stdin |
-| `validates` | `console() Boolean` | Check if stdin is a terminal |
+| `validates` | `console()` | Check if stdin is a terminal |
 
 ```prove
 InputOutput outputs console, inputs console
@@ -196,9 +196,9 @@ Read, write, and check files. File operations are failable — use `!` to propag
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `file(path String) String!` | Read file contents |
-| `outputs` | `file(path String, content String)!` | Write file contents |
-| `validates` | `file(path String) Boolean` | Check if file exists |
+| `inputs` | `file(path String) Result<String, Error>!` | Read file contents |
+| `outputs` | `file(path String, content String) Result<Unit, Error>!` | Write file contents |
+| `validates` | `file(path String)` | Check if file exists |
 
 ```prove
 InputOutput inputs file, outputs file, validates file
@@ -216,7 +216,7 @@ Execute system commands and exit with a status code. Types: `ProcessResult` (bin
 |------|-----------|-------------|
 | `inputs` | `system(cmd String, args List<String>) ProcessResult` | Run a command |
 | `outputs` | `system(code Integer)` | Exit with status code |
-| `validates` | `system(cmd String) Boolean` | Check if command exists |
+| `validates` | `system(cmd String)` | Check if command exists |
 
 ### Dir Channel
 
@@ -225,8 +225,8 @@ List and create directories. Type: `DirEntry` (binary).
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `inputs` | `dir(path String) List<DirEntry>` | List directory contents |
-| `outputs` | `dir(path String)!` | Create a directory |
-| `validates` | `dir(path String) Boolean` | Check if directory exists |
+| `outputs` | `dir(path String) Result<Unit, Error>!` | Create a directory |
+| `validates` | `dir(path String)` | Check if directory exists |
 
 ### Process Channel
 
@@ -235,7 +235,7 @@ Access command-line arguments.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `inputs` | `process() List<String>` | Get command-line arguments |
-| `validates` | `process(value String) Boolean` | Check if argument is present |
+| `validates` | `process(value String)` | Check if argument is present |
 
 ---
 
@@ -243,7 +243,14 @@ Access command-line arguments.
 
 **Module:** `Parse` — encoding and decoding of structured data formats.
 
-Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode.
+Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode, `validates` to check syntax.
+
+### Value Construction
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `value(source V) Value` | Wrap any value as a Value |
+| `validates` | `value(source V)` | True if source can be wrapped as a Value |
 
 ### Formats
 
@@ -251,8 +258,10 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 |------|-----------|-------------|
 | `creates` | `toml(source String) Result<Value, String>` | Decode TOML to Value |
 | `reads` | `toml(value Value) String` | Encode Value to TOML |
+| `validates` | `toml(source String)` | True if source is valid TOML |
 | `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
 | `reads` | `json(value Value) String` | Encode Value to JSON |
+| `validates` | `json(source String)` | True if source is valid JSON |
 
 ### Value Accessors
 
@@ -340,11 +349,22 @@ from
 
 ---
 
-## Convert
+## Types
 
-**Module:** `Convert` — type conversions between primitive types.
+**Module:** `Types` — type validation and conversion between primitive types.
 
-The function name is the *target type*. Failable conversions from strings return `Result`.
+The function name is the *target type*. Failable conversions from strings return `Result`. Validators check that a value is of the expected type.
+
+### Type Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `string(s String)` | True if value is a string |
+| `validates` | `integer(n Integer)` | True if value is an integer |
+| `validates` | `float(n Float)` | True if value is a float |
+| `validates` | `decimal(n Float)` | True if value is a decimal |
+| `validates` | `boolean(b Boolean)` | True if value is a boolean |
+| `validates` | `character(c Character)` | True if value is a character |
 
 ### Integer Conversions
 
@@ -376,11 +396,11 @@ The function name is the *target type*. Failable conversions from strings return
 | `creates` | `character(n Integer) Character` | Code point to character |
 
 ```prove
-Convert creates integer float, reads string code
+Types creates integer float, reads string code, validates integer string
 
 reads format_pair(label String, n Integer) String
 from
-    label + ": " + Convert.string(n)
+    label + ": " + Types.string(n)
 ```
 
 ---
@@ -585,7 +605,7 @@ from
 | v0.7 | **InputOutput** (ext) | Complete | New channels: `system`, `dir`, `process` with `validates` verbs for existence checks |
 | v0.7 | **Parse** | Complete | Format codecs for TOML and JSON with `Value` type and accessors |
 | v0.9.6 | **Math** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
-| v0.9.6 | **Convert** | Complete | Type conversions: String ↔ Integer, String ↔ Float, Character ↔ Integer |
+| v0.9.6 | **Types** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |
 | v0.9.6 | **List** | Complete | Operations on `List<T>`: length, first, last, contains, sort, reverse, range |
 | v0.9.7 | **Path** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | v0.9.7 | **Pattern** | Complete | Regex operations: test, search, replace, split with `Match` type |
