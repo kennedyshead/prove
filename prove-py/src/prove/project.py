@@ -39,24 +39,6 @@ __pycache__/
 .prove/
 """
 
-_README_TEMPLATE = """\
-# {name}
-
-A [Prove](https://prove-lang.org) project.
-
-## Build
-
-```bash
-prove build
-```
-
-## Test
-
-```bash
-prove test
-```
-"""
-
 
 def scaffold(name: str, parent: Path | None = None) -> Path:
     """Create a new Prove project directory. Returns the project path."""
@@ -78,9 +60,6 @@ def scaffold(name: str, parent: Path | None = None) -> Path:
 
     # .gitignore
     (project_dir / ".gitignore").write_text(_GITIGNORE)
-
-    # README.md
-    (project_dir / "README.md").write_text(_README_TEMPLATE.format(name=name))
 
     # LICENSE — copy from package or workspace if available
     license_src = _find_license()
