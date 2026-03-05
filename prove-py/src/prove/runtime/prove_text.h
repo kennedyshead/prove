@@ -6,10 +6,6 @@
 #include "prove_list.h"
 #include "prove_option.h"
 
-/* ── Option<Integer> for index_of ────────────────────────────── */
-
-PROVE_DEFINE_OPTION(int64_t, Prove_Option_int64_t)
-
 /* ── Builder type ────────────────────────────────────────────── */
 
 typedef struct {

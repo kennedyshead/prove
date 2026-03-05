@@ -2,6 +2,7 @@
 #define PROVE_OPTION_H
 
 #include "prove_runtime.h"
+#include "prove_string.h"
 
 /* ── Option<T> monomorphization macro ─────────────────────────── */
 
@@ -18,5 +19,17 @@
     }                                 \
     static inline bool Name##_is_some(Name opt) { return opt.tag == 1; } \
     static inline bool Name##_is_none(Name opt) { return opt.tag == 0; }
+
+/* ── Common Option instantiations ──────────────────────────────── */
+
+#ifndef PROVE_OPTION_INT64_T_DEFINED
+#define PROVE_OPTION_INT64_T_DEFINED
+PROVE_DEFINE_OPTION(int64_t, Prove_Option_int64_t)
+#endif
+
+#ifndef PROVE_OPTION_STRINGPTR_DEFINED
+#define PROVE_OPTION_STRINGPTR_DEFINED
+PROVE_DEFINE_OPTION(Prove_String*, Prove_Option_Prove_Stringptr)
+#endif
 
 #endif /* PROVE_OPTION_H */

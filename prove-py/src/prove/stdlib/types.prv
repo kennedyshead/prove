@@ -1,0 +1,47 @@
+module Types
+  narrative: """Type validation and conversion functions."""
+
+validates string(s String)
+binary
+
+validates integer(n Integer)
+binary
+
+validates float(n Float)
+binary
+
+validates decimal(n Float)
+binary
+
+validates boolean(b Boolean)
+binary
+
+validates character(c Character)
+binary
+
+creates integer(s String) Result<Integer, String>
+binary
+
+creates integer(x Float) Integer
+binary
+
+creates float(s String) Result<Float, String>
+binary
+
+creates float(n Integer) Float
+binary
+
+reads string(n Integer) String
+binary
+
+reads string(x Float) String
+binary
+
+reads string(b Boolean) String
+binary
+
+reads code(c Character) Integer
+binary
+
+creates character(n Integer) Character
+binary
