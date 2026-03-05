@@ -1063,7 +1063,45 @@
   {
     "type": "raw_string",
     "named": true,
-    "fields": {}
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "regex_alternation",
+          "named": true
+        },
+        {
+          "type": "regex_anchor",
+          "named": true
+        },
+        {
+          "type": "regex_class",
+          "named": true
+        },
+        {
+          "type": "regex_dot",
+          "named": true
+        },
+        {
+          "type": "regex_escape",
+          "named": true
+        },
+        {
+          "type": "regex_group_close",
+          "named": true
+        },
+        {
+          "type": "regex_group_open",
+          "named": true
+        },
+        {
+          "type": "regex_quantifier",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "record_type_body",
@@ -1702,7 +1740,39 @@
     "named": false
   },
   {
+    "type": "regex_alternation",
+    "named": true
+  },
+  {
+    "type": "regex_anchor",
+    "named": true
+  },
+  {
+    "type": "regex_class",
+    "named": true
+  },
+  {
+    "type": "regex_dot",
+    "named": true
+  },
+  {
+    "type": "regex_escape",
+    "named": true
+  },
+  {
+    "type": "regex_group_close",
+    "named": true
+  },
+  {
+    "type": "regex_group_open",
+    "named": true
+  },
+  {
     "type": "regex_literal",
+    "named": true
+  },
+  {
+    "type": "regex_quantifier",
     "named": true
   },
   {

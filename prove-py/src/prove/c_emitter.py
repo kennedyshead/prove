@@ -12,6 +12,7 @@ from prove.ast_nodes import (
     CallExpr,
     CharLit,
     CommentStmt,
+    ComptimeExpr,
     DecimalLit,
     ExplainEntry,
     Expr,
@@ -36,6 +37,7 @@ from prove.ast_nodes import (
     PipeExpr,
     RawStringLit,
     RecordTypeDef,
+    RegexLit,
     StringInterp,
     StringLit,
     TailContinue,
@@ -50,6 +52,7 @@ from prove.ast_nodes import (
     WildcardPattern,
 )
 from prove.c_types import CType, mangle_name, mangle_type_name, map_type
+from prove.errors import Diagnostic, Severity
 from prove.symbols import SymbolTable
 from prove.types import (
     BOOLEAN,
@@ -65,6 +68,7 @@ from prove.types import (
     ListType,
     PrimitiveType,
     RecordType,
+    RefinementType,
     Type,
     UnitType,
     resolve_type_vars,
@@ -123,6 +127,7 @@ class CEmitter:
         self._current_requires: list[Expr] = []
         self._lookup_tables: dict[str, LookupTypeDef] = {}
         self._record_to_value: set[str] = set()  # record names needing Value converters
+        self.diagnostics: list[Diagnostic] = []  # for comptime errors
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -454,18 +459,13 @@ class CEmitter:
             if not isinstance(rec_ty, RecordType):
                 continue
             cname = mangle_type_name(rec_name)
-            self._line(
-                f"static Prove_Value* _prove_record_to_value_{rec_name}"
-                f"({cname} _r) {{"
-            )
+            self._line(f"static Prove_Value* _prove_record_to_value_{rec_name}({cname} _r) {{")
             self._indent += 1
             self._line("Prove_Table *_tbl = prove_table_new();")
             for fname, ftype in rec_ty.fields.items():
                 val_expr = self._record_field_to_value(f"_r.{fname}", ftype)
                 self._line(
-                    f"_tbl = prove_table_add("
-                    f'prove_string_from_cstr("{fname}"), '
-                    f"{val_expr}, _tbl);"
+                    f'_tbl = prove_table_add(prove_string_from_cstr("{fname}"), {val_expr}, _tbl);'
                 )
             self._line("return prove_value_object(_tbl);")
             self._indent -= 1
@@ -499,7 +499,9 @@ class CEmitter:
                 saved = dict(self._locals)
                 self._locals.clear()
                 sig = self._symbols.resolve_function(
-                    decl.verb, decl.name, len(decl.params),
+                    decl.verb,
+                    decl.name,
+                    len(decl.params),
                 )
                 if sig:
                     for p, pt in zip(decl.params, sig.param_types):
@@ -521,9 +523,12 @@ class CEmitter:
     @staticmethod
     def _is_value_conversion(sig) -> bool:
         """Return True if sig is Parse.creates/validates value(V)."""
-        return (sig.module and sig.module == "parse"
-                and sig.verb in ("creates", "validates")
-                and sig.name == "value")
+        return (
+            sig.module
+            and sig.module == "parse"
+            and sig.verb in ("creates", "validates")
+            and sig.name == "value"
+        )
 
     def _scan_expr_for_record_value(self, expr: Expr) -> None:
         from prove.types import is_json_serializable
@@ -536,17 +541,19 @@ class CEmitter:
                 sig = self._symbols.resolve_function(None, expr.func.name, n_args)
                 if sig is None:
                     sig = self._symbols.resolve_function_any(
-                        expr.func.name, arity=n_args,
+                        expr.func.name,
+                        arity=n_args,
                     )
-            elif isinstance(expr.func, FieldExpr) and isinstance(
-                expr.func.obj, TypeIdentifierExpr
-            ):
+            elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
                 sig = self._symbols.resolve_function(
-                    None, expr.func.field, n_args,
+                    None,
+                    expr.func.field,
+                    n_args,
                 )
                 if sig is None:
                     sig = self._symbols.resolve_function_any(
-                        expr.func.field, arity=n_args,
+                        expr.func.field,
+                        arity=n_args,
                     )
             if sig and self._is_value_conversion(sig) and expr.args:
                 arg_ty = self._infer_expr_type(expr.args[0])
@@ -568,7 +575,9 @@ class CEmitter:
                 self._scan_expr_for_record_value(arm.body)
 
     def _wrap_record_to_value_args(
-        self, expr: CallExpr, args: list[str],
+        self,
+        expr: CallExpr,
+        args: list[str],
     ) -> list[str]:
         """Wrap record arguments with _prove_record_to_value_X() where needed.
 
@@ -582,17 +591,19 @@ class CEmitter:
             sig = self._symbols.resolve_function(None, expr.func.name, n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    expr.func.name, arity=n_args,
+                    expr.func.name,
+                    arity=n_args,
                 )
-        elif isinstance(expr.func, FieldExpr) and isinstance(
-            expr.func.obj, TypeIdentifierExpr
-        ):
+        elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
             sig = self._symbols.resolve_function(
-                None, expr.func.field, n_args,
+                None,
+                expr.func.field,
+                n_args,
             )
             if sig is None:
                 sig = self._symbols.resolve_function_any(
-                    expr.func.field, arity=n_args,
+                    expr.func.field,
+                    arity=n_args,
                 )
         if sig is None or not self._is_value_conversion(sig):
             return args
@@ -616,9 +627,7 @@ class CEmitter:
                 val = const.value
                 if isinstance(val, StringLit):
                     escaped = self._escape_c_string(val.value)
-                    self._line(
-                        f'#define {name} prove_string_from_cstr("{escaped}")'
-                    )
+                    self._line(f'#define {name} prove_string_from_cstr("{escaped}")')
                 elif isinstance(val, IntegerLit):
                     self._line(f"#define {name} {val.value}L")
                 elif isinstance(val, BooleanLit):
@@ -627,15 +636,60 @@ class CEmitter:
                     self._line(f"#define {name} {val.value}")
                 elif isinstance(val, PathLit):
                     escaped = self._escape_c_string(val.value)
-                    self._line(
-                        f'#define {name} prove_string_from_cstr("{escaped}")'
-                    )
+                    self._line(f'#define {name} prove_string_from_cstr("{escaped}")')
+                elif isinstance(val, ComptimeExpr):
+                    result = self._eval_comptime(const, val)
+                    if result is not None:
+                        c_code = self._comptime_result_to_c(result)
+                        self._line(f"#define {name} {c_code}")
+                    else:
+                        self._line(f"/* comptime evaluation failed for {name} */")
                 else:
-                    # Fallback: emit as expression
                     self._line(f"#define {name} {self._emit_expr(val)}")
                 any_emitted = True
         if any_emitted:
             self._line("")
+
+    def _eval_comptime(self, const, expr: ComptimeExpr) -> object | None:
+        """Evaluate a comptime expression and return the result."""
+        from pathlib import Path
+
+        from prove.interpreter import ComptimeInterpreter
+
+        source_dir = Path(self._module.span.file).parent if self._module.span.file else Path(".")
+        interpreter = ComptimeInterpreter(module_source_dir=source_dir)
+        try:
+            result = interpreter.evaluate(expr)
+            return result.value
+        except Exception as e:
+            diag = Diagnostic(
+                severity=Severity.ERROR,
+                code="E397",
+                message=f"comptime evaluation failed: {e}",
+                labels=[],
+            )
+            self.diagnostics.append(diag)
+            return None
+
+    def _comptime_result_to_c(self, value: object) -> str:
+        """Convert a Python value to C code."""
+        if value is None:
+            return "((void*)0)"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, int):
+            return f"{value}L"
+        if isinstance(value, float):
+            return str(value)
+        if isinstance(value, str):
+            escaped = self._escape_c_string(value)
+            return f'prove_string_from_cstr("{escaped}")'
+        if isinstance(value, list):
+            if not value:
+                return "prove_list_empty()"
+            elems = ", ".join(self._comptime_result_to_c(v) for v in value)
+            return f"prove_list_from_array({elems})"
+        return "((void*)0)"
 
     def _emit_imported_function_forwards(self) -> None:
         """Emit forward declarations for functions imported from local modules."""
@@ -914,6 +968,7 @@ class CEmitter:
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
 
+
         # Check if explain block has structured conditions (when)
         has_explain_conditions = fd.explain is not None and any(
             e.condition is not None for e in fd.explain.entries
@@ -1034,6 +1089,31 @@ class CEmitter:
                 return False
         call_key = frozenset(call_arg_names)
         for req_expr in self._current_requires:
+            if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
+                # requires valid email(param) — resolve the validates function
+                sig_v = self._symbols.resolve_function(
+                    "validates", req_expr.name, len(req_expr.args)
+                )
+                if sig_v is None:
+                    sig_v = self._symbols.resolve_function_any(
+                        req_expr.name, arity=len(req_expr.args)
+                    )
+                if sig_v is None or sig_v.verb != "validates":
+                    continue
+                req_mod = sig_v.module or module_name
+                if req_mod != module_name:
+                    continue
+                req_arg_names: list[str] = []
+                all_idents = True
+                for a in req_expr.args:
+                    if isinstance(a, IdentifierExpr):
+                        req_arg_names.append(a.name)
+                    else:
+                        all_idents = False
+                        break
+                if all_idents and frozenset(req_arg_names) == call_key:
+                    return True
+                continue
             if not isinstance(req_expr, CallExpr):
                 continue
             func = req_expr.func
@@ -1060,17 +1140,17 @@ class CEmitter:
                 if req_mod != module_name:
                     continue
             # All requires args must be identifiers matching our call args
-            req_arg_names: list[str] = []
-            all_idents = True
+            req_arg_names2: list[str] = []
+            all_idents2 = True
             for a in req_expr.args:
                 if isinstance(a, IdentifierExpr):
-                    req_arg_names.append(a.name)
+                    req_arg_names2.append(a.name)
                 else:
-                    all_idents = False
+                    all_idents2 = False
                     break
-            if not all_idents:
+            if not all_idents2:
                 continue
-            if frozenset(req_arg_names) == call_key:
+            if frozenset(req_arg_names2) == call_key:
                 return True
         return False
 
@@ -1120,26 +1200,34 @@ class CEmitter:
                 sig = self._symbols.resolve_function(None, expr.func.name, n_args)
                 if sig is None:
                     sig = self._symbols.resolve_function_any(
-                        expr.func.name, arity=n_args,
+                        expr.func.name,
+                        arity=n_args,
                     )
                 return sig if isinstance(sig, FunctionSignature) else None
             if isinstance(expr.func, FieldExpr) and isinstance(
-                expr.func.obj, TypeIdentifierExpr,
+                expr.func.obj,
+                TypeIdentifierExpr,
             ):
                 sig = self._symbols.resolve_function(
-                    None, expr.func.field, n_args,
+                    None,
+                    expr.func.field,
+                    n_args,
                 )
                 if sig is None:
                     sig = self._symbols.resolve_function_any(
-                        expr.func.field, arity=n_args,
+                        expr.func.field,
+                        arity=n_args,
                     )
                 return sig if isinstance(sig, FunctionSignature) else None
         return None
 
     def _maybe_unwrap_option_value(
-        self, expr_str: str, expr_type: Type, target_type: Type,
+        self,
+        expr_str: str,
+        expr_type: Type,
+        target_type: Type,
     ) -> str:
-        """If expr_type is Option<T> and target_type is T, unwrap .value."""
+        """If expr_type is Option<T> and target_type is T, unwrap .value with tag check."""
         if (
             isinstance(expr_type, GenericInstance)
             and expr_type.base_name == "Option"
@@ -1150,11 +1238,20 @@ class CEmitter:
             target_ct = map_type(target_type)
             # Check if target type matches the inner Option type
             if target_ct.decl == inner_ct.decl:
-                return f"({inner_ct.decl}){expr_str}.value"
+                # Only unwrap if Some (tag == 1), otherwise use a default/zero value
+                # For numeric types, use 0 as default; for pointers, use NULL
+                if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
+                    default_val = "NULL"
+                else:
+                    default_val = "0"
+                return f"({expr_str}.tag == 1 ? ({inner_ct.decl}){expr_str}.value : {default_val})"
         return expr_str
 
     def _coerce_call_args(
-        self, args: list[str], arg_exprs: list[Expr], sig,
+        self,
+        args: list[str],
+        arg_exprs: list[Expr],
+        sig,
     ) -> list[str]:
         """Coerce call arguments to match parameter types.
 
@@ -1175,22 +1272,21 @@ class CEmitter:
             param_ct = map_type(param_ty)
             if arg_ct.decl == param_ct.decl:
                 continue
-            # Option<T> → T: unwrap .value
-            if (
-                isinstance(arg_ty, GenericInstance)
-                and arg_ty.base_name == "Option"
-                and arg_ty.args
-            ):
+            # Option<T> → T: unwrap .value with tag check
+            if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option" and arg_ty.args:
                 inner_ct = map_type(arg_ty.args[0])
                 if inner_ct.decl == param_ct.decl:
-                    result[i] = f"({param_ct.decl}){arg_str}.value"
+                    # Only unwrap if Some (tag == 1), otherwise use default value
+                    if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
+                        default_val = "NULL"
+                    else:
+                        default_val = "0"
+                    result[i] = (
+                        f"({arg_str}.tag == 1 ? ({param_ct.decl}){arg_str}.value : {default_val})"
+                    )
                     continue
             # Result<T, E> → T: unwrap
-            if (
-                isinstance(arg_ty, GenericInstance)
-                and arg_ty.base_name == "Result"
-                and arg_ty.args
-            ):
+            if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result" and arg_ty.args:
                 inner_ty = arg_ty.args[0]
                 inner_ct = map_type(inner_ty)
                 if inner_ct.decl == param_ct.decl:
@@ -1203,8 +1299,16 @@ class CEmitter:
                     continue
             # Prove_Value* → concrete type extraction
             if arg_ct.decl == "Prove_Value*" and not param_ct.is_pointer:
-                if param_ct.decl in ("int64_t", "int32_t", "int16_t", "int8_t",
-                                     "uint64_t", "uint32_t", "uint16_t", "uint8_t"):
+                if param_ct.decl in (
+                    "int64_t",
+                    "int32_t",
+                    "int16_t",
+                    "int8_t",
+                    "uint64_t",
+                    "uint32_t",
+                    "uint16_t",
+                    "uint8_t",
+                ):
                     result[i] = f"prove_value_as_number({arg_str})"
                 elif param_ct.decl in ("double", "float"):
                     result[i] = f"prove_value_as_decimal({arg_str})"
@@ -1248,9 +1352,7 @@ class CEmitter:
                         if expr is not None:
                             ret_tmp = self._tmp()
                             ret_ct = map_type(ret_type)
-                            self._line(
-                                f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};"
-                            )
+                            self._line(f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};")
                             self._emit_releases(ret_tmp)
                             if isinstance(ret_type, RecordType):
                                 heap_tmp = self._tmp()
@@ -1282,7 +1384,18 @@ class CEmitter:
                     if expr is not None:
                         ret_tmp = self._tmp()
                         ret_ct = map_type(ret_type)
-                        self._line(f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};")
+                        # For validates functions returning bool: if returning an Option,
+                        # check if it's Some (tag == 1)
+                        emit_val = self._emit_expr(expr)
+                        if isinstance(ret_type, PrimitiveType) and ret_type.name == "Boolean":
+                            expr_type = self._infer_expr_type(expr)
+                            if (
+                                isinstance(expr_type, GenericInstance)
+                                and expr_type.base_name == "Option"
+                            ):
+                                if isinstance(expr, IdentifierExpr):
+                                    emit_val = f"{expr.name}.tag == 1"
+                        self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
                         self._emit_releases(ret_tmp)
                         self._line(f"return {ret_tmp};")
                     else:
@@ -1368,7 +1481,15 @@ class CEmitter:
         ):
             target_inner = map_type(target_ty.args[0])
             value_inner = map_type(value_ty.args[0])
-            if target_inner.decl != value_inner.decl:
+            target_inner_type = target_ty.args[0]
+            value_inner_type = value_ty.args[0]
+            needs_refinement_check = (
+                isinstance(target_inner_type, RefinementType)
+                and target_inner_type.constraint
+                and isinstance(value_inner_type, PrimitiveType)
+                and value_inner_type.name == "String"
+            )
+            if target_inner.decl != value_inner.decl or needs_refinement_check:
                 # Emit conversion: store raw, then convert
                 raw_ct = map_type(value_ty)
                 tgt_ct = map_type(target_ty)
@@ -1391,11 +1512,25 @@ class CEmitter:
                     self._line(f"else {vd.name} = {tgt_ct.decl}_none();")
                 else:
                     # Generic fallback: cast the value
-                    self._line(
-                        f"{vd.name} = {tgt_ct.decl}_some(({target_inner.decl}){raw_tmp}.value);"
+                    # Check if inner type has refinement constraint
+                    needs_refinement = (
+                        isinstance(target_inner_type, RefinementType)
+                        and target_inner_type.constraint
                     )
+                    if needs_refinement:
+                        # Validate before wrapping - on failure, return None
+                        self._emit_refinement_validation_for_option(
+                            f"({target_inner.decl}){raw_tmp}.value",
+                            target_inner_type,  # type: ignore[arg-type]
+                            tgt_ct.decl,
+                            vd.name,
+                        )
+                    else:
+                        self._line(
+                            f"{vd.name} = {tgt_ct.decl}_some(({target_inner.decl}){raw_tmp}.value);"
+                        )
                 self._indent -= 1
-                self._line(f"}} else {{")
+                self._line("} else {")
                 self._indent += 1
                 self._line(f"{vd.name} = {tgt_ct.decl}_none();")
                 self._indent -= 1
@@ -1458,20 +1593,14 @@ class CEmitter:
                 self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
             # Unwrap the success value
             if isinstance(target_ty, RecordType):
-                self._line(
-                    f"{ct.decl} {vd.name} = "
-                    f"*(({ct.decl}*)prove_result_unwrap_ptr({tmp}));"
-                )
+                self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             elif ct.is_pointer:
                 self._line(f"{ct.decl} {vd.name} = ({ct.decl})prove_result_unwrap_ptr({tmp});")
             elif ct.decl == "double":
                 self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_double({tmp});")
             elif isinstance(target_ty, GenericInstance) and not ct.is_pointer:
                 # Struct-like GenericInstance (Option<T>, etc.)
-                self._line(
-                    f"{ct.decl} {vd.name} = "
-                    f"*(({ct.decl}*)prove_result_unwrap_ptr({tmp}));"
-                )
+                self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             else:
                 # For integer types
                 self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_int({tmp});")
@@ -1480,20 +1609,116 @@ class CEmitter:
             if (
                 isinstance(target_ty, GenericInstance)
                 and target_ty.base_name == "Option"
-                and not (
-                    isinstance(value_ty, GenericInstance)
-                    and value_ty.base_name == "Option"
-                )
+                and not (isinstance(value_ty, GenericInstance) and value_ty.base_name == "Option")
             ):
-                self._line(f"{ct.decl} {vd.name} = {ct.decl}_some({val});")
+                # Check if inner type has refinement constraint
+                if (
+                    target_ty.args
+                    and isinstance(target_ty.args[0], RefinementType)
+                    and target_ty.args[0].constraint
+                ):
+                    # Store value in temp first, then validate
+                    # Get the inner type for the temp
+                    inner_ct = map_type(target_ty.args[0])
+                    tmp_val = self._tmp()
+                    self._line(f"{inner_ct.decl} {tmp_val} = {val};")
+                    self._emit_refinement_validation_for_option(
+                        tmp_val, target_ty.args[0], ct.decl, vd.name
+                    )
+                else:
+                    self._line(f"{ct.decl} {vd.name} = {ct.decl}_some({val});")
             else:
                 self._line(f"{ct.decl} {vd.name} = {val};")
+
+        # Validate refinement type constraints
+        # Skip validation for GenericInstance (Option<T>) because validation is already
+        # done in the conversion code. Only validate direct RefinementType assignments.
+        if not isinstance(target_ty, GenericInstance):
+            check_ty = target_ty
+            validation_var = vd.name
+            if isinstance(check_ty, RefinementType) and check_ty.constraint:
+                self._emit_refinement_validation(validation_var, check_ty)
 
         # Update locals with target type
         self._locals[vd.name] = target_ty
         # Retain pointer types
         if ct.is_pointer:
             self._line(f"prove_retain({vd.name});")
+
+    def _emit_refinement_validation(self, var_name: str, target_ty: RefinementType) -> None:
+        """Emit runtime validation for refinement type constraints."""
+        constraint = target_ty.constraint
+        if constraint is None:
+            return
+
+        if isinstance(constraint, RegexLit):
+            self._needed_headers.add("prove_pattern.h")
+            escaped_pattern = constraint.pattern.replace("\\", "\\\\")
+            self._line(
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+            )
+            self._indent += 1
+            self._line(f'prove_panic("constraint failed: value does not match pattern");')
+            self._indent -= 1
+            self._line("}")
+        elif isinstance(constraint, RawStringLit):
+            self._needed_headers.add("prove_pattern.h")
+            escaped_pattern = constraint.value.replace("\\", "\\\\")
+            self._line(
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+            )
+            self._indent += 1
+            self._line(f'prove_panic("constraint failed: value does not match pattern");')
+            self._indent -= 1
+            self._line("}")
+
+    def _emit_refinement_validation_for_option(
+        self, var_name: str, target_ty: Type, option_ct: str | CType, result_var: str
+    ) -> None:
+        """Emit validation that returns None on failure instead of panicking."""
+        if not isinstance(target_ty, RefinementType):
+            return
+        constraint = target_ty.constraint
+        if constraint is None:
+            return
+
+        # Declare the result variable first
+        self._line(f"{option_ct} {result_var};")
+
+        # Now we know target_ty is RefinementType
+        rt = target_ty
+        constraint = rt.constraint
+
+        if isinstance(constraint, RegexLit):
+            self._needed_headers.add("prove_pattern.h")
+            escaped_pattern = constraint.pattern.replace("\\", "\\\\")
+            self._line(
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+            )
+            self._indent += 1
+            # Return None for Option type - silent failure
+            self._line(f"{result_var} = {option_ct}_none();")
+            self._indent -= 1
+            self._line("} else {")
+            self._indent += 1
+            self._line(f"{result_var} = {option_ct}_some({var_name});")
+            self._indent -= 1
+            self._line("}")
+        elif isinstance(constraint, RawStringLit):
+            self._needed_headers.add("prove_pattern.h")
+            escaped_pattern = constraint.value.replace("\\", "\\\\")
+            self._line(
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+            )
+            self._indent += 1
+            # Return None for Option type - silent failure
+            self._line(f"{result_var} = {option_ct}_none();")
+            self._indent -= 1
+            self._line("} else {")
+            self._indent += 1
+            self._line(f"{result_var} = {option_ct}_some({var_name});")
+            self._indent -= 1
+            self._line("}")
 
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)
@@ -1521,7 +1746,8 @@ class CEmitter:
         # the first argument (mutation-by-return for value types).
         if isinstance(es.expr, CallExpr) and isinstance(es.expr.func, IdentifierExpr):
             sig = self._symbols.resolve_function_any(
-                es.expr.func.name, arity=len(es.expr.args),
+                es.expr.func.name,
+                arity=len(es.expr.args),
             )
             if (
                 sig is not None
@@ -1529,6 +1755,61 @@ class CEmitter:
                 and es.expr.args
                 and isinstance(es.expr.args[0], IdentifierExpr)
             ):
+                # Check if any Option args have requires clauses - need to guard the call
+                needs_guard = False
+                for i, arg in enumerate(es.expr.args[1:], start=1):
+                    if i < len(sig.param_types):
+                        param_ty = sig.param_types[i]
+                        if isinstance(param_ty, GenericInstance) and param_ty.base_name == "Option":
+                            # Check if there's a requires clause for this param
+                            if sig.requires:
+                                for req in sig.requires:
+                                    if isinstance(req, CallExpr):
+                                        for req_arg in req.args:
+                                            if (
+                                                isinstance(req_arg, IdentifierExpr)
+                                                and isinstance(arg, IdentifierExpr)
+                                                and req_arg.name == arg.name
+                                            ):
+                                                needs_guard = True
+                                                break
+                                    if isinstance(req, ValidExpr) and req.args is not None:
+                                        for req_arg in req.args:
+                                            if (
+                                                isinstance(req_arg, IdentifierExpr)
+                                                and isinstance(arg, IdentifierExpr)
+                                                and req_arg.name == arg.name
+                                            ):
+                                                needs_guard = True
+                                                break
+                if needs_guard:
+                    # Emit if-check for Option args
+                    arg_names = []
+                    for arg in es.expr.args:
+                        if isinstance(arg, IdentifierExpr):
+                            arg_names.append(arg.name)
+                    first_arg = es.expr.args[0].name
+                    self._line(f"// Guarded transforms call")
+                    for i, arg_name in enumerate(arg_names[1:], start=1):
+                        if i < len(sig.param_types):
+                            param_ty = sig.param_types[i]
+                            if (
+                                isinstance(param_ty, GenericInstance)
+                                and param_ty.base_name == "Option"
+                            ):
+                                self._line(f"if ({arg_name}.tag == 1) {{")
+                                self._indent += 1
+                    self._line(f"{first_arg} = {val};")
+                    for i, arg_name in enumerate(arg_names[1:], start=1):
+                        if i < len(sig.param_types):
+                            param_ty = sig.param_types[i]
+                            if (
+                                isinstance(param_ty, GenericInstance)
+                                and param_ty.base_name == "Option"
+                            ):
+                                self._indent -= 1
+                                self._line("}")
+                    return
                 first_arg = es.expr.args[0].name
                 self._line(f"{first_arg} = {val};")
                 return
@@ -1593,10 +1874,12 @@ class CEmitter:
             if self._in_tail_loop:
                 self._emit_tail_match_as_if_else(m, subj)
             else:
-                has_variant = any(
-                    isinstance(a.pattern, VariantPattern) for a in m.arms
-                )
-                if has_variant and isinstance(subj_type, GenericInstance) and subj_type.base_name == "Option":
+                has_variant = any(isinstance(a.pattern, VariantPattern) for a in m.arms)
+                if (
+                    has_variant
+                    and isinstance(subj_type, GenericInstance)
+                    and subj_type.base_name == "Option"
+                ):
                     self._emit_option_match_stmt(m, subj, subj_type)
                 elif has_variant and isinstance(subj_type, RecordType):
                     # Record type check: first matching VariantPattern whose
@@ -1604,7 +1887,10 @@ class CEmitter:
                     # wildcard is else.
                     first = True
                     for arm in m.arms:
-                        if isinstance(arm.pattern, VariantPattern) and arm.pattern.name == subj_type.name:
+                        if (
+                            isinstance(arm.pattern, VariantPattern)
+                            and arm.pattern.name == subj_type.name
+                        ):
                             # Always matches — emit as unconditional block
                             if not first:
                                 self._line("} else {")
@@ -1624,7 +1910,10 @@ class CEmitter:
         self._locals = saved_locals
 
     def _emit_option_match_stmt(
-        self, m: MatchExpr, subj: str, subj_type: GenericInstance,
+        self,
+        m: MatchExpr,
+        subj: str,
+        subj_type: GenericInstance,
     ) -> None:
         """Emit match on Option<T> as if/else statement."""
         first = True
@@ -1635,7 +1924,8 @@ class CEmitter:
                     self._line(f"{keyword} ({subj}.tag == 1) {{")
                     self._indent += 1
                     if arm.pattern.fields and isinstance(
-                        arm.pattern.fields[0], BindingPattern,
+                        arm.pattern.fields[0],
+                        BindingPattern,
                     ):
                         inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                         inner_ct = map_type(inner_ty)
@@ -1644,17 +1934,11 @@ class CEmitter:
                             # Avoid C self-init UB when binding
                             # shadows subject
                             alias = self._tmp()
-                            self._line(
-                                f"{inner_ct.decl} {alias} = "
-                                f"({inner_ct.decl}){subj}.value;"
-                            )
-                            self._line(
-                                f"{inner_ct.decl} {bind_name} = {alias};"
-                            )
+                            self._line(f"{inner_ct.decl} {alias} = ({inner_ct.decl}){subj}.value;")
+                            self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                         else:
                             self._line(
-                                f"{inner_ct.decl} {bind_name} = "
-                                f"({inner_ct.decl}){subj}.value;"
+                                f"{inner_ct.decl} {bind_name} = ({inner_ct.decl}){subj}.value;"
                             )
                         self._locals[bind_name] = inner_ty
                     self._emit_match_arm_body(arm.body)
@@ -1680,7 +1964,8 @@ class CEmitter:
             first = False
         # Close if last arm wasn't wildcard/None
         if m.arms and not isinstance(
-            m.arms[-1].pattern, (WildcardPattern, BindingPattern),
+            m.arms[-1].pattern,
+            (WildcardPattern, BindingPattern),
         ):
             last_pat = m.arms[-1].pattern
             if not (isinstance(last_pat, VariantPattern) and last_pat.name == "None"):
@@ -1856,16 +2141,50 @@ class CEmitter:
             return self._emit_lookup_access(expr)
 
         if isinstance(expr, ValidExpr):
-            sig = self._symbols.resolve_function_any(expr.name)
+            # Prefer validates verb since valid X(...) means validates
+            n = len(expr.args) if expr.args is not None else 0
+            sig = self._symbols.resolve_function("validates", expr.name, n)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(expr.name, arity=n)
             if expr.args is not None:
                 # valid error(x) → call the validates function
                 args_c = ", ".join(self._emit_expr(a) for a in expr.args)
+                # Check stdlib C name first
+                if sig and sig.module:
+                    from prove.stdlib_loader import binary_c_name
+
+                    fpt = None
+                    if expr.args:
+                        actual_fpt = self._infer_expr_type(expr.args[0])
+                        fpt = _get_type_key(actual_fpt)
+                    if fpt is None:
+                        pts = sig.param_types
+                        fpt = _get_type_key(pts[0]) if pts else None
+                    c_name = binary_c_name(
+                        sig.module, "validates", sig.name, fpt
+                    )
+                    if c_name:
+                        return f"{c_name}({args_c})"
                 pt = list(sig.param_types) if sig else None
                 fn = mangle_name("validates", expr.name, pt)
                 return f"{fn}({args_c})"
             # valid error → function reference (used as HOF predicate)
+            if sig and sig.module:
+                from prove.stdlib_loader import binary_c_name
+
+                c_name = binary_c_name(
+                    sig.module, "validates", sig.name, None
+                )
+                if c_name:
+                    return c_name
             pt = list(sig.param_types) if sig else None
             return mangle_name("validates", expr.name, pt)
+
+        if isinstance(expr, ComptimeExpr):
+            result = self._eval_comptime(type("const", (), {"span": expr.span})(), expr)
+            if result is not None:
+                return self._comptime_result_to_c(result)
+            return "/* comptime failed */ 0"
 
         return "/* unsupported expr */ 0"
 
@@ -2001,13 +2320,13 @@ class CEmitter:
                 if sig is None or (
                     sig.param_types
                     and not all(
-                        isinstance(p, TypeVariable)
-                        or types_compatible(p, a)
+                        isinstance(p, TypeVariable) or types_compatible(p, a)
                         for p, a in zip(sig.param_types, actual_types)
                     )
                 ):
                     any_sig = self._symbols.resolve_function_any(
-                        name, actual_types,
+                        name,
+                        actual_types,
                     )
                     if any_sig is not None:
                         sig = any_sig
@@ -2062,7 +2381,7 @@ class CEmitter:
             resolved = self._symbols.resolve_type(name)
             if isinstance(resolved, RecordType):
                 # Coerce args to match record field types
-                from prove.symbols import FunctionSignature
+
                 field_types = list(resolved.fields.values())
                 fake_sig = type("Sig", (), {"param_types": field_types})()
                 args = self._coerce_call_args(args, expr.args, fake_sig)
@@ -2353,9 +2672,7 @@ class CEmitter:
         if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Table":
             val_type = obj_type.args[0] if obj_type.args else INTEGER
             val_ct = map_type(val_type)
-            get_expr = (
-                f'prove_table_get(prove_string_from_cstr("{expr.field}"), {obj})'
-            )
+            get_expr = f'prove_table_get(prove_string_from_cstr("{expr.field}"), {obj})'
             if val_ct.is_pointer:
                 return f"({val_ct.decl}){get_expr}.value"
             if val_ct.decl == "int64_t":
@@ -2561,29 +2878,21 @@ class CEmitter:
                     self._indent -= 1
                 elif isinstance(arm.pattern, VariantPattern):
                     vp = arm.pattern
-                    if (
-                        isinstance(subj_type, GenericInstance)
-                        and subj_type.base_name == "Option"
-                    ):
+                    if isinstance(subj_type, GenericInstance) and subj_type.base_name == "Option":
                         if vp.name == "Some":
                             keyword = "if" if first else "} else if"
                             self._line(f"{keyword} ({subj}.tag == 1) {{")
                             self._indent += 1
                             if vp.fields and isinstance(vp.fields[0], BindingPattern):
-                                inner_ty = (
-                                    subj_type.args[0] if subj_type.args else INTEGER
-                                )
+                                inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                                 inner_ct = map_type(inner_ty)
                                 bind_name = vp.fields[0].name
                                 if bind_name == subj:
                                     alias = self._tmp()
                                     self._line(
-                                        f"{inner_ct.decl} {alias} = "
-                                        f"({inner_ct.decl}){subj}.value;"
+                                        f"{inner_ct.decl} {alias} = ({inner_ct.decl}){subj}.value;"
                                     )
-                                    self._line(
-                                        f"{inner_ct.decl} {bind_name} = {alias};"
-                                    )
+                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                                 else:
                                     self._line(
                                         f"{inner_ct.decl} {bind_name} = "
@@ -2594,9 +2903,7 @@ class CEmitter:
                                 if not is_unit and i == len(arm.body) - 1:
                                     e = self._stmt_expr(s)
                                     if e is not None:
-                                        self._line(
-                                            f"{tmp} = {self._emit_expr(e)};"
-                                        )
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
                                     else:
                                         self._emit_stmt(s)
                                 else:
@@ -2613,9 +2920,7 @@ class CEmitter:
                                 if not is_unit and i == len(arm.body) - 1:
                                     e = self._stmt_expr(s)
                                     if e is not None:
-                                        self._line(
-                                            f"{tmp} = {self._emit_expr(e)};"
-                                        )
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
                                     else:
                                         self._emit_stmt(s)
                                 else:
@@ -2634,17 +2939,13 @@ class CEmitter:
                                 # self-init UB (T x = x;)
                                 if bind_name != subj:
                                     sct = map_type(subj_type)
-                                    self._line(
-                                        f"{sct.decl} {bind_name} = {subj};"
-                                    )
+                                    self._line(f"{sct.decl} {bind_name} = {subj};")
                                 self._locals[bind_name] = subj_type
                             for i, s in enumerate(arm.body):
                                 if not is_unit and i == len(arm.body) - 1:
                                     e = self._stmt_expr(s)
                                     if e is not None:
-                                        self._line(
-                                            f"{tmp} = {self._emit_expr(e)};"
-                                        )
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
                                     else:
                                         self._emit_stmt(s)
                                 else:
@@ -2661,9 +2962,7 @@ class CEmitter:
                                 if not is_unit and i == len(arm.body) - 1:
                                     e = self._stmt_expr(s)
                                     if e is not None:
-                                        self._line(
-                                            f"{tmp} = {self._emit_expr(e)};"
-                                        )
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
                                     else:
                                         self._emit_stmt(s)
                                 else:
@@ -2677,9 +2976,7 @@ class CEmitter:
                             if not is_unit and i == len(arm.body) - 1:
                                 e = self._stmt_expr(s)
                                 if e is not None:
-                                    self._line(
-                                        f"{tmp} = {self._emit_expr(e)};"
-                                    )
+                                    self._line(f"{tmp} = {self._emit_expr(e)};")
                                 else:
                                     self._emit_stmt(s)
                             else:
@@ -2977,11 +3274,7 @@ class CEmitter:
             if sig:
                 ret = sig.return_type
                 # Resolve type variables using actual arg types
-                actual_types = (
-                    [self._infer_expr_type(a) for a in expr.args]
-                    if expr.args
-                    else []
-                )
+                actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
                 if actual_types and sig.param_types:
                     bindings = resolve_type_vars(
                         sig.param_types,

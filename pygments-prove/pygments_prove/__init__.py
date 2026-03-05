@@ -33,8 +33,8 @@ class ProveLexer(RegexLexer):
             (r'"""[\s\S]*?"""', String),
             # F-strings with interpolation
             (r'f"', String.Affix, "fstring"),
-            # Raw strings (no escapes)
-            (r'r"[^"]*"', String.Regex),
+            # Raw strings (regex internals)
+            (r'r"', String.Regex, "raw_string"),
             # Regular strings with escape support
             (r'"', String, "string"),
             # Regex literals (deprecated /pattern/ form)
@@ -186,5 +186,18 @@ class ProveLexer(RegexLexer):
         "fstring_interp": [
             (r"\}", String.Interpol, "#pop"),
             (r"[^}]+", Name),
+        ],
+        # Raw string state — regex internals
+        "raw_string": [
+            (r'"', String.Regex, "#pop"),
+            (r'\\[dDwWsStrnbBfv0\\.|(){}\[\]+*?^$/]', String.Escape),
+            (r'\[\^?\]?([^\]\\]|\\.|\[:\w+:\])*\]', Punctuation),
+            (r'[+*?]|\{[0-9]+(?:,[0-9]*)?\}', Operator),
+            (r'\(\?[=!:]|\(', Punctuation),
+            (r'\)', Punctuation),
+            (r'[\^$]', Operator),
+            (r'\|', Operator),
+            (r'\.', Operator),
+            (r'[^"\\.|()[\]{}+*?^$]+', String.Regex),
         ],
     }

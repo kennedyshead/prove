@@ -7,6 +7,10 @@ Resolved types are produced during semantic analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from prove.ast_nodes import Expr
 
 # ── Resolved types ──────────────────────────────────────────────
 
@@ -46,6 +50,7 @@ class AlgebraicType:
 class RefinementType:
     name: str
     base: Type = None  # type: ignore[assignment]
+    constraint: Optional["Expr"] = None
 
 
 @dataclass(frozen=True)
@@ -73,13 +78,22 @@ class ListType:
 @dataclass(frozen=True)
 class ErrorType:
     """Poison type that suppresses cascading errors."""
+
     pass
 
 
 Type = (
-    PrimitiveType | UnitType | RecordType | AlgebraicType
-    | RefinementType | GenericInstance | TypeVariable
-    | FunctionType | ListType | ErrorType | VariantInfo
+    PrimitiveType
+    | UnitType
+    | RecordType
+    | AlgebraicType
+    | RefinementType
+    | GenericInstance
+    | TypeVariable
+    | FunctionType
+    | ListType
+    | ErrorType
+    | VariantInfo
 )
 
 
@@ -118,6 +132,7 @@ def numeric_widen(a: Type, b: Type) -> Type | None:
     if ra is None or rb is None:
         return None
     return a if ra >= rb else b
+
 
 BUILTINS: dict[str, Type] = {
     "Integer": INTEGER,
@@ -178,10 +193,18 @@ def _unwrap_refinement(ty: Type) -> Type:
     return ty
 
 
-_JSON_SERIALIZABLE_PRIMITIVES = frozenset({
-    "String", "Integer", "Float", "Decimal", "Boolean",
-    "Character", "Byte", "Value",
-})
+_JSON_SERIALIZABLE_PRIMITIVES = frozenset(
+    {
+        "String",
+        "Integer",
+        "Float",
+        "Decimal",
+        "Boolean",
+        "Character",
+        "Byte",
+        "Value",
+    }
+)
 
 
 def is_json_serializable(ty: Type) -> bool:
@@ -222,8 +245,7 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     # Allow T → Option<Refinement(T)>: when the Option's inner type is a
     # RefinementType whose base matches actual, the assignment is valid
     # (Option wraps the boundary-failure case).
-    if (isinstance(expected, GenericInstance)
-            and expected.base_name == "Option" and expected.args):
+    if isinstance(expected, GenericInstance) and expected.base_name == "Option" and expected.args:
         inner = expected.args[0]
         if isinstance(inner, RefinementType) and types_compatible(inner.base, actual):
             return True
@@ -257,8 +279,7 @@ def types_compatible(expected: Type, actual: Type) -> bool:
         if len(expected.param_types) != len(actual.param_types):
             return False
         if not all(
-            types_compatible(e, a)
-            for e, a in zip(expected.param_types, actual.param_types)
+            types_compatible(e, a) for e, a in zip(expected.param_types, actual.param_types)
         ):
             return False
         return types_compatible(expected.return_type, actual.return_type)
@@ -271,7 +292,8 @@ def types_compatible(expected: Type, actual: Type) -> bool:
 
 
 def resolve_type_vars(
-    sig_params: list[Type], actual_args: list[Type],
+    sig_params: list[Type],
+    actual_args: list[Type],
 ) -> dict[str, Type]:
     """Unify signature params against actual arg types to bind type variables.
 

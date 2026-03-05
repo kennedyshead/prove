@@ -249,3 +249,34 @@ module Test
           (type_identifier)
           (string_literal)
           (string_literal))))))
+
+===
+Raw string with regex internals
+===
+
+validates code(input String)
+    from
+        Pattern.test(input, r"^[A-Z]{2,4}-[0-9]{4,8}$")
+
+---
+
+(source_file
+  (function_definition
+    (verb)
+    (identifier)
+    (parameter_list
+      (parameter (identifier) (type_expression (simple_type (type_identifier)))))
+    (expression
+      (call_expression
+        (field_expression
+          (expression (type_identifier))
+          (identifier))
+        (expression (identifier))
+        (expression (string_literal
+          (raw_string
+            (regex_anchor)
+            (regex_class)
+            (regex_quantifier)
+            (regex_class)
+            (regex_quantifier)
+            (regex_anchor))))))))

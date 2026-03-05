@@ -103,22 +103,51 @@ from prove.types import (
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
 # Built-in functions considered to perform IO
-_IO_FUNCTIONS = frozenset({
-    "read_file", "write_file",
-    "open", "close", "flush", "sleep",
-})
+_IO_FUNCTIONS = frozenset(
+    {
+        "read_file",
+        "write_file",
+        "open",
+        "close",
+        "flush",
+        "sleep",
+    }
+)
 
 # Built-in function names that user code must not shadow
-_BUILTIN_FUNCTIONS = frozenset({
-    "len", "map", "each", "filter", "reduce", "to_string", "clamp",
-    "println", "print", "readln",
-})
+_BUILTIN_FUNCTIONS = frozenset(
+    {
+        "len",
+        "map",
+        "each",
+        "filter",
+        "reduce",
+        "to_string",
+        "clamp",
+        "println",
+        "print",
+        "readln",
+    }
+)
 
 # Built-in type names that user code must not shadow
-_BUILTIN_TYPE_NAMES = frozenset({
-    "Integer", "Decimal", "Float", "Boolean", "String", "Character", "Byte",
-    "Unit", "List", "Option", "Result", "Error", "Table",
-})
+_BUILTIN_TYPE_NAMES = frozenset(
+    {
+        "Integer",
+        "Decimal",
+        "Float",
+        "Boolean",
+        "String",
+        "Character",
+        "Byte",
+        "Unit",
+        "List",
+        "Option",
+        "Result",
+        "Error",
+        "Table",
+    }
+)
 
 
 def _edit_distance(a: str, b: str) -> int:
@@ -174,9 +203,7 @@ class Checker:
         # Require a module declaration with narrative (skip for internal sources)
         source_name = module.span.file if module.span else ""
         if not source_name.startswith("<"):
-            mod_decls = [
-                d for d in module.declarations if isinstance(d, ModuleDecl)
-            ]
+            mod_decls = [d for d in module.declarations if isinstance(d, ModuleDecl)]
             if not mod_decls:
                 self._info(
                     "I201",
@@ -252,28 +279,34 @@ class Checker:
         return best if best_dist <= max_dist else None
 
     def _error(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(Diagnostic(
-            severity=Severity.ERROR,
-            code=code,
-            message=message,
-            labels=[DiagnosticLabel(span=span, message="")],
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                severity=Severity.ERROR,
+                code=code,
+                message=message,
+                labels=[DiagnosticLabel(span=span, message="")],
+            )
+        )
 
     def _warning(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(Diagnostic(
-            severity=Severity.WARNING,
-            code=code,
-            message=message,
-            labels=[DiagnosticLabel(span=span, message="")],
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                severity=Severity.WARNING,
+                code=code,
+                message=message,
+                labels=[DiagnosticLabel(span=span, message="")],
+            )
+        )
 
     def _info(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(Diagnostic(
-            severity=Severity.NOTE,
-            code=code,
-            message=message,
-            labels=[DiagnosticLabel(span=span, message="")],
-        ))
+        self.diagnostics.append(
+            Diagnostic(
+                severity=Severity.NOTE,
+                code=code,
+                message=message,
+                labels=[DiagnosticLabel(span=span, message="")],
+            )
+        )
 
     # ── Pass 1: Registration ────────────────────────────────────
 
@@ -284,12 +317,20 @@ class Checker:
             self.symbols.define_type(name, ty)
 
         # Generic constructors
-        self.symbols.define_type("Result", GenericInstance(
-            "Result", [TypeVariable("T"), TypeVariable("E")],
-        ))
-        self.symbols.define_type("Option", GenericInstance(
-            "Option", [TypeVariable("T")],
-        ))
+        self.symbols.define_type(
+            "Result",
+            GenericInstance(
+                "Result",
+                [TypeVariable("T"), TypeVariable("E")],
+            ),
+        )
+        self.symbols.define_type(
+            "Option",
+            GenericInstance(
+                "Option",
+                [TypeVariable("T")],
+            ),
+        )
         self.symbols.define_type("List", ListType(TypeVariable("T")))
         self.symbols.define_type("Error", PrimitiveType("Error"))
 
@@ -304,36 +345,55 @@ class Checker:
 
         builtins = [
             ("len", [ListType(TypeVariable("T"))], INTEGER),
-            ("map", [
+            (
+                "map",
+                [
+                    ListType(TypeVariable("T")),
+                    FunctionType([TypeVariable("T")], TypeVariable("U")),
+                ],
+                ListType(TypeVariable("U")),
+            ),
+            (
+                "each",
+                [
+                    ListType(TypeVariable("T")),
+                    FunctionType([TypeVariable("T")], TypeVariable("U")),
+                ],
+                UNIT,
+            ),
+            (
+                "filter",
+                [
+                    ListType(TypeVariable("T")),
+                    FunctionType([TypeVariable("T")], BOOLEAN),
+                ],
                 ListType(TypeVariable("T")),
-                FunctionType([TypeVariable("T")], TypeVariable("U")),
-            ], ListType(TypeVariable("U"))),
-            ("each", [
-                ListType(TypeVariable("T")),
-                FunctionType([TypeVariable("T")], TypeVariable("U")),
-            ], UNIT),
-            ("filter", [
-                ListType(TypeVariable("T")),
-                FunctionType([TypeVariable("T")], BOOLEAN),
-            ], ListType(TypeVariable("T"))),
-            ("reduce", [
-                ListType(TypeVariable("T")), TypeVariable("U"),
-                FunctionType(
-                    [TypeVariable("U"), TypeVariable("T")],
+            ),
+            (
+                "reduce",
+                [
+                    ListType(TypeVariable("T")),
                     TypeVariable("U"),
-                ),
-            ], TypeVariable("U")),
+                    FunctionType(
+                        [TypeVariable("U"), TypeVariable("T")],
+                        TypeVariable("U"),
+                    ),
+                ],
+                TypeVariable("U"),
+            ),
             ("to_string", [TypeVariable("T")], STRING),
             ("clamp", [INTEGER, INTEGER, INTEGER], INTEGER),
         ]
         for name, param_types, return_type in builtins:
             sig = FunctionSignature(
-                verb=None, name=name,
+                verb=None,
+                name=name,
                 param_names=[f"p{i}" for i in range(len(param_types))],
                 param_types=param_types,
                 return_type=return_type,
                 can_fail=False,
                 span=_dummy,
+                requires=[],
             )
             self.symbols.define_function(sig)
 
@@ -375,18 +435,20 @@ class Checker:
             for v in body.variants:
                 vfield_types = [self._resolve_type_expr(f.type_expr) for f in v.fields]
                 vsig = FunctionSignature(
-                    verb=None, name=v.name,
+                    verb=None,
+                    name=v.name,
                     param_names=[f.name for f in v.fields],
                     param_types=vfield_types,
                     return_type=resolved,
                     can_fail=False,
                     span=v.span,
+                    requires=[],
                 )
                 self.symbols.define_function(vsig)
 
         elif isinstance(body, RefinementTypeDef):
             base = self._resolve_type_expr(body.base_type)
-            resolved = RefinementType(td.name, base)
+            resolved = RefinementType(td.name, base, body.constraint)
 
         elif isinstance(body, BinaryDef):
             # Binary types are opaque C-backed types — no fields visible to Prove
@@ -405,8 +467,10 @@ class Checker:
             # Register each variant as a zero-arg constructor
             for name in variant_names:
                 vsig = FunctionSignature(
-                    verb=None, name=name,
-                    param_names=[], param_types=[],
+                    verb=None,
+                    name=name,
+                    param_names=[],
+                    param_types=[],
                     return_type=resolved,
                     can_fail=False,
                     span=td.span,
@@ -429,10 +493,14 @@ class Checker:
         self.symbols.define_type(td.name, resolved)
         self._user_types[td.name] = td.span
         # Also register in scope as a type symbol
-        self.symbols.define(Symbol(
-            name=td.name, kind=SymbolKind.TYPE,
-            resolved_type=resolved, span=td.span,
-        ))
+        self.symbols.define(
+            Symbol(
+                name=td.name,
+                kind=SymbolKind.TYPE,
+                resolved_type=resolved,
+                span=td.span,
+            )
+        )
 
     def _register_function(self, fd: FunctionDef) -> None:
         """Register a function signature."""
@@ -440,33 +508,40 @@ class Checker:
         if fd.name in _BUILTIN_FUNCTIONS:
             self._error(
                 "E316",
-                f"'{fd.name}' shadows the built-in function '{fd.name}'. "
-                f"Choose a different name.",
+                f"'{fd.name}' shadows the built-in function '{fd.name}'. Choose a different name.",
                 fd.span,
             )
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
         sig = FunctionSignature(
-            verb=fd.verb, name=fd.name,
+            verb=fd.verb,
+            name=fd.name,
             param_names=[p.name for p in fd.params],
             param_types=param_types,
             return_type=return_type,
             can_fail=fd.can_fail,
             span=fd.span,
+            requires=fd.requires,
         )
         self.symbols.define_function(sig)
-        self.symbols.define(Symbol(
-            name=fd.name, kind=SymbolKind.FUNCTION,
-            resolved_type=FunctionType(param_types, return_type),
-            span=fd.span, verb=fd.verb,
-        ))
+        self.symbols.define(
+            Symbol(
+                name=fd.name,
+                kind=SymbolKind.FUNCTION,
+                resolved_type=FunctionType(param_types, return_type),
+                span=fd.span,
+                verb=fd.verb,
+            )
+        )
 
     def _register_main(self, md: MainDef) -> None:
         """Register the main function."""
         return_type = self._resolve_type_expr(md.return_type) if md.return_type else UNIT
         sig = FunctionSignature(
-            verb=None, name="main",
-            param_names=[], param_types=[],
+            verb=None,
+            name="main",
+            param_names=[],
+            param_types=[],
             return_type=return_type,
             can_fail=md.can_fail,
             span=md.span,
@@ -476,10 +551,14 @@ class Checker:
     def _register_constant(self, cd: ConstantDef) -> None:
         """Register a constant."""
         resolved = self._resolve_type_expr(cd.type_expr) if cd.type_expr else ERROR_TY
-        existing = self.symbols.define(Symbol(
-            name=cd.name, kind=SymbolKind.CONSTANT,
-            resolved_type=resolved, span=cd.span,
-        ))
+        existing = self.symbols.define(
+            Symbol(
+                name=cd.name,
+                kind=SymbolKind.CONSTANT,
+                resolved_type=resolved,
+                span=cd.span,
+            )
+        )
         if existing is not None:
             self._error("E301", f"duplicate definition of '{cd.name}'", cd.span)
 
@@ -534,7 +613,8 @@ class Checker:
         for item in imp.items:
             names.add(item.name)
             self._import_spans.setdefault(
-                (imp.module.lower(), item.name), [],
+                (imp.module.lower(), item.name),
+                [],
             ).append(item.span)
 
         stdlib_sigs = load_stdlib(imp.module)
@@ -545,24 +625,26 @@ class Checker:
 
         for item in imp.items:
             # Type imports (verb="types" or bare CamelCase with no verb)
-            is_type_import = (
-                item.verb == "types"
-                or (item.verb is None and item.name[:1].isupper())
-            )
+            is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
             if is_type_import:
                 resolved = PrimitiveType(item.name)
-                self.symbols.define(Symbol(
-                    name=item.name, kind=SymbolKind.TYPE,
-                    resolved_type=resolved, span=item.span,
-                    verb=item.verb,
-                ))
+                self.symbols.define(
+                    Symbol(
+                        name=item.name,
+                        kind=SymbolKind.TYPE,
+                        resolved_type=resolved,
+                        span=item.span,
+                        verb=item.verb,
+                    )
+                )
                 self.symbols.define_type(item.name, resolved)
                 continue
 
             # Register ALL verb overloads of the function so channel
             # dispatch (same name, different verbs) works at call sites.
             sigs_to_register = stdlib_all_by_name.get(
-                item.name, [],
+                item.name,
+                [],
             )
             if sigs_to_register:
                 # Warn if the import specifies a verb that doesn't
@@ -579,18 +661,21 @@ class Checker:
                 for sig in sigs_to_register:
                     ret = sig.return_type
                     ft = FunctionType(sig.param_types, ret)
-                    self.symbols.define(Symbol(
-                        name=item.name, kind=SymbolKind.FUNCTION,
-                        resolved_type=ft, span=item.span,
-                        verb=sig.verb,
-                    ))
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.FUNCTION,
+                            resolved_type=ft,
+                            span=item.span,
+                            verb=sig.verb,
+                        )
+                    )
                     self.symbols.define_function(sig)
             else:
                 # Known stdlib module but function not found — error
                 self._error(
                     "E315",
-                    f"function '{item.name}' not found "
-                    f"in module '{imp.module}'",
+                    f"function '{item.name}' not found in module '{imp.module}'",
                     item.span,
                 )
 
@@ -602,24 +687,26 @@ class Checker:
         for item in imp.items:
             names.add(item.name)
             self._import_spans.setdefault(
-                (imp.module.lower(), item.name), [],
+                (imp.module.lower(), item.name),
+                [],
             ).append(item.span)
 
         for item in imp.items:
             # Type imports (verb="types" or bare CamelCase with no verb)
-            is_type_import = (
-                item.verb == "types"
-                or (item.verb is None and item.name[:1].isupper())
-            )
+            is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
             if is_type_import:
                 resolved = local_info.types.get(item.name)
                 if resolved is not None:
                     self.symbols.define_type(item.name, resolved)
-                    self.symbols.define(Symbol(
-                        name=item.name, kind=SymbolKind.TYPE,
-                        resolved_type=resolved, span=item.span,
-                        verb=item.verb,
-                    ))
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.TYPE,
+                            resolved_type=resolved,
+                            span=item.span,
+                            verb=item.verb,
+                        )
+                    )
                     # Register variant constructors for algebraic types
                     if isinstance(resolved, AlgebraicType):
                         for vsig in local_info.functions:
@@ -630,8 +717,7 @@ class Checker:
                 else:
                     self._error(
                         "E315",
-                        f"type '{item.name}' not found "
-                        f"in module '{imp.module}'",
+                        f"type '{item.name}' not found in module '{imp.module}'",
                         item.span,
                     )
                 continue
@@ -642,18 +728,21 @@ class Checker:
                 if sig.name == item.name:
                     found = True
                     ft = FunctionType(sig.param_types, sig.return_type)
-                    self.symbols.define(Symbol(
-                        name=item.name, kind=SymbolKind.FUNCTION,
-                        resolved_type=ft, span=item.span,
-                        verb=sig.verb,
-                    ))
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.FUNCTION,
+                            resolved_type=ft,
+                            span=item.span,
+                            verb=sig.verb,
+                        )
+                    )
                     self.symbols.define_function(sig)
 
             if not found:
                 self._error(
                     "E315",
-                    f"function '{item.name}' not found "
-                    f"in module '{imp.module}'",
+                    f"function '{item.name}' not found in module '{imp.module}'",
                     item.span,
                 )
 
@@ -685,10 +774,14 @@ class Checker:
                     f"'{param.name}'. Choose a different name.",
                     param.span,
                 )
-            self.symbols.define(Symbol(
-                name=param.name, kind=SymbolKind.PARAMETER,
-                resolved_type=pty, span=param.span,
-            ))
+            self.symbols.define(
+                Symbol(
+                    name=param.name,
+                    kind=SymbolKind.PARAMETER,
+                    resolved_type=pty,
+                    span=param.span,
+                )
+            )
 
         # Collect requires-based option narrowings
         self._requires_narrowings = self._collect_requires_narrowings(fd)
@@ -698,10 +791,12 @@ class Checker:
             for arg in req_args:
                 if isinstance(arg, IdentifierExpr):
                     sym = self.symbols.lookup(arg.name)
-                    if (sym is not None
-                            and isinstance(sym.resolved_type, GenericInstance)
-                            and sym.resolved_type.base_name in ("Result", "Option")
-                            and sym.resolved_type.args):
+                    if (
+                        sym is not None
+                        and isinstance(sym.resolved_type, GenericInstance)
+                        and sym.resolved_type.base_name in ("Result", "Option")
+                        and sym.resolved_type.args
+                    ):
                         sym.resolved_type = sym.resolved_type.args[0]
 
         # Check verb rules
@@ -723,16 +818,20 @@ class Checker:
         if fd.verb == "validates":
             # validates has implicit Boolean return
             if fd.return_type is not None:
-                self.diagnostics.append(Diagnostic(
-                    severity=Severity.NOTE,
-                    code="I360",
-                    message="validates has implicit Boolean return",
-                    labels=[DiagnosticLabel(span=fd.span, message="")],
-                    suggestions=[Suggestion(
-                        message="remove the return type annotation",
-                        replacement=f"validates {fd.name}(...)",
-                    )],
-                ))
+                self.diagnostics.append(
+                    Diagnostic(
+                        severity=Severity.NOTE,
+                        code="I360",
+                        message="validates has implicit Boolean return",
+                        labels=[DiagnosticLabel(span=fd.span, message="")],
+                        suggestions=[
+                            Suggestion(
+                                message="remove the return type annotation",
+                                replacement=f"validates {fd.name}(...)",
+                            )
+                        ],
+                    )
+                )
         elif not isinstance(body_type, ErrorType) and not types_compatible(return_type, body_type):
             # For failable functions, body can return the success type
             # e.g. Result<Integer, Error>! function body can return Integer
@@ -757,12 +856,12 @@ class Checker:
             for entry in fd.explain.entries:
                 if entry.condition is not None:
                     cond_type = self._infer_expr(entry.condition)
-                    if (not isinstance(cond_type, ErrorType)
-                            and not types_compatible(BOOLEAN, cond_type)):
+                    if not isinstance(cond_type, ErrorType) and not types_compatible(
+                        BOOLEAN, cond_type
+                    ):
                         self._error(
                             "E394",
-                            f"explain condition must be Boolean, "
-                            f"got '{type_name(cond_type)}'",
+                            f"explain condition must be Boolean, got '{type_name(cond_type)}'",
                             entry.condition.span,
                         )
 
@@ -838,10 +937,19 @@ class Checker:
         unary negation, field access (self.x).
         Disallowed: function calls, pipes, lambdas, match, etc.
         """
-        if isinstance(expr, (
-            IntegerLit, DecimalLit, BooleanLit, StringLit,
-            CharLit, RegexLit, RawStringLit, TripleStringLit,
-        )):
+        if isinstance(
+            expr,
+            (
+                IntegerLit,
+                DecimalLit,
+                BooleanLit,
+                StringLit,
+                CharLit,
+                RegexLit,
+                RawStringLit,
+                TripleStringLit,
+            ),
+        ):
             return
         if isinstance(expr, IdentifierExpr):
             return
@@ -871,16 +979,20 @@ class Checker:
         # Type-check `ensures` — push sub-scope with `result` bound to return type
         for ens_expr in fd.ensures:
             self.symbols.push_scope("ensures")
-            self.symbols.define(Symbol(
-                name="result", kind=SymbolKind.VARIABLE,
-                resolved_type=return_type, span=fd.span,
-            ))
+            self.symbols.define(
+                Symbol(
+                    name="result",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=return_type,
+                    span=fd.span,
+                )
+            )
             ens_type = self._infer_expr(ens_expr)
             if not isinstance(ens_type, ErrorType) and not types_compatible(BOOLEAN, ens_type):
                 self._error(
                     "E380",
                     f"ensures expression must be Boolean, got '{type_name(ens_type)}'",
-                    ens_expr.span if hasattr(ens_expr, 'span') else fd.span,
+                    ens_expr.span if hasattr(ens_expr, "span") else fd.span,
                 )
             self.symbols.pop_scope()
 
@@ -891,7 +1003,7 @@ class Checker:
                 self._error(
                     "E381",
                     f"requires expression must be Boolean, got '{type_name(req_type)}'",
-                    req_expr.span if hasattr(req_expr, 'span') else fd.span,
+                    req_expr.span if hasattr(req_expr, "span") else fd.span,
                 )
 
         # Type-check `know`
@@ -901,34 +1013,40 @@ class Checker:
                 self._error(
                     "E384",
                     f"know expression must be Boolean, got '{type_name(know_type)}'",
-                    know_expr.span if hasattr(know_expr, 'span') else fd.span,
+                    know_expr.span if hasattr(know_expr, "span") else fd.span,
                 )
 
         # Type-check `assume`
         for assume_expr in fd.assume:
             assume_type = self._infer_expr(assume_expr)
-            if (not isinstance(assume_type, ErrorType)
-                    and not types_compatible(BOOLEAN, assume_type)):
+            if not isinstance(assume_type, ErrorType) and not types_compatible(
+                BOOLEAN, assume_type
+            ):
                 self._error(
                     "E385",
                     f"assume expression must be Boolean, got '{type_name(assume_type)}'",
-                    assume_expr.span if hasattr(assume_expr, 'span') else fd.span,
+                    assume_expr.span if hasattr(assume_expr, "span") else fd.span,
                 )
 
         # Type-check `believe`
         for believe_expr in fd.believe:
             self.symbols.push_scope("believe")
-            self.symbols.define(Symbol(
-                name="result", kind=SymbolKind.VARIABLE,
-                resolved_type=return_type, span=fd.span,
-            ))
+            self.symbols.define(
+                Symbol(
+                    name="result",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=return_type,
+                    span=fd.span,
+                )
+            )
             believe_type = self._infer_expr(believe_expr)
-            if (not isinstance(believe_type, ErrorType)
-                    and not types_compatible(BOOLEAN, believe_type)):
+            if not isinstance(believe_type, ErrorType) and not types_compatible(
+                BOOLEAN, believe_type
+            ):
                 self._error(
                     "E386",
                     f"believe expression must be Boolean, got '{type_name(believe_type)}'",
-                    believe_expr.span if hasattr(believe_expr, 'span') else fd.span,
+                    believe_expr.span if hasattr(believe_expr, "span") else fd.span,
                 )
             self.symbols.pop_scope()
 
@@ -950,8 +1068,7 @@ class Checker:
                 "intent declared but no ensures or requires to validate it",
                 labels=[DiagnosticLabel(span=fd.span, message="")],
                 notes=[
-                    "Add `ensures` or `requires` clauses so the "
-                    "compiler can verify the intent.",
+                    "Add `ensures` or `requires` clauses so the compiler can verify the intent.",
                 ],
             )
             self.diagnostics.append(diag)
@@ -959,7 +1076,8 @@ class Checker:
     # ── Requires-based option narrowing ─────────────────────────
 
     def _collect_requires_narrowings(
-        self, fd: FunctionDef,
+        self,
+        fd: FunctionDef,
     ) -> list[tuple[str, list[Expr]]]:
         """Scan fd.requires for validates calls and valid expressions.
 
@@ -974,11 +1092,14 @@ class Checker:
                 args = req_expr.args
                 n_args = len(args)
                 sig = self.symbols.resolve_function(
-                    "validates", func_name, n_args,
+                    "validates",
+                    func_name,
+                    n_args,
                 )
                 if sig is None:
                     sig = self.symbols.resolve_function_any(
-                        func_name, arity=n_args,
+                        func_name,
+                        arity=n_args,
                     )
                 if sig is not None and sig.verb == "validates":
                     mod = sig.module or "_local"
@@ -990,8 +1111,7 @@ class Checker:
             func = req_expr.func
             module_name: str | None = None
             func_name_: str | None = None
-            if (isinstance(func, FieldExpr)
-                    and isinstance(func.obj, TypeIdentifierExpr)):
+            if isinstance(func, FieldExpr) and isinstance(func.obj, TypeIdentifierExpr):
                 module_name = func.obj.name
                 func_name_ = func.field
             elif isinstance(func, IdentifierExpr):
@@ -1000,11 +1120,14 @@ class Checker:
                 continue
             n_args = len(req_expr.args)
             sig = self.symbols.resolve_function(
-                "validates", func_name_, n_args,
+                "validates",
+                func_name_,
+                n_args,
             )
             if sig is None:
                 sig = self.symbols.resolve_function_any(
-                    func_name_, arity=n_args,
+                    func_name_,
+                    arity=n_args,
                 )
             if sig is not None and sig.verb == "validates":
                 mod = module_name or sig.module
@@ -1013,7 +1136,9 @@ class Checker:
         return narrowings
 
     def _has_requires_narrowing(
-        self, module: str, call_args: list[Expr],
+        self,
+        module: str,
+        call_args: list[Expr],
     ) -> bool:
         """Check if a matching validates precondition exists."""
         for mod, req_args in self._requires_narrowings:
@@ -1021,8 +1146,7 @@ class Checker:
                 continue
             if len(req_args) != len(call_args):
                 continue
-            if all(self._exprs_equal(a, b)
-                   for a, b in zip(req_args, call_args)):
+            if all(self._exprs_equal(a, b) for a, b in zip(req_args, call_args)):
                 return True
         return False
 
@@ -1042,10 +1166,9 @@ class Checker:
         if verb == "matches":
             if fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
-                is_matchable = (
-                    isinstance(first_type, (AlgebraicType, ErrorType))
-                    or (isinstance(first_type, PrimitiveType)
-                        and first_type.name in ("String", "Integer"))
+                is_matchable = isinstance(first_type, (AlgebraicType, ErrorType)) or (
+                    isinstance(first_type, PrimitiveType)
+                    and first_type.name in ("String", "Integer")
                 )
                 if not is_matchable:
                     self._error(
@@ -1068,7 +1191,7 @@ class Checker:
 
     def _has_pure_overload(self, name: str) -> bool:
         """Check if a function name has at least one pure verb overload."""
-        for (verb, fname) in self.symbols.all_functions():
+        for verb, fname in self.symbols.all_functions():
             if fname == name and verb in _PURE_VERBS:
                 return True
         return False
@@ -1143,15 +1266,16 @@ class Checker:
     # ── Match restriction (E367) ────────────────────────────────
 
     def _check_match_restriction(
-        self, body: list[Stmt | MatchExpr], span: Span,
+        self,
+        body: list[Stmt | MatchExpr],
+        span: Span,
     ) -> None:
         """E367: match expression only allowed in matches verb."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
                 self._error(
                     "E367",
-                    "match expression is only allowed in "
-                    "`matches` verb functions",
+                    "match expression is only allowed in `matches` verb functions",
                     stmt.span,
                 )
             elif isinstance(stmt, VarDecl):
@@ -1168,8 +1292,7 @@ class Checker:
         if isinstance(expr, MatchExpr):
             self._error(
                 "E367",
-                "match expression is only allowed in "
-                "`matches` verb functions",
+                "match expression is only allowed in `matches` verb functions",
                 expr.span,
             )
         elif isinstance(expr, CallExpr):
@@ -1222,10 +1345,14 @@ class Checker:
         else:
             resolved = inferred
 
-        existing = self.symbols.define(Symbol(
-            name=vd.name, kind=SymbolKind.VARIABLE,
-            resolved_type=resolved, span=vd.span,
-        ))
+        existing = self.symbols.define(
+            Symbol(
+                name=vd.name,
+                kind=SymbolKind.VARIABLE,
+                resolved_type=resolved,
+                span=vd.span,
+            )
+        )
         if existing is not None:
             self._error("E302", f"variable '{vd.name}' already defined in this scope", vd.span)
 
@@ -1238,20 +1365,28 @@ class Checker:
             # Implicit declaration: `x = expr` without `x as Type = expr`
             inferred = self._infer_expr(assign.value)
             tn = type_name(inferred)
-            self.diagnostics.append(Diagnostic(
-                severity=Severity.NOTE,
-                code="I310",
-                message=f"implicitly typed variable '{assign.target}'",
-                labels=[DiagnosticLabel(span=assign.span, message="")],
-                suggestions=[Suggestion(
-                    message="add an explicit type annotation",
-                    replacement=f"{assign.target} as {tn} = ...",
-                )],
-            ))
-            self.symbols.define(Symbol(
-                name=assign.target, kind=SymbolKind.VARIABLE,
-                resolved_type=inferred, span=assign.span,
-            ))
+            self.diagnostics.append(
+                Diagnostic(
+                    severity=Severity.NOTE,
+                    code="I310",
+                    message=f"implicitly typed variable '{assign.target}'",
+                    labels=[DiagnosticLabel(span=assign.span, message="")],
+                    suggestions=[
+                        Suggestion(
+                            message="add an explicit type annotation",
+                            replacement=f"{assign.target} as {tn} = ...",
+                        )
+                    ],
+                )
+            )
+            self.symbols.define(
+                Symbol(
+                    name=assign.target,
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=inferred,
+                    span=assign.span,
+                )
+            )
             return UNIT
 
         sym.used = True
@@ -1295,8 +1430,7 @@ class Checker:
                     if not self._is_stringable(part_type):
                         self._error(
                             "E325",
-                            f"f-string interpolation requires a "
-                            f"stringable type, got {part_type}",
+                            f"f-string interpolation requires a stringable type, got {part_type}",
                             part.span,
                         )
             return STRING
@@ -1347,7 +1481,8 @@ class Checker:
                 labels=[DiagnosticLabel(span=expr.span, message="")],
             )
             suggestion = self._fuzzy_match(
-                expr.name, self.symbols.all_known_names(),
+                expr.name,
+                self.symbols.all_known_names(),
             )
             if suggestion:
                 diag.notes.append(f"did you mean '{suggestion}'?")
@@ -1430,14 +1565,20 @@ class Checker:
             name = expr.func.name
             sig = self.symbols.resolve_function(None, name, arg_count)
             # Also try with verb from current function context
-            if (sig is None and self._current_function
-                    and isinstance(self._current_function, FunctionDef)):
+            if (
+                sig is None
+                and self._current_function
+                and isinstance(self._current_function, FunctionDef)
+            ):
                 sig = self.symbols.resolve_function(
-                    self._current_function.verb, name, arg_count,
+                    self._current_function.verb,
+                    name,
+                    arg_count,
                 )
-            if sig is None or len(sig.param_types) != arg_count or not all(
-                types_compatible(p, a)
-                for p, a in zip(sig.param_types, arg_types)
+            if (
+                sig is None
+                or len(sig.param_types) != arg_count
+                or not all(types_compatible(p, a) for p, a in zip(sig.param_types, arg_types))
             ):
                 any_sig = self.symbols.resolve_function_any(name, arg_types)
                 if any_sig is not None:
@@ -1459,18 +1600,22 @@ class Checker:
                 self._used_imports.add((sig.module, name))
 
             # Track verb-aware recursion
-            if (self._current_function
-                    and isinstance(self._current_function, FunctionDef)
-                    and sig.name == self._current_function.name
-                    and sig.verb == self._current_function.verb):
+            if (
+                self._current_function
+                and isinstance(self._current_function, FunctionDef)
+                and sig.name == self._current_function.name
+                and sig.verb == self._current_function.verb
+            ):
                 self._is_recursive = True
 
             # Verb-aware purity check for channel dispatch: if the
             # resolved overload is IO but the caller is pure, emit E363.
-            if (self._current_function
-                    and isinstance(self._current_function, FunctionDef)
-                    and self._current_function.verb in _PURE_VERBS
-                    and sig.verb in ("inputs", "outputs")):
+            if (
+                self._current_function
+                and isinstance(self._current_function, FunctionDef)
+                and self._current_function.verb in _PURE_VERBS
+                and sig.verb in ("inputs", "outputs")
+            ):
                 self._error(
                     "E363",
                     f"pure function cannot call IO function '{name}'",
@@ -1485,16 +1630,12 @@ class Checker:
             if len(sig.param_types) != arg_count:
                 expected_n = len(sig.param_types)
                 sig_str = ", ".join(
-                    f"{n}: {type_name(t)}"
-                    for n, t in zip(sig.param_names, sig.param_types)
+                    f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
                 )
                 diag = Diagnostic(
                     severity=Severity.ERROR,
                     code="E330",
-                    message=(
-                        f"wrong number of arguments: "
-                        f"expected {expected_n}, got {arg_count}"
-                    ),
+                    message=(f"wrong number of arguments: expected {expected_n}, got {arg_count}"),
                     labels=[DiagnosticLabel(span=expr.span, message="")],
                     notes=[f"function signature: {name}({sig_str})"],
                 )
@@ -1517,30 +1658,38 @@ class Checker:
 
             # Verb-gated serialization: creates/validates value(V)
             # requires the argument to be json-serializable.
-            if (sig.module and sig.module == "parse"
-                    and sig.verb in ("creates", "validates")
-                    and sig.name == "value" and arg_types):
+            if (
+                sig.module
+                and sig.module == "parse"
+                and sig.verb in ("creates", "validates")
+                and sig.name == "value"
+                and arg_types
+            ):
                 actual_arg = arg_types[0]
                 if not is_json_serializable(actual_arg):
                     self._error(
                         "E320",
-                        f"type '{type_name(actual_arg)}' is not "
-                        f"serializable to Value",
+                        f"type '{type_name(actual_arg)}' is not serializable to Value",
                         expr.span,
                     )
 
             ret = sig.return_type
             # Requires-based narrowing for unqualified calls:
             # Option<V> → V, Result<T, E> → T
-            if (isinstance(ret, GenericInstance)
-                    and ret.base_name in ("Option", "Result")
-                    and ret.args and self._requires_narrowings
-                    and sig.module):
+            if (
+                isinstance(ret, GenericInstance)
+                and ret.base_name in ("Option", "Result")
+                and ret.args
+                and self._requires_narrowings
+                and sig.module
+            ):
                 if self._has_requires_narrowing(
-                    sig.module, expr.args,
+                    sig.module,
+                    expr.args,
                 ):
                     bindings = resolve_type_vars(
-                        sig.param_types, arg_types,
+                        sig.param_types,
+                        arg_types,
                     )
                     inner = substitute_type_vars(ret.args[0], bindings)
                     return inner
@@ -1558,8 +1707,7 @@ class Checker:
                         expected_n = len(sig.param_types)
                         self._error(
                             "E330",
-                            f"wrong number of arguments: "
-                            f"expected {expected_n}, got {arg_count}",
+                            f"wrong number of arguments: expected {expected_n}, got {arg_count}",
                             expr.span,
                         )
                 return sig.return_type
@@ -1586,8 +1734,7 @@ class Checker:
             if not self._is_function_imported(module_name, func_name):
                 self._error(
                     "E312",
-                    f"function '{func_name}' not imported "
-                    f"from module '{module_name}'",
+                    f"function '{func_name}' not imported from module '{module_name}'",
                     expr.func.span,
                 )
                 return ERROR_TY
@@ -1598,15 +1745,16 @@ class Checker:
             cur = self._current_function
             if sig is None and cur and isinstance(cur, FunctionDef):
                 sig = self.symbols.resolve_function(
-                    cur.verb, func_name, arg_count,
+                    cur.verb,
+                    func_name,
+                    arg_count,
                 )
             if sig is None:
                 sig = self.symbols.resolve_function_any(func_name, arg_types)
             if sig is None:
                 self._error(
                     "E312",
-                    f"undefined function '{func_name}' "
-                    f"in module '{module_name}'",
+                    f"undefined function '{func_name}' in module '{module_name}'",
                     expr.span,
                 )
                 return ERROR_TY
@@ -1614,14 +1762,19 @@ class Checker:
             # Requires-based narrowing: if the return type is Option<V>
             # or Result<T, E> and there is a matching validates call in
             # requires, narrow to V or T respectively.
-            if (isinstance(ret, GenericInstance)
-                    and ret.base_name in ("Option", "Result")
-                    and ret.args and self._requires_narrowings):
+            if (
+                isinstance(ret, GenericInstance)
+                and ret.base_name in ("Option", "Result")
+                and ret.args
+                and self._requires_narrowings
+            ):
                 if self._has_requires_narrowing(
-                    module_name, expr.args,
+                    module_name,
+                    expr.args,
                 ):
                     bindings = resolve_type_vars(
-                        sig.param_types, arg_types,
+                        sig.param_types,
+                        arg_types,
                     )
                     inner = substitute_type_vars(ret.args[0], bindings)
                     return inner
@@ -1689,11 +1842,11 @@ class Checker:
             # Type-based fallthrough: if first match has wrong param type,
             # try resolve_function_any with the piped arg type.
             if sig is None or (
-                sig.param_types
-                and not types_compatible(sig.param_types[0], left_type)
+                sig.param_types and not types_compatible(sig.param_types[0], left_type)
             ):
                 any_sig = self.symbols.resolve_function_any(
-                    name, [left_type],
+                    name,
+                    [left_type],
                 )
                 if any_sig is not None:
                     sig = any_sig
@@ -1710,11 +1863,11 @@ class Checker:
             all_types = [left_type] + extra_types
             sig = self.symbols.resolve_function(None, name, total_args)
             if sig is None or (
-                sig.param_types
-                and not types_compatible(sig.param_types[0], left_type)
+                sig.param_types and not types_compatible(sig.param_types[0], left_type)
             ):
                 any_sig = self.symbols.resolve_function_any(
-                    name, all_types,
+                    name,
+                    all_types,
                 )
                 if any_sig is not None:
                     sig = any_sig
@@ -1741,16 +1894,20 @@ class Checker:
             elif isinstance(self._current_function, MainDef):
                 can_fail = self._current_function.can_fail
             if not can_fail:
-                self.diagnostics.append(Diagnostic(
-                    severity=Severity.ERROR,
-                    code="E350",
-                    message="fail propagation in non-failable function",
-                    labels=[DiagnosticLabel(span=expr.span, message="")],
-                    suggestions=[Suggestion(
-                        message="mark the function as failable",
-                        replacement="add '!' after the return type",
-                    )],
-                ))
+                self.diagnostics.append(
+                    Diagnostic(
+                        severity=Severity.ERROR,
+                        code="E350",
+                        message="fail propagation in non-failable function",
+                        labels=[DiagnosticLabel(span=expr.span, message="")],
+                        suggestions=[
+                            Suggestion(
+                                message="mark the function as failable",
+                                replacement="add '!' after the return type",
+                            )
+                        ],
+                    )
+                )
 
         # The inner expression should be Result-like; return its success type
         if isinstance(inner, GenericInstance) and inner.base_name == "Result":
@@ -1770,20 +1927,21 @@ class Checker:
         if isinstance(a, BooleanLit):
             return a.value == b.value
         if isinstance(a, BinaryExpr):
-            return (a.op == b.op
-                    and Checker._exprs_equal(a.left, b.left)
-                    and Checker._exprs_equal(a.right, b.right))
+            return (
+                a.op == b.op
+                and Checker._exprs_equal(a.left, b.left)
+                and Checker._exprs_equal(a.right, b.right)
+            )
         if isinstance(a, UnaryExpr):
-            return (a.op == b.op
-                    and Checker._exprs_equal(a.operand, b.operand))
+            return a.op == b.op and Checker._exprs_equal(a.operand, b.operand)
         if isinstance(a, CallExpr):
-            return (Checker._exprs_equal(a.func, b.func)
-                    and len(a.args) == len(b.args)
-                    and all(Checker._exprs_equal(x, y)
-                            for x, y in zip(a.args, b.args)))
+            return (
+                Checker._exprs_equal(a.func, b.func)
+                and len(a.args) == len(b.args)
+                and all(Checker._exprs_equal(x, y) for x, y in zip(a.args, b.args))
+            )
         if isinstance(a, FieldExpr):
-            return (a.field == b.field
-                    and Checker._exprs_equal(a.obj, b.obj))
+            return a.field == b.field and Checker._exprs_equal(a.obj, b.obj)
         if isinstance(a, TypeIdentifierExpr):
             return a.name == b.name
         return False
@@ -1794,18 +1952,19 @@ class Checker:
             subject_type = self._infer_expr(expr.subject)
 
         # W304: match on condition already guaranteed by requires
-        if (expr.subject is not None
-                and isinstance(self._current_function, FunctionDef)):
+        if expr.subject is not None and isinstance(self._current_function, FunctionDef):
             for req in self._current_function.requires:
                 if self._exprs_equal(expr.subject, req):
                     diag = make_diagnostic(
                         Severity.WARNING,
                         "W304",
-                        "match condition is always true "
-                        "(guaranteed by requires)",
-                        labels=[DiagnosticLabel(
-                            span=expr.span, message="",
-                        )],
+                        "match condition is always true (guaranteed by requires)",
+                        labels=[
+                            DiagnosticLabel(
+                                span=expr.span,
+                                message="",
+                            )
+                        ],
                         notes=[
                             "The `requires` clause already guarantees this "
                             "condition. Remove the `match` and use the "
@@ -1861,10 +2020,14 @@ class Checker:
         for pname in expr.params:
             pt = TypeVariable(pname)
             param_types.append(pt)
-            self.symbols.define(Symbol(
-                name=pname, kind=SymbolKind.PARAMETER,
-                resolved_type=pt, span=expr.span,
-            ))
+            self.symbols.define(
+                Symbol(
+                    name=pname,
+                    kind=SymbolKind.PARAMETER,
+                    resolved_type=pt,
+                    span=expr.span,
+                )
+            )
 
         # Check for closure captures (not supported in v0.1)
         self._check_lambda_captures(expr.body, param_names, expr.span)
@@ -1874,7 +2037,10 @@ class Checker:
         return FunctionType(param_types, body_type)
 
     def _check_lambda_captures(
-        self, expr: Expr, param_names: set[str], span: Span,
+        self,
+        expr: Expr,
+        param_names: set[str],
+        span: Span,
     ) -> None:
         """Detect closure captures in lambda body (not supported)."""
         if isinstance(expr, IdentifierExpr):
@@ -1884,8 +2050,7 @@ class Checker:
                 if sym is not None and sym.kind == SymbolKind.VARIABLE:
                     self._error(
                         "E364",
-                        f"lambda captures variable '{expr.name}' "
-                        f"(closures not supported)",
+                        f"lambda captures variable '{expr.name}' (closures not supported)",
                         span,
                     )
         elif isinstance(expr, BinaryExpr):
@@ -1930,10 +2095,14 @@ class Checker:
     def _check_pattern(self, pattern, subject_type: Type) -> None:
         """Check a pattern and bind names."""
         if isinstance(pattern, BindingPattern):
-            self.symbols.define(Symbol(
-                name=pattern.name, kind=SymbolKind.VARIABLE,
-                resolved_type=subject_type, span=pattern.span,
-            ))
+            self.symbols.define(
+                Symbol(
+                    name=pattern.name,
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=subject_type,
+                    span=pattern.span,
+                )
+            )
         elif isinstance(pattern, VariantPattern):
             # Check variant exists
             if isinstance(subject_type, AlgebraicType):
@@ -1987,16 +2156,20 @@ class Checker:
             if missing:
                 names = ", ".join(sorted(missing))
                 arms_str = " | ".join(f"{v} => ..." for v in sorted(missing))
-                self.diagnostics.append(Diagnostic(
-                    severity=Severity.ERROR,
-                    code="E371",
-                    message=f"non-exhaustive match: missing {names}",
-                    labels=[DiagnosticLabel(span=expr.span, message="")],
-                    suggestions=[Suggestion(
-                        message="add the missing arms",
-                        replacement=arms_str,
-                    )],
-                ))
+                self.diagnostics.append(
+                    Diagnostic(
+                        severity=Severity.ERROR,
+                        code="E371",
+                        message=f"non-exhaustive match: missing {names}",
+                        labels=[DiagnosticLabel(span=expr.span, message="")],
+                        suggestions=[
+                            Suggestion(
+                                message="add the missing arms",
+                                replacement=arms_str,
+                            )
+                        ],
+                    )
+                )
 
     # ── Lookup table checking ────────────────────────────────────
 
@@ -2050,8 +2223,7 @@ class Checker:
             if not matches:
                 self._error(
                     "E377",
-                    f"variant '{operand.name}' not found in lookup table "
-                    f"'{type_name}'",
+                    f"variant '{operand.name}' not found in lookup table '{type_name}'",
                     expr.span,
                 )
                 return ERROR_TY
@@ -2124,8 +2296,7 @@ class Checker:
                 for span in spans:
                     self._info(
                         "I302",
-                        f"'{name}' is imported from '{module}' "
-                        f"but never used.",
+                        f"'{name}' is imported from '{module}' but never used.",
                         span,
                     )
 

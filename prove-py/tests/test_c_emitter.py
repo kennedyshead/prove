@@ -592,6 +592,21 @@ class TestRequiresOptionNarrowing:
         assert ".value" in c_code
 
 
+class TestRequiresValidRuntimeGuard:
+    """Test that requires valid X(...) supports option narrowing and call-site guards."""
+
+    def test_requires_valid_option_narrowing(self):
+        """requires valid ok(id) should trigger .value unwrap on Option param."""
+        source = (
+            "validates ok(id Option<Integer>)\n"
+            "    requires valid integer(id)\n"
+            "    from\n"
+            "        id > 0\n"
+        )
+        c_code = _emit(source)
+        assert ".value" in c_code
+
+
 class TestModuleConstants:
     """Test that module constants emit #define macros."""
 

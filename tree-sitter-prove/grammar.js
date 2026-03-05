@@ -494,12 +494,44 @@ module.exports = grammar({
       '"',
     ),
 
-    // r-string — raw string, no escapes, no interpolation
+    // r-string — regex string with internal highlighting
     raw_string: $ => seq(
       'r"',
-      token.immediate(/[^"]*/),
+      repeat(choice(
+        $.regex_escape,
+        $.regex_class,
+        $.regex_quantifier,
+        $.regex_group_open,
+        $.regex_group_close,
+        $.regex_anchor,
+        $.regex_alternation,
+        $.regex_dot,
+        token.immediate(prec(-1, /[^"\\.|()\[\]{}+*?^$]+/)),
+      )),
       '"',
     ),
+
+    regex_escape: $ => token.immediate(/\\[dDwWsStrnbBfv0\\.|(){}\[\]+*?^$/]/),
+
+    regex_class: $ => token.immediate(/\[\^?\]?([^\]\\]|\\.|\[:\w+:\])*\]/),
+
+    regex_quantifier: $ => token.immediate(choice(
+      /[+*?]/,
+      /\{[0-9]+(?:,[0-9]*)?\}/,
+    )),
+
+    regex_group_open: $ => token.immediate(choice(
+      '(',
+      /\(\?[=!:]/,
+    )),
+
+    regex_group_close: $ => token.immediate(')'),
+
+    regex_anchor: $ => token.immediate(/[\^$]/),
+
+    regex_alternation: $ => token.immediate('|'),
+
+    regex_dot: $ => token.immediate('.'),
 
     _triple_string: $ => seq(
       '"""',

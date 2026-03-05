@@ -143,6 +143,18 @@
 
 (escape_sequence) @string.escape
 
+; ─── Regex Internals ──────────────────────────────────────
+
+(raw_string) @string.regex
+(regex_escape) @string.escape
+(regex_class) @string.special
+(regex_quantifier) @operator
+(regex_anchor) @operator
+(regex_group_open) @punctuation.bracket
+(regex_group_close) @punctuation.bracket
+(regex_alternation) @operator
+(regex_dot) @operator
+
 (integer_literal) @number
 (decimal_literal) @number.float
 

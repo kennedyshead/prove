@@ -221,6 +221,7 @@ def binary_c_name(
             return overload
     return _BINARY_C_MAP.get((key, verb, name))
 
+
 # Map stdlib module names to .prv filenames
 # Keys are lowercase; lookup normalizes to lowercase.
 _STDLIB_MODULES: dict[str, str] = {
@@ -357,6 +358,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
             can_fail=decl.can_fail,
             span=_DUMMY,
             module=normalized,
+            requires=getattr(decl, "requires", []),
         )
         sigs.append(sig)
 
@@ -441,9 +443,7 @@ def _function_signature_display(decl: object) -> str:
 
     if not isinstance(decl, FunctionDef):
         return ""
-    params = ", ".join(
-        f"{p.name}: {_type_expr_display(p.type_expr)}" for p in decl.params
-    )
+    params = ", ".join(f"{p.name}: {_type_expr_display(p.type_expr)}" for p in decl.params)
     ret = _type_expr_display(decl.return_type) if decl.return_type else "Unit"
     fail = "!" if decl.can_fail else ""
     return f"({params}) {ret}{fail}"

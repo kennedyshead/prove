@@ -7,7 +7,7 @@ module Example
   Parse reads object, validates object
   Table types Table
 
-  type Email is String where r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+  type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
   type User is
     id Integer
@@ -46,6 +46,10 @@ validates id(id Option<Integer>)
   requires valid integer(id)
 from
     id > 0
+
+validates email(email Option<Email>)
+from
+    email
 
 transforms set_email(user User, email Option<Email>) User
   requires valid email(email)

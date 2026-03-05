@@ -29,8 +29,8 @@ var (
 				// F-strings with interpolation
 				{`f"`, chroma.StringAffix, chroma.Push("fstring")},
 
-				// Raw strings (no escapes)
-				{`r"[^"]*"`, chroma.StringRegex, nil},
+				// Raw strings (regex internals)
+				{`r"`, chroma.StringRegex, chroma.Push("raw_string")},
 
 				// Regular strings
 				{`"`, chroma.String, chroma.Push("string")},
@@ -115,6 +115,20 @@ var (
 			"fstring_interp": {
 				{`\}`, chroma.StringInterpol, chroma.Pop(1)},
 				{`[^}]+`, chroma.Name, nil},
+			},
+
+			// Raw string state — regex internals
+			"raw_string": {
+				{`"`, chroma.StringRegex, chroma.Pop(1)},
+				{`\\[dDwWsStrnbBfv0\\.|(){}\[\]+*?^$/]`, chroma.StringEscape, nil},
+				{`\[\^?\]?([^\]\\]|\\.|\[:\w+:\])*\]`, chroma.Punctuation, nil},
+				{`[+*?]|\{[0-9]+(?:,[0-9]*)?\}`, chroma.Operator, nil},
+				{`\(\?[=!:]|\(`, chroma.Punctuation, nil},
+				{`\)`, chroma.Punctuation, nil},
+				{`[\^$]`, chroma.Operator, nil},
+				{`\|`, chroma.Operator, nil},
+				{`\.`, chroma.Operator, nil},
+				{`[^"\\.|()[\]{}+*?^$]+`, chroma.StringRegex, nil},
 			},
 		},
 	)

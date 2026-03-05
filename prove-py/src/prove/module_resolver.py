@@ -93,10 +93,12 @@ def build_module_registry(
         type_registry: dict[str, Type] = dict(BUILTINS)
         # Also register generic builtins
         type_registry["Result"] = GenericInstance(
-            "Result", [TypeVariable("T"), TypeVariable("E")],
+            "Result",
+            [TypeVariable("T"), TypeVariable("E")],
         )
         type_registry["Option"] = GenericInstance(
-            "Option", [TypeVariable("T")],
+            "Option",
+            [TypeVariable("T")],
         )
         type_registry["List"] = ListType(TypeVariable("T"))
         type_registry["Error"] = PrimitiveType("Error")
@@ -109,7 +111,9 @@ def build_module_registry(
                     info.types[td.name] = resolved
 
                     # Register variant constructors for algebraic types
-                    if isinstance(td.body, AlgebraicTypeDef) and isinstance(resolved, AlgebraicType):
+                    if isinstance(td.body, AlgebraicTypeDef) and isinstance(
+                        resolved, AlgebraicType
+                    ):
                         for v in td.body.variants:
                             vfield_types = [
                                 _resolve_type_expr_simple(f.type_expr, type_registry)
@@ -124,6 +128,7 @@ def build_module_registry(
                                 can_fail=False,
                                 span=_DUMMY,
                                 module=module_name.lower(),
+                                requires=[],
                             )
                             info.functions.append(vsig)
 
@@ -131,8 +136,7 @@ def build_module_registry(
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
                 param_types = [
-                    _resolve_type_expr_simple(p.type_expr, type_registry)
-                    for p in decl.params
+                    _resolve_type_expr_simple(p.type_expr, type_registry) for p in decl.params
                 ]
                 return_type = (
                     _resolve_type_expr_simple(decl.return_type, type_registry)
@@ -148,6 +152,7 @@ def build_module_registry(
                     can_fail=decl.can_fail,
                     span=_DUMMY,
                     module=module_name.lower(),
+                    requires=decl.requires,
                 )
                 info.functions.append(sig)
 
@@ -157,7 +162,8 @@ def build_module_registry(
 
 
 def _resolve_type_def(
-    td: object, type_registry: dict[str, Type],
+    td: object,
+    type_registry: dict[str, Type],
 ) -> Type | None:
     """Resolve a TypeDef body into a Type using a minimal registry."""
     from prove.ast_nodes import (
@@ -191,7 +197,7 @@ def _resolve_type_def(
 
     if isinstance(body, RefinementTypeDef):
         base = _resolve_type_expr_simple(body.base_type, type_registry)
-        return RefinementType(td.name, base)
+        return RefinementType(td.name, base, body.constraint)
 
     if isinstance(body, BinaryDef):
         return PrimitiveType(td.name)
@@ -200,7 +206,8 @@ def _resolve_type_def(
 
 
 def _resolve_type_expr_simple(
-    type_expr: object, type_registry: dict[str, Type],
+    type_expr: object,
+    type_registry: dict[str, Type],
 ) -> Type:
     """Resolve a type expression using only a flat name registry."""
     from prove.ast_nodes import GenericType, ModifiedType, SimpleType

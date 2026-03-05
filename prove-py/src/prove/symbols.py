@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from prove.source import Span
@@ -38,6 +38,7 @@ class FunctionSignature:
     can_fail: bool
     span: Span
     module: str | None = None
+    requires: list[Type] = field(default_factory=list)
 
 
 class Scope:
@@ -147,14 +148,9 @@ class SymbolTable:
         if len(candidates) == 1:
             return candidates[0]
         # Narrow by arity
-        n = arity if arity is not None else (
-            len(arg_types) if arg_types is not None else None
-        )
+        n = arity if arity is not None else (len(arg_types) if arg_types is not None else None)
         if n is not None:
-            by_arity = [
-                s for s in candidates
-                if len(s.param_types) == n
-            ]
+            by_arity = [s for s in candidates if len(s.param_types) == n]
             if len(by_arity) == 1:
                 return by_arity[0]
             if by_arity:
@@ -162,15 +158,21 @@ class SymbolTable:
         # Disambiguate by first-argument type name
         if arg_types:
             first = getattr(arg_types[0], "name", None) or getattr(
-                arg_types[0], "base_name", None,
+                arg_types[0],
+                "base_name",
+                None,
             )
             if first is not None:
                 for sig in candidates:
                     if sig.param_types:
                         pname = getattr(
-                            sig.param_types[0], "name", None,
+                            sig.param_types[0],
+                            "name",
+                            None,
                         ) or getattr(
-                            sig.param_types[0], "base_name", None,
+                            sig.param_types[0],
+                            "base_name",
+                            None,
                         )
                         if pname == first:
                             return sig
@@ -218,6 +220,6 @@ class SymbolTable:
         # Types
         names.update(self._types.keys())
         # Function names
-        for (_verb, fname) in self._functions:
+        for _verb, fname in self._functions:
             names.add(fname)
         return names
