@@ -506,7 +506,9 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                         description=s.module,
                     ),
                     filter_text=name,
-                    sort_text=f"{name}_{s.verb}" if s.verb else name,
+                    sort_text=f"{name}_{s.verb}_{s.signature}"
+                    if s.verb
+                    else f"{name}_{s.signature}",
                     additional_text_edits=additional_edits,
                 )
             )
@@ -580,11 +582,14 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                         kind=lsp.CompletionItemKind.Function,
                         detail=detail,
                         documentation=documentation,
+                        insert_text=fname,
                         insert_text_format=lsp.InsertTextFormat.PlainText,
                         label_details=lsp.CompletionItemLabelDetails(
                             detail=f" {sig.verb}" if sig.verb else None,
                         ),
-                        sort_text=f"{fname}_{sig.verb}" if sig.verb else fname,
+                        sort_text=f"{fname}_{sig.verb}_{_sig_params_display(sig)}"
+                        if sig.verb
+                        else f"{fname}_{_sig_params_display(sig)}",
                     )
                 )
 
