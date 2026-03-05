@@ -74,7 +74,6 @@ from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
 from prove.types import (
     BOOLEAN,
     BUILTINS,
-    BorrowType,
     CHARACTER,
     DECIMAL,
     ERROR_TY,
@@ -83,6 +82,7 @@ from prove.types import (
     STRING,
     UNIT,
     AlgebraicType,
+    BorrowType,
     ErrorType,
     FunctionType,
     GenericInstance,
@@ -105,6 +105,11 @@ from prove.types import (
 
 # Verbs considered pure (no IO side effects allowed)
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
+
+# Verbs that need ownership of their parameters (skip borrow inference)
+_VERBS_NEED_OWNERSHIP = frozenset(
+    {"outputs", "matches", "creates", "validates", "inputs", "transforms", "reads"}
+)
 
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset(
@@ -778,13 +783,27 @@ class Checker:
         # Register parameters
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
 
-        # Infer borrows for read-only parameter usage
-        borrowed_params = self._infer_param_borrows(fd.params, param_types, fd.body)
-
-        # Update parameter types with inferred borrows
-        for i, p in enumerate(fd.params):
-            if p.name in borrowed_params:
-                param_types[i] = borrowed_params[p.name]
+        # Infer borrows only for parameters without explicit ownership modifiers
+        # Skip for verbs that need ownership of their parameters
+        if fd.verb not in _VERBS_NEED_OWNERSHIP:
+            param_has_explicit_modifier = [
+                isinstance(p.type_expr, ModifiedType) and bool(p.type_expr.modifiers)
+                for p in fd.params
+            ]
+            # Only infer borrows for params without explicit modifiers
+            eligible_params = [
+                p for p, has_mod in zip(fd.params, param_has_explicit_modifier) if not has_mod
+            ]
+            eligible_types = [
+                ty for ty, has_mod in zip(param_types, param_has_explicit_modifier) if not has_mod
+            ]
+            if eligible_params:
+                borrowed_params = self._infer_param_borrows(
+                    eligible_params, eligible_types, fd.body
+                )
+                for i, p in enumerate(fd.params):
+                    if p.name in borrowed_params:
+                        param_types[i] = borrowed_params[p.name]
 
         for param, pty in zip(fd.params, param_types):
             # E316: parameter name shadows builtin function
@@ -2110,6 +2129,8 @@ class Checker:
 
     def _is_stringable(self, ty: Type) -> bool:
         """Return True if the type can be interpolated into an f-string."""
+        if isinstance(ty, BorrowType):
+            ty = ty.inner
         return ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER)
 
     def _infer_list(self, expr: ListLiteral) -> Type:

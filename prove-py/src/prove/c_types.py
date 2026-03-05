@@ -66,6 +66,12 @@ def _map_float(modifiers: tuple[str, ...]) -> CType:
 
 def map_type(ty: Type) -> CType:
     """Map a Prove resolved Type to its C representation."""
+    # Unwrap borrowed types - they're passed as regular pointers in C
+    from prove.types import BorrowType
+
+    if isinstance(ty, BorrowType):
+        ty = ty.inner
+
     if isinstance(ty, PrimitiveType):
         name = ty.name
         if name == "Integer":
@@ -86,12 +92,14 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_Builder*", is_pointer=True, header="prove_text.h")
         if name == "ProcessResult":
             return CType(
-                "Prove_ProcessResult", is_pointer=False,
+                "Prove_ProcessResult",
+                is_pointer=False,
                 header="prove_input_output.h",
             )
         if name == "DirEntry":
             return CType(
-                "Prove_DirEntry", is_pointer=False,
+                "Prove_DirEntry",
+                is_pointer=False,
                 header="prove_input_output.h",
             )
         if name == "ExitCode":

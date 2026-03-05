@@ -17,6 +17,8 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 | **C Emitter** | Typed AST | C source | Type mapping, name mangling, lambda hoisting, reference counting |
 | **gcc/clang** | C source | Native binary | Optimization, linking with C runtime |
 
+The build system performs **runtime stripping** — only the C runtime modules actually used by the program are compiled and linked. A CLI that parses JSON, reads/writes console, and saves a file with guarded contracts produces a **37 KB** binary.
+
 ---
 
 ## `prove.toml` Configuration

@@ -104,7 +104,7 @@ Types carry constraints, not just shapes.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1..65535
-type Email is String where r"^[^@]+@[^@]+\.[^@]+$"
+type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 type NonEmpty<T> is List<T> where len > 0
 
 transforms head(xs NonEmpty<T>) T         // no Option needed — emptiness is impossible
@@ -138,7 +138,7 @@ module Example
   Parse reads object, validates object
   Table types Table
 
-  type Email is String where r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+  type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
   type User is
     id Integer
@@ -294,6 +294,8 @@ from
 ```
 Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
 ```
+
+The example above — JSON parsing, console I/O, guarded file writes — compiles to a **37 KB** native binary. The runtime is stripped to only the modules actually used.
 
 ## Ecosystem
 

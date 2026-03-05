@@ -73,7 +73,7 @@ Types carry constraints, not just shapes. The compiler rejects invalid values st
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535
-type Email is String where r"^[^@]+@[^@]+\.[^@]+$"
+type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 type NonEmpty<T> is List<T> where len > 0
 
 transforms head(xs NonEmpty<T>) T    // no Option needed, emptiness is impossible
