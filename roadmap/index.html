@@ -849,10 +849,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#v093-linear-types-ownership" class="md-nav__link">
+  <a href="#v094-linear-types-ownership" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v0.9.3 — Linear Types + Ownership
+        v0.9.4 — Linear Types + Ownership
       
     </span>
   </a>
@@ -860,54 +860,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#v094-auto-memoization-memory-regions" class="md-nav__link">
+  <a href="#v096-mutation-testing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        v0.9.4 — Auto-Memoization + Memory Regions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#v095-mutation-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        v0.9.5 — Mutation Testing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#v096-stdlib-list-math-convert" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        v0.9.6 — Stdlib: List, Math, Convert
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#v097-stdlib-path-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        v0.9.7 — Stdlib: Path, Pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#v098-stdlib-format-error" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        v0.9.8 — Stdlib: Format, Error
+        v0.9.6 — Mutation Testing
       
     </span>
   </a>
@@ -1108,7 +1064,7 @@ after V1.0 is stable.</p>
 <tr>
 <td>v0.9</td>
 <td>Complete</td>
-<td>Lexer export tool (<code>prove export</code>) — 612 tests</td>
+<td>Lexer export tool — 612 tests</td>
 </tr>
 <tr>
 <td>v0.9.1</td>
@@ -1116,9 +1072,14 @@ after V1.0 is stable.</p>
 <td>Documentation parity — mark unimplemented features, add missing diagnostics</td>
 </tr>
 <tr>
+<td>v0.9.5</td>
+<td>Complete</td>
+<td>Auto-Memoization + Memory Regions</td>
+</tr>
+<tr>
 <td>v0.9.6</td>
 <td>Complete</td>
-<td>Stdlib: List, Math, Convert — 747 tests</td>
+<td>Mutation Testing (<code>--mutate</code> flag), Stdlib: List, Math, Convert</td>
 </tr>
 <tr>
 <td>v0.9.7</td>
@@ -1138,49 +1099,12 @@ after V1.0 is stable.</p>
 <p>Execute <code>comptime</code> blocks at compile time. Currently the keyword is parsed
 but expressions are not evaluated during compilation. Adds a compile-time
 interpreter, file dependency tracking, and constant embedding in emitted C.</p>
-<h3 id="v093-linear-types-ownership">v0.9.3 — Linear Types + Ownership<a class="headerlink" href="#v093-linear-types-ownership" title="Permanent link">&para;</a></h3>
-<p>Implement the <code>Own</code> type modifier and compiler-inferred borrows. Use-after-move
-detection, the <code>Mutable</code> type modifier, and ownership-aware memory management
-in the C emitter.</p>
-<h3 id="v094-auto-memoization-memory-regions">v0.9.4 — Auto-Memoization + Memory Regions<a class="headerlink" href="#v094-auto-memoization-memory-regions" title="Permanent link">&para;</a></h3>
-<p>Automatic memoization of eligible pure functions and region-based memory
-allocation for short-lived values. Extends the optimizer with memoization
-candidate analysis and adds region allocator support to the C runtime.</p>
-<h3 id="v095-mutation-testing">v0.9.5 — Mutation Testing<a class="headerlink" href="#v095-mutation-testing" title="Permanent link">&para;</a></h3>
+<h3 id="v094-linear-types-ownership">v0.9.4 — Linear Types + Ownership<a class="headerlink" href="#v094-linear-types-ownership" title="Permanent link">&para;</a></h3>
+<p>Implement the <code>Own</code> type modifier and compiler-inferred borrows. Use-after-move detection, the <code>Mutable</code> type modifier, and ownership-aware memory management in the C emitter.</p>
+<h3 id="v096-mutation-testing">v0.9.6 — Mutation Testing<a class="headerlink" href="#v096-mutation-testing" title="Permanent link">&para;</a></h3>
 <p>Implement the <code>--mutate</code> flag. The compiler generates mutants (operator swaps,
 branch removals, constant changes), runs the contract-based test suite against
 each, and reports surviving mutants with suggested contracts to kill them.</p>
-<h3 id="v096-stdlib-list-math-convert">v0.9.6 — Stdlib: List, Math, Convert<a class="headerlink" href="#v096-stdlib-list-math-convert" title="Permanent link">&para;</a></h3>
-<p>Core stdlib expansion covering the most fundamental gaps identified from the
-Python compiler's dependency analysis.</p>
-<ul>
-<li><strong>List</strong> — Operations on <code>List&lt;T&gt;</code>: length, first, last, empty, contains,
-  index, slice, reverse, sort, range. Type-specific overloads for
-  <code>List&lt;Integer&gt;</code> and <code>List&lt;String&gt;</code> where element comparison is needed.</li>
-<li><strong>Math</strong> — Numeric functions with Integer/Float overloads: abs, min, max,
-  clamp, sqrt, pow, floor, ceil, round, log. Requires <code>-lm</code> at link time.</li>
-<li><strong>Convert</strong> — Type conversions between primitives: <code>String</code> ↔ <code>Integer</code>,
-  <code>String</code> ↔ <code>Float</code>, <code>Character</code> ↔ <code>Integer</code>, <code>Boolean</code> → <code>String</code>. Failable
-  string-to-number conversions return <code>Result</code>.</li>
-</ul>
-<h3 id="v097-stdlib-path-pattern">v0.9.7 — Stdlib: Path, Pattern<a class="headerlink" href="#v097-stdlib-path-pattern" title="Permanent link">&para;</a></h3>
-<p>Extended stdlib modules for file system and text matching.</p>
-<ul>
-<li><strong>Path</strong> — File path manipulation (pure string operations): join, parent,
-  name, stem, extension, absolute, normalize. Uses <code>/</code> separator, no filesystem
-  access.</li>
-<li><strong>Pattern</strong> — Regex operations via POSIX <code>regex.h</code>: test, search, find_all,
-  replace, split. Defines a binary <code>Match</code> type with text, start, and end
-  accessors.</li>
-</ul>
-<h3 id="v098-stdlib-format-error">v0.9.8 — Stdlib: Format, Error<a class="headerlink" href="#v098-stdlib-format-error" title="Permanent link">&para;</a></h3>
-<p>Utility modules for output formatting and error handling patterns.</p>
-<ul>
-<li><strong>Format</strong> — String formatting: pad_left, pad_right, center, hex, bin, octal,
-  decimal. Number formatting via <code>snprintf</code>, manual padding.</li>
-<li><strong>Error</strong> — Validators for <code>Result&lt;T, E&gt;</code> (ok, err) and <code>Option&lt;T&gt;</code> (some,
-  none), plus <code>unwrap_or</code> with type-specific overloads for Integer and String.</li>
-</ul>
 <h3 id="v099-stabilization">v0.9.9 — Stabilization<a class="headerlink" href="#v099-stabilization" title="Permanent link">&para;</a></h3>
 <p>Final polish before v1.0. Fix remaining rough edges, ensure all diagnostic
 codes are documented, all stdlib modules have complete C backing, and the full
@@ -1237,7 +1161,7 @@ standard library dependencies.</p>
 </tr>
 </tbody>
 </table>
-<p>Starting with v0.9, the <code>prove export</code> command keeps all three lexer projects
+<p>Starting with v0.9, the <code>scripts/export-lexers.py</code> script keeps all three lexer projects
 in sync with the compiler's canonical keyword lists automatically.</p>
 
 

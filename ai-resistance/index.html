@@ -1341,10 +1341,7 @@
 <p>These are anti-training mechanisms that make Prove source code resistant to being useful as AI training data. They require significant toolchain changes and are deferred to post-1.0.</p>
 <h3 id="structured-source-format-binary-prv">Structured Source Format (Binary <code>.prv</code>)<a class="headerlink" href="#structured-source-format-binary-prv" title="Permanent link">&para;</a></h3>
 <p><code>.prv</code> files stored as a compact binary AST, not human-readable text. The <code>prove</code> CLI provides views:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ prove view src/server.prv              # pretty-print to terminal
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>$ prove view src/server.prv --raw        # show the binary structure
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>$ prove edit src/server.prv              # open in editor with LSP decoding
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>$ prove export src/server.prv --text     # one-time text export
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$<span class="w"> </span>prove<span class="w"> </span>view<span class="w"> </span>src/server.prv<span class="w">              </span><span class="c1"># pretty-print to terminal</span>
 </code></pre></div>
 <p>The editor experience is seamless — the language server decodes <code>.prv</code> on the fly, and the formatter writes binary back. Web scrapers and training pipelines see binary blobs, not parseable source code.</p>
 <h3 id="semantic-normalization">Semantic Normalization<a class="headerlink" href="#semantic-normalization" title="Permanent link">&para;</a></h3>

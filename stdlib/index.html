@@ -721,6 +721,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#value-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Value Construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -809,16 +820,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#convert" class="md-nav__link">
+  <a href="#types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Convert
+        Types
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Convert">
+    <nav class="md-nav" aria-label="Types">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#type-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Type Validators
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#integer-conversions" class="md-nav__link">
@@ -1855,7 +1877,7 @@
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td><code>console() Boolean</code></td>
+<td><code>console()</code></td>
 <td>Check if stdin is a terminal</td>
 </tr>
 </tbody>
@@ -1881,17 +1903,17 @@
 <tbody>
 <tr>
 <td><code>inputs</code></td>
-<td><code>file(path String) String!</code></td>
+<td><code>file(path String) Result&lt;String, Error&gt;!</code></td>
 <td>Read file contents</td>
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td><code>file(path String, content String)!</code></td>
+<td><code>file(path String, content String) Result&lt;Unit, Error&gt;!</code></td>
 <td>Write file contents</td>
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td><code>file(path String) Boolean</code></td>
+<td><code>file(path String)</code></td>
 <td>Check if file exists</td>
 </tr>
 </tbody>
@@ -1925,7 +1947,7 @@
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td><code>system(cmd String) Boolean</code></td>
+<td><code>system(cmd String)</code></td>
 <td>Check if command exists</td>
 </tr>
 </tbody>
@@ -1948,12 +1970,12 @@
 </tr>
 <tr>
 <td><code>outputs</code></td>
-<td><code>dir(path String)!</code></td>
+<td><code>dir(path String) Result&lt;Unit, Error&gt;!</code></td>
 <td>Create a directory</td>
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td><code>dir(path String) Boolean</code></td>
+<td><code>dir(path String)</code></td>
 <td>Check if directory exists</td>
 </tr>
 </tbody>
@@ -1976,7 +1998,7 @@
 </tr>
 <tr>
 <td><code>validates</code></td>
-<td><code>process(value String) Boolean</code></td>
+<td><code>process(value String)</code></td>
 <td>Check if argument is present</td>
 </tr>
 </tbody>
@@ -1984,7 +2006,29 @@
 <hr />
 <h2 id="parse">Parse<a class="headerlink" href="#parse" title="Permanent link">&para;</a></h2>
 <p><strong>Module:</strong> <code>Parse</code> — encoding and decoding of structured data formats.</p>
-<p>Parse uses a universal <code>Value</code> type (binary) that represents any parsed value. The same two-function pattern applies to each format: <code>creates</code> to decode, <code>reads</code> to encode.</p>
+<p>Parse uses a universal <code>Value</code> type (binary) that represents any parsed value. The same two-function pattern applies to each format: <code>creates</code> to decode, <code>reads</code> to encode, <code>validates</code> to check syntax.</p>
+<h3 id="value-construction">Value Construction<a class="headerlink" href="#value-construction" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>creates</code></td>
+<td><code>value(source V) Value</code></td>
+<td>Wrap any value as a Value</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>value(source V)</code></td>
+<td>True if source can be wrapped as a Value</td>
+</tr>
+</tbody>
+</table>
 <h3 id="formats">Formats<a class="headerlink" href="#formats" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2006,6 +2050,11 @@
 <td>Encode Value to TOML</td>
 </tr>
 <tr>
+<td><code>validates</code></td>
+<td><code>toml(source String)</code></td>
+<td>True if source is valid TOML</td>
+</tr>
+<tr>
 <td><code>creates</code></td>
 <td><code>json(source String) Result&lt;Value, String&gt;</code></td>
 <td>Decode JSON to Value</td>
@@ -2014,6 +2063,11 @@
 <td><code>reads</code></td>
 <td><code>json(value Value) String</code></td>
 <td>Encode Value to JSON</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>json(source String)</code></td>
+<td>True if source is valid JSON</td>
 </tr>
 </tbody>
 </table>
@@ -2240,9 +2294,51 @@
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="nc">Math</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="nc">Math</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">-</span> <span class="nc">Math</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
 </code></pre></div>
 <hr />
-<h2 id="convert">Convert<a class="headerlink" href="#convert" title="Permanent link">&para;</a></h2>
-<p><strong>Module:</strong> <code>Convert</code> — type conversions between primitive types.</p>
-<p>The function name is the <em>target type</em>. Failable conversions from strings return <code>Result</code>.</p>
+<h2 id="types">Types<a class="headerlink" href="#types" title="Permanent link">&para;</a></h2>
+<p><strong>Module:</strong> <code>Types</code> — type validation and conversion between primitive types.</p>
+<p>The function name is the <em>target type</em>. Failable conversions from strings return <code>Result</code>. Validators check that a value is of the expected type.</p>
+<h3 id="type-validators">Type Validators<a class="headerlink" href="#type-validators" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>validates</code></td>
+<td><code>string(s String)</code></td>
+<td>True if value is a string</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>integer(n Integer)</code></td>
+<td>True if value is an integer</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>float(n Float)</code></td>
+<td>True if value is a float</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>decimal(n Float)</code></td>
+<td>True if value is a decimal</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>boolean(b Boolean)</code></td>
+<td>True if value is a boolean</td>
+</tr>
+<tr>
+<td><code>validates</code></td>
+<td><code>character(c Character)</code></td>
+<td>True if value is a character</td>
+</tr>
+</tbody>
+</table>
 <h3 id="integer-conversions">Integer Conversions<a class="headerlink" href="#integer-conversions" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2336,11 +2432,11 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nc">Convert</span> <span class="kd">creates</span> <span class="n">integer</span> <span class="n">float</span><span class="p">,</span> <span class="kd">reads</span> <span class="n">string</span> <span class="n">code</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nc">Types</span> <span class="kd">creates</span> <span class="n">integer</span> <span class="n">float</span><span class="p">,</span> <span class="kd">reads</span> <span class="n">string</span> <span class="n">code</span><span class="p">,</span> <span class="kd">validates</span> <span class="n">integer</span> <span class="n">string</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kd">reads</span> <span class="n">format_pair</span><span class="p">(</span><span class="n">label</span> <span class="kt">String</span><span class="p">,</span> <span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">String</span>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">from</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">label</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="nc">Convert</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">label</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="nc">Types</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="list">List<a class="headerlink" href="#list" title="Permanent link">&para;</a></h2>
@@ -2809,9 +2905,9 @@ providing defaults.</p>
 </tr>
 <tr>
 <td>v0.9.6</td>
-<td><strong>Convert</strong></td>
+<td><strong>Types</strong></td>
 <td>Complete</td>
-<td>Type conversions: String ↔ Integer, String ↔ Float, Character ↔ Integer</td>
+<td>Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer</td>
 </tr>
 <tr>
 <td>v0.9.6</td>

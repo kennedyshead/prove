@@ -1153,13 +1153,14 @@
 <p>Compile-time computation (<code>comptime</code>) allows IO operations. This enables reading config files, schema definitions, and static assets at compile time. Files accessed during comptime become build dependencies — changing them triggers recompilation. This may be revisited if reproducibility concerns arise.</p>
 <h3 id="cli-first-toolchain-prove">CLI-First Toolchain: <code>prove</code><a class="headerlink" href="#cli-first-toolchain-prove" title="Permanent link">&para;</a></h3>
 <p>The <code>prove</code> CLI is the central interface for all development:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>prove build          # compile the project
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>prove test           # run auto-generated + manual tests
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>prove check          # type-check without building
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>prove format         # auto-format source code
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>prove lsp            # start the language server
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>prove build --mutate # run mutation testing
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>prove new &lt;name&gt;     # scaffold a new project
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>prove<span class="w"> </span>build<span class="w">          </span><span class="c1"># compile the project</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>prove<span class="w"> </span>build<span class="w"> </span>--debug<span class="w">  </span><span class="c1"># compile with debug symbols</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>prove<span class="w"> </span><span class="nb">test</span><span class="w">           </span><span class="c1"># run auto-generated + manual tests</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>prove<span class="w"> </span>check<span class="w">          </span><span class="c1"># type-check without building</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>prove<span class="w"> </span>format<span class="w">         </span><span class="c1"># auto-format source code</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>prove<span class="w"> </span>lsp<span class="w">            </span><span class="c1"># start the language server</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>prove<span class="w"> </span>build<span class="w"> </span>--mutate<span class="w"> </span><span class="c1"># run mutation testing</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>prove<span class="w"> </span>new<span class="w"> </span>&lt;name&gt;<span class="w">     </span><span class="c1"># scaffold a new project</span>
 </code></pre></div>
 <h3 id="syntax-philosophy">Syntax Philosophy<a class="headerlink" href="#syntax-philosophy" title="Permanent link">&para;</a></h3>
 <p>No shorthands. No abbreviations. Full words everywhere. The language reads like English prose where possible. Since it is inherently a hard-to-learn language (refinement types, implementation explanations, effect tracking), <strong>simplicity is maximized wherever possible</strong>. If something can be simple, it must be. The compiler works for the programmer, not the other way around.</p>
@@ -1188,9 +1189,9 @@
 <hr />
 <h2 id="zero-cost-abstractions">Zero-Cost Abstractions<a class="headerlink" href="#zero-cost-abstractions" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Pure functions auto-memoized and inlined <em>(planned — v0.9.4)</em></li>
-<li>Region-based memory for short-lived allocations <em>(planned — v0.9.4)</em></li>
-<li>Reference counting only where ownership is shared (compiler-inserted) <em>(planned — current: arena-based allocation via turbo runtime)</em></li>
+<li>Pure functions auto-memoized and inlined — <em>v0.9.5 ✓</em></li>
+<li>Region-based memory for short-lived allocations — <em>v0.9.5 ✓</em></li>
+<li>Reference counting only where ownership is shared (compiler-inserted) — <em>v0.9.4: linear types with Own modifier now enforced</em></li>
 <li>No GC pauses, predictable performance</li>
 <li>Native code output</li>
 </ul>

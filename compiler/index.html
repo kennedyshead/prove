@@ -932,8 +932,8 @@
 
 <h1 id="compiler-features">Compiler Features<a class="headerlink" href="#compiler-features" title="Permanent link">&para;</a></h1>
 <h2 id="pipeline">Pipeline<a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h2>
-<p>Prove compiles <code>.prv</code> source files to native binaries through a six-stage pipeline:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
+<p>Prove compiles <code>.prv</code> source files to native binaries through a seven-stage pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
 </code></pre></div>
 <table>
 <thead>
@@ -970,8 +970,14 @@
 <td>Explain entry verification, contract consistency</td>
 </tr>
 <tr>
-<td><strong>C Emitter</strong></td>
+<td><strong>Optimizer</strong></td>
 <td>Typed AST</td>
+<td>Optimized AST</td>
+<td>Tail call optimization, inlining, dead branch elimination, runtime dependency tracking</td>
+</tr>
+<tr>
+<td><strong>C Emitter</strong></td>
+<td>Optimized AST</td>
 <td>C source</td>
 <td>Type mapping, name mangling, lambda hoisting, reference counting</td>
 </tr>
@@ -983,6 +989,7 @@
 </tr>
 </tbody>
 </table>
+<p>The build system performs <strong>runtime stripping</strong> — only the C runtime modules actually used by the program are compiled and linked. A CLI that parses JSON, reads/writes console, and saves a file with guarded contracts produces a <strong>37 KB</strong> binary.</p>
 <hr />
 <h2 id="provetoml-configuration"><code>prove.toml</code> Configuration<a class="headerlink" href="#provetoml-configuration" title="Permanent link">&para;</a></h2>
 <p>Every Prove project has a <code>prove.toml</code> at its root. The <code>prove new</code> command generates one with sensible defaults.</p>
@@ -994,7 +1001,7 @@
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">[build]</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;native&quot;</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">optimize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">optimize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">c_flags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">link_flags</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
@@ -1093,7 +1100,7 @@
 <p>See <a href="../diagnostics/">Diagnostic Codes</a> for the full list of error and warning codes.</p>
 <hr />
 <h2 id="optimizer">Optimizer<a class="headerlink" href="#optimizer" title="Permanent link">&para;</a></h2>
-<p>When <code>optimize = true</code> in <code>prove.toml</code>, the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.</p>
+<p>When <code>optimize = true</code> in <code>prove.toml</code> (the default), the compiler runs seven optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.</p>
 <table>
 <thead>
 <tr>
@@ -1113,6 +1120,10 @@
 <tr>
 <td><strong>Small function inlining</strong></td>
 <td>Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no <code>terminates</code>, no recursion, and a single-expression body. Parameters are substituted with arguments.</td>
+</tr>
+<tr>
+<td><strong>Memoization candidate identification</strong></td>
+<td>Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation.</td>
 </tr>
 <tr>
 <td><strong>Match compilation</strong></td>
