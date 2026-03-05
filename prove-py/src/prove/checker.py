@@ -155,7 +155,6 @@ _BUILTIN_TYPE_NAMES = frozenset(
         "Option",
         "Result",
         "Error",
-        "Table",
     }
 )
 
@@ -430,7 +429,7 @@ class Checker:
 
     def _register_type(self, td: TypeDef) -> None:
         """Register a user-defined type."""
-        # E317: type name shadows builtin type
+        # E317: type name shadows builtin type (but allow Table for module<>type collision)
         if td.name in _BUILTIN_TYPE_NAMES:
             self._error(
                 "E317",
