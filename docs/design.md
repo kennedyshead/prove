@@ -96,9 +96,9 @@ from
 
 ## Zero-Cost Abstractions
 
-- Pure functions auto-memoized and inlined *(planned — v0.9.5)*
-- Region-based memory for short-lived allocations *(planned — v0.9.5)*
-- Reference counting only where ownership is shared (compiler-inserted) *(planned — current: arena-based allocation via turbo runtime)*
+- Pure functions auto-memoized and inlined — *v0.9.5 ✓*
+- Region-based memory for short-lived allocations — *v0.9.5 ✓*
+- Reference counting only where ownership is shared (compiler-inserted) — *v0.9.4: linear types with Own modifier now enforced*
 - No GC pauses, predictable performance
 - Native code output
 

@@ -11,6 +11,8 @@ _RUNTIME_FILES = [
     "prove_runtime.c",
     "prove_arena.h",
     "prove_arena.c",
+    "prove_region.h",
+    "prove_region.c",
     "prove_hash.h",
     "prove_hash.c",
     "prove_intern.h",

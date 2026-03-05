@@ -34,6 +34,7 @@ after V1.0 is stable.
 | v0.8.3 | Complete | Remaining lints (E316, E317, W302, W303, W323, W326) — 506 tests |
 | v0.9 | Complete | Lexer export tool — 612 tests |
 | v0.9.1 | Complete | Documentation parity — mark unimplemented features, add missing diagnostics |
+| v0.9.5 | Complete | Auto-Memoization + Memory Regions |
 | v0.9.6 | Complete | Stdlib: List, Math, Convert — 747 tests |
 | v0.9.7 | Complete | Stdlib: Path, Pattern |
 | v0.9.8 | Complete | Stdlib: Format, Error |
@@ -48,57 +49,15 @@ Execute `comptime` blocks at compile time. Currently the keyword is parsed
 but expressions are not evaluated during compilation. Adds a compile-time
 interpreter, file dependency tracking, and constant embedding in emitted C.
 
-### v0.9.3 — Linear Types + Ownership
+### v0.9.4 — Linear Types + Ownership
 
-Implement the `Own` type modifier and compiler-inferred borrows. Use-after-move
-detection, the `Mutable` type modifier, and ownership-aware memory management
-in the C emitter.
-
-### v0.9.5 — Auto-Memoization + Memory Regions
-
-Automatic memoization of eligible pure functions and region-based memory
-allocation for short-lived values. Extends the optimizer with memoization
-candidate analysis and adds region allocator support to the C runtime.
+Implement the `Own` type modifier and compiler-inferred borrows. Use-after-move detection, the `Mutable` type modifier, and ownership-aware memory management in the C emitter.
 
 ### v0.9.6 — Mutation Testing
 
 Implement the `--mutate` flag. The compiler generates mutants (operator swaps,
 branch removals, constant changes), runs the contract-based test suite against
 each, and reports surviving mutants with suggested contracts to kill them.
-
-### v0.9.6 — Stdlib: List, Math, Convert
-
-Core stdlib expansion covering the most fundamental gaps identified from the
-Python compiler's dependency analysis.
-
-- **List** — Operations on `List<T>`: length, first, last, empty, contains,
-  index, slice, reverse, sort, range. Type-specific overloads for
-  `List<Integer>` and `List<String>` where element comparison is needed.
-- **Math** — Numeric functions with Integer/Float overloads: abs, min, max,
-  clamp, sqrt, pow, floor, ceil, round, log. Requires `-lm` at link time.
-- **Convert** — Type conversions between primitives: `String` ↔ `Integer`,
-  `String` ↔ `Float`, `Character` ↔ `Integer`, `Boolean` → `String`. Failable
-  string-to-number conversions return `Result`.
-
-### v0.9.7 — Stdlib: Path, Pattern
-
-Extended stdlib modules for file system and text matching.
-
-- **Path** — File path manipulation (pure string operations): join, parent,
-  name, stem, extension, absolute, normalize. Uses `/` separator, no filesystem
-  access.
-- **Pattern** — Regex operations via POSIX `regex.h`: test, search, find_all,
-  replace, split. Defines a binary `Match` type with text, start, and end
-  accessors.
-
-### v0.9.8 — Stdlib: Format, Error
-
-Utility modules for output formatting and error handling patterns.
-
-- **Format** — String formatting: pad_left, pad_right, center, hex, bin, octal,
-  decimal. Number formatting via `snprintf`, manual padding.
-- **Error** — Validators for `Result<T, E>` (ok, err) and `Option<T>` (some,
-  none), plus `unwrap_or` with type-specific overloads for Integer and String.
 
 ### v0.9.9 — Stabilization
 

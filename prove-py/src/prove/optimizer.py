@@ -7,7 +7,7 @@ dataclasses.replace() for field updates.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from prove.ast_nodes import (
@@ -33,21 +33,60 @@ from prove.ast_nodes import (
 from prove.symbols import SymbolTable
 
 
+@dataclass
+class MemoizationCandidate:
+    """A pure function that is a candidate for memoization."""
+
+    name: str
+    verb: str
+    param_count: int
+    body_size: int  # number of statements
+    param_types: tuple[str, ...] = ()  # C type signatures for hashing
+
+
+class MemoizationInfo:
+    """Tracks memoization candidates discovered during optimization."""
+
+    def __init__(self) -> None:
+        self._candidates: dict[str, MemoizationCandidate] = {}
+
+    def add_candidate(self, cand: MemoizationCandidate) -> None:
+        key = f"{cand.verb}:{cand.name}"
+        self._candidates[key] = cand
+
+    def is_candidate(self, verb: str, name: str) -> bool:
+        key = f"{verb}:{name}"
+        return key in self._candidates
+
+    def get_candidate(self, verb: str, name: str) -> "MemoizationCandidate | None":
+        key = f"{verb}:{name}"
+        return self._candidates.get(key)
+
+    def get_candidates(self) -> list[MemoizationCandidate]:
+        return list(self._candidates.values())
+
+
 class Optimizer:
     """Multi-pass AST optimizer."""
 
     def __init__(self, module: Module, symbols: SymbolTable) -> None:
         self._module = module
         self._symbols = symbols
+        self._memo_info = MemoizationInfo()
 
     def optimize(self) -> Module:
         module = self._tail_call_optimization(self._module)
         module = self._dead_branch_elimination(module)
         module = self._inline_small_functions(module)
+        module = self._identify_memoization_candidates(module)
         module = self._match_compilation(module)
         module = self._copy_elision(module)
         module = self._iterator_fusion(module)
         return module
+
+    def get_memo_info(self) -> MemoizationInfo:
+        """Return memoization candidates discovered during optimization."""
+        return self._memo_info
 
     # ── Pass 1: Tail Call Optimization ────────────────────────────
 
@@ -101,14 +140,10 @@ class Optimizer:
             # Match wrapped in ExprStmt
             if isinstance(last.expr, MatchExpr):
                 return any(
-                    arm.body and self._is_tail_call_in_arm(name, arm)
-                    for arm in last.expr.arms
+                    arm.body and self._is_tail_call_in_arm(name, arm) for arm in last.expr.arms
                 )
         if isinstance(last, MatchExpr):
-            return any(
-                arm.body and self._is_tail_call_in_arm(name, arm)
-                for arm in last.arms
-            )
+            return any(arm.body and self._is_tail_call_in_arm(name, arm) for arm in last.arms)
         return False
 
     def _is_tail_call_in_arm(self, name: str, arm: MatchArm) -> bool:
@@ -129,7 +164,10 @@ class Optimizer:
         )
 
     def _rewrite_tail_calls(
-        self, name: str, params: list[str], body: list[Any],
+        self,
+        name: str,
+        params: list[str],
+        body: list[Any],
     ) -> list[Any]:
         """Rewrite tail-recursive calls to TailContinue."""
         result: list[Any] = []
@@ -154,7 +192,10 @@ class Optimizer:
         return result
 
     def _rewrite_match_tail_calls(
-        self, name: str, params: list[str], m: MatchExpr,
+        self,
+        name: str,
+        params: list[str],
+        m: MatchExpr,
     ) -> MatchExpr:
         """Rewrite tail calls inside match arms."""
         new_arms = []
@@ -192,6 +233,7 @@ class Optimizer:
             PipeExpr,
             UnaryExpr,
         )
+
         if isinstance(expr, CallExpr):
             if isinstance(expr.func, IdentifierExpr) and expr.func.name == name:
                 return True
@@ -231,8 +273,7 @@ class Optimizer:
                 new_decls.append(self._dbe_function(decl))
             elif isinstance(decl, ModuleDecl):
                 new_body = [
-                    self._dbe_function(d) if isinstance(d, FunctionDef) else d
-                    for d in decl.body
+                    self._dbe_function(d) if isinstance(d, FunctionDef) else d for d in decl.body
                 ]
                 new_decls.append(replace(decl, body=new_body))
             elif isinstance(decl, MainDef):
@@ -330,7 +371,8 @@ class Optimizer:
             elif isinstance(decl, ModuleDecl):
                 new_body = [
                     replace(d, body=self._inline_stmts(d.body, candidates))
-                    if isinstance(d, FunctionDef) else d
+                    if isinstance(d, FunctionDef)
+                    else d
                     for d in decl.body
                 ]
                 new_decls.append(replace(decl, body=new_body))
@@ -380,7 +422,9 @@ class Optimizer:
                     body_expr = fd.body[0]
                     assert isinstance(body_expr, ExprStmt)
                     substituted = self._substitute_params(
-                        body_expr.expr, fd.params, expr.args,
+                        body_expr.expr,
+                        fd.params,
+                        expr.args,
                     )
                     return self._inline_in_expr(substituted, candidates)
             # Recursively inline in args
@@ -431,7 +475,10 @@ class Optimizer:
         return expr
 
     def _substitute_params(
-        self, expr: Expr, params: list[Any], args: list[Expr],
+        self,
+        expr: Expr,
+        params: list[Any],
+        args: list[Expr],
     ) -> Expr:
         """Substitute IdentifierExpr nodes matching param names with arg expressions."""
         from prove.ast_nodes import (
@@ -459,7 +506,8 @@ class Optimizer:
             )
         if isinstance(expr, UnaryExpr):
             return replace(
-                expr, operand=self._substitute_params(expr.operand, params, args),
+                expr,
+                operand=self._substitute_params(expr.operand, params, args),
             )
         if isinstance(expr, PipeExpr):
             return replace(
@@ -479,19 +527,145 @@ class Optimizer:
                 new_body: list[Any] = []
                 for s in arm.body:
                     if isinstance(s, ExprStmt):
-                        new_body.append(replace(
-                            s, expr=self._substitute_params(s.expr, params, args),
-                        ))
+                        new_body.append(
+                            replace(
+                                s,
+                                expr=self._substitute_params(s.expr, params, args),
+                            )
+                        )
                     else:
                         new_body.append(s)
                 new_arms.append(replace(arm, body=new_body))
-            subj = (
-                self._substitute_params(expr.subject, params, args)
-                if expr.subject else None
-            )
+            subj = self._substitute_params(expr.subject, params, args) if expr.subject else None
             return replace(expr, subject=subj, arms=new_arms)
 
         return expr
+
+    # ── Pass 3b: Memoization Candidate Identification ─────────────
+
+    def _identify_memoization_candidates(self, module: Module) -> Module:
+        """Identify pure functions eligible for memoization.
+
+        Candidates are pure verbs (transforms, validates, reads, creates, matches)
+        that are small and don't have side effects. Memoization allows caching
+        results based on input parameters.
+        """
+        _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
+
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                self._check_function_for_memoization(decl, _pure_verbs)
+            elif isinstance(decl, ModuleDecl):
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        self._check_function_for_memoization(inner, _pure_verbs)
+
+        return module
+
+    def _check_function_for_memoization(self, fd: FunctionDef, pure_verbs: set[str]) -> None:
+        """Check if a function is a memoization candidate."""
+        if fd.verb not in pure_verbs:
+            return
+        if fd.binary:
+            return
+        if fd.terminates is not None:
+            return
+        if len(fd.params) > 4:
+            return
+        if len(fd.body) > 10:
+            return
+        if self._calls_self(fd.name, fd.body):
+            return
+        if self._has_side_effects(fd):
+            return
+
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if sig is None or not sig.param_types:
+            return
+
+        param_type_strs = tuple(self._type_key(pt) for pt in sig.param_types)
+
+        cand = MemoizationCandidate(
+            name=fd.name,
+            verb=fd.verb,
+            param_count=len(fd.params),
+            body_size=len(fd.body),
+            param_types=param_type_strs,
+        )
+        self._memo_info.add_candidate(cand)
+
+    def _type_key(self, typ: Any) -> str:
+        """Get a string key for a type for hashing."""
+        from prove.types import (
+            GenericInstance,
+            PrimitiveType,
+            RecordType,
+        )
+
+        if isinstance(typ, PrimitiveType):
+            return typ.name
+        if isinstance(typ, RecordType):
+            return f"record:{typ.name}"
+        if isinstance(typ, GenericInstance):
+            args = "_".join(self._type_key(a) for a in typ.args) if typ.args else ""
+            return f"{typ.base_name}:{args}"
+        return "unknown"
+
+    def _has_side_effects(self, fd: FunctionDef) -> bool:
+        """Check if a function has potential side effects (returns True if it does)."""
+        for stmt in fd.body:
+            if self._stmt_has_side_effects(stmt):
+                return True
+        return False
+
+    def _stmt_has_side_effects(self, stmt: Any) -> bool:
+        """Check if a statement has side effects (returns True if it does)."""
+        if isinstance(stmt, ExprStmt):
+            return self._expr_has_side_effects(stmt.expr)
+        if isinstance(stmt, Assignment):
+            return self._expr_has_side_effects(stmt.value)
+        if isinstance(stmt, VarDecl):
+            if stmt.value:
+                return self._expr_has_side_effects(stmt.value)
+        if isinstance(stmt, MatchExpr):
+            if stmt.subject and self._expr_has_side_effects(stmt.subject):
+                return True
+            for arm in stmt.arms:
+                for b in arm.body:
+                    if self._stmt_has_side_effects(b):
+                        return True
+        return False
+
+    def _expr_has_side_effects(self, expr: Expr) -> bool:
+        """Check if an expression has side effects (returns True if it does)."""
+        from prove.ast_nodes import (
+            BinaryExpr,
+            FailPropExpr,
+            LambdaExpr,
+            PipeExpr,
+            UnaryExpr,
+        )
+
+        if isinstance(expr, CallExpr):
+            return False
+        if isinstance(expr, BinaryExpr):
+            return self._expr_has_side_effects(expr.left) or self._expr_has_side_effects(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return self._expr_has_side_effects(expr.operand)
+        if isinstance(expr, PipeExpr):
+            return self._expr_has_side_effects(expr.left) or self._expr_has_side_effects(expr.right)
+        if isinstance(expr, FailPropExpr):
+            return self._expr_has_side_effects(expr.expr)
+        if isinstance(expr, LambdaExpr):
+            return False
+        if isinstance(expr, MatchExpr):
+            if expr.subject and self._expr_has_side_effects(expr.subject):
+                return True
+            for arm in expr.arms:
+                for s in arm.body:
+                    if isinstance(s, ExprStmt) and self._expr_has_side_effects(s.expr):
+                        return True
+        return False
 
     # ── Pass 4: Match Compilation ─────────────────────────────────
 
@@ -509,7 +683,8 @@ class Optimizer:
             elif isinstance(decl, ModuleDecl):
                 new_body = [
                     replace(d, body=self._merge_matches(d.body))
-                    if isinstance(d, FunctionDef) else d
+                    if isinstance(d, FunctionDef)
+                    else d
                     for d in decl.body
                 ]
                 new_decls.append(replace(decl, body=new_body))

@@ -332,3 +332,30 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
     if isinstance(ty, ListType):
         return ListType(substitute_type_vars(ty.element, bindings))
     return ty
+
+
+# ── Ownership helpers ─────────────────────────────────────────────
+
+
+def has_own_modifier(ty: Type) -> bool:
+    """Check if a type has the Own (linear) ownership modifier."""
+    if isinstance(ty, PrimitiveType):
+        return "Own" in ty.modifiers
+    return False
+
+
+def has_mutable_modifier(ty: Type) -> bool:
+    """Check if a type has the Mutable modifier."""
+    if isinstance(ty, PrimitiveType):
+        return "Mutable" in ty.modifiers
+    return False
+
+
+def get_ownership_kind(ty: Type) -> str:
+    """Return the ownership kind: 'owned', 'mutable', or 'shared'."""
+    if isinstance(ty, PrimitiveType):
+        if "Own" in ty.modifiers:
+            return "owned"
+        if "Mutable" in ty.modifiers:
+            return "mutable"
+    return "shared"

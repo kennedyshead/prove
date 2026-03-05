@@ -67,8 +67,6 @@ from
     close(file)                        // file consumed here
 ```
 
-*`Mutable` and `Own` are parsed but not yet enforced (upcoming v0.9.3).*
-
 ## Refinement Types
 
 Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no `unwrap()`.
@@ -173,8 +171,6 @@ transforms rewrite(c Config) Config                // pure, infallible, parallel
 ```
 
 ## Ownership Lite (Linear Types with Compiler-Inferred Borrows)
-
-*Upcoming (v0.9.3) — `Own`, `Mutable`, and compiler-inferred borrows are parsed but not yet enforced.*
 
 Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.
 

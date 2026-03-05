@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -53,6 +55,7 @@ from prove.ast_nodes import (
 )
 from prove.c_types import CType, mangle_name, mangle_type_name, map_type
 from prove.errors import Diagnostic, Severity
+from prove.optimizer import MemoizationInfo
 from prove.symbols import SymbolTable
 from prove.types import (
     BOOLEAN,
@@ -109,9 +112,15 @@ class CEmitter:
         "librt": "time.h",
     }
 
-    def __init__(self, module: Module, symbols: SymbolTable) -> None:
+    def __init__(
+        self,
+        module: Module,
+        symbols: SymbolTable,
+        memo_info: "MemoizationInfo | None" = None,
+    ) -> None:
         self._module = module
         self._symbols = symbols
+        self._memo_info = memo_info
         self._out: list[str] = []
         self._indent = 0
         self._tmp_counter = 0
@@ -170,6 +179,9 @@ class CEmitter:
 
         # Record-to-Value converters (after type defs, before functions)
         self._emit_record_to_value_converters()
+
+        # Memoization tables for pure functions
+        self._emit_memo_tables()
 
         # Module-level constants
         self._emit_constants()
@@ -305,6 +317,8 @@ class CEmitter:
         self._line("#include <stdbool.h>")
         self._line("#include <stdlib.h>")
         self._line("#include <stdio.h>")
+        self._line("#include <string.h>")
+        self._line('#include "prove_region.h"')
         # Foreign library headers
         for lib in sorted(self._foreign_libs):
             header = self._FOREIGN_HEADERS.get(lib)
@@ -615,6 +629,51 @@ class CEmitter:
                 result[0] = f"_prove_record_to_value_{arg_ty.name}({args[0]})"
                 return result
         return args
+
+    def _emit_memo_tables(self) -> None:
+        """Emit memoization tables for pure functions."""
+        if not self._memo_info:
+            return
+        candidates = self._memo_info.get_candidates()
+        if not candidates:
+            return
+
+        self._line("/* Memoization tables for pure functions */")
+        self._line("")
+
+        for cand in candidates:
+            table_name = f"_memo_{cand.verb}_{cand.name}"
+            table_size = 32
+
+            self._line(f"/* {table_name}: {cand.param_count} params, {cand.body_size} stmts */")
+            self._line(f"typedef struct {table_name}_entry {{")
+            self._indent += 1
+            self._line("uint64_t key;")
+            sig = self._symbols.resolve_function(cand.verb, cand.name, cand.param_count)
+            ret_type = sig.return_type if sig else None
+            if ret_type:
+                if isinstance(ret_type, PrimitiveType) and ret_type.name == "Integer":
+                    self._line("int64_t value;")
+                elif isinstance(ret_type, PrimitiveType) and ret_type.name == "Boolean":
+                    self._line("bool value;")
+                else:
+                    self._line("void* value;")
+            else:
+                self._line("void* value;")
+            self._line("bool valid;")
+            self._indent -= 1
+            self._line(f"}} {table_name}_entry;")
+            self._line(f"static {table_name}_entry {table_name}[{table_size}] = {{0}};")
+            self._line("")
+
+    def _get_memo_key(self, cand: Any, args: list[str]) -> str:
+        """Generate hash key computation from arguments."""
+        if not args:
+            return "0"
+        key_expr = f"(uint64_t)({args[0]})"
+        for arg in args[1:]:
+            key_expr = f"(({key_expr}) * 31 + (uint64_t)({arg}))"
+        return key_expr
 
     def _emit_constants(self) -> None:
         """Emit #define macros for module-level constants."""
@@ -967,7 +1026,6 @@ class CEmitter:
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
-
 
         # Check if explain block has structured conditions (when)
         has_explain_conditions = fd.explain is not None and any(
@@ -2160,9 +2218,7 @@ class CEmitter:
                     if fpt is None:
                         pts = sig.param_types
                         fpt = _get_type_key(pts[0]) if pts else None
-                    c_name = binary_c_name(
-                        sig.module, "validates", sig.name, fpt
-                    )
+                    c_name = binary_c_name(sig.module, "validates", sig.name, fpt)
                     if c_name:
                         return f"{c_name}({args_c})"
                 pt = list(sig.param_types) if sig else None
@@ -2172,9 +2228,7 @@ class CEmitter:
             if sig and sig.module:
                 from prove.stdlib_loader import binary_c_name
 
-                c_name = binary_c_name(
-                    sig.module, "validates", sig.name, None
-                )
+                c_name = binary_c_name(sig.module, "validates", sig.name, None)
                 if c_name:
                     return c_name
             pt = list(sig.param_types) if sig else None
@@ -2370,7 +2424,32 @@ class CEmitter:
             if sig and sig.verb is not None:
                 args = self._coerce_call_args(args, expr.args, sig)
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
-                return f"{mangled}({', '.join(args)})"
+                call = f"{mangled}({', '.join(args)})"
+
+                # Only memoize functions returning Integer or Boolean
+                ret_type = sig.return_type if sig else None
+                is_simple = (
+                    ret_type
+                    and isinstance(ret_type, PrimitiveType)
+                    and ret_type.name in ("Integer", "Boolean")
+                )
+                if (
+                    is_simple
+                    and self._memo_info
+                    and self._memo_info.is_candidate(sig.verb, sig.name)
+                ):
+                    table_name = f"_memo_{sig.verb}_{sig.name}"
+                    table_size = 32
+                    cand = self._memo_info.get_candidate(sig.verb, sig.name)
+                    if cand:
+                        key = self._get_memo_key(cand, args)
+                        idx = f"(({key}) % {table_size})"
+                        hit = f"{table_name}[{idx}].valid && {table_name}[{idx}].key == {key}"
+                        miss = f"({table_name}[{idx}].key = {key}, {table_name}[{idx}].value = {call}, {table_name}[{idx}].valid = 1, {table_name}[{idx}].value)"
+                        result = f"({hit}) ? {table_name}[{idx}].value : ({miss})"
+                        return result
+
+                return call
 
             # Variant constructor or unknown — use name directly
             return f"{name}({', '.join(args)})"

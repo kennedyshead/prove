@@ -1,7 +1,7 @@
 module Main
   narrative: """Read a TOML file and print its content."""
   InputOutput inputs file, outputs console
-  Parse creates object, reads toml, types Value
+  Parse reads object toml, types Value
   Table reads keys, types Table
   Text transforms join
 

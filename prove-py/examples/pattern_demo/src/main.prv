@@ -5,5 +5,5 @@ module Main
 
 main() Result<Unit, Error>!
 from
-  console(f"test 'hello' '[a-z]+' = {test("hello", "[a-z]+")}")
-  console(f"replace = {replace("hello world", "world", "prove")}")
+    console(f"test 'hello' '[a-z]+' = {test("hello", "[a-z]+")}")
+    console(f"replace = {replace("hello world", "world", "prove")}")

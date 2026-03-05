@@ -91,6 +91,7 @@ from prove.types import (
     Type,
     TypeVariable,
     VariantInfo,
+    has_own_modifier,
     is_json_serializable,
     numeric_widen,
     resolve_type_vars,
@@ -193,6 +194,10 @@ class Checker:
         self._local_modules = local_modules
         # Lookup tables per type name for TypeName: resolution
         self._lookup_tables: dict[str, LookupTypeDef] = {}
+        # Ownership tracking: variables that have been moved (passed to Own parameters)
+        self._moved_vars: set[str] = set()
+        # Track scope depth for ownership - reset on function entry
+        self._ownership_scope_stack: list[set[str]] = []
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -762,6 +767,10 @@ class Checker:
         self._current_function = fd
         self._is_recursive = False
         self.symbols.push_scope(fd.name)
+        # Reset ownership tracking for this function
+        self._moved_vars.clear()
+        self._ownership_scope_stack.clear()
+        self._ownership_scope_stack.append(set())
 
         # Register parameters
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
@@ -1489,6 +1498,8 @@ class Checker:
             self.diagnostics.append(diag)
             return ERROR_TY
         sym.used = True
+        # Check for use-after-move error
+        self._check_moved_var(expr.name, expr.span)
         return sym.resolved_type
 
     def _infer_type_identifier(self, expr: TypeIdentifierExpr) -> Type:
@@ -1655,6 +1666,9 @@ class Checker:
                         f"got '{type_name(actual)}'",
                         expr.span,
                     )
+
+            # Ownership tracking: mark variables as moved if passed to Own parameters
+            self._track_moved_args(expr.args, sig.param_types)
 
             # Verb-gated serialization: creates/validates value(V)
             # requires the argument to be json-serializable.
@@ -2273,6 +2287,24 @@ class Checker:
             return PrimitiveType(type_expr.name, mods)
 
         return ERROR_TY
+
+    # ── Ownership tracking ──────────────────────────────────────
+
+    def _track_moved_args(self, args: list[Expr], param_types: list[Type]) -> None:
+        """Mark arguments as moved if passed to parameters with Own modifier."""
+        for arg, param_ty in zip(args, param_types):
+            if has_own_modifier(param_ty):
+                if isinstance(arg, IdentifierExpr):
+                    self._moved_vars.add(arg.name)
+
+    def _check_moved_var(self, name: str, span: Span) -> None:
+        """Check if a variable has been moved and report error if so."""
+        if name in self._moved_vars:
+            self._error(
+                "E340",
+                f"use of moved value '{name}'",
+                span,
+            )
 
     # ── Unused checks ───────────────────────────────────────────
 
