@@ -129,8 +129,8 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
     ("list", "transforms", "slice"): "prove_list_ops_slice",
     ("list", "transforms", "reverse"): "prove_list_ops_reverse",
     ("list", "creates", "range"): "prove_list_ops_range",
-    # Convert (non-overloaded)
-    ("convert", "reads", "code"): "prove_convert_code",
+    # Types (non-overloaded)
+    ("types", "reads", "code"): "prove_convert_code",
     # Math (non-overloaded, Float-only functions)
     ("math", "reads", "sqrt"): "prove_math_sqrt",
     ("math", "reads", "pow"): "prove_math_pow",
@@ -186,15 +186,15 @@ _BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {
     ("list", "reads", "index", "List<String>"): "prove_list_ops_index_str",
     ("list", "transforms", "sort", "List<Integer>"): "prove_list_ops_sort_int",
     ("list", "transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
-    # Convert: overloaded functions
-    ("convert", "creates", "integer", "String"): "prove_convert_integer_str",
-    ("convert", "creates", "integer", "Float"): "prove_convert_integer_float",
-    ("convert", "creates", "float", "String"): "prove_convert_float_str",
-    ("convert", "creates", "float", "Integer"): "prove_convert_float_int",
-    ("convert", "reads", "string", "Integer"): "prove_convert_string_int",
-    ("convert", "reads", "string", "Float"): "prove_convert_string_float",
-    ("convert", "reads", "string", "Boolean"): "prove_convert_string_bool",
-    ("convert", "creates", "character", "Integer"): "prove_convert_character",
+    # Types: overloaded functions
+    ("types", "creates", "integer", "String"): "prove_convert_integer_str",
+    ("types", "creates", "integer", "Float"): "prove_convert_integer_float",
+    ("types", "creates", "float", "String"): "prove_convert_float_str",
+    ("types", "creates", "float", "Integer"): "prove_convert_float_int",
+    ("types", "reads", "string", "Integer"): "prove_convert_string_int",
+    ("types", "reads", "string", "Float"): "prove_convert_string_float",
+    ("types", "reads", "string", "Boolean"): "prove_convert_string_bool",
+    ("types", "creates", "character", "Integer"): "prove_convert_character",
     # Math: Integer vs Float overloads
     ("math", "reads", "abs", "Integer"): "prove_math_abs_int",
     ("math", "reads", "abs", "Float"): "prove_math_abs_float",
@@ -232,12 +232,12 @@ _STDLIB_MODULES: dict[str, str] = {
     "table": "table.prv",
     "parse": "parse.prv",
     "math": "math.prv",
-    "convert": "convert.prv",
     "list": "list.prv",
     "format": "format.prv",
     "path": "path.prv",
     "error": "error.prv",
     "pattern": "pattern.prv",
+    "types": "types.prv",
 }
 
 # Cache loaded signatures
@@ -398,6 +398,8 @@ class ImportSuggestion:
     verb: str | None  # "outputs", "transforms", etc.
     name: str  # "println", "decode", etc.
     signature: str = ""  # "(path: String) String!" display string
+    docstring: str = ""  # doc comment from function definition
+    type_def: str = ""  # for types: multiline type definition
 
 
 # Canonical module keys → display names used in `with <Name> use ...`
@@ -409,12 +411,12 @@ _MODULE_DISPLAY_NAMES: dict[str, str] = {
     "table": "Table",
     "parse": "Parse",
     "math": "Math",
-    "convert": "Convert",
     "list": "List",
     "format": "Format",
     "path": "Path",
     "error": "Error",
     "pattern": "Pattern",
+    "types": "Types",
 }
 
 # Alias keys that should be skipped when building the index
@@ -472,6 +474,79 @@ def _parse_stdlib_module(module_name: str) -> Module | None:
         return None
 
 
+def _format_type_def(td) -> str:
+    """Format a type definition as a multiline string."""
+    from prove import ast_nodes
+
+    RecordTypeDef = getattr(ast_nodes, "RecordTypeDef", None)
+    AlgebraicTypeDef = getattr(ast_nodes, "AlgebraicTypeDef", None)
+    LookupTypeDef = getattr(ast_nodes, "LookupTypeDef", None)
+
+    lines = [f"types {td.name}"]
+    if td.type_params:
+        lines[0] += f"<{', '.join(td.type_params)}>"
+
+    # Handle RecordTypeDef (type X is field Type ...)
+    if RecordTypeDef and isinstance(td.body, RecordTypeDef):
+        lines[0] += " is"
+        for field in td.body.fields:
+            field_type = _type_expr_to_str(field.type_expr)
+            lines.append(f"  {field.name} {field_type}")
+    # Handle AlgebraicTypeDef (type X is A | B | C)
+    elif AlgebraicTypeDef and isinstance(td.body, AlgebraicTypeDef):
+        lines[0] += " is"
+        for variant in td.body.variants:
+            if hasattr(variant, "fields") and variant.fields:
+                field_str = ", ".join(
+                    f"{f.name} {_type_expr_to_str(f.type_expr)}" for f in variant.fields
+                )
+                lines.append(f"  {variant.name}({field_str})")
+            else:
+                lines.append(f"  {variant.name}")
+    # Handle LookupTypeDef (type X is Y at Z)
+    elif LookupTypeDef and isinstance(td.body, LookupTypeDef):
+        lines[0] += (
+            f" is {td.body.value_type.name} at {td.body.key_type.name if hasattr(td.body, 'key_type') else '??'}"
+        )
+        for entry in getattr(td.body, "entries", []):
+            lines.append(f"  {entry.variant}")
+    # Handle BinaryDef (simple alias type)
+    elif hasattr(td.body, "span"):
+        # BinaryDef or RefinementTypeDef - just show the type name
+        pass
+    else:
+        # Unknown body type - just show name
+        pass
+
+    return "\n".join(lines)
+
+
+def _type_expr_to_str(te) -> str:
+    """Convert a TypeExpr to string representation."""
+    from prove import ast_nodes
+
+    PrimitiveType = getattr(ast_nodes, "PrimitiveType", None)
+    TypeParam = getattr(ast_nodes, "TypeParam", None)
+    TypeApply = getattr(ast_nodes, "TypeApply", None)
+
+    if PrimitiveType and isinstance(te, PrimitiveType):
+        return te.name
+    elif TypeParam and isinstance(te, TypeParam):
+        return te.name
+    elif TypeApply and isinstance(te, TypeApply):
+        return te.name
+    elif hasattr(te, "inner") and hasattr(te, "ok"):
+        # Result type
+        return f"Result<{_type_expr_to_str(te.ok)}, {_type_expr_to_str(te.err)}>"
+    elif hasattr(te, "inner"):
+        # Option, List, or Mutable
+        inner = _type_expr_to_str(te.inner)
+        if hasattr(te, "mutable"):
+            return f"{inner}:Mutable"
+        return f"Option<{inner}>" if not hasattr(te, "entries") else f"List<{inner}>"
+    return str(te)
+
+
 def build_import_index() -> dict[str, list[ImportSuggestion]]:
     """Return a reverse index: name → list of ImportSuggestion.
 
@@ -510,16 +585,28 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                     verb=decl.verb,
                     name=decl.name,
                     signature=_function_signature_display(decl),
+                    docstring=decl.doc_comment or "",
                 )
                 index.setdefault(decl.name, []).append(suggestion)
 
         for td in all_types:
-            # Index the type name itself
+            # Index the type name itself with the type definition
+            type_def = _format_type_def(td)
             index.setdefault(td.name, []).append(
-                ImportSuggestion(module=display, verb="types", name=td.name),
+                ImportSuggestion(
+                    module=display,
+                    verb="types",
+                    name=td.name,
+                    type_def=type_def,
+                ),
             )
             # Index variant constructors for algebraic types
-            if isinstance(td.body, AlgebraicTypeDef):
+            AlgebraicTypeDef = getattr(
+                __import__("prove.ast_nodes", fromlist=["AlgebraicTypeDef"]),
+                "AlgebraicTypeDef",
+                None,
+            )
+            if AlgebraicTypeDef and isinstance(td.body, AlgebraicTypeDef):
                 for variant in td.body.variants:
                     index.setdefault(variant.name, []).append(
                         ImportSuggestion(

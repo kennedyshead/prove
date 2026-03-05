@@ -53,8 +53,12 @@ _KEYWORD_COMPLETIONS = sorted(KEYWORDS.keys())
 
 # Built-in function names
 _BUILTINS = [
-    "len", "map", "filter", "reduce",
-    "to_string", "clamp",
+    "len",
+    "map",
+    "filter",
+    "reduce",
+    "to_string",
+    "clamp",
 ]
 
 
@@ -73,9 +77,8 @@ def span_to_range(span: object) -> lsp.Range:
 def _types_display(sig: FunctionSignature) -> str:
     """Format a function signature for display."""
     from prove.types import type_name
-    params = ", ".join(
-        f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
-    )
+
+    params = ", ".join(f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types))
     ret = type_name(sig.return_type)
     verb = f"{sig.verb} " if sig.verb else ""
     fail = "!" if sig.can_fail else ""
@@ -85,9 +88,8 @@ def _types_display(sig: FunctionSignature) -> str:
 def _sig_params_display(sig: FunctionSignature) -> str:
     """Format just the parameter list and return type: '(a: Integer, b: Integer) Integer'."""
     from prove.types import type_name
-    params = ", ".join(
-        f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
-    )
+
+    params = ", ".join(f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types))
     ret = type_name(sig.return_type)
     fail = "!" if sig.can_fail else ""
     return f"({params}) {ret}{fail}"
@@ -113,7 +115,8 @@ class DocumentState:
 # ── Server ────────────────────────────────────────────────────────
 
 server = LanguageServer(
-    "prove-lsp", "0.1.0",
+    "prove-lsp",
+    "0.1.0",
     text_document_sync_kind=lsp.TextDocumentSyncKind.Full,
 )
 _state: dict[str, DocumentState] = {}
@@ -132,8 +135,11 @@ def _compile_diag(d: object) -> lsp.Diagnostic:
     if doc_url:
         code_desc = lsp.CodeDescription(href=doc_url)
     return lsp.Diagnostic(
-        range=span_range, severity=sev, source="prove",
-        code=code, message=f"[{code}] {msg}",
+        range=span_range,
+        severity=sev,
+        source="prove",
+        code=code,
+        message=f"[{code}] {msg}",
         code_description=code_desc,
     )
 
@@ -191,7 +197,9 @@ def _build_local_import_index(
         for sig in info.functions:
             index.setdefault(sig.name, []).append(
                 ImportSuggestion(
-                    module=module_name, verb=sig.verb, name=sig.name,
+                    module=module_name,
+                    verb=sig.verb,
+                    name=sig.name,
                     signature=_sig_params_display(sig),
                 ),
             )
@@ -215,11 +223,14 @@ def _analyze(uri: str, source: str) -> DocumentState:
         _state[uri] = ds
         return ds
     except Exception as e:
-        diags.append(lsp.Diagnostic(
-            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
-            severity=lsp.DiagnosticSeverity.Error, source="prove",
-            message=f"[internal] lexer error: {e}",
-        ))
+        diags.append(
+            lsp.Diagnostic(
+                range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+                severity=lsp.DiagnosticSeverity.Error,
+                source="prove",
+                message=f"[internal] lexer error: {e}",
+            )
+        )
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
@@ -234,11 +245,14 @@ def _analyze(uri: str, source: str) -> DocumentState:
         _state[uri] = ds
         return ds
     except Exception as e:
-        diags.append(lsp.Diagnostic(
-            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
-            severity=lsp.DiagnosticSeverity.Error, source="prove",
-            message=f"[internal] parser error: {e}",
-        ))
+        diags.append(
+            lsp.Diagnostic(
+                range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+                severity=lsp.DiagnosticSeverity.Error,
+                source="prove",
+                message=f"[internal] parser error: {e}",
+            )
+        )
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
@@ -252,11 +266,14 @@ def _analyze(uri: str, source: str) -> DocumentState:
         ds.local_import_index = _build_local_import_index(local_modules)
         diags.extend(_compile_diag(d) for d in checker.diagnostics)
     except Exception as e:
-        diags.append(lsp.Diagnostic(
-            range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
-            severity=lsp.DiagnosticSeverity.Error, source="prove",
-            message=f"[internal] checker error: {e}",
-        ))
+        diags.append(
+            lsp.Diagnostic(
+                range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
+                severity=lsp.DiagnosticSeverity.Error,
+                source="prove",
+                message=f"[internal] checker error: {e}",
+            )
+        )
 
     ds.diagnostics = diags
     _state[uri] = ds
@@ -297,10 +314,12 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     uri = params.text_document.uri
     source = params.text_document.text
     ds = _analyze(uri, source)
-    server.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(
-        uri=uri,
-        diagnostics=ds.diagnostics,
-    ))
+    server.text_document_publish_diagnostics(
+        lsp.PublishDiagnosticsParams(
+            uri=uri,
+            diagnostics=ds.diagnostics,
+        )
+    )
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CHANGE)
@@ -309,10 +328,12 @@ def did_change(params: lsp.DidChangeTextDocumentParams) -> None:
     # Full sync — take last content change
     source = params.content_changes[-1].text if params.content_changes else ""
     ds = _analyze(uri, source)
-    server.text_document_publish_diagnostics(lsp.PublishDiagnosticsParams(
-        uri=uri,
-        diagnostics=ds.diagnostics,
-    ))
+    server.text_document_publish_diagnostics(
+        lsp.PublishDiagnosticsParams(
+            uri=uri,
+            diagnostics=ds.diagnostics,
+        )
+    )
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
@@ -335,33 +356,41 @@ def hover(params: lsp.HoverParams) -> lsp.Hover | None:
     sym = ds.symbols.lookup(word)
     if sym is not None:
         from prove.types import type_name
+
         kind = sym.kind.name.lower()
         ty = type_name(sym.resolved_type)
         verb_prefix = f"{sym.verb} " if sym.verb else ""
         content = f"**{kind}** `{verb_prefix}{sym.name}` : `{ty}`"
-        return lsp.Hover(contents=lsp.MarkupContent(
-            kind=lsp.MarkupKind.Markdown,
-            value=content,
-        ))
+        return lsp.Hover(
+            contents=lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=content,
+            )
+        )
 
     # Try function lookup
     sig = ds.symbols.resolve_function_any(word)
     if sig is not None:
         content = f"**function** `{_types_display(sig)}`"
-        return lsp.Hover(contents=lsp.MarkupContent(
-            kind=lsp.MarkupKind.Markdown,
-            value=content,
-        ))
+        return lsp.Hover(
+            contents=lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=content,
+            )
+        )
 
     # Try type lookup
     resolved = ds.symbols.resolve_type(word)
     if resolved is not None:
         from prove.types import type_name
+
         content = f"**type** `{word}` = `{type_name(resolved)}`"
-        return lsp.Hover(contents=lsp.MarkupContent(
-            kind=lsp.MarkupKind.Markdown,
-            value=content,
-        ))
+        return lsp.Hover(
+            contents=lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=content,
+            )
+        )
 
     return None
 
@@ -377,10 +406,12 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
 
     # Keywords
     for kw in _KEYWORD_COMPLETIONS:
-        items.append(lsp.CompletionItem(
-            label=kw,
-            kind=lsp.CompletionItemKind.Keyword,
-        ))
+        items.append(
+            lsp.CompletionItem(
+                label=kw,
+                kind=lsp.CompletionItemKind.Keyword,
+            )
+        )
 
     # Builtins (runtime intrinsics — C-backed, not .prv)
     _BUILTIN_SIGS: dict[str, str] = {
@@ -392,30 +423,37 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         "clamp": "(value: Integer, low: Integer, high: Integer) Integer",
     }
     for name in _BUILTINS:
-        items.append(lsp.CompletionItem(
-            label=name,
-            kind=lsp.CompletionItemKind.Function,
-            detail=_BUILTIN_SIGS.get(name, "builtin"),
-            label_details=lsp.CompletionItemLabelDetails(
-                description="builtin",
-            ),
-        ))
+        items.append(
+            lsp.CompletionItem(
+                label=name,
+                kind=lsp.CompletionItemKind.Function,
+                detail=_BUILTIN_SIGS.get(name, "builtin"),
+                label_details=lsp.CompletionItemLabelDetails(
+                    description="builtin",
+                ),
+            )
+        )
 
     # Built-in types (always available)
     from prove.types import BUILTINS as _TYPE_BUILTINS
+
     for type_name in _TYPE_BUILTINS:
-        items.append(lsp.CompletionItem(
-            label=type_name,
-            kind=lsp.CompletionItemKind.Class,
-            detail="type",
-        ))
+        items.append(
+            lsp.CompletionItem(
+                label=type_name,
+                kind=lsp.CompletionItemKind.Class,
+                detail="type",
+            )
+        )
     # Generic types
     for type_name in ("List", "Result", "Option"):
-        items.append(lsp.CompletionItem(
-            label=type_name,
-            kind=lsp.CompletionItemKind.Class,
-            detail="type",
-        ))
+        items.append(
+            lsp.CompletionItem(
+                label=type_name,
+                kind=lsp.CompletionItemKind.Class,
+                detail="type",
+            )
+        )
 
     # Stdlib + local module functions and types — one item per verb variant
     index = _merged_import_index(ds)
@@ -424,41 +462,74 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             is_type = s.verb == "types"
             # Compute auto-import edit if we have document state
             additional_edits: list[lsp.TextEdit] | None = None
+            already_imported = False
             if ds is not None:
                 edit = _build_import_edit(ds, s)
                 if edit is not None:
                     additional_edits = [edit]
-            items.append(lsp.CompletionItem(
-                label=name,
-                kind=(
-                    lsp.CompletionItemKind.Struct if is_type
-                    else lsp.CompletionItemKind.Function
-                ),
-                detail=s.signature if s.signature else None,
-                label_details=lsp.CompletionItemLabelDetails(
-                    detail=f" {s.verb}" if s.verb and s.verb != "types" else None,
-                    description=s.module,
-                ),
-                filter_text=name,
-                sort_text=f"{name}_{s.verb}" if s.verb else name,
-                additional_text_edits=additional_edits,
-            ))
+                elif ds.module is not None:
+                    # Already imported - mark it but don't skip
+                    already_imported = True
+            # Label shows module + verb + name (e.g., "InputOutput outputs console")
+            label = f"{s.module} {s.verb or 'function'} {name}"
+            # Detail: "Auto-import" for importable, verb for already imported
+            detail = "Auto-import" if not already_imported else (s.verb or "")
+            # Documentation: for types use type_def, for functions use signature
+            if is_type and s.type_def:
+                doc_value = f"```prove\n{s.type_def}\n```"
+                if s.docstring:
+                    doc_value += f"\n---\n{s.docstring}"
+            else:
+                sig_line = f"{name}{s.signature}" if s.signature else f"{name}"
+                if s.docstring:
+                    doc_value = f"```prove\n{sig_line}\n```\n---\n{s.docstring}"
+                else:
+                    doc_value = f"```prove\n{sig_line}\n```"
+            documentation = lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=doc_value,
+            )
+            items.append(
+                lsp.CompletionItem(
+                    label=label,
+                    kind=(
+                        lsp.CompletionItemKind.Struct
+                        if is_type
+                        else lsp.CompletionItemKind.Function
+                    ),
+                    detail=detail,
+                    documentation=documentation,
+                    insert_text=name,
+                    insert_text_format=lsp.InsertTextFormat.PlainText,
+                    label_details=lsp.CompletionItemLabelDetails(
+                        detail=f" {s.verb}" if s.verb and s.verb != "types" else None,
+                        description=s.module,
+                    ),
+                    filter_text=name,
+                    sort_text=f"{name}_{s.verb}" if s.verb else name,
+                    additional_text_edits=additional_edits,
+                )
+            )
 
     # Symbol table completions (when file parses successfully)
     if ds is not None and ds.symbols is not None:
         # Collect function names so we skip them in all_known_names
         # (they're handled more thoroughly by the all_functions loop below)
-        func_names = {
-            fname for (_verb, fname) in ds.symbols.all_functions()
-        }
+        func_names = {fname for (_verb, fname) in ds.symbols.all_functions()}
 
         # All known names from symbol table (excluding function names)
+        # Skip if the same name exists in stdlib (to avoid duplicates with import suggestions)
+        stdlib_names = set(index.keys()) if index else set()
         for name in ds.symbols.all_known_names():
             if name in func_names:
                 continue
             sym = ds.symbols.lookup(name)
+            # Skip local types that also exist in stdlib (stdlib version wins)
+            if sym is not None and sym.kind == SymbolKind.TYPE and name in stdlib_names:
+                continue
             if sym is not None:
                 from prove.types import type_name as _tn
+
                 kind_map = {
                     SymbolKind.FUNCTION: lsp.CompletionItemKind.Function,
                     SymbolKind.TYPE: lsp.CompletionItemKind.Class,
@@ -467,30 +538,55 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     SymbolKind.PARAMETER: lsp.CompletionItemKind.Variable,
                 }
                 verb_prefix = f"{sym.verb} " if sym.verb else ""
-                items.append(lsp.CompletionItem(
-                    label=name,
-                    kind=kind_map.get(sym.kind, lsp.CompletionItemKind.Text),
-                    detail=f"{verb_prefix}{_tn(sym.resolved_type)}",
-                ))
+                items.append(
+                    lsp.CompletionItem(
+                        label=name,
+                        kind=kind_map.get(sym.kind, lsp.CompletionItemKind.Text),
+                        detail=f"{verb_prefix}{_tn(sym.resolved_type)}",
+                    )
+                )
             else:
-                items.append(lsp.CompletionItem(
-                    label=name,
-                    kind=lsp.CompletionItemKind.Text,
-                ))
+                items.append(
+                    lsp.CompletionItem(
+                        label=name,
+                        kind=lsp.CompletionItemKind.Text,
+                    )
+                )
 
-        # Function signatures (detail only, no insert_text mangling)
+        # Function signatures (skip imported ones - shown in stdlib section)
         for (_verb, fname), sigs in ds.symbols.all_functions().items():
             if sigs:
                 sig = sigs[0]
-                items.append(lsp.CompletionItem(
-                    label=fname,
-                    kind=lsp.CompletionItemKind.Function,
-                    detail=_sig_params_display(sig),
-                    label_details=lsp.CompletionItemLabelDetails(
-                        detail=f" {sig.verb}" if sig.verb else None,
-                    ),
-                    sort_text=f"{fname}_{sig.verb}" if sig.verb else fname,
-                ))
+                # Skip functions from imported modules (they're shown in stdlib section)
+                if hasattr(sig, "module") and sig.module is not None:
+                    continue
+                # Label: "verb name" (e.g., "transforms add")
+                label = f"{sig.verb or 'function'} {fname}"
+                # Detail: "verb" (e.g., "transforms")
+                detail = sig.verb or ""
+                # Documentation: name + signature (no verb)
+                sig_line = f"{fname}{_sig_params_display(sig)}"
+                if sig.doc_comment:
+                    doc_value = f"```prove\n{sig_line}\n```\n---\n{sig.doc_comment}"
+                else:
+                    doc_value = f"```prove\n{sig_line}\n```"
+                documentation = lsp.MarkupContent(
+                    kind=lsp.MarkupKind.Markdown,
+                    value=doc_value,
+                )
+                items.append(
+                    lsp.CompletionItem(
+                        label=label,
+                        kind=lsp.CompletionItemKind.Function,
+                        detail=detail,
+                        documentation=documentation,
+                        insert_text_format=lsp.InsertTextFormat.PlainText,
+                        label_details=lsp.CompletionItemLabelDetails(
+                            detail=f" {sig.verb}" if sig.verb else None,
+                        ),
+                        sort_text=f"{fname}_{sig.verb}" if sig.verb else fname,
+                    )
+                )
 
     # Deduplicate by (label, sort_text) — verb variants are distinct.
     # Later items (symbol table) override earlier ones (stdlib index)
@@ -505,7 +601,8 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             seen[key] = item
 
     return lsp.CompletionList(
-        is_incomplete=False, items=list(seen.values()),
+        is_incomplete=False,
+        items=list(seen.values()),
     )
 
 
@@ -592,19 +689,23 @@ def _decl_to_symbol(decl: object) -> lsp.DocumentSymbol | None:
     if isinstance(decl, ModuleDecl):
         children: list[lsp.DocumentSymbol] = []
         for td in decl.types:
-            children.append(lsp.DocumentSymbol(
-                name=td.name,
-                kind=lsp.SymbolKind.Class,
-                range=span_to_range(td.span),
-                selection_range=span_to_range(td.span),
-            ))
+            children.append(
+                lsp.DocumentSymbol(
+                    name=td.name,
+                    kind=lsp.SymbolKind.Class,
+                    range=span_to_range(td.span),
+                    selection_range=span_to_range(td.span),
+                )
+            )
         for cd in decl.constants:
-            children.append(lsp.DocumentSymbol(
-                name=cd.name,
-                kind=lsp.SymbolKind.Constant,
-                range=span_to_range(cd.span),
-                selection_range=span_to_range(cd.span),
-            ))
+            children.append(
+                lsp.DocumentSymbol(
+                    name=cd.name,
+                    kind=lsp.SymbolKind.Constant,
+                    range=span_to_range(cd.span),
+                    selection_range=span_to_range(cd.span),
+                )
+            )
         for sub in decl.body:
             child = _decl_to_symbol(sub)
             if child is not None:
@@ -706,13 +807,15 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     end_line = len(lines)
     end_char = len(lines[-1]) if lines else 0
 
-    return [lsp.TextEdit(
-        range=lsp.Range(
-            start=lsp.Position(0, 0),
-            end=lsp.Position(end_line, end_char),
-        ),
-        new_text=formatted,
-    )]
+    return [
+        lsp.TextEdit(
+            range=lsp.Range(
+                start=lsp.Position(0, 0),
+                end=lsp.Position(end_line, end_char),
+            ),
+            new_text=formatted,
+        )
+    ]
 
 
 # ── Auto-import code actions ─────────────────────────────────────
@@ -734,8 +837,14 @@ def _extract_undefined_name(message: str) -> str | None:
 
 
 _IMPORT_VERBS = {
-    "transforms", "validates", "inputs", "outputs",
-    "reads", "creates", "matches", "types",
+    "transforms",
+    "validates",
+    "inputs",
+    "outputs",
+    "reads",
+    "creates",
+    "matches",
+    "types",
 }
 
 
@@ -751,7 +860,8 @@ def _merged_import_index(
 
 
 def _build_import_edit_text(
-    source: str, suggestion: ImportSuggestion,
+    source: str,
+    suggestion: ImportSuggestion,
 ) -> lsp.TextEdit | None:
     """Text-based fallback for auto-import when the AST is not available.
 
@@ -793,9 +903,7 @@ def _build_import_edit_text(
         # e.g. "  InputOutput outputs console"
         if line.startswith("  ") and stripped:
             parts = stripped.split()
-            if (len(parts) >= 3
-                    and parts[0][0].isupper()
-                    and parts[1] in _IMPORT_VERBS):
+            if len(parts) >= 3 and parts[0][0].isupper() and parts[1] in _IMPORT_VERBS:
                 last_import_line = i
                 continue
 
@@ -820,7 +928,8 @@ def _build_import_edit_text(
 
 
 def _build_import_edit(
-    ds: DocumentState, suggestion: ImportSuggestion,
+    ds: DocumentState,
+    suggestion: ImportSuggestion,
 ) -> lsp.TextEdit | None:
     """Compute TextEdit to insert or extend an import inside a module block.
 
@@ -860,10 +969,15 @@ def _build_import_edit(
         if imp.module != suggestion.module:
             continue
 
-        # Same module — check if already imported.
+        # Same module — check if this specific verb+name is already imported.
         for item in imp.items:
             if item.name == suggestion.name:
-                return None
+                # If imported item has no verb, it matches any verb
+                # If suggestion has no verb, it matches any imported verb
+                if item.verb is None or suggestion.verb is None:
+                    return None
+                if item.verb == suggestion.verb:
+                    return None
 
         # Extend: rebuild the import line with the new name.
         new_items = list(imp.items) + [
@@ -927,13 +1041,15 @@ def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
                 continue
             verb_part = f" ({suggestion.verb})" if suggestion.verb else ""
             title = f"Import {suggestion.name} from {suggestion.module}{verb_part}"
-            actions.append(lsp.CodeAction(
-                title=title,
-                kind=lsp.CodeActionKind.QuickFix,
-                diagnostics=[diag],
-                is_preferred=len(suggestions) == 1,
-                edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
-            ))
+            actions.append(
+                lsp.CodeAction(
+                    title=title,
+                    kind=lsp.CodeActionKind.QuickFix,
+                    diagnostics=[diag],
+                    is_preferred=len(suggestions) == 1,
+                    edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
+                )
+            )
 
     return actions if actions else None
 

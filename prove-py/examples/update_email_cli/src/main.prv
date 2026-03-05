@@ -1,11 +1,8 @@
 module Example
   narrative: """An example of email update"""
   InputOutput inputs console file, outputs console
-  Parse creates json value, types Value, reads json, validates object
-  InputOutput inputs process
-  List reads first
-  Parse reads object, validates object
-  Table types Table
+  Parse creates json value, types Value, reads json object, validates object, json
+  Types validates string, integer, creates integer
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
@@ -23,6 +20,7 @@ from
     user_input as Option<Email> = console()
     user_input
 
+/// test
 transforms user(json_data Result<Value, String>) User
   requires valid object(json_data)
 from
@@ -30,14 +28,22 @@ from
     data as Table<Value> = object(json_data)
     User(data.id, data.name, data.email)
 
+/// test2
 matches ensure_user(raw String) User
+  ensures valid json(json_data)
+  requires valid string(raw)
+  explain
+      if raw argument is more than an empty string
+      we parse the json string
+      and return the user
+      if the string is an empty string we return a User
 from
     Some(raw) =>
         json_data as Result<Value, String> = json(raw)
         user(json_data)
     _ => User()
 
-inputs user(user_id Integer) User!
+inputs user() User!
 from
     raw as String = file(USER_FILE)!
     ensure_user(raw)
@@ -67,29 +73,15 @@ outputs save(json_data String)!
 from
     file(USER_FILE, json_data)!
 
-outputs update_email(id Option<Integer>) User:[Mutable]!
-  ensures valid user(user)
-  requires valid id(id)
-  explain
-      we get an email address
-      we fetch the user
-      then we validate the email format
-      we set the email to user
-      save and return the user
+main()!
 from
     // this is inputs email that reads from stdin, the validation of email is done through the type boundries
     email as Option<Email> = email()
     // this is inputs user that reads from user.json
-    user as User:[Mutable] = user(id)!
+    user as User:[Mutable] = user()!
     // Set the new email on the mutable user object
     set_email(user, email)
     // save user.json
     save(dump_user(user))
     user
-
-main()
-from
-    // get the first argument
-    id as Option<Integer> = first(process())
-    user as User:[Mutable] = update_email(id)
     console(f"Saved user email {user.email}")

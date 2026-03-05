@@ -5,26 +5,34 @@ module Table
 
   type Table<V> is binary
 
+/// Create a new empty table
 creates new() Table<V>
 binary
 
+/// Check if a key exists in a table
 validates has(key String, table Table<V>)
 binary
 
+/// Add a key-value pair to a table (returns new table)
 transforms add(key String, value V, table Table<V>) Table<V>
 binary
 
+/// Get a value by key
 reads get(key String, table Table<V>) Option<V>
 binary
 
+/// Remove a key from a table (returns new table)
 transforms remove(key String, table Table<V>) Table<V>
 binary
 
+/// Get all keys in a table
 reads keys(table Table<V>) List<String>
 binary
 
+/// Get all values in a table
 reads values(table Table<V>) List<V>
 binary
 
+/// Get the number of entries in a table
 reads length(table Table<V>) Integer
 binary

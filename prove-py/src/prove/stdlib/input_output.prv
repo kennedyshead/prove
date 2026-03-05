@@ -5,44 +5,58 @@ module InputOutput
 
   type DirEntry is binary
 
+/// Print text to the console
 outputs console(text String)
 binary
 
+/// Read a line from the console
 inputs console() String
 binary
 
+/// Validate console input
 validates console()
 binary
 
+/// Read contents from a file
 inputs file(path String) Result<String, Error>!
 binary
 
+/// Write content to a file
 outputs file(path String, content String) Result<Unit, Error>!
 binary
 
+/// Validate that a file exists and is readable
 validates file(path String)
 binary
 
+/// Execute a system command
 inputs system(cmd String, args List<String>) ProcessResult
 binary
 
+/// Exit the process with a status code
 outputs system(code Integer)
 binary
 
+/// Validate a command exists in PATH
 validates system(cmd String)
 binary
 
+/// List entries in a directory
 inputs dir(path String) List<DirEntry>
 binary
 
+/// Create a directory
 outputs dir(path String) Result<Unit, Error>!
 binary
 
+/// Validate that a directory exists
 validates dir(path String)
 binary
 
+/// Get command line arguments
 inputs process() List<String>
 binary
 
+/// Validate a process name
 validates process(value String)
 binary

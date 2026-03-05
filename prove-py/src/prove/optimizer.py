@@ -43,7 +43,7 @@ _STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "table": {"prove_table", "prove_hash"},
     "parse": {"prove_parse"},
     "math": {"prove_math"},
-    "convert": {"prove_convert"},
+    "types": {"prove_convert"},
     "list": {"prove_list", "prove_list_ops"},
     "format": {"prove_format"},
     "path": {"prove_path"},
@@ -383,7 +383,6 @@ class Optimizer:
 
     def _inline_small_functions(self, module: Module) -> Module:
         """Inline pure single-expression functions at call sites."""
-        # Collect inline candidates
         _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
         candidates: dict[str, FunctionDef] = {}
         for decl in module.declarations:
@@ -395,6 +394,22 @@ class Optimizer:
                     and not decl.binary
                     and decl.terminates is None
                     and not self._calls_self(decl.name, decl.body)
+                    and not decl.requires
+                    and not decl.ensures
+                ):
+                    candidates[decl.name] = decl
+                # Always inline single-return validators (inputs with can_fail)
+                # Their return type already encodes the contract (Option<T>!, Result<T, E>!)
+                # But only if no explicit contracts - let those be explicit
+                elif (
+                    decl.verb == "inputs"
+                    and len(decl.body) == 1
+                    and decl.can_fail
+                    and not decl.binary
+                    and decl.terminates is None
+                    and not self._calls_self(decl.name, decl.body)
+                    and not decl.requires
+                    and not decl.ensures
                 ):
                     candidates[decl.name] = decl
             elif isinstance(decl, ModuleDecl):
@@ -407,6 +422,20 @@ class Optimizer:
                             and not inner.binary
                             and inner.terminates is None
                             and not self._calls_self(inner.name, inner.body)
+                            and not inner.requires
+                            and not inner.ensures
+                        ):
+                            candidates[inner.name] = inner
+                        # Always inline single-return validators
+                        elif (
+                            inner.verb == "inputs"
+                            and len(inner.body) == 1
+                            and inner.can_fail
+                            and not inner.binary
+                            and inner.terminates is None
+                            and not self._calls_self(inner.name, inner.body)
+                            and not inner.requires
+                            and not inner.ensures
                         ):
                             candidates[inner.name] = inner
 

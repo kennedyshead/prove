@@ -39,6 +39,7 @@ class FunctionSignature:
     span: Span
     module: str | None = None
     requires: list[Type] = field(default_factory=list)
+    doc_comment: str | None = None
 
 
 class Scope:

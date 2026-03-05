@@ -10,6 +10,7 @@ Generates small code modifications (mutants) from Prove source code:
 
 from __future__ import annotations
 
+import json
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -107,6 +108,14 @@ class Mutator:
         """Generate mutants for a function."""
         mutants: list[Mutant] = []
         body = fd.body
+
+        # Skip single-return validators - their return type already encodes the contract
+        # (Option<T>! means must be Some, Result<T, E>! means must be Ok)
+        # Also skip inputs with no parameters - nothing meaningful to mutate
+        if len(body) == 1 and fd.can_fail:
+            return mutants
+        if fd.verb == "inputs" and not fd.params:
+            return mutants
 
         for i, stmt in enumerate(body):
             if operator_mutations:
@@ -323,7 +332,7 @@ class Mutator:
         """Recursively swap operator in an expression."""
         if isinstance(expr, BinaryExpr):
             if expr.span == target.span:
-                expr.op = new_op
+                object.__setattr__(expr, "op", new_op)
             self._swap_operator_in_expr(expr.left, target, new_op)
             self._swap_operator_in_expr(expr.right, target, new_op)
 
@@ -364,7 +373,7 @@ class Mutator:
         """Recursively change constant in an expression."""
         if isinstance(expr, IntegerLit):
             if expr.span == target.span:
-                expr.value = new_value
+                object.__setattr__(expr, "value", new_value)
 
     def _copy_with_boolean_flip(
         self,
@@ -402,7 +411,7 @@ class Mutator:
         """Recursively flip boolean in an expression."""
         if isinstance(expr, BooleanLit):
             if expr.span == target.span:
-                expr.value = not expr.value
+                object.__setattr__(expr, "value", not expr.value)
 
     def _copy_with_unary_remove(
         self,
@@ -441,7 +450,7 @@ class Mutator:
         if isinstance(expr, UnaryExpr):
             if expr.span == target.span:
                 if isinstance(expr.operand, IdentifierExpr):
-                    expr.op = ""
+                    object.__setattr__(expr, "op", "")
             self._remove_negation_in_expr(expr.operand, target)
 
 
@@ -522,3 +531,36 @@ def run_mutation_tests(
         result.mutation_score = result.killed_mutants / result.total_mutants
 
     return result
+
+
+def get_survivors_path(project_dir: Path) -> Path:
+    """Get the path to the survivors file."""
+    prove_dir = project_dir / ".prove"
+    prove_dir.mkdir(exist_ok=True)
+    return prove_dir / "mutation-survivors.json"
+
+
+def save_survivors(project_dir: Path, result: MutationTestResult) -> None:
+    """Save mutation survivors to a file for future warnings."""
+    if not result.survivors:
+        return
+
+    path = get_survivors_path(project_dir)
+    data = {
+        "survivors": result.survivors,
+        "total_mutants": result.total_mutants,
+        "killed_mutants": result.killed_mutants,
+    }
+    path.write_text(json.dumps(data, indent=2))
+
+
+def load_survivors(project_dir: Path) -> list[dict]:
+    """Load saved mutation survivors."""
+    path = get_survivors_path(project_dir)
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+        return data.get("survivors", [])
+    except (json.JSONDecodeError, IOError):
+        return []

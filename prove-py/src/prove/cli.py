@@ -62,7 +62,7 @@ def _compile_project(
             continue
 
         checked += 1
-        checker = Checker(local_modules=local_modules)
+        checker = Checker(local_modules=local_modules, project_dir=project_path)
         symbols = checker.check(module)
 
         for diag in checker.diagnostics:
@@ -144,6 +144,10 @@ def build(path: str, mutate: bool, debug: bool) -> None:
                 max_mutants=50,
                 property_rounds=100,
             )
+
+            from prove.mutator import save_survivors
+
+            save_survivors(project_dir, mutation_result)
 
             if mutation_result.total_mutants == 0:
                 click.echo("no mutants generated")

@@ -6,6 +6,7 @@ Pass 2: Check each declaration body (type inference, verb enforcement, exhaustiv
 
 from __future__ import annotations
 
+from pathlib import Path
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -181,6 +182,7 @@ class Checker:
     def __init__(
         self,
         local_modules: dict[str, object] | None = None,
+        project_dir: Path | None = None,
     ) -> None:
         self.symbols = SymbolTable()
         self.diagnostics: list[Diagnostic] = []
@@ -198,6 +200,12 @@ class Checker:
         self._used_types: set[str] = set()
         # Requires-based narrowing: list of (module, args)
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
+        # Mutation survivors from previous --mutate runs
+        self._survivors: list[dict] = []
+        if project_dir:
+            from prove.mutator import load_survivors
+
+            self._survivors = load_survivors(project_dir)
         # Local (sibling) module info for cross-file imports
         self._local_modules = local_modules
         # Lookup tables per type name for TypeName: resolution
@@ -245,6 +253,11 @@ class Checker:
                     self._register_constant(cd)
                 for fb in decl.foreign_blocks:
                     self._register_foreign_block(fb)
+                for item in decl.body:
+                    if isinstance(item, FunctionDef):
+                        self._register_function(item)
+                    elif isinstance(item, MainDef):
+                        self._register_main(item)
 
         # Collect user-defined IO function names (inputs/outputs verbs)
         for decl in module.declarations:
@@ -262,6 +275,11 @@ class Checker:
                     self._check_constant(cd)
                 for td in decl.types:
                     self._check_type_def(td)
+                for item in decl.body:
+                    if isinstance(item, FunctionDef):
+                        self._check_function(item)
+                    elif isinstance(item, MainDef):
+                        self._check_main(item)
 
         # Check unused variables (W300)
         self._check_unused()
@@ -535,6 +553,7 @@ class Checker:
             can_fail=fd.can_fail,
             span=fd.span,
             requires=fd.requires,
+            doc_comment=fd.doc_comment,
         )
         self.symbols.define_function(sig)
         self.symbols.define(
@@ -926,6 +945,44 @@ class Checker:
         verifier.verify(fd)
         self.diagnostics.extend(verifier.diagnostics)
 
+        # ── Mutation testing recommendation ──
+        # Flag functions with >1 statement but no contracts
+        # Also flag transforms/matches (even with 1 statement, complex logic needs contracts)
+        # Skip inputs without arguments - nothing meaningful to mutate
+        is_inputs_no_args = fd.verb == "inputs" and not fd.params
+        body_len = len(fd.body)
+        no_contracts = not fd.requires and not fd.ensures
+        if body_len > 1 and no_contracts and not is_inputs_no_args:
+            self._info(
+                "I001",
+                f"Function '{fd.name}' has {body_len} statements but no contracts. "
+                "Consider adding requires/ensures for mutation testing.",
+                fd.span,
+            )
+        elif fd.verb in ("transforms", "matches") and no_contracts:
+            self._info(
+                "I001",
+                f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
+                "Consider adding requires/ensures for mutation testing.",
+                fd.span,
+            )
+
+        # Check if this function had surviving mutants in previous mutation testing
+        for survivor in self._survivors:
+            loc = survivor.get("location", "")
+            if loc and ":" in loc:
+                line_str = loc.split(":")[0]
+                try:
+                    if fd.span.start_line == int(line_str):
+                        self._warning(
+                            "W002",
+                            f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "
+                            "Add contracts to catch this mutation.",
+                            fd.span,
+                        )
+                except ValueError:
+                    pass
+
         self.symbols.pop_scope()
         self._current_function = None
         self._requires_narrowings = []
@@ -1018,6 +1075,24 @@ class Checker:
         """Type-check ensures/requires/know/assume/believe contracts."""
         # Type-check `ensures` — push sub-scope with `result` bound to return type
         for ens_expr in fd.ensures:
+            # Check for undefined validator in ensures
+            if isinstance(ens_expr, ValidExpr) and ens_expr.args is not None:
+                func_name = ens_expr.name
+                n_args = len(ens_expr.args)
+                sig = self.symbols.resolve_function("validates", func_name, n_args)
+                if sig is None:
+                    sig = self.symbols.resolve_function_any(func_name, arity=n_args)
+                if sig is None or sig.verb != "validates":
+                    self._error(
+                        "E311",
+                        f"undefined function '{func_name}'",
+                        ens_expr.span,
+                    )
+                else:
+                    # Mark import as used
+                    if sig.module:
+                        self._used_imports.add((sig.module, func_name))
+
             self.symbols.push_scope("ensures")
             self.symbols.define(
                 Symbol(
@@ -1038,6 +1113,23 @@ class Checker:
 
         # Type-check `requires` — params are already in scope
         for req_expr in fd.requires:
+            # Check for undefined validator in requires
+            if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
+                func_name = req_expr.name
+                n_args = len(req_expr.args)
+                sig = self.symbols.resolve_function("validates", func_name, n_args)
+                if sig is None:
+                    sig = self.symbols.resolve_function_any(func_name, arity=n_args)
+                if sig is None or sig.verb != "validates":
+                    self._error(
+                        "E311",
+                        f"undefined function '{func_name}'",
+                        req_expr.span,
+                    )
+                else:
+                    # Mark import as used
+                    if sig.module:
+                        self._used_imports.add((sig.module, func_name))
             req_type = self._infer_expr(req_expr)
             if not isinstance(req_type, ErrorType) and not types_compatible(BOOLEAN, req_type):
                 self._error(

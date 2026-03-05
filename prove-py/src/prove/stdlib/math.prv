@@ -1,44 +1,58 @@
 module Math
   narrative: """Numeric operations."""
 
+/// Absolute value of an integer
 reads abs(n Integer) Integer
 binary
 
+/// Absolute value of a float
 reads abs(x Float) Float
 binary
 
+/// Minimum of two integers
 reads min(a Integer, b Integer) Integer
 binary
 
+/// Minimum of two floats
 reads min(a Float, b Float) Float
 binary
 
+/// Maximum of two integers
 reads max(a Integer, b Integer) Integer
 binary
 
+/// Maximum of two floats
 reads max(a Float, b Float) Float
 binary
 
+/// Clamp an integer between lo and hi (inclusive)
 transforms clamp(val Integer, lo Integer, hi Integer) Integer
 binary
 
+/// Clamp a float between lo and hi (inclusive)
 transforms clamp(val Float, lo Float, hi Float) Float
 binary
 
+/// Square root of a float
 reads sqrt(x Float) Float
 binary
 
+/// Base raised to the power of exp
 reads pow(base Float, exp Float) Float
 binary
 
+/// Floor of a float (largest integer <= x)
 reads floor(x Float) Integer
 binary
 
+/// Ceiling of a float (smallest integer >= x)
 reads ceil(x Float) Integer
 binary
 
+/// Round a float to the nearest integer
 reads round(x Float) Integer
 binary
 
+/// Natural logarithm of a float
 reads log(x Float) Float
 binary

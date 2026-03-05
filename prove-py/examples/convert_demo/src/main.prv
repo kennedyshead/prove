@@ -1,7 +1,7 @@
 module Main
-  narrative: """Demonstrates Convert module operations."""
+  narrative: """Demonstrates Types module operations."""
   InputOutput outputs console
-  Convert reads string, reads code
+  Types reads string, reads code
 
 main() Result<Unit, Error>!
 from

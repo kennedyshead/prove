@@ -1,20 +1,26 @@
 module Error
   narrative: """Result and Option utilities."""
 
+/// Check if a Result is Ok
 validates ok(r Result<T, E>)
 binary
 
+/// Check if a Result is Err
 validates err(r Result<T, E>)
 binary
 
+/// Check if an Option is Some
 validates some(o Option<T>)
 binary
 
+/// Check if an Option is None
 validates none(o Option<T>)
 binary
 
+/// Unwrap an Option or return a default integer
 reads unwrap_or(o Option<Integer>, default Integer) Integer
 binary
 
+/// Unwrap an Option or return a default string
 reads unwrap_or(o Option<String>, default String) String
 binary

@@ -1,41 +1,54 @@
 module List
   narrative: """Operations on lists."""
 
+/// Get the length of a list
 reads length(items List<T>) Integer
 binary
 
+/// Get the first element of a list
 reads first(items List<T>) Option<T>
 binary
 
+/// Get the last element of a list
 reads last(items List<T>) Option<T>
 binary
 
+/// Check if a list is empty
 validates empty(items List<T>)
 binary
 
+/// Check if an integer is in a list
 validates contains(items List<Integer>, value Integer)
 binary
 
+/// Check if a string is in a list
 validates contains(items List<String>, value String)
 binary
 
+/// Find the index of an integer in a list
 reads index(items List<Integer>, value Integer) Option<Integer>
 binary
 
+/// Find the index of a string in a list
 reads index(items List<String>, value String) Option<Integer>
 binary
 
+/// Get a slice of a list from start to end (exclusive)
 transforms slice(items List<T>, start Integer, end Integer) List<T>
 binary
 
+/// Reverse a list
 transforms reverse(items List<T>) List<T>
 binary
 
+/// Sort a list of integers
 transforms sort(items List<Integer>) List<Integer>
 binary
 
+/// Sort a list of strings
 transforms sort(items List<String>) List<String>
 binary
 
+/// Create a list of integers from start to end (exclusive)
 creates range(start Integer, end Integer) List<Integer>
 binary
