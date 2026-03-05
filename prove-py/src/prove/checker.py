@@ -155,6 +155,7 @@ _BUILTIN_TYPE_NAMES = frozenset(
         "Option",
         "Result",
         "Error",
+        "Table",
     }
 )
 
@@ -953,14 +954,14 @@ class Checker:
         no_contracts = not fd.requires and not fd.ensures
         if body_len > 1 and no_contracts and not is_inputs_no_args:
             self._info(
-                "I001",
+                "I320",
                 f"Function '{fd.name}' has {body_len} statements but no contracts. "
                 "Consider adding requires/ensures for mutation testing.",
                 fd.span,
             )
-        elif fd.verb in ("transforms", "matches") and no_contracts:
+        elif body_len > 1 and fd.verb in ("transforms", "matches") and no_contracts:
             self._info(
-                "I001",
+                "I320",
                 f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
                 "Consider adding requires/ensures for mutation testing.",
                 fd.span,
@@ -974,7 +975,7 @@ class Checker:
                 try:
                     if fd.span.start_line == int(line_str):
                         self._warning(
-                            "W002",
+                            "W330",
                             f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "
                             "Add contracts to catch this mutation.",
                             fd.span,
@@ -1786,6 +1787,20 @@ class Checker:
                 if not types_compatible(expected, actual):
                     extra = self._builtin_extra_types.get((name, i))
                     if extra and any(types_compatible(e, actual) for e in extra):
+                        continue
+                    if sig.verb == "validates" and isinstance(actual, GenericInstance):
+                        if actual.base_name == "Option" and actual.args:
+                            inner = actual.args[0]
+                            if types_compatible(expected, inner):
+                                continue
+                    if (
+                        sig.module == "parse"
+                        and sig.verb in ("creates", "validates")
+                        and sig.name == "value"
+                        and isinstance(expected, (SimpleType, PrimitiveType))
+                        and expected.name == "Source"
+                        and is_json_serializable(actual)
+                    ):
                         continue
                     self._error(
                         "E331",

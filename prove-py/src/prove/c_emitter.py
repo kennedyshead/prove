@@ -723,7 +723,7 @@ class CEmitter:
         except Exception as e:
             diag = Diagnostic(
                 severity=Severity.ERROR,
-                code="E397",
+                code="E417",
                 message=f"comptime evaluation failed: {e}",
                 labels=[],
             )
@@ -1635,9 +1635,7 @@ class CEmitter:
             is_failable = (
                 getattr(self._current_func, "can_fail", False) if self._current_func else False
             )
-            if is_failable:
-                self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
-            elif self._in_main:
+            if self._in_main:
                 err_str = self._tmp()
                 self._line(f"if (prove_result_is_err({tmp})) {{")
                 self._indent += 1
@@ -1652,6 +1650,8 @@ class CEmitter:
                 self._line("return 1;")
                 self._indent -= 1
                 self._line("}")
+            elif is_failable:
+                self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
             else:
                 self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
             # Unwrap the success value

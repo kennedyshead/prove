@@ -69,7 +69,7 @@ class ComptimeInterpreter:
                 [
                     Diagnostic(
                         severity=Severity.ERROR,
-                        code="E390",
+                        code="E410",
                         message="tail recursion not supported in comptime blocks",
                         labels=[],
                     )
@@ -114,7 +114,7 @@ class ComptimeInterpreter:
                 [
                     Diagnostic(
                         severity=Severity.ERROR,
-                        code="E398",
+                        code="E418",
                         message=f"undefined variable '{expr.name}' in comptime",
                         labels=[],
                     )
@@ -126,7 +126,7 @@ class ComptimeInterpreter:
             [
                 Diagnostic(
                     severity=Severity.ERROR,
-                    code="E391",
+                    code="E411",
                     message=f"unsupported expression type in comptime: {type(expr).__name__}",
                     labels=[],
                 )
@@ -142,7 +142,7 @@ class ComptimeInterpreter:
                 [
                     Diagnostic(
                         severity=Severity.ERROR,
-                        code="E399",
+                        code="E419",
                         message="only simple function calls supported in comptime",
                         labels=[],
                     )
@@ -157,7 +157,7 @@ class ComptimeInterpreter:
                     [
                         Diagnostic(
                             severity=Severity.ERROR,
-                            code="E400",
+                            code="E420",
                             message="read() expects a single string argument",
                             labels=[],
                         )
@@ -170,7 +170,7 @@ class ComptimeInterpreter:
                     [
                         Diagnostic(
                             severity=Severity.ERROR,
-                            code="E401",
+                            code="E421",
                             message=f"file not found: {args[0]}",
                             labels=[],
                         )
@@ -182,7 +182,7 @@ class ComptimeInterpreter:
             [
                 Diagnostic(
                     severity=Severity.ERROR,
-                    code="E402",
+                    code="E422",
                     message=f"unknown function '{func_name}' in comptime "
                     f"(only 'read' is supported)",
                     labels=[],
@@ -242,7 +242,7 @@ class ComptimeInterpreter:
                 [
                     Diagnostic(
                         severity=Severity.ERROR,
-                        code="E392",
+                        code="E412",
                         message="++ operator requires both operands to be lists or strings",
                         labels=[],
                     )
@@ -252,7 +252,7 @@ class ComptimeInterpreter:
             [
                 Diagnostic(
                     severity=Severity.ERROR,
-                    code="E393",
+                    code="E413",
                     message=f"unsupported binary operator in comptime: {op}",
                     labels=[],
                 )
@@ -272,7 +272,7 @@ class ComptimeInterpreter:
             [
                 Diagnostic(
                     severity=Severity.ERROR,
-                    code="E394",
+                    code="E414",
                     message=f"unsupported unary operator in comptime: {op}",
                     labels=[],
                 )
@@ -285,7 +285,7 @@ class ComptimeInterpreter:
                 [
                     Diagnostic(
                         severity=Severity.ERROR,
-                        code="E395",
+                        code="E415",
                         message="implicit match not supported in comptime",
                         labels=[],
                     )
@@ -301,7 +301,7 @@ class ComptimeInterpreter:
             [
                 Diagnostic(
                     severity=Severity.ERROR,
-                    code="E396",
+                    code="E416",
                     message="non-exhaustive match in comptime",
                     labels=[],
                 )

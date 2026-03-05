@@ -404,14 +404,30 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
     ds = _state.get(uri)
     items: list[lsp.CompletionItem] = []
 
-    # Keywords
+    # Keywords with documentation
+    _KEYWORD_DOCS: dict[str, str] = {
+        "narrative": "Module-level documentation (required)",
+        "explain": "Implementation documentation block (documents from block steps)",
+        "domain": "Tags module's problem domain (e.g., Finance, Physics)",
+        "why_not": "Documents rejected alternatives",
+        "chosen": "Explains the selected approach",
+        "trusted": "Opts out of verification (use with rationale)",
+        "requires": "Precondition contract",
+        "ensures": "Postcondition contract",
+        "intent": "Statement-level purpose annotation",
+        "near_miss": "Boundary test inputs that almost break the code",
+    }
     for kw in _KEYWORD_COMPLETIONS:
-        items.append(
-            lsp.CompletionItem(
-                label=kw,
-                kind=lsp.CompletionItemKind.Keyword,
-            )
+        item = lsp.CompletionItem(
+            label=kw,
+            kind=lsp.CompletionItemKind.Keyword,
         )
+        if kw in _KEYWORD_DOCS:
+            item.documentation = lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=_KEYWORD_DOCS[kw],
+            )
+        items.append(item)
 
     # Builtins (runtime intrinsics — C-backed, not .prv)
     _BUILTIN_SIGS: dict[str, str] = {

@@ -513,7 +513,7 @@ class ProveFormatter:
         for decl in mod.body:
             lines.append("")
             formatted = self._format_declaration(decl)
-            lines.append(self._indent(formatted, 1))
+            lines.append(self._indent_spaces(formatted, 2))
 
         return "\n".join(lines)
 

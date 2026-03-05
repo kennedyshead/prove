@@ -31,50 +31,56 @@ import re
 import shutil
 from pathlib import Path
 
-_RUNTIME_FILES = [
-    "prove_runtime.h",
-    "prove_runtime.c",
-    "prove_arena.h",
-    "prove_arena.c",
-    "prove_region.h",
-    "prove_region.c",
-    "prove_hash.h",
-    "prove_hash.c",
-    "prove_intern.h",
-    "prove_intern.c",
-    "prove_string.h",
-    "prove_string.c",
-    "prove_list.h",
-    "prove_list.c",
-    "prove_hof.h",
-    "prove_hof.c",
-    "prove_option.h",
-    "prove_result.h",
-    "prove_character.h",
-    "prove_character.c",
-    "prove_text.h",
-    "prove_text.c",
-    "prove_table.h",
-    "prove_table.c",
-    "prove_input_output.h",
-    "prove_input_output.c",
-    "prove_parse.h",
-    "prove_parse_toml.c",
-    "prove_parse_json.c",
-    "prove_math.h",
-    "prove_math.c",
-    "prove_convert.h",
-    "prove_convert.c",
-    "prove_list_ops.h",
-    "prove_list_ops.c",
-    "prove_format.h",
-    "prove_format.c",
-    "prove_path.h",
-    "prove_path.c",
-    "prove_error.h",
-    "prove_pattern.h",
-    "prove_pattern.c",
-]
+
+def _discover_runtime_files() -> list[str]:
+    """Auto-discover prove_*.{c,h} files from the prove.runtime package."""
+    pkg = importlib.resources.files("prove.runtime")
+    files = []
+    for item in pkg.iterdir():
+        name = item.name
+        if name.startswith("prove_") and name.endswith((".c", ".h")):
+            files.append(name)
+    return sorted(files)
+
+
+_RUNTIME_FILES = _discover_runtime_files()
+
+# Core runtime files that are always included (required by the runtime itself).
+# Expanded to .h/.c pairs during stripping.
+_CORE_FILES = {
+    "prove_runtime",
+    "prove_arena",
+    "prove_region",
+    "prove_string",
+    "prove_hash",
+    "prove_intern",
+    "prove_list",
+    "prove_option",
+    "prove_result",
+    "prove_text",
+}
+
+# Mapping of stdlib module names to the C runtime libraries they require.
+# Used by RuntimeDeps (in optimizer.py) to track which runtime files to include.
+# Keys are lowercase stdlib module names.
+STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
+    "io": {"prove_input_output"},
+    "inputoutput": {"prove_input_output"},
+    "character": {"prove_character"},
+    "text": {"prove_text", "prove_string"},
+    "table": {"prove_table", "prove_hash"},
+    "parse": {"prove_parse"},
+    "math": {"prove_math"},
+    "types": {"prove_convert"},
+    "convert": {"prove_convert"},
+    "list": {"prove_list", "prove_list_ops"},
+    "format": {"prove_format"},
+    "path": {"prove_path"},
+    "error": {"prove_error"},
+    "pattern": {"prove_pattern"},
+    "result": {"prove_result"},
+    "option": {"prove_option"},
+}
 
 _RUNTIME_FUNCTIONS = {
     "prove_arena": [
@@ -222,30 +228,16 @@ def copy_runtime(
     if stdlib_libs:
         needed_libs.update(stdlib_libs)
 
-    needed_files = set()
+    needed_files: set[str] = set()
     for lib_name in needed_libs:
         for name in _RUNTIME_FILES:
             if lib_name in name:
                 needed_files.add(name)
 
-    needed_files.add("prove_runtime.h")
-    needed_files.add("prove_runtime.c")
-    needed_files.add("prove_arena.h")
-    needed_files.add("prove_arena.c")
-    needed_files.add("prove_region.h")
-    needed_files.add("prove_region.c")
-    needed_files.add("prove_string.h")
-    needed_files.add("prove_string.c")
-    needed_files.add("prove_hash.h")
-    needed_files.add("prove_hash.c")
-    needed_files.add("prove_intern.h")
-    needed_files.add("prove_intern.c")
-    needed_files.add("prove_list.h")
-    needed_files.add("prove_list.c")
-    needed_files.add("prove_option.h")
-    needed_files.add("prove_result.h")
-    needed_files.add("prove_text.h")
-    needed_files.add("prove_text.c")
+    # Always include core runtime files.
+    for base in _CORE_FILES:
+        needed_files.add(f"{base}.h")
+        needed_files.add(f"{base}.c")
 
     c_files: list[Path] = []
     pkg = importlib.resources.files("prove.runtime")

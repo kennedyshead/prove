@@ -17,14 +17,39 @@ from prove.project import scaffold
 
 if TYPE_CHECKING:
     from prove.symbols import SymbolTable
+    from prove.ast_nodes import Module
+
+
+def _collect_verification_stats(module: Module) -> dict:
+    """Collect verification statistics from a module."""
+    from prove.ast_nodes import FunctionDef, MainDef
+
+    stats = {
+        "ensures_count": 0,
+        "near_miss_count": 0,
+        "trusted_count": 0,
+    }
+
+    for decl in module.declarations:
+        if isinstance(decl, FunctionDef):
+            if decl.ensures:
+                stats["ensures_count"] += 1
+            if decl.near_misses:
+                stats["near_miss_count"] += 1
+            if decl.trusted is not None:
+                stats["trusted_count"] += 1
+        elif isinstance(decl, MainDef):
+            pass  # MainDef doesn't have ensures/near_miss/trusted
+
+    return stats
 
 
 def _compile_project(
     project_path: Path,
-) -> tuple[bool, int, int, int, int]:
+) -> tuple[bool, int, int, int, int, dict]:
     """Lex, parse, and check all .prv files under src/.
 
-    Returns (ok, checked, errors, warnings, format_issues) tuple.
+    Returns (ok, checked, errors, warnings, format_issues, stats) tuple.
     """
     from prove.formatter import ProveFormatter
 
@@ -35,7 +60,7 @@ def _compile_project(
     prv_files = sorted(src_dir.rglob("*.prv"))
     if not prv_files:
         click.echo("warning: no .prv files found", err=True)
-        return True, 0, 0, 0, 0
+        return True, 0, 0, 0, 0, {"ensures_count": 0, "near_miss_count": 0, "trusted_count": 0}
 
     # Build local module registry for cross-file imports
     from prove.module_resolver import build_module_registry
@@ -47,6 +72,7 @@ def _compile_project(
     errors = 0
     warnings = 0
     format_issues = 0
+    total_stats = {"ensures_count": 0, "near_miss_count": 0, "trusted_count": 0}
 
     for prv_file in prv_files:
         source = prv_file.read_text()
@@ -65,6 +91,10 @@ def _compile_project(
         checker = Checker(local_modules=local_modules, project_dir=project_path)
         symbols = checker.check(module)
 
+        module_stats = _collect_verification_stats(module)
+        for key in total_stats:
+            total_stats[key] += module_stats[key]
+
         for diag in checker.diagnostics:
             click.echo(renderer.render(diag), err=True)
             if diag.severity == Severity.ERROR:
@@ -79,7 +109,7 @@ def _compile_project(
             click.echo(f"format: {filename}", err=True)
             click.echo(_format_excerpt(filename, source, formatted), err=True)
 
-    return errors == 0, checked, errors, warnings, format_issues
+    return errors == 0, checked, errors, warnings, format_issues, total_stats
 
 
 @click.group()
@@ -251,6 +281,25 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
     return blocks, errors, warnings
 
 
+def _print_verification_stats(stats: dict) -> None:
+    """Print verification statistics after check."""
+    ensures = stats.get("ensures_count", 0)
+    near_miss = stats.get("near_miss_count", 0)
+    trusted = stats.get("trusted_count", 0)
+
+    if ensures == 0 and near_miss == 0 and trusted == 0:
+        return
+
+    click.echo("")
+    click.echo("Verification:")
+    if ensures > 0:
+        click.echo(f"  \u2713 {ensures} functions with ensures (property tests)")
+    if near_miss > 0:
+        click.echo(f"  \u2713 {near_miss} validators with near_miss (boundary tests)")
+    if trusted > 0:
+        click.echo(f"  \u26a0 {trusted} functions trusted")
+
+
 def _check_summary(
     name: str, files: int, errors: int, warnings: int, format_issues: int, md_blocks: int = 0
 ) -> str:
@@ -307,7 +356,7 @@ def check(path: str, md: bool, strict: bool) -> None:
         config = load_config(config_path)
         click.echo(f"checking {config.package.name}...")
         project_dir = config_path.parent
-        ok, checked, errors, warnings, format_issues = _compile_project(
+        ok, checked, errors, warnings, format_issues, stats = _compile_project(
             project_dir,
         )
 
@@ -332,6 +381,7 @@ def check(path: str, md: bool, strict: bool) -> None:
                 config.package.name, checked, errors, warnings, format_issues, md_blocks=md_blocks
             )
         )
+        _print_verification_stats(stats)
         if errors:
             raise SystemExit(1)
     except FileNotFoundError:

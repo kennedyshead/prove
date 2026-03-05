@@ -47,12 +47,7 @@ class TestHelloWorld:
 
 class TestVarDecl:
     def test_integer_var(self):
-        source = (
-            "transforms compute() Integer\n"
-            "    from\n"
-            "        x as Integer = 42\n"
-            "        x\n"
-        )
+        source = "transforms compute() Integer\n    from\n        x as Integer = 42\n        x\n"
         c_code = _emit(source)
         assert "int64_t x = 42L;" in c_code
 
@@ -72,12 +67,7 @@ class TestVarDecl:
 
 class TestBinaryExpr:
     def test_arithmetic(self):
-        source = (
-            "transforms compute() Integer\n"
-            "    from\n"
-            "        x as Integer = 1 + 2\n"
-            "        x\n"
-        )
+        source = "transforms compute() Integer\n    from\n        x as Integer = 1 + 2\n        x\n"
         c_code = _emit(source)
         assert "(1L + 2L)" in c_code
 
@@ -115,21 +105,13 @@ class TestFunctionDef:
 
 class TestStringInterp:
     def test_string_interpolation(self):
-        source = (
-            "transforms describe(x Integer) String\n"
-            "    from\n"
-            '        f"value is {x}"\n'
-        )
+        source = 'transforms describe(x Integer) String\n    from\n        f"value is {x}"\n'
         c_code = _emit(source)
         assert "prove_string_concat" in c_code
         assert "prove_string_from_int" in c_code
 
     def test_raw_string_emit(self):
-        source = (
-            "transforms pattern() String\n"
-            "    from\n"
-            '        r"^[A-Z]+$"\n'
-        )
+        source = 'transforms pattern() String\n    from\n        r"^[A-Z]+$"\n'
         c_code = _emit(source)
         assert "prove_string_from_cstr" in c_code
 
@@ -160,38 +142,22 @@ class TestRetainRelease:
 
 class TestBuiltinDispatch:
     def test_to_string_integer(self):
-        source = (
-            "transforms show(x Integer) String\n"
-            "    from\n"
-            "        to_string(x)\n"
-        )
+        source = "transforms show(x Integer) String\n    from\n        to_string(x)\n"
         c_code = _emit(source)
         assert "prove_string_from_int" in c_code
 
     def test_to_string_boolean(self):
-        source = (
-            "transforms show(x Boolean) String\n"
-            "    from\n"
-            "        to_string(x)\n"
-        )
+        source = "transforms show(x Boolean) String\n    from\n        to_string(x)\n"
         c_code = _emit(source)
         assert "prove_string_from_bool" in c_code
 
     def test_to_string_decimal(self):
-        source = (
-            "transforms show(x Decimal) String\n"
-            "    from\n"
-            "        to_string(x)\n"
-        )
+        source = "transforms show(x Decimal) String\n    from\n        to_string(x)\n"
         c_code = _emit(source)
         assert "prove_string_from_double" in c_code
 
     def test_len_list(self):
-        source = (
-            "transforms count() Integer\n"
-            "    from\n"
-            "        len([1, 2, 3])\n"
-        )
+        source = "transforms count() Integer\n    from\n        len([1, 2, 3])\n"
         c_code = _emit(source)
         assert "prove_list_len" in c_code
 
@@ -207,11 +173,7 @@ class TestBuiltinDispatch:
         assert "prove_readln" in c_code
 
     def test_clamp_emits(self):
-        source = (
-            "transforms safe(x Integer) Integer\n"
-            "    from\n"
-            "        clamp(x, 0, 100)\n"
-        )
+        source = "transforms safe(x Integer) Integer\n    from\n        clamp(x, 0, 100)\n"
         c_code = _emit(source)
         assert "prove_clamp" in c_code
 
@@ -333,11 +295,7 @@ class TestRecordFieldAccess:
 
 class TestListLiteralAndIndex:
     def test_list_literal(self):
-        source = (
-            "transforms nums() List<Integer>\n"
-            "    from\n"
-            "        [10, 20, 30]\n"
-        )
+        source = "transforms nums() List<Integer>\n    from\n        [10, 20, 30]\n"
         c_code = _emit(source)
         assert "prove_list_new" in c_code
         assert "prove_list_push" in c_code
@@ -425,30 +383,18 @@ class TestAssumeAssertion:
 
 class TestStringInterpolationEdgeCases:
     def test_interp_with_integer(self):
-        source = (
-            "transforms msg(n Integer) String\n"
-            "    from\n"
-            '        f"count: {n}"\n'
-        )
+        source = 'transforms msg(n Integer) String\n    from\n        f"count: {n}"\n'
         c_code = _emit(source)
         assert "prove_string_from_int(n)" in c_code
         assert "prove_string_concat" in c_code
 
     def test_interp_with_boolean(self):
-        source = (
-            "transforms msg(b Boolean) String\n"
-            "    from\n"
-            '        f"flag: {b}"\n'
-        )
+        source = 'transforms msg(b Boolean) String\n    from\n        f"flag: {b}"\n'
         c_code = _emit(source)
         assert "prove_string_from_bool(b)" in c_code
 
     def test_interp_with_string_var(self):
-        source = (
-            "transforms msg(name String) String\n"
-            "    from\n"
-            '        f"hello {name}"\n'
-        )
+        source = 'transforms msg(name String) String\n    from\n        f"hello {name}"\n'
         c_code = _emit(source)
         # String vars should be used directly, not converted
         assert "prove_string_concat" in c_code
@@ -458,11 +404,7 @@ class TestStringInterpolationEdgeCases:
 
 class TestHigherOrderFunctions:
     def test_map_integer_list(self):
-        source = (
-            "transforms doubled() List<Integer>\n"
-            "    from\n"
-            "        map([1, 2, 3], |x| x * 2)\n"
-        )
+        source = "transforms doubled() List<Integer>\n    from\n        map([1, 2, 3], |x| x * 2)\n"
         c_code = _emit(source)
         assert "prove_list_map" in c_code
         assert "_lambda_" in c_code
@@ -470,9 +412,7 @@ class TestHigherOrderFunctions:
 
     def test_filter_integer_list(self):
         source = (
-            "transforms evens() List<Integer>\n"
-            "    from\n"
-            "        filter([1, 2, 3, 4], |x| x > 2)\n"
+            "transforms evens() List<Integer>\n    from\n        filter([1, 2, 3, 4], |x| x > 2)\n"
         )
         c_code = _emit(source)
         assert "prove_list_filter" in c_code
@@ -480,9 +420,7 @@ class TestHigherOrderFunctions:
 
     def test_reduce_integer_list(self):
         source = (
-            "transforms total() Integer\n"
-            "    from\n"
-            "        reduce([1, 2, 3], 0, |acc, x| acc + x)\n"
+            "transforms total() Integer\n    from\n        reduce([1, 2, 3], 0, |acc, x| acc + x)\n"
         )
         c_code = _emit(source)
         assert "prove_list_reduce" in c_code
@@ -598,6 +536,9 @@ class TestRequiresValidRuntimeGuard:
     def test_requires_valid_option_narrowing(self):
         """requires valid ok(id) should trigger .value unwrap on Option param."""
         source = (
+            "module Main\n"
+            "  Types validates integer\n"
+            "\n"
             "validates ok(id Option<Integer>)\n"
             "    requires valid integer(id)\n"
             "    from\n"
@@ -706,6 +647,7 @@ class TestOptionUnwrap:
             "module Main\n"
             "  Table types Table V, creates new, validates has,"
             " reads get, transforms add\n"
+            "  Types validates integer\n"
             "\n"
             "validates check(id Option<Integer>)\n"
             "    requires valid integer(id)\n"
@@ -722,10 +664,7 @@ class TestVariantPatternNonAlgebraic:
     def test_variant_pattern_some_on_string(self):
         """matches verb with String param and Some/wildcard patterns."""
         source = (
-            "matches check(raw String) Integer\n"
-            "    from\n"
-            "        Some(r) => 1\n"
-            "        _ => 0\n"
+            "matches check(raw String) Integer\n    from\n        Some(r) => 1\n        _ => 0\n"
         )
         c_code = _emit(source)
         # Should emit Some check as pointer null check (String is pointer)

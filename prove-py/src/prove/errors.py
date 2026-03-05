@@ -84,8 +84,9 @@ for _c in ("E310", "E311", "E312", "E313", "E315", "E316", "E317"):
 # Type checking
 for _c in ("E320", "E321", "E322", "E325", "E330", "E331"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Field access E340
-DIAGNOSTIC_DOCS["E340"] = f"{_DOCS_BASE}#E340"
+# Field access E340-E341
+for _c in ("E340", "E341"):
+    DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Control flow E350, E352
 for _c in ("E350", "E352"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
@@ -100,13 +101,17 @@ for _c in ("E380", "E381", "E382", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Explain verification E391-E394 (E390 replaced by W323)
 _register_doc_range("E", 391, 394)
+# Comptime execution E410-E422
+_register_doc_range("E", 410, 422)
 # Warnings
 for _c in ("W304", "W311", "W312"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Warnings — contracts W321-W326
 _register_doc_range("W", 321, 326)
+# Warning — mutation testing W330
+DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 # Info
-for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I360"):
+for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I320", "I360"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 
 

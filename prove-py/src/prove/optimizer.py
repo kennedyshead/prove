@@ -30,28 +30,8 @@ from prove.ast_nodes import (
     VarDecl,
     WildcardPattern,
 )
+from prove.c_runtime import STDLIB_RUNTIME_LIBS
 from prove.symbols import SymbolTable
-
-# Mapping of stdlib module names to the C runtime libraries they require.
-# Used by RuntimeDeps to track which runtime files to include in builds.
-# Keys are lowercase stdlib module names (both "io" and "inputoutput" map to prove_input_output).
-_STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
-    "io": {"prove_input_output"},
-    "inputoutput": {"prove_input_output"},
-    "character": {"prove_character"},
-    "text": {"prove_text", "prove_string"},
-    "table": {"prove_table", "prove_hash"},
-    "parse": {"prove_parse"},
-    "math": {"prove_math"},
-    "types": {"prove_convert"},
-    "list": {"prove_list", "prove_list_ops"},
-    "format": {"prove_format"},
-    "path": {"prove_path"},
-    "error": {"prove_error"},
-    "pattern": {"prove_pattern"},
-    "result": {"prove_result"},
-    "option": {"prove_option"},
-}
 
 
 @dataclass
@@ -99,8 +79,8 @@ class RuntimeDeps:
     def add_module(self, module: str) -> None:
         """Add all runtime libs needed for a stdlib module."""
         normalized = module.lower()
-        if normalized in _STDLIB_RUNTIME_LIBS:
-            self._libs.update(_STDLIB_RUNTIME_LIBS[normalized])
+        if normalized in STDLIB_RUNTIME_LIBS:
+            self._libs.update(STDLIB_RUNTIME_LIBS[normalized])
 
     def get_libs(self) -> set[str]:
         return self._libs

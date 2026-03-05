@@ -3,6 +3,7 @@ module Example
   InputOutput inputs console file, outputs console
   Parse creates json value, types Value, reads json object, validates object, json
   Types validates string, integer, creates integer
+  Table types Table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
