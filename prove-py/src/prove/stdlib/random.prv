@@ -1,0 +1,42 @@
+module Random
+  narrative: """Random value generation."""
+
+/// Generate a random integer
+inputs integer() Integer
+binary
+
+/// Generate a random integer within a range (inclusive)
+inputs integer(minimum Integer, maximum Integer) Integer
+binary
+
+/// Check if a value falls within a range
+validates integer(value Integer, minimum Integer, maximum Integer)
+binary
+
+/// Generate a random decimal between 0.0 and 1.0
+inputs decimal() Float
+binary
+
+/// Generate a random decimal within a range
+inputs decimal(minimum Float, maximum Float) Float
+binary
+
+/// Generate a random boolean
+inputs boolean() Boolean
+binary
+
+/// Pick a random element from an integer list
+inputs choice(items List<Integer>) Integer
+binary
+
+/// Pick a random element from a string list
+inputs choice(items List<String>) String
+binary
+
+/// Randomly reorder an integer list
+inputs shuffle(items List<Integer>) List<Integer>
+binary
+
+/// Randomly reorder a string list
+inputs shuffle(items List<String>) List<String>
+binary

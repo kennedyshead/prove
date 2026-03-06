@@ -307,6 +307,26 @@ _register_module(
 )
 
 _register_module(
+    "random",
+    display="Random",
+    prv_file="random.prv",
+    c_map={
+        ("inputs", "integer"): "prove_random_integer",
+        ("validates", "integer"): "prove_random_validates_integer",
+        ("inputs", "decimal"): "prove_random_decimal",
+        ("inputs", "boolean"): "prove_random_boolean",
+    },
+    overloads={
+        ("inputs", "integer", "Integer"): "prove_random_integer_range",
+        ("inputs", "decimal", "Float"): "prove_random_decimal_range",
+        ("inputs", "choice", "List<Integer>"): "prove_random_choice_int",
+        ("inputs", "choice", "List<String>"): "prove_random_choice_str",
+        ("inputs", "shuffle", "List<Integer>"): "prove_random_shuffle_int",
+        ("inputs", "shuffle", "List<String>"): "prove_random_shuffle_str",
+    },
+)
+
+_register_module(
     "parse",
     display="Parse",
     prv_file="parse.prv",

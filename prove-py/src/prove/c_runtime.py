@@ -80,6 +80,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "pattern": {"prove_pattern"},
     "result": {"prove_result"},
     "option": {"prove_option"},
+    "random": {"prove_random"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -283,6 +284,18 @@ _RUNTIME_FUNCTIONS = {
         "prove_path_extension",
         "prove_path_absolute",
         "prove_path_normalize",
+    ],
+    "prove_random": [
+        "prove_random_integer",
+        "prove_random_integer_range",
+        "prove_random_validates_integer",
+        "prove_random_decimal",
+        "prove_random_decimal_range",
+        "prove_random_boolean",
+        "prove_random_choice_int",
+        "prove_random_choice_str",
+        "prove_random_shuffle_int",
+        "prove_random_shuffle_str",
     ],
     "prove_pattern": [
         "prove_pattern_match",

@@ -1,0 +1,15 @@
+module Main
+  narrative: """Demonstrates Random module operations."""
+  InputOutput outputs console
+  Random inputs integer decimal boolean
+
+main() Result<Unit, Error>!
+from
+    n as Integer = integer()
+    console(f"random integer: {n}")
+    r as Integer = integer(1, 10)
+    console(f"random 1..10: {r}")
+    d as Float = decimal()
+    console(f"random decimal: {d}")
+    b as Boolean = boolean()
+    console(f"random boolean: {b}")
