@@ -102,8 +102,6 @@ class Optimizer:
         module = self._inline_small_functions(module)
         module = self._identify_memoization_candidates(module)
         module = self._match_compilation(module)
-        module = self._copy_elision(module)
-        module = self._iterator_fusion(module)
         return module
 
     def get_memo_info(self) -> MemoizationInfo:
@@ -797,25 +795,3 @@ class Optimizer:
                 i += 1
         return result
 
-    # ── Pass 5: Copy Elision ──────────────────────────────────────
-
-    def _copy_elision(self, module: Module) -> Module:
-        """Detect transforms functions where return is a direct parameter reference.
-
-        This is tracked as metadata for the C emitter to skip retain/release.
-        v0.5: structural detection only, no AST modification.
-        """
-        # For now, this is a no-op. The C emitter handles retain/release
-        # and we'll add elision metadata in a future pass.
-        return module
-
-    # ── Pass 6: Iterator Fusion ───────────────────────────────────
-
-    def _iterator_fusion(self, module: Module) -> Module:
-        """Detect map(filter(xs, pred), fn) patterns and fuse them.
-
-        v0.5: structural detection only, full rewrite deferred.
-        """
-        # For now, this is a no-op. Iterator fusion requires List runtime
-        # support that will come in v0.6.
-        return module
