@@ -50,11 +50,15 @@ nav:
     - Design Decisions: design.md
     - Roadmap: roadmap.md
     - Inspirations: inspirations.md
+  - Blog:
+    - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
 
 extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
+  - footnotes
+  - pymdownx.mark
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.superfences
