@@ -1,7 +1,7 @@
 module Main
   narrative: """Basic math operations.
 
-  Expected to fail: check_strict.
+  Expected to fail: check_strict, test, test_property_rounds.
   """
   InputOutput outputs console
 

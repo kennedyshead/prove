@@ -28,3 +28,47 @@ binary
 /// Formats a float with the specified decimal places.
 transforms decimal(value Float, places Integer) String
 binary
+
+/// Format a time as a string using a pattern.
+transforms time(time Time, pattern String) String
+binary
+
+/// Parse a string into a time using a pattern.
+creates time(source String, pattern String) Time
+binary
+
+/// Check if a string matches a time format.
+validates time(source String, pattern String)
+binary
+
+/// Format a date as a string using a pattern.
+transforms date(date Date, pattern String) String
+binary
+
+/// Parse a string into a date using a pattern.
+creates date(source String, pattern String) Date
+binary
+
+/// Check if a string matches a date format.
+validates date(source String, pattern String)
+binary
+
+/// Format a datetime as a string using a pattern.
+transforms datetime(datetime DateTime, pattern String) String
+binary
+
+/// Parse a string into a datetime using a pattern.
+creates datetime(source String, pattern String) DateTime
+binary
+
+/// Check if a string matches a datetime format.
+validates datetime(source String, pattern String)
+binary
+
+/// Format a duration as a string using a pattern.
+transforms duration(duration Duration, pattern String) String
+binary
+
+/// Parse a string into a duration using a pattern.
+creates duration(source String, pattern String) Duration
+binary

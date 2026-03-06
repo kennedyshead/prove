@@ -108,6 +108,18 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
         if name == "Match":
             return CType("Prove_Match*", is_pointer=True, header="prove_pattern.h")
+        if name == "Time":
+            return CType("Prove_Time*", is_pointer=True, header="prove_time.h")
+        if name == "Duration":
+            return CType("Prove_Duration*", is_pointer=True, header="prove_time.h")
+        if name == "Date":
+            return CType("Prove_Date*", is_pointer=True, header="prove_time.h")
+        if name == "Clock":
+            return CType("Prove_Clock*", is_pointer=True, header="prove_time.h")
+        if name == "DateTime":
+            return CType("Prove_DateTime*", is_pointer=True, header="prove_time.h")
+        if name == "Weekday":
+            return CType("int64_t", is_pointer=False, header="prove_time.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 
