@@ -230,6 +230,7 @@ The `match` expression can only appear inside functions with the `matches` verb.
 
 ```prove
 // Wrong — match in transforms
+
 transforms classify(n Integer) String
 from
     match n > 0
@@ -237,6 +238,7 @@ from
         false => "non-positive"
 
 // Correct — use matches verb
+
 matches classify(n Integer) String
 from
     match n > 0

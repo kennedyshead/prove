@@ -14,6 +14,7 @@ from prove.ast_nodes import (
     ExprStmt,
     FailPropExpr,
     FieldExpr,
+    FloatLit,
     IdentifierExpr,
     IndexExpr,
     IntegerLit,
@@ -34,15 +35,15 @@ from prove.ast_nodes import (
     VariantPattern,
     WildcardPattern,
 )
-from prove.c_types import map_type, mangle_name, mangle_type_name
+from prove.c_types import mangle_name, mangle_type_name, map_type
 from prove.type_inference import BUILTIN_MAP
 from prove.types import (
+    ERROR_TY,
+    INTEGER,
     UNIT,
     AlgebraicType,
-    ERROR_TY,
     ErrorType,
     GenericInstance,
-    INTEGER,
     ListType,
     PrimitiveType,
     RecordType,
@@ -57,6 +58,9 @@ class ExprEmitterMixin:
             return f"{expr.value}L"
 
         if isinstance(expr, DecimalLit):
+            return expr.value
+
+        if isinstance(expr, FloatLit):
             return expr.value
 
         if isinstance(expr, BooleanLit):

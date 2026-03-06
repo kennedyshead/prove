@@ -10,8 +10,8 @@ Prove is an intent-first programming language — every function declares its pu
 
 ```prove
 transforms add(a Integer, b Integer) Integer
-  requires valid integer(a) && valid integer(b) 
   ensures result == a + b
+  requires valid integer(a) && valid integer(b)
   explain
       sum of a and b
 from

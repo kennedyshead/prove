@@ -5,6 +5,12 @@
 (lambda_expression) @local.scope
 (match_arm) @local.scope
 
+; Function definitions are definitions, not references
+; These MUST come BEFORE the generic identifier patterns
+(function_definition (identifier) @local.definition)
+(main_definition "main" @local.definition)
+
+; Parameters and variable declarations are definitions
 (parameter (identifier) @local.definition)
 (variable_declaration (identifier) @local.definition)
 (lambda_expression (identifier) @local.definition)

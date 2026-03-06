@@ -29,6 +29,7 @@ from prove.ast_nodes import (
     FieldAssignment,
     FieldDef,
     FieldExpr,
+    FloatLit,
     ForeignBlock,
     ForeignFunction,
     FunctionDef,
@@ -177,12 +178,26 @@ def _token_display(kind: TokenKind, value: str = "") -> str:
         return _DISPLAY[kind]
     # Keywords and verbs — use backtick-quoted value
     if kind in _VERBS or kind in (
-        TokenKind.FROM, TokenKind.TYPE, TokenKind.IS, TokenKind.AS,
-        TokenKind.WHERE, TokenKind.MATCH, TokenKind.MODULE, TokenKind.MAIN,
-        TokenKind.ENSURES, TokenKind.REQUIRES, TokenKind.EXPLAIN,
-        TokenKind.WHEN, TokenKind.COMPTIME, TokenKind.FOREIGN,
-        TokenKind.TERMINATES, TokenKind.TRUSTED, TokenKind.BINARY,
-        TokenKind.DOMAIN, TokenKind.VALID, TokenKind.TYPES,
+        TokenKind.FROM,
+        TokenKind.TYPE,
+        TokenKind.IS,
+        TokenKind.AS,
+        TokenKind.WHERE,
+        TokenKind.MATCH,
+        TokenKind.MODULE,
+        TokenKind.MAIN,
+        TokenKind.ENSURES,
+        TokenKind.REQUIRES,
+        TokenKind.EXPLAIN,
+        TokenKind.WHEN,
+        TokenKind.COMPTIME,
+        TokenKind.FOREIGN,
+        TokenKind.TERMINATES,
+        TokenKind.TRUSTED,
+        TokenKind.BINARY,
+        TokenKind.DOMAIN,
+        TokenKind.VALID,
+        TokenKind.TYPES,
     ):
         name = value or kind.name.lower()
         return f"`{name}`"
@@ -303,6 +318,7 @@ class Parser:
         if not self.filename or self.filename.startswith("<"):
             return None
         import os
+
         base = os.path.basename(self.filename)
         name, _ = os.path.splitext(base)
         if not name or not name[0].isalpha():
@@ -1506,6 +1522,7 @@ class Parser:
         if tok.kind in (
             TokenKind.INTEGER_LIT,
             TokenKind.DECIMAL_LIT,
+            TokenKind.FLOAT_LIT,
             TokenKind.STRING_LIT,
             TokenKind.BOOLEAN_LIT,
             TokenKind.PATH_LIT,
@@ -1670,7 +1687,7 @@ class Parser:
                         self._span(left.span, self._current().span),
                     )
                     continue
-                except Exception:
+                except (CompileError, IndexError, ValueError):
                     self.pos = save_pos
                     # Fall through to infix
 
@@ -1767,6 +1784,10 @@ class Parser:
         if tok.kind == TokenKind.DECIMAL_LIT:
             self._advance()
             return DecimalLit(tok.value, tok.span)
+
+        if tok.kind == TokenKind.FLOAT_LIT:
+            self._advance()
+            return FloatLit(tok.value, tok.span)
 
         if tok.kind in (TokenKind.STRING_LIT, TokenKind.INTERP_START):
             return self._parse_string_or_interp()
@@ -2061,6 +2082,7 @@ class Parser:
         _LIT_KIND_MAP = {
             TokenKind.INTEGER_LIT: "integer",
             TokenKind.DECIMAL_LIT: "decimal",
+            TokenKind.FLOAT_LIT: "float",
             TokenKind.STRING_LIT: "string",
             TokenKind.BOOLEAN_LIT: "boolean",
             TokenKind.PATH_LIT: "path",

@@ -4,7 +4,6 @@ module Main
   Missing runtime dependencies (build fails). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, format_check, format_check_md, view.
   """
   InputOutput outputs console
-  Error validates ok err
 
 main() Result<Unit, Error>!
 from

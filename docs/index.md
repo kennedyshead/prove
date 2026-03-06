@@ -198,7 +198,7 @@ outputs update_email(id Option<Integer>) User:[Mutable]!
       we get an email address
       we fetch the user
       we set the email to user
-      change the user to json string and save it 
+      change the user to json string and save it
       return the user
 from
     email as Option<Email> = email()
@@ -250,8 +250,10 @@ module InventoryService
     and all monetary calculations use exact decimal arithmetic.
     """
 
-  type Port is Integer:[16 Unsigned] where 1..65535
-  type Price is Decimal:[128 Scale:2] where >= 0
+  type Port is Integer:[16 Unsigned] where 1 .. 65535
+
+  type Price is Decimal:[128 Scale:2] where self >= 0
+
   type Sku is String where r"^[A-Z]{2,4}-[0-9]{4,8}$"
 
   type Product is
@@ -267,8 +269,8 @@ from
 
 /// Places an order: validates stock, calculates total, deducts inventory.
 outputs place_order(db Database, order Order, tax TaxRule) Order!
-  requires fulfillable(order)
   ensures result.status == Confirmed
+  requires fulfillable(order)
 from
     total as Price = calculate_total(order.items, None, tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)
@@ -279,10 +281,10 @@ from
 /// Routes incoming HTTP requests.
 inputs request(route Route, body String, db Database) Response!
 from
-    Get("/health")   => ok("healthy")
+    Get("/health") => ok("healthy")
     Get("/products") => all_products(db)! |> encode |> ok
-    Post("/orders")  => parse_order(body)! |> place_order(db, tax)! |> encode |> created
-    _                => not_found()
+    Post("/orders") => parse_order(body)! |> place_order(db, tax)! |> encode |> created
+    _ => not_found()
 
 main()!
 from

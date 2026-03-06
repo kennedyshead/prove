@@ -12,8 +12,8 @@ from prove.ast_nodes import (
     SimpleType,
     TypeIdentifierExpr,
 )
-from prove.source import Span
 from prove.errors import Diagnostic, DiagnosticLabel, Severity
+from prove.source import Span
 from prove.types import (
     ERROR_TY,
     BorrowType,

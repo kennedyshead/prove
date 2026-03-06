@@ -21,6 +21,7 @@ from prove.ast_nodes import (
     CallExpr,
     DecimalLit,
     Expr,
+    FloatLit,
     FunctionDef,
     IdentifierExpr,
     IntegerLit,
@@ -607,6 +608,8 @@ class TestGenerator:
         if isinstance(expr, IntegerLit):
             return f"{expr.value}L"
         if isinstance(expr, DecimalLit):
+            return expr.value
+        if isinstance(expr, FloatLit):
             return expr.value
         if isinstance(expr, BooleanLit):
             return "true" if expr.value else "false"

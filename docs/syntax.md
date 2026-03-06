@@ -707,7 +707,7 @@ validates leap_year(y Year)
   near_miss: 2000  => true
   near_miss: 2100  => false
 from
-    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+    (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
 ```
 
 `why_not` documents rejected alternatives. `chosen` explains the selected approach. These are currently **documentation keywords** — compiler verification of rationale consistency is planned. `near_miss` provides inputs that *almost* break the code — the compiler verifies each near-miss exercises a distinct boundary condition.
@@ -716,9 +716,9 @@ from
 
 ```prove
 transforms process_order(order Order) Receipt
-  know: len(order.items) > 0            // proven by NonEmpty type — zero cost
-  assume: order.total == sum(prices)    // runtime check inserted at boundaries
-  believe: order.user.is_verified       // compiler generates tests to disprove this
+  know: len(order.items) > 0
+  assume: order.total == sum(prices)
+  believe: order.user.is_verified
 from
     // implementation
 ```
@@ -762,7 +762,7 @@ Functions outside any verification chain and with no callers that have `ensures`
 transforms filter_valid(records List<Record>) List<Record>
   intent: "keep only valid records"
 from
-  filter(records, valid record)
+    filter(records, valid record)
 ```
 
 `intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it but does not yet verify that the intent matches the code's behavior.

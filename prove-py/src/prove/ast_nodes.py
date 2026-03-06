@@ -87,6 +87,12 @@ class DecimalLit:
 
 
 @dataclass(frozen=True)
+class FloatLit:
+    value: str
+    span: Span
+
+
+@dataclass(frozen=True)
 class StringLit:
     value: str
     span: Span
@@ -238,6 +244,7 @@ class IndexExpr:
 @dataclass(frozen=True)
 class LookupExpr:
     """Compile-time lookup: $"main" or $Main (legacy, kept for compat)."""
+
     operand: Expr  # the literal or variant being looked up
     resolved_value: object | None  # filled in by checker: Expr or None
     span: Span
@@ -246,18 +253,39 @@ class LookupExpr:
 @dataclass(frozen=True)
 class LookupAccessExpr:
     """Compile-time lookup: TokenKind:"main" or TokenKind:Main."""
-    type_name: str     # "TokenKind"
-    operand: Expr      # the literal or variant being looked up
+
+    type_name: str  # "TokenKind"
+    operand: Expr  # the literal or variant being looked up
     span: Span
 
 
 Expr = Union[
-    IntegerLit, DecimalLit, StringLit, BooleanLit, CharLit, RegexLit,
-    RawStringLit, PathLit, TripleStringLit, StringInterp, ListLiteral,
-    IdentifierExpr, TypeIdentifierExpr,
-    BinaryExpr, UnaryExpr, CallExpr, FieldExpr, PipeExpr,
-    FailPropExpr, LambdaExpr, ValidExpr,
-    MatchExpr, ComptimeExpr, IndexExpr, LookupExpr, LookupAccessExpr,
+    IntegerLit,
+    DecimalLit,
+    StringLit,
+    BooleanLit,
+    CharLit,
+    RegexLit,
+    RawStringLit,
+    PathLit,
+    TripleStringLit,
+    StringInterp,
+    ListLiteral,
+    IdentifierExpr,
+    TypeIdentifierExpr,
+    BinaryExpr,
+    UnaryExpr,
+    CallExpr,
+    FieldExpr,
+    PipeExpr,
+    FailPropExpr,
+    LambdaExpr,
+    ValidExpr,
+    MatchExpr,
+    ComptimeExpr,
+    IndexExpr,
+    LookupExpr,
+    LookupAccessExpr,
 ]
 
 
@@ -279,13 +307,13 @@ class Assignment:
     span: Span
 
 
-
 @dataclass(frozen=True)
 class FieldAssignment:
     target: Expr
     field: str
     value: Expr
     span: Span
+
 
 @dataclass(frozen=True)
 class ExprStmt:
@@ -399,8 +427,9 @@ class BinaryDef:
 @dataclass(frozen=True)
 class LookupTypeDef:
     """Type body for [Lookup] types: algebraic + bidirectional mapping."""
-    value_type: TypeExpr          # String, Integer, or Boolean
-    entries: list[LookupEntry]    # variant | value rows
+
+    value_type: TypeExpr  # String, Integer, or Boolean
+    entries: list[LookupEntry]  # variant | value rows
     span: Span
 
 
@@ -471,7 +500,7 @@ class ImportDecl:
 
 @dataclass(frozen=True)
 class ForeignFunction:
-    name: str           # actual C function name (e.g. "sqrt")
+    name: str  # actual C function name (e.g. "sqrt")
     params: list[Param]
     return_type: TypeExpr | None
     span: Span
@@ -479,7 +508,7 @@ class ForeignFunction:
 
 @dataclass(frozen=True)
 class ForeignBlock:
-    library: str        # e.g. "libm"
+    library: str  # e.g. "libm"
     functions: list[ForeignFunction]
     span: Span
 
@@ -487,11 +516,11 @@ class ForeignBlock:
 @dataclass(frozen=True)
 class LookupEntry:
     """One row in a lookup table: Variant | value."""
-    variant: str           # variant name (Main)
-    value: str             # literal value ("main")
-    value_kind: str        # "string", "integer", "boolean"
-    span: Span
 
+    variant: str  # variant name (Main)
+    value: str  # literal value ("main")
+    value_kind: str  # "string", "integer", "boolean"
+    span: Span
 
 
 @dataclass(frozen=True)

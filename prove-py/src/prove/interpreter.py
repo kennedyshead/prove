@@ -16,6 +16,7 @@ from prove.ast_nodes import (
     DecimalLit,
     Expr,
     ExprStmt,
+    FloatLit,
     IdentifierExpr,
     IntegerLit,
     ListLiteral,
@@ -82,6 +83,8 @@ class ComptimeInterpreter:
             return int(expr.value)
         if isinstance(expr, DecimalLit):
             return float(expr.value)
+        if isinstance(expr, FloatLit):
+            return float(expr.value[:-1])  # Strip 'f' suffix
         if isinstance(expr, BooleanLit):
             return expr.value
         if isinstance(expr, StringLit):

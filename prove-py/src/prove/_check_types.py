@@ -13,6 +13,7 @@ from prove.ast_nodes import (
     Expr,
     FailPropExpr,
     FieldExpr,
+    FloatLit,
     FunctionDef,
     GenericType,
     IdentifierExpr,
@@ -85,6 +86,8 @@ class TypeCheckMixin:
             return INTEGER
         if isinstance(expr, DecimalLit):
             return DECIMAL
+        if isinstance(expr, FloatLit):
+            return FLOAT
         if isinstance(expr, StringLit):
             return STRING
         if isinstance(expr, BooleanLit):

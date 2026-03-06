@@ -172,10 +172,15 @@ All pure Prove stdlib functions are eligible for the compiler's auto-memoization
 
 ```prove
 transforms factorial(n Integer) Integer
-  requires n >= 0
   ensures result >= 1
+  requires n >= 0
 from
-    if n <= 1 then 1 else n * factorial(n - 1)
+    if
+    n <= 1
+    then
+    1
+    else
+    n * factorial(n - 1)
 ```
 
 With memoization, repeated calls with same arguments return cached results.

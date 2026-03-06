@@ -64,6 +64,7 @@ class TokenKind(Enum):
     # Literals
     INTEGER_LIT = auto()
     DECIMAL_LIT = auto()
+    FLOAT_LIT = auto()
     STRING_LIT = auto()
     BOOLEAN_LIT = auto()
     CHAR_LIT = auto()
@@ -175,29 +176,31 @@ KEYWORDS: dict[str, TokenKind] = {
     "false": TokenKind.BOOLEAN_LIT,
 }
 
-NEWLINE_SUPPRESSED_AFTER: frozenset[TokenKind] = frozenset({
-    TokenKind.COMMA,
-    TokenKind.PLUS,
-    TokenKind.MINUS,
-    TokenKind.STAR,
-    TokenKind.SLASH,
-    TokenKind.PERCENT,
-    TokenKind.EQUAL,
-    TokenKind.NOT_EQUAL,
-    TokenKind.LESS,
-    TokenKind.GREATER,
-    TokenKind.LESS_EQUAL,
-    TokenKind.GREATER_EQUAL,
-    TokenKind.AND,
-    TokenKind.OR,
-    TokenKind.PIPE_ARROW,
-    TokenKind.FAT_ARROW,
-    TokenKind.ARROW,
-    TokenKind.COLON,
-    TokenKind.PIPE,
-    TokenKind.LPAREN,
-    TokenKind.LBRACKET,
-    TokenKind.ASSIGN,
-    TokenKind.DOT,
-    TokenKind.DOT_DOT,
-})
+NEWLINE_SUPPRESSED_AFTER: frozenset[TokenKind] = frozenset(
+    {
+        TokenKind.COMMA,
+        TokenKind.PLUS,
+        TokenKind.MINUS,
+        TokenKind.STAR,
+        TokenKind.SLASH,
+        TokenKind.PERCENT,
+        TokenKind.EQUAL,
+        TokenKind.NOT_EQUAL,
+        TokenKind.LESS,
+        TokenKind.GREATER,
+        TokenKind.LESS_EQUAL,
+        TokenKind.GREATER_EQUAL,
+        TokenKind.AND,
+        TokenKind.OR,
+        TokenKind.PIPE_ARROW,
+        TokenKind.FAT_ARROW,
+        TokenKind.ARROW,
+        TokenKind.COLON,
+        TokenKind.PIPE,
+        TokenKind.LPAREN,
+        TokenKind.LBRACKET,
+        TokenKind.ASSIGN,
+        TokenKind.DOT,
+        TokenKind.DOT_DOT,
+    }
+)

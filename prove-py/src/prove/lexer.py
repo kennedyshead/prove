@@ -16,24 +16,27 @@ from prove.tokens import (
 )
 
 # Token kinds that indicate a "value" just completed — used for regex vs division.
-_VALUE_TOKENS = frozenset({
-    TokenKind.IDENTIFIER,
-    TokenKind.TYPE_IDENTIFIER,
-    TokenKind.CONSTANT_IDENTIFIER,
-    TokenKind.INTEGER_LIT,
-    TokenKind.DECIMAL_LIT,
-    TokenKind.STRING_LIT,
-    TokenKind.TRIPLE_STRING_LIT,
-    TokenKind.BOOLEAN_LIT,
-    TokenKind.CHAR_LIT,
-    TokenKind.REGEX_LIT,
-    TokenKind.RAW_STRING_LIT,
-    TokenKind.PATH_LIT,
-    TokenKind.RPAREN,
-    TokenKind.RBRACKET,
-    TokenKind.BANG,
-    TokenKind.INTERP_END,
-})
+_VALUE_TOKENS = frozenset(
+    {
+        TokenKind.IDENTIFIER,
+        TokenKind.TYPE_IDENTIFIER,
+        TokenKind.CONSTANT_IDENTIFIER,
+        TokenKind.INTEGER_LIT,
+        TokenKind.DECIMAL_LIT,
+        TokenKind.FLOAT_LIT,
+        TokenKind.STRING_LIT,
+        TokenKind.TRIPLE_STRING_LIT,
+        TokenKind.BOOLEAN_LIT,
+        TokenKind.CHAR_LIT,
+        TokenKind.REGEX_LIT,
+        TokenKind.RAW_STRING_LIT,
+        TokenKind.PATH_LIT,
+        TokenKind.RPAREN,
+        TokenKind.RBRACKET,
+        TokenKind.BANG,
+        TokenKind.INTERP_END,
+    }
+)
 
 
 class Lexer:
@@ -62,11 +65,11 @@ class Lexer:
             if self.pos >= len(self.source):
                 break
             ch = self.source[self.pos]
-            if ch == '\n':
+            if ch == "\n":
                 self._handle_newline()
-            elif ch == '/' and self._peek(1) == '/' and self._peek(2) == '/':
+            elif ch == "/" and self._peek(1) == "/" and self._peek(2) == "/":
                 self._lex_doc_comment()
-            elif ch == '/' and self._peek(1) == '/':
+            elif ch == "/" and self._peek(1) == "/":
                 self._lex_line_comment()
             elif ch == '"' and self._peek(1) == '"' and self._peek(2) == '"':
                 self._lex_triple_string()
@@ -74,14 +77,14 @@ class Lexer:
                 self._lex_string()
             elif ch == "'":
                 self._lex_char()
-            elif ch == '/' and self._should_start_regex():
+            elif ch == "/" and self._should_start_regex():
                 if self._is_path_literal():
                     self._lex_path()
                 else:
                     self._lex_regex()
             elif ch.isdigit():
                 self._lex_number()
-            elif ch.isalpha() or ch == '_':
+            elif ch.isalpha() or ch == "_":
                 self._lex_identifier()
             else:
                 self._lex_operator_or_punct()
@@ -103,12 +106,12 @@ class Lexer:
         idx = self.pos + offset
         if idx < len(self.source):
             return self.source[idx]
-        return '\0'
+        return "\0"
 
     def _advance(self) -> str:
         ch = self.source[self.pos]
         self.pos += 1
-        if ch == '\n':
+        if ch == "\n":
             self.line += 1
             self.col = 1
         else:
@@ -117,11 +120,11 @@ class Lexer:
 
     def _is_digit_or_underscore(self) -> bool:
         ch = self.source[self.pos]
-        return ch.isdigit() or ch == '_'
+        return ch.isdigit() or ch == "_"
 
     def _is_ident_char(self) -> bool:
         ch = self.source[self.pos]
-        return ch.isalnum() or ch == '_'
+        return ch.isalnum() or ch == "_"
 
     def _emit(self, kind: TokenKind, value: str, start_line: int, start_col: int) -> Token:
         end_col = self.col - 1 if self.col > 1 else 1
@@ -144,7 +147,7 @@ class Lexer:
 
     def _skip_spaces(self) -> None:
         """Skip spaces and tabs (but not newlines)."""
-        while self.pos < len(self.source) and self.source[self.pos] in (' ', '\t'):
+        while self.pos < len(self.source) and self.source[self.pos] in (" ", "\t"):
             self._advance()
 
     # ── Indentation ──────────────────────────────────────────────
@@ -152,8 +155,8 @@ class Lexer:
     def _handle_indentation(self) -> None:
         """Process indentation at the start of a line."""
         indent = 0
-        while self.pos < len(self.source) and self.source[self.pos] in (' ', '\t'):
-            if self.source[self.pos] == '\t':
+        while self.pos < len(self.source) and self.source[self.pos] in (" ", "\t"):
+            if self.source[self.pos] == "\t":
                 indent += 4
             else:
                 indent += 1
@@ -161,7 +164,7 @@ class Lexer:
             self.col += 1
 
         # Skip blank lines
-        if self.pos >= len(self.source) or self.source[self.pos] == '\n':
+        if self.pos >= len(self.source) or self.source[self.pos] == "\n":
             return
 
         current = self.indent_stack[-1]
@@ -204,12 +207,12 @@ class Lexer:
         self._advance()
         self._advance()
         # Skip optional leading space
-        if self.pos < len(self.source) and self.source[self.pos] == ' ':
+        if self.pos < len(self.source) and self.source[self.pos] == " ":
             self._advance()
         text = []
-        while self.pos < len(self.source) and self.source[self.pos] != '\n':
+        while self.pos < len(self.source) and self.source[self.pos] != "\n":
             text.append(self._advance())
-        self._emit(TokenKind.DOC_COMMENT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.DOC_COMMENT, "".join(text), start_line, start_col)
 
     def _lex_line_comment(self) -> None:
         start_line = self.line
@@ -218,12 +221,12 @@ class Lexer:
         self._advance()
         self._advance()
         # Skip optional leading space
-        if self.pos < len(self.source) and self.source[self.pos] == ' ':
+        if self.pos < len(self.source) and self.source[self.pos] == " ":
             self._advance()
         text: list[str] = []
-        while self.pos < len(self.source) and self.source[self.pos] != '\n':
+        while self.pos < len(self.source) and self.source[self.pos] != "\n":
             text.append(self._advance())
-        self._emit(TokenKind.COMMENT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.COMMENT, "".join(text), start_line, start_col)
 
     # ── Strings ──────────────────────────────────────────────────
 
@@ -236,13 +239,11 @@ class Lexer:
         self._advance()
         text = []
         while self.pos < len(self.source):
-            if (self.source[self.pos] == '"'
-                    and self._peek(1) == '"'
-                    and self._peek(2) == '"'):
+            if self.source[self.pos] == '"' and self._peek(1) == '"' and self._peek(2) == '"':
                 self._advance()
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.TRIPLE_STRING_LIT, ''.join(text), start_line, start_col)
+                self._emit(TokenKind.TRIPLE_STRING_LIT, "".join(text), start_line, start_col)
                 return
             text.append(self._advance())
         self._error("unterminated triple-quoted string", start_line, start_col, "E102")
@@ -255,7 +256,7 @@ class Lexer:
         text: list[str] = []
 
         while self.pos < len(self.source) and self.source[self.pos] != '"':
-            if self.source[self.pos] == '\\':
+            if self.source[self.pos] == "\\":
                 text.append(self._lex_escape_sequence())
             else:
                 text.append(self._advance())
@@ -265,7 +266,7 @@ class Lexer:
             return
 
         self._advance()  # skip closing "
-        self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.STRING_LIT, "".join(text), start_line, start_col)
 
     def _lex_fstring(self, start_line: int, start_col: int) -> None:
         """Lex an f-string with interpolation support."""
@@ -274,12 +275,12 @@ class Lexer:
         has_interp = False
 
         while self.pos < len(self.source) and self.source[self.pos] != '"':
-            if self.source[self.pos] == '\\':
+            if self.source[self.pos] == "\\":
                 text.append(self._lex_escape_sequence())
-            elif self.source[self.pos] == '{':
+            elif self.source[self.pos] == "{":
                 has_interp = True
                 if text:
-                    self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+                    self._emit(TokenKind.STRING_LIT, "".join(text), start_line, start_col)
                     text = []
                 self._advance()  # skip {
                 self._emit(TokenKind.INTERP_START, "{", self.line, self.col - 1)
@@ -288,23 +289,25 @@ class Lexer:
                     self._skip_spaces()
                     if self.pos >= len(self.source):
                         break
-                    if self.source[self.pos] == '}':
+                    if self.source[self.pos] == "}":
                         brace_depth -= 1
                         if brace_depth == 0:
                             self._advance()
                             self._emit(TokenKind.INTERP_END, "}", self.line, self.col - 1)
                             break
-                    elif self.source[self.pos] == '{':
+                    elif self.source[self.pos] == "{":
                         brace_depth += 1
                     ch = self.source[self.pos]
-                    if ch == '\n':
+                    if ch == "\n":
                         self._advance()
                     elif ch.isdigit():
                         self._lex_number()
-                    elif ch.isalpha() or ch == '_':
+                    elif ch.isalpha() or ch == "_":
                         self._lex_identifier()
                     elif ch == '"':
                         self._lex_string()
+                    elif ch == "'":
+                        self._lex_char()
                     else:
                         self._lex_operator_or_punct()
                 start_line = self.line
@@ -320,9 +323,9 @@ class Lexer:
 
         if has_interp:
             if text:
-                self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+                self._emit(TokenKind.STRING_LIT, "".join(text), start_line, start_col)
         else:
-            self._emit(TokenKind.STRING_LIT, ''.join(text), start_line, start_col)
+            self._emit(TokenKind.STRING_LIT, "".join(text), start_line, start_col)
 
     def _lex_raw_string(self, start_line: int, start_col: int) -> None:
         """Lex a raw string literal. No escapes, no interpolation."""
@@ -330,7 +333,7 @@ class Lexer:
         text: list[str] = []
 
         while self.pos < len(self.source) and self.source[self.pos] != '"':
-            if self.source[self.pos] == '\n':
+            if self.source[self.pos] == "\n":
                 self._error("unterminated raw string literal", start_line, start_col, "E105")
                 return
             text.append(self._advance())
@@ -340,7 +343,7 @@ class Lexer:
             return
 
         self._advance()  # skip closing "
-        self._emit(TokenKind.RAW_STRING_LIT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.RAW_STRING_LIT, "".join(text), start_line, start_col)
 
     def _lex_escape_sequence(self) -> str:
         self._advance()  # skip backslash
@@ -348,8 +351,16 @@ class Lexer:
             self._error("unexpected end of escape sequence", self.line, self.col, "E108")
             return ""
         ch = self._advance()
-        escape_map = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\', '"': '"',
-                      '{': '{', '}': '}', '0': '\0'}
+        escape_map = {
+            "n": "\n",
+            "r": "\r",
+            "t": "\t",
+            "\\": "\\",
+            '"': '"',
+            "{": "{",
+            "}": "}",
+            "0": "\0",
+        }
         if ch in escape_map:
             return escape_map[ch]
         self._error(f"unknown escape sequence `\\{ch}`", self.line, self.col - 1, "E107")
@@ -362,7 +373,7 @@ class Lexer:
         if self.pos >= len(self.source):
             self._error("unterminated character literal", start_line, start_col, "E103")
             return
-        if self.source[self.pos] == '\\':
+        if self.source[self.pos] == "\\":
             ch = self._lex_escape_sequence()
         else:
             ch = self._advance()
@@ -384,12 +395,12 @@ class Lexer:
         start_col = self.col
         self._advance()  # skip opening /
         text = []
-        while self.pos < len(self.source) and self.source[self.pos] != '/':
-            if self.source[self.pos] == '\\':
+        while self.pos < len(self.source) and self.source[self.pos] != "/":
+            if self.source[self.pos] == "\\":
                 text.append(self._advance())  # backslash
                 if self.pos < len(self.source):
                     text.append(self._advance())  # escaped char
-            elif self.source[self.pos] == '\n':
+            elif self.source[self.pos] == "\n":
                 self._error("unterminated regex literal", start_line, start_col, "E104")
                 return
             else:
@@ -398,7 +409,7 @@ class Lexer:
             self._error("unterminated regex literal", start_line, start_col, "E104")
             return
         self._advance()  # skip closing /
-        self._emit(TokenKind.REGEX_LIT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.REGEX_LIT, "".join(text), start_line, start_col)
 
     # ── Path literals ────────────────────────────────────────────
 
@@ -414,24 +425,24 @@ class Lexer:
         if i >= len(self.source):
             return False
         ch = self.source[i]
-        if not (ch.isalpha() or ch == '_'):
+        if not (ch.isalpha() or ch == "_"):
             return False
         i += 1
         while i < len(self.source):
             ch = self.source[i]
-            if ch == '\\':
+            if ch == "\\":
                 # Backslash escape → this is a regex, not a path
                 return False
-            if ch == '/':
+            if ch == "/":
                 # Internal slash: check if next char continues a path segment
-                nxt = self.source[i + 1] if i + 1 < len(self.source) else '\0'
-                if nxt.isalpha() or nxt.isdigit() or nxt == '_':
+                nxt = self.source[i + 1] if i + 1 < len(self.source) else "\0"
+                if nxt.isalpha() or nxt.isdigit() or nxt == "_":
                     i += 1
                     continue
                 else:
                     # Closing / → this is a regex, not a path
                     return False
-            elif ch.isalnum() or ch in '-_.':
+            elif ch.isalnum() or ch in "-_.":
                 i += 1
                 continue
             else:
@@ -446,11 +457,11 @@ class Lexer:
         text = [self._advance()]  # consume leading /
         while self.pos < len(self.source):
             ch = self.source[self.pos]
-            if ch.isalnum() or ch in '-_./':
+            if ch.isalnum() or ch in "-_./":
                 text.append(self._advance())
             else:
                 break
-        self._emit(TokenKind.PATH_LIT, ''.join(text), start_line, start_col)
+        self._emit(TokenKind.PATH_LIT, "".join(text), start_line, start_col)
 
     # ── Numbers ──────────────────────────────────────────────────
 
@@ -460,25 +471,25 @@ class Lexer:
         text = []
 
         # Check for 0x, 0b, 0o prefixes
-        if self.source[self.pos] == '0' and self.pos + 1 < len(self.source):
+        if self.source[self.pos] == "0" and self.pos + 1 < len(self.source):
             next_ch = self.source[self.pos + 1]
-            if next_ch in ('x', 'X'):
+            if next_ch in ("x", "X"):
                 text.append(self._advance())  # 0
                 text.append(self._advance())  # x
                 self._lex_hex_digits(text)
-                self._emit(TokenKind.INTEGER_LIT, ''.join(text), start_line, start_col)
+                self._emit(TokenKind.INTEGER_LIT, "".join(text), start_line, start_col)
                 return
-            elif next_ch in ('b', 'B'):
+            elif next_ch in ("b", "B"):
                 text.append(self._advance())  # 0
                 text.append(self._advance())  # b
                 self._lex_bin_digits(text)
-                self._emit(TokenKind.INTEGER_LIT, ''.join(text), start_line, start_col)
+                self._emit(TokenKind.INTEGER_LIT, "".join(text), start_line, start_col)
                 return
-            elif next_ch in ('o', 'O'):
+            elif next_ch in ("o", "O"):
                 text.append(self._advance())  # 0
                 text.append(self._advance())  # o
                 self._lex_oct_digits(text)
-                self._emit(TokenKind.INTEGER_LIT, ''.join(text), start_line, start_col)
+                self._emit(TokenKind.INTEGER_LIT, "".join(text), start_line, start_col)
                 return
 
         # Decimal digits
@@ -486,25 +497,34 @@ class Lexer:
             text.append(self._advance())
 
         # Check for decimal point
-        if (self.pos < len(self.source) and self.source[self.pos] == '.'
-                and self.pos + 1 < len(self.source) and self.source[self.pos + 1].isdigit()):
+        if (
+            self.pos < len(self.source)
+            and self.source[self.pos] == "."
+            and self.pos + 1 < len(self.source)
+            and self.source[self.pos + 1].isdigit()
+        ):
             text.append(self._advance())  # .
             while self.pos < len(self.source) and self._is_digit_or_underscore():
                 text.append(self._advance())
-            self._emit(TokenKind.DECIMAL_LIT, ''.join(text), start_line, start_col)
+            # Check for float suffix
+            if self.pos < len(self.source) and self.source[self.pos] in ("f", "F"):
+                text.append(self._advance())
+                self._emit(TokenKind.FLOAT_LIT, "".join(text), start_line, start_col)
+            else:
+                self._emit(TokenKind.DECIMAL_LIT, "".join(text), start_line, start_col)
         else:
-            self._emit(TokenKind.INTEGER_LIT, ''.join(text), start_line, start_col)
+            self._emit(TokenKind.INTEGER_LIT, "".join(text), start_line, start_col)
 
     def _lex_hex_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and (self.source[self.pos] in '0123456789abcdefABCDEF_'):
+        while self.pos < len(self.source) and (self.source[self.pos] in "0123456789abcdefABCDEF_"):
             text.append(self._advance())
 
     def _lex_bin_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] in '01_':
+        while self.pos < len(self.source) and self.source[self.pos] in "01_":
             text.append(self._advance())
 
     def _lex_oct_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] in '01234567_':
+        while self.pos < len(self.source) and self.source[self.pos] in "01234567_":
             text.append(self._advance())
 
     # ── Identifiers and Keywords ─────────────────────────────────
@@ -515,11 +535,11 @@ class Lexer:
         text = []
         while self.pos < len(self.source) and self._is_ident_char():
             text.append(self._advance())
-        word = ''.join(text)
+        word = "".join(text)
 
         # Check for f-string or r-string prefix
-        if word in ('f', 'r') and self.pos < len(self.source) and self.source[self.pos] == '"':
-            if word == 'f':
+        if word in ("f", "r") and self.pos < len(self.source) and self.source[self.pos] == '"':
+            if word == "f":
                 self._lex_fstring(start_line, start_col)
             else:
                 self._lex_raw_string(start_line, start_col)
@@ -535,10 +555,10 @@ class Lexer:
         self._emit(kind, word, start_line, start_col)
 
     def _classify_identifier(self, word: str) -> TokenKind:
-        if word == '_':
+        if word == "_":
             return TokenKind.IDENTIFIER
         # All uppercase + underscores = CONSTANT (must have at least 2 chars)
-        all_upper = all(c.isupper() or c == '_' or c.isdigit() for c in word)
+        all_upper = all(c.isupper() or c == "_" or c.isdigit() for c in word)
         if len(word) >= 2 and all_upper and word[0].isupper():
             return TokenKind.CONSTANT_IDENTIFIER
         # Starts uppercase + has lowercase = TYPE
@@ -558,98 +578,98 @@ class Lexer:
 
         # Two-character operators
         if self.pos + 1 < len(self.source):
-            two = self.source[self.pos:self.pos + 2]
-            if two == '|>':
+            two = self.source[self.pos : self.pos + 2]
+            if two == "|>":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.PIPE_ARROW, '|>', start_line, start_col)
+                self._emit(TokenKind.PIPE_ARROW, "|>", start_line, start_col)
                 return
-            if two == '=>':
+            if two == "=>":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.FAT_ARROW, '=>', start_line, start_col)
+                self._emit(TokenKind.FAT_ARROW, "=>", start_line, start_col)
                 return
-            if two == '->':
+            if two == "->":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.ARROW, '->', start_line, start_col)
+                self._emit(TokenKind.ARROW, "->", start_line, start_col)
                 return
-            if two == '==':
+            if two == "==":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.EQUAL, '==', start_line, start_col)
+                self._emit(TokenKind.EQUAL, "==", start_line, start_col)
                 return
-            if two == '!=':
+            if two == "!=":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.NOT_EQUAL, '!=', start_line, start_col)
+                self._emit(TokenKind.NOT_EQUAL, "!=", start_line, start_col)
                 return
-            if two == '<=':
+            if two == "<=":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.LESS_EQUAL, '<=', start_line, start_col)
+                self._emit(TokenKind.LESS_EQUAL, "<=", start_line, start_col)
                 return
-            if two == '>=':
+            if two == ">=":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.GREATER_EQUAL, '>=', start_line, start_col)
+                self._emit(TokenKind.GREATER_EQUAL, ">=", start_line, start_col)
                 return
-            if two == '&&':
+            if two == "&&":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.AND, '&&', start_line, start_col)
+                self._emit(TokenKind.AND, "&&", start_line, start_col)
                 return
-            if two == '||':
+            if two == "||":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.OR, '||', start_line, start_col)
+                self._emit(TokenKind.OR, "||", start_line, start_col)
                 return
-            if two == '..':
+            if two == "..":
                 self._advance()
                 self._advance()
-                self._emit(TokenKind.DOT_DOT, '..', start_line, start_col)
+                self._emit(TokenKind.DOT_DOT, "..", start_line, start_col)
                 return
 
         # Single-character operators and punctuation
         self._advance()
         match ch:
-            case '+':
-                self._emit(TokenKind.PLUS, '+', start_line, start_col)
-            case '-':
-                self._emit(TokenKind.MINUS, '-', start_line, start_col)
-            case '*':
-                self._emit(TokenKind.STAR, '*', start_line, start_col)
-            case '/':
-                self._emit(TokenKind.SLASH, '/', start_line, start_col)
-            case '%':
-                self._emit(TokenKind.PERCENT, '%', start_line, start_col)
-            case '<':
-                self._emit(TokenKind.LESS, '<', start_line, start_col)
-            case '>':
-                self._emit(TokenKind.GREATER, '>', start_line, start_col)
-            case '!':
-                self._emit(TokenKind.BANG, '!', start_line, start_col)
-            case '=':
-                self._emit(TokenKind.ASSIGN, '=', start_line, start_col)
-            case '.':
-                self._emit(TokenKind.DOT, '.', start_line, start_col)
-            case '(':
+            case "+":
+                self._emit(TokenKind.PLUS, "+", start_line, start_col)
+            case "-":
+                self._emit(TokenKind.MINUS, "-", start_line, start_col)
+            case "*":
+                self._emit(TokenKind.STAR, "*", start_line, start_col)
+            case "/":
+                self._emit(TokenKind.SLASH, "/", start_line, start_col)
+            case "%":
+                self._emit(TokenKind.PERCENT, "%", start_line, start_col)
+            case "<":
+                self._emit(TokenKind.LESS, "<", start_line, start_col)
+            case ">":
+                self._emit(TokenKind.GREATER, ">", start_line, start_col)
+            case "!":
+                self._emit(TokenKind.BANG, "!", start_line, start_col)
+            case "=":
+                self._emit(TokenKind.ASSIGN, "=", start_line, start_col)
+            case ".":
+                self._emit(TokenKind.DOT, ".", start_line, start_col)
+            case "(":
                 self.bracket_depth += 1
-                self._emit(TokenKind.LPAREN, '(', start_line, start_col)
-            case ')':
+                self._emit(TokenKind.LPAREN, "(", start_line, start_col)
+            case ")":
                 self.bracket_depth = max(0, self.bracket_depth - 1)
-                self._emit(TokenKind.RPAREN, ')', start_line, start_col)
-            case '[':
+                self._emit(TokenKind.RPAREN, ")", start_line, start_col)
+            case "[":
                 self.bracket_depth += 1
-                self._emit(TokenKind.LBRACKET, '[', start_line, start_col)
-            case ']':
+                self._emit(TokenKind.LBRACKET, "[", start_line, start_col)
+            case "]":
                 self.bracket_depth = max(0, self.bracket_depth - 1)
-                self._emit(TokenKind.RBRACKET, ']', start_line, start_col)
-            case ',':
-                self._emit(TokenKind.COMMA, ',', start_line, start_col)
-            case ':':
-                self._emit(TokenKind.COLON, ':', start_line, start_col)
-            case '|':
-                self._emit(TokenKind.PIPE, '|', start_line, start_col)
+                self._emit(TokenKind.RBRACKET, "]", start_line, start_col)
+            case ",":
+                self._emit(TokenKind.COMMA, ",", start_line, start_col)
+            case ":":
+                self._emit(TokenKind.COLON, ":", start_line, start_col)
+            case "|":
+                self._emit(TokenKind.PIPE, "|", start_line, start_col)
             case _:
                 self._error(f"unexpected character `{ch}`", start_line, start_col, "E109")

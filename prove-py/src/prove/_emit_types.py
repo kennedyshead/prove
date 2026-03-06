@@ -24,11 +24,11 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     VarDecl,
 )
-from prove.c_types import map_type, mangle_type_name
+from prove.c_types import mangle_type_name, map_type
 from prove.symbols import FunctionSignature
 from prove.types import (
-    AlgebraicType,
     INTEGER,
+    AlgebraicType,
     PrimitiveType,
     RecordType,
     Type,

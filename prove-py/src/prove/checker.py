@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     FailPropExpr,
     FieldAssignment,
     FieldExpr,
+    FloatLit,
     ForeignBlock,
     FunctionDef,
     GenericType,
@@ -1036,6 +1037,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             (
                 IntegerLit,
                 DecimalLit,
+                FloatLit,
                 BooleanLit,
                 StringLit,
                 CharLit,
@@ -1408,6 +1410,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return INTEGER
         if isinstance(expr, DecimalLit):
             return DECIMAL
+        if isinstance(expr, FloatLit):
+            return FLOAT
         if isinstance(expr, StringLit):
             return STRING
         if isinstance(expr, BooleanLit):
@@ -1954,7 +1958,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return False
         if isinstance(a, IdentifierExpr):
             return a.name == b.name
-        if isinstance(a, (IntegerLit, DecimalLit, StringLit)):
+        if isinstance(a, (IntegerLit, DecimalLit, FloatLit, StringLit)):
             return a.value == b.value
         if isinstance(a, BooleanLit):
             return a.value == b.value

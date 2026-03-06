@@ -66,7 +66,7 @@ validates leap_year(y Year)
   near_miss: 2000  => true
   near_miss: 2100  => false
 from
-    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+    (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
 ```
 
 ### Epistemic Checking (Basic)
@@ -75,9 +75,9 @@ from
 
 ```prove
 transforms process_order(order Order) Receipt
-  know: len(order.items) > 0            // must be Boolean (E384 if not)
-  assume: order.total == sum(prices)    // must be Boolean (E385 if not)
-  believe: order.user.is_verified       // requires ensures (E393 if missing)
+  know: len(order.items) > 0
+  assume: order.total == sum(prices)
+  believe: order.user.is_verified
 from
     // implementation
 ```
@@ -141,7 +141,7 @@ module Auth
 transforms filter_valid(records List<Record>) List<Record>
   intent: "keep only valid records"
 from
-  filter(records, valid record)
+    filter(records, valid record)
 ```
 
 It goes in the function **header**, not inside the body.

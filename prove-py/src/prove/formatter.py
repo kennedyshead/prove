@@ -45,6 +45,7 @@ from prove.ast_nodes import (
     FailPropExpr,
     FieldAssignment,
     FieldExpr,
+    FloatLit,
     FunctionDef,
     GenericType,
     IdentifierExpr,
@@ -584,6 +585,8 @@ class ProveFormatter:
             return expr.value
         if isinstance(expr, DecimalLit):
             return expr.value
+        if isinstance(expr, FloatLit):
+            return expr.value
         if isinstance(expr, StringLit):
             return f'"{_escape_string(expr.value)}"'
         if isinstance(expr, BooleanLit):
@@ -756,6 +759,8 @@ class ProveFormatter:
             return "Integer"
         if isinstance(expr, DecimalLit):
             return "Decimal"
+        if isinstance(expr, FloatLit):
+            return "Float"
         if isinstance(
             expr, (StringLit, RawStringLit, TripleStringLit, PathLit, RegexLit, StringInterp)
         ):

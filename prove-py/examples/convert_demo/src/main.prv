@@ -1,13 +1,11 @@
 module Main
   narrative: """Demonstrates Types module operations.
-
-  Intentional parse errors (quote issues). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
   """
   InputOutput outputs console
-  Types reads string, reads code
+  Types reads string code
 
 main() Result<Unit, Error>!
 from
-  console(f"string(42) = {string(42)}")
-  console(f"string(true) = {string(true)}")
-  console(f"code('A') = {code('A')}")
+    console(f"string(42) = {string(42)}")
+    console(f"string(true) = {string(true)}")
+    console(f"code('A') = {code('A')}")

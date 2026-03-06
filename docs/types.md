@@ -71,7 +71,8 @@ counter = counter + 1
 inputs process(file File:[Own]) Data!
 from
     content as String = read(file)
-    close(file)                        // file consumed here
+    close(file)
+    // file consumed here
 ```
 
 ## Refinement Types

@@ -26,16 +26,16 @@ from prove.ast_nodes import (
     VariantPattern,
     WildcardPattern,
 )
-from prove.c_types import CType, map_type, mangle_type_name
+from prove.c_types import CType, mangle_type_name, map_type
 from prove.types import (
+    INTEGER,
+    UNIT,
     AlgebraicType,
     GenericInstance,
-    INTEGER,
     PrimitiveType,
     RecordType,
     RefinementType,
     Type,
-    UNIT,
     UnitType,
 )
 

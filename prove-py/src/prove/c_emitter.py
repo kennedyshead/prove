@@ -20,6 +20,7 @@ from prove.ast_nodes import (
     ExprStmt,
     FailPropExpr,
     FieldExpr,
+    FloatLit,
     FunctionDef,
     IdentifierExpr,
     IndexExpr,
@@ -43,7 +44,7 @@ from prove.ast_nodes import (
     UnaryExpr,
     VarDecl,
 )
-from prove.c_types import map_type, mangle_name
+from prove.c_types import mangle_name, map_type
 from prove.errors import Diagnostic, Severity
 from prove.optimizer import MemoizationInfo
 from prove.symbols import SymbolTable
@@ -201,6 +202,7 @@ class CEmitter(
         "Parse": "prove_parse.h",
         "Math": "prove_math.h",
         "Convert": "prove_convert.h",
+        "Types": "prove_convert.h",
         "List": "prove_list_ops.h",
         "Format": "prove_format.h",
         "Path": "prove_path.h",
@@ -241,6 +243,7 @@ class CEmitter(
 
     def _scan_for_hof(self, module: Module) -> None:
         """Pre-scan AST for map/filter/reduce calls to include prove_hof.h."""
+
         def _scan_expr(expr: Expr) -> bool:
             if isinstance(expr, CallExpr):
                 if isinstance(expr.func, IdentifierExpr) and expr.func.name in HOF_BUILTINS:
@@ -366,6 +369,9 @@ class CEmitter(
                     self._line(f"#define {name} {'true' if val.value else 'false'}")
                 elif isinstance(val, DecimalLit):
                     self._line(f"#define {name} {val.value}")
+                elif isinstance(val, FloatLit):
+                    # Strip the 'f' suffix for C code
+                    self._line(f"#define {name} {val.value[:-1]}")
                 elif isinstance(val, PathLit):
                     escaped = self._escape_c_string(val.value)
                     self._line(f'#define {name} prove_string_from_cstr("{escaped}")')
@@ -397,7 +403,7 @@ class CEmitter(
             diag = Diagnostic(
                 severity=Severity.ERROR,
                 code="E417",
-                message=f"comptime evaluation failed: {e}",
+                message=f"comptime evaluation failed: {type(e).__name__}: {e}",
                 labels=[],
             )
             self.diagnostics.append(diag)
@@ -724,16 +730,16 @@ class CEmitter(
         n = len(expr.args)
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
+            actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
                     name,
-                    arity=n,
+                    arg_types=actual_types if actual_types else None,
                 )
             if sig:
                 ret = sig.return_type
                 # Resolve type variables using actual arg types
-                actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
                 if actual_types and sig.param_types:
                     bindings = resolve_type_vars(
                         sig.param_types,
