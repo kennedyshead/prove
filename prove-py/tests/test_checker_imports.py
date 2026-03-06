@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from prove.source import Span
-from prove.symbols import FunctionSignature, SymbolTable
 from prove.types import (
     FLOAT,
     INTEGER,
     STRING,
     AlgebraicType,
     FunctionType,
-    GenericInstance,
     PrimitiveType,
     RecordType,
-    RefinementType,
     VariantInfo,
     is_json_serializable,
     types_compatible,

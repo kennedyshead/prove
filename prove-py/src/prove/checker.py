@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from prove._check_calls import CallCheckMixin
+from prove._check_contracts import ContractCheckMixin
+from prove._check_types import TypeCheckMixin
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
@@ -161,7 +164,7 @@ def _edit_distance(a: str, b: str) -> int:
     return prev[-1]
 
 
-class Checker:
+class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     """Semantic analyzer for a single module."""
 
     def __init__(
@@ -1062,142 +1065,6 @@ class Checker:
             "use primitive expressions (comparisons, ranges, boolean ops)",
             expr.span,
         )
-
-    # ── Contract checking ──────────────────────────────────────
-
-    def _check_contracts(self, fd: FunctionDef, return_type: Type, param_types: list[Type]) -> None:
-        """Type-check ensures/requires/know/assume/believe contracts."""
-        # Type-check `ensures` — push sub-scope with `result` bound to return type
-        for ens_expr in fd.ensures:
-            # Check for undefined validator in ensures
-            if isinstance(ens_expr, ValidExpr) and ens_expr.args is not None:
-                func_name = ens_expr.name
-                n_args = len(ens_expr.args)
-                sig = self.symbols.resolve_function("validates", func_name, n_args)
-                if sig is None:
-                    sig = self.symbols.resolve_function_any(func_name, arity=n_args)
-                if sig is None or sig.verb != "validates":
-                    self._error(
-                        "E311",
-                        f"undefined function '{func_name}'",
-                        ens_expr.span,
-                    )
-                else:
-                    # Mark import as used
-                    if sig.module:
-                        self._used_imports.add((sig.module, func_name))
-
-            self.symbols.push_scope("ensures")
-            self.symbols.define(
-                Symbol(
-                    name="result",
-                    kind=SymbolKind.VARIABLE,
-                    resolved_type=return_type,
-                    span=fd.span,
-                )
-            )
-            ens_type = self._infer_expr(ens_expr)
-            if not isinstance(ens_type, ErrorType) and not types_compatible(BOOLEAN, ens_type):
-                self._error(
-                    "E380",
-                    f"ensures expression must be Boolean, got '{type_name(ens_type)}'",
-                    ens_expr.span if hasattr(ens_expr, "span") else fd.span,
-                )
-            self.symbols.pop_scope()
-
-        # Type-check `requires` — params are already in scope
-        for req_expr in fd.requires:
-            # Check for undefined validator in requires
-            if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
-                func_name = req_expr.name
-                n_args = len(req_expr.args)
-                sig = self.symbols.resolve_function("validates", func_name, n_args)
-                if sig is None:
-                    sig = self.symbols.resolve_function_any(func_name, arity=n_args)
-                if sig is None or sig.verb != "validates":
-                    self._error(
-                        "E311",
-                        f"undefined function '{func_name}'",
-                        req_expr.span,
-                    )
-                else:
-                    # Mark import as used
-                    if sig.module:
-                        self._used_imports.add((sig.module, func_name))
-            req_type = self._infer_expr(req_expr)
-            if not isinstance(req_type, ErrorType) and not types_compatible(BOOLEAN, req_type):
-                self._error(
-                    "E381",
-                    f"requires expression must be Boolean, got '{type_name(req_type)}'",
-                    req_expr.span if hasattr(req_expr, "span") else fd.span,
-                )
-
-        # Type-check `know`
-        for know_expr in fd.know:
-            know_type = self._infer_expr(know_expr)
-            if not isinstance(know_type, ErrorType) and not types_compatible(BOOLEAN, know_type):
-                self._error(
-                    "E384",
-                    f"know expression must be Boolean, got '{type_name(know_type)}'",
-                    know_expr.span if hasattr(know_expr, "span") else fd.span,
-                )
-
-        # Type-check `assume`
-        for assume_expr in fd.assume:
-            assume_type = self._infer_expr(assume_expr)
-            if not isinstance(assume_type, ErrorType) and not types_compatible(
-                BOOLEAN, assume_type
-            ):
-                self._error(
-                    "E385",
-                    f"assume expression must be Boolean, got '{type_name(assume_type)}'",
-                    assume_expr.span if hasattr(assume_expr, "span") else fd.span,
-                )
-
-        # Type-check `believe`
-        for believe_expr in fd.believe:
-            self.symbols.push_scope("believe")
-            self.symbols.define(
-                Symbol(
-                    name="result",
-                    kind=SymbolKind.VARIABLE,
-                    resolved_type=return_type,
-                    span=fd.span,
-                )
-            )
-            believe_type = self._infer_expr(believe_expr)
-            if not isinstance(believe_type, ErrorType) and not types_compatible(
-                BOOLEAN, believe_type
-            ):
-                self._error(
-                    "E386",
-                    f"believe expression must be Boolean, got '{type_name(believe_type)}'",
-                    believe_expr.span if hasattr(believe_expr, "span") else fd.span,
-                )
-            self.symbols.pop_scope()
-
-        # Validate `satisfies` — each named type must exist
-        for sat_name in fd.satisfies:
-            resolved = self.symbols.resolve_type(sat_name)
-            if resolved is None:
-                self._error(
-                    "E382",
-                    f"satisfies references undefined type '{sat_name}'",
-                    fd.span,
-                )
-
-        # Warning: intent set but no ensures/requires
-        if fd.intent and not fd.ensures and not fd.requires:
-            diag = make_diagnostic(
-                Severity.WARNING,
-                "W311",
-                "intent declared but no ensures or requires to validate it",
-                labels=[DiagnosticLabel(span=fd.span, message="")],
-                notes=[
-                    "Add `ensures` or `requires` clauses so the compiler can verify the intent.",
-                ],
-            )
-            self.diagnostics.append(diag)
 
     # ── Requires-based option narrowing ─────────────────────────
 

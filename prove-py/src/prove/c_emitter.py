@@ -43,10 +43,10 @@ from prove.ast_nodes import (
     UnaryExpr,
     VarDecl,
 )
-from prove.c_types import map_type, mangle_name, mangle_type_name
+from prove.c_types import map_type, mangle_name
 from prove.errors import Diagnostic, Severity
 from prove.optimizer import MemoizationInfo
-from prove.symbols import FunctionSignature, SymbolTable
+from prove.symbols import SymbolTable
 from prove.types import (
     BOOLEAN,
     DECIMAL,
@@ -62,9 +62,7 @@ from prove.types import (
     ListType,
     PrimitiveType,
     RecordType,
-    RefinementType,
     Type,
-    UnitType,
     resolve_type_vars,
     substitute_type_vars,
 )

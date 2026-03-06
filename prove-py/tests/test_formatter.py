@@ -596,7 +596,6 @@ class TestFormatterAutoFixes:
     def test_w300_prefixes_unused_var(self):
         """W300: formatter prefixes unused variable names with _."""
         from prove.errors import Diagnostic, DiagnosticLabel, Severity
-        from prove.source import Span
 
         source = (
             "transforms one() Integer\n"
