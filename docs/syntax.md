@@ -270,6 +270,23 @@ inputs request(route Route, body String) Response!
 validates email(address String)
 ```
 
+## Literals
+
+Prove has several literal syntaxes for different types:
+
+```prove
+count as Integer = 42           // Integer literal
+precision as Decimal = 3.14    // Decimal literal (arbitrary precision)
+speed as Float = 9.8f          // Float literal (IEEE 754, requires 'f' suffix)
+flag as Boolean = true
+greeting as String = "Hello"
+char as Character = 'x'
+pattern as Regex = r"\d+"
+path as Path = /users/alice/
+```
+
+The **`f` suffix** on floating-point literals (like `9.8f`) creates a `Float` type, suitable for IEEE 754 operations like `Math.sqrt` and `Math.floor`. Without the suffix (like `3.14`), you get a `Decimal` type for exact decimal arithmetic.
+
 ## Variable Declarations
 
 Variables use `name as Type = value`. The `as` keyword reads naturally: *"port, as a Port, equals 8080"*.

@@ -48,6 +48,7 @@ Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). R
 count as Integer = 42                          // Integer:[64 Signed]
 flags as Integer:[8 Unsigned] = 0xFF
 price as Decimal:[128 Scale:2] = 19.99         // financial precision
+gravity as Float = 9.8f                        // Float (IEEE 754, note 'f' suffix)
 name as String = "Alice"                        // String:[UTF8]
 code as String:[ASCII 4] = "US01"              // ASCII, max 4 characters
 letter as Character = 'A'                       // Character:[UTF8]

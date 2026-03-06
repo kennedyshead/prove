@@ -353,6 +353,8 @@ from
     Math.abs(Math.min(x, y) - Math.max(x, y))
 ```
 
+> **Note:** Math functions like `sqrt` and `floor` require `Float` arguments. Use the `f` suffix on literals: `16.0f` not `16.0` (which is `Decimal`).
+
 ---
 
 ## Types
