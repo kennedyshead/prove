@@ -88,7 +88,7 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_String*", is_pointer=True, header="prove_string.h")
         if name == "Error":
             return CType("Prove_String*", is_pointer=True, header="prove_string.h")
-        if name == "Builder":
+        if name == "StringBuilder":
             return CType("Prove_Builder*", is_pointer=True, header="prove_text.h")
         if name == "ProcessResult":
             return CType(
@@ -145,6 +145,8 @@ def map_type(ty: Type) -> CType:
         return CType("void*", is_pointer=True, header=None)
 
     if isinstance(ty, TypeVariable):
+        if ty.name == "Value":
+            return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
         # Generic — fallback to void* in POC
         return CType("void*", is_pointer=True, header=None)
 

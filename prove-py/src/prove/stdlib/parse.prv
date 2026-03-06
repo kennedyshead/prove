@@ -1,10 +1,5 @@
 module Parse
   narrative: """Encoding and decoding of structured data formats."""
-  Table types Table
-
-  type Value is binary
-
-  type Source is binary
 
 /// Parse a source string into a Value
 creates value(source Source) Value
@@ -52,38 +47,6 @@ binary
 
 /// Get the object content of a Value
 reads object(value Value) Table<Value>
-binary
-
-/// Check if a Value is text
-validates text(value Value)
-binary
-
-/// Check if a Value is a number
-validates number(value Value)
-binary
-
-/// Check if a Value is a decimal
-validates decimal(value Value)
-binary
-
-/// Check if a Value is a boolean
-validates bool(value Value)
-binary
-
-/// Check if a Value is an array
-validates array(value Value)
-binary
-
-/// Check if a Value is an object
-validates object(value Value)
-binary
-
-/// Check if a Value is null
-validates null(value Value)
-binary
-
-/// Validate a source string
-validates value(source Source)
 binary
 
 /// Validate a JSON string

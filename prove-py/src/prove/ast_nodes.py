@@ -481,6 +481,7 @@ class TypeDef:
     modifiers: list[TypeModifier]
     body: TypeBody
     span: Span
+    doc_comment: str | None = None
 
 
 @dataclass(frozen=True)

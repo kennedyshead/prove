@@ -235,14 +235,14 @@ class TestRequiresValidNarrowing:
         # We test this indirectly: if narrowing works, the body type-checks
         check(
             "module M\n"
-            "  type Value is\n"
+            "  type Payload is\n"
             "    data String\n"
             "\n"
-            "validates object(v Value) Boolean\n"
+            "validates object(v Payload) Boolean\n"
             "    from\n"
             "        true\n"
             "\n"
-            "transforms extract(data Result<Value, String>) String\n"
+            "transforms extract(data Result<Payload, String>) String\n"
             "    requires valid object(data)\n"
             "    from\n"
             "        data.data\n"

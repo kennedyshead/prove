@@ -1,7 +1,8 @@
 module Text
   narrative: """String operations and construction."""
 
-  type Builder is binary
+  /// A mutable buffer for efficient incremental string construction
+  type StringBuilder is binary
 
 /// Get the length of a string
 reads length(text String) Integer
@@ -56,21 +57,21 @@ transforms repeat(text String, count Integer) String
 binary
 
 /// Create a new string builder
-creates builder() Builder
+creates builder() StringBuilder:[Mutable]
 binary
 
 /// Append a string to a builder
-transforms string(builder Builder, text String) Builder
+transforms string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]
 binary
 
 /// Append a character to a builder
-transforms char(builder Builder, character Character) Builder
+transforms char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]
 binary
 
 /// Build the final string from a builder
-reads build(builder Builder) String
+reads build(builder StringBuilder:[Mutable]) String
 binary
 
-/// Get the length of a builder
-reads length(builder Builder) Integer
+/// Get the current length of a builder
+reads length(builder StringBuilder:[Mutable]) Integer
 binary

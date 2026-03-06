@@ -138,10 +138,10 @@ class CallCheckMixin:
                             if types_compatible(expected, inner):
                                 continue
                     if (
-                        sig.module == "parse"
+                        sig.module in ("parse", "types")
                         and sig.verb in ("creates", "validates")
                         and sig.name == "value"
-                        and isinstance(expected, (SimpleType, PrimitiveType))
+                        and isinstance(expected, (SimpleType, PrimitiveType, TypeVariable))
                         and expected.name == "Source"
                         and is_json_serializable(actual)
                     ):
@@ -161,7 +161,7 @@ class CallCheckMixin:
             # requires the argument to be json-serializable.
             if (
                 sig.module
-                and sig.module == "parse"
+                and sig.module in ("parse", "types")
                 and sig.verb in ("creates", "validates")
                 and sig.name == "value"
                 and arg_types

@@ -242,6 +242,8 @@ def is_json_serializable(ty: Type) -> bool:
     """
     if isinstance(ty, PrimitiveType):
         return ty.name in _JSON_SERIALIZABLE_PRIMITIVES
+    if isinstance(ty, TypeVariable):
+        return ty.name in _JSON_SERIALIZABLE_PRIMITIVES
     if isinstance(ty, RecordType):
         return all(is_json_serializable(ft) for ft in ty.fields.values())
     if isinstance(ty, GenericInstance):

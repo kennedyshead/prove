@@ -1,38 +1,34 @@
 module Table
   narrative: """Hash table from String keys to values."""
 
-  type V is binary
-
-  type Table<V> is binary
-
 /// Create a new empty table
-creates new() Table<V>
+creates new() Table<Value>
 binary
 
 /// Check if a key exists in a table
-validates has(key String, table Table<V>)
+validates has(key String, table Table<Value>)
 binary
 
 /// Add a key-value pair to a table (returns new table)
-transforms add(key String, value V, table Table<V>) Table<V>
+transforms add(key String, value Value, table Table<Value>) Table<Value>
 binary
 
 /// Get a value by key
-reads get(key String, table Table<V>) Option<V>
+reads get(key String, table Table<Value>) Option<Value>
 binary
 
 /// Remove a key from a table (returns new table)
-transforms remove(key String, table Table<V>) Table<V>
+transforms remove(key String, table Table<Value>) Table<Value>
 binary
 
 /// Get all keys in a table
-reads keys(table Table<V>) List<String>
+reads keys(table Table<Value>) List<String>
 binary
 
 /// Get all values in a table
-reads values(table Table<V>) List<V>
+reads values(table Table<Value>) List<Value>
 binary
 
 /// Get the number of entries in a table
-reads length(table Table<V>) Integer
+reads length(table Table<Value>) Integer
 binary

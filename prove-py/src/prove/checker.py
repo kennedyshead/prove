@@ -145,6 +145,8 @@ _BUILTIN_TYPE_NAMES = frozenset(
         "Result",
         "Error",
         "Table",
+        "Value",
+        "Source",
     }
 )
 
@@ -352,7 +354,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             ),
         )
         self.symbols.define_type("List", ListType(TypeVariable("T")))
+        self.symbols.define_type(
+            "Table",
+            GenericInstance(
+                "Table",
+                [TypeVariable("T")],
+            ),
+        )
         self.symbols.define_type("Error", PrimitiveType("Error"))
+        self.symbols.define_type("Value", TypeVariable("Value"))
+        self.symbols.define_type("Source", TypeVariable("Source"))
 
         _dummy = Span("<builtin>", 0, 0, 0, 0)
 
@@ -1659,10 +1670,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             if types_compatible(expected, inner):
                                 continue
                     if (
-                        sig.module == "parse"
+                        sig.module in ("parse", "types")
                         and sig.verb in ("creates", "validates")
                         and sig.name == "value"
-                        and isinstance(expected, (SimpleType, PrimitiveType))
+                        and isinstance(expected, (SimpleType, PrimitiveType, TypeVariable))
                         and expected.name == "Source"
                         and is_json_serializable(actual)
                     ):
@@ -1682,7 +1693,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # requires the argument to be json-serializable.
             if (
                 sig.module
-                and sig.module == "parse"
+                and sig.module in ("parse", "types")
                 and sig.verb in ("creates", "validates")
                 and sig.name == "value"
                 and arg_types

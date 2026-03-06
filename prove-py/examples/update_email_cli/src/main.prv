@@ -1,8 +1,8 @@
 module Example
   narrative: """An example of email update"""
   InputOutput inputs console file, outputs console
-  Parse creates json value, types Value, reads json object, validates object, json
-  Types validates string
+  Parse creates json value, types Value, reads json object, validates json
+  Types validates string object value
   Table types Table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"

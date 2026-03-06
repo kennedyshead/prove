@@ -1,28 +1,37 @@
 module Pattern
   narrative: """Regular expression matching."""
 
+  /// A successful regex match with position and content
   type Match is binary
 
+/// Test if a string matches a regex pattern
 validates test(text String, pattern String)
 binary
 
+/// Search for the first match of a pattern in text
 reads search(text String, pattern String) Option<Match>
 binary
 
+/// Find all matches of a pattern in text
 reads find_all(text String, pattern String) List<Match>
 binary
 
+/// Replace all occurrences of a pattern with a replacement string
 transforms replace(text String, pattern String, replacement String) String
 binary
 
+/// Split a string by a regex pattern
 transforms split(text String, pattern String) List<String>
 binary
 
-reads text(m Match) String
+/// Get the matched text from a match result
+reads text(matched Match) String
 binary
 
-reads start(m Match) Integer
+/// Get the start position of a match
+reads start(matched Match) Integer
 binary
 
-reads end(m Match) Integer
+/// Get the end position of a match
+reads end(matched Match) Integer
 binary

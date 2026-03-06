@@ -145,7 +145,7 @@ _register_module(
         ("reads", "build"): "prove_text_build",
     },
     overloads={
-        ("reads", "length", "Builder"): "prove_text_builder_length",
+        ("reads", "length", "StringBuilder"): "prove_text_builder_length",
     },
 )
 
@@ -260,6 +260,14 @@ _register_module(
     prv_file="types.prv",
     c_map={
         ("reads", "code"): "prove_convert_code",
+        ("validates", "text"): "prove_value_is_text",
+        ("validates", "number"): "prove_value_is_number",
+        ("validates", "decimal"): "prove_value_is_decimal",
+        ("validates", "bool"): "prove_value_is_bool",
+        ("validates", "array"): "prove_value_is_array",
+        ("validates", "object"): "prove_value_is_object",
+        ("validates", "null"): "prove_value_is_null",
+        ("validates", "value"): "prove_validates_value",
     },
     overloads={
         ("creates", "integer", "String"): "prove_convert_integer_str",
@@ -314,14 +322,6 @@ _register_module(
         ("reads", "bool"): "prove_value_as_bool",
         ("reads", "array"): "prove_value_as_array",
         ("reads", "object"): "prove_value_as_object",
-        ("validates", "text"): "prove_value_is_text",
-        ("validates", "number"): "prove_value_is_number",
-        ("validates", "decimal"): "prove_value_is_decimal",
-        ("validates", "bool"): "prove_value_is_bool",
-        ("validates", "array"): "prove_value_is_array",
-        ("validates", "object"): "prove_value_is_object",
-        ("validates", "null"): "prove_value_is_null",
-        ("validates", "value"): "prove_validates_value",
         ("validates", "json"): "prove_validates_json",
         ("validates", "toml"): "prove_validates_toml",
         ("creates", "value"): "prove_creates_value",
@@ -358,17 +358,58 @@ _KNOWN_TYPES = {
 }
 
 
+_STDLIB_TYPE_VARS = frozenset({"Value", "Source"})
+
+
 def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
     """Resolve a simple type name to a Type.
 
     Single uppercase letters that are not known types (e.g. V, T, E)
     are treated as type variables for generic signatures.
+    Names in _STDLIB_TYPE_VARS are also treated as type variables.
     """
     if name in _KNOWN_TYPES:
         return _KNOWN_TYPES[name]
+    if name in _STDLIB_TYPE_VARS:
+        return TypeVariable(name)
     if len(name) == 1 and name.isupper():
         return TypeVariable(name)
     return PrimitiveType(name)
+
+
+def _resolve_type_expr(type_expr: TypeExpr) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
+    """Resolve an AST TypeExpr to a semantic Type, handling generics and modifiers."""
+    from prove.ast_nodes import GenericType, ModifiedType, SimpleType
+
+    if isinstance(type_expr, GenericType):
+        args = []
+        for a in type_expr.args:
+            if isinstance(a, SimpleType):
+                args.append(_resolve_type_name(a.name))
+            elif isinstance(a, ModifiedType):
+                base = _resolve_type_name(a.name)
+                mods = tuple(m.value for m in a.modifiers)
+                if isinstance(base, PrimitiveType):
+                    args.append(PrimitiveType(base.name, modifiers=mods))
+                else:
+                    args.append(base)
+            else:
+                args.append(TypeVariable("T"))
+        if type_expr.name == "List" and len(args) == 1:
+            return ListType(args[0])
+        return GenericInstance(type_expr.name, args)
+
+    if isinstance(type_expr, ModifiedType):
+        base = _resolve_type_name(type_expr.name)
+        mods = tuple(m.value for m in type_expr.modifiers)
+        if isinstance(base, PrimitiveType):
+            return PrimitiveType(base.name, modifiers=mods)
+        return base
+
+    if hasattr(type_expr, "name"):
+        return _resolve_type_name(type_expr.name)
+
+    return ERROR_TY
 
 
 def load_stdlib(module_name: str) -> list[FunctionSignature]:
@@ -402,7 +443,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     except (CompileError, ValueError, IndexError):
         return []
 
-    from prove.ast_nodes import FunctionDef, GenericType, ModuleDecl, SimpleType
+    from prove.ast_nodes import FunctionDef, GenericType, ModifiedType, ModuleDecl, SimpleType
 
     sigs: list[FunctionSignature] = []
     all_decls = list(module.declarations)
@@ -417,40 +458,13 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
         param_names = []
         for p in decl.params:
             param_names.append(p.name)
-            if hasattr(p.type_expr, "name"):
-                pt = _resolve_type_name(p.type_expr.name)
-                # Handle generic types like List<Integer>
-                if isinstance(p.type_expr, GenericType):
-                    args = []
-                    for a in p.type_expr.args:
-                        if isinstance(a, SimpleType):
-                            args.append(_resolve_type_name(a.name))
-                        else:
-                            args.append(TypeVariable("T"))
-                    if p.type_expr.name == "List" and len(args) == 1:
-                        pt = ListType(args[0])
-                    else:
-                        pt = GenericInstance(p.type_expr.name, args)
-                param_types.append(pt)
-            else:
-                param_types.append(ERROR_TY)
+            pt = _resolve_type_expr(p.type_expr)
+            param_types.append(pt)
 
         # Resolve return type
         ret_type = BOOLEAN if decl.verb == "validates" else UNIT
         if decl.return_type is not None:
-            if isinstance(decl.return_type, GenericType):
-                args = []
-                for a in decl.return_type.args:
-                    if isinstance(a, SimpleType):
-                        args.append(_resolve_type_name(a.name))
-                    else:
-                        args.append(TypeVariable("T"))
-                if decl.return_type.name == "List" and len(args) == 1:
-                    ret_type = ListType(args[0])
-                else:
-                    ret_type = GenericInstance(decl.return_type.name, args)
-            elif hasattr(decl.return_type, "name"):
-                ret_type = _resolve_type_name(decl.return_type.name)
+            ret_type = _resolve_type_expr(decl.return_type)
 
         sig = FunctionSignature(
             verb=decl.verb,

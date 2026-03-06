@@ -32,6 +32,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     Type,
+    TypeVariable,
 )
 
 
@@ -136,6 +137,8 @@ class TypeEmitterMixin:
                 return f"prove_value_text(prove_string_from_char({access}))"
             if ty.name == "Value":
                 return access
+        if isinstance(ty, TypeVariable) and ty.name == "Value":
+            return access
         if isinstance(ty, RecordType):
             self._record_to_value.add(ty.name)
             return f"_prove_record_to_value_{ty.name}({access})"
@@ -174,7 +177,7 @@ class TypeEmitterMixin:
         """Return True if sig is Parse.creates/validates value(V)."""
         return (
             sig.module
-            and sig.module == "parse"
+            and sig.module in ("parse", "types")
             and sig.verb in ("creates", "validates")
             and sig.name == "value"
         )

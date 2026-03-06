@@ -1,8 +1,10 @@
 module InputOutput
   narrative: """Handles IO operations across console, file, system, dir, and process channels."""
 
+  /// The result of executing a system command
   type ProcessResult is binary
 
+  /// An entry in a directory listing
   type DirEntry is binary
 
 /// Print text to the console
@@ -30,7 +32,7 @@ validates file(path String)
 binary
 
 /// Execute a system command
-inputs system(cmd String, args List<String>) ProcessResult
+inputs system(command String, arguments List<String>) ProcessResult
 binary
 
 /// Exit the process with a status code
@@ -38,7 +40,7 @@ outputs system(code Integer)
 binary
 
 /// Validate a command exists in PATH
-validates system(cmd String)
+validates system(command String)
 binary
 
 /// List entries in a directory

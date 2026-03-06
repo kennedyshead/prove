@@ -1,22 +1,20 @@
 module List
   narrative: """Operations on lists."""
 
-  type Element is binary
-
 /// Get the length of a list
-reads length(items List<Element>) Integer
+reads length(items List<Value>) Integer
 binary
 
 /// Get the first element of a list
-reads first(items List<Element>) Option<Element>
+reads first(items List<Value>) Option<Value>
 binary
 
 /// Get the last element of a list
-reads last(items List<Element>) Option<Element>
+reads last(items List<Value>) Option<Value>
 binary
 
 /// Check if a list is empty
-validates empty(items List<Element>)
+validates empty(items List<Value>)
 binary
 
 /// Check if an integer is in a list
@@ -36,11 +34,11 @@ reads index(items List<String>, value String) Option<Integer>
 binary
 
 /// Get a slice of a list from start to end (exclusive)
-transforms slice(items List<Element>, start Integer, end Integer) List<Element>
+transforms slice(items List<Value>, start Integer, end Integer) List<Value>
 binary
 
 /// Reverse a list
-transforms reverse(items List<Element>) List<Element>
+transforms reverse(items List<Value>) List<Value>
 binary
 
 /// Sort a list of integers

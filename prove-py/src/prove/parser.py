@@ -730,7 +730,7 @@ class Parser:
 
     # ── Type definitions ─────────────────────────────────────────
 
-    def _parse_type_def(self) -> TypeDef:
+    def _parse_type_def(self, doc_comment: str | None = None) -> TypeDef:
         start = self._current().span
         self._advance()  # 'type'
         name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
@@ -768,7 +768,12 @@ class Parser:
         end = self._current().span
         span = self._span(start, end)
         return TypeDef(
-            name=name, type_params=type_params, modifiers=modifiers, body=body, span=span
+            name=name,
+            type_params=type_params,
+            modifiers=modifiers,
+            body=body,
+            span=span,
+            doc_comment=doc_comment,
         )
 
     def _parse_type_body(self) -> TypeBody:
@@ -1198,8 +1203,33 @@ class Parser:
                         self._advance()
                         steps.append(self._expect(TokenKind.IDENTIFIER).value)
                     temporal = steps
+                elif self._at(TokenKind.DOC_COMMENT):
+                    # Collect doc comment(s) before type or function
+                    doc_lines: list[str] = []
+                    while self._at(TokenKind.DOC_COMMENT):
+                        doc_lines.append(self._advance().value)
+                        self._skip_newlines()
+                    doc = "\n".join(doc_lines) if doc_lines else None
+                    if self._at(TokenKind.TYPE):
+                        types.append(self._parse_type_def(doc))
+                    elif self._current().kind in _VERBS:
+                        body.append(self._parse_function_def(doc))
+                    elif self._at(TokenKind.MAIN):
+                        body.append(self._parse_main_def(doc))
+                    else:
+                        tok = self._current()
+                        if not self._recovery_mode:
+                            self._error(
+                                f"expected a declaration after doc comment "
+                                f"but found {tok.kind.name} ({tok.value!r})",
+                                tok.span,
+                                code="E211",
+                            )
+                            self._recovery_mode = True
+                        self._advance()
+                    continue
                 elif self._at(TokenKind.TYPE):
-                    types.append(self._parse_type_def())
+                    types.append(self._parse_type_def(None))
                 elif self._at(TokenKind.CONSTANT_IDENTIFIER):
                     constants.append(self._parse_constant_def())
                 elif self._at(TokenKind.INVARIANT_NETWORK):
@@ -1210,31 +1240,23 @@ class Parser:
                     # Import: ModuleName verb_group (, verb_group)*
                     module_tok = self._advance()
                     imports.append(self._parse_import(module_tok))
+                elif self._current().kind in _VERBS:
+                    body.append(self._parse_function_def(None))
+                elif self._at(TokenKind.MAIN):
+                    body.append(self._parse_main_def(None))
                 else:
-                    # Parse nested declarations
-                    doc_lines: list[str] = []
-                    while self._at(TokenKind.DOC_COMMENT):
-                        doc_lines.append(self._advance().value)
-                        self._skip_newlines()
-                    doc = "\n".join(doc_lines) if doc_lines else None
-
-                    if self._current().kind in _VERBS:
-                        body.append(self._parse_function_def(doc))
-                    elif self._at(TokenKind.MAIN):
-                        body.append(self._parse_main_def(doc))
-                    else:
-                        tok = self._current()
-                        if not self._recovery_mode:
-                            self._error(
-                                f"expected a declaration (type, constant, "
-                                f"import, transforms, validates, inputs, "
-                                f"outputs, main) but found {tok.kind.name} "
-                                f"({tok.value!r})",
-                                tok.span,
-                                code="E211",
-                            )
-                            self._recovery_mode = True
-                        self._advance()
+                    tok = self._current()
+                    if not self._recovery_mode:
+                        self._error(
+                            f"expected a declaration (type, constant, "
+                            f"import, transforms, validates, inputs, "
+                            f"outputs, main) but found {tok.kind.name} "
+                            f"({tok.value!r})",
+                            tok.span,
+                            code="E211",
+                        )
+                        self._recovery_mode = True
+                    self._advance()
 
                 self._skip_newlines()
 
