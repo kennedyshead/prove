@@ -6,16 +6,30 @@
 
 Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
 
+> **TL;DR — If AI wrote your code, Prove won't compile it.**
+
 ```prove
 transforms add(a Integer, b Integer) Integer
+  requires valid integer(a) && valid integer(b) 
   ensures result == a + b
   explain
-      sum a and b
+      sum of a and b
 from
     a + b
 ```
 
 `ensures` generates property tests. `transforms` guarantees purity. `explain` documents *how* the implementation satisfies the contract. The compiler enforces all of it.
+
+---
+
+## Features at a glance
+
+- **Contracts as code** — `ensures` auto-generates property tests; `requires` defines preconditions
+- **Purity by default** — `transforms` marks pure functions; IO is explicit via the verb system
+- **No null** — `Option<Value>` enforced by compiler; no `NullPointerException`
+- **Refinement types** — Catch invalid values at compile time (`Integer where 1..65535`)
+- **Self-hosting** — Prove compiles itself (V2.0 in progress)
+- **Binary AST** — Output binaries can't be scraped for AI training
 
 ---
 
@@ -29,7 +43,7 @@ from
 | AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
 | Tests are an afterthought | Contracts generate tests automatically — testing is in the code |
 | "Works on my machine" | Verb system makes IO explicit and trackable |
-| Null/nil crashes | No null — `Option<T>` enforced by compiler |
+| Null/nil crashes | No null — `Option<Value>` enforced by compiler |
 | Edge cases slip through | Compiler generates edge cases from refinement types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
 
@@ -58,8 +72,12 @@ cd hello
 prove build
 ./build/hello
 
-prove check    # type-check only
-prove test     # run auto-generated tests
+prove check               # type-check only
+prove format --md         # format all .prv and prove blocks in markdown
+prove test                # run auto-generated tests
+prove lsp                 # run the language server
+prove new project-name    # Create a boilerplate
+prove view path/to/.prv  # View AST file
 ```
 
 ---
@@ -82,6 +100,7 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 
 - **tree-sitter-prove** — Tree-sitter grammar for editor syntax highlighting
 - **chroma-lexer-prove** — Chroma lexer for Gitea/Hugo code rendering
+- pygments-prove — Pygments lexer
 
 ## Development
 
@@ -97,7 +116,7 @@ mypy src/                     # type check
 
 Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove).
 
-The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
+Contributors welcome — reach out to magnusknutas[at]botwork.se for access.
 
 ## AI Transparency
 
@@ -109,9 +128,10 @@ aids for the tooling surrounding the language: the Python bootstrap compiler,
 C runtime, documentation, and editor integration (tree-sitter grammar, Pygments
 and Chroma lexers). No single AI tool is credited — multiple have been used
 across the project's development as conceptual partners and coding assistants.
+All prove source code is written by human and no AI.
 
 Once the compiler is self-hosted (V2.0), AI involvement will be limited to
-documentation maintenance and conceptual discussion.
+documentation, lexers and conceptual discussion.
 
 This distinction is reflected in the licensing: the language itself is covered
 by the Prove Source License (which prohibits AI training use), while the
