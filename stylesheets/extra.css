@@ -34,3 +34,27 @@
 .highlight .kt {
     color: #56b6c2;
 }
+
+mark, .highlighted {
+    background-color: #ffe066;
+    color: #1a1a1a;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+code {
+    background-color: #e8e8e8 !important;
+    color: #c7254e !important;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: "Roboto Mono", monospace;
+    border: 1px solid #ddd;
+}
+
+[data-md-color-scheme="slate"] code {
+    background-color: #3d3d3d !important;
+    color: #e06c75 !important;
+    border: 1px solid #555;
+}

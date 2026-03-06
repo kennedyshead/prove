@@ -616,17 +616,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#e100-tab-character-not-allowed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        E100 — Tab character not allowed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#e101-unterminated-string-literal" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -726,17 +715,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#e110-inconsistent-indentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        E110 — Inconsistent indentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#e200-missing-module-declaration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -807,17 +785,6 @@
     <span class="md-ellipsis">
       
         E215 — Expected pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#e216-duplicate-verb-in-import" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        E216 — Duplicate verb in import
       
     </span>
   </a>
@@ -1932,6 +1899,95 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Blog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blog/2026-03-04-why-i-built-my-own-programming-language/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why I Built My Own Programming Language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -1959,8 +2015,6 @@
 <p>Diagnostic codes use a letter prefix matching their severity (<code>E</code> = error, <code>W</code> = warning, <code>I</code> = info) and a numeric group (1xx = lexer, 2xx = parser, 3xx = checker, 4xx = comptime).</p>
 <hr />
 <h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
-<h3 id="e100-tab-character-not-allowed">E100 — Tab character not allowed<a class="headerlink" href="#e100-tab-character-not-allowed" title="Permanent link">&para;</a></h3>
-<p>Prove uses spaces for indentation. Tab characters are not permitted.</p>
 <h3 id="e101-unterminated-string-literal">E101 — Unterminated string literal<a class="headerlink" href="#e101-unterminated-string-literal" title="Permanent link">&para;</a></h3>
 <p>A string opened with <code>"</code> was not closed before end of line or file.</p>
 <h3 id="e102-unterminated-triple-quoted-string">E102 — Unterminated triple-quoted string<a class="headerlink" href="#e102-unterminated-triple-quoted-string" title="Permanent link">&para;</a></h3>
@@ -1974,41 +2028,30 @@
 <h3 id="e106-unterminated-f-string-literal">E106 — Unterminated f-string literal<a class="headerlink" href="#e106-unterminated-f-string-literal" title="Permanent link">&para;</a></h3>
 <p>An f-string opened with <code>f"</code> was not closed.</p>
 <h3 id="e107-unknown-escape-sequence">E107 — Unknown escape sequence<a class="headerlink" href="#e107-unknown-escape-sequence" title="Permanent link">&para;</a></h3>
-<p>A backslash followed by an unrecognized character inside a string.</p>
+<p>A backslash followed by an unrecognized character inside a string. The error message shows the problematic sequence (e.g., <code>`\q`</code>). Valid escapes: <code>\n</code>, <code>\r</code>, <code>\t</code>, <code>\\</code>, <code>\"</code>, <code>\{</code>, <code>\}</code>, <code>\0</code>.</p>
 <h3 id="e108-unexpected-end-of-escape-sequence">E108 — Unexpected end of escape sequence<a class="headerlink" href="#e108-unexpected-end-of-escape-sequence" title="Permanent link">&para;</a></h3>
 <p>A backslash at the end of a string with no character following it.</p>
 <h3 id="e109-unexpected-character">E109 — Unexpected character<a class="headerlink" href="#e109-unexpected-character" title="Permanent link">&para;</a></h3>
-<p>A character that doesn't belong to any valid token.</p>
-<h3 id="e110-inconsistent-indentation">E110 — Inconsistent indentation<a class="headerlink" href="#e110-inconsistent-indentation" title="Permanent link">&para;</a></h3>
-<p>Mixed indentation widths within the same file.</p>
+<p>A character that doesn't belong to any valid token. The error message shows the problematic character (e.g., <code>`@`</code>, <code>`#`</code>, <code>`$`</code>).</p>
 <h3 id="e200-missing-module-declaration">E200 — Missing module declaration<a class="headerlink" href="#e200-missing-module-declaration" title="Permanent link">&para;</a></h3>
-<p>Every <code>.prv</code> file must begin with a <code>module</code> declaration and narrative.</p>
+<p>Every <code>.prv</code> file must begin with a <code>module</code> declaration and narrative. When a filename is available, the compiler suggests a module name derived from it (e.g., <code>my_utils.prv</code> suggests <code>module MyUtils</code>).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">module</span> <span class="nc">MyModule</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;Description of this module&quot;&quot;&quot;</span>
 </code></pre></div>
 <h3 id="e210-expected-token">E210 — Expected token<a class="headerlink" href="#e210-expected-token" title="Permanent link">&para;</a></h3>
-<p>The parser expected a specific token (e.g., <code>)</code>, <code>:</code>, <code>from</code>) but found something else.</p>
+<p>The parser expected a specific token (e.g., <code>)</code>, <code>:</code>, <code>from</code>) but found something else. The error message shows both the expected and actual tokens.</p>
 <h3 id="e211-expected-declaration">E211 — Expected declaration<a class="headerlink" href="#e211-expected-declaration" title="Permanent link">&para;</a></h3>
 <p>The parser expected a top-level declaration (<code>module</code>, <code>transforms</code>, <code>validates</code>, <code>inputs</code>, <code>outputs</code>, <code>main</code>) but found an unexpected token.</p>
 <h3 id="e212-expected-type-body">E212 — Expected type body<a class="headerlink" href="#e212-expected-type-body" title="Permanent link">&para;</a></h3>
-<p>After <code>type Name is</code>, the parser expected a type body (field definitions, variant names, or <code>binary</code>) but found something else.</p>
+<p>After <code>type Name is</code>, the parser expected a field definition (like <code>name String</code>), a variant name (like <code>Some</code> or <code>None</code>), or <code>binary</code>, but found something else.</p>
 <h3 id="e213-expected-expression">E213 — Expected expression<a class="headerlink" href="#e213-expected-expression" title="Permanent link">&para;</a></h3>
-<p>The parser expected an expression but found an unexpected token.</p>
+<p>The parser expected an expression (a name, literal, or parenthesized group) but found an unexpected token. The error message shows what was found instead.</p>
 <h3 id="e214-verb-used-as-identifier">E214 — Verb used as identifier<a class="headerlink" href="#e214-verb-used-as-identifier" title="Permanent link">&para;</a></h3>
-<p>A verb keyword (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>matches</code>, <code>inputs</code>, <code>outputs</code>) cannot be used as an identifier.</p>
+<p>A verb keyword (<code>transforms</code>, <code>validates</code>, <code>reads</code>, <code>creates</code>, <code>matches</code>, <code>inputs</code>, <code>outputs</code>) cannot be used as a variable or function name. Use a different name, or declare it as a verb.</p>
 <h3 id="e215-expected-pattern">E215 — Expected pattern<a class="headerlink" href="#e215-expected-pattern" title="Permanent link">&para;</a></h3>
-<p>In a <code>match</code> arm, the parser expected a pattern (variant name, literal, binding, or wildcard <code>_</code>).</p>
-<h3 id="e216-duplicate-verb-in-import">E216 — Duplicate verb in import<a class="headerlink" href="#e216-duplicate-verb-in-import" title="Permanent link">&para;</a></h3>
-<p>The same verb appears twice in an import declaration. Group all names under a single verb.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">module</span> <span class="nc">Main</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  <span class="c1">// Wrong — duplicate &#39;transforms&#39;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  <span class="nc">Text</span> <span class="kd">transforms</span> <span class="n">trim</span><span class="p">,</span> <span class="kd">transforms</span> <span class="n">upper</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  <span class="c1">// Correct</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  <span class="nc">Text</span> <span class="kd">transforms</span> <span class="n">trim</span> <span class="n">upper</span>
-</code></pre></div>
+<p>In a <code>match</code> arm, the parser expected a pattern (variant name like <code>Some</code>, literal like <code>0</code> or <code>"hello"</code>, binding name, or wildcard <code>_</code>) but found something else.</p>
 <h3 id="e300-undefined-type">E300 — Undefined type<a class="headerlink" href="#e300-undefined-type" title="Permanent link">&para;</a></h3>
-<p>A type name used in a type expression could not be resolved.</p>
+<p>A type name used in a type expression could not be resolved. If the name is similar to a known type, the compiler suggests a correction (e.g., <code>Intger</code> → did you mean <code>Integer</code>?).</p>
 <h3 id="e301-duplicate-type-definition">E301 — Duplicate type definition<a class="headerlink" href="#e301-duplicate-type-definition" title="Permanent link">&para;</a></h3>
 <p>A type with the same name was already defined.</p>
 <h3 id="e302-variable-already-defined">E302 — Variable already defined<a class="headerlink" href="#e302-variable-already-defined" title="Permanent link">&para;</a></h3>
@@ -2020,18 +2063,18 @@
 <h3 id="e312-function-not-imported-from-module">E312 — Function not imported from module<a class="headerlink" href="#e312-function-not-imported-from-module" title="Permanent link">&para;</a></h3>
 <p>A qualified call (<code>Module.function()</code>) references a function that was not explicitly imported from that module.</p>
 <h3 id="e313-module-not-imported">E313 — Module not imported<a class="headerlink" href="#e313-module-not-imported" title="Permanent link">&para;</a></h3>
-<p>A qualified call references a module that has no import declaration.</p>
+<p>A qualified call references a module that has no import declaration. If the module exists (in stdlib or as a local module), the compiler tells you to add an import. If the module name is misspelled, it suggests the closest match.</p>
 <h3 id="e315-function-not-found-in-module">E315 — Function not found in module<a class="headerlink" href="#e315-function-not-found-in-module" title="Permanent link">&para;</a></h3>
-<p>An import declaration names a function that does not exist in the specified stdlib module.</p>
+<p>An import declaration names a function or type that does not exist in the specified module (stdlib or local).</p>
 <h3 id="e316-name-shadows-builtin-function">E316 — Name shadows builtin function<a class="headerlink" href="#e316-name-shadows-builtin-function" title="Permanent link">&para;</a></h3>
-<p>A user-defined function or parameter has the same name as a built-in function (<code>len</code>, <code>map</code>, <code>filter</code>, <code>reduce</code>, <code>each</code>, <code>to_string</code>, <code>clamp</code>, <code>println</code>, <code>print</code>, <code>readln</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">transforms</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">from</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="mi">0</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="kd">transforms</span> <span class="n">length</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">from</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="mi">0</span>
+<p>A user-defined function or parameter has the same name as a built-in function (<code>len</code>, <code>map</code>, <code>filter</code>, <code>reduce</code>, <code>each</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">transforms</span> <span class="n">len</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">from</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="mi">0</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kd">transforms</span> <span class="n">length</span><span class="p">(</span><span class="n">xs</span> <span class="kt">List</span><span class="o">&lt;</span><span class="kt">Integer</span><span class="o">&gt;</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">from</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="mi">0</span>
 </code></pre></div>
 <h3 id="e317-name-shadows-builtin-type">E317 — Name shadows builtin type<a class="headerlink" href="#e317-name-shadows-builtin-type" title="Permanent link">&para;</a></h3>
 <p>A user-defined type has the same name as a built-in type (<code>Integer</code>, <code>String</code>, <code>Boolean</code>, <code>List</code>, <code>Option</code>, <code>Result</code>, etc.).</p>
@@ -2039,9 +2082,9 @@
 <p>The operand types of a binary operator are incompatible. Logical operators (<code>&amp;&amp;</code>, <code>||</code>) require <code>Boolean</code>; arithmetic operators require compatible numeric types.</p>
 <h3 id="e321-type-mismatch-in-definition">E321 — Type mismatch in definition<a class="headerlink" href="#e321-type-mismatch-in-definition" title="Permanent link">&para;</a></h3>
 <p>The inferred type of a constant, variable, or assignment does not match the declared type.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="no">MAX</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">port</span> <span class="k">as</span> <span class="nc">Port</span> <span class="o">=</span> <span class="n">get_string</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s">&quot;port&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="no">MAX</span> <span class="k">as</span> <span class="kt">Integer</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">port</span> <span class="k">as</span> <span class="nc">Port</span> <span class="o">=</span> <span class="n">get_string</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s">&quot;port&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="e322-return-type-mismatch">E322 — Return type mismatch<a class="headerlink" href="#e322-return-type-mismatch" title="Permanent link">&para;</a></h3>
 <p>The inferred type of a function body does not match the declared return type. For failable functions, the body can return the success type (e.g., a function returning <code>String!</code> can have a body that returns <code>String</code>).</p>
@@ -2057,24 +2100,29 @@
 <p>A borrowed value cannot be passed to a parameter that requires mutability.</p>
 <h3 id="e350-fail-propagation-in-non-failable-function">E350 — Fail propagation in non-failable function<a class="headerlink" href="#e350-fail-propagation-in-non-failable-function" title="Permanent link">&para;</a></h3>
 <p>The <code>!</code> operator (fail propagation) can only be used inside functions marked as failable with <code>!</code> in their signature.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">transforms</span> <span class="n">run</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">from</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="kp">!</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kd">transforms</span> <span class="n">run</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="k">from</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="kp">!</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">transforms</span> <span class="n">run</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">from</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="kp">!</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="kd">transforms</span> <span class="n">run</span><span class="p">(</span><span class="n">path</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span><span class="kp">!</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">from</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">read_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="kp">!</span>
 </code></pre></div>
 <h3 id="e352-function-calls-not-allowed-in-where-constraints">E352 — Function calls not allowed in <code>where</code> constraints<a class="headerlink" href="#e352-function-calls-not-allowed-in-where-constraints" title="Permanent link">&para;</a></h3>
-<p>A <code>where</code> constraint on a refinement type contains a function call or other complex expression. Only primitive expressions are allowed: comparisons, ranges, boolean operators, literals, identifiers, and field access.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">type</span> <span class="nc">Valid</span> <span class="k">is</span> <span class="kt">Integer</span> <span class="k">where</span> <span class="n">is_prime</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">type</span> <span class="nc">Valid</span> <span class="k">is</span> <span class="kt">Integer</span> <span class="k">where</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">100</span>
+<p>A <code>where</code> constraint on a refinement type contains a function call or other complex expression. Only primitive expressions are allowed: comparisons, ranges, boolean operators, literals, regex patterns, identifiers, and field access.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Error — function call in constraint</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">type</span> <span class="nc">Valid</span> <span class="k">is</span> <span class="kt">Integer</span> <span class="k">where</span> <span class="n">is_prime</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">// Correct — comparison</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">type</span> <span class="nc">Valid</span> <span class="k">is</span> <span class="kt">Integer</span> <span class="k">where</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">100</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1">// Correct — regex pattern for String</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">type</span> <span class="nc">Email</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span> <span class="sr">r&quot;</span><span class="o">.+</span><span class="sr">@</span><span class="o">.+</span><span class="se">\.</span><span class="o">.+</span><span class="sr">&quot;</span>
 </code></pre></div>
 <h3 id="e361-pure-function-cannot-be-failable">E361 — Pure function cannot be failable<a class="headerlink" href="#e361-pure-function-cannot-be-failable" title="Permanent link">&para;</a></h3>
 <p>Functions with pure verbs cannot use the <code>!</code> fail marker.</p>
 <h3 id="e362-pure-function-cannot-call-io-builtin">E362 — Pure function cannot call IO builtin<a class="headerlink" href="#e362-pure-function-cannot-call-io-builtin" title="Permanent link">&para;</a></h3>
-<p>A function with a pure verb cannot call built-in IO functions (<code>read_file</code>, <code>write_file</code>, <code>open</code>, <code>close</code>, <code>flush</code>, <code>sleep</code>).</p>
+<p>A function with a pure verb cannot call the built-in IO function <code>sleep</code>. Other IO operations (file read/write, console output) are accessed through stdlib modules with IO verbs and are caught by E363.</p>
 <h3 id="e363-pure-function-cannot-call-user-defined-io-function">E363 — Pure function cannot call user-defined IO function<a class="headerlink" href="#e363-pure-function-cannot-call-user-defined-io-function" title="Permanent link">&para;</a></h3>
 <p>A function with a pure verb cannot call a function that uses an IO verb (<code>inputs</code> or <code>outputs</code>).</p>
 <h3 id="e364-lambda-captures-variable">E364 — Lambda captures variable<a class="headerlink" href="#e364-lambda-captures-variable" title="Permanent link">&para;</a></h3>
@@ -2083,34 +2131,34 @@
 <p>A <code>matches</code> function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, <code>String</code>, and <code>Integer</code>.</p>
 <h3 id="e367-match-expression-only-allowed-in-matches-verb">E367 — <code>match</code> expression only allowed in <code>matches</code> verb<a class="headerlink" href="#e367-match-expression-only-allowed-in-matches-verb" title="Permanent link">&para;</a></h3>
 <p>The <code>match</code> expression can only appear inside functions with the <code>matches</code> verb. Other verbs should call a <code>matches</code> helper or use <code>explain when</code> conditions for branching.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Wrong — match in transforms</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kd">transforms</span> <span class="n">classify</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">String</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">from</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="s">&quot;positive&quot;</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="s">&quot;non-positive&quot;</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1">// Correct — use matches verb</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="kd">matches</span> <span class="n">classify</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">String</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">from</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="s">&quot;positive&quot;</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="s">&quot;non-positive&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Wrong — match in transforms</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">transforms</span> <span class="n">classify</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">String</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">from</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="s">&quot;positive&quot;</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="s">&quot;non-positive&quot;</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1">// Correct — use matches verb</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="kd">matches</span> <span class="n">classify</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">String</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">from</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="s">&quot;positive&quot;</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="s">&quot;non-positive&quot;</span>
 </code></pre></div>
 <h3 id="e366-recursive-function-missing-terminates">E366 — Recursive function missing <code>terminates</code><a class="headerlink" href="#e366-recursive-function-missing-terminates" title="Permanent link">&para;</a></h3>
 <p>Every recursive function must declare a <code>terminates</code> measure expression.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">transforms</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">from</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="k">match</span> <span class="n">n</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        <span class="mi">0</span> <span class="p">=&gt;</span> <span class="mi">1</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        <span class="n">_</span> <span class="p">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="kd">transforms</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  <span class="kn">terminates</span><span class="p">:</span> <span class="n">n</span>
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="k">from</span>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="k">match</span> <span class="n">n</span>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>        <span class="mi">0</span> <span class="p">=&gt;</span> <span class="mi">1</span>
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>        <span class="n">_</span> <span class="p">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">transforms</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">from</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="k">match</span> <span class="n">n</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>        <span class="mi">0</span> <span class="p">=&gt;</span> <span class="mi">1</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        <span class="n">_</span> <span class="p">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="kd">transforms</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  <span class="kn">terminates</span><span class="p">:</span> <span class="n">n</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">from</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="k">match</span> <span class="n">n</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>        <span class="mi">0</span> <span class="p">=&gt;</span> <span class="mi">1</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>        <span class="n">_</span> <span class="p">=&gt;</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="e370-unknown-variant">E370 — Unknown variant<a class="headerlink" href="#e370-unknown-variant" title="Permanent link">&para;</a></h3>
 <p>A match arm references a variant that does not exist in the algebraic type.</p>
@@ -2118,68 +2166,68 @@
 <p>A match expression on an algebraic type does not cover all variants and has no catch-all (<code>_</code>) pattern.</p>
 <h3 id="e375-duplicate-value-in-lookup-table">E375 — Duplicate value in lookup table<a class="headerlink" href="#e375-duplicate-value-in-lookup-table" title="Permanent link">&para;</a></h3>
 <p>A <code>[Lookup]</code> type contains duplicate values. Every value in the table must be unique so that reverse lookups are unambiguous.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Error — duplicate value</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="nc">From</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>   <span class="c1">// &quot;main&quot; already used → E375</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1">// Correct — unique values</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="nc">From</span> <span class="p">|</span> <span class="s">&quot;from&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Error — duplicate value</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="nc">From</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>   <span class="c1">// &quot;main&quot; already used → E375</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1">// Correct — unique values</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="nc">From</span> <span class="p">|</span> <span class="s">&quot;from&quot;</span>
 </code></pre></div>
 <h3 id="e376-lookup-operand-must-be-literal-or-variant">E376 — Lookup operand must be literal or variant<a class="headerlink" href="#e376-lookup-operand-must-be-literal-or-variant" title="Permanent link">&para;</a></h3>
 <p>The lookup accessor (<code>TypeName:operand</code>) requires a compile-time constant: a string literal, integer literal, boolean literal, or variant name. Variables and expressions are not allowed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="s">&quot;main&quot;</span>    <span class="c1">// ok — string literal</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Main</span>      <span class="c1">// ok — variant name</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="n">some_var</span>  <span class="c1">// E376 — variable not allowed</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="s">&quot;main&quot;</span>    <span class="c1">// ok — string literal</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Main</span>      <span class="c1">// ok — variant name</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="n">some_var</span>  <span class="c1">// E376 — variable not allowed</span>
 </code></pre></div>
 <h3 id="e377-value-not-found-in-lookup-table">E377 — Value not found in lookup table<a class="headerlink" href="#e377-value-not-found-in-lookup-table" title="Permanent link">&para;</a></h3>
 <p>The operand of a lookup accessor does not match any entry in the table.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="s">&quot;unknown&quot;</span>  <span class="c1">// E377 — &quot;unknown&quot; not in table</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Missing</span>    <span class="c1">// E377 — Missing is not a variant of TokenKind</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="nc">Main</span> <span class="p">|</span> <span class="s">&quot;main&quot;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="s">&quot;unknown&quot;</span>  <span class="c1">// E377 — &quot;unknown&quot; not in table</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Missing</span>    <span class="c1">// E377 — Missing is not a variant of TokenKind</span>
 </code></pre></div>
 <h3 id="e378-reverse-lookup-on-stacked-variant">E378 — Reverse lookup on stacked variant<a class="headerlink" href="#e378-reverse-lookup-on-stacked-variant" title="Permanent link">&para;</a></h3>
 <p>A reverse lookup was attempted on a variant that maps to multiple values. When a variant has stacked values (like match arms), the reverse direction is ambiguous.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="nc">Foreign</span> <span class="p">|</span> <span class="s">&quot;foreign&quot;</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="nc">BooleanLit</span> <span class="p">|</span> <span class="s">&quot;true&quot;</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>               <span class="p">|</span> <span class="s">&quot;false&quot;</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Foreign</span>     <span class="c1">// ok → &quot;foreign&quot;</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">BooleanLit</span>  <span class="c1">// E378 — BooleanLit has 2 values (&quot;true&quot;, &quot;false&quot;)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">type</span> <span class="nc">TokenKind</span><span class="p">:[</span><span class="nc">Lookup</span><span class="p">]</span> <span class="k">is</span> <span class="kt">String</span> <span class="k">where</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="nc">Foreign</span> <span class="p">|</span> <span class="s">&quot;foreign&quot;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="nc">BooleanLit</span> <span class="p">|</span> <span class="s">&quot;true&quot;</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>               <span class="p">|</span> <span class="s">&quot;false&quot;</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">Foreign</span>     <span class="c1">// ok → &quot;foreign&quot;</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="nc">TokenKind</span><span class="p">:</span><span class="nc">BooleanLit</span>  <span class="c1">// E378 — BooleanLit has 2 values (&quot;true&quot;, &quot;false&quot;)</span>
 </code></pre></div>
 <p>Wrap the reverse lookup in a <code>matches</code> function if you need to handle stacked variants.</p>
 <h3 id="e380-invalid-ensures-expression">E380 — Invalid ensures expression<a class="headerlink" href="#e380-invalid-ensures-expression" title="Permanent link">&para;</a></h3>
 <p>The <code>ensures</code> expression is not valid.</p>
 <h3 id="e381-requires-expression-must-be-boolean">E381 — Requires expression must be Boolean<a class="headerlink" href="#e381-requires-expression-must-be-boolean" title="Permanent link">&para;</a></h3>
 <p>A <code>requires</code> precondition expression does not evaluate to <code>Boolean</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">x</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>  <span class="kn">requires</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">x</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  <span class="kn">requires</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">x</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  <span class="kn">requires</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">x</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  <span class="kn">requires</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span>
 </code></pre></div>
 <h3 id="e382-satisfies-references-undefined-type">E382 — Satisfies references undefined type<a class="headerlink" href="#e382-satisfies-references-undefined-type" title="Permanent link">&para;</a></h3>
 <p>A <code>satisfies</code> annotation references a type that is not defined.</p>
 <h3 id="e384-know-expression-must-be-boolean">E384 — Know expression must be Boolean<a class="headerlink" href="#e384-know-expression-must-be-boolean" title="Permanent link">&para;</a></h3>
 <p>A <code>know</code> expression must evaluate to <code>Boolean</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  <span class="kn">know</span><span class="p">:</span> <span class="n">len</span><span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
 </code></pre></div>
 <h3 id="e385-assume-expression-must-be-boolean">E385 — Assume expression must be Boolean<a class="headerlink" href="#e385-assume-expression-must-be-boolean" title="Permanent link">&para;</a></h3>
 <p>An <code>assume</code> expression must evaluate to <code>Boolean</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>  <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>  <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>  <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kd">transforms</span> <span class="n">process</span><span class="p">(</span><span class="n">order</span> <span class="nc">Order</span><span class="p">)</span> <span class="nc">Receipt</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  <span class="kn">assume</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span>
 </code></pre></div>
 <h3 id="e386-believe-expression-must-be-boolean">E386 — Believe expression must be Boolean<a class="headerlink" href="#e386-believe-expression-must-be-boolean" title="Permanent link">&para;</a></h3>
 <p>A <code>believe</code> expression must evaluate to <code>Boolean</code>. See also E384 (<code>know</code>) and E385 (<code>assume</code>).</p>
@@ -2221,25 +2269,25 @@
 <h2 id="warnings">Warnings<a class="headerlink" href="#warnings" title="Permanent link">&para;</a></h2>
 <h3 id="w304-match-condition-guaranteed-by-requires">W304 — Match condition guaranteed by requires<a class="headerlink" href="#w304-match-condition-guaranteed-by-requires" title="Permanent link">&para;</a></h3>
 <p>A <code>match</code> expression tests a condition identical to a <code>requires</code> precondition. Since <code>requires</code> guarantees the condition is true, the match is redundant and the compiler could optimize it away.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kd">transforms</span> <span class="n">abs_val</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>  <span class="kn">requires</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">from</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="n">n</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="mi">0</span> <span class="o">-</span> <span class="n">n</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="kd">transforms</span> <span class="n">abs_val</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>  <span class="kn">requires</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="k">from</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">n</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kd">transforms</span> <span class="n">abs_val</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>  <span class="kn">requires</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">from</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="k">match</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>        <span class="kc">true</span> <span class="p">=&gt;</span> <span class="n">n</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        <span class="kc">false</span> <span class="p">=&gt;</span> <span class="mi">0</span> <span class="o">-</span> <span class="n">n</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="kd">transforms</span> <span class="n">abs_val</span><span class="p">(</span><span class="n">n</span> <span class="kt">Integer</span><span class="p">)</span> <span class="kt">Integer</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>  <span class="kn">requires</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="k">from</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    <span class="n">n</span>
 </code></pre></div>
 <h3 id="w311-intent-without-contracts">W311 — Intent without contracts<a class="headerlink" href="#w311-intent-without-contracts" title="Permanent link">&para;</a></h3>
 <p>A function has an <code>intent</code> declaration but no <code>ensures</code> or <code>requires</code> to validate it.</p>
 <h3 id="w312-import-verb-mismatch">W312 — Import verb mismatch<a class="headerlink" href="#w312-import-verb-mismatch" title="Permanent link">&para;</a></h3>
 <p>The verb specified in an import does not match any overload of the function in the imported module.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">module</span> <span class="nc">Example</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;Just an example of imports&quot;</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>  <span class="nc">Parse</span> <span class="kd">transforms</span> <span class="n">json</span>   <span class="o">--</span> <span class="no">W312</span><span class="p">:</span> <span class="nc">Parse</span> <span class="n">has</span> <span class="n">no</span> <span class="err">&#39;</span><span class="kd">transforms</span> <span class="n">json</span><span class="err">&#39;</span><span class="p">;</span> <span class="na">available</span><span class="p">:</span> <span class="kd">creates</span><span class="p">,</span> <span class="kd">reads</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">module</span> <span class="nc">Example</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;Just an example of imports&quot;</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  <span class="nc">Parse</span> <span class="kd">transforms</span> <span class="n">json</span>   <span class="o">--</span> <span class="no">W312</span><span class="p">:</span> <span class="nc">Parse</span> <span class="n">has</span> <span class="n">no</span> <span class="err">&#39;</span><span class="kd">transforms</span> <span class="n">json</span><span class="err">&#39;</span><span class="p">;</span> <span class="na">available</span><span class="p">:</span> <span class="kd">creates</span><span class="p">,</span> <span class="kd">reads</span>
 </code></pre></div>
 <h3 id="w321-explain-text-missing-concept-references">W321 — Explain text missing concept references<a class="headerlink" href="#w321-explain-text-missing-concept-references" title="Permanent link">&para;</a></h3>
 <p>An explain entry doesn't reference any function concepts (parameter names, variable names, or <code>result</code>).</p>
@@ -2260,8 +2308,8 @@
 <p>Info diagnostics are suggestions for good practice. Most can be auto-fixed by <code>prove format</code>.</p>
 <h3 id="i201-module-missing-narrative">I201 — Module missing narrative<a class="headerlink" href="#i201-module-missing-narrative" title="Permanent link">&para;</a></h3>
 <p>A module declaration has no <code>narrative:</code> string. The narrative documents the module's purpose.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="k">module</span> <span class="nc">MyModule</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;Handles user authentication and session management&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">module</span> <span class="nc">MyModule</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  <span class="kn">narrative</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;Handles user authentication and session management&quot;&quot;&quot;</span>
 </code></pre></div>
 <h3 id="i300-unused-variable">I300 — Unused variable<a class="headerlink" href="#i300-unused-variable" title="Permanent link">&para;</a></h3>
 <p>A declared variable is never referenced. The formatter prefixes the name with <code>_</code>.</p>
@@ -2269,12 +2317,12 @@
 <p>A match arm after a wildcard (<code>_</code>) pattern is unreachable. The formatter removes it.</p>
 <h3 id="i302-unused-import">I302 — Unused import<a class="headerlink" href="#i302-unused-import" title="Permanent link">&para;</a></h3>
 <p>An imported name is never referenced in the module body. The formatter removes unused import items, or the entire import line if all items are unused.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">module</span> <span class="nc">Main</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>  <span class="nc">Text</span> <span class="kd">transforms</span> <span class="n">trim</span> <span class="n">upper</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="kd">transforms</span> <span class="n">shout</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="k">from</span>
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="nc">Text</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="k">module</span> <span class="nc">Main</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  <span class="nc">Text</span> <span class="kd">transforms</span> <span class="n">trim</span> <span class="n">upper</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="kd">transforms</span> <span class="n">shout</span><span class="p">(</span><span class="n">s</span> <span class="kt">String</span><span class="p">)</span> <span class="kt">String</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="k">from</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="nc">Text</span><span class="o">.</span><span class="n">upper</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="i303-unused-type-definition">I303 — Unused type definition<a class="headerlink" href="#i303-unused-type-definition" title="Permanent link">&para;</a></h3>
 <p>A user-defined type is declared but never referenced. The formatter removes it.</p>
@@ -2286,11 +2334,11 @@
 <p>A function has multiple statements (or uses <code>transforms</code>/<code>matches</code> verb) but no <code>requires</code> or <code>ensures</code> clauses. Adding contracts enables mutation testing and helps the compiler reason about correctness.</p>
 <h3 id="i360-validates-has-implicit-boolean-return">I360 — <code>validates</code> has implicit Boolean return<a class="headerlink" href="#i360-validates-has-implicit-boolean-return" title="Permanent link">&para;</a></h3>
 <p>A <code>validates</code> function always returns <code>Boolean</code>. The formatter strips the redundant return type.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1">// Before formatting</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="kd">validates</span> <span class="n">is_active</span><span class="p">(</span><span class="n">u</span> <span class="nc">User</span><span class="p">)</span> <span class="kt">Boolean</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1">// After formatting</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="kd">validates</span> <span class="n">is_active</span><span class="p">(</span><span class="n">u</span> <span class="nc">User</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1">// Before formatting</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kd">validates</span> <span class="n">is_active</span><span class="p">(</span><span class="n">u</span> <span class="nc">User</span><span class="p">)</span> <span class="kt">Boolean</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1">// After formatting</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="kd">validates</span> <span class="n">is_active</span><span class="p">(</span><span class="n">u</span> <span class="nc">User</span><span class="p">)</span>
 </code></pre></div>
 
 
