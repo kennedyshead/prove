@@ -74,7 +74,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "types": {"prove_convert", "prove_parse", "prove_table", "prove_hash"},
     "convert": {"prove_convert"},
     "list": {"prove_list", "prove_list_ops"},
-    "format": {"prove_format"},
+    "format": {"prove_format", "prove_time"},
     "path": {"prove_path"},
     "error": {"prove_error"},
     "pattern": {"prove_pattern"},

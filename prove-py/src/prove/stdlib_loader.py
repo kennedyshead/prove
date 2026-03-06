@@ -226,6 +226,19 @@ _register_module(
         ("transforms", "bin"): "prove_format_binary",
         ("transforms", "octal"): "prove_format_octal",
         ("transforms", "decimal"): "prove_format_decimal",
+        ("creates", "time"): "prove_time_parse_time",
+        ("validates", "time"): "prove_time_validates_time",
+        ("creates", "date"): "prove_time_parse_date",
+        ("validates", "date"): "prove_time_validates_date_str",
+        ("creates", "datetime"): "prove_time_parse_datetime",
+        ("validates", "datetime"): "prove_time_validates_datetime_str",
+        ("creates", "duration"): "prove_time_parse_duration",
+    },
+    overloads={
+        ("transforms", "time", "Time"): "prove_time_format_time",
+        ("transforms", "date", "Date"): "prove_time_format_date",
+        ("transforms", "datetime", "DateTime"): "prove_time_format_datetime",
+        ("transforms", "duration", "Duration"): "prove_time_format_duration",
     },
 )
 
