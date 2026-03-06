@@ -120,9 +120,9 @@ def main() -> None:
 
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--mutate", is_flag=True, help="Enable mutation testing.")
+@click.option("--no-mutate", is_flag=True, help="Disable mutation testing.")
 @click.option("--debug", is_flag=True, help="Compile with debug symbols (-g) and no optimization.")
-def build(path: str, mutate: bool, debug: bool) -> None:
+def build(path: str, no_mutate: bool, debug: bool) -> None:
     """Compile a Prove project."""
     from prove.builder import build_project
 
@@ -143,7 +143,7 @@ def build(path: str, mutate: bool, debug: bool) -> None:
                 click.echo(f"error: {result.c_error}", err=True)
             raise SystemExit(1)
 
-        if mutate:
+        if not no_mutate:
             click.echo("running mutation testing...")
             from prove.module_resolver import build_module_registry
             from prove.mutator import run_mutation_tests
@@ -595,10 +595,10 @@ def _try_check(
 
 @main.command(name="format")
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--check", is_flag=True, help="Check formatting without modifying files.")
+@click.option("--status", is_flag=True, help="Show formatting status without modifying files.")
 @click.option("--stdin", "use_stdin", is_flag=True, help="Read from stdin, write to stdout.")
 @click.option("--md", is_flag=True, help="Also format ```prove blocks in .md files.")
-def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
+def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     """Format Prove source files."""
     import sys
 
@@ -617,7 +617,7 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
         symbols, diagnostics = _try_check(source, "<stdin>")
         formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
         formatted = formatter.format(module)
-        if check:
+        if status:
             if formatted != source:
                 raise SystemExit(1)
         else:
@@ -658,7 +658,7 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
         formatted = formatter.format(module)
         if formatted != source:
             changed += 1
-            if check:
+            if status:
                 click.echo(f"would reformat {filename}")
             else:
                 prv_file.write_text(formatted)
@@ -673,7 +673,7 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
             if result != original:
                 changed += 1
                 filename = str(md_file)
-                if check:
+                if status:
                     click.echo(f"would reformat {filename}")
                 else:
                     md_file.write_text(result)
@@ -684,12 +684,12 @@ def format_cmd(path: str, check: bool, use_stdin: bool, md: bool) -> None:
     if skipped:
         parts.append(f"{skipped} skipped (parse errors)")
     if changed:
-        verb = "would reformat" if check else "reformatted"
+        verb = "would reformat" if status else "reformatted"
         click.echo(f"{changed} file(s) {verb}, {', '.join(parts)}.")
     else:
         click.echo(f"{', '.join(parts)}, all already formatted.")
 
-    if check and changed:
+    if status and changed:
         raise SystemExit(1)
 
 

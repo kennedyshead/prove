@@ -503,7 +503,7 @@ A recursive function's `terminates` measure suggests O(n) call depth. Consider u
 
 ### W330 — Surviving mutant
 
-A previous `prove build --mutate` run found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
+A previous `prove build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
 
 ---
 

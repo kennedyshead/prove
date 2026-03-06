@@ -94,8 +94,8 @@ def test_single_file(prv_file: Path) -> tuple[dict, set[str]]:
     rc, stdout, stderr = run_command(cmd, cwd=parent)
     results["check_strict"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
-    # prove format --check <file>
-    cmd = PROVE_CLI + ["format", "--check", str(prv_file)]
+    # prove format --status <file>
+    cmd = PROVE_CLI + ["format", "--status", str(prv_file)]
     rc, stdout, stderr = run_command(cmd, cwd=parent)
     results["format_check"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
@@ -140,11 +140,15 @@ def test_project(project_dir: Path) -> tuple[dict, set[str]]:
     rc, stdout, stderr = run_command(cmd, cwd=project_dir, timeout=180)
     results["build_debug"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
-    # prove build --mutate <project> (only if build passes)
+    # prove build --no-mutate <project> (build without mutation testing, only if build passes)
     if results["build"]["returncode"] == 0:
-        cmd = PROVE_CLI + ["build", "--mutate", str(project_dir)]
+        cmd = PROVE_CLI + ["build", "--no-mutate", str(project_dir)]
         rc, stdout, stderr = run_command(cmd, cwd=project_dir, timeout=300)
-        results["build_mutate"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
+        results["build_no_mutate"] = {
+            "returncode": rc,
+            "stdout": stdout,
+            "stderr": stderr,
+        }
 
     # prove test <project> (only if test passes check)
     if results["check"]["returncode"] == 0:
@@ -161,13 +165,13 @@ def test_project(project_dir: Path) -> tuple[dict, set[str]]:
             "stderr": stderr,
         }
 
-    # prove format --check <project>
-    cmd = PROVE_CLI + ["format", "--check", str(project_dir)]
+    # prove format --status <project>
+    cmd = PROVE_CLI + ["format", "--status", str(project_dir)]
     rc, stdout, stderr = run_command(cmd, cwd=project_dir)
     results["format_check"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
-    # prove format --check --md <project>
-    cmd = PROVE_CLI + ["format", "--check", "--md", str(project_dir)]
+    # prove format --status --md <project>
+    cmd = PROVE_CLI + ["format", "--status", "--md", str(project_dir)]
     rc, stdout, stderr = run_command(cmd, cwd=project_dir)
     results["format_check_md"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 

@@ -52,14 +52,15 @@ Compile-time computation (`comptime`) allows IO operations. This enables reading
 The `prove` CLI is the central interface for all development:
 
 ```bash
-prove build          # compile the project
-prove build --debug  # compile with debug symbols
-prove test           # run auto-generated + manual tests
-prove check          # type-check without building
-prove format         # auto-format source code
-prove lsp            # start the language server
-prove build --mutate # run mutation testing
-prove new <name>     # scaffold a new project
+prove build              # compile the project (mutation testing runs by default)
+prove build --debug      # compile with debug symbols
+prove build --no-mutate  # compile without mutation testing
+prove test               # run auto-generated + manual tests
+prove check              # type-check without building
+prove format             # auto-format source code
+prove format --status    # check formatting without modifying
+prove lsp                # start the language server
+prove new <name>         # scaffold a new project
 ```
 
 ### Syntax Philosophy

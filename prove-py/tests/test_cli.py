@@ -97,10 +97,15 @@ class TestCLI:
         assert "building testproj" in result.output
 
     def test_build_mutate_flag(self, runner, tmp_project, needs_cc):
-        result = runner.invoke(main, ["build", str(tmp_project), "--mutate"])
+        result = runner.invoke(main, ["build", str(tmp_project)])
         assert result.exit_code == 0
         assert "mutation testing" in result.output
         assert "mutation score" in result.output or "no mutants" in result.output
+
+    def test_build_no_mutate_flag(self, runner, tmp_project, needs_cc):
+        result = runner.invoke(main, ["build", str(tmp_project), "--no-mutate"])
+        assert result.exit_code == 0
+        assert "mutation testing" not in result.output
 
     def test_check_with_project(self, runner, tmp_project):
         result = runner.invoke(main, ["check", str(tmp_project)])
@@ -119,14 +124,14 @@ class TestCLI:
         assert "property rounds: 100" in result.output
 
     def test_format_check(self, runner, tmp_project):
-        result = runner.invoke(main, ["format", "--check", str(tmp_project)])
+        result = runner.invoke(main, ["format", "--status", str(tmp_project)])
         # Should either pass (exit 0) or find formatting differences (exit 1)
         assert result.exit_code in (0, 1)
 
     def test_format_help(self, runner):
         result = runner.invoke(main, ["format", "--help"])
         assert result.exit_code == 0
-        assert "--check" in result.output
+        assert "--status" in result.output
         assert "--stdin" in result.output
 
     def test_lsp_help(self, runner):

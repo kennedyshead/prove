@@ -31,16 +31,16 @@ Compile a Prove project to a native binary.
 ```bash
 prove build
 prove build path/to/project
-prove build --mutate
+prove build --no-mutate
 prove build --debug
 ```
 
-Runs the full pipeline: lex, parse, check, prove, emit C, compile with gcc/clang.
+Runs the full pipeline: lex, parse, check, prove, emit C, compile with gcc/clang. Mutation testing runs by default.
 
 | Flag | Description |
 |------|-------------|
 | `--debug` | Compile with debug symbols (`-g`) and no optimization (`-O0`) |
-| `--mutate` | Enable mutation testing after build (v0.9.6+) |
+| `--no-mutate` | Skip mutation testing |
 
 The project directory must contain a `prove.toml`. Output binary is placed in `build/`.
 
@@ -91,14 +91,14 @@ Format Prove source files.
 ```bash
 prove format
 prove format src/main.prv
-prove format --check
+prove format --status
 prove format --stdin < src/main.prv
 prove format docs/ --md
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--check` | Check formatting without modifying files (exit 1 if changes needed) |
+| `--status` | Show formatting status without modifying files (exit 1 if changes needed) |
 | `--stdin` | Read from stdin, write formatted output to stdout |
 | `--md` | Also format ` ```prove ` blocks in Markdown files |
 

@@ -41,7 +41,7 @@ after V1.0 is stable.
 | v0.9 | Complete | Lexer export tool — 612 tests |
 | v0.9.1 | Complete | Documentation parity — mark unimplemented features, add missing diagnostics |
 | v0.9.5 | Complete | Auto-Memoization + Memory Regions |
-| v0.9.6 | Complete | Mutation Testing (`--mutate` flag), Stdlib: List, Math, Convert |
+| v0.9.6 | Complete | Mutation Testing (`--no-mutate` to disable), Stdlib: List, Math, Convert |
 | v0.9.7 | Complete | Stdlib: Path, Pattern |
 | v0.9.8 | Complete | Stdlib: Format, Error |
 
@@ -61,9 +61,7 @@ Implement the `Own` type modifier and compiler-inferred borrows. Use-after-move 
 
 ### v0.9.6 — Mutation Testing
 
-Implement the `--mutate` flag. The compiler generates mutants (operator swaps,
-branch removals, constant changes), runs the contract-based test suite against
-each, and reports surviving mutants with suggested contracts to kill them.
+Implement mutation testing (runs by default, use `--no-mutate` to disable). The compiler generates mutants (operator swaps, branch removals, constant changes), runs the contract-based test suite against each, and reports surviving mutants with suggested contracts to kill them.
 
 ### v0.9.9 — Stabilization
 
