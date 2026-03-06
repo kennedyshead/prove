@@ -31,6 +31,7 @@ from prove.parser import Parser
 from prove.stdlib_loader import ImportSuggestion, build_import_index
 from prove.symbols import FunctionSignature, SymbolKind, SymbolTable
 from prove.tokens import KEYWORDS, Token
+from prove.types import BUILTIN_FUNCTIONS
 
 # ── Conversion helpers ────────────────────────────────────────────
 
@@ -52,15 +53,8 @@ _SYMBOL_KIND_MAP = {
 # All Prove keywords for completion
 _KEYWORD_COMPLETIONS = sorted(KEYWORDS.keys())
 
-# Built-in function names
-_BUILTINS = [
-    "len",
-    "map",
-    "filter",
-    "reduce",
-    "to_string",
-    "clamp",
-]
+# Built-in function names (from canonical source in types.py)
+_BUILTINS = sorted(BUILTIN_FUNCTIONS)
 
 
 def span_to_range(span: object) -> lsp.Range:

@@ -86,8 +86,8 @@ _KEYWORD_KINDS = frozenset(
 
 def read_canonical_lists() -> dict[str, list[str]]:
     """Read all keyword/type/operator lists from compiler source."""
-    from prove.checker import _BUILTIN_FUNCTIONS, _BUILTIN_TYPE_NAMES
-    from prove.types import BUILTINS
+    from prove.checker import _BUILTIN_TYPE_NAMES
+    from prove.types import BUILTIN_FUNCTIONS, BUILTINS
 
     verbs: list[str] = []
     keywords: list[str] = []
@@ -113,7 +113,7 @@ def read_canonical_lists() -> dict[str, list[str]]:
 
     builtin_types = sorted(BUILTINS.keys())
     generic_types = sorted(name for name in _BUILTIN_TYPE_NAMES if name not in BUILTINS)
-    builtin_functions = sorted(_BUILTIN_FUNCTIONS)
+    builtin_functions = sorted(BUILTIN_FUNCTIONS)
 
     return {
         "verbs": verbs,

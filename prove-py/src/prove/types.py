@@ -153,6 +153,22 @@ BUILTINS: dict[str, Type] = {
     "Unit": UNIT,
 }
 
+# ── Built-in function names ────────────────────────────────────
+
+BUILTIN_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        "len",
+        "map",
+        "each",
+        "filter",
+        "reduce",
+        "to_string",
+        "clamp",
+    }
+)
+
+HOF_BUILTINS: frozenset[str] = frozenset({"map", "filter", "reduce", "each"})
+
 
 # ── Type utilities ──────────────────────────────────────────────
 

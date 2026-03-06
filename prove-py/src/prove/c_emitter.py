@@ -63,6 +63,7 @@ from prove.types import (
     BOOLEAN,
     DECIMAL,
     ERROR_TY,
+    HOF_BUILTINS,
     INTEGER,
     STRING,
     UNIT,
@@ -271,11 +272,9 @@ class CEmitter:
 
     def _scan_for_hof(self, module: Module) -> None:
         """Pre-scan AST for map/filter/reduce calls to include prove_hof.h."""
-        _hof_names = {"map", "filter", "reduce", "each"}
-
         def _scan_expr(expr: Expr) -> bool:
             if isinstance(expr, CallExpr):
-                if isinstance(expr.func, IdentifierExpr) and expr.func.name in _hof_names:
+                if isinstance(expr.func, IdentifierExpr) and expr.func.name in HOF_BUILTINS:
                     return True
                 for a in expr.args:
                     if _scan_expr(a):

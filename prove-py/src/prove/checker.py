@@ -76,6 +76,7 @@ from prove.source import Span
 from prove.symbols import FunctionSignature, Symbol, SymbolKind, SymbolTable
 from prove.types import (
     BOOLEAN,
+    BUILTIN_FUNCTIONS,
     BUILTINS,
     CHARACTER,
     DECIMAL,
@@ -121,16 +122,8 @@ _IO_FUNCTIONS = frozenset(
     }
 )
 
-# Built-in function names that user code must not shadow
-_BUILTIN_FUNCTIONS = frozenset(
-    {
-        "len",
-        "map",
-        "each",
-        "filter",
-        "reduce",
-    }
-)
+# Re-export for external consumers (export.py)
+_BUILTIN_FUNCTIONS = BUILTIN_FUNCTIONS
 
 # Built-in type names that user code must not shadow
 _BUILTIN_TYPE_NAMES = frozenset(
