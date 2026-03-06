@@ -10,3 +10,5 @@ __pycache__/
 *.pyc
 *.egg-info/
 tmp
+local
+.DS_Store
