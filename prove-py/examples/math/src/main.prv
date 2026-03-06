@@ -1,5 +1,8 @@
 module Main
-  narrative: """Basic math operations"""
+  narrative: """Basic math operations.
+
+  Expected to fail: check_strict.
+  """
   InputOutput outputs console
 
 transforms add(a Integer, b Integer) Integer

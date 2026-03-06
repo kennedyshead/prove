@@ -1,0 +1,104 @@
+module Time
+  narrative: """Time representation, arithmetic, and calendar operations."""
+
+  /// A point in time (epoch-based timestamp)
+  type Time is binary
+
+  /// A span of time
+  type Duration is binary
+
+  /// A calendar date
+  type Date is binary
+
+  /// A time of day
+  type Clock is binary
+
+  /// A date with a time of day
+  type DateTime is binary
+
+  /// A day of the week (0=Monday through 6=Sunday)
+  type Weekday is binary
+
+/// Get current time
+inputs time() Time
+binary
+
+/// Check if a time is in the past
+validates time(time Time)
+binary
+
+/// Create a duration from components
+creates duration(hours Integer, minutes Integer, seconds Integer) Duration
+binary
+
+/// Read total seconds from a duration
+reads duration(duration Duration) Integer
+binary
+
+/// Check if duration is positive
+validates duration(duration Duration)
+binary
+
+/// Compute difference between two times
+transforms duration(start Time, stop Time) Duration
+binary
+
+/// Extract date from a time
+reads date(time Time) Date
+binary
+
+/// Create a date from components
+creates date(year Integer, month Integer, day Integer) Date
+binary
+
+/// Check if a date is valid
+validates date(year Integer, month Integer, day Integer)
+binary
+
+/// Add days to a date
+transforms date(date Date, days Integer) Date
+binary
+
+/// Extract datetime from a time
+reads datetime(time Time) DateTime
+binary
+
+/// Create a datetime from date and clock
+creates datetime(date Date, clock Clock) DateTime
+binary
+
+/// Check if a datetime is valid
+validates datetime(datetime DateTime)
+binary
+
+/// Convert datetime to timestamp
+transforms datetime(datetime DateTime) Time
+binary
+
+/// Get number of days in a month
+reads days(year Integer, month Integer) Integer
+binary
+
+/// Check if a year is a leap year
+validates days(year Integer)
+binary
+
+/// Get weekday from a date
+reads weekday(date Date) Weekday
+binary
+
+/// Check if a date falls on a weekend
+validates weekday(date Date)
+binary
+
+/// Extract clock from a time
+reads clock(time Time) Clock
+binary
+
+/// Create a clock from components
+creates clock(hour Integer, minute Integer, second Integer) Clock
+binary
+
+/// Check if clock components are valid
+validates clock(hour Integer, minute Integer, second Integer)
+binary

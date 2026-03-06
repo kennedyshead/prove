@@ -208,6 +208,8 @@ class CEmitter(
         "Path": "prove_path.h",
         "Error": "prove_error.h",
         "Pattern": "prove_pattern.h",
+        "Random": "prove_random.h",
+        "Time": "prove_time.h",
     }
 
     def _collect_needed_headers(self) -> None:

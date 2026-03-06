@@ -307,6 +307,37 @@ _register_module(
 )
 
 _register_module(
+    "time",
+    display="Time",
+    prv_file="time.prv",
+    c_map={
+        ("inputs", "time"): "prove_time_now",
+        ("creates", "duration"): "prove_time_creates_duration",
+        ("creates", "date"): "prove_time_creates_date",
+        ("creates", "datetime"): "prove_time_creates_datetime",
+        ("creates", "clock"): "prove_time_creates_clock",
+        ("reads", "days"): "prove_time_reads_days",
+        ("validates", "days"): "prove_time_validates_days",
+    },
+    overloads={
+        ("validates", "time", "Time"): "prove_time_validates",
+        ("reads", "duration", "Duration"): "prove_time_reads_duration",
+        ("validates", "duration", "Duration"): "prove_time_validates_duration",
+        ("transforms", "duration", "Time"): "prove_time_transforms_duration",
+        ("reads", "date", "Time"): "prove_time_reads_date",
+        ("validates", "date", "Integer"): "prove_time_validates_date",
+        ("transforms", "date", "Date"): "prove_time_transforms_date",
+        ("reads", "datetime", "Time"): "prove_time_reads_datetime",
+        ("validates", "datetime", "DateTime"): "prove_time_validates_datetime",
+        ("transforms", "datetime", "DateTime"): "prove_time_transforms_datetime",
+        ("reads", "weekday", "Date"): "prove_time_reads_weekday",
+        ("validates", "weekday", "Date"): "prove_time_validates_weekday",
+        ("reads", "clock", "Time"): "prove_time_reads_clock",
+        ("validates", "clock", "Integer"): "prove_time_validates_clock",
+    },
+)
+
+_register_module(
     "random",
     display="Random",
     prv_file="random.prv",
@@ -375,6 +406,12 @@ _KNOWN_TYPES = {
     "Unit": UNIT,
     "Float": PrimitiveType("Float"),
     "Match": PrimitiveType("Match"),
+    "Time": PrimitiveType("Time"),
+    "Duration": PrimitiveType("Duration"),
+    "Date": PrimitiveType("Date"),
+    "Clock": PrimitiveType("Clock"),
+    "DateTime": PrimitiveType("DateTime"),
+    "Weekday": PrimitiveType("Weekday"),
 }
 
 

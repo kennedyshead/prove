@@ -1,0 +1,18 @@
+module Main
+  narrative: """Demonstrates Time module operations."""
+  InputOutput outputs console
+  Time types Time Date Clock Duration
+  Time inputs time
+  Time creates date clock duration
+  Time reads days
+
+main() Result<Unit, Error>!
+from
+    now as Time = time()
+    console("got current time")
+    d as Date = date(2026, 3, 6)
+    console(f"days in march 2026: {days(2026, 3)}")
+    c as Clock = clock(14, 30, 0)
+    console("clock created: 14:30:00")
+    dur as Duration = duration(1, 30, 0)
+    console("duration: 1h 30m")
