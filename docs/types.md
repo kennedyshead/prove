@@ -6,6 +6,18 @@ keywords: Prove types, refinement types, type modifiers, Option, Result, pattern
 
 # Type System
 
+## Always-Available Types
+
+Certain types are built into the language and available without explicit import:
+
+| Category | Types | Description |
+|----------|-------|-------------|
+| **Primitives** | `Integer`, `Decimal`, `Float`, `Boolean`, `String`, `Character`, `Byte`, `Unit` | Core types with optional modifiers |
+| **Containers** | `List<T>`, `Option<T>`, `Result<T, E>`, `Table<T>` | Generic collection types |
+| **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
+
+These are implicitly available in every module. No import statement needed.
+
 ## Type Modifiers
 
 Type modifiers describe **how** a value is stored and represented — size, signedness, encoding, precision. They use bracket syntax after the type name: `Type:[Modifier ...]`. Value constraints (what values are valid) belong in refinement types with `where`, not modifiers.

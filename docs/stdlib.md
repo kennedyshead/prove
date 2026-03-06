@@ -75,7 +75,7 @@ All classification functions take a single `Character` and return `Boolean`.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `at(s String, i Integer) Character` | Character at index (0-based, bounds-checked) |
+| `reads` | `at(string String, index Integer) Character` | Character at index (0-based, bounds-checked) |
 
 ```prove
 Character validates alpha digit space, reads at
@@ -91,14 +91,14 @@ from
 
 **Module:** `Text` — string operations and construction.
 
-Defines a binary `Builder` type for efficient incremental string building.
+Defines a binary `StringBuilder` type for efficient incremental string building.
 
 ### Query
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `length(s String) Integer` | Number of bytes in string |
-| `reads` | `index(s String, sub String) Option<Integer>` | Find position of substring |
+| `reads` | `index(text String, substring String) Option<Integer>` | Find position of substring |
 
 ### Validation
 
@@ -112,34 +112,34 @@ Defines a binary `Builder` type for efficient incremental string building.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `slice(s String, start Integer, end Integer) String` | Extract substring [start, end) |
-| `transforms` | `split(s String, sep String) List<String>` | Split by delimiter |
-| `transforms` | `join(parts List<String>, sep String) String` | Join strings with separator |
-| `transforms` | `trim(s String) String` | Remove leading and trailing whitespace |
-| `transforms` | `lower(s String) String` | Convert to lowercase |
-| `transforms` | `upper(s String) String` | Convert to uppercase |
-| `transforms` | `replace(s String, old String, new String) String` | Replace all occurrences |
-| `transforms` | `repeat(s String, n Integer) String` | Repeat string n times |
+| `transforms` | `slice(text String, start Integer, end Integer) String` | Extract substring [start, end) |
+| `transforms` | `split(text String, separator String) List<String>` | Split by delimiter |
+| `transforms` | `join(parts List<String>, separator String) String` | Join strings with separator |
+| `transforms` | `trim(text String) String` | Remove leading and trailing whitespace |
+| `transforms` | `lower(text String) String` | Convert to lowercase |
+| `transforms` | `upper(text String) String` | Convert to uppercase |
+| `transforms` | `replace(text String, old String, new String) String` | Replace all occurrences |
+| `transforms` | `repeat(text String, count Integer) String` | Repeat string count times |
 
 ### Builder
 
-The `Builder` type allows efficient incremental string construction.
+The `StringBuilder` type allows efficient incremental string construction.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `builder() Builder` | Create an empty builder |
-| `transforms` | `string(b Builder, s String) Builder` | Append a string |
-| `transforms` | `char(b Builder, c Character) Builder` | Append a character |
-| `reads` | `build(b Builder) String` | Finalize to string |
-| `reads` | `length(b Builder) Integer` | Current builder length |
+| `creates` | `builder() StringBuilder:[Mutable]` | Create an empty builder |
+| `transforms` | `string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
+| `transforms` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
+| `reads` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
+| `reads` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
 Text reads length index, validates contains starts, transforms split join trim replace
 Text creates builder, transforms string, reads build
 
-reads word_count(s String) Integer
+reads word_count(text String) Integer
 from
-    parts as List<String> = Text.split(Text.trim(s), " ")
+    parts as List<String> = Text.split(Text.trim(text), " ")
     Text.length(parts)
 ```
 
@@ -147,20 +147,20 @@ from
 
 ## Table
 
-**Module:** `Table` — hash map from `String` keys to generic values.
+**Module:** `Table` — hash map from `String` keys to values.
 
-Defines two binary types: `V` (generic value) and `Table<V>` (the hash map).
+Defines a binary type: `Table<Value>` (the hash map).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `new() Table<V>` | Create an empty table |
-| `validates` | `has(key String, table Table<V>)` | True if key exists |
-| `transforms` | `add(key String, value V, table Table<V>) Table<V>` | Insert or update a key-value pair |
-| `reads` | `get(key String, table Table<V>) Option<V>` | Look up value by key |
-| `transforms` | `remove(key String, table Table<V>) Table<V>` | Delete a key from the table |
-| `reads` | `keys(table Table<V>) List<String>` | Get all keys |
-| `reads` | `values(table Table<V>) List<V>` | Get all values |
-| `reads` | `length(table Table<V>) Integer` | Number of entries |
+| `creates` | `new() Table<Value>` | Create an empty table |
+| `validates` | `has(key String, table Table<Value>)` | True if key exists |
+| `transforms` | `add(key String, value Value, table Table<Value>) Table<Value>` | Insert or update a key-value pair |
+| `reads` | `get(key String, table Table<Value>) Option<Value>` | Look up value by key |
+| `transforms` | `remove(key String, table Table<Value>) Table<Value>` | Delete a key from the table |
+| `reads` | `keys(table Table<Value>) List<String>` | Get all keys |
+| `reads` | `values(table Table<Value>) List<Value>` | Get all values |
+| `reads` | `length(table Table<Value>) Integer` | Number of entries |
 
 ```prove
 Table creates new, validates has, transforms add, reads get keys
@@ -220,7 +220,7 @@ Execute system commands and exit with a status code. Types: `ProcessResult` (bin
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `system(cmd String, args List<String>) ProcessResult` | Run a command |
+| `inputs` | `system(command String, arguments List<String>) ProcessResult` | Run a command |
 | `outputs` | `system(code Integer)` | Exit with status code |
 | `validates` | `system(cmd String)` | Check if command exists |
 
@@ -265,9 +265,7 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 | `creates` | `toml(source String) Result<Value, String>` | Decode TOML to Value |
 | `reads` | `toml(value Value) String` | Encode Value to TOML |
 | `validates` | `toml(source String)` | True if source is valid TOML |
-| `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
-| `reads` | `json(value Value) String` | Encode Value to JSON |
-| `validates` | `json(source String)` | True if source is valid JSON |
+| `validates` | `value(source Source)` | True if source can be wrapped as a Value |
 
 ### Value Accessors
 
@@ -322,24 +320,24 @@ Functions with Integer/Float overloads dispatch based on argument type.
 |------|-----------|-------------|
 | `reads` | `abs(n Integer) Integer` | Absolute value of integer |
 | `reads` | `abs(x Float) Float` | Absolute value of float |
-| `reads` | `min(a Integer, b Integer) Integer` | Smaller of two integers |
-| `reads` | `min(a Float, b Float) Float` | Smaller of two floats |
-| `reads` | `max(a Integer, b Integer) Integer` | Larger of two integers |
-| `reads` | `max(a Float, b Float) Float` | Larger of two floats |
+| `reads` | `min(first Integer, second Integer) Integer` | Smaller of two integers |
+| `reads` | `min(first Float, second Float) Float` | Smaller of two floats |
+| `reads` | `max(first Integer, second Integer) Integer` | Larger of two integers |
+| `reads` | `max(first Float, second Float) Float` | Larger of two floats |
 
 ### Clamp
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `clamp(val Integer, lo Integer, hi Integer) Integer` | Constrain integer to range |
-| `transforms` | `clamp(val Float, lo Float, hi Float) Float` | Constrain float to range |
+| `transforms` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
+| `transforms` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
 
 ### Float Operations
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `sqrt(x Float) Float` | Square root |
-| `reads` | `pow(base Float, exp Float) Float` | Exponentiation |
+| `reads` | `power(base Float, exponent Float) Float` | Exponentiation |
 | `reads` | `floor(x Float) Integer` | Round down to integer |
 | `reads` | `ceil(x Float) Integer` | Round up to integer |
 | `reads` | `round(x Float) Integer` | Round to nearest integer |
@@ -400,8 +398,20 @@ The function name is the *target type*. Failable conversions from strings return
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `code(c Character) Integer` | Character to code point |
-| `creates` | `character(n Integer) Character` | Code point to character |
+| `reads` | `code(character Character) Integer` | Character to code point |
+| `creates` | `character(code Integer) Character` | Code point to character |
+
+### Value Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `text(value Value)` | Check if Value is text |
+| `validates` | `number(value Value)` | Check if Value is a number |
+| `validates` | `decimal(value Value)` | Check if Value is a decimal |
+| `validates` | `bool(value Value)` | Check if Value is a boolean |
+| `validates` | `array(value Value)` | Check if Value is an array |
+| `validates` | `object(value Value)` | Check if Value is an object |
+| `validates` | `null(value Value)` | Check if Value is null |
 
 ```prove
 Types creates integer float, reads string code, validates integer string
@@ -415,20 +425,19 @@ from
 
 ## List
 
-**Module:** `List` — operations on the built-in `List<T>` type.
+**Module:** `List` — operations on the built-in `List<Value>` type.
 
-Generic functions work on any `List<T>`. Some operations (contains, index, sort)
-require concrete element types and have overloads for `List<Integer>` and
-`List<String>`.
+Some operations (contains, index, sort) require concrete element types and have
+overloads for `List<Integer>` and `List<String>`.
 
 ### Query
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `length(items List<T>) Integer` | Number of elements |
-| `reads` | `first(items List<T>) Option<T>` | First element, or None |
-| `reads` | `last(items List<T>) Option<T>` | Last element, or None |
-| `validates` | `empty(items List<T>)` | True if list has no elements |
+| `reads` | `length(items List<Value>) Integer` | Number of elements |
+| `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
+| `reads` | `last(items List<Value>) Option<Value>` | Last element, or None |
+| `validates` | `empty(items List<Value>)` | True if list has no elements |
 
 ### Search
 
@@ -443,8 +452,8 @@ require concrete element types and have overloads for `List<Integer>` and
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `slice(items List<T>, start Integer, end Integer) List<T>` | Sub-list from start to end |
-| `transforms` | `reverse(items List<T>) List<T>` | Reverse element order |
+| `transforms` | `slice(items List<Value>, start Integer, end Integer) List<Value>` | Sub-list from start to end |
+| `transforms` | `reverse(items List<Value>) List<Value>` | Reverse element order |
 | `transforms` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
 | `transforms` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
 
@@ -473,18 +482,18 @@ from
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `pad_left(s String, width Integer, fill Character) String` | Left-pad to width |
-| `transforms` | `pad_right(s String, width Integer, fill Character) String` | Right-pad to width |
-| `transforms` | `center(s String, width Integer, fill Character) String` | Center within width |
+| `transforms` | `pad_left(text String, width Integer, fill Character) String` | Left-pad to width |
+| `transforms` | `pad_right(text String, width Integer, fill Character) String` | Right-pad to width |
+| `transforms` | `center(text String, width Integer, fill Character) String` | Center within width |
 
 ### Number Formatting
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `hex(n Integer) String` | Integer to hexadecimal string |
-| `transforms` | `bin(n Integer) String` | Integer to binary string |
-| `transforms` | `octal(n Integer) String` | Integer to octal string |
-| `transforms` | `decimal(x Float, places Integer) String` | Float with fixed decimal places |
+| `transforms` | `hex(number Integer) String` | Integer to hexadecimal string |
+| `transforms` | `bin(number Integer) String` | Integer to binary string |
+| `transforms` | `octal(number Integer) String` | Integer to octal string |
+| `transforms` | `decimal(value Float, places Integer) String` | Float with fixed decimal places |
 
 ```prove
 Format transforms pad_left hex decimal
@@ -549,9 +558,9 @@ end offset.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `text(m Match) String` | Matched text |
-| `reads` | `start(m Match) Integer` | Start offset in source string |
-| `reads` | `end(m Match) Integer` | End offset in source string |
+| `reads` | `text(matched Match) String` | Matched text |
+| `reads` | `start(matched Match) Integer` | Start offset in source string |
+| `reads` | `end(matched Match) Integer` | End offset in source string |
 
 ```prove
 Pattern validates test, transforms replace, types Match
@@ -576,15 +585,15 @@ providing defaults.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `validates` | `ok(r Result<T, E>)` | True if Result is Ok |
-| `validates` | `err(r Result<T, E>)` | True if Result is Err |
+| `validates` | `ok(result Result<Value, Error>)` | True if Result is Ok |
+| `validates` | `err(result Result<Value, Error>)` | True if Result is Err |
 
 ### Option Validators
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `validates` | `some(o Option<T>)` | True if Option has a value |
-| `validates` | `none(o Option<T>)` | True if Option is empty |
+| `validates` | `some(option Option<Value>)` | True if Option has a value |
+| `validates` | `none(option Option<Value>)` | True if Option is empty |
 
 ### Unwrap with Default
 
