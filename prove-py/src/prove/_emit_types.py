@@ -1,0 +1,426 @@
+"""Type and struct emission mixin for CEmitter."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from prove.ast_nodes import (
+    AlgebraicTypeDef,
+    Assignment,
+    BinaryDef,
+    BinaryExpr,
+    CallExpr,
+    Expr,
+    ExprStmt,
+    FieldExpr,
+    FunctionDef,
+    IdentifierExpr,
+    LookupTypeDef,
+    MainDef,
+    MatchExpr,
+    PipeExpr,
+    RecordTypeDef,
+    TypeDef,
+    TypeIdentifierExpr,
+    VarDecl,
+)
+from prove.c_types import map_type, mangle_type_name
+from prove.symbols import FunctionSignature
+from prove.types import (
+    AlgebraicType,
+    INTEGER,
+    PrimitiveType,
+    RecordType,
+    Type,
+)
+
+
+class TypeEmitterMixin:
+    def _emit_type_forwards(self) -> None:
+        for td in self._all_type_defs():
+            cname = mangle_type_name(td.name)
+            # Lookup types use enum, not struct
+            if isinstance(td.body, LookupTypeDef):
+                self._line(f"typedef enum {cname} {cname};")
+            else:
+                self._line(f"typedef struct {cname} {cname};")
+        # Forward declarations for imported local types
+        for name, ty in self._imported_local_types():
+            cname = mangle_type_name(name)
+            self._line(f"typedef struct {cname} {cname};")
+        self._line("")
+        # Full struct definitions for imported local types
+        self._emit_imported_type_defs()
+
+    def _imported_local_types(self) -> list[tuple[str, Type]]:
+        """Collect types imported from local modules (not defined in this module)."""
+        local_type_names = {td.name for td in self._all_type_defs()}
+        result: list[tuple[str, Type]] = []
+        seen: set[str] = set()
+        for name, ty in self._symbols.all_types().items():
+            if name in local_type_names:
+                continue
+            if name in seen:
+                continue
+            if isinstance(ty, (RecordType, AlgebraicType)):
+                # Only include types that aren't builtins
+                if name not in (
+                    "Integer",
+                    "Decimal",
+                    "Float",
+                    "Boolean",
+                    "String",
+                    "Character",
+                    "Byte",
+                    "Unit",
+                    "Error",
+                    "Result",
+                    "Option",
+                    "List",
+                    "Table",
+                ):
+                    result.append((name, ty))
+                    seen.add(name)
+        return result
+
+    def _emit_imported_type_defs(self) -> None:
+        """Emit full struct definitions for imported local types."""
+        for name, ty in self._imported_local_types():
+            cname = mangle_type_name(name)
+            if isinstance(ty, RecordType):
+                self._emit_record_struct(cname, ty.fields)
+                self._emit_record_constructor(cname, name, ty.fields)
+            elif isinstance(ty, AlgebraicType):
+                self._emit_algebraic_struct(cname, ty.variants)
+                self._emit_variant_constructors(cname, ty.variants)
+
+    def _emit_record_to_value_converters(self) -> None:
+        """Emit static functions that convert record structs to Prove_Value*.
+
+        Pre-scans functions/main for calls where a record arg is passed
+        where Value is expected, then emits one converter per record type.
+        """
+        # Pre-scan: find all record types that need conversion
+        self._scan_record_to_value_needs()
+
+        for rec_name in sorted(self._record_to_value):
+            rec_ty = self._symbols.resolve_type(rec_name)
+            if not isinstance(rec_ty, RecordType):
+                continue
+            cname = mangle_type_name(rec_name)
+            self._line(f"static Prove_Value* _prove_record_to_value_{rec_name}({cname} _r) {{")
+            self._indent += 1
+            self._line("Prove_Table *_tbl = prove_table_new();")
+            for fname, ftype in rec_ty.fields.items():
+                val_expr = self._record_field_to_value(f"_r.{fname}", ftype)
+                self._line(
+                    f'_tbl = prove_table_add(prove_string_from_cstr("{fname}"), {val_expr}, _tbl);'
+                )
+            self._line("return prove_value_object(_tbl);")
+            self._indent -= 1
+            self._line("}")
+            self._line("")
+
+    def _record_field_to_value(self, access: str, ty: Type) -> str:
+        """Return a C expression converting a record field to Prove_Value*."""
+        if isinstance(ty, PrimitiveType):
+            if ty.name == "Integer":
+                return f"prove_value_number({access})"
+            if ty.name == "String":
+                return f"prove_value_text({access})"
+            if ty.name in ("Float", "Decimal"):
+                return f"prove_value_decimal({access})"
+            if ty.name == "Boolean":
+                return f"prove_value_bool({access})"
+            if ty.name == "Character":
+                return f"prove_value_text(prove_string_from_char({access}))"
+            if ty.name == "Value":
+                return access
+        if isinstance(ty, RecordType):
+            self._record_to_value.add(ty.name)
+            return f"_prove_record_to_value_{ty.name}({access})"
+        return "prove_value_null()"
+
+    def _scan_record_to_value_needs(self) -> None:
+        """Scan all call sites to find record->Value conversions needed."""
+        for decl in self._module.declarations:
+            if isinstance(decl, FunctionDef) and not decl.binary:
+                saved = dict(self._locals)
+                self._locals.clear()
+                sig = self._symbols.resolve_function(
+                    decl.verb,
+                    decl.name,
+                    len(decl.params),
+                )
+                if sig:
+                    for p, pt in zip(decl.params, sig.param_types):
+                        self._locals[p.name] = pt
+                self._scan_stmts_for_record_value(decl.body)
+                self._locals = saved
+            elif isinstance(decl, MainDef):
+                self._scan_stmts_for_record_value(decl.body)
+
+    def _scan_stmts_for_record_value(self, stmts: list) -> None:
+        for s in stmts:
+            if isinstance(s, ExprStmt):
+                self._scan_expr_for_record_value(s.expr)
+            elif isinstance(s, VarDecl):
+                self._scan_expr_for_record_value(s.value)
+            elif isinstance(s, Assignment):
+                self._scan_expr_for_record_value(s.value)
+
+    @staticmethod
+    def _is_value_conversion(sig: FunctionSignature) -> bool:
+        """Return True if sig is Parse.creates/validates value(V)."""
+        return (
+            sig.module
+            and sig.module == "parse"
+            and sig.verb in ("creates", "validates")
+            and sig.name == "value"
+        )
+
+    def _scan_expr_for_record_value(self, expr: Expr) -> None:
+        from prove.types import is_json_serializable
+
+        if isinstance(expr, CallExpr):
+            # Find the called function's signature
+            n_args = len(expr.args)
+            sig = None
+            if isinstance(expr.func, IdentifierExpr):
+                sig = self._symbols.resolve_function(None, expr.func.name, n_args)
+                if sig is None:
+                    sig = self._symbols.resolve_function_any(
+                        expr.func.name,
+                        arity=n_args,
+                    )
+            elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+                sig = self._symbols.resolve_function(
+                    None,
+                    expr.func.field,
+                    n_args,
+                )
+                if sig is None:
+                    sig = self._symbols.resolve_function_any(
+                        expr.func.field,
+                        arity=n_args,
+                    )
+            if sig and self._is_value_conversion(sig) and expr.args:
+                arg_ty = self._infer_expr_type(expr.args[0])
+                if isinstance(arg_ty, RecordType) and is_json_serializable(arg_ty):
+                    self._record_to_value.add(arg_ty.name)
+            # Recurse into args
+            if isinstance(expr, CallExpr):
+                for a in expr.args:
+                    self._scan_expr_for_record_value(a)
+        elif isinstance(expr, PipeExpr):
+            self._scan_expr_for_record_value(expr.left)
+            self._scan_expr_for_record_value(expr.right)
+        elif isinstance(expr, BinaryExpr):
+            self._scan_expr_for_record_value(expr.left)
+            self._scan_expr_for_record_value(expr.right)
+        elif isinstance(expr, MatchExpr):
+            self._scan_expr_for_record_value(expr.subject)
+            for arm in expr.arms:
+                self._scan_expr_for_record_value(arm.body)
+
+    def _wrap_record_to_value_args(
+        self,
+        expr: CallExpr,
+        args: list[str],
+    ) -> list[str]:
+        """Wrap record arguments with _prove_record_to_value_X() where needed.
+
+        Only applies to the verb-gated ``creates value(V)`` function from Parse.
+        """
+        from prove.types import is_json_serializable
+
+        sig = None
+        n_args = len(expr.args)
+        if isinstance(expr.func, IdentifierExpr):
+            sig = self._symbols.resolve_function(None, expr.func.name, n_args)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(
+                    expr.func.name,
+                    arity=n_args,
+                )
+        elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
+            sig = self._symbols.resolve_function(
+                None,
+                expr.func.field,
+                n_args,
+            )
+            if sig is None:
+                sig = self._symbols.resolve_function_any(
+                    expr.func.field,
+                    arity=n_args,
+                )
+        if sig is None or not self._is_value_conversion(sig):
+            return args
+
+        if expr.args:
+            arg_ty = self._infer_expr_type(expr.args[0])
+            if isinstance(arg_ty, RecordType) and is_json_serializable(arg_ty):
+                result = list(args)
+                result[0] = f"_prove_record_to_value_{arg_ty.name}({args[0]})"
+                return result
+        return args
+
+    def _emit_record_struct(self, cname: str, fields: dict[str, Type]) -> None:
+        """Emit a C struct definition for a record type."""
+        self._line(f"struct {cname} {{")
+        self._indent += 1
+        for fname, ftype in fields.items():
+            ct = map_type(ftype)
+            self._line(f"{ct.decl} {fname};")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+
+    def _emit_record_constructor(self, cname: str, name: str, fields: dict[str, Type]) -> None:
+        """Emit a static inline constructor for a record type."""
+        params: list[str] = []
+        field_names: list[str] = []
+        for fname, ftype in fields.items():
+            ct = map_type(ftype)
+            params.append(f"{ct.decl} {fname}")
+            field_names.append(fname)
+        param_str = ", ".join(params) if params else "void"
+        self._line(f"static inline {cname} {name}({param_str}) {{")
+        self._indent += 1
+        self._line(f"{cname} _v;")
+        for fname in field_names:
+            self._line(f"_v.{fname} = {fname};")
+        self._line("return _v;")
+        self._indent -= 1
+        self._line("}")
+        self._line("")
+
+    def _emit_algebraic_struct(self, cname: str, variants: list[Any]) -> None:
+        """Emit a tagged union struct for an algebraic type.
+
+        Variants can be VariantInfo (resolved) or AST variant nodes.
+        Each must have .name and .fields attributes.
+        """
+        # Tag enum
+        self._line("enum {")
+        self._indent += 1
+        for i, v in enumerate(variants):
+            tag = f"{cname}_TAG_{v.name.upper()}"
+            self._line(f"{tag} = {i},")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+        # Tagged union struct
+        self._line(f"struct {cname} {{")
+        self._indent += 1
+        self._line("uint8_t tag;")
+        self._line("union {")
+        self._indent += 1
+        for v in variants:
+            v_fields = self._variant_fields_dict(v)
+            if v_fields:
+                self._line("struct {")
+                self._indent += 1
+                for fname, ftype in v_fields.items():
+                    ct = map_type(ftype)
+                    self._line(f"{ct.decl} {fname};")
+                self._indent -= 1
+                self._line(f"}} {v.name};")
+            else:
+                self._line(f"uint8_t _{v.name};  /* unit variant */")
+        self._indent -= 1
+        self._line("};")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+
+    def _emit_variant_constructors(self, cname: str, variants: list[Any]) -> None:
+        """Emit constructors for each variant of an algebraic type."""
+        for i, v in enumerate(variants):
+            tag = f"{cname}_TAG_{v.name.upper()}"
+            v_fields = self._variant_fields_dict(v)
+            params: list[str] = []
+            for fname, ftype in v_fields.items():
+                ct = map_type(ftype)
+                params.append(f"{ct.decl} {fname}")
+            param_str = ", ".join(params) if params else "void"
+            self._line(f"static inline {cname} {v.name}({param_str}) {{")
+            self._indent += 1
+            self._line(f"{cname} _v;")
+            self._line(f"_v.tag = {tag};")
+            for fname in v_fields:
+                self._line(f"_v.{v.name}.{fname} = {fname};")
+            self._line("return _v;")
+            self._indent -= 1
+            self._line("}")
+            self._line("")
+
+    def _variant_fields_dict(self, v: Any) -> dict[str, Type]:
+        """Get fields dict from a variant (resolved VariantInfo or AST node)."""
+        if isinstance(v.fields, dict):
+            # Resolved VariantInfo
+            return v.fields
+        # AST variant: list of field objects with .name and .type_expr
+        result: dict[str, Type] = {}
+        for f in v.fields:
+            te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
+            ft = self._symbols.resolve_type(te_name)
+            result[f.name] = ft if ft else INTEGER
+        return result
+
+    def _resolve_ast_fields(self, fields: list[Any]) -> dict[str, Type]:
+        """Resolve AST field list to {name: Type} dict."""
+        result: dict[str, Type] = {}
+        for f in fields:
+            te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
+            ft = self._symbols.resolve_type(te_name)
+            result[f.name] = ft if ft else INTEGER
+        return result
+
+    def _emit_type_def(self, td: TypeDef) -> None:
+        cname = mangle_type_name(td.name)
+        body = td.body
+
+        if isinstance(body, RecordTypeDef):
+            fields = self._resolve_ast_fields(body.fields)
+            self._emit_record_struct(cname, fields)
+            self._emit_record_constructor(cname, td.name, fields)
+
+        elif isinstance(body, AlgebraicTypeDef):
+            self._emit_algebraic_struct(cname, body.variants)
+            self._emit_variant_constructors(cname, body.variants)
+
+        elif isinstance(body, BinaryDef):
+            # Opaque pointer typedef for C-backed types
+            self._line(f"typedef struct {cname}_impl* {cname};")
+            self._line("")
+
+        elif isinstance(body, LookupTypeDef):
+            # Lookup type: generate C enum from entries
+            # Build unique variant names (skip duplicates with same variant name)
+            seen_variants: set[str] = set()
+            variant_names: list[str] = []
+            for entry in body.entries:
+                if entry.variant not in seen_variants:
+                    seen_variants.add(entry.variant)
+                    variant_names.append(entry.variant)
+            # Generate enum
+            self._line(f"enum {cname} {{")
+            self._indent += 1
+            for i, vname in enumerate(variant_names):
+                tag = f"{cname}_{vname.upper()}"
+                self._line(f"{tag} = {i},")
+            self._indent -= 1
+            self._line("};")
+            self._line("")
+            # Constructor functions for each variant (zero-arg constructors)
+            for vname in variant_names:
+                tag = f"{cname}_{vname.upper()}"
+                self._line(f"static inline {cname} {vname}(void) {{")
+                self._indent += 1
+                self._line(f"{cname} _v;")
+                self._line(f"_v = {tag};")
+                self._line("return _v;")
+                self._indent -= 1
+                self._line("}")
+                self._line("")

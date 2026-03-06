@@ -1,0 +1,809 @@
+"""Expression emission mixin for CEmitter."""
+
+from __future__ import annotations
+
+from prove.ast_nodes import (
+    BinaryExpr,
+    BindingPattern,
+    BooleanLit,
+    CallExpr,
+    CharLit,
+    ComptimeExpr,
+    DecimalLit,
+    Expr,
+    ExprStmt,
+    FailPropExpr,
+    FieldExpr,
+    IdentifierExpr,
+    IndexExpr,
+    IntegerLit,
+    LambdaExpr,
+    ListLiteral,
+    LiteralPattern,
+    LookupAccessExpr,
+    MatchExpr,
+    PathLit,
+    PipeExpr,
+    RawStringLit,
+    StringInterp,
+    StringLit,
+    TripleStringLit,
+    TypeIdentifierExpr,
+    UnaryExpr,
+    ValidExpr,
+    VariantPattern,
+    WildcardPattern,
+)
+from prove.c_types import map_type, mangle_name, mangle_type_name
+from prove.type_inference import BUILTIN_MAP
+from prove.types import (
+    UNIT,
+    AlgebraicType,
+    ERROR_TY,
+    ErrorType,
+    GenericInstance,
+    INTEGER,
+    ListType,
+    PrimitiveType,
+    RecordType,
+    Type,
+    UnitType,
+)
+
+
+class ExprEmitterMixin:
+    def _emit_expr(self, expr: Expr) -> str:
+        if isinstance(expr, IntegerLit):
+            return f"{expr.value}L"
+
+        if isinstance(expr, DecimalLit):
+            return expr.value
+
+        if isinstance(expr, BooleanLit):
+            return "true" if expr.value else "false"
+
+        if isinstance(expr, CharLit):
+            return f"'{expr.value}'"
+
+        if isinstance(expr, PathLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, StringLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, TripleStringLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, RawStringLit):
+            escaped = self._escape_c_string(expr.value)
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, StringInterp):
+            return self._emit_string_interp(expr)
+
+        if isinstance(expr, ListLiteral):
+            return self._emit_list_literal(expr)
+
+        if isinstance(expr, IdentifierExpr):
+            # Check if this identifier is an outputs function with no args (zero-arg call)
+            sig = self._symbols.resolve_function("outputs", expr.name, 0)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(expr.name, arity=0)
+            if sig and sig.verb == "outputs" and sig.module:
+                c_name = self._resolve_stdlib_c_name(sig)
+                if c_name:
+                    return f"{c_name}()"
+            return expr.name
+
+        if isinstance(expr, TypeIdentifierExpr):
+            return expr.name
+
+        if isinstance(expr, BinaryExpr):
+            return self._emit_binary(expr)
+
+        if isinstance(expr, UnaryExpr):
+            return self._emit_unary(expr)
+
+        if isinstance(expr, CallExpr):
+            return self._emit_call(expr)
+
+        if isinstance(expr, FieldExpr):
+            return self._emit_field(expr)
+
+        if isinstance(expr, PipeExpr):
+            return self._emit_pipe(expr)
+
+        if isinstance(expr, FailPropExpr):
+            return self._emit_fail_prop(expr)
+
+        if isinstance(expr, MatchExpr):
+            return self._emit_match_expr(expr)
+
+        if isinstance(expr, LambdaExpr):
+            return self._emit_lambda(expr)
+
+        if isinstance(expr, IndexExpr):
+            return self._emit_index(expr)
+
+        if isinstance(expr, LookupAccessExpr):
+            return self._emit_lookup_access(expr)
+
+        if isinstance(expr, ValidExpr):
+            # Prefer validates verb since valid X(...) means validates
+            n = len(expr.args) if expr.args is not None else 0
+            sig = self._symbols.resolve_function("validates", expr.name, n)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(expr.name, arity=n)
+            if expr.args is not None:
+                # valid error(x) -> call the validates function
+                args_c = ", ".join(self._emit_expr(a) for a in expr.args)
+                # Check stdlib C name first
+                if sig and sig.module:
+                    c_name = self._resolve_stdlib_c_name(sig, expr.args, verb_override="validates")
+                    if c_name:
+                        return f"{c_name}({args_c})"
+                pt = list(sig.param_types) if sig else None
+                fn = mangle_name("validates", expr.name, pt)
+                return f"{fn}({args_c})"
+            # valid error -> function reference (used as HOF predicate)
+            if sig and sig.module:
+                c_name = self._resolve_stdlib_c_name(sig, verb_override="validates")
+                if c_name:
+                    return c_name
+            pt = list(sig.param_types) if sig else None
+            return mangle_name("validates", expr.name, pt)
+
+        if isinstance(expr, ComptimeExpr):
+            result = self._eval_comptime(type("const", (), {"span": expr.span})(), expr)
+            if result is not None:
+                return self._comptime_result_to_c(result)
+            return "/* comptime failed */ 0"
+
+        return "/* unsupported expr */ 0"
+
+    # -- Binary expressions -----------------------------------------
+
+    def _emit_binary(self, expr: BinaryExpr) -> str:
+        left = self._emit_expr(expr.left)
+        right = self._emit_expr(expr.right)
+
+        # Unwrap Option operands when the other side is the inner type
+        lt = self._infer_expr_type(expr.left)
+        rt = self._infer_expr_type(expr.right)
+        left = self._maybe_unwrap_option_value(left, lt, rt)
+        right = self._maybe_unwrap_option_value(right, rt, lt)
+        # Re-infer after unwrap for downstream checks
+        if isinstance(lt, GenericInstance) and lt.base_name == "Option" and lt.args:
+            lt_eff = lt.args[0]
+        else:
+            lt_eff = lt
+
+        # String concatenation
+        if expr.op == "+":
+            if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "String":
+                return f"prove_string_concat({left}, {right})"
+
+        # String equality
+        if expr.op == "==" or expr.op == "!=":
+            if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "String":
+                eq = f"prove_string_eq({left}, {right})"
+                return eq if expr.op == "==" else f"(!{eq})"
+            # Algebraic type tag comparison: severity == Error -> .tag == TAG
+            if isinstance(lt_eff, AlgebraicType) and isinstance(expr.right, TypeIdentifierExpr):
+                cname = mangle_type_name(lt_eff.name)
+                tag = f"{cname}_TAG_{expr.right.name.upper()}"
+                cmp = "==" if expr.op == "==" else "!="
+                return f"({left}.tag {cmp} {tag})"
+
+        # Map Prove operators to C
+        from prove.type_inference import BINARY_OP_TO_C
+
+        c_op = BINARY_OP_TO_C.get(expr.op, expr.op)
+        return f"({left} {c_op} {right})"
+
+    # -- Unary expressions ------------------------------------------
+
+    def _emit_unary(self, expr: UnaryExpr) -> str:
+        operand = self._emit_expr(expr.operand)
+        if expr.op == "!":
+            return f"(!{operand})"
+        if expr.op == "-":
+            return f"(-{operand})"
+        return operand
+
+    # -- String conversion helper -----------------------------------
+
+    def _to_string_func(self, ty: Type) -> str:
+        """Pick the right prove_string_from_* function."""
+        if isinstance(ty, PrimitiveType):
+            if ty.name == "Integer":
+                return "prove_string_from_int"
+            if ty.name in ("Decimal", "Float"):
+                return "prove_string_from_double"
+            if ty.name == "Boolean":
+                return "prove_string_from_bool"
+            if ty.name == "Character":
+                return "prove_string_from_char"
+            if ty.name == "String":
+                return ""  # identity -- shouldn't happen
+        return "prove_string_from_int"  # fallback
+
+    # -- Loop body retains ------------------------------------------
+
+    def _emit_loop_body_retains(self, body: Expr, loop_param: str) -> None:
+        """Emit prove_retain for captured pointer vars passed to calls in a loop.
+
+        The callee releases its parameters, but loop-invariant captured
+        variables are reused on every iteration, so we must retain them
+        before each call to keep the refcount balanced.
+        """
+        if not isinstance(body, CallExpr):
+            return
+        for arg in body.args:
+            if isinstance(arg, IdentifierExpr) and arg.name != loop_param:
+                ty = self._locals.get(arg.name)
+                if ty and map_type(ty).is_pointer:
+                    self._line(f"prove_retain({arg.name});")
+
+    # -- Field expressions ------------------------------------------
+
+    def _emit_field(self, expr: FieldExpr) -> str:
+        obj = self._emit_expr(expr.obj)
+        obj_type = self._infer_expr_type(expr.obj)
+        if isinstance(obj_type, (RecordType, AlgebraicType)):
+            return f"{obj}.{expr.field}"
+        # Table field access: prove_table_get
+        if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Table":
+            val_type = obj_type.args[0] if obj_type.args else INTEGER
+            val_ct = map_type(val_type)
+            get_expr = f'prove_table_get(prove_string_from_cstr("{expr.field}"), {obj})'
+            if val_ct.is_pointer:
+                return f"({val_ct.decl}){get_expr}.value"
+            if val_ct.decl == "int64_t":
+                return f"prove_value_to_number({get_expr}.value)"
+            if val_ct.decl == "double":
+                return f"prove_value_to_decimal({get_expr}.value)"
+            if val_ct.decl == "bool":
+                return f"prove_value_to_bool({get_expr}.value)"
+            return f"({val_ct.decl}){get_expr}.value"
+        # Pointer types use ->
+        ct = map_type(obj_type)
+        if ct.is_pointer:
+            return f"{obj}->{expr.field}"
+        return f"{obj}.{expr.field}"
+
+    # -- Pipe expressions -------------------------------------------
+
+    def _emit_pipe(self, expr: PipeExpr) -> str:
+        left = self._emit_expr(expr.left)
+
+        if isinstance(expr.right, IdentifierExpr):
+            name = expr.right.name
+            if name in BUILTIN_MAP:
+                return f"{BUILTIN_MAP[name]}({left})"
+            sig = self._symbols.resolve_function(None, name, 1)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(
+                    name,
+                    arity=1,
+                )
+            if sig and sig.module:
+                c_name = self._resolve_stdlib_c_name(sig)
+                if c_name:
+                    return f"{c_name}({left})"
+            if sig and sig.verb is not None:
+                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                return f"{mangled}({left})"
+            return f"{name}({left})"
+
+        if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
+            name = expr.right.func.name
+            extra_args = [self._emit_expr(a) for a in expr.right.args]
+            all_args = [left] + extra_args
+            if name in BUILTIN_MAP:
+                return f"{BUILTIN_MAP[name]}({', '.join(all_args)})"
+            total = 1 + len(expr.right.args)
+            sig = self._symbols.resolve_function(None, name, total)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(
+                    name,
+                    arity=total,
+                )
+            if sig and sig.module:
+                c_name = self._resolve_stdlib_c_name(sig)
+                if c_name:
+                    return f"{c_name}({', '.join(all_args)})"
+            if sig and sig.verb is not None:
+                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                return f"{mangled}({', '.join(all_args)})"
+            return f"{name}({', '.join(all_args)})"
+
+        right = self._emit_expr(expr.right)
+        return f"{right}({left})"
+
+    # -- Fail propagation -------------------------------------------
+
+    def _emit_fail_prop(self, expr: FailPropExpr) -> str:
+        tmp = self._tmp()
+        inner = self._emit_expr(expr.expr)
+        self._line(f"Prove_Result {tmp} = {inner};")
+        if self._in_main:
+            self._line(f"if (prove_result_is_err({tmp})) {{")
+            self._indent += 1
+            err_str = self._tmp()
+            self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
+            self._line(
+                f"if ({err_str}) fprintf(stderr,"
+                f' "error: %.*s\\n",'
+                f" (int){err_str}->length,"
+                f" {err_str}->data);"
+            )
+            self._line("prove_runtime_cleanup();")
+            self._line("return 1;")
+            self._indent -= 1
+            self._line("}")
+        else:
+            self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+        # Unwrap the success value
+        inner_type = self._infer_expr_type(expr.expr)
+        if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
+            if inner_type.args:
+                success_type = inner_type.args[0]
+                return self._unwrap_result_value(tmp, success_type)
+        # Failable function with non-Result return -- the C ABI still wraps
+        # in Prove_Result, so we need to unwrap.
+        if not isinstance(inner_type, (ErrorType, GenericInstance)):
+            return self._unwrap_result_value(tmp, inner_type)
+        return f"{tmp}"
+
+    def _unwrap_result_value(self, tmp: str, success_type: Type) -> str:
+        """Emit the correct prove_result_unwrap_* call for a success type."""
+        if isinstance(success_type, UnitType):
+            return tmp  # No value to unwrap
+        if isinstance(success_type, RecordType):
+            ct = map_type(success_type)
+            return f"*(({ct.decl}*)prove_result_unwrap_ptr({tmp}))"
+        sname = getattr(success_type, "name", "")
+        if sname == "Integer":
+            return f"prove_result_unwrap_int({tmp})"
+        ct = map_type(success_type)
+        if ct.is_pointer:
+            return f"({ct.decl})prove_result_unwrap_ptr({tmp})"
+        if ct.decl == "double":
+            return f"prove_result_unwrap_double({tmp})"
+        # Struct-like GenericInstance (Option<T>, etc.)
+        if isinstance(success_type, GenericInstance) and not ct.is_pointer:
+            return f"*(({ct.decl}*)prove_result_unwrap_ptr({tmp}))"
+        return f"prove_result_unwrap_int({tmp})"
+
+    # -- Match expressions ------------------------------------------
+
+    def _emit_match_expr(self, m: MatchExpr) -> str:
+        if m.subject is None:
+            # Implicit subject: for `matches` verb, use first parameter
+            if (
+                self._current_func is not None
+                and self._current_func.verb == "matches"
+                and self._current_func.params
+            ):
+                first_param = self._current_func.params[0].name
+                implicit_subj = MatchExpr(
+                    subject=IdentifierExpr(first_param, m.span),
+                    arms=m.arms,
+                    span=m.span,
+                )
+                return self._emit_match_expr(implicit_subj)
+            # No subject and not matches verb -- just emit arm bodies
+            for arm in m.arms:
+                for s in arm.body:
+                    self._emit_stmt(s)
+            return "/* match */"
+
+        # Save locals so match arm bindings don't leak to function scope
+        saved_locals = dict(self._locals)
+        subj = self._emit_expr(m.subject)
+        subj_type = self._resolve_prim_type(self._infer_expr_type(m.subject))
+
+        if not isinstance(subj_type, AlgebraicType):
+            # Non-algebraic match: emit as if/else-if chain
+            result_type = self._infer_match_result_type(m)
+            ct = map_type(result_type)
+            is_unit = isinstance(result_type, UnitType)
+            tmp = "" if is_unit else self._tmp()
+            if not is_unit:
+                self._line(f"{ct.decl} {tmp};")
+
+            first = True
+            for arm in m.arms:
+                if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                    # Default/else branch
+                    if first:
+                        self._line("{")
+                    else:
+                        self._line("} else {")
+                    self._indent += 1
+                    if isinstance(arm.pattern, BindingPattern):
+                        bct = map_type(subj_type)
+                        self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                        self._locals[arm.pattern.name] = subj_type
+                    for i, s in enumerate(arm.body):
+                        if not is_unit and i == len(arm.body) - 1:
+                            e = self._stmt_expr(s)
+                            if e is not None:
+                                self._line(f"{tmp} = {self._emit_expr(e)};")
+                            else:
+                                self._emit_stmt(s)
+                        else:
+                            self._emit_stmt(s)
+                    self._indent -= 1
+                    self._line("}")
+                elif isinstance(arm.pattern, LiteralPattern):
+                    cond = self._emit_literal_cond(subj, arm.pattern)
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({cond}) {{")
+                    self._indent += 1
+                    for i, s in enumerate(arm.body):
+                        if not is_unit and i == len(arm.body) - 1:
+                            e = self._stmt_expr(s)
+                            if e is not None:
+                                self._line(f"{tmp} = {self._emit_expr(e)};")
+                            else:
+                                self._emit_stmt(s)
+                        else:
+                            self._emit_stmt(s)
+                    self._indent -= 1
+                elif isinstance(arm.pattern, VariantPattern):
+                    vp = arm.pattern
+                    if isinstance(subj_type, GenericInstance) and subj_type.base_name == "Option":
+                        if vp.name == "Some":
+                            keyword = "if" if first else "} else if"
+                            self._line(f"{keyword} ({subj}.tag == 1) {{")
+                            self._indent += 1
+                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                                inner_ty = subj_type.args[0] if subj_type.args else INTEGER
+                                inner_ct = map_type(inner_ty)
+                                bind_name = vp.fields[0].name
+                                if bind_name == subj:
+                                    alias = self._tmp()
+                                    self._line(
+                                        f"{inner_ct.decl} {alias} = ({inner_ct.decl}){subj}.value;"
+                                    )
+                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                                else:
+                                    self._line(
+                                        f"{inner_ct.decl} {bind_name} = "
+                                        f"({inner_ct.decl}){subj}.value;"
+                                    )
+                                self._locals[bind_name] = inner_ty
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
+                        elif vp.name == "None":
+                            # None variant -- treated as else
+                            if first:
+                                self._line("{")
+                            else:
+                                self._line("} else {")
+                            self._indent += 1
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
+                            self._line("}")
+                    elif map_type(subj_type).is_pointer:
+                        if vp.name == "Some":
+                            keyword = "if" if first else "} else if"
+                            self._line(f"{keyword} ({subj} != NULL) {{")
+                            self._indent += 1
+                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                                bind_name = vp.fields[0].name
+                                # Skip re-declaration when binding name
+                                # matches the subject -- avoids C
+                                # self-init UB (T x = x;)
+                                if bind_name != subj:
+                                    sct = map_type(subj_type)
+                                    self._line(f"{sct.decl} {bind_name} = {subj};")
+                                self._locals[bind_name] = subj_type
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
+                        else:
+                            # None or other -- else branch
+                            if first:
+                                self._line("{")
+                            else:
+                                self._line("} else {")
+                            self._indent += 1
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
+                            self._line("}")
+                    elif isinstance(subj_type, RecordType) and vp.name == subj_type.name:
+                        # Record type always matches its own name -- unconditional.
+                        # Remaining arms are dead code, so break after emitting.
+                        for i, s in enumerate(arm.body):
+                            if not is_unit and i == len(arm.body) - 1:
+                                e = self._stmt_expr(s)
+                                if e is not None:
+                                    self._line(f"{tmp} = {self._emit_expr(e)};")
+                                else:
+                                    self._emit_stmt(s)
+                            else:
+                                self._emit_stmt(s)
+                        break
+                first = False
+
+            # Close trailing if without else
+            if not isinstance(
+                m.arms[-1].pattern,
+                (WildcardPattern, BindingPattern),
+            ):
+                # Don't double-close if last was a None variant (already closed)
+                last_pat = m.arms[-1].pattern
+                needs_close = True
+                if isinstance(last_pat, VariantPattern) and last_pat.name == "None":
+                    needs_close = False
+                if needs_close:
+                    self._line("}")
+
+            self._locals = saved_locals
+            return "/* match */" if is_unit else tmp
+
+        # Tagged union switch
+        result_type = self._infer_match_result_type(m)
+        ct = map_type(result_type)
+        result_tmp = self._tmp()
+        subj_tmp = self._tmp()
+        sct = map_type(subj_type)
+        cname = mangle_type_name(subj_type.name)
+
+        if not isinstance(result_type, UnitType):
+            self._line(f"{ct.decl} {result_tmp};")
+        self._line(f"{sct.decl} {subj_tmp} = {subj};")
+        self._line(f"switch ({subj_tmp}.tag) {{")
+
+        for arm in m.arms:
+            if isinstance(arm.pattern, VariantPattern):
+                tag = f"{cname}_TAG_{arm.pattern.name.upper()}"
+                self._line(f"case {tag}: {{")
+                self._indent += 1
+                variant_info = next(
+                    (v for v in subj_type.variants if v.name == arm.pattern.name), None
+                )
+                if variant_info:
+                    for i, sub_pat in enumerate(arm.pattern.fields):
+                        if isinstance(sub_pat, BindingPattern):
+                            field_names = list(variant_info.fields.keys())
+                            if i < len(field_names):
+                                fname = field_names[i]
+                                ft = variant_info.fields[fname]
+                                fct = map_type(ft)
+                                self._locals[sub_pat.name] = ft
+                                self._line(
+                                    f"{fct.decl} {sub_pat.name} = "
+                                    f"{subj_tmp}.{arm.pattern.name}.{fname};"
+                                )
+                for j, s in enumerate(arm.body):
+                    if j == len(arm.body) - 1 and not isinstance(result_type, UnitType):
+                        e = self._stmt_expr(s)
+                        if e is not None:
+                            self._line(f"{result_tmp} = {self._emit_expr(e)};")
+                        else:
+                            self._emit_stmt(s)
+                    else:
+                        self._emit_stmt(s)
+                self._line("break;")
+                self._indent -= 1
+                self._line("}")
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                self._line("default: {")
+                self._indent += 1
+                if isinstance(arm.pattern, BindingPattern):
+                    self._locals[arm.pattern.name] = subj_type
+                    self._line(f"{sct.decl} {arm.pattern.name} = {subj_tmp};")
+                for j, s in enumerate(arm.body):
+                    if j == len(arm.body) - 1 and not isinstance(result_type, UnitType):
+                        e = self._stmt_expr(s)
+                        if e is not None:
+                            self._line(f"{result_tmp} = {self._emit_expr(e)};")
+                        else:
+                            self._emit_stmt(s)
+                    else:
+                        self._emit_stmt(s)
+                self._line("break;")
+                self._indent -= 1
+                self._line("}")
+        self._line("}")
+        # Restore locals (match arm bindings are scoped to arms)
+        self._locals = saved_locals
+
+        return result_tmp if not isinstance(result_type, UnitType) else "/* match */"
+
+    def _infer_match_result_type(self, m: MatchExpr) -> Type:
+        """Infer the result type of a match expression."""
+        for arm in m.arms:
+            if arm.body:
+                last = arm.body[-1]
+                if isinstance(last, ExprStmt):
+                    return self._infer_expr_type(last.expr)
+        return UNIT
+
+    # -- Lambda expressions -----------------------------------------
+
+    def _emit_lambda(self, expr: LambdaExpr) -> str:
+        # Hoist as a static function
+        name = f"_lambda_{self._tmp_counter}"
+        self._tmp_counter += 1
+
+        # We don't know param types precisely, so use generic approach
+        params = ", ".join(f"int64_t {p}" for p in expr.params)
+        if not params:
+            params = "void"
+
+        body_code = self._emit_expr(expr.body)
+
+        lam = f"static int64_t {name}({params}) {{\n    return {body_code};\n}}\n"
+        self._lambdas.append(lam)
+        return name
+
+    # -- String interpolation ---------------------------------------
+
+    def _emit_string_interp(self, expr: StringInterp) -> str:
+        parts: list[str] = []
+        for part in expr.parts:
+            if isinstance(part, StringLit):
+                escaped = self._escape_c_string(part.value)
+                parts.append(f'prove_string_from_cstr("{escaped}")')
+            else:
+                part_type = self._infer_expr_type(part)
+                val = self._emit_expr(part)
+                if isinstance(part_type, PrimitiveType) and part_type.name == "String":
+                    parts.append(val)
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Integer":
+                    parts.append(f"prove_string_from_int({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name in (
+                    "Decimal",
+                    "Float",
+                ):
+                    parts.append(f"prove_string_from_double({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Boolean":
+                    parts.append(f"prove_string_from_bool({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Character":
+                    parts.append(f"prove_string_from_char({val})")
+                elif (
+                    isinstance(part_type, GenericInstance)
+                    and part_type.base_name == "Option"
+                    and part_type.args
+                ):
+                    inner = part_type.args[0]
+                    inner_ct = map_type(inner)
+                    unwrapped = f"({inner_ct.decl}){val}.value"
+                    c_name = self._to_string_func(inner)
+                    parts.append(f"{c_name}({unwrapped})")
+                else:
+                    parts.append(f"prove_string_from_int({val})")
+
+        if not parts:
+            return 'prove_string_from_cstr("")'
+        result = parts[0]
+        for p in parts[1:]:
+            result = f"prove_string_concat({result}, {p})"
+        return result
+
+    # -- List literal -----------------------------------------------
+
+    def _emit_list_literal(self, expr: ListLiteral) -> str:
+        if not expr.elements:
+            return "prove_list_new(sizeof(int64_t), 4)"
+        # Determine element type
+        elem_type = self._infer_expr_type(expr.elements[0])
+        ct = map_type(elem_type)
+
+        tmp = self._tmp()
+        self._line(f"Prove_List *{tmp} = prove_list_new(sizeof({ct.decl}), {len(expr.elements)});")
+        for elem in expr.elements:
+            val = self._emit_expr(elem)
+            etmp = self._tmp()
+            self._line(f"{ct.decl} {etmp} = {val};")
+            self._line(f"prove_list_push(&{tmp}, &{etmp});")
+        return tmp
+
+    # -- Index expression -------------------------------------------
+
+    def _emit_index(self, expr: IndexExpr) -> str:
+        obj = self._emit_expr(expr.obj)
+        idx = self._emit_expr(expr.index)
+        obj_type = self._infer_expr_type(expr.obj)
+        if isinstance(obj_type, ListType):
+            elem_ct = map_type(obj_type.element)
+            return f"(*({elem_ct.decl}*)prove_list_get({obj}, {idx}))"
+        return f"{obj}[{idx}]"
+
+    # -- Lookup access ----------------------------------------------
+
+    def _emit_lookup_access(self, expr: LookupAccessExpr) -> str:
+        """Emit a compile-time lookup: TypeName:"main" -> Main(), TypeName:Main -> string."""
+        lookup = self._lookup_tables.get(expr.type_name)
+        if lookup is None:
+            return "/* no lookup table */ 0"
+        operand = expr.operand
+        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
+            # Forward: literal -> variant constructor
+            value = operand.value
+            if isinstance(operand, BooleanLit):
+                value = "true" if operand.value else "false"
+            for entry in lookup.entries:
+                if entry.value == str(value):
+                    return f"{entry.variant}()"
+            return "/* lookup miss */ 0"
+        if isinstance(operand, TypeIdentifierExpr):
+            # Reverse: variant -> value
+            for entry in lookup.entries:
+                if entry.variant == operand.name:
+                    if entry.value_kind == "string":
+                        escaped = self._escape_c_string(entry.value)
+                        return f'prove_string_from_cstr("{escaped}")'
+                    if entry.value_kind == "integer":
+                        return f"{entry.value}L"
+                    if entry.value_kind == "boolean":
+                        return entry.value
+                    return f'prove_string_from_cstr("{entry.value}")'
+            return "/* lookup miss */ 0"
+        return "/* unsupported lookup */ 0"
+
+    def _infer_lookup_type(self, expr: LookupAccessExpr) -> Type:
+        """Infer the type of a lookup access expression."""
+        lookup = self._lookup_tables.get(expr.type_name)
+        if lookup is None:
+            return ERROR_TY
+        operand = expr.operand
+        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
+            # Forward: literal -> algebraic type
+            resolved = self._symbols.resolve_type(expr.type_name)
+            return resolved if resolved else ERROR_TY
+        if isinstance(operand, TypeIdentifierExpr):
+            # Reverse: variant -> value type
+            name = lookup.value_type.name if hasattr(lookup.value_type, "name") else ""
+            resolved = self._symbols.resolve_type(name)
+            return resolved if resolved else ERROR_TY
+        return ERROR_TY
+
+    def _emit_literal_cond(self, subj: str, pat: LiteralPattern) -> str:
+        """Generate a C condition comparing subj to a literal pattern."""
+        val = pat.value
+        if pat.kind == "boolean" or val in ("true", "false"):
+            return subj if val == "true" else f"!({subj})"
+        if pat.kind == "string":
+            escaped = self._escape_c_string(val)
+            return f'prove_string_eq({subj}, prove_string_from_cstr("{escaped}"))'
+        return f"{subj} == {val}L"
