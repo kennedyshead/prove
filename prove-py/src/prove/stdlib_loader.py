@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from prove.ast_nodes import Module, TypeDef, TypeExpr
 
+from prove.errors import CompileError
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.source import Span
@@ -398,7 +399,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     try:
         tokens = Lexer(source, f"<stdlib:{module_name}>").lex()
         module = Parser(tokens, f"<stdlib:{module_name}>").parse()
-    except Exception:
+    except (CompileError, ValueError, IndexError):
         return []
 
     from prove.ast_nodes import FunctionDef, GenericType, ModuleDecl, SimpleType
@@ -549,7 +550,7 @@ def _parse_stdlib_module(module_name: str) -> Module | None:
     try:
         tokens = Lexer(source, f"<stdlib:{module_name}>").lex()
         return Parser(tokens, f"<stdlib:{module_name}>").parse()
-    except Exception:
+    except (CompileError, ValueError, IndexError):
         return None
 
 

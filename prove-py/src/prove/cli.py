@@ -8,12 +8,10 @@ from typing import TYPE_CHECKING
 import click
 
 from prove import __version__
-from prove.checker import Checker
 from prove.config import find_config, load_config
 from prove.errors import CompileError, DiagnosticRenderer, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
-from prove.project import scaffold
 
 if TYPE_CHECKING:
     from prove.ast_nodes import Module
@@ -51,6 +49,7 @@ def _compile_project(
 
     Returns (ok, checked, errors, warnings, format_issues, stats) tuple.
     """
+    from prove.checker import Checker
     from prove.formatter import ProveFormatter
 
     src_dir = project_path / "src"
@@ -145,6 +144,7 @@ def build(path: str, no_mutate: bool, debug: bool) -> None:
 
         if not no_mutate:
             click.echo("running mutation testing...")
+            from prove.checker import Checker
             from prove.module_resolver import build_module_registry
             from prove.mutator import run_mutation_tests
 
@@ -207,6 +207,7 @@ def _check_file(filepath: Path) -> tuple[int, int, int]:
 
     Returns (errors, warnings, format_issues) tuple.
     """
+    from prove.checker import Checker
     from prove.formatter import ProveFormatter
 
     source = filepath.read_text()
@@ -250,6 +251,8 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
     Returns (checked_blocks, error_count, warning_count).
     """
     import re
+
+    from prove.checker import Checker
 
     text = md_file.read_text()
     fence_re = re.compile(r"```prove\s*\n(.*?)```", re.DOTALL)
@@ -398,6 +401,7 @@ def check(path: str, md: bool, strict: bool) -> None:
 @click.option("--property-rounds", type=int, default=None, help="Override property test rounds.")
 def test(path: str, property_rounds: int | None) -> None:
     """Run tests for a Prove project."""
+    from prove.checker import Checker
     from prove.testing import run_tests
 
     try:
@@ -500,6 +504,8 @@ def test(path: str, property_rounds: int | None) -> None:
 @click.argument("name")
 def new(name: str) -> None:
     """Create a new Prove project."""
+    from prove.project import scaffold
+
     try:
         project_dir = scaffold(name)
         click.echo(f"created project '{name}' at {project_dir}")
@@ -513,7 +519,7 @@ def _format_source(source: str, filename: str) -> str | None:
     try:
         tokens = Lexer(source, filename).lex()
         module = Parser(tokens, filename).parse()
-    except (CompileError, Exception):
+    except CompileError:
         return None
     from prove.formatter import ProveFormatter
 
@@ -582,10 +588,12 @@ def _try_check(
     function signatures (registered in pass 1) are still useful for type
     inference.  Returns (None, []) only if parsing fails.
     """
+    from prove.checker import Checker
+
     try:
         tokens = Lexer(source, filename).lex()
         module = Parser(tokens, filename).parse()
-    except (CompileError, Exception):
+    except CompileError:
         return None, []
 
     checker = Checker(local_modules=local_modules)

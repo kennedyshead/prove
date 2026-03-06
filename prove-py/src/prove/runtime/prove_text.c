@@ -131,19 +131,27 @@ Prove_String *prove_text_trim(Prove_String *s) {
 
 Prove_String *prove_text_to_lower(Prove_String *s) {
     if (!s) return prove_string_new("", 0);
-    Prove_String *result = prove_string_new(s->data, s->length);
-    for (int64_t i = 0; i < result->length; i++) {
-        result->data[i] = (char)tolower((unsigned char)result->data[i]);
+    Prove_String *result = (Prove_String *)prove_alloc(
+        sizeof(Prove_String) + (size_t)s->length + 1
+    );
+    result->length = s->length;
+    for (int64_t i = 0; i < s->length; i++) {
+        result->data[i] = (char)tolower((unsigned char)s->data[i]);
     }
+    result->data[s->length] = '\0';
     return result;
 }
 
 Prove_String *prove_text_to_upper(Prove_String *s) {
     if (!s) return prove_string_new("", 0);
-    Prove_String *result = prove_string_new(s->data, s->length);
-    for (int64_t i = 0; i < result->length; i++) {
-        result->data[i] = (char)toupper((unsigned char)result->data[i]);
+    Prove_String *result = (Prove_String *)prove_alloc(
+        sizeof(Prove_String) + (size_t)s->length + 1
+    );
+    result->length = s->length;
+    for (int64_t i = 0; i < s->length; i++) {
+        result->data[i] = (char)toupper((unsigned char)s->data[i]);
     }
+    result->data[s->length] = '\0';
     return result;
 }
 

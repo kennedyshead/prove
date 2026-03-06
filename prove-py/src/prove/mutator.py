@@ -26,6 +26,7 @@ from prove.ast_nodes import (
     Stmt,
     UnaryExpr,
 )
+from prove.errors import CompileError
 from prove.source import Span
 from prove.symbols import SymbolTable
 
@@ -527,7 +528,7 @@ def run_mutation_tests(
                         ),
                     }
                 )
-        except Exception:
+        except (CompileError, ValueError, TypeError, KeyError, IndexError, AttributeError):
             result.error_mutants += 1
 
     if result.total_mutants > 0:

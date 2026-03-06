@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 from prove.ast_nodes import (
     CallExpr,
     Expr,
@@ -11,12 +13,12 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     ValidExpr,
 )
-from prove.c_types import map_type, mangle_name
+from prove.c_types import mangle_name, map_type
 from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
-    GenericInstance,
     INTEGER,
+    GenericInstance,
     ListType,
     PrimitiveType,
     RecordType,
@@ -434,10 +436,10 @@ class CallEmitterMixin:
                 fake_sig = type("Sig", (), {"param_types": field_types})()
                 args = self._coerce_call_args(args, expr.args, fake_sig)
                 if len(args) < len(resolved.fields):
-                    for fname, ftype in list(resolved.fields.items())[len(args) :]:
+                    for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
                         args.append(self._default_for_type(ftype))
             elif len(args) < len(getattr(resolved, "fields", {})):
-                for fname, ftype in list(resolved.fields.items())[len(args) :]:
+                for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
                     args.append(self._default_for_type(ftype))
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))

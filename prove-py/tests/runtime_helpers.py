@@ -16,12 +16,13 @@ def compile_and_run(
     name: str = "test",
     extra_flags: list[str] | None = None,
     args: list[str] | None = None,
+    compiler: str | None = None,
 ) -> subprocess.CompletedProcess:
     """Compile a C test program against the runtime and run it."""
     src = tmp_path / f"{name}.c"
     src.write_text(c_code)
     binary = tmp_path / name
-    cc = find_c_compiler()
+    cc = compiler or find_c_compiler()
     assert cc is not None
 
     runtime_c = sorted(runtime_dir.glob("*.c"))

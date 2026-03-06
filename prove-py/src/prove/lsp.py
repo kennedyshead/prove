@@ -116,6 +116,7 @@ server = LanguageServer(
     text_document_sync_kind=lsp.TextDocumentSyncKind.Full,
 )
 _state: dict[str, DocumentState] = {}
+_MAX_CACHED_DOCUMENTS = 50
 
 
 def _compile_diag(d: object) -> lsp.Diagnostic:
@@ -237,13 +238,15 @@ def _analyze(uri: str, source: str) -> DocumentState:
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
-    except Exception as e:
+    except Exception:
+        import traceback
+
         diags.append(
             lsp.Diagnostic(
                 range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
                 severity=lsp.DiagnosticSeverity.Error,
                 source="prove",
-                message=f"[internal] lexer error: {e}",
+                message=f"[internal] lexer error: {traceback.format_exc()}",
             )
         )
         ds.diagnostics = diags
@@ -259,13 +262,15 @@ def _analyze(uri: str, source: str) -> DocumentState:
         ds.diagnostics = diags
         _state[uri] = ds
         return ds
-    except Exception as e:
+    except Exception:
+        import traceback
+
         diags.append(
             lsp.Diagnostic(
                 range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
                 severity=lsp.DiagnosticSeverity.Error,
                 source="prove",
-                message=f"[internal] parser error: {e}",
+                message=f"[internal] parser error: {traceback.format_exc()}",
             )
         )
         ds.diagnostics = diags
@@ -282,18 +287,26 @@ def _analyze(uri: str, source: str) -> DocumentState:
         ds.local_import_index = _build_local_import_index(local_modules)
         ds.prove_diagnostics = checker.diagnostics
         diags.extend(_compile_diag(d) for d in checker.diagnostics)
-    except Exception as e:
+    except Exception:
+        import traceback
+
         diags.append(
             lsp.Diagnostic(
                 range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
                 severity=lsp.DiagnosticSeverity.Error,
                 source="prove",
-                message=f"[internal] checker error: {e}",
+                message=f"[internal] checker error: {traceback.format_exc()}",
             )
         )
 
     ds.diagnostics = diags
     _state[uri] = ds
+    # Evict oldest entries if cache grows too large
+    if len(_state) > _MAX_CACHED_DOCUMENTS:
+        excess = len(_state) - _MAX_CACHED_DOCUMENTS
+        for old_uri in list(_state)[:excess]:
+            if old_uri != uri:
+                del _state[old_uri]
     return ds
 
 

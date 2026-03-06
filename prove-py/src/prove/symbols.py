@@ -83,6 +83,7 @@ class SymbolTable:
         self._scope_stack: list[Scope] = [Scope(name="module")]
         self._functions: dict[tuple[str | None, str], list[FunctionSignature]] = {}
         self._types: dict[str, Type] = {}
+        self._known_names_cache: set[str] | None = None
 
     @property
     def current_scope(self) -> Scope:
@@ -90,14 +91,18 @@ class SymbolTable:
 
     def push_scope(self, name: str = "") -> None:
         self._scope_stack.append(Scope(parent=self.current_scope, name=name))
+        self._known_names_cache = None
 
     def pop_scope(self) -> Scope:
         if len(self._scope_stack) <= 1:
             raise RuntimeError("cannot pop module scope")
-        return self._scope_stack.pop()
+        scope = self._scope_stack.pop()
+        self._known_names_cache = None
+        return scope
 
     def define(self, symbol: Symbol) -> Symbol | None:
         """Define a symbol in the current scope. Returns existing if duplicate."""
+        self._known_names_cache = None
         return self.current_scope.define(symbol)
 
     def lookup(self, name: str) -> Symbol | None:
@@ -108,6 +113,7 @@ class SymbolTable:
         """Register a function signature."""
         key = (sig.verb, sig.name)
         self._functions.setdefault(key, []).append(sig)
+        self._known_names_cache = None
 
     def resolve_function(
         self, verb: str | None, name: str, arg_count: int
@@ -197,6 +203,7 @@ class SymbolTable:
     def define_type(self, name: str, resolved: Type) -> None:
         """Register a resolved type in the type registry."""
         self._types[name] = resolved
+        self._known_names_cache = None
 
     def resolve_type(self, name: str) -> Type | None:
         """Look up a type by name."""
@@ -211,6 +218,8 @@ class SymbolTable:
 
     def all_known_names(self) -> set[str]:
         """Return all names visible in current scope + types + functions."""
+        if self._known_names_cache is not None:
+            return self._known_names_cache
         names: set[str] = set()
         # Walk scope chain
         scope: Scope | None = self.current_scope
@@ -223,4 +232,5 @@ class SymbolTable:
         # Function names
         for _verb, fname in self._functions:
             names.add(fname)
+        self._known_names_cache = names
         return names

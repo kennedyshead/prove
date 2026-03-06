@@ -42,6 +42,10 @@ select = ["E", "F", "W", "I"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests"]
+addopts = "--strict-markers --tb=short"
+markers = [
+    "slow: tests that require C compilation",
+]
 
 [tool.mypy]
 python_version = "3.11"

@@ -62,7 +62,7 @@ def build_project(
             all_diags.extend(e.diagnostics)
             continue
 
-        # Format (type-infer and rewrite), then re-parse the canonical source
+        # Format (type-infer and rewrite), then re-parse only if source changed
         from prove.formatter import ProveFormatter
 
         checker = Checker(local_modules=local_modules)
@@ -71,18 +71,16 @@ def build_project(
         formatted = formatter.format(module)
         if formatted != source:
             prv_file.write_text(formatted)
+            # Re-parse the formatted source for a clean check
+            try:
+                tokens = Lexer(formatted, filename).lex()
+                module = Parser(tokens, filename).parse()
+            except CompileError as e:
+                all_diags.extend(e.diagnostics)
+                continue
+            checker = Checker(local_modules=local_modules)
+            symbols = checker.check(module)
 
-        # Re-parse the formatted source for a clean check
-        try:
-            tokens = Lexer(formatted, filename).lex()
-            module = Parser(tokens, filename).parse()
-        except CompileError as e:
-            all_diags.extend(e.diagnostics)
-            continue
-
-        # Check
-        checker = Checker(local_modules=local_modules)
-        symbols = checker.check(module)
         all_diags.extend(checker.diagnostics)
 
         if checker.has_errors():
@@ -119,6 +117,14 @@ def _build_c(
             module = optimizer.optimize()
             memo_info = optimizer.get_memo_info()
             runtime_deps = optimizer.get_runtime_deps()
+        else:
+            from prove.optimizer import RuntimeDeps
+
+            runtime_deps = RuntimeDeps()
+            for decl in module.declarations:
+                if isinstance(decl, ModuleDecl):
+                    for imp in decl.imports:
+                        runtime_deps.add_module(imp.module)
         emitter = CEmitter(module, symbols, memo_info)
         c_sources.append(emitter.emit())
         if runtime_deps:
