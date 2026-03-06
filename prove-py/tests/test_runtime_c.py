@@ -6,57 +6,16 @@ checks results via exit codes and stdout.
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    """Copy runtime files to tmp_path so tests can include them."""
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-) -> subprocess.CompletedProcess:
-    """Compile a C test program and run it."""
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    # Collect all .c files from runtime
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 # ── Arena tests ───────────────────────────────────────────────────
 
 
 class TestArena:
-    def test_alloc_and_free(self, tmp_path):
+    def test_alloc_and_free(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include <stdio.h>
@@ -77,11 +36,11 @@ class TestArena:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="arena_alloc")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="arena_alloc")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_reset_reuse(self, tmp_path):
+    def test_reset_reuse(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include <stdio.h>
@@ -106,11 +65,11 @@ class TestArena:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="arena_reset")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="arena_reset")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_overflow_chunk(self, tmp_path):
+    def test_overflow_chunk(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include <stdio.h>
@@ -132,7 +91,7 @@ class TestArena:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="arena_overflow")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="arena_overflow")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -141,7 +100,7 @@ class TestArena:
 
 
 class TestHash:
-    def test_deterministic(self, tmp_path):
+    def test_deterministic(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_hash.h"
             #include <stdio.h>
@@ -159,11 +118,11 @@ class TestHash:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="hash_determ")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="hash_determ")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_different_inputs(self, tmp_path):
+    def test_different_inputs(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_hash.h"
             #include <stdio.h>
@@ -184,7 +143,7 @@ class TestHash:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="hash_diff")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="hash_diff")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -193,7 +152,7 @@ class TestHash:
 
 
 class TestIntern:
-    def test_dedup(self, tmp_path):
+    def test_dedup(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include "prove_intern.h"
@@ -217,11 +176,11 @@ class TestIntern:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="intern_dedup")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="intern_dedup")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_different(self, tmp_path):
+    def test_different(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include "prove_intern.h"
@@ -243,11 +202,11 @@ class TestIntern:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="intern_diff")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="intern_diff")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_growth(self, tmp_path):
+    def test_growth(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_arena.h"
             #include "prove_intern.h"
@@ -281,7 +240,7 @@ class TestIntern:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="intern_growth")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="intern_growth")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -290,7 +249,7 @@ class TestIntern:
 
 
 class TestCharacter:
-    def test_classification(self, tmp_path):
+    def test_classification(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_character.h"
             #include <stdio.h>
@@ -322,11 +281,11 @@ class TestCharacter:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="char_classify")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="char_classify")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_at(self, tmp_path):
+    def test_at(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_character.h"
             #include <stdio.h>
@@ -340,7 +299,7 @@ class TestCharacter:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="char_at")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="char_at")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -349,7 +308,7 @@ class TestCharacter:
 
 
 class TestText:
-    def test_length_and_slice(self, tmp_path):
+    def test_length_and_slice(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -372,11 +331,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_slice")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_slice")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_starts_ends_contains(self, tmp_path):
+    def test_starts_ends_contains(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -401,11 +360,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_prefix")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_prefix")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_index_of(self, tmp_path):
+    def test_index_of(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -426,11 +385,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_indexof")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_indexof")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_split_join(self, tmp_path):
+    def test_split_join(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -455,11 +414,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_split")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_split")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_trim(self, tmp_path):
+    def test_trim(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -478,11 +437,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_trim")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_trim")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_case_conversion(self, tmp_path):
+    def test_case_conversion(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -499,11 +458,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_case")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_case")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_replace(self, tmp_path):
+    def test_replace(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -519,11 +478,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_replace")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_replace")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_repeat(self, tmp_path):
+    def test_repeat(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -540,11 +499,11 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_repeat")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_repeat")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_builder(self, tmp_path):
+    def test_builder(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_text.h"
             #include <stdio.h>
@@ -566,7 +525,7 @@ class TestText:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="text_builder")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="text_builder")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -575,7 +534,7 @@ class TestText:
 
 
 class TestTable:
-    def test_add_get_has(self, tmp_path):
+    def test_add_get_has(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_table.h"
             #include <stdio.h>
@@ -611,11 +570,11 @@ class TestTable:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="table_basic")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="table_basic")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_update_existing(self, tmp_path):
+    def test_update_existing(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_table.h"
             #include <stdio.h>
@@ -635,11 +594,11 @@ class TestTable:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="table_update")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="table_update")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_remove(self, tmp_path):
+    def test_remove(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_table.h"
             #include <stdio.h>
@@ -662,11 +621,11 @@ class TestTable:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="table_remove")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="table_remove")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_keys_values(self, tmp_path):
+    def test_keys_values(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_table.h"
             #include <stdio.h>
@@ -686,11 +645,11 @@ class TestTable:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="table_keys")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="table_keys")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_growth(self, tmp_path):
+    def test_growth(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_table.h"
             #include <stdio.h>
@@ -722,6 +681,6 @@ class TestTable:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="table_growth")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="table_growth")
         assert result.returncode == 0
         assert "OK" in result.stdout

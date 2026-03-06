@@ -2,51 +2,13 @@
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-) -> subprocess.CompletedProcess:
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 class TestConvertInteger:
-    def test_integer_from_string_ok(self, tmp_path):
+    def test_integer_from_string_ok(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -61,11 +23,11 @@ class TestConvertInteger:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="int_ok")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="int_ok")
         assert result.returncode == 0
         assert result.stdout.strip() == "42"
 
-    def test_integer_from_string_negative(self, tmp_path):
+    def test_integer_from_string_negative(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -78,11 +40,11 @@ class TestConvertInteger:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="int_neg")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="int_neg")
         assert result.returncode == 0
         assert result.stdout.strip() == "-100"
 
-    def test_integer_from_string_invalid(self, tmp_path):
+    def test_integer_from_string_invalid(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -93,11 +55,11 @@ class TestConvertInteger:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="int_err")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="int_err")
         assert result.returncode == 0
         assert result.stdout.strip() == "ERR"
 
-    def test_integer_from_float(self, tmp_path):
+    def test_integer_from_float(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -107,7 +69,7 @@ class TestConvertInteger:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="int_float")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="int_float")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "3"
@@ -115,7 +77,7 @@ class TestConvertInteger:
 
 
 class TestConvertFloat:
-    def test_float_from_string_ok(self, tmp_path):
+    def test_float_from_string_ok(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -128,11 +90,11 @@ class TestConvertFloat:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="float_ok")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="float_ok")
         assert result.returncode == 0
         assert result.stdout.strip() == "3.14"
 
-    def test_float_from_string_invalid(self, tmp_path):
+    def test_float_from_string_invalid(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -143,11 +105,11 @@ class TestConvertFloat:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="float_err")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="float_err")
         assert result.returncode == 0
         assert result.stdout.strip() == "ERR"
 
-    def test_float_from_int(self, tmp_path):
+    def test_float_from_int(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -156,13 +118,13 @@ class TestConvertFloat:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="float_int")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="float_int")
         assert result.returncode == 0
         assert result.stdout.strip() == "42.0"
 
 
 class TestConvertString:
-    def test_string_from_int(self, tmp_path):
+    def test_string_from_int(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -172,11 +134,11 @@ class TestConvertString:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="str_int")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="str_int")
         assert result.returncode == 0
         assert result.stdout.strip() == "42"
 
-    def test_string_from_bool(self, tmp_path):
+    def test_string_from_bool(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -188,7 +150,7 @@ class TestConvertString:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="str_bool")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="str_bool")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "true"
@@ -196,7 +158,7 @@ class TestConvertString:
 
 
 class TestConvertCharacter:
-    def test_code(self, tmp_path):
+    def test_code(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -206,13 +168,13 @@ class TestConvertCharacter:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="code")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="code")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "65"
         assert lines[1] == "48"
 
-    def test_character(self, tmp_path):
+    def test_character(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_convert.h"
             #include <stdio.h>
@@ -222,7 +184,7 @@ class TestConvertCharacter:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="char")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="char")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "A"

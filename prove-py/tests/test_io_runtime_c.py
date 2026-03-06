@@ -6,58 +6,16 @@ checks results via exit codes and stdout.
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    """Copy runtime files to tmp_path so tests can include them."""
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-    args: list[str] | None = None,
-) -> subprocess.CompletedProcess:
-    """Compile a C test program and run it."""
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    run_cmd = [str(binary)] + (args or [])
-    return subprocess.run(run_cmd, capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 # ── File I/O tests ────────────────────────────────────────────────
 
 
 class TestFileIO:
-    def test_file_write_and_read(self, tmp_path):
+    def test_file_write_and_read(self, tmp_path, runtime_dir):
         testfile = tmp_path / "test_data.txt"
         code = textwrap.dedent(f"""\
             #include "prove_input_output.h"
@@ -81,11 +39,11 @@ class TestFileIO:
                 return 0;
             }}
         """)
-        result = _compile_and_run(tmp_path, code, name="file_rw")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="file_rw")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_file_read_missing(self, tmp_path):
+    def test_file_read_missing(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -101,11 +59,11 @@ class TestFileIO:
                 return 1;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="file_missing")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="file_missing")
         assert result.returncode == 0
         assert "ERR_OK" in result.stdout
 
-    def test_file_validates(self, tmp_path):
+    def test_file_validates(self, tmp_path, runtime_dir):
         testfile = tmp_path / "exists.txt"
         testfile.write_text("x")
         code = textwrap.dedent(f"""\
@@ -122,7 +80,7 @@ class TestFileIO:
                 return 0;
             }}
         """)
-        result = _compile_and_run(tmp_path, code, name="file_validates")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="file_validates")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -131,7 +89,7 @@ class TestFileIO:
 
 
 class TestConsoleValidates:
-    def test_console_validates(self, tmp_path):
+    def test_console_validates(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -144,7 +102,7 @@ class TestConsoleValidates:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="console_val")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="console_val")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -153,7 +111,7 @@ class TestConsoleValidates:
 
 
 class TestSystemChannel:
-    def test_system_inputs_echo(self, tmp_path):
+    def test_system_inputs_echo(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -174,11 +132,11 @@ class TestSystemChannel:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="system_echo")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="system_echo")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_system_validates(self, tmp_path):
+    def test_system_validates(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -193,7 +151,7 @@ class TestSystemChannel:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="system_val")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="system_val")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -202,7 +160,7 @@ class TestSystemChannel:
 
 
 class TestDirChannel:
-    def test_dir_outputs_creates_directory(self, tmp_path):
+    def test_dir_outputs_creates_directory(self, tmp_path, runtime_dir):
         newdir = tmp_path / "subdir"
         code = textwrap.dedent(f"""\
             #include "prove_input_output.h"
@@ -219,11 +177,11 @@ class TestDirChannel:
                 return 0;
             }}
         """)
-        result = _compile_and_run(tmp_path, code, name="dir_create")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="dir_create")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_dir_inputs_lists_entries(self, tmp_path):
+    def test_dir_inputs_lists_entries(self, tmp_path, runtime_dir):
         # Create some entries
         (tmp_path / "a.txt").write_text("a")
         (tmp_path / "b.txt").write_text("b")
@@ -245,11 +203,11 @@ class TestDirChannel:
                 return 0;
             }}
         """)
-        result = _compile_and_run(tmp_path, code, name="dir_list")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="dir_list")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_dir_validates(self, tmp_path):
+    def test_dir_validates(self, tmp_path, runtime_dir):
         code = textwrap.dedent(f"""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -264,7 +222,7 @@ class TestDirChannel:
                 return 0;
             }}
         """)
-        result = _compile_and_run(tmp_path, code, name="dir_val")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="dir_val")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -273,7 +231,7 @@ class TestDirChannel:
 
 
 class TestProcessChannel:
-    def test_process_inputs_returns_argv(self, tmp_path):
+    def test_process_inputs_returns_argv(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -292,14 +250,14 @@ class TestProcessChannel:
                 return 0;
             }
         """)
-        result = _compile_and_run(
-            tmp_path, code, name="process_args",
+        result = compile_and_run(
+            runtime_dir, tmp_path, code, name="process_args",
             args=["foo", "bar"],
         )
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_process_validates(self, tmp_path):
+    def test_process_validates(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_input_output.h"
             #include <stdio.h>
@@ -315,8 +273,8 @@ class TestProcessChannel:
                 return 0;
             }
         """)
-        result = _compile_and_run(
-            tmp_path, code, name="process_val",
+        result = compile_and_run(
+            runtime_dir, tmp_path, code, name="process_val",
             args=["--flag"],
         )
         assert result.returncode == 0

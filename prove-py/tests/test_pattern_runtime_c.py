@@ -2,51 +2,13 @@
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-) -> subprocess.CompletedProcess:
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 class TestPatternMatch:
-    def test_match_full(self, tmp_path):
+    def test_match_full(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -57,11 +19,11 @@ class TestPatternMatch:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="match_full")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="match_full")
         assert result.returncode == 0
         assert result.stdout.strip() == "yes"
 
-    def test_match_partial_fails(self, tmp_path):
+    def test_match_partial_fails(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -72,11 +34,11 @@ class TestPatternMatch:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="match_partial")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="match_partial")
         assert result.returncode == 0
         assert result.stdout.strip() == "no"
 
-    def test_match_no_match(self, tmp_path):
+    def test_match_no_match(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -87,13 +49,13 @@ class TestPatternMatch:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="match_no")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="match_no")
         assert result.returncode == 0
         assert result.stdout.strip() == "no"
 
 
 class TestPatternSearch:
-    def test_search_found(self, tmp_path):
+    def test_search_found(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -112,11 +74,11 @@ class TestPatternSearch:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="search")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="search")
         assert result.returncode == 0
         assert result.stdout.strip() == "found 123 at 6-9"
 
-    def test_search_not_found(self, tmp_path):
+    def test_search_not_found(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -128,13 +90,13 @@ class TestPatternSearch:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="search_no")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="search_no")
         assert result.returncode == 0
         assert result.stdout.strip() == "none"
 
 
 class TestPatternFindAll:
-    def test_find_all(self, tmp_path):
+    def test_find_all(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -151,7 +113,7 @@ class TestPatternFindAll:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="find_all")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="find_all")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "count=3"
@@ -159,7 +121,7 @@ class TestPatternFindAll:
 
 
 class TestPatternReplace:
-    def test_replace(self, tmp_path):
+    def test_replace(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -172,11 +134,11 @@ class TestPatternReplace:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="replace")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="replace")
         assert result.returncode == 0
         assert result.stdout.strip() == "hello prove"
 
-    def test_replace_multiple(self, tmp_path):
+    def test_replace_multiple(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -189,13 +151,13 @@ class TestPatternReplace:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="replace_multi")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="replace_multi")
         assert result.returncode == 0
         assert result.stdout.strip() == "aXbXcX"
 
 
 class TestPatternSplit:
-    def test_split(self, tmp_path):
+    def test_split(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -212,7 +174,7 @@ class TestPatternSplit:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="split")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="split")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "count=3"
@@ -220,7 +182,7 @@ class TestPatternSplit:
 
 
 class TestPatternMatchAccessors:
-    def test_accessors(self, tmp_path):
+    def test_accessors(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_pattern.h"
             #include <stdio.h>
@@ -239,6 +201,6 @@ class TestPatternMatchAccessors:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="accessors")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="accessors")
         assert result.returncode == 0
         assert result.stdout.strip() == "text=42 start=6 end=8"

@@ -6,56 +6,16 @@ checks results via exit codes and stdout.
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    """Copy runtime files to tmp_path so tests can include them."""
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-) -> subprocess.CompletedProcess:
-    """Compile a C test program and run it."""
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 # ── TOML tests ────────────────────────────────────────────────────
 
 
 class TestTomlParse:
-    def test_key_value_string(self, tmp_path):
+    def test_key_value_string(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -79,11 +39,11 @@ class TestTomlParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_kv")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_kv")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_key_value_integer(self, tmp_path):
+    def test_key_value_integer(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -105,11 +65,11 @@ class TestTomlParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_int")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_int")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_key_value_bool(self, tmp_path):
+    def test_key_value_bool(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -138,11 +98,11 @@ class TestTomlParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_bool")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_bool")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_section(self, tmp_path):
+    def test_section(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -174,11 +134,11 @@ class TestTomlParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_section")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_section")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_array(self, tmp_path):
+    def test_array(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -209,13 +169,13 @@ class TestTomlParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_array")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_array")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
 
 class TestTomlRoundTrip:
-    def test_emit_and_reparse(self, tmp_path):
+    def test_emit_and_reparse(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -249,7 +209,7 @@ class TestTomlRoundTrip:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="toml_round")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="toml_round")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -258,7 +218,7 @@ class TestTomlRoundTrip:
 
 
 class TestJsonParse:
-    def test_object(self, tmp_path):
+    def test_object(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -290,11 +250,11 @@ class TestJsonParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="json_obj")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_obj")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_array(self, tmp_path):
+    def test_array(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -314,11 +274,11 @@ class TestJsonParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="json_arr")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_arr")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_primitives(self, tmp_path):
+    def test_primitives(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -350,11 +310,11 @@ class TestJsonParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="json_prims")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_prims")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_malformed_returns_error(self, tmp_path):
+    def test_malformed_returns_error(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -368,13 +328,13 @@ class TestJsonParse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="json_err")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_err")
         assert result.returncode == 0
         assert "ERR_OK" in result.stdout
 
 
 class TestJsonRoundTrip:
-    def test_emit_and_reparse(self, tmp_path):
+    def test_emit_and_reparse(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -406,13 +366,13 @@ class TestJsonRoundTrip:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="json_round")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_round")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
 
 class TestValueTag:
-    def test_tag_names(self, tmp_path):
+    def test_tag_names(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -444,7 +404,7 @@ class TestValueTag:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="value_tags")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="value_tags")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -452,7 +412,7 @@ class TestValueTag:
 class TestValidatesJson:
     """Tests for prove_validates_json."""
 
-    def test_valid_json_object(self, tmp_path):
+    def test_valid_json_object(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -465,11 +425,11 @@ class TestValidatesJson:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_json_ok")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_json_ok")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_invalid_json(self, tmp_path):
+    def test_invalid_json(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -482,11 +442,11 @@ class TestValidatesJson:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_json_bad")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_json_bad")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_valid_json_array(self, tmp_path):
+    def test_valid_json_array(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -499,11 +459,11 @@ class TestValidatesJson:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_json_arr")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_json_arr")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_empty_string_invalid(self, tmp_path):
+    def test_empty_string_invalid(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -516,7 +476,7 @@ class TestValidatesJson:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_json_empty")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_json_empty")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
@@ -524,7 +484,7 @@ class TestValidatesJson:
 class TestValidatesToml:
     """Tests for prove_validates_toml."""
 
-    def test_valid_toml(self, tmp_path):
+    def test_valid_toml(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -537,11 +497,11 @@ class TestValidatesToml:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_toml_ok")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_toml_ok")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_invalid_toml(self, tmp_path):
+    def test_invalid_toml(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -554,11 +514,11 @@ class TestValidatesToml:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_toml_bad")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_toml_bad")
         assert result.returncode == 0
         assert "OK" in result.stdout
 
-    def test_valid_toml_with_section(self, tmp_path):
+    def test_valid_toml_with_section(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_parse.h"
             #include <stdio.h>
@@ -573,6 +533,6 @@ class TestValidatesToml:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="validates_toml_sec")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="validates_toml_sec")
         assert result.returncode == 0
         assert "OK" in result.stdout

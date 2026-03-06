@@ -2,51 +2,13 @@
 
 from __future__ import annotations
 
-import subprocess
 import textwrap
-from pathlib import Path
 
-import pytest
-
-from prove.c_compiler import find_c_compiler
-from prove.c_runtime import copy_runtime
-
-_RUNTIME_DIR: Path | None = None
-
-
-@pytest.fixture(autouse=True)
-def _setup_runtime(tmp_path, needs_cc):
-    global _RUNTIME_DIR
-    copy_runtime(tmp_path)
-    _RUNTIME_DIR = tmp_path / "runtime"
-
-
-def _compile_and_run(
-    tmp_path: Path, c_code: str, *, name: str = "test",
-) -> subprocess.CompletedProcess:
-    assert _RUNTIME_DIR is not None
-    src = tmp_path / f"{name}.c"
-    src.write_text(c_code)
-    binary = tmp_path / name
-    cc = find_c_compiler()
-    assert cc is not None
-
-    runtime_c = sorted(_RUNTIME_DIR.glob("*.c"))
-    cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(_RUNTIME_DIR),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
-        "-lm",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Compile failed:\n{result.stderr}"
-
-    return subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+from runtime_helpers import compile_and_run
 
 
 class TestListLength:
-    def test_length_nonempty(self, tmp_path):
+    def test_length_nonempty(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -58,11 +20,11 @@ class TestListLength:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="len")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="len")
         assert result.returncode == 0
         assert result.stdout.strip() == "3"
 
-    def test_length_empty(self, tmp_path):
+    def test_length_empty(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -72,13 +34,13 @@ class TestListLength:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="len_empty")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="len_empty")
         assert result.returncode == 0
         assert result.stdout.strip() == "0"
 
 
 class TestListFirstLast:
-    def test_first_int(self, tmp_path):
+    def test_first_int(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -92,11 +54,11 @@ class TestListFirstLast:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="first")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="first")
         assert result.returncode == 0
         assert result.stdout.strip() == "some 10"
 
-    def test_first_empty(self, tmp_path):
+    def test_first_empty(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -107,11 +69,11 @@ class TestListFirstLast:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="first_empty")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="first_empty")
         assert result.returncode == 0
         assert result.stdout.strip() == "none"
 
-    def test_last_int(self, tmp_path):
+    def test_last_int(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -125,13 +87,13 @@ class TestListFirstLast:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="last")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="last")
         assert result.returncode == 0
         assert result.stdout.strip() == "some 30"
 
 
 class TestListContains:
-    def test_contains_hit(self, tmp_path):
+    def test_contains_hit(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -143,11 +105,11 @@ class TestListContains:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="contains_hit")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="contains_hit")
         assert result.returncode == 0
         assert result.stdout.strip() == "yes"
 
-    def test_contains_miss(self, tmp_path):
+    def test_contains_miss(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -159,11 +121,11 @@ class TestListContains:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="contains_miss")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="contains_miss")
         assert result.returncode == 0
         assert result.stdout.strip() == "no"
 
-    def test_contains_str(self, tmp_path):
+    def test_contains_str(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -180,7 +142,7 @@ class TestListContains:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="contains_str")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="contains_str")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert lines[0] == "yes"
@@ -188,7 +150,7 @@ class TestListContains:
 
 
 class TestListIndex:
-    def test_index_found(self, tmp_path):
+    def test_index_found(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -205,11 +167,11 @@ class TestListIndex:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="index_found")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="index_found")
         assert result.returncode == 0
         assert result.stdout.strip() == "1"
 
-    def test_index_not_found(self, tmp_path):
+    def test_index_not_found(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -222,13 +184,13 @@ class TestListIndex:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="index_miss")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="index_miss")
         assert result.returncode == 0
         assert result.stdout.strip() == "none"
 
 
 class TestListSort:
-    def test_sort_int(self, tmp_path):
+    def test_sort_int(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -244,11 +206,11 @@ class TestListSort:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="sort_int")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="sort_int")
         assert result.returncode == 0
         assert result.stdout.strip() == "10 20 30"
 
-    def test_sort_str(self, tmp_path):
+    def test_sort_str(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -269,13 +231,13 @@ class TestListSort:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="sort_str")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="sort_str")
         assert result.returncode == 0
         assert result.stdout.strip() == "apple banana cherry"
 
 
 class TestListReverse:
-    def test_reverse(self, tmp_path):
+    def test_reverse(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -291,13 +253,13 @@ class TestListReverse:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="reverse")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="reverse")
         assert result.returncode == 0
         assert result.stdout.strip() == "3 2 1"
 
 
 class TestListSlice:
-    def test_slice(self, tmp_path):
+    def test_slice(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -313,13 +275,13 @@ class TestListSlice:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="slice")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="slice")
         assert result.returncode == 0
         assert result.stdout.strip() == "len=3: 1 2 3"
 
 
 class TestListRange:
-    def test_range(self, tmp_path):
+    def test_range(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -332,11 +294,11 @@ class TestListRange:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="range")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="range")
         assert result.returncode == 0
         assert result.stdout.strip() == "1 2 3 4 5"
 
-    def test_range_empty(self, tmp_path):
+    def test_range_empty(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -346,13 +308,13 @@ class TestListRange:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="range_empty")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="range_empty")
         assert result.returncode == 0
         assert result.stdout.strip() == "0"
 
 
 class TestListEmpty:
-    def test_empty_true(self, tmp_path):
+    def test_empty_true(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -362,11 +324,11 @@ class TestListEmpty:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="empty_true")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="empty_true")
         assert result.returncode == 0
         assert result.stdout.strip() == "yes"
 
-    def test_empty_false(self, tmp_path):
+    def test_empty_false(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
             #include "prove_list_ops.h"
             #include <stdio.h>
@@ -378,6 +340,6 @@ class TestListEmpty:
                 return 0;
             }
         """)
-        result = _compile_and_run(tmp_path, code, name="empty_false")
+        result = compile_and_run(runtime_dir, tmp_path, code, name="empty_false")
         assert result.returncode == 0
         assert result.stdout.strip() == "no"
