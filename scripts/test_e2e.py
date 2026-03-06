@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "prove-py" / "examples"
@@ -193,6 +194,10 @@ def main() -> int:
     print(f"Testing examples in: {EXAMPLES_DIR}")
     print("-" * 60)
 
+    failed_example: Path | None = None
+    failed_command: str = ""
+    failed_result: dict | None = None
+    failed_name: str = ""
     all_results: dict[str, dict] = {}
 
     # Find all prove.toml files (projects)
@@ -225,11 +230,34 @@ def main() -> int:
                     status = "OK"
                 else:
                     status = f"FAIL ({rc})"
+                    failed_example = project_dir
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
                 print(f"  prove {cmd}: {status}")
+
+            if failed_example:
+                print("\n" + "=" * 60)
+                print(f"FAILED: {failed_name}")
+                print(f"Command: prove {failed_command}")
+                print(f"File: {failed_example}")
+                print("-" * 60)
+                print("STDOUT:")
+                print(failed_result["stdout"])
+                print("STDERR:")
+                print(failed_result["stderr"])
+                print("=" * 60)
+                return 1
 
         except Exception as e:
             print(f"  ERROR: {e}")
-            all_results[str(name)] = {"error": str(e)}
+            print("\n" + "=" * 60)
+            print(f"ERROR in: {name}")
+            print(f"File: {project_dir}")
+            print("Traceback:")
+            traceback.print_exc()
+            print("=" * 60)
+            return 1
 
     # Test single files
     for prv_file in single_files:
@@ -248,11 +276,34 @@ def main() -> int:
                     status = "OK"
                 else:
                     status = f"FAIL ({rc})"
+                    failed_example = prv_file
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
                 print(f"  prove {cmd}: {status}")
+
+            if failed_example:
+                print("\n" + "=" * 60)
+                print(f"FAILED: {failed_name}")
+                print(f"Command: prove {failed_command}")
+                print(f"File: {failed_example}")
+                print("-" * 60)
+                print("STDOUT:")
+                print(failed_result["stdout"])
+                print("STDERR:")
+                print(failed_result["stderr"])
+                print("=" * 60)
+                return 1
 
         except Exception as e:
             print(f"  ERROR: {e}")
-            all_results[str(name)] = {"error": str(e)}
+            print("\n" + "=" * 60)
+            print(f"ERROR in: {name}")
+            print(f"File: {prv_file}")
+            print("Traceback:")
+            traceback.print_exc()
+            print("=" * 60)
+            return 1
 
     # Summary
     print("\n" + "=" * 60)
