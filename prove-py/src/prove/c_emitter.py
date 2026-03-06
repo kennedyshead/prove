@@ -299,6 +299,29 @@ class CEmitter:
                     self._needed_headers.add("prove_hof.h")
                     return
 
+    # ── Stdlib call dispatch ──────────────────────────────────
+
+    def _resolve_stdlib_c_name(
+        self,
+        sig: FunctionSignature,
+        call_args: list[Expr] | None = None,
+        verb_override: str | None = None,
+    ) -> str | None:
+        """Resolve a stdlib function signature to its C runtime name."""
+        if not sig.module:
+            return None
+        from prove.stdlib_loader import binary_c_name
+
+        verb = verb_override or sig.verb
+        fpt = None
+        if call_args:
+            actual_fpt = self._infer_expr_type(call_args[0])
+            fpt = _get_type_key(actual_fpt)
+        if fpt is None:
+            pts = sig.param_types
+            fpt = _get_type_key(pts[0]) if pts else None
+        return binary_c_name(sig.module, verb, sig.name, fpt)
+
     # ── Output helpers ─────────────────────────────────────────
 
     def _line(self, text: str) -> None:
@@ -2163,10 +2186,7 @@ class CEmitter:
             if sig is None:
                 sig = self._symbols.resolve_function_any(expr.name, arity=0)
             if sig and sig.verb == "outputs" and sig.module:
-                # This is a zero-arg call to an outputs function
-                from prove.stdlib_loader import binary_c_name
-
-                c_name = binary_c_name(sig.module, sig.verb, sig.name, None)
+                c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     return f"{c_name}()"
             return expr.name
@@ -2215,16 +2235,7 @@ class CEmitter:
                 args_c = ", ".join(self._emit_expr(a) for a in expr.args)
                 # Check stdlib C name first
                 if sig and sig.module:
-                    from prove.stdlib_loader import binary_c_name
-
-                    fpt = None
-                    if expr.args:
-                        actual_fpt = self._infer_expr_type(expr.args[0])
-                        fpt = _get_type_key(actual_fpt)
-                    if fpt is None:
-                        pts = sig.param_types
-                        fpt = _get_type_key(pts[0]) if pts else None
-                    c_name = binary_c_name(sig.module, "validates", sig.name, fpt)
+                    c_name = self._resolve_stdlib_c_name(sig, expr.args, verb_override="validates")
                     if c_name:
                         return f"{c_name}({args_c})"
                 pt = list(sig.param_types) if sig else None
@@ -2232,9 +2243,7 @@ class CEmitter:
                 return f"{fn}({args_c})"
             # valid error → function reference (used as HOF predicate)
             if sig and sig.module:
-                from prove.stdlib_loader import binary_c_name
-
-                c_name = binary_c_name(sig.module, "validates", sig.name, None)
+                c_name = self._resolve_stdlib_c_name(sig, verb_override="validates")
                 if c_name:
                     return c_name
             pt = list(sig.param_types) if sig else None
@@ -2396,18 +2405,8 @@ class CEmitter:
                     arity=n_args,
                 )
             if sig and sig.module:
-                from prove.stdlib_loader import binary_c_name
-
                 args = self._coerce_call_args(args, expr.args, sig)
-                # Use actual arg types for binary dispatch key (resolves TypeVars)
-                fpt = None
-                if expr.args:
-                    actual_fpt = self._infer_expr_type(expr.args[0])
-                    fpt = _get_type_key(actual_fpt)
-                if fpt is None:
-                    pts = sig.param_types
-                    fpt = _get_type_key(pts[0]) if pts else None
-                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
+                c_name = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
@@ -2494,11 +2493,7 @@ class CEmitter:
                     arity=n_args,
                 )
             if sig and sig.module:
-                from prove.stdlib_loader import binary_c_name
-
-                pts = sig.param_types
-                fpt = _get_type_key(pts[0]) if pts else None
-                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
+                c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
@@ -2789,11 +2784,7 @@ class CEmitter:
                     arity=1,
                 )
             if sig and sig.module:
-                from prove.stdlib_loader import binary_c_name
-
-                pts = sig.param_types
-                fpt = _get_type_key(pts[0]) if pts else None
-                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
+                c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     return f"{c_name}({left})"
             if sig and sig.verb is not None:
@@ -2815,11 +2806,7 @@ class CEmitter:
                     arity=total,
                 )
             if sig and sig.module:
-                from prove.stdlib_loader import binary_c_name
-
-                pts = sig.param_types
-                fpt = _get_type_key(pts[0]) if pts else None
-                c_name = binary_c_name(sig.module, sig.verb, sig.name, fpt)
+                c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     return f"{c_name}({', '.join(all_args)})"
             if sig and sig.verb is not None:
