@@ -1,0 +1,41 @@
+module Bytes
+  narrative: """Byte sequence manipulation."""
+
+  /// A sequence of bytes
+  type ByteArray is binary
+
+/// Create a byte array from a list of integers
+creates byte(values List<Integer>) ByteArray
+binary
+
+/// Check if a byte array is empty
+validates byte(data ByteArray)
+binary
+
+/// Extract a sub-range of bytes
+reads slice(data ByteArray, start Integer, length Integer) ByteArray
+binary
+
+/// Concatenate two byte arrays
+creates slice(first ByteArray, second ByteArray) ByteArray
+binary
+
+/// Encode a byte array as a hex string
+reads hex(data ByteArray) String
+binary
+
+/// Decode a hex string to a byte array
+creates hex(source String) ByteArray
+binary
+
+/// Check if a string is valid hex
+validates hex(source String)
+binary
+
+/// Read byte at index
+reads at(data ByteArray, index Integer) Integer
+binary
+
+/// Check if index is within bounds
+validates at(data ByteArray, index Integer)
+binary

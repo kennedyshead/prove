@@ -210,6 +210,7 @@ class CEmitter(
         "Pattern": "prove_pattern.h",
         "Random": "prove_random.h",
         "Time": "prove_time.h",
+        "Bytes": "prove_bytes.h",
     }
 
     def _collect_needed_headers(self) -> None:

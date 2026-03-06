@@ -120,6 +120,8 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_DateTime*", is_pointer=True, header="prove_time.h")
         if name == "Weekday":
             return CType("int64_t", is_pointer=False, header="prove_time.h")
+        if name == "ByteArray":
+            return CType("Prove_ByteArray*", is_pointer=True, header="prove_bytes.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

@@ -371,6 +371,25 @@ _register_module(
 )
 
 _register_module(
+    "bytes",
+    display="Bytes",
+    prv_file="bytes.prv",
+    c_map={
+        ("creates", "byte"): "prove_bytes_create",
+        ("validates", "byte"): "prove_bytes_validates",
+        ("validates", "hex"): "prove_bytes_hex_validates",
+        ("validates", "at"): "prove_bytes_at_validates",
+    },
+    overloads={
+        ("reads", "slice", "ByteArray"): "prove_bytes_slice",
+        ("creates", "slice", "ByteArray"): "prove_bytes_concat",
+        ("reads", "hex", "ByteArray"): "prove_bytes_hex_encode",
+        ("creates", "hex", "String"): "prove_bytes_hex_decode",
+        ("reads", "at", "ByteArray"): "prove_bytes_at",
+    },
+)
+
+_register_module(
     "parse",
     display="Parse",
     prv_file="parse.prv",
@@ -425,6 +444,7 @@ _KNOWN_TYPES = {
     "Clock": PrimitiveType("Clock"),
     "DateTime": PrimitiveType("DateTime"),
     "Weekday": PrimitiveType("Weekday"),
+    "ByteArray": PrimitiveType("ByteArray"),
 }
 
 

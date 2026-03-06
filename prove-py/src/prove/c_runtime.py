@@ -81,6 +81,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "result": {"prove_result"},
     "option": {"prove_option"},
     "random": {"prove_random"},
+    "bytes": {"prove_bytes"},
     "time": {"prove_time"},
 }
 
@@ -319,6 +320,17 @@ _RUNTIME_FUNCTIONS = {
         "prove_time_validates_datetime_str",
         "prove_time_format_duration",
         "prove_time_parse_duration",
+    ],
+    "prove_bytes": [
+        "prove_bytes_create",
+        "prove_bytes_validates",
+        "prove_bytes_slice",
+        "prove_bytes_concat",
+        "prove_bytes_hex_encode",
+        "prove_bytes_hex_decode",
+        "prove_bytes_hex_validates",
+        "prove_bytes_at",
+        "prove_bytes_at_validates",
     ],
     "prove_random": [
         "prove_random_integer",
