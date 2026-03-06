@@ -28,7 +28,7 @@ from
 - **Purity by default** — `transforms` marks pure functions; IO is explicit via the verb system
 - **No null** — `Option<Value>` enforced by compiler; no `NullPointerException`
 - **Refinement types** — Catch invalid values at compile time (`Integer where 1..65535`)
-- **Self-hosting** — Prove compiles itself (V2.0 in progress)
+- **Self-hosting target** — V1.0 bootstrap compiler complete; V2.0 self-hosting planned
 - **Binary AST** — Output binaries can't be scraped for AI training
 
 ---
@@ -47,7 +47,7 @@ from
 | Edge cases slip through | Compiler generates edge cases from refinement types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
 
-**Self-hosting compiler**: Prove compiles itself. That's rare — most languages can't say that.
+**Self-hosting target**: The V1.0 bootstrap compiler (Python) is feature-complete with 805 tests and 12 stdlib modules. V2.0 will rewrite the compiler in Prove itself.
 
 ---
 
@@ -93,8 +93,10 @@ Full language reference, type system, contracts, AI-resistance details, and desi
 ## Toolchain
 
 ```
-Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/clang → Native Binary
+Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
 ```
+
+The build system performs **runtime stripping** — only C runtime modules actually used by the program are compiled and linked.
 
 ## Ecosystem
 
@@ -105,11 +107,13 @@ Source (.prv) → Lexer → Parser → Checker → Prover → C Emitter → gcc/
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+./scripts/dev-setup.sh          # install all dependencies
+cd prove-py && pip install -e ".[dev]"
 
-python -m pytest tests/ -v    # run tests
-ruff check src/ tests/        # lint
-mypy src/                     # type check
+python -m pytest tests/ -v      # run tests (805 tests)
+ruff check src/ tests/          # lint
+mypy src/                       # type check
+python scripts/test_e2e.py      # end-to-end CLI tests (from workspace root)
 ```
 
 ## Repository & Access
