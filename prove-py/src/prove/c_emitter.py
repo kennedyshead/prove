@@ -2255,22 +2255,9 @@ class CEmitter:
                 return f"({left}.tag {cmp} {tag})"
 
         # Map Prove operators to C
-        op_map = {
-            "&&": "&&",
-            "||": "||",
-            "==": "==",
-            "!=": "!=",
-            "<": "<",
-            ">": ">",
-            "<=": "<=",
-            ">=": ">=",
-            "+": "+",
-            "-": "-",
-            "*": "*",
-            "/": "/",
-            "%": "%",
-        }
-        c_op = op_map.get(expr.op, expr.op)
+        from prove.type_inference import BINARY_OP_TO_C
+
+        c_op = BINARY_OP_TO_C.get(expr.op, expr.op)
         return f"({left} {c_op} {right})"
 
     # ── Unary expressions ──────────────────────────────────────

@@ -902,49 +902,11 @@ class ProveFormatter:
     @staticmethod
     def _type_to_str(ty: Type) -> str | None:
         """Convert a resolved Type to source-level type syntax."""
-        from prove.types import (
-            AlgebraicType,
-            ErrorType,
-            GenericInstance,
-            ListType,
-            PrimitiveType,
-            RecordType,
-            RefinementType,
-            TypeVariable,
-            UnitType,
-        )
+        from prove.types import ErrorType, FunctionType, UnitType, type_name
 
-        if isinstance(ty, UnitType):
-            return None  # Don't annotate Unit
-        if isinstance(ty, ErrorType):
-            return None  # Unknown type — skip
-        if isinstance(ty, PrimitiveType):
-            if ty.modifiers:
-                mods = " ".join(ty.modifiers)
-                return f"{ty.name}:[{mods}]"
-            return ty.name
-        if isinstance(ty, TypeVariable):
-            return ty.name
-        if isinstance(ty, ListType):
-            inner = ProveFormatter._type_to_str(ty.element)
-            if inner is None:
-                return None
-            return f"List<{inner}>"
-        if isinstance(ty, GenericInstance):
-            args = []
-            for a in ty.args:
-                s = ProveFormatter._type_to_str(a)
-                if s is None:
-                    return None
-                args.append(s)
-            return f"{ty.base_name}<{', '.join(args)}>"
-        if isinstance(ty, RecordType):
-            return ty.name
-        if isinstance(ty, AlgebraicType):
-            return ty.name
-        if isinstance(ty, RefinementType):
-            return ty.name
-        return None
+        if isinstance(ty, (UnitType, ErrorType, FunctionType)):
+            return None
+        return type_name(ty)
 
     # ── Diagnostic-driven fixes ─────────────────────────────────
 

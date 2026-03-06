@@ -625,22 +625,9 @@ class TestGenerator:
             right = self._expr_to_c_inner(expr.right, result_var)
             if left is None or right is None:
                 return None
-            op_map = {
-                "+": "+",
-                "-": "-",
-                "*": "*",
-                "/": "/",
-                "%": "%",
-                "==": "==",
-                "!=": "!=",
-                "<": "<",
-                ">": ">",
-                "<=": "<=",
-                ">=": ">=",
-                "&&": "&&",
-                "||": "||",
-            }
-            c_op = op_map.get(expr.op, expr.op)
+            from prove.type_inference import BINARY_OP_TO_C
+
+            c_op = BINARY_OP_TO_C.get(expr.op, expr.op)
             return f"({left} {c_op} {right})"
         if isinstance(expr, CallExpr):
             if isinstance(expr.func, IdentifierExpr):
