@@ -28,183 +28,304 @@ from prove.types import (
 
 _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
 
-# Binary function → C runtime function mapping
-# Key: (module_key, verb, function_name) → C function name
-_BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {
-    # InputOutput
-    ("io", "outputs", "console"): "prove_println",
-    ("io", "inputs", "console"): "prove_readln",
-    ("io", "validates", "console"): "prove_io_console_validates",
-    ("io", "inputs", "file"): "prove_file_read",
-    ("io", "outputs", "file"): "prove_file_write",
-    ("io", "validates", "file"): "prove_io_file_validates",
-    ("io", "inputs", "system"): "prove_io_system_inputs",
-    ("io", "outputs", "system"): "prove_io_system_outputs",
-    ("io", "validates", "system"): "prove_io_system_validates",
-    ("io", "inputs", "dir"): "prove_io_dir_inputs",
-    ("io", "outputs", "dir"): "prove_io_dir_outputs",
-    ("io", "validates", "dir"): "prove_io_dir_validates",
-    ("io", "inputs", "process"): "prove_io_process_inputs",
-    ("io", "validates", "process"): "prove_io_process_validates",
-    ("inputoutput", "outputs", "console"): "prove_println",
-    ("inputoutput", "inputs", "console"): "prove_readln",
-    ("inputoutput", "validates", "console"): "prove_io_console_validates",
-    ("inputoutput", "inputs", "file"): "prove_file_read",
-    ("inputoutput", "outputs", "file"): "prove_file_write",
-    ("inputoutput", "validates", "file"): "prove_io_file_validates",
-    ("inputoutput", "inputs", "system"): "prove_io_system_inputs",
-    ("inputoutput", "outputs", "system"): "prove_io_system_outputs",
-    ("inputoutput", "validates", "system"): "prove_io_system_validates",
-    ("inputoutput", "inputs", "dir"): "prove_io_dir_inputs",
-    ("inputoutput", "outputs", "dir"): "prove_io_dir_outputs",
-    ("inputoutput", "validates", "dir"): "prove_io_dir_validates",
-    ("inputoutput", "inputs", "process"): "prove_io_process_inputs",
-    ("inputoutput", "validates", "process"): "prove_io_process_validates",
-    # Character
-    ("character", "validates", "alpha"): "prove_character_alpha",
-    ("character", "validates", "digit"): "prove_character_digit",
-    ("character", "validates", "alnum"): "prove_character_alnum",
-    ("character", "validates", "upper"): "prove_character_upper",
-    ("character", "validates", "lower"): "prove_character_lower",
-    ("character", "validates", "space"): "prove_character_space",
-    ("character", "reads", "at"): "prove_character_at",
-    # Text
-    ("text", "reads", "length"): "prove_text_length",
-    ("text", "transforms", "slice"): "prove_text_slice",
-    ("text", "validates", "starts"): "prove_text_starts_with",
-    ("text", "validates", "ends"): "prove_text_ends_with",
-    ("text", "validates", "contains"): "prove_text_contains",
-    ("text", "reads", "index"): "prove_text_index_of",
-    ("text", "transforms", "split"): "prove_text_split",
-    ("text", "transforms", "join"): "prove_text_join",
-    ("text", "transforms", "trim"): "prove_text_trim",
-    ("text", "transforms", "lower"): "prove_text_to_lower",
-    ("text", "transforms", "upper"): "prove_text_to_upper",
-    ("text", "transforms", "replace"): "prove_text_replace",
-    ("text", "transforms", "repeat"): "prove_text_repeat",
-    ("text", "creates", "builder"): "prove_text_builder",
-    ("text", "transforms", "string"): "prove_text_write",
-    ("text", "transforms", "char"): "prove_text_write_char",
-    ("text", "reads", "build"): "prove_text_build",
-    # Table
-    ("table", "creates", "new"): "prove_table_new",
-    ("table", "validates", "has"): "prove_table_has",
-    ("table", "transforms", "add"): "prove_table_add",
-    ("table", "reads", "get"): "prove_table_get",
-    ("table", "transforms", "remove"): "prove_table_remove",
-    ("table", "reads", "keys"): "prove_table_keys",
-    ("table", "reads", "values"): "prove_table_values",
-    ("table", "reads", "length"): "prove_table_length",
-    # Pattern
-    ("pattern", "validates", "test"): "prove_pattern_match",
-    ("pattern", "reads", "search"): "prove_pattern_search",
-    ("pattern", "reads", "find_all"): "prove_pattern_find_all",
-    ("pattern", "transforms", "replace"): "prove_pattern_replace",
-    ("pattern", "transforms", "split"): "prove_pattern_split",
-    ("pattern", "reads", "text"): "prove_pattern_text",
-    ("pattern", "reads", "start"): "prove_pattern_start",
-    ("pattern", "reads", "end"): "prove_pattern_end",
-    # Error
-    ("error", "validates", "ok"): "prove_error_ok",
-    ("error", "validates", "err"): "prove_error_err",
-    # Path
-    ("path", "transforms", "join"): "prove_path_join",
-    ("path", "reads", "parent"): "prove_path_parent",
-    ("path", "reads", "name"): "prove_path_name",
-    ("path", "reads", "stem"): "prove_path_stem",
-    ("path", "reads", "extension"): "prove_path_extension",
-    ("path", "validates", "absolute"): "prove_path_absolute",
-    ("path", "transforms", "normalize"): "prove_path_normalize",
-    # Format
-    ("format", "transforms", "pad_left"): "prove_format_pad_left",
-    ("format", "transforms", "pad_right"): "prove_format_pad_right",
-    ("format", "transforms", "center"): "prove_format_center",
-    ("format", "transforms", "hex"): "prove_format_hex",
-    ("format", "transforms", "bin"): "prove_format_binary",
-    ("format", "transforms", "octal"): "prove_format_octal",
-    ("format", "transforms", "decimal"): "prove_format_decimal",
-    # List (non-overloaded, generic operations)
-    ("list", "reads", "length"): "prove_list_ops_length",
-    ("list", "validates", "empty"): "prove_list_ops_empty",
-    ("list", "transforms", "slice"): "prove_list_ops_slice",
-    ("list", "transforms", "reverse"): "prove_list_ops_reverse",
-    ("list", "creates", "range"): "prove_list_ops_range",
-    # Types (non-overloaded)
-    ("types", "reads", "code"): "prove_convert_code",
-    # Math (non-overloaded, Float-only functions)
-    ("math", "reads", "sqrt"): "prove_math_sqrt",
-    ("math", "reads", "pow"): "prove_math_pow",
-    ("math", "reads", "floor"): "prove_math_floor",
-    ("math", "reads", "ceil"): "prove_math_ceil",
-    ("math", "reads", "round"): "prove_math_round",
-    ("math", "reads", "log"): "prove_math_log",
-    # Parse
-    ("parse", "creates", "toml"): "prove_parse_toml",
-    ("parse", "reads", "toml"): "prove_emit_toml",
-    ("parse", "creates", "json"): "prove_parse_json",
-    ("parse", "reads", "json"): "prove_emit_json",
-    ("parse", "reads", "tag"): "prove_value_tag",
-    ("parse", "reads", "text"): "prove_value_as_text",
-    ("parse", "reads", "number"): "prove_value_as_number",
-    ("parse", "reads", "decimal"): "prove_value_as_decimal",
-    ("parse", "reads", "bool"): "prove_value_as_bool",
-    ("parse", "reads", "array"): "prove_value_as_array",
-    ("parse", "reads", "object"): "prove_value_as_object",
-    ("parse", "validates", "text"): "prove_value_is_text",
-    ("parse", "validates", "number"): "prove_value_is_number",
-    ("parse", "validates", "decimal"): "prove_value_is_decimal",
-    ("parse", "validates", "bool"): "prove_value_is_bool",
-    ("parse", "validates", "array"): "prove_value_is_array",
-    ("parse", "validates", "object"): "prove_value_is_object",
-    ("parse", "validates", "null"): "prove_value_is_null",
-    ("parse", "validates", "value"): "prove_validates_value",
-    ("parse", "validates", "json"): "prove_validates_json",
-    ("parse", "validates", "toml"): "prove_validates_toml",
-    ("parse", "creates", "value"): "prove_creates_value",
-}
+# ── Per-module registration ──────────────────────────────────────
+
+# Populated by _register_module() calls below
+_BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {}
+_BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {}
+_STDLIB_MODULES: dict[str, str] = {}
+_STDLIB_LINK_FLAGS: dict[str, list[str]] = {}
+_MODULE_DISPLAY_NAMES: dict[str, str] = {}
 
 
-# Overloaded binary functions: same (module, verb, name) but different first param type.
-# Key: (module_key, verb, function_name, first_param_type_name) → C function name
-_BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {
-    ("text", "reads", "length", "Builder"): "prove_text_builder_length",
-    # Error: Option overloads
-    ("error", "validates", "some", "Option<Integer>"): "prove_error_some_int",
-    ("error", "validates", "some", "Option<String>"): "prove_error_some_str",
-    ("error", "validates", "none", "Option<Integer>"): "prove_error_none_int",
-    ("error", "validates", "none", "Option<String>"): "prove_error_none_str",
-    ("error", "reads", "unwrap_or", "Option<Integer>"): "prove_error_unwrap_or_int",
-    ("error", "reads", "unwrap_or", "Option<String>"): "prove_error_unwrap_or_str",
-    # List: type-specific overloads
-    ("list", "reads", "first", "List<Integer>"): "prove_list_ops_first_int",
-    ("list", "reads", "first", "List<String>"): "prove_list_ops_first_str",
-    ("list", "reads", "last", "List<Integer>"): "prove_list_ops_last_int",
-    ("list", "reads", "last", "List<String>"): "prove_list_ops_last_str",
-    ("list", "validates", "contains", "List<Integer>"): "prove_list_ops_contains_int",
-    ("list", "validates", "contains", "List<String>"): "prove_list_ops_contains_str",
-    ("list", "reads", "index", "List<Integer>"): "prove_list_ops_index_int",
-    ("list", "reads", "index", "List<String>"): "prove_list_ops_index_str",
-    ("list", "transforms", "sort", "List<Integer>"): "prove_list_ops_sort_int",
-    ("list", "transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
-    # Types: overloaded functions
-    ("types", "creates", "integer", "String"): "prove_convert_integer_str",
-    ("types", "creates", "integer", "Float"): "prove_convert_integer_float",
-    ("types", "creates", "float", "String"): "prove_convert_float_str",
-    ("types", "creates", "float", "Integer"): "prove_convert_float_int",
-    ("types", "reads", "string", "Integer"): "prove_convert_string_int",
-    ("types", "reads", "string", "Float"): "prove_convert_string_float",
-    ("types", "reads", "string", "Boolean"): "prove_convert_string_bool",
-    ("types", "creates", "character", "Integer"): "prove_convert_character",
-    # Math: Integer vs Float overloads
-    ("math", "reads", "abs", "Integer"): "prove_math_abs_int",
-    ("math", "reads", "abs", "Float"): "prove_math_abs_float",
-    ("math", "reads", "min", "Integer"): "prove_math_min_int",
-    ("math", "reads", "min", "Float"): "prove_math_min_float",
-    ("math", "reads", "max", "Integer"): "prove_math_max_int",
-    ("math", "reads", "max", "Float"): "prove_math_max_float",
-    ("math", "transforms", "clamp", "Integer"): "prove_math_clamp_int",
-    ("math", "transforms", "clamp", "Float"): "prove_math_clamp_float",
-}
+def _register_module(
+    name: str,
+    *,
+    display: str,
+    prv_file: str,
+    c_map: dict[tuple[str, str], str] | None = None,
+    overloads: dict[tuple[str, str, str], str] | None = None,
+    link_flags: list[str] | None = None,
+    aliases: list[str] | None = None,
+) -> None:
+    """Register a stdlib module with all its metadata in one block."""
+    key = name.lower()
+    _STDLIB_MODULES[key] = prv_file
+    _MODULE_DISPLAY_NAMES[key] = display
+
+    if c_map:
+        for (verb, func), c_name in c_map.items():
+            _BINARY_C_MAP[(key, verb, func)] = c_name
+
+    if overloads:
+        for (verb, func, type_name), c_name in overloads.items():
+            _BINARY_C_OVERLOADS[(key, verb, func, type_name)] = c_name
+
+    if link_flags:
+        _STDLIB_LINK_FLAGS[key] = link_flags
+
+    # Register aliases (e.g. "io" for "inputoutput")
+    if aliases:
+        for alias in aliases:
+            alias_key = alias.lower()
+            _STDLIB_MODULES[alias_key] = prv_file
+            _MODULE_DISPLAY_NAMES[alias_key] = display
+            if c_map:
+                for (verb, func), c_name in c_map.items():
+                    _BINARY_C_MAP[(alias_key, verb, func)] = c_name
+            if overloads:
+                for (verb, func, type_name), c_name in overloads.items():
+                    _BINARY_C_OVERLOADS[(alias_key, verb, func, type_name)] = c_name
+            if link_flags:
+                _STDLIB_LINK_FLAGS[alias_key] = link_flags
+
+
+# ── Module registrations ─────────────────────────────────────────
+
+_register_module(
+    "inputoutput",
+    display="InputOutput",
+    prv_file="input_output.prv",
+    aliases=["io"],
+    c_map={
+        ("outputs", "console"): "prove_println",
+        ("inputs", "console"): "prove_readln",
+        ("validates", "console"): "prove_io_console_validates",
+        ("inputs", "file"): "prove_file_read",
+        ("outputs", "file"): "prove_file_write",
+        ("validates", "file"): "prove_io_file_validates",
+        ("inputs", "system"): "prove_io_system_inputs",
+        ("outputs", "system"): "prove_io_system_outputs",
+        ("validates", "system"): "prove_io_system_validates",
+        ("inputs", "dir"): "prove_io_dir_inputs",
+        ("outputs", "dir"): "prove_io_dir_outputs",
+        ("validates", "dir"): "prove_io_dir_validates",
+        ("inputs", "process"): "prove_io_process_inputs",
+        ("validates", "process"): "prove_io_process_validates",
+    },
+)
+
+_register_module(
+    "character",
+    display="Character",
+    prv_file="character.prv",
+    c_map={
+        ("validates", "alpha"): "prove_character_alpha",
+        ("validates", "digit"): "prove_character_digit",
+        ("validates", "alnum"): "prove_character_alnum",
+        ("validates", "upper"): "prove_character_upper",
+        ("validates", "lower"): "prove_character_lower",
+        ("validates", "space"): "prove_character_space",
+        ("reads", "at"): "prove_character_at",
+    },
+)
+
+_register_module(
+    "text",
+    display="Text",
+    prv_file="text.prv",
+    c_map={
+        ("reads", "length"): "prove_text_length",
+        ("transforms", "slice"): "prove_text_slice",
+        ("validates", "starts"): "prove_text_starts_with",
+        ("validates", "ends"): "prove_text_ends_with",
+        ("validates", "contains"): "prove_text_contains",
+        ("reads", "index"): "prove_text_index_of",
+        ("transforms", "split"): "prove_text_split",
+        ("transforms", "join"): "prove_text_join",
+        ("transforms", "trim"): "prove_text_trim",
+        ("transforms", "lower"): "prove_text_to_lower",
+        ("transforms", "upper"): "prove_text_to_upper",
+        ("transforms", "replace"): "prove_text_replace",
+        ("transforms", "repeat"): "prove_text_repeat",
+        ("creates", "builder"): "prove_text_builder",
+        ("transforms", "string"): "prove_text_write",
+        ("transforms", "char"): "prove_text_write_char",
+        ("reads", "build"): "prove_text_build",
+    },
+    overloads={
+        ("reads", "length", "Builder"): "prove_text_builder_length",
+    },
+)
+
+_register_module(
+    "table",
+    display="Table",
+    prv_file="table.prv",
+    c_map={
+        ("creates", "new"): "prove_table_new",
+        ("validates", "has"): "prove_table_has",
+        ("transforms", "add"): "prove_table_add",
+        ("reads", "get"): "prove_table_get",
+        ("transforms", "remove"): "prove_table_remove",
+        ("reads", "keys"): "prove_table_keys",
+        ("reads", "values"): "prove_table_values",
+        ("reads", "length"): "prove_table_length",
+    },
+)
+
+_register_module(
+    "pattern",
+    display="Pattern",
+    prv_file="pattern.prv",
+    c_map={
+        ("validates", "test"): "prove_pattern_match",
+        ("reads", "search"): "prove_pattern_search",
+        ("reads", "find_all"): "prove_pattern_find_all",
+        ("transforms", "replace"): "prove_pattern_replace",
+        ("transforms", "split"): "prove_pattern_split",
+        ("reads", "text"): "prove_pattern_text",
+        ("reads", "start"): "prove_pattern_start",
+        ("reads", "end"): "prove_pattern_end",
+    },
+)
+
+_register_module(
+    "error",
+    display="Error",
+    prv_file="error.prv",
+    c_map={
+        ("validates", "ok"): "prove_error_ok",
+        ("validates", "err"): "prove_error_err",
+    },
+    overloads={
+        ("validates", "some", "Option<Integer>"): "prove_error_some_int",
+        ("validates", "some", "Option<String>"): "prove_error_some_str",
+        ("validates", "none", "Option<Integer>"): "prove_error_none_int",
+        ("validates", "none", "Option<String>"): "prove_error_none_str",
+        ("reads", "unwrap_or", "Option<Integer>"): "prove_error_unwrap_or_int",
+        ("reads", "unwrap_or", "Option<String>"): "prove_error_unwrap_or_str",
+    },
+)
+
+_register_module(
+    "path",
+    display="Path",
+    prv_file="path.prv",
+    c_map={
+        ("transforms", "join"): "prove_path_join",
+        ("reads", "parent"): "prove_path_parent",
+        ("reads", "name"): "prove_path_name",
+        ("reads", "stem"): "prove_path_stem",
+        ("reads", "extension"): "prove_path_extension",
+        ("validates", "absolute"): "prove_path_absolute",
+        ("transforms", "normalize"): "prove_path_normalize",
+    },
+)
+
+_register_module(
+    "format",
+    display="Format",
+    prv_file="format.prv",
+    c_map={
+        ("transforms", "pad_left"): "prove_format_pad_left",
+        ("transforms", "pad_right"): "prove_format_pad_right",
+        ("transforms", "center"): "prove_format_center",
+        ("transforms", "hex"): "prove_format_hex",
+        ("transforms", "bin"): "prove_format_binary",
+        ("transforms", "octal"): "prove_format_octal",
+        ("transforms", "decimal"): "prove_format_decimal",
+    },
+)
+
+_register_module(
+    "list",
+    display="List",
+    prv_file="list.prv",
+    c_map={
+        ("reads", "length"): "prove_list_ops_length",
+        ("validates", "empty"): "prove_list_ops_empty",
+        ("transforms", "slice"): "prove_list_ops_slice",
+        ("transforms", "reverse"): "prove_list_ops_reverse",
+        ("creates", "range"): "prove_list_ops_range",
+    },
+    overloads={
+        ("reads", "first", "List<Integer>"): "prove_list_ops_first_int",
+        ("reads", "first", "List<String>"): "prove_list_ops_first_str",
+        ("reads", "last", "List<Integer>"): "prove_list_ops_last_int",
+        ("reads", "last", "List<String>"): "prove_list_ops_last_str",
+        ("validates", "contains", "List<Integer>"): "prove_list_ops_contains_int",
+        ("validates", "contains", "List<String>"): "prove_list_ops_contains_str",
+        ("reads", "index", "List<Integer>"): "prove_list_ops_index_int",
+        ("reads", "index", "List<String>"): "prove_list_ops_index_str",
+        ("transforms", "sort", "List<Integer>"): "prove_list_ops_sort_int",
+        ("transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
+    },
+)
+
+_register_module(
+    "types",
+    display="Types",
+    prv_file="types.prv",
+    c_map={
+        ("reads", "code"): "prove_convert_code",
+    },
+    overloads={
+        ("creates", "integer", "String"): "prove_convert_integer_str",
+        ("creates", "integer", "Float"): "prove_convert_integer_float",
+        ("creates", "float", "String"): "prove_convert_float_str",
+        ("creates", "float", "Integer"): "prove_convert_float_int",
+        ("reads", "string", "Integer"): "prove_convert_string_int",
+        ("reads", "string", "Float"): "prove_convert_string_float",
+        ("reads", "string", "Boolean"): "prove_convert_string_bool",
+        ("creates", "character", "Integer"): "prove_convert_character",
+    },
+)
+
+_register_module(
+    "math",
+    display="Math",
+    prv_file="math.prv",
+    link_flags=["-lm"],
+    c_map={
+        ("reads", "sqrt"): "prove_math_sqrt",
+        ("reads", "pow"): "prove_math_pow",
+        ("reads", "floor"): "prove_math_floor",
+        ("reads", "ceil"): "prove_math_ceil",
+        ("reads", "round"): "prove_math_round",
+        ("reads", "log"): "prove_math_log",
+    },
+    overloads={
+        ("reads", "abs", "Integer"): "prove_math_abs_int",
+        ("reads", "abs", "Float"): "prove_math_abs_float",
+        ("reads", "min", "Integer"): "prove_math_min_int",
+        ("reads", "min", "Float"): "prove_math_min_float",
+        ("reads", "max", "Integer"): "prove_math_max_int",
+        ("reads", "max", "Float"): "prove_math_max_float",
+        ("transforms", "clamp", "Integer"): "prove_math_clamp_int",
+        ("transforms", "clamp", "Float"): "prove_math_clamp_float",
+    },
+)
+
+_register_module(
+    "parse",
+    display="Parse",
+    prv_file="parse.prv",
+    c_map={
+        ("creates", "toml"): "prove_parse_toml",
+        ("reads", "toml"): "prove_emit_toml",
+        ("creates", "json"): "prove_parse_json",
+        ("reads", "json"): "prove_emit_json",
+        ("reads", "tag"): "prove_value_tag",
+        ("reads", "text"): "prove_value_as_text",
+        ("reads", "number"): "prove_value_as_number",
+        ("reads", "decimal"): "prove_value_as_decimal",
+        ("reads", "bool"): "prove_value_as_bool",
+        ("reads", "array"): "prove_value_as_array",
+        ("reads", "object"): "prove_value_as_object",
+        ("validates", "text"): "prove_value_is_text",
+        ("validates", "number"): "prove_value_is_number",
+        ("validates", "decimal"): "prove_value_is_decimal",
+        ("validates", "bool"): "prove_value_is_bool",
+        ("validates", "array"): "prove_value_is_array",
+        ("validates", "object"): "prove_value_is_object",
+        ("validates", "null"): "prove_value_is_null",
+        ("validates", "value"): "prove_validates_value",
+        ("validates", "json"): "prove_validates_json",
+        ("validates", "toml"): "prove_validates_toml",
+        ("creates", "value"): "prove_creates_value",
+    },
+)
 
 
 def binary_c_name(
@@ -220,25 +341,6 @@ def binary_c_name(
         if overload is not None:
             return overload
     return _BINARY_C_MAP.get((key, verb, name))
-
-
-# Map stdlib module names to .prv filenames
-# Keys are lowercase; lookup normalizes to lowercase.
-_STDLIB_MODULES: dict[str, str] = {
-    "io": "input_output.prv",
-    "inputoutput": "input_output.prv",
-    "character": "character.prv",
-    "text": "text.prv",
-    "table": "table.prv",
-    "parse": "parse.prv",
-    "math": "math.prv",
-    "list": "list.prv",
-    "format": "format.prv",
-    "path": "path.prv",
-    "error": "error.prv",
-    "pattern": "pattern.prv",
-    "types": "types.prv",
-}
 
 # Cache loaded signatures
 _cache: dict[str, list[FunctionSignature]] = {}
@@ -366,12 +468,6 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     return sigs
 
 
-# Stdlib modules that require extra linker flags
-_STDLIB_LINK_FLAGS: dict[str, list[str]] = {
-    "math": ["-lm"],
-}
-
-
 def stdlib_link_flags(module_name: str) -> list[str]:
     """Return linker flags required by a stdlib module."""
     return _STDLIB_LINK_FLAGS.get(module_name.lower(), [])
@@ -401,23 +497,6 @@ class ImportSuggestion:
     docstring: str = ""  # doc comment from function definition
     type_def: str = ""  # for types: multiline type definition
 
-
-# Canonical module keys → display names used in `with <Name> use ...`
-_MODULE_DISPLAY_NAMES: dict[str, str] = {
-    "io": "InputOutput",
-    "inputoutput": "InputOutput",
-    "character": "Character",
-    "text": "Text",
-    "table": "Table",
-    "parse": "Parse",
-    "math": "Math",
-    "list": "List",
-    "format": "Format",
-    "path": "Path",
-    "error": "Error",
-    "pattern": "Pattern",
-    "types": "Types",
-}
 
 # Alias keys that should be skipped when building the index
 _ALIAS_KEYS = {"inputoutput"}
