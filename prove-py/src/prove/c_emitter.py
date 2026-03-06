@@ -407,81 +407,11 @@ class CEmitter:
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
             if isinstance(ty, RecordType):
-                self._line(f"struct {cname} {{")
-                self._indent += 1
-                for fname, ftype in ty.fields.items():
-                    ct = map_type(ftype)
-                    self._line(f"{ct.decl} {fname};")
-                self._indent -= 1
-                self._line("};")
-                self._line("")
-                # Constructor function for imported record types
-                params: list[str] = []
-                field_names: list[str] = []
-                for fname, ftype in ty.fields.items():
-                    ct = map_type(ftype)
-                    params.append(f"{ct.decl} {fname}")
-                    field_names.append(fname)
-                param_str = ", ".join(params) if params else "void"
-                self._line(f"static inline {cname} {name}({param_str}) {{")
-                self._indent += 1
-                self._line(f"{cname} _v;")
-                for fname in field_names:
-                    self._line(f"_v.{fname} = {fname};")
-                self._line("return _v;")
-                self._indent -= 1
-                self._line("}")
-                self._line("")
+                self._emit_record_struct(cname, ty.fields)
+                self._emit_record_constructor(cname, name, ty.fields)
             elif isinstance(ty, AlgebraicType):
-                # Tag enum
-                self._line("enum {")
-                self._indent += 1
-                for i, v in enumerate(ty.variants):
-                    tag = f"{cname}_TAG_{v.name.upper()}"
-                    self._line(f"{tag} = {i},")
-                self._indent -= 1
-                self._line("};")
-                self._line("")
-                # Tagged union struct
-                self._line(f"struct {cname} {{")
-                self._indent += 1
-                self._line("uint8_t tag;")
-                self._line("union {")
-                self._indent += 1
-                for v in ty.variants:
-                    if v.fields:
-                        self._line("struct {")
-                        self._indent += 1
-                        for fname, ftype in v.fields.items():
-                            ct = map_type(ftype)
-                            self._line(f"{ct.decl} {fname};")
-                        self._indent -= 1
-                        self._line(f"}} {v.name};")
-                    else:
-                        self._line(f"uint8_t _{v.name};  /* unit variant */")
-                self._indent -= 1
-                self._line("};")
-                self._indent -= 1
-                self._line("};")
-                self._line("")
-                # Constructor functions for each variant
-                for i, v in enumerate(ty.variants):
-                    tag = f"{cname}_TAG_{v.name.upper()}"
-                    params: list[str] = []
-                    for fname, ftype in v.fields.items():
-                        ct = map_type(ftype)
-                        params.append(f"{ct.decl} {fname}")
-                    param_str = ", ".join(params) if params else "void"
-                    self._line(f"static inline {cname} {v.name}({param_str}) {{")
-                    self._indent += 1
-                    self._line(f"{cname} _v;")
-                    self._line(f"_v.tag = {tag};")
-                    for fname in v.fields:
-                        self._line(f"_v.{v.name}.{fname} = {fname};")
-                    self._line("return _v;")
-                    self._indent -= 1
-                    self._line("}")
-                    self._line("")
+                self._emit_algebraic_struct(cname, ty.variants)
+                self._emit_variant_constructors(cname, ty.variants)
 
     def _emit_record_to_value_converters(self) -> None:
         """Emit static functions that convert record structs to Prove_Value*.
@@ -864,99 +794,132 @@ class CEmitter:
 
     # ── Type definitions ───────────────────────────────────────
 
-    def _emit_type_def(self, td: TypeDef) -> None:
-        cname = mangle_type_name(td.name)
-        body = td.body
+    # ── Shared type emission helpers ──────────────────────────
 
-        if isinstance(body, RecordTypeDef):
-            self._line(f"struct {cname} {{")
-            self._indent += 1
-            for f in body.fields:
-                te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
-                ft = self._symbols.resolve_type(te_name)
-                ct = map_type(ft) if ft else CType("int64_t", False, None)
-                self._line(f"{ct.decl} {f.name};")
-            self._indent -= 1
-            self._line("};")
-            self._line("")
-            # Constructor function for record types
+    def _emit_record_struct(self, cname: str, fields: dict[str, Type]) -> None:
+        """Emit a C struct definition for a record type."""
+        self._line(f"struct {cname} {{")
+        self._indent += 1
+        for fname, ftype in fields.items():
+            ct = map_type(ftype)
+            self._line(f"{ct.decl} {fname};")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+
+    def _emit_record_constructor(self, cname: str, name: str, fields: dict[str, Type]) -> None:
+        """Emit a static inline constructor for a record type."""
+        params: list[str] = []
+        field_names: list[str] = []
+        for fname, ftype in fields.items():
+            ct = map_type(ftype)
+            params.append(f"{ct.decl} {fname}")
+            field_names.append(fname)
+        param_str = ", ".join(params) if params else "void"
+        self._line(f"static inline {cname} {name}({param_str}) {{")
+        self._indent += 1
+        self._line(f"{cname} _v;")
+        for fname in field_names:
+            self._line(f"_v.{fname} = {fname};")
+        self._line("return _v;")
+        self._indent -= 1
+        self._line("}")
+        self._line("")
+
+    def _emit_algebraic_struct(self, cname: str, variants: list[Any]) -> None:
+        """Emit a tagged union struct for an algebraic type.
+
+        Variants can be VariantInfo (resolved) or AST variant nodes.
+        Each must have .name and .fields attributes.
+        """
+        # Tag enum
+        self._line("enum {")
+        self._indent += 1
+        for i, v in enumerate(variants):
+            tag = f"{cname}_TAG_{v.name.upper()}"
+            self._line(f"{tag} = {i},")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+        # Tagged union struct
+        self._line(f"struct {cname} {{")
+        self._indent += 1
+        self._line("uint8_t tag;")
+        self._line("union {")
+        self._indent += 1
+        for v in variants:
+            v_fields = self._variant_fields_dict(v)
+            if v_fields:
+                self._line("struct {")
+                self._indent += 1
+                for fname, ftype in v_fields.items():
+                    ct = map_type(ftype)
+                    self._line(f"{ct.decl} {fname};")
+                self._indent -= 1
+                self._line(f"}} {v.name};")
+            else:
+                self._line(f"uint8_t _{v.name};  /* unit variant */")
+        self._indent -= 1
+        self._line("};")
+        self._indent -= 1
+        self._line("};")
+        self._line("")
+
+    def _emit_variant_constructors(self, cname: str, variants: list[Any]) -> None:
+        """Emit constructors for each variant of an algebraic type."""
+        for i, v in enumerate(variants):
+            tag = f"{cname}_TAG_{v.name.upper()}"
+            v_fields = self._variant_fields_dict(v)
             params: list[str] = []
-            field_names: list[str] = []
-            for f in body.fields:
-                te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
-                ft = self._symbols.resolve_type(te_name)
-                ct = map_type(ft) if ft else CType("int64_t", False, None)
-                params.append(f"{ct.decl} {f.name}")
-                field_names.append(f.name)
+            for fname, ftype in v_fields.items():
+                ct = map_type(ftype)
+                params.append(f"{ct.decl} {fname}")
             param_str = ", ".join(params) if params else "void"
-            self._line(f"static inline {cname} {td.name}({param_str}) {{")
+            self._line(f"static inline {cname} {v.name}({param_str}) {{")
             self._indent += 1
             self._line(f"{cname} _v;")
-            for fname in field_names:
-                self._line(f"_v.{fname} = {fname};")
+            self._line(f"_v.tag = {tag};")
+            for fname in v_fields:
+                self._line(f"_v.{v.name}.{fname} = {fname};")
             self._line("return _v;")
             self._indent -= 1
             self._line("}")
             self._line("")
 
+    def _variant_fields_dict(self, v: Any) -> dict[str, Type]:
+        """Get fields dict from a variant (resolved VariantInfo or AST node)."""
+        if isinstance(v.fields, dict):
+            # Resolved VariantInfo
+            return v.fields
+        # AST variant: list of field objects with .name and .type_expr
+        result: dict[str, Type] = {}
+        for f in v.fields:
+            te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
+            ft = self._symbols.resolve_type(te_name)
+            result[f.name] = ft if ft else INTEGER
+        return result
+
+    def _resolve_ast_fields(self, fields: list[Any]) -> dict[str, Type]:
+        """Resolve AST field list to {name: Type} dict."""
+        result: dict[str, Type] = {}
+        for f in fields:
+            te_name = f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
+            ft = self._symbols.resolve_type(te_name)
+            result[f.name] = ft if ft else INTEGER
+        return result
+
+    def _emit_type_def(self, td: TypeDef) -> None:
+        cname = mangle_type_name(td.name)
+        body = td.body
+
+        if isinstance(body, RecordTypeDef):
+            fields = self._resolve_ast_fields(body.fields)
+            self._emit_record_struct(cname, fields)
+            self._emit_record_constructor(cname, td.name, fields)
+
         elif isinstance(body, AlgebraicTypeDef):
-            # Tag enum
-            self._line("enum {")
-            self._indent += 1
-            for i, v in enumerate(body.variants):
-                tag = f"{cname}_TAG_{v.name.upper()}"
-                self._line(f"{tag} = {i},")
-            self._indent -= 1
-            self._line("};")
-            self._line("")
-
-            # Tagged union struct
-            self._line(f"struct {cname} {{")
-            self._indent += 1
-            self._line("uint8_t tag;")
-            self._line("union {")
-            self._indent += 1
-            for v in body.variants:
-                if v.fields:
-                    self._line("struct {")
-                    self._indent += 1
-                    for f in v.fields:
-                        ft = self._symbols.resolve_type(
-                            f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
-                        )
-                        ct = map_type(ft) if ft else CType("int64_t", False, None)
-                        self._line(f"{ct.decl} {f.name};")
-                    self._indent -= 1
-                    self._line(f"}} {v.name};")
-                else:
-                    self._line(f"uint8_t _{v.name};  /* unit variant */")
-            self._indent -= 1
-            self._line("};")
-            self._indent -= 1
-            self._line("};")
-            self._line("")
-
-            # Constructor functions for each variant
-            for i, v in enumerate(body.variants):
-                tag = f"{cname}_TAG_{v.name.upper()}"
-                params: list[str] = []
-                for f in v.fields:
-                    ft = self._symbols.resolve_type(
-                        f.type_expr.name if hasattr(f.type_expr, "name") else "Integer"
-                    )
-                    ct = map_type(ft) if ft else CType("int64_t", False, None)
-                    params.append(f"{ct.decl} {f.name}")
-                param_str = ", ".join(params) if params else "void"
-                self._line(f"static inline {cname} {v.name}({param_str}) {{")
-                self._indent += 1
-                self._line(f"{cname} _v;")
-                self._line(f"_v.tag = {tag};")
-                for f in v.fields:
-                    self._line(f"_v.{v.name}.{f.name} = {f.name};")
-                self._line("return _v;")
-                self._indent -= 1
-                self._line("}")
-                self._line("")
+            self._emit_algebraic_struct(cname, body.variants)
+            self._emit_variant_constructors(cname, body.variants)
 
         elif isinstance(body, BinaryDef):
             # Opaque pointer typedef for C-backed types
