@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates List module operations."""
+  narrative: """Demonstrates List module operations.
+
+  Intentional type errors to demonstrate List module. Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
+  """
   InputOutput outputs console
   List reads length, creates range, validates empty
 

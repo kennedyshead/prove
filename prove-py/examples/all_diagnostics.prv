@@ -1,5 +1,8 @@
 module AllDiagnostics
-  narrative: """Triggers all warnings and info diagnostics"""
+  narrative: """Triggers all warnings and info diagnostics.
+
+  Intentional warnings. Expected to fail: check_strict, view.
+  """
   Text transforms upper
 
   type Color is Red

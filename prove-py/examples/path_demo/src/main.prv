@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates Path module operations."""
+  narrative: """Demonstrates Path module operations.
+
+  Missing runtime dependencies (build fails). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
+  """
   InputOutput outputs console
   Path reads parent stem extension
 

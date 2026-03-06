@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates Math module operations."""
+  narrative: """Demonstrates Math module operations.
+
+  Intentional type errors (Float vs Decimal). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
+  """
   InputOutput outputs console
   Math reads abs min max sqrt floor
 

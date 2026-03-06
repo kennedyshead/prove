@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates Format module operations."""
+  narrative: """Demonstrates Format module operations.
+
+  Intentional parse errors (quote issues). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
+  """
   InputOutput outputs console
   Format transforms hex pad_left
 

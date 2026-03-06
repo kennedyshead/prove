@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates Types module operations."""
+  narrative: """Demonstrates Types module operations.
+
+  Intentional parse errors (quote issues). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
+  """
   InputOutput outputs console
   Types reads string, reads code
 
