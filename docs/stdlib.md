@@ -1,3 +1,9 @@
+---
+title: Standard Library - Prove Programming Language
+description: Complete reference for the Prove standard library including List, Option, Result, Text, String, and more.
+keywords: Prove stdlib, standard library, List, Option, Result, Text, String
+---
+
 # Standard Library
 
 The Prove standard library is a set of modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.

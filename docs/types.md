@@ -1,3 +1,9 @@
+---
+title: Type System - Prove Programming Language
+description: Learn about Prove's type system including type modifiers, refinement types, Option, Result, and pattern matching.
+keywords: Prove types, refinement types, type modifiers, Option, Result, pattern matching
+---
+
 # Type System
 
 ## Type Modifiers

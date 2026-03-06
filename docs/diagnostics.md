@@ -1,3 +1,9 @@
+---
+title: Diagnostic Codes - Prove Programming Language
+description: Complete reference for Prove compiler diagnostic codes including errors, warnings, and informational messages.
+keywords: Prove diagnostics, compiler errors, compiler warnings, diagnostic codes
+---
+
 # Diagnostic Codes
 
 The Prove compiler emits diagnostics with unique codes, source locations, and suggestions. Each diagnostic has a severity level:

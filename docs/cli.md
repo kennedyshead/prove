@@ -1,3 +1,9 @@
+---
+title: CLI Reference - Prove Programming Language
+description: Complete CLI reference for the Prove compiler including commands for building, testing, checking, formatting, and debugging.
+keywords: Prove CLI, prove command, compiler commands, build, test, format
+---
+
 # CLI Reference
 
 Prove ships a single `prove` command with subcommands for building, checking, testing, formatting, and debugging.

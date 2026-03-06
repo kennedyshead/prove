@@ -1,6 +1,8 @@
 site_name: Prove
 site_description: An intent-first programming language designed to mitigate AI slop and code scraping
-site_url: https://kennedyshead.github.io/prove/
+site_url: https://prove.botwork.se
+site_author: Magnus Knutas
+copyright: Copyright © 2026 Magnus Knutas
 
 theme:
   name: material
@@ -25,6 +27,10 @@ theme:
     - navigation.top
     - content.code.copy
     - toc.integrate
+    - navigation.path
+    - navigation.instant
+    - search.suggest
+    - search.highlight
   logo: assets/icon.png
   favicon: assets/icon.png
   icon:
@@ -36,25 +42,30 @@ repo_name: Botwork/prove
 nav:
   - Home: index.md
   - Language:
-    - Syntax Reference: syntax.md
-    - Type System: types.md
-    - Contracts & Testing: contracts.md
-    - Standard Library: stdlib.md
+      - Syntax Reference: syntax.md
+      - Type System: types.md
+      - Contracts & Testing: contracts.md
+      - Standard Library: stdlib.md
   - Compiler:
-    - CLI Reference: cli.md
-    - Diagnostic Codes: diagnostics.md
-    - Diagnostic Philosophy: diagnostics-philosophy.md
-    - Compiler Features: compiler.md
+      - CLI Reference: cli.md
+      - Diagnostic Codes: diagnostics.md
+      - Diagnostic Philosophy: diagnostics-philosophy.md
+      - Compiler Features: compiler.md
   - AI Resistance: ai-resistance.md
   - Project:
-    - Design Decisions: design.md
-    - Roadmap: roadmap.md
-    - Inspirations: inspirations.md
+      - Design Decisions: design.md
+      - Roadmap: roadmap.md
+      - Inspirations: inspirations.md
   - Blog:
-    - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
+      - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
 
 extra_css:
   - stylesheets/extra.css
+
+extra:
+  analytics:
+    provider: google
+    property: G-NKZR66LXVT
 
 markdown_extensions:
   - footnotes
@@ -69,6 +80,19 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+  - meta:
+  - attr_list
 
 plugins:
-  - search
+  - search:
+      lang: en
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+
+hooks:
+  - hooks/copy_well_known.py

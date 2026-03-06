@@ -1,3 +1,9 @@
+---
+title: Syntax Reference - Prove Programming Language
+description: Complete syntax reference for the Prove programming language including naming conventions, modules, functions, and control flow.
+keywords: Prove syntax, programming language syntax, Prove language reference
+---
+
 # Syntax Reference
 
 ## Naming

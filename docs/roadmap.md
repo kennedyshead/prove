@@ -1,3 +1,9 @@
+---
+title: Roadmap - Prove Programming Language
+description: Prove language roadmap including V1.0 and V2.0 milestones, self-hosting compiler, and ecosystem development.
+keywords: Prove roadmap, language roadmap, self-hosted compiler
+---
+
 # Roadmap
 
 ## Versioning

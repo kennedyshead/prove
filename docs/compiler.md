@@ -1,3 +1,9 @@
+---
+title: Compiler Features - Prove Programming Language
+description: Learn about the Prove compiler pipeline, optimization passes, binary AST format, and runtime generation.
+keywords: Prove compiler, compiler pipeline, optimization, binary AST, code generation
+---
+
 # Compiler Features
 
 ## Pipeline

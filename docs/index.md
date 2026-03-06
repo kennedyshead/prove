@@ -1,3 +1,9 @@
+---
+title: Prove - Intent-First Programming Language
+description: Prove is an intent-first programming language designed to mitigate AI slop and code scraping. Every function declares its purpose, guarantees, and reasoning before implementation.
+keywords: programming language, intent-first, AI resistance, code scraping protection, contracts, refinement types
+---
+
 # Prove
 
 <img src="assets/icon.png" alt="Prove" width="100" height="100">

@@ -1,3 +1,9 @@
+---
+title: Contracts & Testing - Prove Programming Language
+description: Learn about Prove's contract system for formal verification, preconditions, postconditions, and automatic test generation.
+keywords: Prove contracts, formal verification, testing, ensures, requires, invariant
+---
+
 # Contracts & Testing
 
 ## Formal Verification of Contracts

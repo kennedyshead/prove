@@ -1,3 +1,9 @@
+---
+title: Design Inspirations - Prove Programming Language
+description: Languages and concepts that inspired Prove including Rust, Haskell, Go, Python, Ada, and more.
+keywords: Prove inspirations, language influences, programming language design
+---
+
 # Design Inspirations
 
 Prove draws from many languages but combines their ideas into something none of them offer: **intent-first programming**, where every function declares its purpose, guarantees, and reasoning before the implementation begins. The languages below shaped individual features — the verb system, the contracts, the type safety — but the synthesis is uniquely Prove's.

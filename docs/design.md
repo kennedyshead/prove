@@ -1,3 +1,9 @@
+---
+title: Design Decisions - Prove Programming Language
+description: Documentation of Prove's design decisions and trade-offs including intent-first philosophy, contracts, and compiler architecture.
+keywords: Prove design, language design, intent-first, design decisions
+---
+
 # Design Decisions & Trade-offs
 
 ## Philosophy

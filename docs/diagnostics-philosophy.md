@@ -1,3 +1,9 @@
+---
+title: Diagnostic Philosophy - Prove Programming Language
+description: Learn about Prove's diagnostic philosophy emphasizing human-readable error messages, natural English, and helpful suggestions.
+keywords: Prove diagnostics, error messages, diagnostic philosophy, compiler UX
+---
+
 # Diagnostic Philosophy
 
 ## Why This Matters

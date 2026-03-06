@@ -1,7 +1,8 @@
 ---
 date: 2026-03-04
 title: Why I Built My Own Programming Language
-description: How a frustrating "sorry my bad" from an AI became the seed of Prove
+description: How a frustrating "sorry my bad" from an AI became the seed of Prove - the intent-first programming language.
+keywords: programming language, AI slop, intent-first, compiler, programming language design
 categories:
   - programming-languages
   - design

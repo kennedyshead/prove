@@ -1,3 +1,9 @@
+---
+title: AI Resistance - Prove Programming Language
+description: Learn about Prove's AI-resistance features including binary AST format, intent declarations, and anti-training license.
+keywords: AI resistance, AI slop, code scraping, anti-training, binary AST
+---
+
 # AI Resistance
 
 Prove's AI-resistance features fall into four categories based on implementation status. The design goal is twofold: resist AI *generating* correct Prove code, and resist AI *training on* Prove source code.
