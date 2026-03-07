@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/magnusknutas/Projects/prove/prove-py/examples/error_demo/build/error_demo'
-relocations:     []
-...

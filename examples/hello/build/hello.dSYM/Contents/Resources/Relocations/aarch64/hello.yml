@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/magnusknutas/Projects/prove/prove-py/examples/hello/build/hello'
-relocations:     []
-...

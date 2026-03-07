@@ -12,3 +12,4 @@ __pycache__/
 tmp
 local
 .DS_Store
+build
