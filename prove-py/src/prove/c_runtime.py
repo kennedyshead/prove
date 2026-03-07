@@ -69,7 +69,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "character": {"prove_character"},
     "text": {"prove_text", "prove_string"},
     "table": {"prove_table", "prove_hash"},
-    "parse": {"prove_parse", "prove_parse_url", "prove_table", "prove_hash", "prove_bytes"},
+    "parse": {"prove_parse", "prove_parse_url", "prove_parse_csv", "prove_table", "prove_hash", "prove_bytes"},
     "math": {"prove_math"},
     "types": {"prove_convert", "prove_parse", "prove_table", "prove_hash"},
     "convert": {"prove_convert"},
@@ -225,6 +225,11 @@ _RUNTIME_FUNCTIONS = {
         "prove_validates_toml",
         "prove_creates_value",
         "prove_validates_value",
+    ],
+    "prove_parse_csv": [
+        "prove_parse_csv",
+        "prove_emit_csv",
+        "prove_validates_csv",
     ],
     "prove_parse_url": [
         "prove_parse_url",

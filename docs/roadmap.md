@@ -50,10 +50,9 @@ after V1.0 is stable.
 
 ## Planned Versions
 
-### v0.9.2 — Comptime Execution
+### v0.9.2 — Comptime Execution ✅ (Done in v0.9.9)
 
-Execute `comptime` blocks at compile time. Currently the keyword is parsed
-but expressions are not evaluated during compilation. Adds a compile-time
+Execute `comptime` blocks at compile time. Adds a compile-time
 interpreter, file dependency tracking, and constant embedding in emitted C.
 
 ### v0.9.4 — Linear Types + Ownership

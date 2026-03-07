@@ -1,7 +1,6 @@
 module Parse
   narrative: """Encoding and decoding of structured data formats."""
 
-  /// Parsed URL components
   type Url is binary
 
 /// Parse a source string into a Value
@@ -86,4 +85,16 @@ binary
 
 /// Validate a Base64 string
 validates base64(encoded String)
+binary
+
+/// Parse a CSV string into rows of fields
+creates csv(source String) Result<List<List<String>>, String>
+binary
+
+/// Serialize rows of fields to CSV string
+reads csv(rows List<List<String>>) String
+binary
+
+/// Validate a CSV string
+validates csv(source String)
 binary

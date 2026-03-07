@@ -137,12 +137,11 @@ from
 ```prove
 module Example
   narrative: """An example of email update"""
-  InputOutput inputs console file, outputs console
-  Parse creates json value, types Value, reads json, validates object
-  InputOutput inputs process
-  List reads first
-  Parse reads object, validates object
-  Table types Table
+  inputs reads console
+  outputs writes console
+  creates json from string
+  reads json as value
+  validates value is object
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 

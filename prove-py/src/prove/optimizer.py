@@ -12,25 +12,34 @@ from typing import Any
 
 from prove.ast_nodes import (
     Assignment,
+    BinaryExpr,
     BooleanLit,
     CallExpr,
+    CharLit,
+    DecimalLit,
     Declaration,
     Expr,
     ExprStmt,
+    FailPropExpr,
+    FloatLit,
     FunctionDef,
     IdentifierExpr,
+    IntegerLit,
     LiteralPattern,
     MainDef,
     MatchArm,
     MatchExpr,
     Module,
     ModuleDecl,
+    StringLit,
     TailContinue,
     TailLoop,
+    UnaryExpr,
     VarDecl,
     WildcardPattern,
 )
 from prove.c_runtime import STDLIB_RUNTIME_LIBS
+from prove.interpreter import ComptimeInterpreter
 from prove.symbols import SymbolTable
 
 
@@ -99,7 +108,9 @@ class Optimizer:
         module = self._collect_runtime_deps(self._module)
         module = self._tail_call_optimization(module)
         module = self._dead_branch_elimination(module)
+        module = self._ct_eval_pure_calls(module)
         module = self._inline_small_functions(module)
+        module = self._dead_code_elimination(module)
         module = self._identify_memoization_candidates(module)
         module = self._match_compilation(module)
         return module
@@ -356,6 +367,195 @@ class Optimizer:
                 return replace(m, arms=kept_arms)
 
         return m
+
+    # ── Pass 2b: Compile-Time Evaluation of Pure Functions ────────
+
+    def _ct_eval_pure_calls(self, module: Module) -> Module:
+        """Evaluate pure function calls with constant arguments at compile time."""
+        func_defs: dict[str, FunctionDef] = {}
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                func_defs[decl.name] = decl
+
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                new_decls.append(self._ct_eval_function(decl, func_defs))
+            elif isinstance(decl, ModuleDecl):
+                new_body = [
+                    self._ct_eval_function(d, func_defs) if isinstance(d, FunctionDef) else d
+                    for d in decl.body
+                ]
+                new_decls.append(replace(decl, body=new_body))
+            elif isinstance(decl, MainDef):
+                new_decls.append(replace(decl, body=self._ct_eval_stmts(decl.body, func_defs)))
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    def _ct_eval_function(self, fd: FunctionDef, func_defs: dict[str, FunctionDef]) -> FunctionDef:
+        return replace(fd, body=self._ct_eval_stmts(fd.body, func_defs))
+
+    def _ct_eval_stmts(self, stmts: list[Any], func_defs: dict[str, FunctionDef]) -> list[Any]:
+        """Walk statements looking for pure function calls with constant args."""
+        result: list[Any] = []
+        for stmt in stmts:
+            if isinstance(stmt, ExprStmt):
+                new_expr = self._ct_eval_expr(stmt.expr, func_defs)
+                result.append(replace(stmt, expr=new_expr))
+            elif isinstance(stmt, MatchExpr):
+                result.append(self._ct_eval_match(stmt, func_defs))
+            elif isinstance(stmt, TailLoop):
+                result.append(replace(stmt, body=self._ct_eval_stmts(stmt.body, func_defs)))
+            else:
+                result.append(stmt)
+        return result
+
+    def _ct_eval_match(self, m: MatchExpr, func_defs: dict[str, FunctionDef]) -> MatchExpr:
+        """Evaluate pure function calls in match arms."""
+        new_arms: list[MatchArm] = []
+        for arm in m.arms:
+            new_body = self._ct_eval_stmts(arm.body, func_defs) if arm.body else arm.body
+            new_arms.append(replace(arm, body=new_body))
+        return replace(m, arms=new_arms)
+
+    def _ct_eval_expr(self, expr: Expr, func_defs: dict[str, FunctionDef]) -> Expr:
+        """Try to evaluate a pure function call at compile time."""
+        if isinstance(expr, CallExpr) and isinstance(expr.func, IdentifierExpr):
+            func_name = expr.func.name
+            if func_name not in func_defs:
+                return expr
+            func_def = func_defs[func_name]
+            if self._calls_self(func_name, func_def.body):
+                return expr
+            args = expr.args
+            const_args: list[object] = []
+            for arg in args:
+                if isinstance(arg, IntegerLit):
+                    const_args.append(int(arg.value))
+                elif isinstance(arg, BooleanLit):
+                    const_args.append(arg.value)
+                elif isinstance(arg, StringLit):
+                    const_args.append(arg.value)
+                elif isinstance(arg, DecimalLit):
+                    const_args.append(float(arg.value))
+                elif isinstance(arg, FloatLit):
+                    const_args.append(float(arg.value[:-1]))
+                elif isinstance(arg, CharLit):
+                    const_args.append(arg.value)
+                else:
+                    const_args.append(None)
+            if None not in const_args:
+                interp = ComptimeInterpreter(function_defs=func_defs)
+                result = interp.evaluate_pure_call(func_name, const_args, "transforms")
+                if result is not None:
+                    if isinstance(result, int):
+                        return IntegerLit(value=str(result), span=expr.span)
+                    elif isinstance(result, float):
+                        return FloatLit(value=str(result) + "f", span=expr.span)
+                    elif isinstance(result, bool):
+                        return BooleanLit(value=result, span=expr.span)
+                    elif isinstance(result, str):
+                        return StringLit(value=result, span=expr.span)
+        return expr
+
+    # ── Pass 2b: Dead Code Elimination ─────────────────────────────
+
+    def _dead_code_elimination(self, module: Module) -> Module:
+        """Remove unused functions - those never called from reachable code."""
+        reachable = self._find_reachable_functions(module)
+        if not reachable:
+            return module
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                if decl.name in reachable:
+                    new_decls.append(decl)
+            elif isinstance(decl, MainDef):
+                new_decls.append(decl)
+            elif isinstance(decl, ModuleDecl):
+                new_decls.append(decl)
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    def _find_reachable_functions(self, module: Module) -> set[str]:
+        """Find all functions that are reachable from main or module exports."""
+        reachable: set[str] = set()
+        worklist: list[str] = []
+        func_defs: dict[str, FunctionDef] = {}
+        main_def: MainDef | None = None
+        for decl in module.declarations:
+            if isinstance(decl, MainDef):
+                main_def = decl
+                worklist.append("main")
+            elif isinstance(decl, FunctionDef):
+                func_defs[decl.name] = decl
+        while worklist:
+            func_name = worklist.pop()
+            if func_name in reachable:
+                continue
+            reachable.add(func_name)
+            if func_name == "main" and main_def is not None:
+                called = self._find_called_functions(main_def.body)
+            elif func_name in func_defs:
+                called = self._find_called_functions(func_defs[func_name].body)
+            else:
+                continue
+            for called_name in called:
+                if called_name not in reachable:
+                    worklist.append(called_name)
+        return reachable
+
+    def _find_called_functions(self, stmts: list[Any]) -> set[str]:
+        """Find all function names called in the given statements."""
+        called: set[str] = set()
+        for stmt in stmts:
+            self._find_called_in_stmt(stmt, called)
+        return called
+
+    def _find_called_in_stmt(self, stmt: Any, called: set[str]) -> None:
+        """Recursively find function calls in a statement."""
+        if isinstance(stmt, ExprStmt):
+            self._find_called_in_expr(stmt.expr, called)
+        elif isinstance(stmt, MatchExpr):
+            for arm in stmt.arms:
+                if arm.body:
+                    for body_stmt in arm.body:
+                        self._find_called_in_stmt(body_stmt, called)
+        elif isinstance(stmt, TailLoop):
+            self._find_called_in_stmts(stmt.body, called)
+        elif isinstance(stmt, VarDecl):
+            self._find_called_in_expr(stmt.value, called)
+        elif isinstance(stmt, Assignment):
+            self._find_called_in_expr(stmt.value, called)
+
+    def _find_called_in_stmts(self, stmts: list[Any], called: set[str]) -> None:
+        for stmt in stmts:
+            self._find_called_in_stmt(stmt, called)
+
+    def _find_called_in_expr(self, expr: Expr, called: set[str]) -> None:
+        """Recursively find function calls in an expression."""
+        if isinstance(expr, CallExpr) and isinstance(expr.func, IdentifierExpr):
+            called.add(expr.func.name)
+            for arg in expr.args:
+                self._find_called_in_expr(arg, called)
+        elif isinstance(expr, MatchExpr):
+            if expr.subject:
+                self._find_called_in_expr(expr.subject, called)
+            for arm in expr.arms:
+                if arm.body:
+                    for body_stmt in arm.body:
+                        self._find_called_in_stmt(body_stmt, called)
+        elif isinstance(expr, BinaryExpr):
+            self._find_called_in_expr(expr.left, called)
+            self._find_called_in_expr(expr.right, called)
+        elif isinstance(expr, UnaryExpr):
+            self._find_called_in_expr(expr.operand, called)
+        elif isinstance(expr, VarDecl):
+            self._find_called_in_expr(expr.value, called)
+        elif isinstance(expr, FailPropExpr):
+            self._find_called_in_expr(expr.expr, called)
 
     # ── Pass 3: Small Function Inlining ───────────────────────────
 
@@ -794,4 +994,3 @@ class Optimizer:
                 result.append(stmt)
                 i += 1
         return result
-

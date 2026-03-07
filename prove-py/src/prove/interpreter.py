@@ -17,6 +17,7 @@ from prove.ast_nodes import (
     Expr,
     ExprStmt,
     FloatLit,
+    FunctionDef,
     IdentifierExpr,
     IntegerLit,
     ListLiteral,
@@ -41,16 +42,44 @@ class ComptimeResult:
 
 
 class ComptimeInterpreter:
-    def __init__(self, module_source_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        module_source_dir: Path | None = None,
+        function_defs: dict[str, "FunctionDef"] | None = None,
+    ) -> None:
         self._module_source_dir = module_source_dir or Path(".")
         self._vars: dict[str, object] = {}
         self._dependencies: set[Path] = set()
+        self._function_defs = function_defs or {}
 
     def evaluate(self, expr: ComptimeExpr) -> ComptimeResult:
         result: object = None
         for stmt in expr.body:
             result = self._eval_stmt(stmt)
         return ComptimeResult(value=result, dependencies=self._dependencies)
+
+    def evaluate_pure_call(self, func_name: str, args: list[object], verb: str) -> object | None:
+        """Evaluate a pure function call with constant arguments."""
+        if func_name not in self._function_defs:
+            return None
+        fd = self._function_defs[func_name]
+        if fd.verb not in {"transforms", "validates", "reads", "creates", "matches"}:
+            return None
+        if len(fd.params) != len(args):
+            return None
+        eval_interpreter = ComptimeInterpreter(
+            module_source_dir=self._module_source_dir,
+            function_defs=self._function_defs,
+        )
+        for param, arg in zip(fd.params, args):
+            eval_interpreter._vars[param.name] = arg
+        try:
+            result: object = None
+            for stmt in fd.body:
+                result = eval_interpreter._eval_stmt(stmt)
+            return result
+        except CompileError:
+            return None
 
     def _eval_stmt(self, stmt: Stmt) -> object:
         if isinstance(stmt, VarDecl):

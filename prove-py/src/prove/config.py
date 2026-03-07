@@ -76,7 +76,7 @@ def load_config(path: Path) -> ProveConfig:
         bld = data["build"]
         config.build = BuildConfig(
             target=bld.get("target", "native"),
-            optimize=bld.get("optimize", False),
+            optimize=bld.get("optimize", True),
             c_flags=bld.get("c_flags", []),
             link_flags=bld.get("link_flags", []),
         )

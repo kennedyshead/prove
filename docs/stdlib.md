@@ -312,6 +312,16 @@ Defines a binary `Url` type for parsed URL components.
 | `creates` | `base64(data ByteArray) String` | Encode byte array as Base64 |
 | `validates` | `base64(encoded String)` | True if string is valid Base64 |
 
+### CSV
+
+RFC 4180-compliant CSV parsing. Returns raw `List<List<String>>` — no type inference.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `csv(source String) Result<List<List<String>>, String>` | Parse CSV string into rows of fields |
+| `reads` | `csv(rows List<List<String>>) String` | Serialize rows of fields to CSV string |
+| `validates` | `csv(source String)` | True if source is valid CSV |
+
 ```prove
 Parse creates toml url, reads text object url, validates url base64, types Value Url
 Table reads keys get, types Table

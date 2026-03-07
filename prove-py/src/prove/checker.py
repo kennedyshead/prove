@@ -869,7 +869,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Check body
         body_type = UNIT
-        for stmt in fd.body:
+        for i, stmt in enumerate(fd.body):
+            # W332: warn on unused pure function result (except for last statement)
+            if i < len(fd.body) - 1:
+                self._check_unused_pure_result(stmt)
             body_type = self._check_stmt(stmt)
 
         # Validate return type
@@ -1327,6 +1330,73 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._check_match_in_expr(expr.body)
         elif isinstance(expr, FailPropExpr):
             self._check_match_in_expr(expr.expr)
+
+    def _check_unused_pure_result(self, stmt: Stmt | MatchExpr) -> None:
+        """Check for unused pure function calls in statement position (W332)."""
+        if isinstance(stmt, ExprStmt):
+            self._check_expr_unused_pure_result(stmt.expr)
+        elif isinstance(stmt, MatchExpr):
+            for arm in stmt.arms:
+                if arm.body:
+                    for i, body_stmt in enumerate(arm.body):
+                        if i < len(arm.body) - 1:
+                            self._check_unused_pure_result(body_stmt)
+
+    def _check_expr_unused_pure_result(self, expr: Expr) -> None:
+        """Check if expression contains unused pure function calls."""
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                arg_count = len(expr.args)
+                sig = self.symbols.resolve_function(None, expr.func.name, arg_count)
+                if sig is None:
+                    sig = self.symbols.resolve_function_any(expr.func.name, arity=arg_count)
+                if sig is not None and sig.verb in _PURE_VERBS:
+                    if (
+                        not isinstance(sig.return_type, PrimitiveType)
+                        or sig.return_type.name != "Unit"
+                    ):
+                        self.diagnostics.append(
+                            Diagnostic(
+                                severity=Severity.WARNING,
+                                code="W332",
+                                message=f"unused result of pure function '{expr.func.name}'. "
+                                f"Pure functions have no side effects - result is discarded.",
+                                labels=[DiagnosticLabel(span=expr.span, message="")],
+                            )
+                        )
+        elif isinstance(expr, MatchExpr):
+            for arm in expr.arms:
+                if arm.body:
+                    for body_stmt in arm.body[:-1]:
+                        self._check_unused_pure_result(body_stmt)
+
+    def _check_expr_unused_pure_result(self, expr: Expr) -> None:
+        """Check if expression contains unused pure function calls."""
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                arg_count = len(expr.args)
+                sig = self.symbols.resolve_function(None, expr.func.name, arg_count)
+                if sig is None:
+                    sig = self.symbols.resolve_function_any(expr.func.name, arity=arg_count)
+                if sig is not None and sig.verb in _PURE_VERBS:
+                    if (
+                        not isinstance(sig.return_type, PrimitiveType)
+                        or sig.return_type.name != "Unit"
+                    ):
+                        self.diagnostics.append(
+                            Diagnostic(
+                                severity=Severity.WARNING,
+                                code="W332",
+                                message=f"unused result of pure function '{expr.func.name}'. "
+                                f"Pure functions have no side effects - result is discarded.",
+                                labels=[DiagnosticLabel(span=expr.span, message="")],
+                            )
+                        )
+        elif isinstance(expr, MatchExpr):
+            for arm in expr.arms:
+                if arm.body:
+                    for body_stmt in arm.body[:-1]:
+                        self._check_unused_pure_result(body_stmt)
 
     # ── Statement checking ──────────────────────────────────────
 

@@ -436,6 +436,9 @@ _register_module(
         ("reads", "base64"): "prove_parse_base64_decode",
         ("creates", "base64"): "prove_parse_base64_encode",
         ("validates", "base64"): "prove_parse_base64_validates",
+        ("creates", "csv"): "prove_parse_csv",
+        ("reads", "csv"): "prove_emit_csv",
+        ("validates", "csv"): "prove_validates_csv",
     },
 )
 

@@ -526,7 +526,7 @@ from
     max(low, min(value, high))
 ```
 
-`requires` states what must be true before calling the function — the compiler rejects call sites that can't prove it. `ensures` states what the function guarantees about its result — the compiler verifies every code path or generates property tests. Here, the refinement type `Clamped` does the heavy lifting.
+`requires` states what must be true before calling the function — the compiler generates property tests that verify it at runtime. `ensures` states what the function guarantees about its result — the compiler generates property tests to verify it. Here, the refinement type `Clamped` does the heavy lifting.
 
 ### Implementation Explanation: `explain`
 
@@ -727,7 +727,7 @@ from
 
 ### Verification Chain: `trusted`
 
-`ensures` requirements propagate through the call graph. If function A has `ensures` and calls function B, the compiler needs B's contracts to verify A's postconditions. If B has no `ensures`, the compiler warns — A's verification is incomplete.
+`ensures` requirements propagate through the call graph for test generation. If function A has `ensures` and calls function B, the compiler needs B's contracts to generate comprehensive tests. If B has no `ensures`, the compiler warns — test coverage for A's postconditions may be incomplete.
 
 `trusted` is the explicit opt-out. It acknowledges that a function is unverified and silences the warning:
 

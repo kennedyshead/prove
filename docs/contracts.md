@@ -31,7 +31,7 @@ from
     apply_tax(tax, discounted)
 ```
 
-The `requires` clause is compile-time enforced — the compiler rejects any call site that cannot prove `len(items) > 0`. This is not a runtime check. If your list might be empty, the code does not compile.
+The `requires` clause is type-checked at compile time (must be a Boolean expression). At runtime, the compiler automatically generates property tests that verify the requirement holds across thousands of random inputs.
 
 ### Compiler-Verified Postconditions
 
@@ -44,7 +44,7 @@ from
     apply_tax(tax, discounted)
 ```
 
-The `ensures` clause is verified at compile time. The compiler checks that every code path produces `result >= 0`. If it cannot prove this statically, it automatically generates property tests that exercise thousands of random inputs.
+The `ensures` clause is type-checked at compile time. The compiler generates property tests that verify the postcondition across thousands of random inputs at runtime.
 
 These are hard rules — the compiler enforces them automatically.
 

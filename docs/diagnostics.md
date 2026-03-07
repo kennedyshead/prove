@@ -507,6 +507,24 @@ A recursive function's `terminates` measure suggests O(n) call depth. Consider u
 
 A previous `prove build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
 
+### W332 — Unused pure function result
+
+A pure function (`transforms`, `validates`, `reads`, `creates`, `matches`) is called but its result is discarded. Pure functions have no side effects — if you don't use the result, the call has no effect. Assign the result to a variable or remove the call.
+
+```prove
+// Warning — result discarded
+transforms foo() Integer
+from
+    double(21)  // result not used
+    0
+
+// OK — result is used
+transforms foo() Integer
+from
+    x as Integer = double(21)
+    x + 1
+```
+
 ### E331 — Field mutation in pure function
 
 A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.

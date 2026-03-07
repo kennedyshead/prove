@@ -184,12 +184,14 @@ class TestTCOIntegration:
         # Create a project with a tail-recursive function
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        (tmp_path / "prove.toml").write_text(textwrap.dedent("""\
+        (tmp_path / "prove.toml").write_text(
+            textwrap.dedent("""\
             [package]
             name = "tco_test"
             [build]
             optimize = true
-        """))
+        """)
+        )
         (src_dir / "main.prv").write_text(
             "module TcoTest\n"
             '  narrative: """TCO test"""\n'
@@ -335,7 +337,10 @@ class TestInlining:
         double_body = [
             ExprStmt(
                 BinaryExpr(
-                    IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN,
+                    IdentifierExpr("x", _SPAN),
+                    "*",
+                    IntegerLit("2", _SPAN),
+                    _SPAN,
                 ),
                 _SPAN,
             ),
@@ -360,21 +365,29 @@ class TestInlining:
         symbols = SymbolTable()
         result = Optimizer(module, symbols).optimize()
 
-        # The call in main should be replaced with the inlined expression
-        main_decl = result.declarations[1]
+        # After CT evaluation, the function is eliminated (since it was CT-evaluated)
+        # Only MainDef remains (index 0)
+        main_decl = result.declarations[0]
         assert isinstance(main_decl, MainDef)
         stmt = main_decl.body[0]
         assert isinstance(stmt, ExprStmt)
-        # Should now be a BinaryExpr (5 * 2) instead of a CallExpr
-        assert isinstance(stmt.expr, BinaryExpr)
-        assert stmt.expr.op == "*"
+        # Should now be an IntegerLit (10) from CT evaluation
+        assert isinstance(stmt.expr, IntegerLit)
+        assert stmt.expr.value == "10"
 
     def test_recursive_not_inlined(self):
-        """Functions with terminates (recursive) should not be inlined."""
+        """Functions with terminates (recursive) should not be CT-evaluated."""
         param = _make_param("n")
-        body = [ExprStmt(IdentifierExpr("n", _SPAN), _SPAN)]
+        recur_call = CallExpr(
+            func=IdentifierExpr("recur", _SPAN),
+            args=[BinaryExpr("-", IdentifierExpr("n", _SPAN), IntegerLit("1", _SPAN), _SPAN)],
+            span=_SPAN,
+        )
+        body = [ExprStmt(recur_call, _SPAN)]
         fd = _make_func(
-            "recur", params=[param], body=body,
+            "recur",
+            params=[param],
+            body=body,
             terminates=IdentifierExpr("n", _SPAN),
         )
 
@@ -384,9 +397,11 @@ class TestInlining:
             span=_SPAN,
         )
         main = MainDef(
-            return_type=None, can_fail=False,
+            return_type=None,
+            can_fail=False,
             body=[ExprStmt(call, _SPAN)],
-            doc_comment=None, span=_SPAN,
+            doc_comment=None,
+            span=_SPAN,
         )
 
         module = _make_module(fd, main)
@@ -397,7 +412,7 @@ class TestInlining:
         assert isinstance(main_decl, MainDef)
         stmt = main_decl.body[0]
         assert isinstance(stmt, ExprStmt)
-        # Should still be a CallExpr (not inlined)
+        # Should still be a CallExpr (not CT-evaluated because recursive)
         assert isinstance(stmt.expr, CallExpr)
 
 

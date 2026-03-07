@@ -91,14 +91,16 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ## Optimizer
 
-When `optimize = true` in `prove.toml` (the default), the compiler runs six optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+When `optimize = true` in `prove.toml` (the default), the compiler runs eight optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
 
 | Pass | What it does |
 |------|-------------|
 | **Runtime dependency collection** | Scans stdlib imports to track which C runtime libraries are needed. Feeds the build system's runtime stripping. |
 | **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a `terminates` annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
+| **Compile-time evaluation** | Evaluates pure functions with constant arguments at compile time. For example, `double(21)` becomes `42` during compilation. Recursive functions are not evaluated to avoid infinite loops. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
+| **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
 
@@ -106,9 +108,7 @@ When `optimize = true` in `prove.toml` (the default), the compiler runs six opti
 
 ## Comptime (Compile-Time Computation)
 
-*The `comptime` keyword is parsed but not yet executed at compile time. Compile-time evaluation is planned for v0.9.2.*
-
-Inspired by Zig. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.
+The compiler includes a full compile-time interpreter that executes `comptime` blocks during compilation. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.
 
 ```prove
 MAX_CONNECTIONS as Integer = comptime
