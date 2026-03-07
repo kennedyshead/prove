@@ -122,6 +122,8 @@ def map_type(ty: Type) -> CType:
             return CType("int64_t", is_pointer=False, header="prove_time.h")
         if name == "ByteArray":
             return CType("Prove_ByteArray*", is_pointer=True, header="prove_bytes.h")
+        if name == "Url":
+            return CType("Prove_Url*", is_pointer=True, header="prove_parse.h")
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

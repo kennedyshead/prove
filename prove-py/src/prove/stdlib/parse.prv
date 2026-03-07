@@ -1,6 +1,9 @@
 module Parse
   narrative: """Encoding and decoding of structured data formats."""
 
+  /// Parsed URL components
+  type Url is binary
+
 /// Parse a source string into a Value
 creates value(source Source) Value
 binary
@@ -55,4 +58,32 @@ binary
 
 /// Validate a TOML string
 validates toml(source String)
+binary
+
+/// Parse a URL string into its components
+reads url(raw String) Url
+binary
+
+/// Construct a URL from scheme, host, and path
+creates url(scheme String, host String, path String) Url
+binary
+
+/// Check if a string is a valid URL
+validates url(raw String)
+binary
+
+/// Add query parameters to a URL
+transforms url(source Url, params Table<Value>) Url
+binary
+
+/// Decode a Base64 string into a byte array
+reads base64(encoded String) ByteArray
+binary
+
+/// Encode a byte array as Base64
+creates base64(data ByteArray) String
+binary
+
+/// Validate a Base64 string
+validates base64(encoded String)
 binary

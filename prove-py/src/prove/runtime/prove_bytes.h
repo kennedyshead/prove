@@ -7,7 +7,7 @@
 
 /* ── ByteArray ───────────────────────────────────────────────── */
 
-typedef struct {
+typedef struct Prove_ByteArray {
     Prove_Header header;
     int64_t length;
     uint8_t data[];  /* flexible array member */

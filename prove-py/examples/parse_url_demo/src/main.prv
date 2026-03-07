@@ -1,0 +1,11 @@
+module Main
+  narrative: """Demonstrates Parse URL and Base64 operations."""
+  InputOutput outputs console
+  Parse types Url
+  Parse reads url
+  Parse validates url
+
+main() Result<Unit, Error>!
+from
+    parsed as Url = url("https://example.com/path")
+    console("parsed url successfully")

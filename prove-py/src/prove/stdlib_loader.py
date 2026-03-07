@@ -429,6 +429,13 @@ _register_module(
         ("validates", "json"): "prove_validates_json",
         ("validates", "toml"): "prove_validates_toml",
         ("creates", "value"): "prove_creates_value",
+        ("reads", "url"): "prove_parse_url",
+        ("creates", "url"): "prove_parse_url_create",
+        ("validates", "url"): "prove_parse_url_validates",
+        ("transforms", "url"): "prove_parse_url_transform",
+        ("reads", "base64"): "prove_parse_base64_decode",
+        ("creates", "base64"): "prove_parse_base64_encode",
+        ("validates", "base64"): "prove_parse_base64_validates",
     },
 )
 
@@ -467,6 +474,7 @@ _KNOWN_TYPES = {
     "Weekday": PrimitiveType("Weekday"),
     "ByteArray": PrimitiveType("ByteArray"),
     "Algorithm": PrimitiveType("Algorithm"),
+    "Url": PrimitiveType("Url"),
 }
 
 

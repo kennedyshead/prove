@@ -7,6 +7,9 @@
 #include "prove_table.h"
 #include "prove_result.h"
 
+/* Forward declaration for ByteArray (defined in prove_bytes.h) */
+typedef struct Prove_ByteArray Prove_ByteArray;
+
 /* ── Value tagged union ──────────────────────────────────────── */
 
 typedef enum {
@@ -86,5 +89,29 @@ Prove_Value *prove_creates_value(Prove_Value *v);
 
 /* Validates that a Value is non-null (always true for records). */
 bool prove_validates_value(Prove_Value *v);
+
+/* ── URL ────────────────────────────────────────────────────── */
+
+typedef struct {
+    Prove_Header  header;
+    Prove_String *scheme;
+    Prove_String *host;
+    int64_t       port;      /* -1 = not set */
+    Prove_String *path;
+    Prove_String *query;     /* NULL = not set */
+    Prove_String *fragment;  /* NULL = not set */
+} Prove_Url;
+
+Prove_Url    *prove_parse_url(Prove_String *raw);
+Prove_Url    *prove_parse_url_create(Prove_String *scheme, Prove_String *host,
+                                      Prove_String *path);
+bool          prove_parse_url_validates(Prove_String *raw);
+Prove_Url    *prove_parse_url_transform(Prove_Url *source, Prove_Table *params);
+
+/* ── Base64 ─────────────────────────────────────────────────── */
+
+Prove_ByteArray *prove_parse_base64_decode(Prove_String *encoded);
+Prove_String    *prove_parse_base64_encode(Prove_ByteArray *data);
+bool             prove_parse_base64_validates(Prove_String *encoded);
 
 #endif /* PROVE_PARSE_H */
