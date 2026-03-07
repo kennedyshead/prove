@@ -199,6 +199,7 @@ def main() -> int:
     failed_result: dict | None = None
     failed_name: str = ""
     all_results: dict[str, dict] = {}
+    all_failures: list[tuple[str, str, dict]] = []
 
     # Find all prove.toml files (projects)
     project_dirs = sorted(EXAMPLES_DIR.rglob("prove.toml"))
@@ -237,27 +238,15 @@ def main() -> int:
                 print(f"  prove {cmd}: {status}")
 
             if failed_example:
-                print("\n" + "=" * 60)
-                print(f"FAILED: {failed_name}")
-                print(f"Command: prove {failed_command}")
-                print(f"File: {failed_example}")
-                print("-" * 60)
-                print("STDOUT:")
-                print(failed_result["stdout"])
-                print("STDERR:")
-                print(failed_result["stderr"])
-                print("=" * 60)
-                return 1
+                all_failures.append((failed_name, failed_command, failed_result))
+                failed_example = None
+                failed_command = ""
+                failed_result = None
+                failed_name = ""
 
         except Exception as e:
             print(f"  ERROR: {e}")
-            print("\n" + "=" * 60)
-            print(f"ERROR in: {name}")
-            print(f"File: {project_dir}")
-            print("Traceback:")
             traceback.print_exc()
-            print("=" * 60)
-            return 1
 
     # Test single files
     for prv_file in single_files:
@@ -283,27 +272,28 @@ def main() -> int:
                 print(f"  prove {cmd}: {status}")
 
             if failed_example:
-                print("\n" + "=" * 60)
-                print(f"FAILED: {failed_name}")
-                print(f"Command: prove {failed_command}")
-                print(f"File: {failed_example}")
-                print("-" * 60)
-                print("STDOUT:")
-                print(failed_result["stdout"])
-                print("STDERR:")
-                print(failed_result["stderr"])
-                print("=" * 60)
-                return 1
+                all_failures.append((failed_name, failed_command, failed_result))
+                failed_example = None
+                failed_command = ""
+                failed_result = None
+                failed_name = ""
 
         except Exception as e:
             print(f"  ERROR: {e}")
-            print("\n" + "=" * 60)
-            print(f"ERROR in: {name}")
-            print(f"File: {prv_file}")
-            print("Traceback:")
             traceback.print_exc()
-            print("=" * 60)
-            return 1
+
+    # Print all failures
+    if all_failures:
+        print("\n" + "=" * 60)
+        print(f"ALL FAILURES ({len(all_failures)}):")
+        print("=" * 60)
+        for fname, fcmd, fresult in all_failures:
+            print(f"\n--- {fname} :: prove {fcmd} ---")
+            stderr = fresult.get("stderr", "")
+            # Print first 5 lines of stderr
+            for line in stderr.strip().splitlines()[:5]:
+                print(f"  {line}")
+        print("=" * 60)
 
     # Summary
     print("\n" + "=" * 60)

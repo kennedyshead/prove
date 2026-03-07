@@ -1,15 +1,26 @@
 module Main
-  narrative: """Demonstrates Random module operations."""
+  narrative: """Demonstrates Random module operations"""
   InputOutput outputs console
-  Random inputs integer decimal boolean
+  Random inputs integer decimal boolean choice shuffle
+  Parse reads text
+  Text transforms join
 
 main() Result<Unit, Error>!
 from
+    // Basic random functions
     n as Integer = integer()
-    console(f"random integer: {n}")
+    console(f"Random integer: {n}")
     r as Integer = integer(1, 10)
-    console(f"random 1..10: {r}")
+    console(f"Random 1..10: {r}")
     d as Float = decimal()
-    console(f"random decimal: {d}")
+    console(f"Random decimal: {d}")
     b as Boolean = boolean()
-    console(f"random boolean: {b}")
+    console(f"Random boolean: {b}")
+    // Choice from list
+    colors as List<String> = List("red", "green", "blue", "yellow")
+    choice as String = choice(colors)
+    console(f"Random choice: {choice}")
+    // Shuffle list
+    numbers as List<Integer> = List(1, 2, 3, 4, 5)
+    shuffled as List<Integer> = shuffle(numbers)
+    console(f"Shuffled: {join(map(shuffled, text), ", ")}")

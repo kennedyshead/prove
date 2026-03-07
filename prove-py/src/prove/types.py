@@ -268,6 +268,12 @@ def types_compatible(expected: Type, actual: Type) -> bool:
         return True
     if isinstance(expected, TypeVariable) or isinstance(actual, TypeVariable):
         return True
+
+    # Value is the heterogeneous base type for all serializable types
+    if isinstance(expected, PrimitiveType) and expected.name == "Value":
+        if is_json_serializable(actual):
+            return True
+
     # Unwrap refinement types so Price (Decimal where ...) is
     # compatible with Decimal and with other Decimal refinements.
     # Allow T → Option<Refinement(T)>: when the Option's inner type is a

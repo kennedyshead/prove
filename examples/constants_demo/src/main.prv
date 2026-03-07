@@ -1,0 +1,17 @@
+module Main
+  narrative: """Demonstrates compile-time constants (UPPERCASE names)"""
+  InputOutput outputs console
+
+  PI as Decimal = 3.14159
+
+  MAX_SIZE as Integer = 1000
+
+  GREETING as String = "Hello, World!"
+
+main() Unit
+from
+    console(f"PI is approximately: {PI}")
+    console(f"Max size: {MAX_SIZE}")
+    console(GREETING)
+    area as Decimal = PI * 50 * 50
+    console(f"Area of radius 50: {area}")

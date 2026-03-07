@@ -109,6 +109,7 @@ class CEmitter(
         self._current_requires: list[Expr] = []
         self._lookup_tables: dict[str, LookupTypeDef] = {}
         self._record_to_value: set[str] = set()  # record names needing Value converters
+        self._expected_emit_type: Type | None = None
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
         self._collect_foreign_info()
 
@@ -130,6 +131,18 @@ class CEmitter(
         for decl in self._module.declarations:
             if isinstance(decl, ModuleDecl):
                 result.extend(decl.types)
+        return result
+
+    def _all_function_defs(self) -> list[FunctionDef]:
+        """Collect all FunctionDef nodes from top-level and ModuleDecl body."""
+        result: list[FunctionDef] = []
+        for decl in self._module.declarations:
+            if isinstance(decl, FunctionDef):
+                result.append(decl)
+            elif isinstance(decl, ModuleDecl):
+                for bd in decl.body:
+                    if isinstance(bd, FunctionDef):
+                        result.append(bd)
         return result
 
     # ── Public API ─────────────────────────────────────────────
@@ -169,9 +182,8 @@ class CEmitter(
         lambda_pos = len(self._out)
 
         # Function definitions
-        for decl in self._module.declarations:
-            if isinstance(decl, FunctionDef):
-                self._emit_function(decl)
+        for fd in self._all_function_defs():
+            self._emit_function(fd)
 
         # Main
         for decl in self._module.declarations:
@@ -241,6 +253,14 @@ class CEmitter(
                 ct = map_type(sig.return_type)
                 if ct.header:
                     self._needed_headers.add(ct.header)
+
+        # Check if binary lookup tables are used
+        for decl in self._module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for td in decl.types:
+                    if isinstance(td.body, LookupTypeDef) and td.body.is_binary:
+                        self._needed_headers.add("prove_lookup.h")
+                        break
 
         # Check if HOF functions are used (map/filter/reduce)
         self._scan_for_hof(self._module)
@@ -493,8 +513,8 @@ class CEmitter(
     def _emit_function_forwards(self) -> None:
         """Emit forward declarations for all user-defined functions."""
         any_emitted = False
-        for decl in self._module.declarations:
-            if not isinstance(decl, FunctionDef) or decl.binary:
+        for decl in self._all_function_defs():
+            if decl.binary:
                 continue
             sig = self._symbols.resolve_function(
                 decl.verb,
@@ -807,6 +827,7 @@ class CEmitter(
         return ERROR_TY
 
     def _infer_pipe_type(self, expr: PipeExpr) -> Type:
+        left_ty = self._infer_expr_type(expr.left)
         if isinstance(expr.right, IdentifierExpr):
             name = expr.right.name
             sig = self._symbols.resolve_function(None, name, 1)
@@ -816,9 +837,31 @@ class CEmitter(
                     arity=1,
                 )
             if sig:
-                return sig.return_type
+                bindings = resolve_type_vars(sig.param_types, [left_ty])
+                return substitute_type_vars(sig.return_type, bindings)
         if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
             name = expr.right.func.name
+            # HOF builtins: infer concrete return types
+            if name == "filter":
+                # filter preserves list element type
+                return left_ty
+            if name == "map":
+                # map return type depends on the lambda/function
+                if isinstance(left_ty, ListType):
+                    fn_expr = expr.right.args[0] if expr.right.args else None
+                    if isinstance(fn_expr, LambdaExpr):
+                        saved = dict(self._locals)
+                        if fn_expr.params:
+                            self._locals[fn_expr.params[0]] = left_ty.element
+                        result_ty = self._infer_expr_type(fn_expr.body)
+                        self._locals = saved
+                        return ListType(result_ty)
+                return left_ty
+            if name == "reduce":
+                # reduce return type is the accumulator type
+                if expr.right.args:
+                    return self._infer_expr_type(expr.right.args[0])
+                return left_ty
             total = 1 + len(expr.right.args)
             sig = self._symbols.resolve_function(None, name, total)
             if sig is None:
@@ -827,7 +870,10 @@ class CEmitter(
                     arity=total,
                 )
             if sig:
-                return sig.return_type
+                extra_arg_types = [self._infer_expr_type(a) for a in expr.right.args]
+                all_arg_types = [left_ty] + extra_arg_types
+                bindings = resolve_type_vars(sig.param_types, all_arg_types)
+                return substitute_type_vars(sig.return_type, bindings)
         return ERROR_TY
 
     # ── Utilities ──────────────────────────────────────────────

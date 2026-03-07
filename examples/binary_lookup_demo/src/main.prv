@@ -1,0 +1,17 @@
+module Main
+  narrative: """Demonstrates binary lookup tables with multi-column runtime lookups."""
+  InputOutput outputs console
+
+  binary HttpStatus String Integer where
+    Ok | "OK" | 200
+    NotFound | "Not Found" | 404
+    ServerError | "Internal Server Error" | 500
+
+main() Result<Unit, Error>!
+from
+    // Forward lookup: variant -> string column
+    name as String = HttpStatus:Ok
+    console(f"Status name: {name}")
+    // Forward lookup: variant -> integer column
+    code as Integer = HttpStatus:NotFound
+    console(f"Status code: {code}")

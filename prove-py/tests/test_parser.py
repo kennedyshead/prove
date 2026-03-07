@@ -17,6 +17,7 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     GenericType,
+    IdentifierExpr,
     ImportItem,
     IndexExpr,
     IntegerLit,
@@ -822,3 +823,104 @@ class TestParserLookup:
         func = mod.declarations[1]
         assert isinstance(func, FunctionDef)
         assert func.name == "lookup"
+
+
+class TestParserBinaryLookup:
+    """Tests for binary lookup type parsing."""
+
+    def test_binary_lookup_basic(self):
+        """Parse a basic binary lookup declaration."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.types) == 1
+        td = decl.types[0]
+        assert isinstance(td, TypeDef)
+        assert td.name == "TokenKind"
+        assert isinstance(td.body, LookupTypeDef)
+        assert td.body.is_binary is True
+        assert len(td.body.value_types) == 2
+        assert len(td.body.entries) == 2
+        assert td.body.entries[0].variant == "First"
+        assert td.body.entries[0].values == ("first", "1")
+        assert td.body.entries[0].value_kinds == ("string", "integer")
+        assert td.body.entries[1].variant == "Second"
+
+    def test_binary_lookup_three_columns(self):
+        """Parse a binary lookup with three columns."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer Decimal where\n"
+            '      First | "first" | 1 | 1.0\n'
+            '      Second | "second" | 2 | 2.0\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td.body, LookupTypeDef)
+        assert td.body.is_binary is True
+        assert len(td.body.value_types) == 3
+        assert len(td.body.entries) == 2
+        assert td.body.entries[0].values == ("first", "1", "1.0")
+        assert td.body.entries[0].value_kinds == ("string", "integer", "decimal")
+
+    def test_binary_lookup_variable_access(self):
+        """Parse TypeName:variable on a binary lookup type."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "transforms lookup_word(kind TokenKind) String\n"
+            "    from\n"
+            "        TokenKind:kind\n"
+        )
+        mod = parse(source)
+        func = mod.declarations[1]
+        assert isinstance(func, FunctionDef)
+        stmt = func.body[0]
+        assert isinstance(stmt, ExprStmt)
+        assert isinstance(stmt.expr, LookupAccessExpr)
+        assert stmt.expr.type_name == "TokenKind"
+        assert isinstance(stmt.expr.operand, IdentifierExpr)
+        assert stmt.expr.operand.name == "kind"
+
+    def test_binary_lookup_with_doc_comment(self):
+        """Binary lookup with doc comment."""
+        source = (
+            "module M\n"
+            "\n"
+            "  /// Token kinds for the lexer.\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td, TypeDef)
+        assert td.doc_comment is not None
+        assert "Token kinds" in td.doc_comment

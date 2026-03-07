@@ -1,5 +1,6 @@
 module Format
   narrative: """String formatting and numeric display."""
+  Time types Time Date DateTime Duration
 
 /// Pads a string on the left to reach the specified width.
 transforms pad_left(text String, width Integer, fill Character) String
@@ -23,6 +24,10 @@ binary
 
 /// Converts an integer to octal string.
 transforms octal(number Integer) String
+binary
+
+/// Formats a number with the specified decimal places.
+transforms decimal(value Decimal, places Integer) String
 binary
 
 /// Formats a float with the specified decimal places.

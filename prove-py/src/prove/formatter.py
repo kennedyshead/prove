@@ -31,6 +31,7 @@ from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
     BinaryExpr,
+    BinaryLookupExpr,
     BindingPattern,
     BooleanLit,
     CallExpr,
@@ -300,6 +301,8 @@ class ProveFormatter:
 
         body = td.body
         if isinstance(body, LookupTypeDef):
+            if body.is_binary:
+                return self._format_binary_lookup_type_def(td.name, body)
             return self._format_lookup_type_def(td.name, mods, params, body)
 
         if isinstance(body, RecordTypeDef):
@@ -376,6 +379,24 @@ class ProveFormatter:
             return f'"{_escape_string(entry.value)}"'
         return entry.value
 
+    def _format_binary_lookup_type_def(self, name: str, body: LookupTypeDef) -> str:
+        """Format a binary lookup type definition."""
+        col_types = " ".join(self._format_type_expr(vt) for vt in body.value_types)
+        lines = [f"binary {name} {col_types} where"]
+
+        for entry in body.entries:
+            if entry.values:
+                vals = " | ".join(
+                    f'"{_escape_string(v)}"' if k == "string" else v
+                    for v, k in zip(entry.values, entry.value_kinds)
+                )
+                lines.append(f"  {entry.variant} | {vals}")
+            else:
+                val = self._format_lookup_value(entry)
+                lines.append(f"  {entry.variant} | {val}")
+
+        return "\n".join(lines)
+
     # ── Constant definitions ───────────────────────────────────
 
     def _format_constant_def(self, cd: ConstantDef) -> str:
@@ -400,60 +421,44 @@ class ProveFormatter:
         items = [item for item in imp.items if not self._is_unused_import(item.span)]
         if not items:
             return None  # entire import line is unused
-        # Group items by verb, preserving order of first appearance.
+
+        # Group items by verb, preserving order of first appearance and ensuring unique names.
         groups: list[tuple[str | None, list[str]]] = []
-        seen: dict[str | None, int] = {}
+        seen_verbs: dict[str | None, int] = {}
         for item in items:
-            if item.verb in seen:
-                groups[seen[item.verb]][1].append(item.name)
+            if item.verb in seen_verbs:
+                idx = seen_verbs[item.verb]
+                if item.name not in groups[idx][1]:
+                    groups[idx][1].append(item.name)
             else:
-                seen[item.verb] = len(groups)
+                seen_verbs[item.verb] = len(groups)
                 groups.append((item.verb, [item.name]))
-        # Build parts and calculate total length
-        parts = []
+
+        # Build verb group strings
+        group_strings = []
         for verb, names in groups:
             if verb:
-                parts.append(f"{verb} {' '.join(names)}")
+                group_strings.append(f"{verb} {' '.join(names)}")
             else:
-                parts.append(" ".join(names))
-        line = f"{imp.module} {', '.join(parts)}"
+                group_strings.append(" ".join(names))
+
+        line = f"{imp.module} {', '.join(group_strings)}"
         # If within 90 chars, use single line
         if len(line) <= self.MAX_LINE_LENGTH:
             return line
-        # Over 90 chars: first verb stays on module line if it fits alone
+
+        # Over 90 chars: multi-line format with indented continuation
         lines = []
-        first_verb, first_names = groups[0]
-        first_part = f"{imp.module} {first_verb} {' '.join(first_names)}"
-        if len(first_part) <= self.MAX_LINE_LENGTH:
-            # First part fits, put it on module line
-            lines.append(first_part)
-            # Remaining verbs on separate lines
-            for verb, names in groups[1:]:
-                verb_part = f"{verb} {' '.join(names)}"
-                if len(verb_part) + 8 > self.MAX_LINE_LENGTH:
-                    name_lines = self._split_item_names(names, self.MAX_LINE_LENGTH - 8)
-                    lines.append(f"  {verb} {name_lines[0]}")
-                    for name_line in name_lines[1:]:
-                        lines.append(f"        {name_line}")
-                else:
-                    lines.append(f"  {verb_part}")
-        else:
-            # First verb too long for same line, put module on its own line
-            lines.append(imp.module)
-            name_lines = self._split_item_names(first_names, self.MAX_LINE_LENGTH - 8)
-            lines.append(f"  {first_verb} {name_lines[0]}")
-            for name_line in name_lines[1:]:
-                lines.append(f"        {name_line}")
-            # Process remaining verbs
-            for verb, names in groups[1:]:
-                verb_part = f"{verb} {' '.join(names)}"
-                if len(verb_part) + 8 > self.MAX_LINE_LENGTH:
-                    name_lines = self._split_item_names(names, self.MAX_LINE_LENGTH - 8)
-                    lines.append(f"  {verb} {name_lines[0]}")
-                    for name_line in name_lines[1:]:
-                        lines.append(f"        {name_line}")
-                else:
-                    lines.append(f"  {verb_part}")
+        for i, (verb, names) in enumerate(groups):
+            if verb:
+                group_str = f"{verb} {' '.join(names)}"
+            else:
+                group_str = " ".join(names)
+            if i == 0:
+                lines.append(f"{imp.module} {group_str}")
+            else:
+                lines.append(f"  {group_str}")
+
         return "\n".join(lines)
 
     def _split_item_names(self, names: list[str], max_len: int) -> list[str]:
@@ -465,8 +470,8 @@ class ProveFormatter:
         for name in names:
             if not current:
                 current = name
-            elif len(current) + len(name) + 2 <= max_len:
-                current += f", {name}"
+            elif len(current) + len(name) + 1 <= max_len:
+                current += f" {name}"
             else:
                 lines.append(current)
                 current = name
@@ -490,7 +495,9 @@ class ProveFormatter:
                 continue  # I314: drop unknown module imports
             formatted_imp = self._format_import_decl(imp)
             if formatted_imp is not None:
-                lines.append(f"  {formatted_imp}")
+                # Add module-level indent to each line (supports multi-line imports)
+                for imp_line in formatted_imp.split("\n"):
+                    lines.append(f"  {imp_line}")
 
         for td in mod.types:
             if self._is_unused_type(td.span):
@@ -636,6 +643,8 @@ class ProveFormatter:
         if isinstance(expr, IndexExpr):
             return f"{self._format_expr(expr.obj, 99)}[{self._format_expr(expr.index)}]"
         if isinstance(expr, LookupAccessExpr):
+            return f"{expr.type_name}:{self._format_expr(expr.operand, 99)}"
+        if isinstance(expr, BinaryLookupExpr):
             return f"{expr.type_name}:{self._format_expr(expr.operand, 99)}"
         return "???"
 

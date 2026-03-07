@@ -1,0 +1,25 @@
+module Main
+  narrative: """Demonstrates special literal types: regex patterns and path literals"""
+  InputOutput outputs console
+  Pattern validates test
+  Text contains
+
+main() Result<Unit, Error>!
+from
+    // Regex literal for pattern matching
+    email_pattern as String = r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
+    // Using the pattern - check if it compiles (validates the regex)
+    is_valid as Boolean = test(email_pattern, "test@example.com")
+    console(f"test@example.com matches pattern: {is_valid}")
+    is_invalid as Boolean = test(email_pattern, "invalid-email")
+    console(f"invalid-email matches pattern: {is_invalid}")
+    // Path literal (if supported) - demonstrating that paths can be used
+    // Note: Prove doesn't have direct path literal syntax like /path/
+    // but we can work with string paths
+    file_path as String = "/tmp/test.txt"
+    has_slash as Boolean = contains(file_path, "/")
+    console(f"Path contains slash: {has_slash}")
+    // Decimal literal with f suffix
+    // Note: This syntax may not be fully supported
+    // Demonstrating type modifiers with literals
+    Unit

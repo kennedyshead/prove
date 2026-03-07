@@ -1,12 +1,17 @@
 module Main
-  narrative: """Demonstrates Math module operations."""
+  narrative: """Demonstrates Math module operations"""
   InputOutput outputs console
-  Math reads abs min max sqrt floor
+  Math reads abs min max sqrt floor power ceil round log
 
 main() Result<Unit, Error>!
 from
-    console(f"abs(-42) = {abs(-42)}")
-    console(f"min(3, 7) = {min(3, 7)}")
-    console(f"max(3, 7) = {max(3, 7)}")
-    console(f"sqrt(16.0f) = {sqrt(16.0f)}")
-    console(f"floor(3.7f) = {floor(3.7f)}")
+    console(f"abs(-42): {abs(-42)}")
+    console(f"min(3, 7): {min(3, 7)}")
+    console(f"max(3, 7): {max(3, 7)}")
+    console(f"sqrt(16.0f): {sqrt(16.0f)}")
+    console(f"floor(3.7f): {floor(3.7f)}")
+    console(f"clamp(15, 0, 10): {clamp(15, 0, 10)}")
+    console(f"power(2.0f, 8.0f): {power(2.0f, 8.0f)}")
+    console(f"ceil(3.2f): {ceil(3.2f)}")
+    console(f"round(3.5f): {round(3.5f)}")
+    console(f"log(2.718f): {log(2.718f)}")

@@ -39,15 +39,17 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 
 
 class CallCheckMixin:
-
-    def _infer_call(self, expr: CallExpr) -> Type:
+    def _infer_call(self, expr: CallExpr, expected_type: Type | None = None) -> Type:
         # Determine function name and resolve
         arg_types = [self._infer_expr(a) for a in expr.args]
         arg_count = len(expr.args)
 
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
-            sig = self.symbols.resolve_function(None, name, arg_count)
+            # Try specific resolution first
+            sig = self.symbols.resolve_function(
+                None, name, arg_count
+            )
             # Also try with verb from current function context
             if (
                 sig is None
@@ -59,12 +61,17 @@ class CallCheckMixin:
                     name,
                     arg_count,
                 )
+
+            # If not found or types don't match, or if multiple overloads might exist, try any
             if (
                 sig is None
                 or len(sig.param_types) != arg_count
                 or not all(types_compatible(p, a) for p, a in zip(sig.param_types, arg_types))
+                or expected_type is not None  # ALWAYS check any if we have an expected return type
             ):
-                any_sig = self.symbols.resolve_function_any(name, arg_types)
+                any_sig = self.symbols.resolve_function_any(
+                    name, arg_types, expected_return=expected_type
+                )
                 if any_sig is not None:
                     sig = any_sig
 
@@ -252,7 +259,9 @@ class CallCheckMixin:
             # Mark import as used
             self._used_imports.add((module_name.lower(), func_name))
             # Resolve the function normally by name
-            sig = self.symbols.resolve_function(None, func_name, arg_count)
+            sig = self.symbols.resolve_function(
+                None, func_name, arg_count
+            )
             cur = self._current_function
             if sig is None and cur and isinstance(cur, FunctionDef):
                 sig = self.symbols.resolve_function(
@@ -261,7 +270,9 @@ class CallCheckMixin:
                     arg_count,
                 )
             if sig is None:
-                sig = self.symbols.resolve_function_any(func_name, arg_types)
+                sig = self.symbols.resolve_function_any(
+                    func_name, arg_types, expected_return=expected_type
+                )
             if sig is None:
                 self._error(
                     "E312",

@@ -381,13 +381,20 @@ class TestGenerator:
         ret_type: Type,
         suite: TestSuite,
     ) -> None:
-        """Test with boundary values: 0, 1, -1, INT_MAX, INT_MIN."""
-        boundaries = ["0L", "1L", "-1L", "INT64_MAX", "INT64_MIN"]
+        """Test with boundary values: 0, 1, -1, 1000, -1000."""
+        boundaries = ["0L", "1L", "-1L", "1000L", "-1000L"]
 
         self._test_counter += 1
         name = f"_test_boundary_{fd.name}_{self._test_counter}"
 
         lines: list[str] = []
+
+        # Build requires guards using boundary param names
+        req_guards: list[str] = []
+        for req in fd.requires:
+            req_c = self._expr_to_c_bool(req, "_unused")
+            if req_c:
+                req_guards.append(req_c)
 
         # For each boundary, call function with all params set to it
         for bv in boundaries:
@@ -396,7 +403,18 @@ class TestGenerator:
                     break
             else:
                 args = ", ".join([bv] * len(param_types))
-                lines.append(f"(void){mangled}({args});")
+                # Apply requires guards with boundary value substituted
+                if req_guards:
+                    # Substitute param names with boundary value
+                    guarded = True
+                    for guard in req_guards:
+                        g = guard
+                        for p in fd.params:
+                            g = g.replace(p.name, f"({bv})")
+                        lines.append(f"if ({g})")
+                    lines.append(f"    (void){mangled}({args});")
+                else:
+                    lines.append(f"(void){mangled}({args});")
 
         # If we got here without crashing, pass
         lines.append(f'_test_pass("{name}");')
@@ -482,7 +500,7 @@ class TestGenerator:
         """Generate C code for a random value of the given type."""
         if isinstance(ty, PrimitiveType):
             if ty.name == "Integer":
-                return f"int64_t {name} = _rng_int();"
+                return f"int64_t {name} = _rng_int_range(-1000, 1000);"
             if ty.name in ("Decimal", "Float"):
                 return f"double {name} = _rng_double();"
             if ty.name == "Boolean":

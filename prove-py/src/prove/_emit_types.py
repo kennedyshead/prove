@@ -427,3 +427,80 @@ class TypeEmitterMixin:
                 self._indent -= 1
                 self._line("}")
                 self._line("")
+
+            # Binary lookup: emit column arrays and reverse lookup table
+            if body.is_binary:
+                self._emit_binary_lookup_tables(cname, variant_names, body)
+
+    def _emit_binary_lookup_tables(
+        self, cname: str, variant_names: list[str], body: LookupTypeDef
+    ) -> None:
+        """Emit static C arrays and reverse lookup table for binary lookups."""
+        # Build a mapping from variant name to entry (first occurrence)
+        variant_to_entry: dict[str, Any] = {}
+        for entry in body.entries:
+            if entry.variant not in variant_to_entry:
+                variant_to_entry[entry.variant] = entry
+
+        _C_TYPE_MAP = {
+            "String": "const char*",
+            "Integer": "int64_t",
+            "Decimal": "double",
+            "Boolean": "bool",
+        }
+
+        # Emit forward arrays (variant index → column value)
+        for col_idx, vt in enumerate(body.value_types):
+            col_name = vt.name if hasattr(vt, "name") else "Unknown"
+            c_type = _C_TYPE_MAP.get(col_name, "const char*")
+            array_name = f"{cname}_col_{col_name}"
+
+            self._line(f"static {c_type} {array_name}[] = {{")
+            self._indent += 1
+            for vname in variant_names:
+                entry = variant_to_entry.get(vname)
+                if entry and col_idx < len(entry.values):
+                    raw = entry.values[col_idx]
+                    kind = entry.value_kinds[col_idx] if col_idx < len(entry.value_kinds) else "string"
+                    if kind == "string":
+                        escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
+                        self._line(f'"{escaped}",')
+                    elif kind == "integer":
+                        self._line(f"{raw},")
+                    elif kind == "decimal":
+                        self._line(f"{raw},")
+                    elif kind == "boolean":
+                        self._line(f"{raw},")
+                    else:
+                        self._line(f'"{raw}",')
+                else:
+                    self._line("0,")
+            self._indent -= 1
+            self._line("};")
+            self._line("")
+
+        # Emit reverse lookup table (string key → variant index)
+        # Uses the first String column for reverse lookup keys
+        str_col_idx = None
+        for idx, vt in enumerate(body.value_types):
+            if hasattr(vt, "name") and vt.name == "String":
+                str_col_idx = idx
+                break
+
+        if str_col_idx is not None:
+            self._line(f"static const Prove_LookupEntry {cname}_reverse_entries[] = {{")
+            self._indent += 1
+            for i, vname in enumerate(variant_names):
+                entry = variant_to_entry.get(vname)
+                if entry and str_col_idx < len(entry.values):
+                    key = entry.values[str_col_idx]
+                    escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+                    self._line(f'{{"{escaped}", {i}}},')
+            self._indent -= 1
+            self._line("};")
+            self._line(f"static const Prove_LookupTable {cname}_reverse = {{")
+            self._indent += 1
+            self._line(f"{cname}_reverse_entries, {len(variant_names)}")
+            self._indent -= 1
+            self._line("};")
+            self._line("")

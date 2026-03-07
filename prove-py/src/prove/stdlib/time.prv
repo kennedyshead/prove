@@ -1,22 +1,16 @@
 module Time
   narrative: """Time representation, arithmetic, and calendar operations."""
 
-  /// A point in time (epoch-based timestamp)
   type Time is binary
 
-  /// A span of time
   type Duration is binary
 
-  /// A calendar date
   type Date is binary
 
-  /// A time of day
   type Clock is binary
 
-  /// A date with a time of day
   type DateTime is binary
 
-  /// A day of the week (0=Monday through 6=Sunday)
   type Weekday is binary
 
 /// Get current time

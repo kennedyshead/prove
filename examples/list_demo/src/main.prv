@@ -1,13 +1,37 @@
 module Main
-  narrative: """Demonstrates List module operations.
-
-  Intentional type errors to demonstrate List module. Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
-  """
+  narrative: """Demonstrates List module operations"""
   InputOutput outputs console
-  List reads length, creates range, validates empty
+  List reads first last length index
+    validates empty contains
+    creates range
+    transforms slice reverse sort
+  Error transforms unwrap
+  Parse reads text
+  Text transforms join
 
 main() Result<Unit, Error>!
 from
-    numbers as List<Integer> = range(1, 6)
-    console(f"length = {length(numbers)}")
-    console(f"empty = {empty(numbers)}")
+    numbers as List<Integer> = range(0, 6)
+    console(f"Length: {length(numbers)}")
+    console(f"Empty: {empty(numbers)}")
+    // First and last
+    first_num as Integer = unwrap(first(numbers))
+    last_num as Integer = unwrap(last(numbers))
+    console(f"First: {first_num}, Last: {last_num}")
+    // Contains
+    has_three as Boolean = contains(numbers, 3)
+    has_ten as Boolean = contains(numbers, 10)
+    console(f"Contains 3: {has_three}, Contains 10: {has_ten}")
+    // Index
+    idx as Integer = unwrap(index(numbers, 4))
+    console(f"Index of 4: {idx}")
+    // Slice
+    slice_result as List<Integer> = slice(numbers, 1, 3)
+    console(f"Slice [1:3]: {join(map(slice_result, text), ", ")}")
+    // Reverse
+    rev as List<Integer> = reverse(numbers)
+    console(f"Reversed: {join(map(rev, text), ", ")}")
+    // Sort
+    unsorted as List<Integer> = [3, 1, 4, 1, 5, 9, 2, 6]
+    sorted_nums as List<Integer> = sort(unsorted)
+    console(f"Sorted: {join(map(sorted_nums, text), ", ")}")

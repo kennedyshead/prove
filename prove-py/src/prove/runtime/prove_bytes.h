@@ -13,8 +13,9 @@ typedef struct Prove_ByteArray {
     uint8_t data[];  /* flexible array member */
 } Prove_ByteArray;
 
-/* ── byte channel ────────────────────────────────────────────── */
+/* ── constructors ────────────────────────────────────────────── */
 
+Prove_ByteArray *prove_bytes_from_string(Prove_String *s);
 Prove_ByteArray *prove_bytes_create(Prove_List *values);
 bool             prove_bytes_validates(Prove_ByteArray *data);
 

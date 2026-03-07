@@ -1,0 +1,15 @@
+[package]
+name = "constants_demo"
+version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+optimize = true
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90

@@ -159,6 +159,10 @@ The inferred type of a function body does not match the declared return type. Fo
 
 An interpolated expression in an f-string must be a stringable type (`String`, `Integer`, `Decimal`, `Float`, `Boolean`, `Character`).
 
+### E326 — Unit used as variable type
+
+`Unit` cannot be used as a variable type or assigned to a variable. `Unit` represents the absence of a meaningful value and is only used as a return type for side-effecting functions.
+
 ### E330 — Wrong number of arguments
 
 A function call has a different number of arguments than the function signature expects.
@@ -327,6 +331,15 @@ TokenKind:BooleanLit  // E378 — BooleanLit has 2 values ("true", "false")
 
 Wrap the reverse lookup in a `matches` function if you need to handle stacked variants.
 
+### E379 — Binary lookup column count mismatch
+
+An entry in a `binary` lookup table has a different number of values than columns declared.
+
+```prove
+binary TokenKind String Integer Decimal where
+    First | "first" | 1          // E379 — 2 values, expected 3
+```
+
 ### E380 — Invalid ensures expression
 
 The `ensures` expression is not valid.
@@ -374,6 +387,27 @@ transforms process(order Order) Receipt
 ### E386 — Believe expression must be Boolean
 
 A `believe` expression must evaluate to `Boolean`. See also E384 (`know`) and E385 (`assume`).
+
+### E387 — Unsupported type in binary lookup column
+
+A `binary` lookup table column uses an unsupported type. Allowed column types: `String`, `Integer`, `Decimal`, `Boolean`.
+
+### E388 — CSV file not found for binary lookup
+
+The CSV file referenced in a `binary` lookup `file(...)` declaration was not found at the specified path.
+
+### E389 — Binary lookup column type not found
+
+A binary lookup expression `TypeName:variable` was used in a function whose return type does not match any column in the binary lookup table.
+
+```prove
+binary TokenKind String Integer where
+    First | "first" | 1
+
+transforms bad(kind TokenKind) Decimal  // E389 — Decimal not a column
+from
+    TokenKind:kind
+```
 
 ### E391 — Duplicate explain entry name
 

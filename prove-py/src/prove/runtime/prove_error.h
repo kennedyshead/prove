@@ -58,4 +58,14 @@ static inline Prove_String *prove_error_unwrap_or_str(Prove_Option_Prove_Stringp
     return o.tag == 1 ? o.value : def;
 }
 
+/* ── unwrap ──────────────────────────────────────────────────── */
+
+static inline int64_t prove_error_unwrap_int(Prove_Option_int64_t o) {
+    return Prove_Option_int64_t_unwrap(o);
+}
+
+static inline Prove_String *prove_error_unwrap_str(Prove_Option_Prove_Stringptr o) {
+    return Prove_Option_Prove_Stringptr_unwrap(o);
+}
+
 #endif /* PROVE_ERROR_H */

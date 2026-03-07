@@ -194,6 +194,8 @@ _register_module(
         ("validates", "some", "Option<String>"): "prove_error_some_str",
         ("validates", "none", "Option<Integer>"): "prove_error_none_int",
         ("validates", "none", "Option<String>"): "prove_error_none_str",
+        ("transforms", "unwrap", "Option<Integer>"): "prove_error_unwrap_int",
+        ("transforms", "unwrap", "Option<String>"): "prove_error_unwrap_str",
         ("reads", "unwrap_or", "Option<Integer>"): "prove_error_unwrap_or_int",
         ("reads", "unwrap_or", "Option<String>"): "prove_error_unwrap_or_str",
     },
@@ -235,6 +237,7 @@ _register_module(
         ("creates", "duration"): "prove_time_parse_duration",
     },
     overloads={
+        ("transforms", "decimal", "Float"): "prove_format_decimal",
         ("transforms", "time", "Time"): "prove_time_format_time",
         ("transforms", "date", "Date"): "prove_time_format_date",
         ("transforms", "datetime", "DateTime"): "prove_time_format_datetime",
@@ -302,6 +305,7 @@ _register_module(
     c_map={
         ("reads", "sqrt"): "prove_math_sqrt",
         ("reads", "pow"): "prove_math_pow",
+        ("reads", "power"): "prove_math_pow",
         ("reads", "floor"): "prove_math_floor",
         ("reads", "ceil"): "prove_math_ceil",
         ("reads", "round"): "prove_math_round",
@@ -457,6 +461,7 @@ def binary_c_name(
             return overload
     return _BINARY_C_MAP.get((key, verb, name))
 
+
 # Cache loaded signatures
 _cache: dict[str, list[FunctionSignature]] = {}
 
@@ -481,7 +486,7 @@ _KNOWN_TYPES = {
 }
 
 
-_STDLIB_TYPE_VARS = frozenset({"Value", "Source"})
+_STDLIB_TYPE_VARS: frozenset[str] = frozenset({"Value", "Source"})
 
 
 def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
@@ -500,7 +505,9 @@ def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance 
     return PrimitiveType(name)
 
 
-def _resolve_type_expr(type_expr: TypeExpr) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
+def _resolve_type_expr(
+    type_expr: TypeExpr,
+) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
     """Resolve an AST TypeExpr to a semantic Type, handling generics and modifiers."""
     from prove.ast_nodes import GenericType, ModifiedType, SimpleType
 

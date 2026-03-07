@@ -18,7 +18,11 @@
         Name opt; opt.tag = 0; memset(&opt.value, 0, sizeof(T)); return opt; \
     }                                 \
     static inline bool Name##_is_some(Name opt) { return opt.tag == 1; } \
-    static inline bool Name##_is_none(Name opt) { return opt.tag == 0; }
+    static inline bool Name##_is_none(Name opt) { return opt.tag == 0; } \
+    static inline T Name##_unwrap(Name opt) {                        \
+        if (opt.tag == 0) prove_panic("unwrap on None option");      \
+        return opt.value;                                            \
+    }
 
 /* ── Common Option instantiations ──────────────────────────────── */
 

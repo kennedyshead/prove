@@ -259,6 +259,17 @@ class LookupAccessExpr:
     span: Span
 
 
+@dataclass(frozen=True)
+class BinaryLookupExpr:
+    """Runtime binary lookup: TypeName:variable."""
+
+    type_name: str  # "TokenKind"
+    operand: Expr  # the variable being used as key
+    column_type: str  # resolved return column type name
+    key_type: str  # resolved key type name ("variant", "String", etc.)
+    span: Span
+
+
 Expr = Union[
     IntegerLit,
     DecimalLit,
@@ -286,6 +297,7 @@ Expr = Union[
     IndexExpr,
     LookupExpr,
     LookupAccessExpr,
+    BinaryLookupExpr,
 ]
 
 
@@ -428,9 +440,12 @@ class BinaryDef:
 class LookupTypeDef:
     """Type body for [Lookup] types: algebraic + bidirectional mapping."""
 
-    value_type: TypeExpr  # String, Integer, or Boolean
+    value_type: TypeExpr  # String, Integer, or Boolean (legacy single-column)
     entries: list[LookupEntry]  # variant | value rows
     span: Span
+    value_types: tuple[TypeExpr, ...] = ()  # Multi-column types (binary)
+    is_binary: bool = False
+    csv_path: str | None = None
 
 
 TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef, LookupTypeDef]
@@ -519,9 +534,11 @@ class LookupEntry:
     """One row in a lookup table: Variant | value."""
 
     variant: str  # variant name (Main)
-    value: str  # literal value ("main")
-    value_kind: str  # "string", "integer", "boolean"
+    value: str  # literal value ("main") — first column for binary
+    value_kind: str  # "string", "integer", "boolean" — first column kind
     span: Span
+    values: tuple[str, ...] = ()  # Multi-column values (binary)
+    value_kinds: tuple[str, ...] = ()  # Multi-column value kinds (binary)
 
 
 @dataclass(frozen=True)

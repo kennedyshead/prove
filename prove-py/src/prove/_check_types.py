@@ -433,7 +433,11 @@ class TypeCheckMixin:
         """Return True if the type can be interpolated into an f-string."""
         if isinstance(ty, BorrowType):
             ty = ty.inner
-        return ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER)
+        if ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER):
+            return True
+        if isinstance(ty, PrimitiveType) and ty.name == "Error":
+            return True
+        return False
 
     def _infer_list(self, expr: ListLiteral) -> Type:
         if not expr.elements:
@@ -569,30 +573,107 @@ class TypeCheckMixin:
         # Reverse: variant -> value
         if isinstance(operand, TypeIdentifierExpr):
             matches = [e for e in lookup.entries if e.variant == operand.name]
+            if not matches:
+                self._error(
+                    "E377",
+                    f"variant '{operand.name}' not found "
+                    f"in lookup table '{type_name}'",
+                    expr.span,
+                )
+                return ERROR_TY
+
+            # Binary lookup with multiple columns: use expected type
+            # to select the correct column
+            if lookup.is_binary and lookup.value_types:
+                expected = self._expected_type
+                if expected is not None:
+                    from prove.types import type_name as tn
+                    for vt in lookup.value_types:
+                        col_type = self._resolve_type_expr(vt)
+                        if tn(col_type) == tn(expected):
+                            self._used_types.add(type_name)
+                            return col_type
+                # No expected type or no match — return first column
+                self._used_types.add(type_name)
+                return self._resolve_type_expr(lookup.value_types[0])
+
+            # Single-column lookup
             if len(matches) > 1:
                 values = ", ".join(f'"{e.value}"' for e in matches)
                 self._error(
                     "E378",
-                    f"'{operand.name}' has {len(matches)} values ({values}) — "
+                    f"'{operand.name}' has {len(matches)} values "
+                    f"({values}) — "
                     f"reverse lookup is ambiguous. "
                     f"Use a matches function instead.",
-                    expr.span,
-                )
-                return ERROR_TY
-            if not matches:
-                self._error(
-                    "E377",
-                    f"variant '{operand.name}' not found in lookup table '{type_name}'",
                     expr.span,
                 )
                 return ERROR_TY
             value_type = self._resolve_type_expr(lookup.value_type)
             return value_type
 
+        # Binary lookup: allow variable operands for runtime lookup
+        if isinstance(operand, IdentifierExpr) and lookup.is_binary:
+            return self._check_binary_lookup_access(expr, lookup)
+
         # Anything else (variable, call, etc.) is E376
         self._error(
             "E376",
             "lookup operand must be a literal or variant name",
+            expr.span,
+        )
+        return ERROR_TY
+
+    def _check_binary_lookup_access(
+        self, expr: LookupAccessExpr, lookup: object
+    ) -> Type:
+        """Resolve a binary lookup with a variable operand (runtime)."""
+        from prove.ast_nodes import LookupTypeDef
+        from prove.types import type_name
+
+        assert isinstance(lookup, LookupTypeDef)
+        operand = expr.operand
+        assert isinstance(operand, IdentifierExpr)
+        type_name_str_ = expr.type_name
+
+        # Resolve the variable's type (validates operand)
+        self._infer_expr(operand)
+
+        # Determine target type: prefer expected type from VarDecl context,
+        # fall back to enclosing function's return type
+        ret_type: Type | None = self._expected_type
+        if (
+            ret_type is None
+            and isinstance(self._current_function, FunctionDef)
+            and self._current_function.return_type
+        ):
+            ret_type = self._resolve_type_expr(self._current_function.return_type)
+
+        if ret_type is None:
+            self._error(
+                "E389",
+                f"cannot determine return column for binary lookup '{type_name_str_}'",
+                expr.span,
+            )
+            return ERROR_TY
+
+        # Check if the return type matches any column type
+        for vt in lookup.value_types:
+            col_type = self._resolve_type_expr(vt)
+            if type_name(col_type) == type_name(ret_type):
+                self._used_types.add(type_name_str_)
+                return ret_type
+
+        # Check if return type is the algebraic type itself
+        resolved_alg = self.symbols.resolve_type(type_name_str_)
+        if resolved_alg and type_name(resolved_alg) == type_name(ret_type):
+            self._used_types.add(type_name_str_)
+            return ret_type
+
+        self._error(
+            "E389",
+            f"return type '{type_name(ret_type)}' does not match any column "
+            f"in binary lookup '{type_name_str_}'",
             expr.span,
         )
         return ERROR_TY

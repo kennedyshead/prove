@@ -559,6 +559,22 @@ class Optimizer:
 
     # ── Pass 3: Small Function Inlining ───────────────────────────
 
+    @staticmethod
+    def _is_runtime_lookup(fd: FunctionDef) -> bool:
+        """Check if function body is a runtime binary lookup (not safe to inline)."""
+        from prove.ast_nodes import LookupAccessExpr
+
+        if len(fd.body) != 1:
+            return False
+        stmt = fd.body[0]
+        if not isinstance(stmt, ExprStmt):
+            return False
+        expr = stmt.expr
+        if not isinstance(expr, LookupAccessExpr):
+            return False
+        # Runtime lookup: operand is a param identifier, not a literal
+        return isinstance(expr.operand, IdentifierExpr)
+
     def _inline_small_functions(self, module: Module) -> Module:
         """Inline pure single-expression functions at call sites."""
         _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
@@ -574,6 +590,7 @@ class Optimizer:
                     and not self._calls_self(decl.name, decl.body)
                     and not decl.requires
                     and not decl.ensures
+                    and not self._is_runtime_lookup(decl)
                 ):
                     candidates[decl.name] = decl
                 # Always inline single-return validators (inputs with can_fail)
@@ -602,6 +619,7 @@ class Optimizer:
                             and not self._calls_self(inner.name, inner.body)
                             and not inner.requires
                             and not inner.ensures
+                            and not self._is_runtime_lookup(inner)
                         ):
                             candidates[inner.name] = inner
                         # Always inline single-return validators

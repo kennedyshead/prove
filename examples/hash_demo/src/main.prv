@@ -1,11 +1,23 @@
 module Main
-  narrative: """Demonstrates Hash module operations."""
+  narrative: """Demonstrates Hash module operations"""
   InputOutput outputs console
-  Hash reads sha256 sha512
+  Hash creates hmac sha256 sha512 blake3
+  Bytes types ByteArray, creates hex, reads hex
 
 main() Result<Unit, Error>!
 from
+    // String hashing
     h256 as String = sha256("hello")
     console(f"sha256('hello'): {h256}")
     h512 as String = sha512("hello")
     console(f"sha512('hello'): {h512}")
+    // Blake3
+    b3 as String = blake3("hello")
+    console(f"blake3('hello'): {b3}")
+    // HMAC
+    mac as ByteArray = hmac(ByteArray("message"), ByteArray("key"))
+    console(f"hmac: {hex(mac)}")
+    // ByteArray hashing
+    data as ByteArray = hex("deadbeef")
+    bh256 as ByteArray = sha256(data)
+    console("sha256 of bytes: done")

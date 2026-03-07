@@ -1,7 +1,6 @@
 module Bytes
   narrative: """Byte sequence manipulation."""
 
-  /// A sequence of bytes
   type ByteArray is binary
 
 /// Create a byte array from a list of integers

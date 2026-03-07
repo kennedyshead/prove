@@ -486,12 +486,13 @@ def test(path: str, property_rounds: int | None) -> None:
         if result.ok:
             click.echo(
                 f"tested {config.package.name} — "
-                f"{result.tests_run} tests, "
-                f"{result.tests_passed} passed"
+                f"{result.tests_passed}/{result.tests_run} passed"
             )
         else:
             click.echo(
-                f"tested {config.package.name} — {result.tests_failed} FAILED",
+                f"tested {config.package.name} — "
+                f"{result.tests_passed}/{result.tests_run} passed, "
+                f"{result.tests_failed} failed",
                 err=True,
             )
             raise SystemExit(1)

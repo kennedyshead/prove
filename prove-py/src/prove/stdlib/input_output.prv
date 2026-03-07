@@ -1,10 +1,8 @@
 module InputOutput
   narrative: """Handles IO operations across console, file, system, dir, and process channels."""
 
-  /// The result of executing a system command
   type ProcessResult is binary
 
-  /// An entry in a directory listing
   type DirEntry is binary
 
 /// Print text to the console

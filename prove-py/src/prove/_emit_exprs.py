@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prove.ast_nodes import (
     BinaryExpr,
+    BinaryLookupExpr,
     BindingPattern,
     BooleanLit,
     CallExpr,
@@ -103,6 +104,8 @@ class ExprEmitterMixin:
             return expr.name
 
         if isinstance(expr, TypeIdentifierExpr):
+            if expr.name == "Unit":
+                return "(void)0"
             return expr.name
 
         if isinstance(expr, BinaryExpr):
@@ -134,6 +137,9 @@ class ExprEmitterMixin:
 
         if isinstance(expr, LookupAccessExpr):
             return self._emit_lookup_access(expr)
+
+        if isinstance(expr, BinaryLookupExpr):
+            return self._emit_binary_lookup_expr(expr)
 
         if isinstance(expr, ValidExpr):
             # Prefer validates verb since valid X(...) means validates
@@ -305,6 +311,20 @@ class ExprEmitterMixin:
 
         if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
             name = expr.right.func.name
+            # Route HOF builtins through the dedicated HOF emitters
+            if name in ("map", "filter", "reduce", "each"):
+                synthetic = CallExpr(
+                    func=expr.right.func,
+                    args=[expr.left] + list(expr.right.args),
+                    span=expr.span,
+                )
+                if name == "map":
+                    return self._emit_hof_map(synthetic)
+                if name == "filter":
+                    return self._emit_hof_filter(synthetic)
+                if name == "reduce":
+                    return self._emit_hof_reduce(synthetic)
+                return self._emit_hof_each(synthetic)
             extra_args = [self._emit_expr(a) for a in expr.right.args]
             all_args = [left] + extra_args
             if name in BUILTIN_MAP:
@@ -761,6 +781,11 @@ class ExprEmitterMixin:
         if lookup is None:
             return "/* no lookup table */ 0"
         operand = expr.operand
+
+        # Binary lookup with variable operand: runtime lookup
+        if isinstance(operand, IdentifierExpr) and lookup.is_binary:
+            return self._emit_binary_lookup(expr, lookup)
+
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
             # Forward: literal -> variant constructor
             value = operand.value
@@ -774,6 +799,24 @@ class ExprEmitterMixin:
             # Reverse: variant -> value
             for entry in lookup.entries:
                 if entry.variant == operand.name:
+                    # Binary lookup: select column by expected type
+                    if lookup.is_binary and entry.values:
+                        col_idx = self._binary_column_index(
+                            lookup, self._expected_emit_type
+                        )
+                        val = entry.values[col_idx]
+                        kind = entry.value_kinds[col_idx]
+                        if kind == "string":
+                            escaped = self._escape_c_string(val)
+                            return (
+                                f'prove_string_from_cstr("{escaped}")'
+                            )
+                        if kind == "integer":
+                            return f"{val}L"
+                        if kind == "boolean":
+                            return val
+                        return f'prove_string_from_cstr("{val}")'
+                    # Single-column lookup
                     if entry.value_kind == "string":
                         escaped = self._escape_c_string(entry.value)
                         return f'prove_string_from_cstr("{escaped}")'
@@ -784,6 +827,101 @@ class ExprEmitterMixin:
                     return f'prove_string_from_cstr("{entry.value}")'
             return "/* lookup miss */ 0"
         return "/* unsupported lookup */ 0"
+
+    def _emit_binary_lookup(self, expr: LookupAccessExpr, lookup: object) -> str:
+        """Emit runtime binary lookup for a variable operand."""
+        from prove.ast_nodes import LookupTypeDef
+        from prove.c_types import mangle_type_name
+
+        assert isinstance(lookup, LookupTypeDef)
+        operand = expr.operand
+        assert isinstance(operand, IdentifierExpr)
+        cname = mangle_type_name(expr.type_name)
+        var_c = self._emit_expr(operand)
+
+        # Determine direction from expected type (VarDecl annotation) or
+        # function return type as fallback
+        ret_type = self._expected_emit_type or self._current_return_type()
+        ret_name = self._type_name_str(ret_type)
+
+        # Check if return type matches any column type (forward lookup)
+        col_name = self._find_binary_column_name(lookup, ret_name)
+        if col_name:
+            if ret_name == "String":
+                return f"prove_string_from_cstr({cname}_col_{col_name}[{var_c}])"
+            return f"{cname}_col_{col_name}[{var_c}]"
+
+        # Check if return type matches the algebraic type (reverse lookup)
+        alg_type = self._symbols.resolve_type(expr.type_name)
+        if alg_type and self._types_match(ret_type, alg_type):
+            # Reverse: column value → variant index
+            var_type = self._infer_expr_type(operand)
+            var_name = self._type_name_str(var_type)
+            if var_name == "String":
+                return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
+
+        return "/* unsupported binary lookup */ 0"
+
+    def _binary_column_index(
+        self, lookup: object, expected: Type | None
+    ) -> int:
+        """Return the column index matching expected type, or 0."""
+        from prove.ast_nodes import LookupTypeDef
+
+        assert isinstance(lookup, LookupTypeDef)
+        if expected is not None:
+            name = self._type_name_str(expected)
+            for i, vt in enumerate(lookup.value_types):
+                col_name = vt.name if hasattr(vt, "name") else ""
+                if col_name == name:
+                    return i
+        return 0
+
+    def _find_binary_column_name(self, lookup: object, type_name: str) -> str | None:
+        """Find the column name matching the given type name."""
+        from prove.ast_nodes import LookupTypeDef
+
+        assert isinstance(lookup, LookupTypeDef)
+        for vt in lookup.value_types:
+            col_name = vt.name if hasattr(vt, "name") else ""
+            if col_name == type_name:
+                return col_name
+        return None
+
+    def _type_name_str(self, ty: Type) -> str:
+        """Get the simple name of a type for binary lookup column matching."""
+        if isinstance(ty, PrimitiveType):
+            return ty.name
+        if isinstance(ty, AlgebraicType):
+            return ty.name
+        return ""
+
+    def _types_match(self, a: Type, b: Type) -> bool:
+        """Check if two types match by name."""
+        return self._type_name_str(a) == self._type_name_str(b)
+
+    def _current_return_type(self) -> Type:
+        """Get the return type of the current function being emitted."""
+        if hasattr(self, "_current_func_return") and self._current_func_return is not None:
+            return self._current_func_return
+        return ERROR_TY
+
+    def _emit_binary_lookup_expr(self, expr: BinaryLookupExpr) -> str:
+        """Emit a BinaryLookupExpr node (runtime binary lookup)."""
+        from prove.c_types import mangle_type_name
+
+        cname = mangle_type_name(expr.type_name)
+        var_c = self._emit_expr(expr.operand)
+
+        if expr.key_type == "variant":
+            # Forward: variant index → column value
+            if expr.column_type == "String":
+                return f"prove_string_from_cstr({cname}_col_{expr.column_type}[{var_c}])"
+            return f"{cname}_col_{expr.column_type}[{var_c}]"
+        if expr.key_type == "String":
+            # Reverse: string → variant index
+            return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
+        return "/* unsupported binary lookup */ 0"
 
     def _infer_lookup_type(self, expr: LookupAccessExpr) -> Type:
         """Infer the type of a lookup access expression."""
@@ -800,6 +938,9 @@ class ExprEmitterMixin:
             name = lookup.value_type.name if hasattr(lookup.value_type, "name") else ""
             resolved = self._symbols.resolve_type(name)
             return resolved if resolved else ERROR_TY
+        if isinstance(operand, IdentifierExpr) and lookup.is_binary:
+            # Binary runtime: use function return type
+            return self._current_return_type()
         return ERROR_TY
 
     def _emit_literal_cond(self, subj: str, pat: LiteralPattern) -> str:

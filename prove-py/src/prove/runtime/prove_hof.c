@@ -11,7 +11,7 @@ Prove_List *prove_list_map(
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
         void *mapped = fn(elem);
-        prove_list_push(&out, &mapped);
+        prove_list_push(&out, mapped);
     }
     return out;
 }

@@ -16,6 +16,7 @@ from prove.ast_nodes import (
     Assignment,
     BinaryDef,
     BinaryExpr,
+    BinaryLookupExpr,
     BindingPattern,
     BooleanLit,
     CallExpr,
@@ -100,6 +101,7 @@ from prove.types import (
     RefinementType,
     Type,
     TypeVariable,
+    UnitType,
     VariantInfo,
     has_mutable_modifier,
     has_own_modifier,
@@ -201,6 +203,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._local_modules = local_modules
         # Lookup tables per type name for TypeName: resolution
         self._lookup_tables: dict[str, LookupTypeDef] = {}
+        # Expected type context for bidirectional type inference (e.g. binary lookups)
+        self._expected_type: Type | None = None
         # Ownership tracking: variables that have been moved (passed to Own parameters)
         self._moved_vars: set[str] = set()
         # Track scope depth for ownership - reset on function entry
@@ -507,16 +511,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     span=td.span,
                 )
                 self.symbols.define_function(vsig)
-            # Validate: check for duplicate values (E375)
-            seen_values: set[str] = set()
-            for entry in body.entries:
-                if entry.value in seen_values:
-                    self._error(
-                        "E375",
-                        f"duplicate value '{entry.value}' in lookup table",
-                        entry.span,
-                    )
-                seen_values.add(entry.value)
+
+            if body.is_binary:
+                # Validate binary lookup table
+                self._validate_binary_lookup(body, td.span)
+            else:
+                # Validate: check for duplicate values (E375)
+                seen_values: set[str] = set()
+                for entry in body.entries:
+                    if entry.value in seen_values:
+                        self._error(
+                            "E375",
+                            f"duplicate value '{entry.value}' in lookup table",
+                            entry.span,
+                        )
+                    seen_values.add(entry.value)
 
         else:
             resolved = ERROR_TY
@@ -935,13 +944,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"recursive function '{fd.name}' missing terminates",
                     fd.span,
                 )
-            elif fd.trusted is None and not fd.believe:
-                self._warning(
-                    "W326",
-                    f"Recursive function '{fd.name}' may have O(n) call depth. "
-                    f"Consider an iterative approach or a logarithmic reduction.",
-                    fd.span,
-                )
 
         # ── Explain verification ──
         verifier = ProofVerifier()
@@ -1020,6 +1022,28 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     "E321",
                     f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
                     cd.span,
+                )
+
+    def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
+        """Validate a binary lookup table (E379, E387)."""
+        num_columns = len(body.value_types)
+        _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Boolean"}
+        for vt in body.value_types:
+            tname = vt.name if hasattr(vt, "name") else str(vt)
+            if tname not in _ALLOWED_BINARY_TYPES:
+                self._error(
+                    "E387",
+                    f"unsupported type '{tname}' in binary lookup column "
+                    f"(allowed: {', '.join(sorted(_ALLOWED_BINARY_TYPES))})",
+                    span,
+                )
+        for entry in body.entries:
+            if len(entry.values) != num_columns:
+                self._error(
+                    "E379",
+                    f"entry '{entry.variant}' has {len(entry.values)} values "
+                    f"but binary table has {num_columns} columns",
+                    entry.span,
                 )
 
     def _check_type_def(self, td: TypeDef) -> None:
@@ -1418,10 +1442,26 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     def _check_var_decl(self, vd: VarDecl) -> Type:
         """Check a variable declaration."""
-        inferred = self._infer_expr(vd.value)
-
+        expected = None
         if vd.type_expr is not None:
             expected = self._resolve_type_expr(vd.type_expr)
+            if isinstance(expected, UnitType):
+                self._error(
+                    "E326",
+                    "cannot use 'Unit' as a variable type",
+                    vd.span,
+                )
+
+        inferred = self._infer_expr(vd.value, expected_type=expected)
+
+        if isinstance(inferred, UnitType) and not isinstance(expected, UnitType):
+            self._error(
+                "E326",
+                "cannot assign a 'Unit' value to a variable",
+                vd.span,
+            )
+
+        if expected is not None:
             if not types_compatible(expected, inferred):
                 self._error(
                     "E321",
@@ -1448,10 +1488,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _check_assignment(self, assign: Assignment) -> Type:
         """Check an assignment statement."""
         sym = self.symbols.lookup(assign.target)
+        expected = sym.resolved_type if sym else None
+        value_type = self._infer_expr(assign.value, expected_type=expected)
+
         if sym is None:
             # Implicit declaration: `x = expr` without `x as Type = expr`
-            inferred = self._infer_expr(assign.value)
-            tn = type_name(inferred)
+            tn = type_name(value_type)
             self.diagnostics.append(
                 Diagnostic(
                     severity=Severity.NOTE,
@@ -1470,14 +1512,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 Symbol(
                     name=assign.target,
                     kind=SymbolKind.VARIABLE,
-                    resolved_type=inferred,
+                    resolved_type=value_type,
                     span=assign.span,
                 )
             )
             return UNIT
 
         sym.used = True
-        value_type = self._infer_expr(assign.value)
         # Track moves for assignment: if assigning an owned variable to another variable,
         # the source is moved
         if isinstance(assign.value, IdentifierExpr):
@@ -1496,8 +1537,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     # ── Expression type inference ───────────────────────────────
 
-    def _infer_expr(self, expr: Expr) -> Type:
+    def _infer_expr(self, expr: Expr, expected_type: Type | None = None) -> Type:
         """Infer the type of an expression."""
+        if expected_type is not None:
+            self._expected_type = expected_type
         if isinstance(expr, IntegerLit):
             return INTEGER
         if isinstance(expr, DecimalLit):
@@ -1530,7 +1573,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         )
             return STRING
         if isinstance(expr, ListLiteral):
-            return self._infer_list(expr)
+            return self._infer_list(expr, expected_type=expected_type)
         if isinstance(expr, IdentifierExpr):
             return self._infer_identifier(expr)
         if isinstance(expr, TypeIdentifierExpr):
@@ -1540,23 +1583,28 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(expr, UnaryExpr):
             return self._infer_unary(expr)
         if isinstance(expr, CallExpr):
-            return self._infer_call(expr)
+            return self._infer_call(expr, expected_type=expected_type)
         if isinstance(expr, FieldExpr):
             return self._infer_field(expr)
         if isinstance(expr, PipeExpr):
             return self._infer_pipe(expr)
         if isinstance(expr, FailPropExpr):
-            return self._infer_fail_prop(expr)
+            return self._infer_fail_prop(expr, expected_type=expected_type)
         if isinstance(expr, MatchExpr):
-            return self._infer_match(expr)
+            return self._infer_match(expr, expected_type=expected_type)
         if isinstance(expr, LambdaExpr):
             return self._infer_lambda(expr)
         if isinstance(expr, IndexExpr):
             return self._infer_index(expr)
         if isinstance(expr, ValidExpr):
+            n = len(expr.args) if expr.args is not None else 0
+            sig = self.symbols.resolve_function("validates", expr.name, n)
+            if sig is None:
+                sig = self.symbols.resolve_function_any(expr.name, arity=n)
+            if sig and sig.module:
+                self._used_imports.add((sig.module, expr.name))
             if expr.args is None:
                 # Function reference: valid error → FunctionType([Diagnostic], Boolean)
-                sig = self.symbols.resolve_function_any(expr.name)
                 if sig is not None and sig.param_types:
                     return FunctionType(list(sig.param_types), BOOLEAN)
             return BOOLEAN
@@ -1564,6 +1612,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return self._infer_comptime(expr)
         if isinstance(expr, LookupAccessExpr):
             return self._check_lookup_access_expr(expr)
+        if isinstance(expr, BinaryLookupExpr):
+            # Runtime binary lookup — type already resolved by checker
+            col = self._resolve_type_expr(SimpleType(expr.column_type, expr.span))
+            return col if col else ERROR_TY
         return ERROR_TY
 
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:
@@ -1653,366 +1705,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return operand
         return operand
 
-    def _infer_call(self, expr: CallExpr) -> Type:
-        # Determine function name and resolve
-        arg_types = [self._infer_expr(a) for a in expr.args]
-        arg_count = len(expr.args)
-
-        if isinstance(expr.func, IdentifierExpr):
-            name = expr.func.name
-            sig = self.symbols.resolve_function(None, name, arg_count)
-            # Also try with verb from current function context
-            if (
-                sig is None
-                and self._current_function
-                and isinstance(self._current_function, FunctionDef)
-            ):
-                sig = self.symbols.resolve_function(
-                    self._current_function.verb,
-                    name,
-                    arg_count,
-                )
-            if (
-                sig is None
-                or len(sig.param_types) != arg_count
-                or not all(types_compatible(p, a) for p, a in zip(sig.param_types, arg_types))
-            ):
-                any_sig = self.symbols.resolve_function_any(name, arg_types)
-                if any_sig is not None:
-                    sig = any_sig
-
-            if sig is None:
-                # Check if it's a known symbol (might be a variable holding a function)
-                sym = self.symbols.lookup(name)
-                if sym is not None:
-                    sym.used = True
-                    if isinstance(sym.resolved_type, FunctionType):
-                        return sym.resolved_type.return_type
-                    return ERROR_TY
-                self._error("E311", f"undefined function '{name}'", expr.span)
-                return ERROR_TY
-
-            # Mark import as used for unqualified calls to imported functions
-            if sig.module:
-                self._used_imports.add((sig.module, name))
-
-            # Track verb-aware recursion
-            if (
-                self._current_function
-                and isinstance(self._current_function, FunctionDef)
-                and sig.name == self._current_function.name
-                and sig.verb == self._current_function.verb
-            ):
-                self._is_recursive = True
-
-            # Verb-aware purity check for channel dispatch: if the
-            # resolved overload is IO but the caller is pure, emit E363.
-            if (
-                self._current_function
-                and isinstance(self._current_function, FunctionDef)
-                and self._current_function.verb in _PURE_VERBS
-                and sig.verb in ("inputs", "outputs")
-            ):
-                self._error(
-                    "E363",
-                    f"pure function cannot call IO function '{name}'",
-                    expr.span,
-                )
-
-            # Skip strict checks for imported functions (ErrorType return = unknown sig)
-            if isinstance(sig.return_type, ErrorType):
-                return sig.return_type
-
-            # Check argument count
-            if len(sig.param_types) != arg_count:
-                expected_n = len(sig.param_types)
-                sig_str = ", ".join(
-                    f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
-                )
-                diag = Diagnostic(
-                    severity=Severity.ERROR,
-                    code="E330",
-                    message=(f"wrong number of arguments: expected {expected_n}, got {arg_count}"),
-                    labels=[DiagnosticLabel(span=expr.span, message="")],
-                    notes=[f"function signature: {name}({sig_str})"],
-                )
-                self.diagnostics.append(diag)
-                return sig.return_type
-
-            # Check argument types
-            for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
-                if not types_compatible(expected, actual):
-                    extra = self._builtin_extra_types.get((name, i))
-                    if extra and any(types_compatible(e, actual) for e in extra):
-                        continue
-                    if sig.verb == "validates" and isinstance(actual, GenericInstance):
-                        if actual.base_name == "Option" and actual.args:
-                            inner = actual.args[0]
-                            if types_compatible(expected, inner):
-                                continue
-                    if (
-                        sig.module in ("parse", "types")
-                        and sig.verb in ("creates", "validates")
-                        and sig.name == "value"
-                        and isinstance(expected, (SimpleType, PrimitiveType, TypeVariable))
-                        and expected.name == "Source"
-                        and is_json_serializable(actual)
-                    ):
-                        continue
-                    self._error(
-                        "E331",
-                        f"argument type mismatch: expected "
-                        f"'{type_name(expected)}', "
-                        f"got '{type_name(actual)}'",
-                        expr.span,
-                    )
-
-            # Ownership tracking: mark variables as moved if passed to Own parameters
-            self._track_moved_args(expr.args, sig.param_types)
-
-            # Verb-gated serialization: creates/validates value(V)
-            # requires the argument to be json-serializable.
-            if (
-                sig.module
-                and sig.module in ("parse", "types")
-                and sig.verb in ("creates", "validates")
-                and sig.name == "value"
-                and arg_types
-            ):
-                actual_arg = arg_types[0]
-                if not is_json_serializable(actual_arg):
-                    self._error(
-                        "E320",
-                        f"type '{type_name(actual_arg)}' is not serializable to Value",
-                        expr.span,
-                    )
-
-            ret = sig.return_type
-            # Requires-based narrowing for unqualified calls:
-            # Option<V> → V, Result<T, E> → T
-            if (
-                isinstance(ret, GenericInstance)
-                and ret.base_name in ("Option", "Result")
-                and ret.args
-                and self._requires_narrowings
-                and sig.module
-            ):
-                if self._has_requires_narrowing(
-                    sig.module,
-                    expr.args,
-                ):
-                    bindings = resolve_type_vars(
-                        sig.param_types,
-                        arg_types,
-                    )
-                    inner = substitute_type_vars(ret.args[0], bindings)
-                    return inner
-            return ret
-
-        if isinstance(expr.func, TypeIdentifierExpr):
-            # Type constructor call — try as function first (variant constructors)
-            name = expr.func.name
-            sig = self.symbols.resolve_function(None, name, arg_count)
-            if sig is None:
-                sig = self.symbols.resolve_function_any(name, arg_types)
-            if sig is not None:
-                if not isinstance(sig.return_type, ErrorType):
-                    if len(sig.param_types) != arg_count:
-                        expected_n = len(sig.param_types)
-                        self._error(
-                            "E330",
-                            f"wrong number of arguments: expected {expected_n}, got {arg_count}",
-                            expr.span,
-                        )
-                return sig.return_type
-            # Fall back to type lookup (record constructor)
-            resolved = self.symbols.resolve_type(name)
-            if resolved is not None:
-                return resolved
-            self._error("E311", f"undefined function '{name}'", expr.span)
-            return ERROR_TY
-
-        # Namespaced call: Module.function(args)
-        if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
-            module_name = expr.func.obj.name
-            func_name = expr.func.field
-            # Verify the module is imported
-            if not self._is_module_imported(module_name):
-                from prove.stdlib_loader import is_stdlib_module
-
-                known_modules = set(self._module_imports.keys())
-                if self._local_modules:
-                    known_modules.update(self._local_modules.keys())
-                suggestion = self._fuzzy_match(module_name, known_modules)
-                if is_stdlib_module(module_name) or (
-                    self._local_modules and module_name in self._local_modules
-                ):
-                    msg = f"module `{module_name}` is not imported — add it to your module imports"
-                elif suggestion:
-                    msg = f"module `{module_name}` does not exist; did you mean `{suggestion}`?"
-                else:
-                    msg = f"module `{module_name}` does not exist"
-                self._error("E313", msg, expr.func.obj.span)
-                return ERROR_TY
-            # Verify the function is explicitly imported from this module
-            if not self._is_function_imported(module_name, func_name):
-                self._error(
-                    "E312",
-                    f"function '{func_name}' not imported from module '{module_name}'",
-                    expr.func.span,
-                )
-                return ERROR_TY
-            # Mark import as used
-            self._used_imports.add((module_name.lower(), func_name))
-            # Resolve the function normally by name
-            sig = self.symbols.resolve_function(None, func_name, arg_count)
-            cur = self._current_function
-            if sig is None and cur and isinstance(cur, FunctionDef):
-                sig = self.symbols.resolve_function(
-                    cur.verb,
-                    func_name,
-                    arg_count,
-                )
-            if sig is None:
-                sig = self.symbols.resolve_function_any(func_name, arg_types)
-            if sig is None:
-                self._error(
-                    "E312",
-                    f"undefined function '{func_name}' in module '{module_name}'",
-                    expr.span,
-                )
-                return ERROR_TY
-            ret = sig.return_type
-            # Requires-based narrowing: if the return type is Option<V>
-            # or Result<T, E> and there is a matching validates call in
-            # requires, narrow to V or T respectively.
-            if (
-                isinstance(ret, GenericInstance)
-                and ret.base_name in ("Option", "Result")
-                and ret.args
-                and self._requires_narrowings
-            ):
-                if self._has_requires_narrowing(
-                    module_name,
-                    expr.args,
-                ):
-                    bindings = resolve_type_vars(
-                        sig.param_types,
-                        arg_types,
-                    )
-                    inner = substitute_type_vars(ret.args[0], bindings)
-                    return inner
-            return ret
-
-        # For complex expressions (e.g., method-like calls), infer the function type
-        func_type = self._infer_expr(expr.func)
-        if isinstance(func_type, FunctionType):
-            return func_type.return_type
-        return ERROR_TY
-
-    def _infer_field(self, expr: FieldExpr) -> Type:
-        obj_type = self._infer_expr(expr.obj)
-
-        if isinstance(obj_type, ErrorType):
-            return ERROR_TY
-
-        # Unwrap borrowed types to get inner type for field access
-        if isinstance(obj_type, BorrowType):
-            obj_type = obj_type.inner
-
-        if isinstance(obj_type, PrimitiveType) and obj_type.modifiers:
-            base = self.symbols.resolve_type(obj_type.name)
-            if base is not None:
-                obj_type = base
-
-        if isinstance(obj_type, RecordType):
-            field_type = obj_type.fields.get(expr.field)
-            if field_type is None:
-                self._error(
-                    "E340",
-                    f"no field '{expr.field}' on type '{type_name(obj_type)}'",
-                    expr.span,
-                )
-                return ERROR_TY
-            return field_type
-
-        if isinstance(obj_type, RefinementType) and isinstance(obj_type.base, RecordType):
-            field_type = obj_type.base.fields.get(expr.field)
-            if field_type is None:
-                self._error(
-                    "E340",
-                    f"no field '{expr.field}' on type '{type_name(obj_type)}'",
-                    expr.span,
-                )
-                return ERROR_TY
-            return field_type
-
-        # Allow field access on GenericInstance, AlgebraicType, etc. without error
-        # (duck typing / deferred check for generics)
-        if isinstance(obj_type, (GenericInstance, TypeVariable)):
-            return ERROR_TY
-
-        self._error(
-            "E340",
-            f"no field '{expr.field}' on type '{type_name(obj_type)}'",
-            expr.span,
-        )
-        return ERROR_TY
-
-    def _infer_pipe(self, expr: PipeExpr) -> Type:
-        """a |> f desugars to f(a)."""
-        left_type = self._infer_expr(expr.left)
-
-        # The right side should be a function name or call
-        if isinstance(expr.right, IdentifierExpr):
-            name = expr.right.name
-            sig = self.symbols.resolve_function(None, name, 1)
-            # Type-based fallthrough: if first match has wrong param type,
-            # try resolve_function_any with the piped arg type.
-            if sig is None or (
-                sig.param_types and not types_compatible(sig.param_types[0], left_type)
-            ):
-                any_sig = self.symbols.resolve_function_any(
-                    name,
-                    [left_type],
-                )
-                if any_sig is not None:
-                    sig = any_sig
-            if sig is None:
-                self._error("E311", f"undefined function '{name}'", expr.right.span)
-                return ERROR_TY
-            return sig.return_type
-
-        if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
-            # a |> f(b, c) desugars to f(a, b, c)
-            name = expr.right.func.name
-            total_args = 1 + len(expr.right.args)
-            extra_types = [self._infer_expr(a) for a in expr.right.args]
-            all_types = [left_type] + extra_types
-            sig = self.symbols.resolve_function(None, name, total_args)
-            if sig is None or (
-                sig.param_types and not types_compatible(sig.param_types[0], left_type)
-            ):
-                any_sig = self.symbols.resolve_function_any(
-                    name,
-                    all_types,
-                )
-                if any_sig is not None:
-                    sig = any_sig
-            if sig is None:
-                self._error("E311", f"undefined function '{name}'", expr.right.span)
-                return ERROR_TY
-            return sig.return_type
-
-        # Fallback: infer the right side
-        right_type = self._infer_expr(expr.right)
-        if isinstance(right_type, FunctionType):
-            return right_type.return_type
-        return ERROR_TY
-
-    def _infer_fail_prop(self, expr: FailPropExpr) -> Type:
+    def _infer_fail_prop(self, expr: FailPropExpr, expected_type: Type | None = None) -> Type:
         """Check fail propagation (!)."""
-        inner = self._infer_expr(expr.expr)
+        inner_expected = None
+        if expected_type is not None:
+            inner_expected = GenericInstance("Result", [expected_type, ERROR_TY])
+        inner = self._infer_expr(expr.expr, expected_type=inner_expected)
 
         # Current function must be failable
         if self._current_function is not None:
@@ -2074,7 +1772,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return a.name == b.name
         return False
 
-    def _infer_match(self, expr: MatchExpr) -> Type:
+    def _infer_match(self, expr: MatchExpr, expected_type: Type | None = None) -> Type:
         subject_type = ERROR_TY
         if expr.subject is not None:
             subject_type = self._infer_expr(expr.subject)
@@ -2204,14 +1902,41 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Return True if the type can be interpolated into an f-string."""
         if isinstance(ty, BorrowType):
             ty = ty.inner
-        return ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER)
+        if ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER):
+            return True
+        if isinstance(ty, PrimitiveType) and ty.name == "Error":
+            return True
+        return False
 
-    def _infer_list(self, expr: ListLiteral) -> Type:
+    def _infer_list(self, expr: ListLiteral, expected_type: Type | None = None) -> Type:
         if not expr.elements:
-            return ListType(TypeVariable("T"))
-        first = self._infer_expr(expr.elements[0])
+            # Try to use expected type for empty list
+            if expected_type is not None:
+                from prove.types import ListType
+
+                if isinstance(expected_type, ListType):
+                    return expected_type
+                if isinstance(expected_type, GenericInstance) and expected_type.base_name == "List":
+                    return expected_type
+            return ListType(ERROR_TY)
+
+        # Expected element type
+        elem_expected = None
+        from prove.types import ListType
+
+        if expected_type is not None:
+            if isinstance(expected_type, ListType):
+                elem_expected = expected_type.element
+            elif (
+                isinstance(expected_type, GenericInstance)
+                and expected_type.base_name == "List"
+                and expected_type.args
+            ):
+                elem_expected = expected_type.args[0]
+
+        first = self._infer_expr(expr.elements[0], expected_type=elem_expected)
         for elem in expr.elements[1:]:
-            self._infer_expr(elem)
+            self._infer_expr(elem, expected_type=elem_expected)
         return ListType(first)
 
     def _infer_comptime(self, expr: ComptimeExpr) -> Type:
@@ -2251,10 +1976,38 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         break
                 if not found:
                     self._error("E370", f"unknown variant '{pattern.name}'", pattern.span)
+            elif isinstance(subject_type, GenericInstance):
+                # Handle Result<T, E> and Option<T> variant patterns
+                self._check_generic_variant_pattern(pattern, subject_type)
         elif isinstance(pattern, WildcardPattern):
             pass  # matches everything
         elif isinstance(pattern, LiteralPattern):
             pass  # literal match
+
+    def _check_generic_variant_pattern(
+        self, pattern: VariantPattern, subject_type: GenericInstance
+    ) -> None:
+        """Bind variant sub-patterns for generic types (Result, Option)."""
+        base = subject_type.base_name
+        args = subject_type.args
+        name = pattern.name
+
+        # Map variant name → inner type for builtin generic types
+        inner_type: Type | None = None
+        if base == "Result" and len(args) >= 2:
+            if name == "Ok":
+                inner_type = args[0]
+            elif name == "Err":
+                inner_type = args[1]
+        elif base == "Option" and len(args) >= 1:
+            if name == "Some":
+                inner_type = args[0]
+            elif name == "None":
+                inner_type = None  # No binding for None
+
+        if inner_type is not None:
+            for sub in pattern.fields:
+                self._check_pattern(sub, inner_type)
 
     # ── Match exhaustiveness ────────────────────────────────────
 
@@ -2303,71 +2056,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     # ── Lookup table checking ────────────────────────────────────
 
-    def _check_lookup_access_expr(self, expr: LookupAccessExpr) -> Type:
-        """Resolve a TypeName:operand lookup expression (E376, E377, E378)."""
-        type_name = expr.type_name
-
-        # Find the lookup table for this type
-        lookup = self._lookup_tables.get(type_name)
-        if lookup is None:
-            self._error(
-                "E377",
-                f"'{type_name}' is not a [Lookup] type",
-                expr.span,
-            )
-            return ERROR_TY
-
-        operand = expr.operand
-
-        # Forward: literal -> variant
-        if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
-            value = operand.value
-            if isinstance(operand, BooleanLit):
-                value = "true" if operand.value else "false"
-            for entry in lookup.entries:
-                if entry.value == str(value):
-                    resolved = self.symbols.resolve_type(type_name)
-                    if resolved is not None:
-                        self._used_types.add(type_name)
-                    return resolved if resolved else ERROR_TY
-            self._error(
-                "E377",
-                f"value {value!r} not found in lookup table '{type_name}'",
-                expr.span,
-            )
-            return ERROR_TY
-
-        # Reverse: variant -> value
-        if isinstance(operand, TypeIdentifierExpr):
-            matches = [e for e in lookup.entries if e.variant == operand.name]
-            if len(matches) > 1:
-                values = ", ".join(f'"{e.value}"' for e in matches)
-                self._error(
-                    "E378",
-                    f"'{operand.name}' has {len(matches)} values ({values}) — "
-                    f"reverse lookup is ambiguous. "
-                    f"Use a matches function instead.",
-                    expr.span,
-                )
-                return ERROR_TY
-            if not matches:
-                self._error(
-                    "E377",
-                    f"variant '{operand.name}' not found in lookup table '{type_name}'",
-                    expr.span,
-                )
-                return ERROR_TY
-            value_type = self._resolve_type_expr(lookup.value_type)
-            return value_type
-
-        # Anything else (variable, call, etc.) is E376
-        self._error(
-            "E376",
-            "lookup operand must be a literal or variant name",
-            expr.span,
-        )
-        return ERROR_TY
-
     # ── Type resolution ─────────────────────────────────────────
 
     def _error_undefined_type(self, name: str, span: Span) -> None:
@@ -2414,31 +2102,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         return ERROR_TY
 
     # ── Ownership tracking ──────────────────────────────────────
-
-    def _track_moved_args(self, args: list[Expr], param_types: list[Type]) -> None:
-        """Mark arguments as moved if passed to parameters with Own modifier."""
-        for arg, param_ty in zip(args, param_types):
-            if has_own_modifier(param_ty):
-                self._track_moved_expr(arg)
-            # Check: can't pass a borrow to a mutable parameter
-            if isinstance(arg, IdentifierExpr):
-                sym = self.symbols.lookup(arg.name)
-                if sym is not None and isinstance(sym.resolved_type, BorrowType):
-                    if has_mutable_modifier(param_ty):
-                        self._error(
-                            "E341",
-                            f"cannot pass borrowed value '{arg.name}' to mutable parameter",
-                            arg.span,
-                        )
-
-    def _track_moved_expr(self, expr: Expr) -> None:
-        """Mark variables as moved based on expression type."""
-        if isinstance(expr, IdentifierExpr):
-            sym = self.symbols.lookup(expr.name)
-            if sym is not None and has_own_modifier(sym.resolved_type):
-                self._moved_vars.add(expr.name)
-        elif isinstance(expr, FieldExpr):
-            self._track_moved_expr(expr.base)
 
     def _infer_param_borrows(
         self, params: list[Param], param_types: list[Type], body: list[Stmt | MatchExpr]

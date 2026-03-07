@@ -97,12 +97,7 @@ class TestW311:
     """W311 fires when a function has intent but no ensures/requires."""
 
     def test_fires_with_intent_no_contracts(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            '  intent: "double n"\n'
-            "from\n"
-            "    n * 2\n"
-        )
+        source = 'transforms f(n Integer) Integer\n  intent: "double n"\nfrom\n    n * 2\n'
         diags = check_warns(source, "W311")
         assert len(diags) == 1
 
@@ -129,21 +124,12 @@ class TestW311:
         assert "W311" not in _codes(diags)
 
     def test_not_fired_without_intent(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "from\n"
-            "    n * 2\n"
-        )
+        source = "transforms f(n Integer) Integer\nfrom\n    n * 2\n"
         diags = check_all(source)
         assert "W311" not in _codes(diags)
 
     def test_has_note(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            '  intent: "double n"\n'
-            "from\n"
-            "    n * 2\n"
-        )
+        source = 'transforms f(n Integer) Integer\n  intent: "double n"\nfrom\n    n * 2\n'
         diags = check_warns(source, "W311")
         assert _has_notes(diags), "W311 should have a note explaining the fix"
 
@@ -266,12 +252,7 @@ class TestW323:
     """W323 fires when a function has ensures but no explain block."""
 
     def test_fires_with_ensures_no_explain(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  ensures result >= 0\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
         diags = check_warns(source, "W323")
         assert len(diags) >= 1
 
@@ -289,23 +270,12 @@ class TestW323:
         assert "W323" not in _codes(diags)
 
     def test_not_fired_with_trusted(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  ensures result >= 0\n"
-            "  trusted\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\n  trusted\nfrom\n    n\n"
         diags = check_all(source)
         assert "W323" not in _codes(diags)
 
     def test_has_note(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  ensures result >= 0\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
         diags = check_warns(source, "W323")
         assert _has_notes(diags), "W323 should have a note explaining the fix"
 
@@ -317,12 +287,7 @@ class TestW324:
     """W324 fires when a function has ensures but no requires."""
 
     def test_fires_with_ensures_no_requires(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  ensures result >= 0\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
         diags = check_warns(source, "W324")
         assert len(diags) >= 1
 
@@ -340,12 +305,7 @@ class TestW324:
         assert "W324" not in _codes(diags)
 
     def test_has_note(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  ensures result >= 0\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
         diags = check_warns(source, "W324")
         assert _has_notes(diags), "W324 should have a note explaining the fix"
 
@@ -357,13 +317,7 @@ class TestW325:
     """W325 fires when a function has explain but no ensures."""
 
     def test_fires_with_explain_no_ensures(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  explain\n"
-            "      just return n\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  explain\n      just return n\nfrom\n    n\n"
         diags = check_warns(source, "W325")
         assert len(diags) >= 1
 
@@ -393,13 +347,7 @@ class TestW325:
         assert "W325" not in _codes(diags)
 
     def test_has_note(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "  explain\n"
-            "      just return n\n"
-            "from\n"
-            "    n\n"
-        )
+        source = "transforms f(n Integer) Integer\n  explain\n      just return n\nfrom\n    n\n"
         diags = check_warns(source, "W325")
         assert _has_notes(diags), "W325 should have a note explaining the fix"
 
@@ -410,17 +358,17 @@ class TestW325:
 class TestW326:
     """W326 fires when recursive function may have unbounded call depth."""
 
-    def test_fires_for_simple_recursion(self):
+    def test_not_fired_with_terminates(self):
         source = (
             "matches f(n Integer) Integer\n"
-            "  terminates: n\n"
+            "  terminates: n == 0\n"
             "from\n"
             "    match n\n"
             "        0 => 0\n"
             "        _ => f(n - 1)\n"
         )
-        diags = check_warns(source, "W326")
-        assert len(diags) == 1
+        diags = check_all(source)
+        assert "W326" not in _codes(diags)
 
     def test_not_fired_with_believe(self):
         source = (
@@ -437,11 +385,7 @@ class TestW326:
         assert "W326" not in _codes(diags)
 
     def test_not_fired_without_recursion(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "from\n"
-            "    n * 2\n"
-        )
+        source = "transforms f(n Integer) Integer\nfrom\n    n * 2\n"
         diags = check_all(source)
         assert "W326" not in _codes(diags)
 
@@ -500,13 +444,7 @@ class TestI302:
     """I302 fires when an imported name is never used."""
 
     def test_fires_for_unused_import(self):
-        source = (
-            "module Main\n"
-            "  Text transforms trim\n"
-            "transforms f(s String) String\n"
-            "from\n"
-            "    s\n"
-        )
+        source = "module Main\n  Text transforms trim\ntransforms f(s String) String\nfrom\n    s\n"
         diags = check_info(source, "I302")
         assert len(diags) == 1
 
@@ -552,14 +490,7 @@ class TestI303:
     """I303 fires when a user-defined type is never referenced."""
 
     def test_fires_for_unused_type(self):
-        source = (
-            "module M\n"
-            "  type Unused is\n"
-            "    x Integer\n"
-            "transforms f() Integer\n"
-            "from\n"
-            "    1\n"
-        )
+        source = "module M\n  type Unused is\n    x Integer\ntransforms f() Integer\nfrom\n    1\n"
         diags = check_info(source, "I303")
         assert len(diags) == 1
 
@@ -584,31 +515,18 @@ class TestI310:
     """I310 fires when a variable is declared without an explicit type."""
 
     def test_fires_for_implicit_type(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "from\n"
-            "    result = n * 2\n"
-            "    result\n"
-        )
+        source = "transforms f(n Integer) Integer\nfrom\n    result = n * 2\n    result\n"
         diags = check_info(source, "I310")
         assert len(diags) == 1
 
     def test_has_suggestion(self):
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "from\n"
-            "    result = n * 2\n"
-            "    result\n"
-        )
+        source = "transforms f(n Integer) Integer\nfrom\n    result = n * 2\n    result\n"
         diags = check_info(source, "I310")
         assert diags[0].suggestions, "I310 should have a suggestion"
 
     def test_not_fired_with_explicit_type(self):
         source = (
-            "transforms f(n Integer) Integer\n"
-            "from\n"
-            "    result as Integer = n * 2\n"
-            "    result\n"
+            "transforms f(n Integer) Integer\nfrom\n    result as Integer = n * 2\n    result\n"
         )
         diags = check_all(source)
         assert "I310" not in _codes(diags)
@@ -621,13 +539,7 @@ class TestI314:
     """I314 fires when an import references an unknown module."""
 
     def test_fires_for_unknown_module(self):
-        source = (
-            "module Main\n"
-            "  FakeModule transforms fake\n"
-            "transforms f() Integer\n"
-            "from\n"
-            "    1\n"
-        )
+        source = "module Main\n  FakeModule transforms fake\ntransforms f() Integer\nfrom\n    1\n"
         diags = check_info(source, "I314")
         assert len(diags) == 1
 
@@ -650,37 +562,21 @@ class TestI360:
     """I360 fires when validates has an explicit Boolean return type."""
 
     def test_fires_with_explicit_boolean(self):
-        source = (
-            "validates f(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates f(x Integer) Boolean\nfrom\n    x > 0\n"
         diags = check_info(source, "I360")
         assert len(diags) == 1
 
     def test_has_suggestion(self):
-        source = (
-            "validates f(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates f(x Integer) Boolean\nfrom\n    x > 0\n"
         diags = check_info(source, "I360")
         assert diags[0].suggestions, "I360 should have a suggestion"
 
     def test_not_fired_without_return_type(self):
-        source = (
-            "validates f(x Integer)\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates f(x Integer)\nfrom\n    x > 0\n"
         diags = check_all(source)
         assert "I360" not in _codes(diags)
 
     def test_not_fired_for_transforms(self):
-        source = (
-            "transforms f(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "transforms f(x Integer) Boolean\nfrom\n    x > 0\n"
         diags = check_all(source)
         assert "I360" not in _codes(diags)

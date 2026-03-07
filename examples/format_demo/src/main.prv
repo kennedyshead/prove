@@ -1,12 +1,21 @@
 module Main
-  narrative: """Demonstrates Format module operations.
-
-  Intentional parse errors (quote issues). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, view.
-  """
+  narrative: """Demonstrates Format module operations"""
   InputOutput outputs console
-  Format transforms hex pad_left
+  Format transforms hex pad_left pad_right center bin octal decimal
 
 main() Result<Unit, Error>!
 from
-    console(f"hex(255) = {hex(255)}")
-    console(f"pad_left('hi', 10, '*') = {pad_left("hi", 10, '*')}")
+    // Hex formatting
+    console(f"hex(255): {hex(255)}")
+    // Pad left
+    console(f"pad_left('hi', 10): {pad_left("hi", 10, ' ')}")
+    // Pad right
+    console(f"pad_right('hi', 10): {pad_right("hi", 10, ' ')}")
+    // Center
+    console(f"center('hi', 10): {center("hi", 10, ' ')}")
+    // Binary
+    console(f"bin(42): {bin(42)}")
+    // Octal
+    console(f"octal(42): {octal(42)}")
+    // Decimal
+    console(f"decimal(3.14159): {decimal(3.14159, 5)}")

@@ -1,7 +1,6 @@
 module Pattern
   narrative: """Regular expression matching."""
 
-  /// A successful regex match with position and content
   type Match is binary
 
 /// Test if a string matches a regex pattern

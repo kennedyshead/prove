@@ -61,6 +61,7 @@ class Lexer:
             if self._at_line_start and self.bracket_depth == 0:
                 self._handle_indentation()
             self._at_line_start = False
+
             self._skip_spaces()
             if self.pos >= len(self.source):
                 break
@@ -185,12 +186,14 @@ class Lexer:
         start_line = self.line
         start_col = self.col
         self._advance()
-        self._at_line_start = True
 
         if self.bracket_depth > 0:
             return
         if self.prev_token is not None and self.prev_token.kind in NEWLINE_SUPPRESSED_AFTER:
             return
+
+        self._at_line_start = True
+
         # Don't emit duplicate newlines
         if self.prev_token is not None and self.prev_token.kind == TokenKind.NEWLINE:
             return

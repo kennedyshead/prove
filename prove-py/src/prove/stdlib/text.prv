@@ -1,7 +1,6 @@
 module Text
   narrative: """String operations and construction."""
 
-  /// A mutable buffer for efficient incremental string construction
   type StringBuilder is binary
 
 /// Get the length of a string

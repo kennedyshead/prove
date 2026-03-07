@@ -187,7 +187,6 @@ NEWLINE_SUPPRESSED_AFTER: frozenset[TokenKind] = frozenset(
         TokenKind.EQUAL,
         TokenKind.NOT_EQUAL,
         TokenKind.LESS,
-        TokenKind.GREATER,
         TokenKind.LESS_EQUAL,
         TokenKind.GREATER_EQUAL,
         TokenKind.AND,

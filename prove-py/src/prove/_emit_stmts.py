@@ -29,9 +29,11 @@ from prove.ast_nodes import (
 from prove.c_types import CType, mangle_type_name, map_type
 from prove.types import (
     INTEGER,
+    STRING,
     UNIT,
     AlgebraicType,
     GenericInstance,
+    ListType,
     PrimitiveType,
     RecordType,
     RefinementType,
@@ -237,7 +239,14 @@ class StmtEmitterMixin:
             if type_name:
                 # Handle GenericType annotations (e.g. Table<Value>, Option<Integer>)
                 type_args = getattr(vd.type_expr, "args", None)
-                if type_args and type_name in ("Table", "Option", "Result"):
+                if type_args and type_name == "List":
+                    # List<T> → ListType(element=T)
+                    ta = type_args[0]
+                    ta_name = getattr(ta, "name", None)
+                    if ta_name:
+                        resolved_arg = self._symbols.resolve_type(ta_name)
+                        target_ty = ListType(resolved_arg if resolved_arg else INTEGER)
+                elif type_args and type_name in ("Table", "Option", "Result"):
                     arg_types: list[Type] = []
                     for ta in type_args:
                         ta_name = getattr(ta, "name", None)
@@ -249,6 +258,9 @@ class StmtEmitterMixin:
                     resolved = self._symbols.resolve_type(type_name)
                     if resolved:
                         target_ty = resolved
+
+        # Set expected type for binary lookup column selection
+        self._expected_emit_type = target_ty
 
         # When annotation and value are both Option but with different inner types,
         # emit conversion code (e.g. Option<String> → Option<Integer> via parse)
@@ -344,6 +356,7 @@ class StmtEmitterMixin:
 
         ct = map_type(target_ty)
         val = self._emit_expr(vd.value)
+        self._expected_emit_type = None
 
         if needs_unwrap:
             # For failable function returning Result, unwrap before assignment
@@ -518,6 +531,11 @@ class StmtEmitterMixin:
         self._line(f"{target}.{fa.field} = {val};")
 
     def _emit_expr_stmt(self, es: ExprStmt) -> None:
+        # Match expressions wrapped in ExprStmt must go through
+        # _emit_match_stmt, not _emit_expr (which returns "/* match */").
+        if isinstance(es.expr, MatchExpr):
+            self._emit_match_stmt(es.expr)
+            return
         val = self._emit_expr(es.expr)
         # Suppress bare tmp variable statements from FailPropExpr
         # (the error check is already emitted as a side effect)
@@ -659,6 +677,12 @@ class StmtEmitterMixin:
                 if (
                     has_variant
                     and isinstance(subj_type, GenericInstance)
+                    and subj_type.base_name == "Result"
+                ):
+                    self._emit_result_match_stmt(m, subj, subj_type)
+                elif (
+                    has_variant
+                    and isinstance(subj_type, GenericInstance)
                     and subj_type.base_name == "Option"
                 ):
                     self._emit_option_match_stmt(m, subj, subj_type)
@@ -750,6 +774,86 @@ class StmtEmitterMixin:
         ):
             last_pat = m.arms[-1].pattern
             if not (isinstance(last_pat, VariantPattern) and last_pat.name == "None"):
+                self._line("}")
+
+    def _emit_result_match_stmt(
+        self,
+        m: MatchExpr,
+        subj: str,
+        subj_type: GenericInstance,
+    ) -> None:
+        """Emit match on Result<T, E> as if/else on prove_result_is_err."""
+        first = True
+        for arm in m.arms:
+            if isinstance(arm.pattern, VariantPattern):
+                if arm.pattern.name == "Ok":
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} (!prove_result_is_err({subj})) {{")
+                    self._indent += 1
+                    if arm.pattern.fields and isinstance(
+                        arm.pattern.fields[0],
+                        BindingPattern,
+                    ):
+                        inner_ty = subj_type.args[0] if subj_type.args else INTEGER
+                        inner_ct = map_type(inner_ty)
+                        bind_name = arm.pattern.fields[0].name
+                        # Use temp to avoid shadowing when bind_name == subj
+                        tmp = self._tmp()
+                        if inner_ct.decl == "int64_t":
+                            self._line(
+                                f"{inner_ct.decl} {tmp} = {subj}.ok_int;"
+                            )
+                        elif inner_ct.decl == "double":
+                            self._line(
+                                f"{inner_ct.decl} {tmp} = {subj}.ok_double;"
+                            )
+                        else:
+                            self._line(
+                                f"{inner_ct.decl} {tmp} = "
+                                f"({inner_ct.decl}){subj}.ok_ptr;"
+                            )
+                        self._line(f"{inner_ct.decl} {bind_name} = {tmp};")
+                        self._locals[bind_name] = inner_ty
+                    self._emit_match_arm_body(arm.body)
+                    self._indent -= 1
+                elif arm.pattern.name == "Err":
+                    if first:
+                        self._line(f"if (prove_result_is_err({subj})) {{")
+                    else:
+                        self._line("} else {")
+                    self._indent += 1
+                    if arm.pattern.fields and isinstance(
+                        arm.pattern.fields[0],
+                        BindingPattern,
+                    ):
+                        bind_name = arm.pattern.fields[0].name
+                        # Use temp to avoid shadowing when bind_name == subj
+                        tmp = self._tmp()
+                        self._line(
+                            f"Prove_String* {tmp} = {subj}.error;"
+                        )
+                        self._line(f"Prove_String* {bind_name} = {tmp};")
+                        self._locals[bind_name] = STRING
+                    self._emit_match_arm_body(arm.body)
+                    self._indent -= 1
+                    self._line("}")
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                if first:
+                    self._line("{")
+                else:
+                    self._line("} else {")
+                self._indent += 1
+                self._emit_match_arm_body(arm.body)
+                self._indent -= 1
+                self._line("}")
+            first = False
+        # Close if last arm wasn't wildcard/Err
+        if m.arms and not isinstance(
+            m.arms[-1].pattern,
+            (WildcardPattern, BindingPattern),
+        ):
+            last_pat = m.arms[-1].pattern
+            if not (isinstance(last_pat, VariantPattern) and last_pat.name == "Err"):
                 self._line("}")
 
     def _emit_match_arm_body(self, body: list) -> None:  # type: ignore[type-arg]

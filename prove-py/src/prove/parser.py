@@ -1112,6 +1112,14 @@ class Parser:
     def _parse_import(self, module_tok: Token) -> ImportDecl:
         """Parse an import: ModuleName verb_group (, verb_group)*
 
+        Supports single-line (comma-separated) and multi-line (indented
+        continuation) verb groups::
+
+            List reads first last length index
+              validates empty contains
+              creates range
+              transforms slice reverse sort
+
         The module name TYPE_IDENTIFIER has already been consumed.
         """
         start = module_tok.span
@@ -1124,6 +1132,19 @@ class Parser:
             if not self._at(TokenKind.COMMA):
                 break
             self._advance()
+
+        # Handle indented continuation verb groups (multi-line import)
+        if self._at(TokenKind.NEWLINE) and self._peek(1).kind == TokenKind.INDENT:
+            self._advance()  # consume NEWLINE
+            self._advance()  # consume INDENT
+            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                self._skip_newlines()
+                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                    break
+                group = self._parse_import_group(seen_verbs)
+                items.extend(group)
+            if self._at(TokenKind.DEDENT):
+                self._advance()
 
         end = self._current().span
         return ImportDecl(module_tok.value, items, self._span(start, end))
@@ -1210,7 +1231,9 @@ class Parser:
                         doc_lines.append(self._advance().value)
                         self._skip_newlines()
                     doc = "\n".join(doc_lines) if doc_lines else None
-                    if self._at(TokenKind.TYPE):
+                    if self._at(TokenKind.BINARY):
+                        types.append(self._parse_binary_lookup_def(doc))
+                    elif self._at(TokenKind.TYPE):
                         types.append(self._parse_type_def(doc))
                     elif self._current().kind in _VERBS:
                         body.append(self._parse_function_def(doc))
@@ -1228,6 +1251,8 @@ class Parser:
                             self._recovery_mode = True
                         self._advance()
                     continue
+                elif self._at(TokenKind.BINARY):
+                    types.append(self._parse_binary_lookup_def(None))
                 elif self._at(TokenKind.TYPE):
                     types.append(self._parse_type_def(None))
                 elif self._at(TokenKind.CONSTANT_IDENTIFIER):
@@ -1396,6 +1421,196 @@ class Parser:
 
         end = self._current().span
         return LookupEntry(variant, value, value_kind, self._span(start, end))
+
+    # ── Binary lookup type ──────────────────────────────────────────
+
+    def _parse_binary_lookup_def(self, doc_comment: str | None = None) -> TypeDef:
+        """Parse: binary TypeName ColType1 ColType2 ... where entries."""
+        start = self._current().span
+        self._advance()  # 'binary'
+        name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+        name = name_tok.value
+
+        # Parse column types until 'where' keyword
+        value_types: list[TypeExpr] = []
+        while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
+            value_types.append(self._parse_type_expr())
+
+        self._expect(TokenKind.WHERE)
+        self._skip_newlines()
+
+        # Check for CSV: file("path.csv")
+        csv_path: str | None = None
+        entries: list[LookupEntry]
+        if self._at(TokenKind.IDENTIFIER) and self._current().value == "file":
+            csv_path = self._parse_binary_csv_path()
+            entries = self._load_csv_entries(csv_path, len(value_types), start)
+        else:
+            entries = self._parse_binary_lookup_entries(len(value_types))
+
+        end = self._current().span
+        span = self._span(start, end)
+
+        # Build a dummy value_type from the first column type (or SimpleType("Unit"))
+        first_value_type = value_types[0] if value_types else SimpleType("Unit", span)
+
+        body = LookupTypeDef(
+            value_type=first_value_type,
+            entries=entries,
+            span=span,
+            value_types=tuple(value_types),
+            is_binary=True,
+            csv_path=csv_path,
+        )
+        return TypeDef(
+            name=name,
+            type_params=[],
+            modifiers=[],
+            body=body,
+            span=span,
+            doc_comment=doc_comment,
+        )
+
+    def _parse_binary_csv_path(self) -> str:
+        """Parse: file("path.csv")."""
+        self._advance()  # 'file'
+        self._expect(TokenKind.LPAREN)
+        path_tok = self._expect(TokenKind.STRING_LIT)
+        self._expect(TokenKind.RPAREN)
+        return path_tok.value
+
+    def _load_csv_entries(
+        self, csv_path: str, num_columns: int, start: Span
+    ) -> list[LookupEntry]:
+        """Load entries from a CSV file at compile time."""
+        import csv
+        from pathlib import Path
+
+        # Resolve relative to source file
+        source_file = start.file
+        base_dir = Path(source_file).parent if source_file else Path(".")
+        full_path = base_dir / csv_path
+
+        if not full_path.is_file():
+            self._error(
+                f"CSV file not found: {full_path}",
+                self._current().span,
+                code="E388",
+            )
+            return []
+
+        entries: list[LookupEntry] = []
+        with open(full_path, newline="") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if not row or row[0].startswith("#"):
+                    continue
+                # Strip whitespace from each cell
+                row = [cell.strip() for cell in row]
+                variant = row[0]
+                values = row[1 : num_columns + 1]
+                if len(values) != num_columns:
+                    self._error(
+                        f"CSV row '{variant}' has {len(values)} columns, "
+                        f"expected {num_columns}",
+                        self._current().span,
+                        code="E379",
+                    )
+                    continue
+                value_kinds = tuple(self._infer_literal_kind(v) for v in values)
+                span = self._current().span
+                entries.append(
+                    LookupEntry(
+                        variant=variant,
+                        value=values[0] if values else "",
+                        value_kind=value_kinds[0] if value_kinds else "string",
+                        span=span,
+                        values=tuple(values),
+                        value_kinds=value_kinds,
+                    )
+                )
+        return entries
+
+    def _parse_binary_lookup_entries(self, num_columns: int) -> list[LookupEntry]:
+        """Parse indented block of Variant | val1 | val2 | ... rows."""
+        entries: list[LookupEntry] = []
+        if self._at(TokenKind.INDENT):
+            self._advance()
+            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                self._skip_newlines()
+                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                    break
+                if not self._at(TokenKind.TYPE_IDENTIFIER):
+                    break
+                entry = self._parse_binary_entry_row(num_columns)
+                entries.append(entry)
+                self._skip_newlines()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
+        return entries
+
+    def _parse_binary_entry_row(self, num_columns: int) -> LookupEntry:
+        """Parse: Variant | val1 | val2 | ..."""
+        start = self._current().span
+        variant_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+
+        _LIT_KINDS = {
+            TokenKind.STRING_LIT: "string",
+            TokenKind.INTEGER_LIT: "integer",
+            TokenKind.DECIMAL_LIT: "decimal",
+            TokenKind.BOOLEAN_LIT: "boolean",
+        }
+        values: list[str] = []
+        value_kinds: list[str] = []
+        # Parse pipe-separated values until end of line
+        while self._at(TokenKind.PIPE):
+            self._advance()  # consume |
+            tok = self._current()
+            if tok.kind in _LIT_KINDS:
+                values.append(tok.value)
+                value_kinds.append(_LIT_KINDS[tok.kind])
+                self._advance()
+            else:
+                self._error(
+                    f"expected literal in binary lookup entry, "
+                    f"got {_token_display(tok.kind, tok.value)}",
+                    tok.span,
+                    code="E210",
+                )
+                values.append("")
+                value_kinds.append("string")
+                if tok.kind != TokenKind.EOF:
+                    self._advance()
+                break
+
+        end = self._current().span
+        return LookupEntry(
+            variant=variant_tok.value,
+            value=values[0] if values else "",
+            value_kind=value_kinds[0] if value_kinds else "string",
+            span=self._span(start, end),
+            values=tuple(values),
+            value_kinds=tuple(value_kinds),
+        )
+
+    @staticmethod
+    def _infer_literal_kind(value: str) -> str:
+        """Infer the literal kind from a CSV cell value."""
+        if value in ("true", "false"):
+            return "boolean"
+        # Try integer
+        try:
+            int(value)
+            return "integer"
+        except ValueError:
+            pass
+        # Try decimal
+        try:
+            float(value)
+            return "decimal"
+        except ValueError:
+            pass
+        return "string"
 
     # ── Foreign blocks ────────────────────────────────────────────
 
@@ -2065,6 +2280,30 @@ class Parser:
                 self._advance()
         else:
             body.append(self._parse_statement())
+            # When NEWLINE after => was suppressed, the first body statement
+            # has no INDENT.  Subsequent lines at the same depth produce a
+            # deferred INDENT — consume it and keep parsing arm body.
+            if self._at(TokenKind.NEWLINE) and self._peek(1).kind == TokenKind.INDENT:
+                self._advance()  # NEWLINE
+                self._advance()  # INDENT
+                while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                    _loop_pos = self.pos
+                    self._skip_newlines()
+                    if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                        break
+                    if self._at(TokenKind.COMMENT):
+                        tok = self._advance()
+                        body.append(CommentStmt(tok.value, tok.span))
+                        self._skip_newlines()
+                        if not self._check_progress(_loop_pos):
+                            break
+                        continue
+                    body.append(self._parse_statement())
+                    self._skip_newlines()
+                    if not self._check_progress(_loop_pos):
+                        break
+                if self._at(TokenKind.DEDENT):
+                    self._advance()
 
         end = self._current().span
         return MatchArm(pattern, body, self._span(start, end))

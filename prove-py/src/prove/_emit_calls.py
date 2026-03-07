@@ -335,6 +335,22 @@ class CallEmitterMixin:
                     return f"prove_string_len({', '.join(args)})"
                 return f"prove_list_len({', '.join(args)})"
 
+            # unwrap(Option<T>) → monomorphized _unwrap call
+            if name == "unwrap" and len(args) == 1 and expr.args:
+                arg_ty = self._infer_expr_type(expr.args[0])
+                if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option":
+                    opt_ct = map_type(arg_ty)
+                    return f"{opt_ct.decl}_unwrap({args[0]})"
+                # Result unwrap
+                if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result":
+                    if arg_ty.args:
+                        inner_ct = map_type(arg_ty.args[0])
+                        if inner_ct.is_pointer:
+                            return f"prove_result_unwrap_ptr({args[0]})"
+                        if inner_ct.decl == "double":
+                            return f"prove_result_unwrap_double({args[0]})"
+                        return f"prove_result_unwrap_int({args[0]})"
+
             # Builtin mapping
             if name in BUILTIN_MAP:
                 c_name = BUILTIN_MAP[name]
@@ -427,6 +443,20 @@ class CallEmitterMixin:
 
         if isinstance(expr.func, TypeIdentifierExpr):
             name = expr.func.name
+            # ByteArray(String) constructor
+            if name == "ByteArray" and len(args) == 1:
+                return f"prove_bytes_from_string({args[0]})"
+            # List(...) constructor — emit as list creation with pushes
+            if name == "List" and args:
+                elem_type = self._infer_expr_type(expr.args[0])
+                ct = map_type(elem_type)
+                tmp = self._tmp()
+                self._line(f"Prove_List *{tmp} = prove_list_new(sizeof({ct.decl}), {len(args)});")
+                for i, arg in enumerate(args):
+                    etmp = self._tmp()
+                    self._line(f"{ct.decl} {etmp} = {arg};")
+                    self._line(f"prove_list_push(&{tmp}, &{etmp});")
+                return tmp
             # Pad record constructors with missing fields using defaults
             resolved = self._symbols.resolve_type(name)
             if isinstance(resolved, RecordType):
@@ -498,9 +528,24 @@ class CallEmitterMixin:
         if isinstance(list_type, ListType):
             elem_type = list_type.element
 
+        # Determine result element type (may differ from input, e.g. Integer → String)
+        result_elem_type = elem_type
+        fn_expr = expr.args[1]
+        if isinstance(fn_expr, IdentifierExpr):
+            fn_sig = self._symbols.resolve_function_any(fn_expr.name, arity=1)
+            if fn_sig:
+                result_elem_type = fn_sig.return_type
+        elif isinstance(fn_expr, LambdaExpr):
+            # Infer from lambda body
+            saved = dict(self._locals)
+            if fn_expr.params:
+                self._locals[fn_expr.params[0]] = elem_type
+            result_elem_type = self._infer_expr_type(fn_expr.body)
+            self._locals = saved
+
         # Emit lambda with correct types
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "map")
-        result_ct = map_type(elem_type)  # map result elem same type for now
+        fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
+        result_ct = map_type(result_elem_type)
         return f"prove_list_map({list_arg}, {fn_name}, sizeof({result_ct.decl}))"
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
@@ -605,7 +650,52 @@ class CallEmitterMixin:
             self._lambdas.append(lam)
             return wrapper
         if not isinstance(expr, LambdaExpr):
-            # Not a lambda — assume it's an identifier referencing a function
+            # Not a lambda — resolve function reference and generate wrapper
+            if isinstance(expr, IdentifierExpr) and kind in ("map", "filter"):
+                # Check for common type-to-string conversions
+                c_fn = None
+                fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
+
+                # If the function parameter type doesn't match elem_type,
+                # use a built-in conversion (e.g., Integer → String)
+                elem_ct = map_type(elem_type)
+                elem_name = getattr(elem_type, "name", "")
+                ret_type = fn_sig.return_type if fn_sig else None
+                ret_name = getattr(ret_type, "name", "")
+
+                if ret_name == "String" and elem_name == "Integer":
+                    c_fn = "prove_string_from_int"
+                elif ret_name == "String" and elem_name in ("Float", "Decimal"):
+                    c_fn = "prove_string_from_double"
+                elif ret_name == "String" and elem_name == "Boolean":
+                    c_fn = "prove_string_from_bool"
+                elif fn_sig and fn_sig.module:
+                    c_fn = self._resolve_stdlib_c_name(fn_sig, None)
+
+                if c_fn:
+                    wrapper = f"_lambda_{self._tmp_counter}"
+                    self._tmp_counter += 1
+                    ret_ct = map_type(ret_type) if ret_type else elem_ct
+                    if kind == "map":
+                        lam = (
+                            f"static void *{wrapper}(const void *_arg) {{\n"
+                            f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
+                            f"    static {ret_ct.decl} _result;\n"
+                            f"    _result = {c_fn}(_x);\n"
+                            f"    return &_result;\n"
+                            f"}}\n"
+                        )
+                    elif kind == "filter":
+                        lam = (
+                            f"static bool {wrapper}(const void *_arg) {{\n"
+                            f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
+                            f"    return {c_fn}(_x);\n"
+                            f"}}\n"
+                        )
+                    else:
+                        return self._emit_expr(expr)
+                    self._lambdas.append(lam)
+                    return wrapper
             return self._emit_expr(expr)
 
         name = f"_lambda_{self._tmp_counter}"
@@ -653,9 +743,9 @@ class CallEmitterMixin:
             self._locals = saved_locals
             lam = (
                 f"static void {name}(void *_accum, const void *_elem) {{\n"
-                f"    {accum_ct.decl} *{accum_param} = ({accum_ct.decl}*)_accum;\n"
+                f"    {accum_ct.decl} {accum_param} = *({accum_ct.decl}*)_accum;\n"
                 f"    {elem_ct.decl} {elem_param} = *({elem_ct.decl}*)_elem;\n"
-                f"    *{accum_param} = {body_code};\n"
+                f"    *({accum_ct.decl}*)_accum = {body_code};\n"
                 f"}}\n"
             )
         elif kind == "each":

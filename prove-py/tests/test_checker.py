@@ -15,11 +15,7 @@ class TestNameResolution:
     """Test name lookups in scope."""
 
     def test_params_in_scope(self):
-        check(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a\n"
-        )
+        check("transforms add(a Integer, b Integer) Integer\n    from\n        a\n")
 
     def test_local_var_in_scope(self):
         check(
@@ -31,9 +27,7 @@ class TestNameResolution:
 
     def test_undefined_name_error(self):
         check_fails(
-            "transforms bad() Integer\n"
-            "    from\n"
-            "        unknown_var\n",
+            "transforms bad() Integer\n    from\n        unknown_var\n",
             "E310",
         )
 
@@ -60,10 +54,7 @@ class TestNameResolution:
 
     def test_constant_registered(self):
         """Constants are registered in the symbol table."""
-        st = check(
-            "module M\n"
-            "  MAX_SIZE as Integer = 100\n"
-        )
+        st = check("module M\n  MAX_SIZE as Integer = 100\n")
         sym = st.lookup("MAX_SIZE")
         assert sym is not None
         assert sym.resolved_type == INTEGER
@@ -100,15 +91,13 @@ class TestCallChecking:
             "        x\n"
             "transforms bad() Integer\n"
             "    from\n"
-            "        needs_int(\"hello\")\n",
+            '        needs_int("hello")\n',
             "E331",
         )
 
     def test_undefined_function_error(self):
         check_fails(
-            "transforms bad() Integer\n"
-            "    from\n"
-            "        nonexistent_func(42)\n",
+            "transforms bad() Integer\n    from\n        nonexistent_func(42)\n",
             "E311",
         )
 
@@ -128,15 +117,11 @@ class TestCallChecking:
             "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        console(\"hello\")\n"
+            '        console("hello")\n'
         )
 
     def test_builtin_len(self):
-        check(
-            "transforms count() Integer\n"
-            "    from\n"
-            "        len([1, 2, 3])\n"
-        )
+        check("transforms count() Integer\n    from\n        len([1, 2, 3])\n")
 
 
 class TestFieldAccess:
@@ -189,11 +174,7 @@ class TestLambdaCapture:
 
     def test_lambda_no_capture_ok(self):
         """Lambda using only its own params is fine."""
-        check(
-            "transforms doubled() List<Integer>\n"
-            "    from\n"
-            "        map([1, 2, 3], |x| x * 2)\n"
-        )
+        check("transforms doubled() List<Integer>\n    from\n        map([1, 2, 3], |x| x * 2)\n")
 
 
 class TestFailPropagation:
@@ -230,7 +211,7 @@ class TestIntegration:
             "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        console(\"Hello from Prove!\")\n"
+            '        console("Hello from Prove!")\n'
         )
 
     def test_multiple_declarations(self):
@@ -259,16 +240,12 @@ class TestIntegration:
             "matches safe_divide(a Integer, b Integer) MyResult\n"
             "    from\n"
             "        match b == 0\n"
-            "            true => Err(\"division by zero\")\n"
+            '            true => Err("division by zero")\n'
             "            false => Ok(a)\n"
         )
 
     def test_list_operations(self):
-        check(
-            "transforms total(nums List<Integer>) Integer\n"
-            "    from\n"
-            "        len(nums)\n"
-        )
+        check("transforms total(nums List<Integer>) Integer\n    from\n        len(nums)\n")
 
     def test_lambda_expression(self):
         check(
@@ -290,19 +267,15 @@ class TestIntegration:
     def test_imports_known_module(self):
         check(
             "module Main\n"
-            "  narrative: \"test\"\n"
+            '  narrative: "test"\n'
             "  InputOutput outputs console\n"
             "main() Unit\n"
             "    from\n"
-            "        InputOutput.console(\"hello\")\n"
+            '        InputOutput.console("hello")\n'
         )
 
     def test_string_interpolation(self):
-        check(
-            "transforms greet(name String) String\n"
-            "    from\n"
-            "        f\"Hello, {name}!\"\n"
-        )
+        check('transforms greet(name String) String\n    from\n        f"Hello, {name}!"\n')
 
     def test_fstring_non_stringable_type_error(self):
         check_fails(
@@ -312,16 +285,12 @@ class TestIntegration:
             "    y Integer\n"
             "transforms show(p Point) String\n"
             "    from\n"
-            "        f\"point: {p}\"\n",
+            '        f"point: {p}"\n',
             "E325",
         )
 
     def test_validates_function(self):
-        check(
-            "validates is_valid(x Integer)\n"
-            "    from\n"
-            "        x > 0\n"
-        )
+        check("validates is_valid(x Integer)\n    from\n        x > 0\n")
 
     def test_main_with_result(self):
         check(
@@ -329,7 +298,7 @@ class TestIntegration:
             "  InputOutput outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
-            "        console(\"starting\")\n"
+            '        console("starting")\n'
         )
 
 
@@ -339,37 +308,27 @@ class TestShadowing:
     def test_function_shadows_builtin(self):
         """E316: function name shadows builtin."""
         check_fails(
-            "transforms len(xs Integer) Integer\n"
-            "    from\n"
-            "        xs\n",
+            "transforms len(xs Integer) Integer\n    from\n        xs\n",
             "E316",
         )
 
     def test_parameter_shadows_builtin(self):
         """E316: parameter name shadows builtin function."""
         check_fails(
-            "transforms foo(len Integer) Integer\n"
-            "    from\n"
-            "        len\n",
+            "transforms foo(len Integer) Integer\n    from\n        len\n",
             "E316",
         )
 
     def test_type_shadows_builtin(self):
         """E317: type name shadows builtin type."""
         check_fails(
-            "module M\n"
-            "  type Integer is\n"
-            "    value String\n",
+            "module M\n  type Integer is\n    value String\n",
             "E317",
         )
 
     def test_no_shadow_for_normal_names(self):
         """Normal names should not trigger E316 or E317."""
-        check(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a + b\n"
-        )
+        check("transforms add(a Integer, b Integer) Integer\n    from\n        a + b\n")
 
 
 class TestUnusedType:
@@ -541,13 +500,7 @@ class TestLookupTable:
     def test_e377_not_a_lookup_type(self):
         """E377: accessing a type that is not [Lookup]."""
         check_fails(
-            "module M\n"
-            "\n"
-            "  type Color is Red | Blue\n"
-            "\n"
-            "main()\n"
-            "    from\n"
-            '        Color:"red"\n',
+            'module M\n\n  type Color is Red | Blue\n\nmain()\n    from\n        Color:"red"\n',
             "E377",
         )
 
@@ -559,14 +512,22 @@ class TestFunctionResolutionArity:
         dummy_span = Span("<test>", 0, 0, 1, 1)
         st = SymbolTable()
         sig1 = FunctionSignature(
-            verb="transforms", name="process",
-            param_names=["a", "b"], param_types=[INTEGER, INTEGER],
-            return_type=INTEGER, can_fail=False, span=dummy_span,
+            verb="transforms",
+            name="process",
+            param_names=["a", "b"],
+            param_types=[INTEGER, INTEGER],
+            return_type=INTEGER,
+            can_fail=False,
+            span=dummy_span,
         )
         sig2 = FunctionSignature(
-            verb=None, name="process",
-            param_names=["a"], param_types=[INTEGER],
-            return_type=STRING, can_fail=False, span=dummy_span,
+            verb=None,
+            name="process",
+            param_names=["a"],
+            param_types=[INTEGER],
+            return_type=STRING,
+            can_fail=False,
+            span=dummy_span,
         )
         st.define_function(sig1)
         st.define_function(sig2)
@@ -621,16 +582,26 @@ class TestVerbAwareRecursion:
             "E366",
         )
 
-    def test_same_verb_with_terminates_warns_w326(self):
-        """Recursive function with terminates → W326."""
-        check_warns(
+    def test_same_verb_with_terminates_no_w326(self):
+        """Recursive function with terminates → no W326."""
+        check(
             "matches f(n Integer) Integer\n"
-            "    terminates: n\n"
+            "    terminates: n == 0\n"
             "    from\n"
             "        match n\n"
             "            0 => 0\n"
             "            _ => f(n - 1)\n",
-            "W326",
+        )
+
+    def test_same_verb_with_terminates_no_w326(self):
+        """Recursive function with terminates → no W326 (terminates proves termination)."""
+        check(
+            "matches f(n Integer) Integer\n"
+            "    terminates: n == 0\n"
+            "    from\n"
+            "        match n\n"
+            "            0 => 0\n"
+            "            _ => f(n - 1)\n",
         )
 
     def test_different_verb_not_recursive(self):
@@ -647,4 +618,109 @@ class TestVerbAwareRecursion:
             "reads item(i Item) String\n"
             "    from\n"
             "        i.name\n"
+        )
+
+
+class TestBinaryLookup:
+    """Tests for binary lookup table checking (E379, E387, E389)."""
+
+    def test_valid_binary_lookup(self):
+        """A valid binary lookup type should produce no errors."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_binary_lookup_forward_access(self):
+        """Binary lookup with forward variant -> column access."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "transforms lookup_word(kind TokenKind) String\n"
+            "    from\n"
+            "        TokenKind:kind\n"
+        )
+
+    def test_binary_lookup_reverse_access(self):
+        """Binary lookup with reverse string -> variant access."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "transforms lookup_kind(word String) TokenKind\n"
+            "    from\n"
+            "        TokenKind:word\n"
+        )
+
+    def test_binary_lookup_literal_access(self):
+        """Binary lookup with literal access still works."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            '        TokenKind:"first"\n'
+        )
+
+    def test_e379_column_count_mismatch(self):
+        """E379: entry has wrong number of columns."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer Decimal where\n"
+            '      First | "first" | 1\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n",
+            "E379",
+        )
+
+    def test_e387_unsupported_column_type(self):
+        """E387: unsupported type in binary lookup column."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  type Color is Red | Blue\n"
+            "\n"
+            "  binary TokenKind Color Integer where\n"
+            '      First | "first" | 1\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n",
+            "E387",
+        )
+
+    def test_e389_return_type_mismatch(self):
+        """E389: return type doesn't match any binary lookup column."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            '      Second | "second" | 2\n'
+            "\n"
+            "transforms lookup_bad(kind TokenKind) Decimal\n"
+            "    from\n"
+            "        TokenKind:kind\n",
+            "E389",
         )

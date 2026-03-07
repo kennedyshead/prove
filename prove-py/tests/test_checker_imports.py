@@ -214,11 +214,11 @@ class TestRecordValueSerializable:
         user = RecordType("User", {"id": INTEGER, "name": STRING})
         assert is_json_serializable(user) is True
 
-    def test_record_not_implicitly_compatible_with_value(self):
-        """Record is NOT implicitly compatible with Value anymore."""
+    def test_record_implicitly_compatible_with_value(self):
+        """Record with serializable fields IS compatible with Value."""
         user = RecordType("User", {"id": INTEGER, "name": STRING})
         value = PrimitiveType("Value")
-        assert types_compatible(value, user) is False
+        assert types_compatible(value, user) is True
 
     def test_algebraic_not_serializable(self):
         color = AlgebraicType("Color", [

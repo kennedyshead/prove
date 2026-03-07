@@ -138,14 +138,18 @@ class SymbolTable:
         arg_types: list[Type] | None = None,
         *,
         arity: int | None = None,
+        expected_return: Type | None = None,
     ) -> FunctionSignature | None:
         """Look up a function by name alone (any verb).
 
         Disambiguation order:
         1. Arity match (from *arity* or len(*arg_types*))
-        2. First-argument type match (when *arg_types* given)
-        3. First candidate
+        2. Expected return type match (if given)
+        3. First-argument type match (when *arg_types* given)
+        4. First candidate
         """
+        from prove.types import TypeVariable, types_compatible
+
         candidates: list[FunctionSignature] = []
         for (_, fname), sigs in self._functions.items():
             if fname == name:
@@ -154,6 +158,7 @@ class SymbolTable:
             return None
         if len(candidates) == 1:
             return candidates[0]
+
         # Narrow by arity
         n = arity if arity is not None else (len(arg_types) if arg_types is not None else None)
         if n is not None:
@@ -162,6 +167,35 @@ class SymbolTable:
                 return by_arity[0]
             if by_arity:
                 candidates = by_arity
+
+        # Disambiguate by expected return type
+        if expected_return is not None:
+            matches = [s for s in candidates if types_compatible(expected_return, s.return_type)]
+            if len(matches) == 1:
+                return matches[0]
+            if matches:
+                candidates = matches
+
+        # Disambiguate by structural match (best for generics)
+        if arg_types:
+            structural_matches = []
+            for sig in candidates:
+                if len(sig.param_types) == len(arg_types):
+                    if all(
+                        isinstance(p, TypeVariable) or types_compatible(p, a)
+                        for p, a in zip(sig.param_types, arg_types)
+                    ):
+                        # If this matches return type too, it's a very strong candidate
+                        if expected_return is not None and types_compatible(
+                            expected_return, sig.return_type
+                        ):
+                            return sig
+                        structural_matches.append(sig)
+            if len(structural_matches) == 1:
+                return structural_matches[0]
+            if structural_matches:
+                candidates = structural_matches
+
         # Disambiguate by first-argument type name
         if arg_types:
             first = getattr(arg_types[0], "name", None) or getattr(
@@ -183,21 +217,8 @@ class SymbolTable:
                         )
                         if pname == first:
                             return sig
-            # Fall back to structural type equality for generics (e.g. ListType)
-            from prove.types import TypeVariable, types_compatible
 
-            for sig in candidates:
-                if len(sig.param_types) == len(arg_types):
-                    if all(
-                        isinstance(p, TypeVariable) or types_compatible(p, a)
-                        for p, a in zip(sig.param_types, arg_types)
-                    ):
-                        return sig
-        # Tiebreaker: prefer failable signature when disambiguation fails
-        # (e.g. user(id)! should resolve to `inputs user` not `transforms user`)
-        failable = [s for s in candidates if s.can_fail]
-        if len(failable) == 1:
-            return failable[0]
+        # Fall back to first candidate
         return candidates[0]
 
     def define_type(self, name: str, resolved: Type) -> None:

@@ -1,0 +1,32 @@
+module Main
+  narrative: """Demonstrates advanced Pattern module operations"""
+  InputOutput outputs console
+  Pattern reads search find_all text start end, transforms replace split, types Match
+  List reads length
+  Text validates contains, transforms join
+
+main() Result<Unit, Error>!
+from
+    text as String = "The quick brown fox jumps over the lazy dog"
+    // Search for first match
+    found as Option<Match> = search(text, "fox")
+    match found
+        Some(m) =>
+            matched_text as String = text(m)
+            pos as Integer = start(m)
+            end_pos as Integer = end(m)
+            console(f"Found '{matched_text}' at {pos}-{end_pos}")
+        _ => console("Pattern not found")
+    // Find all matches
+    numbers as String = "one 1 two 2 three 3 four 4"
+    all_matches as List<Match> = find_all(numbers, r"[0-9]")
+    count as Integer = length(all_matches)
+    console(f"Found {count} digits")
+    // Replace
+    replaced as String = replace(text, "fox", "cat")
+    console(f"Replaced: {contains(replaced, "cat")}")
+    // Split
+    sentence as String = "apple,banana,cherry"
+    parts as List<String> = split(sentence, ",")
+    console(f"Parts: {join(parts, " | ")}")
+    Unit

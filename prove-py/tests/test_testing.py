@@ -88,7 +88,7 @@ class TestTestGenerator:
 
 class TestRunTests:
     def test_run_math_example(self, needs_cc):
-        examples_dir = Path(__file__).resolve().parent.parent / "examples" / "math"
+        examples_dir = Path(__file__).resolve().parent.parent.parent / "examples" / "math"
         source = (examples_dir / "src" / "main.prv").read_text()
         module, symbols = _parse_check(source)
         result = run_tests(

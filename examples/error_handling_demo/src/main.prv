@@ -1,0 +1,19 @@
+module Main
+  narrative: """Demonstrates pattern matching on Result type."""
+  InputOutput outputs console
+  Parse creates json, reads text
+
+main() Unit
+from
+    json_str as String = """{"name": "Alice"}"""
+    result as Result<Value, String> = json(json_str)
+    match result
+        Ok(result) =>
+            name_val as String = text(result)
+            console(f"Parsed name: {name_val}")
+        Err(error) => console(f"Error: {error}")
+    bad_json as String = "invalid"
+    bad_result as Result<Value, String> = json(bad_json)
+    match bad_result
+        Ok(bad_result) => console("Should not happen")
+        Err(error) => console(f"Parse error: {error}")

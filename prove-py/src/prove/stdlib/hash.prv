@@ -1,8 +1,6 @@
 module Hash
   narrative: """Cryptographic hashing and verification."""
-
-  /// Hash algorithm selector (0=SHA256, 1=SHA512, 2=BLAKE3)
-  type Algorithm is binary
+  Bytes types ByteArray
 
 /// Hash a byte array to SHA-256 digest
 creates sha256(data ByteArray) ByteArray

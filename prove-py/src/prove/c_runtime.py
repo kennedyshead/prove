@@ -337,6 +337,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_time_parse_duration",
     ],
     "prove_bytes": [
+        "prove_bytes_from_string",
         "prove_bytes_create",
         "prove_bytes_validates",
         "prove_bytes_slice",
@@ -371,6 +372,9 @@ _RUNTIME_FUNCTIONS = {
         "prove_random_choice_str",
         "prove_random_shuffle_int",
         "prove_random_shuffle_str",
+    ],
+    "prove_lookup": [
+        "prove_lookup_find",
     ],
     "prove_pattern": [
         "prove_pattern_match",
@@ -420,8 +424,12 @@ def copy_runtime(
         return _copy_all_runtime_files(dest)
 
     all_calls = set()
+    all_includes: set[str] = set()
+    include_pattern = re.compile(r'#include\s+"(prove_[a-zA-Z0-9_]+)\.h"')
     for src in c_sources:
         all_calls.update(_extract_function_calls(src))
+        for m in include_pattern.finditer(src):
+            all_includes.add(m.group(1))
 
     needed_libs = set()
     for lib_name, funcs in _RUNTIME_FUNCTIONS.items():
@@ -429,6 +437,10 @@ def copy_runtime(
             if func in all_calls:
                 needed_libs.add(lib_name)
                 break
+        else:
+            # Also include libs whose header is explicitly included
+            if lib_name in all_includes:
+                needed_libs.add(lib_name)
 
     if stdlib_libs:
         needed_libs.update(stdlib_libs)

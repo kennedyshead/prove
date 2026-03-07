@@ -8,7 +8,7 @@ import pytest
 from prove.builder import build_project
 from prove.config import load_config
 
-_EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
+_EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
 
 
 @pytest.fixture

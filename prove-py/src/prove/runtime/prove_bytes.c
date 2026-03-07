@@ -9,6 +9,15 @@ static Prove_ByteArray *_alloc_bytes(int64_t length) {
     return ba;
 }
 
+/* ── constructors ────────────────────────────────────────────── */
+
+Prove_ByteArray *prove_bytes_from_string(Prove_String *s) {
+    int64_t len = s ? s->length : 0;
+    Prove_ByteArray *ba = _alloc_bytes(len);
+    if (len > 0) memcpy(ba->data, s->data, (size_t)len);
+    return ba;
+}
+
 /* ── byte channel ────────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_create(Prove_List *values) {
