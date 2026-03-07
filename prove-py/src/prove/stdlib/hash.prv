@@ -1,0 +1,49 @@
+module Hash
+  narrative: """Cryptographic hashing and verification."""
+
+  /// Hash algorithm selector (0=SHA256, 1=SHA512, 2=BLAKE3)
+  type Algorithm is binary
+
+/// Hash a byte array to SHA-256 digest
+creates sha256(data ByteArray) ByteArray
+binary
+
+/// Hash a string to SHA-256 hex string
+reads sha256(data String) String
+binary
+
+/// Verify data matches an expected SHA-256 hash
+validates sha256(data ByteArray, expected ByteArray)
+binary
+
+/// Hash a byte array to SHA-512 digest
+creates sha512(data ByteArray) ByteArray
+binary
+
+/// Hash a string to SHA-512 hex string
+reads sha512(data String) String
+binary
+
+/// Verify data matches an expected SHA-512 hash
+validates sha512(data ByteArray, expected ByteArray)
+binary
+
+/// Hash a byte array to BLAKE3 digest
+creates blake3(data ByteArray) ByteArray
+binary
+
+/// Hash a string to BLAKE3 hex string
+reads blake3(data String) String
+binary
+
+/// Verify data matches an expected BLAKE3 hash
+validates blake3(data ByteArray, expected ByteArray)
+binary
+
+/// Create an HMAC-SHA256 signature
+creates hmac(data ByteArray, key ByteArray) ByteArray
+binary
+
+/// Verify an HMAC-SHA256 signature
+validates hmac(data ByteArray, key ByteArray, signature ByteArray)
+binary

@@ -1,0 +1,11 @@
+module Main
+  narrative: """Demonstrates Hash module operations."""
+  InputOutput outputs console
+  Hash reads sha256 sha512
+
+main() Result<Unit, Error>!
+from
+    h256 as String = sha256("hello")
+    console(f"sha256('hello'): {h256}")
+    h512 as String = sha512("hello")
+    console(f"sha512('hello'): {h512}")

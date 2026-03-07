@@ -82,6 +82,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "option": {"prove_option"},
     "random": {"prove_random"},
     "bytes": {"prove_bytes"},
+    "hash": {"prove_hash_crypto", "prove_bytes"},
     "time": {"prove_time"},
 }
 
@@ -332,6 +333,19 @@ _RUNTIME_FUNCTIONS = {
         "prove_bytes_at",
         "prove_bytes_at_validates",
     ],
+    "prove_hash_crypto": [
+        "prove_crypto_sha256_bytes",
+        "prove_crypto_sha256_string",
+        "prove_crypto_sha256_validates",
+        "prove_crypto_sha512_bytes",
+        "prove_crypto_sha512_string",
+        "prove_crypto_sha512_validates",
+        "prove_crypto_blake3_bytes",
+        "prove_crypto_blake3_string",
+        "prove_crypto_blake3_validates",
+        "prove_crypto_hmac_create",
+        "prove_crypto_hmac_validates",
+    ],
     "prove_random": [
         "prove_random_integer",
         "prove_random_integer_range",
@@ -406,9 +420,16 @@ def copy_runtime(
         needed_libs.update(stdlib_libs)
 
     needed_files: set[str] = set()
+    lib_keys = set(_RUNTIME_FUNCTIONS.keys())
     for lib_name in needed_libs:
         for name in _RUNTIME_FILES:
-            if lib_name in name:
+            stem = name.rsplit(".", 1)[0]  # e.g. "prove_parse_json"
+            if stem == lib_name:
+                # Exact match: prove_hash.c for prove_hash
+                needed_files.add(name)
+            elif stem.startswith(lib_name + "_") and stem not in lib_keys:
+                # Sub-file: prove_parse_json.c for prove_parse
+                # but NOT prove_hash_crypto.c for prove_hash (it's its own lib)
                 needed_files.add(name)
 
     # Always include core runtime files.
