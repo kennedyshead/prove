@@ -13,3 +13,4 @@ tmp
 local
 .DS_Store
 build
+.prove
