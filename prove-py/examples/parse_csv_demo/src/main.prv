@@ -1,0 +1,17 @@
+module Main
+  narrative: """Demonstrates CSV parsing and emission via the Parse module."""
+  InputOutput outputs console
+  Parse creates csv, validates csv
+  List reads length
+  Types reads string
+
+main() Result<Unit, Error>!
+from
+    source as String = "name,age,city\nAlice,30,London\nBob,25,Paris\n"
+    rows as List<List<String>> = csv(source)!
+    console("Parsed " + string(length(rows)) + " rows")
+    output as String = csv(rows)
+    console("Emitted CSV:")
+    console(output)
+    is_valid as Boolean = valid csv(source)
+    console("Valid CSV: " + string(is_valid))
