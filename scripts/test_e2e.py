@@ -10,7 +10,7 @@ import sys
 import traceback
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).parent.parent / "prove-py" / "examples"
+EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 PROVE_CLI = [sys.executable, "-m", "prove"]
 
