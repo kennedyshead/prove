@@ -1,0 +1,30 @@
+module Main
+  narrative: """Demonstrates Character module operations."""
+  InputOutput outputs console
+  Character validates alpha digit alnum upper lower space
+  Character reads at
+
+main() Result<Unit, Error>!
+from
+    a as Character = 'A'
+    z as Character = 'Z'
+    num as Character = '5'
+    space_char as Character = ' '
+    lower_a as Character = 'a'
+    console(f"'A' alpha: {alpha(a)}")
+    console(f"'A' digit: {digit(a)}")
+    console(f"'A' alnum: {alnum(a)}")
+    console(f"'A' upper: {upper(a)}")
+    console(f"'A' lower: {lower(a)}")
+    console(f"'5' alpha: {alpha(num)}")
+    console(f"'5' digit: {digit(num)}")
+    console(f"'5' alnum: {alnum(num)}")
+    console(f"' ' space: {space(space_char)}")
+    console(f"'a' upper: {upper(lower_a)}")
+    console(f"'a' lower: {lower(lower_a)}")
+    text as String = "Hello"
+    char_at_0 as Character = at(text, 0)
+    char_at_4 as Character = at(text, 4)
+    console(f"First char of 'Hello': {char_at_0}")
+    console(f"Last char of 'Hello': {char_at_4}")
+    console("All character operations completed!")

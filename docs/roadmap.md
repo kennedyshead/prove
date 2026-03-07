@@ -44,6 +44,7 @@ after V1.0 is stable.
 | v0.9.6 | Complete | Mutation Testing (`--no-mutate` to disable), Stdlib: List, Math, Convert |
 | v0.9.7 | Complete | Stdlib: Path, Pattern |
 | v0.9.8 | Complete | Stdlib: Format, Error |
+| v0.9.9 | Complete | Stdlib: Random, Time, Bytes, Hash; Format + Parse extensions |
 
 ---
 

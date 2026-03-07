@@ -1,0 +1,38 @@
+module Main
+  narrative: """Demonstrates Text module operations."""
+  InputOutput outputs console
+  Text validates starts ends contains
+  Text transforms slice trim lower upper split join replace repeat
+  Text reads length
+  List reads length
+
+main() Result<Unit, Error>!
+from
+    text as String = "  Hello, World!  "
+    console(f"Original: '{text}'")
+    console(f"Length: {length(text)}")
+    trimmed as String = trim(text)
+    console(f"Trimmed: '{trimmed}'")
+    upper_text as String = upper(trimmed)
+    lower_text as String = lower(trimmed)
+    console(f"Upper: '{upper_text}'")
+    console(f"Lower: '{lower_text}'")
+    slice_text as String = slice(text, 0, 5)
+    console(f"Slice [0:5]: '{slice_text}'")
+    starts as Boolean = starts(text, "  Hello")
+    ends as Boolean = ends(text, "!")
+    console(f"Starts with '  Hello': {starts}")
+    console(f"Ends with '!': {ends}")
+    contains_w as Boolean = contains(text, "World")
+    console(f"Contains 'World': {contains_w}")
+    csv as String = "apple,banana,cherry"
+    parts as List<String> = split(csv, ",")
+    console(f"Split into {length(parts)} parts")
+    items as List<String> = ["one", "two", "three"]
+    joined as String = join(items, ", ")
+    console(f"Joined: '{joined}'")
+    replaced as String = replace("hello world", "world", "Prove")
+    console(f"Replaced: '{replaced}'")
+    repeated as String = repeat("ha", 3)
+    console(f"Repeated: '{repeated}'")
+    console("All text operations completed!")

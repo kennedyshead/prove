@@ -1,7 +1,7 @@
 ---
 title: Standard Library - Prove Programming Language
-description: Complete reference for the Prove standard library including List, Option, Result, Text, String, and more.
-keywords: Prove stdlib, standard library, List, Option, Result, Text, String
+description: Complete reference for the Prove standard library — 16 modules including Text, Parse, Math, Time, Hash, Bytes, Random, and more.
+keywords: Prove stdlib, standard library, List, Text, Parse, Math, Time, Hash, Bytes, Random
 ---
 
 # Standard Library
@@ -293,8 +293,27 @@ Extract typed data from a `Value`. Each accessor has a corresponding validator.
 | `validates` | `object(v Value) Boolean` | Check if Value is an object/table |
 | `validates` | `null(v Value) Boolean` | Check if Value is null |
 
+### URL
+
+Defines a binary `Url` type for parsed URL components.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `url(raw String) Url` | Parse a URL string into components |
+| `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
+| `validates` | `url(raw String)` | True if string is a valid URL |
+| `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
+
+### Base64
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `base64(encoded String) ByteArray` | Decode Base64 string to byte array |
+| `creates` | `base64(data ByteArray) String` | Encode byte array as Base64 |
+| `validates` | `base64(encoded String)` | True if string is valid Base64 |
+
 ```prove
-Parse creates toml, reads text object, types Value
+Parse creates toml url, reads text object url, validates url base64, types Value Url
 Table reads keys get, types Table
 
 main() Result<Unit, Error>!
@@ -304,6 +323,38 @@ from
     root as Table<Value> = Parse.object(doc)
     names as List<String> = Table.keys(root)
     InputOutput.console("Keys: " + join(names, ", "))
+```
+
+### URL Channel
+
+Defines a binary `Url` type with scheme, host, port, path, query, and fragment.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `url(raw String) Url` | Parse a URL string into components |
+| `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
+| `validates` | `url(raw String)` | Check if a string is a valid URL |
+| `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
+
+### Base64 Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `base64(encoded String) ByteArray` | Decode a Base64 string |
+| `creates` | `base64(data ByteArray) String` | Encode a byte array as Base64 |
+| `validates` | `base64(encoded String)` | Check if a string is valid Base64 |
+
+```prove
+Parse reads url, creates base64, types Url
+Bytes creates byte, types ByteArray
+
+main() Result<Unit, Error>!
+from
+    parsed as Url = url("https://example.com/path?q=1")
+    console("parsed URL ok")
+    data as ByteArray = byte([72, 101, 108, 108, 111])
+    encoded as String = base64(data)
+    console("base64: " + encoded)
 ```
 
 ---
@@ -495,12 +546,56 @@ from
 | `transforms` | `octal(number Integer) String` | Integer to octal string |
 | `transforms` | `decimal(value Float, places Integer) String` | Float with fixed decimal places |
 
+### Time and Date Formatting
+
+These functions format and parse `Time`, `Date`, `DateTime`, and `Duration` values.
+Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%dT%H:%M:%S"`.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `time(time Time, pattern String) String` | Format a time |
+| `creates` | `time(source String, pattern String) Time` | Parse a string into a time |
+| `validates` | `time(source String, pattern String)` | Check if string matches time format |
+| `transforms` | `date(date Date, pattern String) String` | Format a date |
+| `creates` | `date(source String, pattern String) Date` | Parse a string into a date |
+| `validates` | `date(source String, pattern String)` | Check if string matches date format |
+| `transforms` | `datetime(datetime DateTime, pattern String) String` | Format a datetime |
+| `creates` | `datetime(source String, pattern String) DateTime` | Parse a string into a datetime |
+| `validates` | `datetime(source String, pattern String)` | Check if string matches datetime format |
+| `transforms` | `duration(duration Duration, pattern String) String` | Format a duration |
+| `creates` | `duration(source String, pattern String) Duration` | Parse a string into a duration |
+
+### Time & Date Formatting
+
+Format time, date, datetime, and duration values using pattern strings.
+
+Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S"`, `"%Hh %Mm %Ss"`, and other `strftime`-style patterns.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `time(time Time, pattern String) String` | Format a time as a string |
+| `creates` | `time(source String, pattern String) Time` | Parse a string into a time |
+| `validates` | `time(source String, pattern String)` | True if string matches time format |
+| `transforms` | `date(date Date, pattern String) String` | Format a date as a string |
+| `creates` | `date(source String, pattern String) Date` | Parse a string into a date |
+| `validates` | `date(source String, pattern String)` | True if string matches date format |
+| `transforms` | `datetime(datetime DateTime, pattern String) String` | Format a datetime as a string |
+| `creates` | `datetime(source String, pattern String) DateTime` | Parse a string into a datetime |
+| `validates` | `datetime(source String, pattern String)` | True if string matches datetime format |
+| `transforms` | `duration(duration Duration, pattern String) String` | Format a duration as a string |
+| `creates` | `duration(source String, pattern String) Duration` | Parse a string into a duration |
+
 ```prove
-Format transforms pad_left hex decimal
+Format transforms pad_left hex decimal date, creates date
+Time creates date, types Date
 
 reads format_address(addr Integer) String
 from
     Format.pad_left(Format.hex(addr), 8, '0')
+
+reads format_date(date Date) String
+from
+    Format.date(date, "%Y-%m-%d")
 ```
 
 ---
@@ -612,6 +707,449 @@ from
 
 ---
 
+## Bytes
+
+**Module:** `Bytes` — byte sequence manipulation.
+
+Defines a binary `ByteArray` type for working with raw byte data.
+
+### Byte Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `byte(values List<Integer>) ByteArray` | Create byte array from integer list |
+| `validates` | `byte(data ByteArray)` | True if byte array is non-empty |
+
+### Slice Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `slice(data ByteArray, start Integer, length Integer) ByteArray` | Extract sub-range |
+| `creates` | `slice(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
+
+### Hex Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `hex(data ByteArray) String` | Encode byte array as hex string |
+| `creates` | `hex(source String) ByteArray` | Decode hex string to byte array |
+| `validates` | `hex(source String)` | True if string is valid hex |
+
+### At Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `at(data ByteArray, index Integer) Integer` | Read byte at index |
+| `validates` | `at(data ByteArray, index Integer)` | True if index is in bounds |
+
+```prove
+Bytes creates byte hex, reads hex at, types ByteArray
+
+main() Result<Unit, Error>!
+from
+    data as ByteArray = byte([72, 101, 108, 108, 111])
+    encoded as String = hex(data)
+    console("hex: " + encoded)
+    first as Integer = at(data, 0)
+    console(f"first byte: {first}")
+    decoded as ByteArray = hex("48656c6c6f")
+    console("decoded hex: " + hex(decoded))
+```
+
+---
+
+## Hash
+
+**Module:** `Hash` — cryptographic hashing and verification.
+
+Supports SHA-256, SHA-512, and BLAKE3 hash algorithms, plus HMAC-SHA256. Each
+hash channel has `creates` (raw bytes), `reads` (hex string), and `validates`
+(constant-time comparison) verbs.
+
+### SHA-256 Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `sha256(data ByteArray) ByteArray` | Hash bytes to SHA-256 digest |
+| `reads` | `sha256(data String) String` | Hash string to SHA-256 hex |
+| `validates` | `sha256(data ByteArray, expected ByteArray)` | Verify SHA-256 hash |
+
+### SHA-512 Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `sha512(data ByteArray) ByteArray` | Hash bytes to SHA-512 digest |
+| `reads` | `sha512(data String) String` | Hash string to SHA-512 hex |
+| `validates` | `sha512(data ByteArray, expected ByteArray)` | Verify SHA-512 hash |
+
+### BLAKE3 Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `blake3(data ByteArray) ByteArray` | Hash bytes to BLAKE3 digest |
+| `reads` | `blake3(data String) String` | Hash string to BLAKE3 hex |
+| `validates` | `blake3(data ByteArray, expected ByteArray)` | Verify BLAKE3 hash |
+
+### HMAC Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `hmac(data ByteArray, key ByteArray) ByteArray` | Create HMAC-SHA256 signature |
+| `validates` | `hmac(data ByteArray, key ByteArray, signature ByteArray)` | Verify HMAC-SHA256 signature |
+
+```prove
+Hash reads sha256 sha512
+
+main() Result<Unit, Error>!
+from
+    h256 as String = sha256("hello")
+    console(f"sha256('hello'): {h256}")
+    h512 as String = sha512("hello")
+    console(f"sha512('hello'): {h512}")
+```
+
+---
+
+## Random
+
+**Module:** `Random` — random value generation.
+
+All functions use the `inputs` verb since they read from a random source. Auto-seeds on first call.
+
+### Integer Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `integer() Integer` | Random integer |
+| `inputs` | `integer(minimum Integer, maximum Integer) Integer` | Random integer in range (inclusive) |
+| `validates` | `integer(value Integer, minimum Integer, maximum Integer)` | True if value is within range |
+
+### Decimal Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `decimal() Float` | Random float between 0.0 and 1.0 |
+| `inputs` | `decimal(minimum Float, maximum Float) Float` | Random float in range |
+
+### Boolean Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `boolean() Boolean` | Random boolean |
+
+### Collection Channels
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `choice(items List<Integer>) Integer` | Pick random integer from list |
+| `inputs` | `choice(items List<String>) String` | Pick random string from list |
+| `inputs` | `shuffle(items List<Integer>) List<Integer>` | Randomly reorder integer list |
+| `inputs` | `shuffle(items List<String>) List<String>` | Randomly reorder string list |
+
+```prove
+Random inputs integer decimal boolean
+
+main() Result<Unit, Error>!
+from
+    n as Integer = integer()
+    console(f"random integer: {n}")
+    r as Integer = integer(1, 10)
+    console(f"random 1..10: {r}")
+    d as Float = decimal()
+    console(f"random decimal: {d}")
+    b as Boolean = boolean()
+    console(f"random boolean: {b}")
+```
+
+---
+
+## Time
+
+**Module:** `Time` — time representation, arithmetic, and calendar operations.
+
+Defines six binary types: `Time` (epoch timestamp), `Duration` (time span), `Date`
+(calendar date), `Clock` (time of day), `DateTime` (date + time), and `Weekday`
+(day of week, 0=Monday through 6=Sunday).
+
+### Time Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `time() Time` | Get current time |
+| `validates` | `time(time Time)` | True if time is in the past |
+
+### Duration Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `duration(hours Integer, minutes Integer, seconds Integer) Duration` | Create a duration |
+| `reads` | `duration(duration Duration) Integer` | Total seconds |
+| `validates` | `duration(duration Duration)` | True if duration is positive |
+| `transforms` | `duration(start Time, stop Time) Duration` | Difference between two times |
+
+### Date Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `date(time Time) Date` | Extract date from time |
+| `creates` | `date(year Integer, month Integer, day Integer) Date` | Create a date |
+| `validates` | `date(year Integer, month Integer, day Integer)` | True if date is valid |
+| `transforms` | `date(date Date, days Integer) Date` | Add days to a date |
+
+### DateTime Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `datetime(time Time) DateTime` | Extract datetime from time |
+| `creates` | `datetime(date Date, clock Clock) DateTime` | Create a datetime |
+| `validates` | `datetime(datetime DateTime)` | True if datetime is valid |
+| `transforms` | `datetime(datetime DateTime) Time` | Convert to timestamp |
+
+### Calendar Channels
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `days(year Integer, month Integer) Integer` | Days in a month |
+| `validates` | `days(year Integer)` | True if year is a leap year |
+| `reads` | `weekday(date Date) Weekday` | Day of week for a date |
+| `validates` | `weekday(date Date)` | True if date falls on a weekend |
+
+### Clock Channel
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `clock(time Time) Clock` | Extract clock from time |
+| `creates` | `clock(hour Integer, minute Integer, second Integer) Clock` | Create a clock |
+| `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock values are valid |
+
+```prove
+Time types Time Date Clock Duration
+Time inputs time, creates date clock duration, reads days
+
+main() Result<Unit, Error>!
+from
+    now as Time = time()
+    console("got current time")
+    d as Date = date(2026, 3, 6)
+    console(f"days in march 2026: {days(2026, 3)}")
+    c as Clock = clock(14, 30, 0)
+    console("clock created: 14:30:00")
+    dur as Duration = duration(1, 30, 0)
+    console("duration: 1h 30m")
+```
+
+---
+
+## Random
+
+**Module:** `Random` — random value generation.
+
+All functions use the `inputs` verb because randomness requires external entropy — it is an IO operation.
+
+### Generation
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `integer() Integer` | Random integer |
+| `inputs` | `integer(minimum Integer, maximum Integer) Integer` | Random integer within range (inclusive) |
+| `inputs` | `decimal() Float` | Random decimal between 0.0 and 1.0 |
+| `inputs` | `decimal(minimum Float, maximum Float) Float` | Random decimal within range |
+| `inputs` | `boolean() Boolean` | Random boolean |
+
+### Selection
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `choice(items List<Integer>) Integer` | Pick a random element from integer list |
+| `inputs` | `choice(items List<String>) String` | Pick a random element from string list |
+| `inputs` | `shuffle(items List<Integer>) List<Integer>` | Randomly reorder integer list |
+| `inputs` | `shuffle(items List<String>) List<String>` | Randomly reorder string list |
+
+### Validation
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `integer(value Integer, minimum Integer, maximum Integer)` | True if value falls within range |
+
+```prove
+Random inputs integer boolean choice shuffle
+
+inputs roll_dice(count Integer) List<Integer>
+from
+    results as List<Integer> = []
+    repeat count
+        results = results + [Random.integer(1, 6)]
+    results
+```
+
+---
+
+## Time
+
+**Module:** `Time` — time representation, arithmetic, and calendar operations.
+
+Defines six binary types: `Time` (epoch timestamp), `Duration` (time span), `Date` (calendar date), `Clock` (time of day), `DateTime` (date + time), and `Weekday` (day of week, 0=Monday through 6=Sunday).
+
+Only `inputs time()` is an IO verb (reads the system clock). All other functions are pure.
+
+### Time
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `time() Time` | Get current time |
+| `validates` | `time(time Time)` | True if time is in the past |
+
+### Duration
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `duration(hours Integer, minutes Integer, seconds Integer) Duration` | Create duration from components |
+| `reads` | `duration(duration Duration) Integer` | Total seconds in duration |
+| `validates` | `duration(duration Duration)` | True if duration is positive |
+| `transforms` | `duration(start Time, stop Time) Duration` | Compute difference between two times |
+
+### Date
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `date(time Time) Date` | Extract date from a time |
+| `creates` | `date(year Integer, month Integer, day Integer) Date` | Create date from components |
+| `validates` | `date(year Integer, month Integer, day Integer)` | True if date components are valid |
+| `transforms` | `date(date Date, days Integer) Date` | Add days to a date |
+
+### DateTime
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `datetime(time Time) DateTime` | Extract datetime from a time |
+| `creates` | `datetime(date Date, clock Clock) DateTime` | Create datetime from date and clock |
+| `validates` | `datetime(datetime DateTime)` | True if datetime is valid |
+| `transforms` | `datetime(datetime DateTime) Time` | Convert datetime to timestamp |
+
+### Calendar
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `days(year Integer, month Integer) Integer` | Number of days in a month |
+| `validates` | `days(year Integer)` | True if year is a leap year |
+| `reads` | `weekday(date Date) Weekday` | Get weekday from a date |
+| `validates` | `weekday(date Date)` | True if date falls on a weekend |
+
+### Clock
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `clock(time Time) Clock` | Extract clock from a time |
+| `creates` | `clock(hour Integer, minute Integer, second Integer) Clock` | Create clock from components |
+| `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock components are valid |
+
+```prove
+Time inputs time, creates duration date clock, reads days weekday, types Time Duration Date Clock
+
+reads elapsed_days(start Time, stop Time) Integer
+from
+    span as Duration = Time.duration(start, stop)
+    Time.duration(span) / 86400
+```
+
+---
+
+## Bytes
+
+**Module:** `Bytes` — byte sequence manipulation.
+
+Defines a binary type: `ByteArray` (a sequence of bytes).
+
+### Construction
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `byte(values List<Integer>) ByteArray` | Create byte array from list of integers |
+| `validates` | `byte(data ByteArray)` | True if byte array is empty |
+
+### Slicing
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `slice(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
+| `creates` | `slice(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
+
+### Hex Encoding
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `hex(data ByteArray) String` | Encode byte array as hex string |
+| `creates` | `hex(source String) ByteArray` | Decode hex string to byte array |
+| `validates` | `hex(source String)` | True if string is valid hex |
+
+### Access
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `at(data ByteArray, index Integer) Integer` | Read byte at index |
+| `validates` | `at(data ByteArray, index Integer)` | True if index is within bounds |
+
+```prove
+Bytes creates byte hex, reads slice hex at, validates hex
+
+reads first_byte_hex(data ByteArray) String
+from
+    single as ByteArray = Bytes.slice(data, 0, 1)
+    Bytes.hex(single)
+```
+
+---
+
+## Hash
+
+**Module:** `Hash` — cryptographic hashing and verification.
+
+Defines a binary type: `Algorithm` (hash algorithm selector).
+
+No external crypto dependency — all algorithms are implemented in the runtime.
+
+### SHA-256
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `sha256(data ByteArray) ByteArray` | Hash bytes to SHA-256 digest |
+| `reads` | `sha256(data String) String` | Hash string to SHA-256 hex string |
+| `validates` | `sha256(data ByteArray, expected ByteArray)` | Verify data matches expected SHA-256 hash |
+
+### SHA-512
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `sha512(data ByteArray) ByteArray` | Hash bytes to SHA-512 digest |
+| `reads` | `sha512(data String) String` | Hash string to SHA-512 hex string |
+| `validates` | `sha512(data ByteArray, expected ByteArray)` | Verify data matches expected SHA-512 hash |
+
+### BLAKE3
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `blake3(data ByteArray) ByteArray` | Hash bytes to BLAKE3 digest |
+| `reads` | `blake3(data String) String` | Hash string to BLAKE3 hex string |
+| `validates` | `blake3(data ByteArray, expected ByteArray)` | Verify data matches expected BLAKE3 hash |
+
+### HMAC
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `hmac(data ByteArray, key ByteArray) ByteArray` | Create HMAC-SHA256 signature |
+| `validates` | `hmac(data ByteArray, key ByteArray, signature ByteArray)` | Verify HMAC-SHA256 signature |
+
+```prove
+Hash reads sha256, creates sha256 hmac, validates hmac, types ByteArray
+Bytes creates byte
+
+reads checksum(content String) String
+from
+    Hash.sha256(content)
+```
+
+---
+
 ## Module Summary
 
 | Version | Module | Status | Purpose |
@@ -619,12 +1157,22 @@ from
 | v0.6 | **Character** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
 | v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
 | v0.6 | **Table** | Complete | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
-| v0.7 | **InputOutput** (ext) | Complete | New channels: `system`, `dir`, `process` with `validates` verbs for existence checks |
-| v0.7 | **Parse** | Complete | Format codecs for TOML and JSON with `Value` type and accessors |
+| v0.7 | **InputOutput** (ext) | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
+| v0.7 | **Parse** (ext) | Complete | TOML, JSON, URL, and Base64 codecs with `Value` and `Url` types |
 | v0.9.6 | **Math** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
 | v0.9.6 | **Types** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |
 | v0.9.6 | **List** | Complete | Operations on `List<T>`: length, first, last, contains, sort, reverse, range |
 | v0.9.7 | **Path** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | v0.9.7 | **Pattern** | Complete | Regex operations: test, search, replace, split with `Match` type |
-| v0.9.8 | **Format** | Complete | String formatting: pad, center, number formatting (hex, bin, octal) |
+| v0.9.8 | **Format** (ext) | Complete | String/number formatting (pad, hex, bin) and time/date formatting |
 | v0.9.8 | **Error** | Complete | Result/Option utilities: ok, err, some, none, unwrap_or |
+| v0.9.9 | **Bytes** | Complete | Byte sequence manipulation: create, slice, hex encode/decode, index access |
+| v0.9.9 | **Hash** | Complete | Cryptographic hashing: SHA-256, SHA-512, BLAKE3, HMAC-SHA256 |
+| v0.9.9 | **Random** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
+| v0.9.9 | **Time** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
+| v0.9.9 | **Random** | Complete | Random value generation (integer, decimal, boolean, choice, shuffle) |
+| v0.9.9 | **Time** | Complete | Time, Duration, Date, Clock, DateTime, Weekday types and operations |
+| v0.9.9 | **Bytes** | Complete | ByteArray type with hex encoding, slicing, and byte access |
+| v0.9.9 | **Hash** | Complete | SHA-256, SHA-512, BLAKE3 hashing and HMAC verification |
+| v0.9.9 | **Format** (ext) | Complete | Time, Date, DateTime, Duration formatting and parsing |
+| v0.9.9 | **Parse** (ext) | Complete | URL parsing/construction and Base64 encoding/decoding |

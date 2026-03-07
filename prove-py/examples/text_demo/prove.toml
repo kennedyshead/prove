@@ -1,0 +1,7 @@
+[project]
+name = "text_demo"
+version = "0.1.0"
+edition = "2024-11-15"
+
+[target]
+output = "text_demo"
