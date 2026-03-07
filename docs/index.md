@@ -178,8 +178,7 @@ from
 transforms set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
-    user.email = email
-    user
+    User(user.id, user.name, email)
 
 transforms dump_user(user User) String
   requires valid value(user)
@@ -191,21 +190,21 @@ outputs save(json_data String)!
 from
     file(USER_FILE, json_data)!
 
-outputs update_email(id Option<Integer>) User:[Mutable]!
-  ensures valid user(user)
+outputs update_email(id Option<Integer>) User!
+  ensures valid user(updated)
   requires valid id(id)
   explain
       we get an email address
       we fetch the user
       we set the email to user
       change the user to json string and save it
-      return the user
+      return the updated user
 from
     email as Option<Email> = email()
-    user as User:[Mutable] = user(id)!
-    set_email(user, email)
-    save(dump_user(user))
-    user
+    user as User = user(id)!
+    updated as User = set_email(user, email)
+    save(dump_user(updated))
+    updated
 ```
 
 `explain` is LSP-suggested, not compiler-required — but `ensures` without `explain` produces a warning, since promises should be documented.

@@ -56,8 +56,7 @@ from
 transforms set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
-    user.email = email
-    user
+    User(user.id, user.name, email)
 
 transforms dump_user(user User) String
   requires valid value(user)
@@ -74,10 +73,10 @@ from
     // this is inputs email that reads from stdin, the validation of email is done through the type boundries
     email as Option<Email> = email()
     // this is inputs user that reads from user.json
-    user as User:[Mutable] = user()!
-    // Set the new email on the mutable user object
-    set_email(user, email)
+    user as User = user()!
+    // Set the new email and get updated user
+    updated as User = set_email(user, email)
     // save user.json
-    save(dump_user(user))
-    user
-    console(f"Saved user email {user.email}")
+    save(dump_user(updated))
+    updated
+    console(f"Saved user email {updated.email}")

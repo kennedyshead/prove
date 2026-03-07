@@ -507,6 +507,23 @@ A recursive function's `terminates` measure suggests O(n) call depth. Consider u
 
 A previous `prove build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
 
+### E331 — Field mutation in pure function
+
+A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
+
+```prove
+// Error — mutates field in transforms
+transforms set_email(user User, email Email) User
+from
+    user.email = email
+    user
+
+// Correct — construct new value
+transforms set_email(user User, email Email) User
+from
+    User(user.id, user.name, email)
+```
+
 ---
 
 ## Info

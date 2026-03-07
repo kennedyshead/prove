@@ -44,7 +44,6 @@ _IO_FUNCTIONS = frozenset({"sleep"})
 
 
 class ContractCheckMixin:
-
     def _check_contracts(self, fd: FunctionDef, return_type: Type, param_types: list[Type]) -> None:
         """Type-check ensures/requires/know/assume/believe contracts."""
         # Type-check `ensures` — push sub-scope with `result` bound to return type
@@ -314,6 +313,11 @@ class ContractCheckMixin:
         elif isinstance(stmt, Assignment):
             self._check_pure_expr(stmt.value)
         elif isinstance(stmt, FieldAssignment):
+            self._error(
+                "E331",
+                "field mutation in pure function; construct a new value instead",
+                stmt.span,
+            )
             self._check_pure_expr(stmt.value)
         elif isinstance(stmt, ExprStmt):
             self._check_pure_expr(stmt.expr)
@@ -368,6 +372,12 @@ class ContractCheckMixin:
             self._check_pure_expr(expr.expr)
         elif isinstance(expr, LambdaExpr):
             self._check_pure_expr(expr.body)
+        elif isinstance(expr, MatchExpr):
+            if expr.subject:
+                self._check_pure_expr(expr.subject)
+            for arm in expr.arms:
+                for s in arm.body:
+                    self._check_pure_stmt(s)
 
     # ── Match restriction (E367) ────────────────────────────────
 

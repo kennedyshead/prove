@@ -1214,6 +1214,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif isinstance(stmt, Assignment):
             self._check_pure_expr(stmt.value)
         elif isinstance(stmt, FieldAssignment):
+            self._error(
+                "E331",
+                "field mutation in pure function; construct a new value instead",
+                stmt.span,
+            )
             self._check_pure_expr(stmt.value)
         elif isinstance(stmt, ExprStmt):
             self._check_pure_expr(stmt.expr)
@@ -1268,6 +1273,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._check_pure_expr(expr.expr)
         elif isinstance(expr, LambdaExpr):
             self._check_pure_expr(expr.body)
+        elif isinstance(expr, MatchExpr):
+            if expr.subject:
+                self._check_pure_expr(expr.subject)
+            for arm in expr.arms:
+                for s in arm.body:
+                    self._check_pure_stmt(s)
 
     # ── Match restriction (E367) ────────────────────────────────
 

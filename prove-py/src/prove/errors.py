@@ -97,7 +97,7 @@ _register_doc_range("E", 370, 371)
 # Lookup tables E375-E378
 _register_doc_range("E", 375, 378)
 # Contract checking
-for _c in ("E380", "E381", "E382", "E384", "E385", "E386"):
+for _c in ("E331", "E380", "E381", "E382", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Explain verification E391-E394 (E390 replaced by W323)
 _register_doc_range("E", 391, 394)
