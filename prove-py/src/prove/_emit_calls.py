@@ -399,14 +399,18 @@ class CallEmitterMixin:
                     )
                     return call_str
 
-            # User function — resolve and mangle (re-resolve if needed)
+            # User function — resolve with type-aware dispatch for overloads
             if sig is None:
-                sig = self._symbols.resolve_function(None, name, n_args)
-            if sig is None:
-                sig = self._symbols.resolve_function_any(
-                    name,
-                    arity=n_args,
-                )
+                if expr.args:
+                    actual = [self._infer_expr_type(a) for a in expr.args]
+                    sig = self._symbols.resolve_function_by_types(None, name, actual)
+                if sig is None:
+                    sig = self._symbols.resolve_function(None, name, n_args)
+                if sig is None:
+                    sig = self._symbols.resolve_function_any(
+                        name,
+                        arity=n_args,
+                    )
 
             if sig and sig.verb is not None:
                 args = self._coerce_call_args(args, expr.args, sig)
@@ -482,7 +486,13 @@ class CallEmitterMixin:
             module_name = expr.func.obj.name
             name = expr.func.field
             n_args = len(expr.args)
-            sig = self._symbols.resolve_function(None, name, n_args)
+            # Type-aware resolution for overloaded functions
+            sig = None
+            if expr.args:
+                actual = [self._infer_expr_type(a) for a in expr.args]
+                sig = self._symbols.resolve_function_by_types(None, name, actual)
+            if sig is None:
+                sig = self._symbols.resolve_function(None, name, n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
                     name,

@@ -173,34 +173,34 @@ class TestParserFunctions:
         assert len(decl.params) == 1
 
     def test_validates(self):
-        source = 'validates email(address String)\n    from\n        address\n'
+        source = "validates email(address String)\n    from\n        address\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "validates"
 
     def test_inputs(self):
-        source = 'inputs load_config(path String) Config!\n    from\n        path\n'
+        source = "inputs load_config(path String) Config!\n    from\n        path\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "inputs"
         assert decl.can_fail is True
 
     def test_outputs(self):
-        source = 'outputs add_product(db Database, product Product)!\n    from\n        db\n'
+        source = "outputs add_product(db Database, product Product)!\n    from\n        db\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "outputs"
         assert decl.can_fail is True
 
     def test_reads(self):
-        source = 'reads get(key String, table Table) String\n    from\n        key\n'
+        source = "reads get(key String, table Table) String\n    from\n        key\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "reads"
         assert decl.name == "get"
 
     def test_creates(self):
-        source = 'creates new() Table\n    from\n        0\n'
+        source = "creates new() Table\n    from\n        0\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "creates"
@@ -208,8 +208,7 @@ class TestParserFunctions:
 
     def test_matches(self):
         source = (
-            'matches add(key String, value String, table Table)'
-            ' Table\n    from\n        table\n'
+            "matches add(key String, value String, table Table) Table\n    from\n        table\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -217,32 +216,32 @@ class TestParserFunctions:
         assert decl.name == "add"
 
     def test_main(self):
-        source = 'main() Result<Unit, Error>!\n    from\n        x\n'
+        source = "main() Result<Unit, Error>!\n    from\n        x\n"
         decl = parse_decl(source)
         assert isinstance(decl, MainDef)
         assert decl.can_fail is True
         assert isinstance(decl.return_type, GenericType)
 
     def test_ensures(self):
-        source = 'transforms f(x Integer) Integer\n    ensures result >= 0\n    from\n        x\n'
+        source = "transforms f(x Integer) Integer\n    ensures result >= 0\n    from\n        x\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert len(decl.ensures) == 1
 
     def test_requires(self):
-        source = 'transforms f(x Integer) Integer\n    requires x > 0\n    from\n        x\n'
+        source = "transforms f(x Integer) Integer\n    requires x > 0\n    from\n        x\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert len(decl.requires) == 1
 
     def test_explain_named_entry(self):
         source = (
-            'transforms f(x Integer) Integer\n'
-            '    ensures result >= 0\n'
-            '    explain\n'
-            '        non_negative: x is always positive\n'
-            '    from\n'
-            '        x\n'
+            "transforms f(x Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    explain\n"
+            "        non_negative: x is always positive\n"
+            "    from\n"
+            "        x\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -253,14 +252,14 @@ class TestParserFunctions:
 
     def test_explain_with_when_condition(self):
         source = (
-            'transforms abs(n Integer) Integer\n'
-            '    ensures result >= 0\n'
-            '    explain\n'
-            '        positive: identity when n >= 0\n'
-            '        negative: deducted when n < 0\n'
-            '    from\n'
-            '        n\n'
-            '        0 - n\n'
+            "transforms abs(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    explain\n"
+            "        positive: identity when n >= 0\n"
+            "        negative: deducted when n < 0\n"
+            "    from\n"
+            "        n\n"
+            "        0 - n\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -279,14 +278,14 @@ class TestParserFunctions:
 
     def test_explain_mixed_entries(self):
         source = (
-            'transforms clamp_pos(n Integer) Integer\n'
-            '    ensures result >= 0\n'
-            '    explain\n'
-            '        bounded: every path keeps result non-negative\n'
-            '        positive: identity when n >= 0\n'
-            '    from\n'
-            '        n\n'
-            '        0\n'
+            "transforms clamp_pos(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    explain\n"
+            "        bounded: every path keeps result non-negative\n"
+            "        positive: identity when n >= 0\n"
+            "    from\n"
+            "        n\n"
+            "        0\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -296,7 +295,7 @@ class TestParserFunctions:
         assert decl.explain.entries[1].condition is not None
 
     def test_doc_comment(self):
-        source = '/// Does something\ntransforms f(x Integer) Integer\n    from\n        x\n'
+        source = "/// Does something\ntransforms f(x Integer) Integer\n    from\n        x\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.doc_comment == "Does something"
@@ -304,14 +303,14 @@ class TestParserFunctions:
 
 class TestParserExpressions:
     def test_integer_literal(self):
-        source = 'transforms f() Integer\n    from\n        42\n'
+        source = "transforms f() Integer\n    from\n        42\n"
         decl = parse_decl(source)
         assert isinstance(decl.body[0], ExprStmt)
         assert isinstance(decl.body[0].expr, IntegerLit)
         assert decl.body[0].expr.value == "42"
 
     def test_decimal_literal(self):
-        source = 'transforms f() Decimal\n    from\n        3.14\n'
+        source = "transforms f() Decimal\n    from\n        3.14\n"
         decl = parse_decl(source)
         assert isinstance(decl.body[0].expr, DecimalLit)
 
@@ -322,20 +321,20 @@ class TestParserExpressions:
         assert decl.body[0].expr.value == "hello"
 
     def test_boolean_literal(self):
-        source = 'transforms f() Boolean\n    from\n        true\n'
+        source = "transforms f() Boolean\n    from\n        true\n"
         decl = parse_decl(source)
         assert isinstance(decl.body[0].expr, BooleanLit)
         assert decl.body[0].expr.value is True
 
     def test_binary_ops(self):
-        source = 'transforms f() Integer\n    from\n        1 + 2\n'
+        source = "transforms f() Integer\n    from\n        1 + 2\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, BinaryExpr)
         assert expr.op == "+"
 
     def test_precedence(self):
-        source = 'transforms f() Integer\n    from\n        1 + 2 * 3\n'
+        source = "transforms f() Integer\n    from\n        1 + 2 * 3\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         # Should be 1 + (2 * 3)
@@ -345,27 +344,27 @@ class TestParserExpressions:
         assert expr.right.op == "*"
 
     def test_pipe(self):
-        source = 'transforms f() Integer\n    from\n        x |> g\n'
+        source = "transforms f() Integer\n    from\n        x |> g\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, PipeExpr)
 
     def test_field_access(self):
-        source = 'transforms f() Integer\n    from\n        x.y\n'
+        source = "transforms f() Integer\n    from\n        x.y\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, FieldExpr)
         assert expr.field == "y"
 
     def test_call(self):
-        source = 'transforms f() Integer\n    from\n        g(1, 2)\n'
+        source = "transforms f() Integer\n    from\n        g(1, 2)\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, CallExpr)
         assert len(expr.args) == 2
 
     def test_namespaced_call(self):
-        source = 'transforms f() Integer\n    from\n        Table.new()\n'
+        source = "transforms f() Integer\n    from\n        Table.new()\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, CallExpr)
@@ -375,27 +374,27 @@ class TestParserExpressions:
         assert expr.func.field == "new"
 
     def test_fail_propagation(self):
-        source = 'inputs f() Integer!\n    from\n        g()!\n'
+        source = "inputs f() Integer!\n    from\n        g()!\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, FailPropExpr)
 
     def test_unary_minus(self):
-        source = 'transforms f() Integer\n    from\n        -x\n'
+        source = "transforms f() Integer\n    from\n        -x\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, UnaryExpr)
         assert expr.op == "-"
 
     def test_unary_not(self):
-        source = 'transforms f() Boolean\n    from\n        !x\n'
+        source = "transforms f() Boolean\n    from\n        !x\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, UnaryExpr)
         assert expr.op == "!"
 
     def test_lambda(self):
-        source = 'transforms f() Integer\n    from\n        map(xs, |x| x + 1)\n'
+        source = "transforms f() Integer\n    from\n        map(xs, |x| x + 1)\n"
         decl = parse_decl(source)
         call = decl.body[0].expr
         assert isinstance(call, CallExpr)
@@ -404,9 +403,9 @@ class TestParserExpressions:
 
     def test_match_expr(self):
         source = (
-            'transforms f() Integer\n    from\n'
-            '        match x\n            A => 1\n'
-            '            B => 2\n'
+            "transforms f() Integer\n    from\n"
+            "        match x\n            A => 1\n"
+            "            B => 2\n"
         )
         decl = parse_decl(source)
         expr = decl.body[0].expr
@@ -414,7 +413,7 @@ class TestParserExpressions:
         assert len(expr.arms) == 2
 
     def test_list_literal(self):
-        source = 'transforms f() List<Integer>\n    from\n        [1, 2, 3]\n'
+        source = "transforms f() List<Integer>\n    from\n        [1, 2, 3]\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, ListLiteral)
@@ -434,20 +433,20 @@ class TestParserExpressions:
         assert expr.value == "hello {x}"
 
     def test_range(self):
-        source = 'transforms f() Integer\n    from\n        1..10\n'
+        source = "transforms f() Integer\n    from\n        1..10\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, BinaryExpr)
         assert expr.op == ".."
 
     def test_index(self):
-        source = 'transforms f() Integer\n    from\n        xs[0]\n'
+        source = "transforms f() Integer\n    from\n        xs[0]\n"
         decl = parse_decl(source)
         expr = decl.body[0].expr
         assert isinstance(expr, IndexExpr)
 
     def test_regex_literal(self):
-        source = 'validates f(s String)\n    from\n        check(s, /^[A-Z]+$/)\n'
+        source = "validates f(s String)\n    from\n        check(s, /^[A-Z]+$/)\n"
         decl = parse_decl(source)
         call = decl.body[0].expr
         assert isinstance(call, CallExpr)
@@ -464,18 +463,15 @@ class TestParserExpressions:
         import pytest
 
         from prove.errors import CompileError
-        source = (
-            'validates f(s String)\n'
-            '    from\n'
-            '        matches(s, "pattern")\n'
-        )
+
+        source = 'validates f(s String)\n    from\n        matches(s, "pattern")\n'
         with pytest.raises(CompileError, match="verb keyword"):
             parse_decl(source)
 
 
 class TestParserStatements:
     def test_var_decl_with_type(self):
-        source = 'transforms f() Integer\n    from\n        x as Integer = 42\n        x\n'
+        source = "transforms f() Integer\n    from\n        x as Integer = 42\n        x\n"
         decl = parse_decl(source)
         stmt = decl.body[0]
         assert isinstance(stmt, VarDecl)
@@ -483,14 +479,14 @@ class TestParserStatements:
         assert isinstance(stmt.type_expr, SimpleType)
 
     def test_assignment(self):
-        source = 'transforms f() Integer\n    from\n        x = 42\n        x\n'
+        source = "transforms f() Integer\n    from\n        x = 42\n        x\n"
         decl = parse_decl(source)
         stmt = decl.body[0]
         assert isinstance(stmt, Assignment)
         assert stmt.target == "x"
 
     def test_expression_statement(self):
-        source = 'transforms f() Integer\n    from\n        g()\n'
+        source = "transforms f() Integer\n    from\n        g()\n"
         decl = parse_decl(source)
         stmt = decl.body[0]
         assert isinstance(stmt, ExprStmt)
@@ -499,10 +495,10 @@ class TestParserStatements:
 class TestParserImplicitMatch:
     def test_inputs_implicit_match(self):
         source = (
-            'inputs request(route Route) Response!\n'
-            '    from\n'
+            "inputs request(route Route) Response!\n"
+            "    from\n"
             '        Get("/health") => ok("healthy")\n'
-            '        _ => not_found()\n'
+            "        _ => not_found()\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -517,11 +513,11 @@ class TestParserImplicitMatch:
 
     def test_mixed_stmts_and_arms(self):
         source = (
-            'inputs request(route Route, db Database) Response!\n'
-            '    from\n'
-            '        user as User = authenticate()!\n'
+            "inputs request(route Route, db Database) Response!\n"
+            "    from\n"
+            "        user as User = authenticate()!\n"
             '        Get("/health") => ok("healthy")\n'
-            '        _ => not_found()\n'
+            "        _ => not_found()\n"
         )
         decl = parse_decl(source)
         # First should be VarDecl, then MatchExpr
@@ -531,7 +527,7 @@ class TestParserImplicitMatch:
 
 class TestParserConstants:
     def test_simple_constant(self):
-        source = '  MAX_SIZE as Integer = 100\n'
+        source = "  MAX_SIZE as Integer = 100\n"
         decl = parse_module_constant(source)
         assert isinstance(decl, ConstantDef)
         assert decl.name == "MAX_SIZE"
@@ -539,9 +535,9 @@ class TestParserConstants:
 
     def test_comptime_constant(self):
         source = (
-            '  MAX_CONNECTIONS as Integer = comptime\n'
+            "  MAX_CONNECTIONS as Integer = comptime\n"
             '    match target\n        "embedded" => 16\n'
-            '        _ => 1024\n'
+            "        _ => 1024\n"
         )
         decl = parse_module_constant(source)
         assert isinstance(decl, ConstantDef)
@@ -550,7 +546,7 @@ class TestParserConstants:
 
 class TestParserModules:
     def test_module_decl(self):
-        source = 'module Auth\n  temporal: authenticate -> authorize -> access\n'
+        source = "module Auth\n  temporal: authenticate -> authorize -> access\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert decl.name == "Auth"
@@ -563,7 +559,7 @@ class TestParserModules:
         assert decl.narrative is not None
 
     def test_import(self):
-        source = 'module Foo\n  String contains length\n'
+        source = "module Foo\n  String contains length\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
@@ -575,7 +571,7 @@ class TestParserModules:
         assert imp.items[1].name == "length"
 
     def test_import_types_verb(self):
-        source = 'module Foo\n  InputOutput types ExitCode, inputs console\n'
+        source = "module Foo\n  InputOutput types ExitCode, inputs console\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
@@ -588,7 +584,7 @@ class TestParserModules:
         assert imp.items[1].name == "console"
 
     def test_import_with_verb(self):
-        source = 'module Foo\n  Auth validates login, transforms login\n'
+        source = "module Foo\n  Auth validates login, transforms login\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
@@ -599,7 +595,7 @@ class TestParserModules:
         assert imp.items[1].name == "login"
 
     def test_import_verb_group(self):
-        source = 'module Foo\n  InputOutput outputs console file, inputs console file\n'
+        source = "module Foo\n  InputOutput outputs console file, inputs console file\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
@@ -612,7 +608,7 @@ class TestParserModules:
         assert imp.items[3] == ImportItem("inputs", "file", imp.items[3].span)
 
     def test_invariant_network(self):
-        source = '  invariant_network Accounting\n    total >= 0\n'
+        source = "  invariant_network Accounting\n    total >= 0\n"
         decl = parse_module_invariant(source)
         assert isinstance(decl, InvariantNetwork)
         assert decl.name == "Accounting"
@@ -622,11 +618,11 @@ class TestParserModules:
 class TestParserAIResistance:
     def test_why_not_chosen(self):
         source = (
-            'transforms evict(cache Cache) Option<Product>\n'
+            "transforms evict(cache Cache) Option<Product>\n"
             '    why_not: "FIFO bad"\n'
             '    chosen: "LFU because reasons"\n'
-            '    from\n'
-            '        cache\n'
+            "    from\n"
+            "        cache\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -635,11 +631,11 @@ class TestParserAIResistance:
 
     def test_near_miss(self):
         source = (
-            'validates wholesale(quantity Integer)\n'
-            '    near_miss: 10 => false\n'
-            '    near_miss: 11 => true\n'
-            '    from\n'
-            '        quantity\n'
+            "validates wholesale(quantity Integer)\n"
+            "    near_miss: 10 => false\n"
+            "    near_miss: 11 => true\n"
+            "    from\n"
+            "        quantity\n"
         )
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
@@ -647,12 +643,12 @@ class TestParserAIResistance:
 
     def test_epistemic_annotations(self):
         source = (
-            'transforms process(order Order) Receipt\n'
-            '    know: len(order) > 0\n'
-            '    assume: order\n'
-            '    believe: order\n'
-            '    from\n'
-            '        order\n'
+            "transforms process(order Order) Receipt\n"
+            "    know: len(order) > 0\n"
+            "    assume: order\n"
+            "    believe: order\n"
+            "    from\n"
+            "        order\n"
         )
         decl = parse_decl(source)
         assert len(decl.know) == 1
@@ -664,9 +660,9 @@ class TestParserIntegration:
     def test_parse_hello_main(self):
         """Parse the hello world example."""
         source = (
-            '/// Hello from Prove!\n'
-            'main() Result<Unit, Error>!\n'
-            '    from\n'
+            "/// Hello from Prove!\n"
+            "main() Result<Unit, Error>!\n"
+            "    from\n"
             '        println("Hello from Prove!")\n'
         )
         mod = parse(source)
@@ -678,9 +674,11 @@ class TestParserIntegration:
     def test_parse_hello_file(self):
         """Parse the actual hello example file."""
         from pathlib import Path
-        hello = Path(__file__).resolve().parent.parent / "examples/hello/src/main.prv"
+
+        hello = Path(__file__).resolve().parent.parent.parent / "examples/hello/src/main.prv"
         if not hello.exists():
             import pytest
+
             pytest.skip("hello example not found")
         source = hello.read_text()
         mod = parse(source)
@@ -691,12 +689,12 @@ class TestParserIntegration:
 
     def test_parse_multiple_declarations(self):
         source = (
-            'module M\n'
-            '  type Port is Integer where 1..65535\n'
-            '\n'
-            'validates valid_port(p Integer)\n'
-            '    from\n'
-            '        p >= 1 && p <= 65535\n'
+            "module M\n"
+            "  type Port is Integer where 1..65535\n"
+            "\n"
+            "validates valid_port(p Integer)\n"
+            "    from\n"
+            "        p >= 1 && p <= 65535\n"
         )
         mod = parse(source)
         assert len(mod.declarations) == 2
@@ -812,13 +810,7 @@ class TestParserLookup:
 
     def test_lookup_as_function_name(self):
         """'lookup' can be used as a function name (no longer a keyword)."""
-        source = (
-            "module M\n"
-            "\n"
-            "reads lookup(key String) String\n"
-            "    from\n"
-            '        "value"\n'
-        )
+        source = 'module M\n\nreads lookup(key String) String\n    from\n        "value"\n'
         mod = parse(source)
         func = mod.declarations[1]
         assert isinstance(func, FunctionDef)

@@ -564,6 +564,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             requires=fd.requires,
             doc_comment=fd.doc_comment,
         )
+        # E301: duplicate function definition (exact same verb + name + param types)
+        existing = self.symbols.find_exact_duplicate(sig)
+        if existing is not None:
+            param_str = ", ".join(type_name(t) for t in param_types)
+            self._error(
+                "E301",
+                f"duplicate function definition: '{fd.verb} {fd.name}({param_str})' "
+                f"already defined at line {existing.span.start_line}",
+                fd.span,
+            )
+            return
         self.symbols.define_function(sig)
         self.symbols.define(
             Symbol(

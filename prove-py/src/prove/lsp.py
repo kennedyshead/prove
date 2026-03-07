@@ -601,10 +601,9 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     )
                 )
 
-        # Function signatures (skip imported ones - shown in stdlib section)
+        # Function signatures — show all overloads (skip imported ones)
         for (_verb, fname), sigs in ds.symbols.all_functions().items():
-            if sigs:
-                sig = sigs[0]
+            for sig in sigs:
                 # Skip functions from imported modules (they're shown in stdlib section)
                 if hasattr(sig, "module") and sig.module is not None:
                     continue
@@ -828,32 +827,41 @@ def signature_help(params: lsp.SignatureHelpParams) -> lsp.SignatureHelp | None:
     # Count current arguments to match by arity
     arg_count = text[pos:col].count(",") + 1 if col > pos else 0
 
-    # Use verb-aware lookup if we found one, otherwise fall back to any
-    if verb:
-        sig = ds.symbols.resolve_function(verb, func_name, arg_count)
-        if sig is None:
-            sig = ds.symbols.resolve_function_any(func_name)
-    else:
-        sig = ds.symbols.resolve_function_any(func_name)
-    if sig is None:
-        return None
-
+    # Collect all matching overloads for this function name
     from prove.types import type_name
 
-    params_info = [
-        lsp.ParameterInformation(
-            label=f"{n}: {type_name(t)}",
-        )
-        for n, t in zip(sig.param_names, sig.param_types)
-    ]
+    all_sigs: list[FunctionSignature] = []
+    for (_v, fname), sigs in ds.symbols.all_functions().items():
+        if fname == func_name:
+            if verb and _v == verb:
+                all_sigs.extend(sigs)
+            elif not verb:
+                all_sigs.extend(sigs)
 
-    return lsp.SignatureHelp(
-        signatures=[
+    if not all_sigs:
+        # Fallback to single resolution
+        sig = ds.symbols.resolve_function_any(func_name)
+        if sig is None:
+            return None
+        all_sigs = [sig]
+
+    sig_infos = []
+    for sig in all_sigs:
+        params_info = [
+            lsp.ParameterInformation(
+                label=f"{n}: {type_name(t)}",
+            )
+            for n, t in zip(sig.param_names, sig.param_types)
+        ]
+        sig_infos.append(
             lsp.SignatureInformation(
                 label=_types_display(sig),
                 parameters=params_info,
-            ),
-        ],
+            )
+        )
+
+    return lsp.SignatureHelp(
+        signatures=sig_infos,
         active_signature=0,
         active_parameter=0,
     )

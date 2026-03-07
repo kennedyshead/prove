@@ -115,6 +115,55 @@ class SymbolTable:
         self._functions.setdefault(key, []).append(sig)
         self._known_names_cache = None
 
+    def find_exact_duplicate(self, sig: FunctionSignature) -> FunctionSignature | None:
+        """Find a previously registered function with the same verb, name, and param types."""
+        from prove.types import types_compatible
+
+        key = (sig.verb, sig.name)
+        for existing in self._functions.get(key, []):
+            if len(existing.param_types) != len(sig.param_types):
+                continue
+            if all(
+                types_compatible(a, b) and types_compatible(b, a)
+                for a, b in zip(existing.param_types, sig.param_types)
+            ):
+                return existing
+        return None
+
+    def resolve_function_by_types(
+        self,
+        verb: str | None,
+        name: str,
+        arg_types: list[Type],
+    ) -> FunctionSignature | None:
+        """Resolve overload by parameter type matching.
+
+        Priority:
+        1. Exact type match (all params compatible)
+        2. Arity match (fallback)
+        """
+        from prove.types import TypeVariable, types_compatible
+
+        for key in [(verb, name), (None, name)]:
+            sigs = self._functions.get(key, [])
+            if not sigs:
+                continue
+
+            # Priority 1: Exact type match
+            for sig in sigs:
+                if len(sig.param_types) == len(arg_types) and all(
+                    isinstance(p, TypeVariable) or types_compatible(p, a)
+                    for p, a in zip(sig.param_types, arg_types)
+                ):
+                    return sig
+
+            # Priority 2: Arity match
+            for sig in sigs:
+                if len(sig.param_types) == len(arg_types):
+                    return sig
+
+        return None
+
     def resolve_function(
         self, verb: str | None, name: str, arg_count: int
     ) -> FunctionSignature | None:

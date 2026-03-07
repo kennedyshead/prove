@@ -48,27 +48,16 @@ class TestFormatterBasic:
         assert _roundtrip(source) == source
 
     def test_main_function(self):
-        source = (
-            "main()\n"
-            "from\n"
-            '    println("hello")\n'
-        )
+        source = 'main()\nfrom\n    println("hello")\n'
         assert _roundtrip(source) == source
 
     def test_main_with_return_type(self):
-        source = (
-            "main() Result<Unit, Error>!\n"
-            "from\n"
-            '    println("hello")\n'
-        )
+        source = 'main() Result<Unit, Error>!\nfrom\n    println("hello")\n'
         assert _roundtrip(source) == source
 
     def test_doc_comment(self):
         source = (
-            "/// Adds two numbers.\n"
-            "transforms add(a Integer, b Integer) Integer\n"
-            "from\n"
-            "    a + b\n"
+            "/// Adds two numbers.\ntransforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n"
         )
         assert _roundtrip(source) == source
 
@@ -85,74 +74,40 @@ class TestFormatterBasic:
 
 class TestFormatterTypes:
     def test_record_type(self):
-        source = (
-            "module M\n"
-            "\n"
-            "  type Product is\n"
-            "    name String\n"
-            "    price Integer\n"
-        )
+        source = "module M\n\n  type Product is\n    name String\n    price Integer\n"
         assert _roundtrip(source) == source
 
     def test_algebraic_type(self):
-        source = (
-            "module M\n"
-            "\n"
-            "  type Route is Get(path String)\n"
-            "    | Post(path String)\n"
-        )
+        source = "module M\n\n  type Route is Get(path String)\n    | Post(path String)\n"
         assert _roundtrip(source) == source
 
     def test_unit_variants(self):
-        source = (
-            "module M\n"
-            "  type Status is Pending | Active | Done\n"
-        )
+        source = "module M\n  type Status is Pending | Active | Done\n"
         result = _parse_format(source)
         assert "Pending" in result
         assert "Active" in result
         assert "Done" in result
 
     def test_binary_type(self):
-        source = (
-            "module M\n"
-            "\n"
-            "  type Table<V> is binary\n"
-        )
+        source = "module M\n\n  type Table<V> is binary\n"
         assert _roundtrip(source) == source
 
     def test_generic_type(self):
-        source = (
-            "transforms identity(x List<Integer>) List<Integer>\n"
-            "from\n"
-            "    x\n"
-        )
+        source = "transforms identity(x List<Integer>) List<Integer>\nfrom\n    x\n"
         assert _roundtrip(source) == source
 
 
 class TestFormatterExpressions:
     def test_binary_expr(self):
-        source = (
-            "transforms add(a Integer, b Integer) Integer\n"
-            "from\n"
-            "    a + b\n"
-        )
+        source = "transforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n"
         assert _roundtrip(source) == source
 
     def test_call_expr(self):
-        source = (
-            "main()\n"
-            "from\n"
-            "    println(to_string(42))\n"
-        )
+        source = "main()\nfrom\n    println(to_string(42))\n"
         assert _roundtrip(source) == source
 
     def test_pipe_expr(self):
-        source = (
-            "main()\n"
-            "from\n"
-            '    "hello" |> println\n'
-        )
+        source = 'main()\nfrom\n    "hello" |> println\n'
         assert _roundtrip(source) == source
 
     def test_match_expr(self):
@@ -167,26 +122,16 @@ class TestFormatterExpressions:
 
     def test_lambda_expr(self):
         source = (
-            "transforms doubled(xs List<Integer>) List<Integer>\n"
-            "from\n"
-            "    map(xs, |x| x * 2)\n"
+            "transforms doubled(xs List<Integer>) List<Integer>\nfrom\n    map(xs, |x| x * 2)\n"
         )
         assert _roundtrip(source) == source
 
     def test_list_literal(self):
-        source = (
-            "main()\n"
-            "from\n"
-            "    println(to_string([1, 2, 3]))\n"
-        )
+        source = "main()\nfrom\n    println(to_string([1, 2, 3]))\n"
         assert _roundtrip(source) == source
 
     def test_fail_propagation(self):
-        source = (
-            "inputs load(path String) String!\n"
-            "from\n"
-            "    read_file(path)!\n"
-        )
+        source = "inputs load(path String) String!\nfrom\n    read_file(path)!\n"
         assert _roundtrip(source) == source
 
 
@@ -238,25 +183,24 @@ class TestFormatterImports:
 
 class TestFormatterConstants:
     def test_simple_constant(self):
-        source = (
-            "module M\n"
-            "  MAX as Integer = 100\n"
-        )
+        source = "module M\n  MAX as Integer = 100\n"
         result = _parse_format(source)
         assert "MAX" in result
         assert "100" in result
 
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class TestFormatterRoundTrip:
     """Test round-trip formatting on the example .prv files."""
 
-    @pytest.fixture(params=[
-        "examples/hello/src/main.prv",
-        "examples/math/src/main.prv",
-    ])
+    @pytest.fixture(
+        params=[
+            "examples/hello/src/main.prv",
+            "examples/math/src/main.prv",
+        ]
+    )
     def example_file(self, request: pytest.FixtureRequest) -> Path:
         path = _PROJECT_ROOT / request.param
         if not path.exists():
@@ -268,28 +212,16 @@ class TestFormatterRoundTrip:
         source = example_file.read_text()
         first = _roundtrip(source)
         second = _roundtrip(first)
-        assert first == second, (
-            f"Formatter is not idempotent on {example_file.name}"
-        )
+        assert first == second, f"Formatter is not idempotent on {example_file.name}"
 
 
 class TestFormatterVarDecl:
     def test_var_decl_with_type(self):
-        source = (
-            "main()\n"
-            "from\n"
-            "    x as Integer = 42\n"
-            "    println(to_string(x))\n"
-        )
+        source = "main()\nfrom\n    x as Integer = 42\n    println(to_string(x))\n"
         assert _roundtrip(source) == source
 
     def test_var_decl_without_type(self):
-        source = (
-            "main()\n"
-            "from\n"
-            "    x = 42\n"
-            "    println(to_string(x))\n"
-        )
+        source = "main()\nfrom\n    x = 42\n    println(to_string(x))\n"
         result = _parse_format(source)
         assert "x" in result
         assert "42" in result
@@ -311,12 +243,7 @@ class TestFormatterTypeInference:
 
     def test_unqualified_call_to_string(self):
         """to_string(x) → s as String = to_string(x)"""
-        source = (
-            "transforms show(n Integer) String\n"
-            "from\n"
-            "    s as = to_string(n)\n"
-            "    s\n"
-        )
+        source = "transforms show(n Integer) String\nfrom\n    s as = to_string(n)\n    s\n"
         result = _format_with_types(source)
         assert "s as String = to_string(n)" in result
 
@@ -333,12 +260,7 @@ class TestFormatterTypeInference:
 
     def test_identifier_rhs_infers_type(self):
         """Identifier RHS infers type from parameter context."""
-        source = (
-            "transforms id(n Integer) Integer\n"
-            "from\n"
-            "    x as = n\n"
-            "    x\n"
-        )
+        source = "transforms id(n Integer) Integer\nfrom\n    x as = n\n    x\n"
         result = _format_with_types(source)
         # n is Integer param, so x gets inferred as Integer
         assert "x as Integer = n" in result
@@ -385,12 +307,7 @@ class TestFormatterTypeInference:
 
     def test_assignment_with_identifier_promotes_to_var_decl(self):
         """Assignment with identifier RHS promotes to var decl."""
-        source = (
-            "transforms id(n Integer) Integer\n"
-            "from\n"
-            "    x = n\n"
-            "    x\n"
-        )
+        source = "transforms id(n Integer) Integer\nfrom\n    x = n\n    x\n"
         result = _format_with_types(source)
         # n is Integer param, so x gets promoted to typed var decl
         assert "x as Integer = n" in result
@@ -503,7 +420,8 @@ def _format_with_fixes(source: str) -> str:
     checker = Checker()
     checker.check(module)
     return ProveFormatter(
-        symbols=checker.symbols, diagnostics=checker.diagnostics,
+        symbols=checker.symbols,
+        diagnostics=checker.diagnostics,
     ).format(module)
 
 
@@ -512,22 +430,14 @@ class TestFormatterAutoFixes:
 
     def test_e360_strips_validates_return_type(self):
         """E360: validates has implicit Boolean return — strip explicit type."""
-        source = (
-            "validates is_positive(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates is_positive(x Integer) Boolean\nfrom\n    x > 0\n"
         result = _roundtrip(source)
         assert "validates is_positive(x Integer)\n" in result
         assert "Boolean" not in result
 
     def test_e360_preserves_non_validates_return_type(self):
         """Return types on non-validates verbs are preserved."""
-        source = (
-            "transforms double(x Integer) Integer\n"
-            "from\n"
-            "    x * 2\n"
-        )
+        source = "transforms double(x Integer) Integer\nfrom\n    x * 2\n"
         result = _roundtrip(source)
         assert "Integer" in result
 
@@ -545,7 +455,7 @@ class TestFormatterAutoFixes:
         )
         result = _roundtrip(source)
         assert '_ => "any"' in result
-        assert 'Red =>' not in result
+        assert "Red =>" not in result
 
     def test_w301_preserves_arms_before_wildcard(self):
         """Arms before wildcard are kept."""
@@ -560,19 +470,13 @@ class TestFormatterAutoFixes:
             '          _ => "other"\n'
         )
         result = _roundtrip(source)
-        assert 'Red =>' in result
+        assert "Red =>" in result
         assert '_ => "other"' in result
 
     def test_w303_drops_unused_type(self):
         """W303: unused type definition is removed."""
         source = (
-            "module M\n"
-            "  type Unused is\n"
-            "    x Integer\n"
-            "\n"
-            "transforms one() Integer\n"
-            "from\n"
-            "    1\n"
+            "module M\n  type Unused is\n    x Integer\n\ntransforms one() Integer\nfrom\n    1\n"
         )
         result = _format_with_fixes(source)
         assert "Unused" not in result
@@ -597,12 +501,7 @@ class TestFormatterAutoFixes:
         """W300: formatter prefixes unused variable names with _."""
         from prove.errors import Diagnostic, DiagnosticLabel, Severity
 
-        source = (
-            "transforms one() Integer\n"
-            "from\n"
-            "    unused as Integer = 42\n"
-            "    1\n"
-        )
+        source = "transforms one() Integer\nfrom\n    unused as Integer = 42\n    1\n"
         tokens = Lexer(source, "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         # The VarDecl for 'unused' is on line 3.  Build a synthetic W300.
@@ -620,12 +519,7 @@ class TestFormatterAutoFixes:
         """Variable already starting with _ is not double-prefixed."""
         from prove.errors import Diagnostic, DiagnosticLabel, Severity
 
-        source = (
-            "transforms one() Integer\n"
-            "from\n"
-            "    _ignored as Integer = 42\n"
-            "    1\n"
-        )
+        source = "transforms one() Integer\nfrom\n    _ignored as Integer = 42\n    1\n"
         tokens = Lexer(source, "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         var_decl = module.declarations[0].body[0]
@@ -681,11 +575,7 @@ class TestFormatterAutoFixes:
 
     def test_autofix_roundtrip_stable(self):
         """Formatting twice with auto-fixes produces identical output."""
-        source = (
-            "validates is_positive(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates is_positive(x Integer) Boolean\nfrom\n    x > 0\n"
         first = _format_with_fixes(source)
         second = _format_with_fixes(first)
         assert first == second

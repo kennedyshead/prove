@@ -565,6 +565,78 @@ class TestArityMismatchFallthrough:
         )
 
 
+# ── User-defined function overloads ──────────────────────────────
+
+
+class TestUserDefinedOverloads:
+    """Test that overloads (same verb+name, different param types) are allowed."""
+
+    def test_overload_different_param_types_allowed(self):
+        """Two functions with same verb/name but different param types should be allowed."""
+        check(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a + b\n"
+            "\n"
+            "transforms add(a Float, b Float) Float\n"
+            "    from\n"
+            "        a + b\n"
+        )
+
+    def test_overload_different_arity_allowed(self):
+        """Same verb/name with different arity should be allowed."""
+        check(
+            "transforms double(n Integer) Integer\n"
+            "    from\n"
+            "        n * 2\n"
+            "\n"
+            "transforms double(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        (a + b) * 2\n"
+        )
+
+    def test_exact_duplicate_emits_e301(self):
+        """Exact duplicate (same verb, name, param types) should emit E301."""
+        check_fails(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a + b\n"
+            "\n"
+            "transforms add(x Integer, y Integer) Integer\n"
+            "    from\n"
+            "        x + y\n",
+            "E301",
+        )
+
+    def test_different_verb_same_name_allowed(self):
+        """Same name with different verbs is channel dispatch, not overloading."""
+        check(
+            "transforms format(n Integer) String\n"
+            "    from\n"
+            "        to_string(n)\n"
+            "\n"
+            "validates format(n Integer)\n"
+            "    from\n"
+            "        n > 0\n"
+        )
+
+    def test_overload_call_resolves_correctly(self):
+        """Calls should resolve to the correct overload by arg types."""
+        check(
+            "transforms double(n Integer) Integer\n"
+            "    from\n"
+            "        n * 2\n"
+            "\n"
+            "transforms double(n Float) Float\n"
+            "    from\n"
+            "        n * 2.0\n"
+            "\n"
+            "transforms test() Integer\n"
+            "    from\n"
+            "        double(5)\n"
+        )
+
+
 # ── Fix: verb-aware recursion detection ──────────────────────────────
 
 
