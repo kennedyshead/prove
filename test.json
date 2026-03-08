@@ -1,3 +1,0 @@
-{ id = 9, jsonrpc = "2.0", result = { activeParameter = 0, activeSignature = 0, signatures = { { label = "inputs user() User!", parameters = {} } } } }
-
-
