@@ -87,8 +87,8 @@ for _c in ("E320", "E321", "E322", "E325", "E326", "E330", "E331"):
 # Field access E340-E341
 for _c in ("E340", "E341"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Control flow E350, E352
-for _c in ("E350", "E352"):
+# Control flow E350, E352, E355-E356
+for _c in ("E350", "E352", "E355", "E356"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E367 (E360 moved to I360)
 _register_doc_range("E", 361, 367)
@@ -108,8 +108,8 @@ _register_doc_range("E", 410, 422)
 # Warnings
 for _c in ("W304", "W311", "W312"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Warnings — contracts W321-W326
-_register_doc_range("W", 321, 326)
+# Warnings — contracts W321-W327
+_register_doc_range("W", 321, 327)
 # Warning — mutation testing W330
 DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 # Warning — unused pure result W332

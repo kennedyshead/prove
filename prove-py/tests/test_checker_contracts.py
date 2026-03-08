@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from prove.ast_nodes import BinaryExpr, BooleanLit, IntegerLit, IdentifierExpr, UnaryExpr
+from prove.prover import ClaimProver
+from prove.source import Span
 from tests.helpers import check, check_fails, check_warns
 
 
@@ -246,4 +249,174 @@ class TestRequiresValidNarrowing:
             "    requires valid object(data)\n"
             "    from\n"
             "        data.data\n"
+        )
+
+
+# ── ClaimProver unit tests ─────────────────────────────────────────────
+
+
+def _span() -> Span:
+    return Span(file="test", start_line=1, start_col=1, end_line=1, end_col=1)
+
+
+def _int(val: int) -> IntegerLit:
+    return IntegerLit(value=str(val), span=_span())
+
+
+def _bool(val: bool) -> BooleanLit:
+    return BooleanLit(value=val, span=_span())
+
+
+def _ident(name: str) -> IdentifierExpr:
+    return IdentifierExpr(name=name, span=_span())
+
+
+def _binop(left, op: str, right) -> BinaryExpr:
+    return BinaryExpr(left=left, op=op, right=right, span=_span())
+
+
+def _unary(op: str, operand) -> UnaryExpr:
+    return UnaryExpr(op=op, operand=operand, span=_span())
+
+
+class TestClaimProver:
+    """Unit tests for ClaimProver proof engine."""
+
+    def test_true_literal(self):
+        prover = ClaimProver()
+        assert prover.prove_claim(_bool(True)) is True
+
+    def test_false_literal(self):
+        prover = ClaimProver()
+        assert prover.prove_claim(_bool(False)) is False
+
+    def test_constant_equality_true(self):
+        prover = ClaimProver()
+        expr = _binop(_int(2), "==", _int(2))
+        assert prover.prove_claim(expr) is True
+
+    def test_constant_equality_false(self):
+        prover = ClaimProver()
+        expr = _binop(_int(2), "==", _int(3))
+        assert prover.prove_claim(expr) is False
+
+    def test_constant_inequality(self):
+        prover = ClaimProver()
+        expr = _binop(_int(2), "!=", _int(3))
+        assert prover.prove_claim(expr) is True
+
+    def test_constant_greater(self):
+        prover = ClaimProver()
+        assert prover.prove_claim(_binop(_int(5), ">", _int(3))) is True
+        assert prover.prove_claim(_binop(_int(3), ">", _int(5))) is False
+
+    def test_constant_less_equal(self):
+        prover = ClaimProver()
+        assert prover.prove_claim(_binop(_int(3), "<=", _int(5))) is True
+        assert prover.prove_claim(_binop(_int(5), "<=", _int(3))) is False
+
+    def test_arithmetic_folding(self):
+        prover = ClaimProver()
+        # 2 + 2 == 4
+        add = _binop(_int(2), "+", _int(2))
+        expr = _binop(add, "==", _int(4))
+        assert prover.prove_claim(expr) is True
+
+    def test_arithmetic_folding_false(self):
+        prover = ClaimProver()
+        # 2 + 2 == 5
+        add = _binop(_int(2), "+", _int(2))
+        expr = _binop(add, "==", _int(5))
+        assert prover.prove_claim(expr) is False
+
+    def test_algebraic_identity_x_eq_x(self):
+        prover = ClaimProver()
+        expr = _binop(_ident("x"), "==", _ident("x"))
+        assert prover.prove_claim(expr) is True
+
+    def test_algebraic_identity_x_neq_x(self):
+        prover = ClaimProver()
+        expr = _binop(_ident("x"), "!=", _ident("x"))
+        assert prover.prove_claim(expr) is False
+
+    def test_algebraic_identity_x_minus_x_eq_0(self):
+        prover = ClaimProver()
+        sub = _binop(_ident("x"), "-", _ident("x"))
+        expr = _binop(sub, "==", _int(0))
+        assert prover.prove_claim(expr) is True
+
+    def test_boolean_and_both_true(self):
+        prover = ClaimProver()
+        expr = _binop(_bool(True), "&&", _bool(True))
+        assert prover.prove_claim(expr) is True
+
+    def test_boolean_and_one_false(self):
+        prover = ClaimProver()
+        expr = _binop(_bool(True), "&&", _bool(False))
+        assert prover.prove_claim(expr) is False
+
+    def test_boolean_or_one_true(self):
+        prover = ClaimProver()
+        expr = _binop(_bool(False), "||", _bool(True))
+        assert prover.prove_claim(expr) is True
+
+    def test_boolean_or_both_false(self):
+        prover = ClaimProver()
+        expr = _binop(_bool(False), "||", _bool(False))
+        assert prover.prove_claim(expr) is False
+
+    def test_unary_not_true(self):
+        prover = ClaimProver()
+        expr = _unary("!", _bool(True))
+        assert prover.prove_claim(expr) is False
+
+    def test_unary_not_false(self):
+        prover = ClaimProver()
+        expr = _unary("!", _bool(False))
+        assert prover.prove_claim(expr) is True
+
+    def test_indeterminate_variable(self):
+        prover = ClaimProver()
+        # x > 0 with no symbol table → indeterminate
+        expr = _binop(_ident("x"), ">", _int(0))
+        assert prover.prove_claim(expr) is None
+
+    def test_negation_of_indeterminate(self):
+        prover = ClaimProver()
+        # !(x > 0) → indeterminate
+        inner = _binop(_ident("x"), ">", _int(0))
+        expr = _unary("!", inner)
+        assert prover.prove_claim(expr) is None
+
+
+class TestKnowClaimProving:
+    """Integration tests: know claims through the checker."""
+
+    def test_know_provably_true_no_warning(self):
+        """know 2 + 2 == 4 should produce no diagnostic."""
+        check(
+            "transforms id(n Integer) Integer\n"
+            "    know: 2 + 2 == 4\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_provably_false_error(self):
+        """know 2 + 2 == 5 should emit E356."""
+        check_fails(
+            "transforms id(n Integer) Integer\n"
+            "    know: 2 + 2 == 5\n"
+            "    from\n"
+            "        n\n",
+            "E356",
+        )
+
+    def test_know_indeterminate_warning(self):
+        """know n > 0 (runtime variable) should emit W327."""
+        check_warns(
+            "transforms id(n Integer) Integer\n"
+            "    know: n > 0\n"
+            "    from\n"
+            "        n\n",
+            "W327",
         )

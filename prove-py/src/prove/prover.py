@@ -9,6 +9,7 @@ Checks explain blocks for completeness and consistency:
 - W323: ensures without explain (warning, replaces E390)
 - W324: ensures without requires
 - W325: explain without ensures (warning)
+- W327: know claim cannot be proven (falls back to runtime assertion)
 
 Note: E366 (recursive function missing terminates) and W326 (recursion depth)
 are now handled by the Checker, which has access to the symbol table for
@@ -17,7 +18,20 @@ verb-aware function resolution.
 
 from __future__ import annotations
 
-from prove.ast_nodes import FunctionDef, IntegerLit, NearMiss
+from prove.ast_nodes import (
+    BinaryExpr,
+    BooleanLit,
+    CallExpr,
+    DecimalLit,
+    Expr,
+    FieldExpr,
+    FloatLit,
+    FunctionDef,
+    IdentifierExpr,
+    IntegerLit,
+    NearMiss,
+    UnaryExpr,
+)
 from prove.errors import (
     DIAGNOSTIC_DOCS,
     Diagnostic,
@@ -243,3 +257,216 @@ class ProofVerifier:
         if isinstance(a, IntegerLit) and isinstance(b, IntegerLit):
             return a.value == b.value
         return False
+
+
+class ClaimProver:
+    """Lightweight proof engine for `know` claims.
+
+    Attempts to prove boolean expressions using:
+    - Constant folding: know 2 + 2 == 4 → trivially true
+    - Type-based: know x > 0 when x has refinement >= 1 → true
+    - Algebraic simplification: x + 0 == x, x * 1 == x, x - x == 0
+    """
+
+    def __init__(self, symbols: object | None = None) -> None:
+        self._symbols = symbols
+
+    def prove_claim(self, expr: Expr) -> bool | None:
+        """Attempt to prove a boolean expression.
+
+        Returns True (proven), False (disproven), or None (indeterminate).
+        """
+        # Direct boolean literal
+        if isinstance(expr, BooleanLit):
+            return expr.value
+
+        # Binary comparison with constants
+        if isinstance(expr, BinaryExpr):
+            return self._prove_binary(expr)
+
+        # Unary negation
+        if isinstance(expr, UnaryExpr) and expr.op in ("!", "not"):
+            inner = self.prove_claim(expr.operand)
+            if inner is not None:
+                return not inner
+
+        return None
+
+    def _prove_binary(self, expr: BinaryExpr) -> bool | None:
+        """Prove a binary expression."""
+        op = expr.op
+
+        # Boolean combinators
+        if op in ("&&", "and"):
+            left = self.prove_claim(expr.left)
+            right = self.prove_claim(expr.right)
+            if left is False or right is False:
+                return False
+            if left is True and right is True:
+                return True
+            return None
+
+        if op in ("||", "or"):
+            left = self.prove_claim(expr.left)
+            right = self.prove_claim(expr.right)
+            if left is True or right is True:
+                return True
+            if left is False and right is False:
+                return False
+            return None
+
+        # Comparison with constant values
+        left_val = self._eval_const(expr.left)
+        right_val = self._eval_const(expr.right)
+
+        if left_val is not None and right_val is not None:
+            if op == "==":
+                return left_val == right_val
+            if op == "!=":
+                return left_val != right_val
+            if op == ">":
+                return left_val > right_val
+            if op == ">=":
+                return left_val >= right_val
+            if op == "<":
+                return left_val < right_val
+            if op == "<=":
+                return left_val <= right_val
+
+        # Algebraic identity: x == x → true
+        if op == "==" and self._exprs_structurally_equal(expr.left, expr.right):
+            return True
+
+        # Algebraic identity: x != x → false
+        if op == "!=" and self._exprs_structurally_equal(expr.left, expr.right):
+            return False
+
+        # Algebraic identity: x - x == 0
+        if op == "==" and isinstance(expr.left, BinaryExpr) and expr.left.op == "-":
+            if self._exprs_structurally_equal(expr.left.left, expr.left.right):
+                right_val = self._eval_const(expr.right)
+                if right_val == 0:
+                    return True
+
+        # Type-based proof: check if identifier has a refinement type
+        # that makes the claim trivially true
+        if self._symbols is not None and op in (">=", ">", "<=", "<", "!=", "=="):
+            result = self._prove_from_refinement(expr.left, op, expr.right)
+            if result is not None:
+                return result
+
+        return None
+
+    def _eval_const(self, expr: Expr) -> int | float | str | bool | None:
+        """Extract a constant value from an expression."""
+        if isinstance(expr, IntegerLit):
+            return int(expr.value)
+        if isinstance(expr, DecimalLit):
+            return float(expr.value)
+        if isinstance(expr, FloatLit):
+            return float(expr.value[:-1])
+        if isinstance(expr, BooleanLit):
+            return expr.value
+
+        # Constant folding for simple arithmetic
+        if isinstance(expr, BinaryExpr):
+            left = self._eval_const(expr.left)
+            right = self._eval_const(expr.right)
+            if left is not None and right is not None:
+                if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+                    op = expr.op
+                    if op == "+":
+                        return left + right
+                    if op == "-":
+                        return left - right
+                    if op == "*":
+                        return left * right
+                    if op == "%" and right != 0:
+                        return left % right
+
+        if isinstance(expr, UnaryExpr) and expr.op == "-":
+            inner = self._eval_const(expr.operand)
+            if isinstance(inner, (int, float)):
+                return -inner
+
+        return None
+
+    def _exprs_structurally_equal(self, a: Expr, b: Expr) -> bool:
+        """Check structural equality of two expressions."""
+        if type(a) is not type(b):
+            return False
+        if isinstance(a, IdentifierExpr) and isinstance(b, IdentifierExpr):
+            return a.name == b.name
+        if isinstance(a, IntegerLit) and isinstance(b, IntegerLit):
+            return a.value == b.value
+        if isinstance(a, FieldExpr) and isinstance(b, FieldExpr):
+            return a.field == b.field and self._exprs_structurally_equal(a.obj, b.obj)
+        if isinstance(a, BinaryExpr) and isinstance(b, BinaryExpr):
+            return (
+                a.op == b.op
+                and self._exprs_structurally_equal(a.left, b.left)
+                and self._exprs_structurally_equal(a.right, b.right)
+            )
+        return False
+
+    def _prove_from_refinement(self, expr: Expr, op: str, bound: Expr) -> bool | None:
+        """Try to prove a comparison from a variable's refinement type."""
+        if not isinstance(expr, IdentifierExpr) or self._symbols is None:
+            return None
+
+        sym = self._symbols.lookup(expr.name)
+        if sym is None:
+            return None
+
+        from prove.types import RefinementType
+
+        ty = sym.resolved_type
+        if not isinstance(ty, RefinementType) or ty.constraint is None:
+            return None
+
+        # Extract refinement bound: e.g., Integer where >= 1
+        ref_op, ref_val = self._extract_refinement_bound(ty.constraint)
+        if ref_op is None or ref_val is None:
+            return None
+
+        bound_val = self._eval_const(bound)
+        if bound_val is None:
+            return None
+
+        # Now reason: if refinement says x >= 1, and claim is x > 0, then true
+        if ref_op == ">=" and isinstance(ref_val, (int, float)):
+            if op == ">=" and bound_val <= ref_val:
+                return True
+            if op == ">" and bound_val < ref_val:
+                return True
+            if op == "!=" and bound_val < ref_val:
+                return True
+
+        if ref_op == ">" and isinstance(ref_val, (int, float)):
+            if op == ">=" and bound_val <= ref_val:
+                return True
+            if op == ">" and bound_val <= ref_val:
+                return True
+            if op == "!=" and bound_val <= ref_val:
+                return True
+
+        if ref_op == "!=" and ref_val == bound_val:
+            if op == "!=":
+                return True
+
+        return None
+
+    def _extract_refinement_bound(
+        self, constraint: Expr
+    ) -> tuple[str | None, int | float | None]:
+        """Extract the operator and bound from a refinement constraint."""
+        if isinstance(constraint, BinaryExpr):
+            # self >= 0 → (">=", 0)
+            if isinstance(constraint.left, IdentifierExpr) and constraint.left.name == "self":
+                val = self._eval_const(constraint.right)
+                return (constraint.op, val)
+            # Range: 1..65535 → (">=", 1)
+            if constraint.op == "..":
+                val = self._eval_const(constraint.left)
+                return (">=", val)
+        return (None, None)

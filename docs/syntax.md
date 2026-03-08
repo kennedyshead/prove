@@ -723,7 +723,7 @@ from
     // implementation
 ```
 
-`know` = the compiler verifies it is a valid boolean expression (full proof engine planned). `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
+`know` = the compiler attempts to prove the claim using constant folding, algebraic identities, and refinement types. Provable claims pass silently; unprovable claims emit a warning (W327) and fall back to a runtime assertion. `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
 
 ### Verification Chain: `trusted`
 

@@ -111,7 +111,7 @@ class ContractCheckMixin:
                     req_expr.span if hasattr(req_expr, "span") else fd.span,
                 )
 
-        # Type-check `know`
+        # Type-check `know` and attempt proof
         for know_expr in fd.know:
             know_type = self._infer_expr(know_expr)
             if not isinstance(know_type, ErrorType) and not types_compatible(BOOLEAN, know_type):
@@ -120,6 +120,28 @@ class ContractCheckMixin:
                     f"know expression must be Boolean, got '{type_name(know_type)}'",
                     know_expr.span if hasattr(know_expr, "span") else fd.span,
                 )
+            else:
+                # Attempt to prove the claim
+                from prove.prover import ClaimProver
+
+                prover = ClaimProver(symbols=self.symbols)
+                result = prover.prove_claim(know_expr)
+                if result is False:
+                    self._error(
+                        "E356",
+                        "know claim is provably false",
+                        know_expr.span if hasattr(know_expr, "span") else fd.span,
+                    )
+                elif result is None:
+                    span = know_expr.span if hasattr(know_expr, "span") else fd.span
+                    self.diagnostics.append(
+                        make_diagnostic(
+                            Severity.WARNING,
+                            "W327",
+                            "cannot prove know claim; treating as runtime assertion",
+                            labels=[DiagnosticLabel(span=span, message="")],
+                        )
+                    )
 
         # Type-check `assume`
         for assume_expr in fd.assume:

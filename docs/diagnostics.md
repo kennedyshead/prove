@@ -208,6 +208,32 @@ type Valid is Integer where value > 0 && value < 100
 type Email is String where r".+@.+\..+"
 ```
 
+### E355 — Refinement constraint violated at compile time
+
+A literal value assigned to a refinement type does not satisfy the type's `where` constraint. The compiler checks literal values statically.
+
+```prove
+type Positive is Integer where >= 0
+
+// Error — -1 violates >= 0
+p as Positive = -1
+
+// OK — 42 satisfies >= 0
+p as Positive = 42
+```
+
+### E356 — Know claim is provably false
+
+A `know` expression can be statically disproven by the compiler's proof engine. The claim contradicts constant arithmetic or algebraic identities.
+
+```prove
+// Error — 2 + 2 is not 5
+transforms bad(n Integer) Integer
+    know: 2 + 2 == 5
+    from
+        n
+```
+
 ### E361 — Pure function cannot be failable
 
 Functions with pure verbs cannot use the `!` fail marker.
@@ -536,6 +562,18 @@ An `explain` block is present but there are no `ensures` clauses. Without contra
 ### W326 — Recursion depth may be unbounded
 
 A recursive function's `terminates` measure suggests O(n) call depth. Consider using `map`, `filter`, or `reduce` via the pipe operator instead.
+
+### W327 — Know claim cannot be proven
+
+The compiler's proof engine cannot statically prove a `know` claim. The claim will be treated as a runtime assertion instead.
+
+```prove
+// Warning — n > 0 depends on runtime value
+transforms process(n Integer) Integer
+    know: n > 0
+    from
+        n
+```
 
 ### W330 — Surviving mutant
 
