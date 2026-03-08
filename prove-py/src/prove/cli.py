@@ -710,6 +710,65 @@ def lsp() -> None:
     lsp_main()
 
 
+@main.command("export")
+@click.option(
+    "-f",
+    "--format",
+    "fmt",
+    type=click.Choice(["treesitter", "pygments", "chroma"]),
+    help="Target format (default: all).",
+)
+@click.option(
+    "--build",
+    is_flag=True,
+    help="Run build steps after generating.",
+)
+@click.option(
+    "-w",
+    "--workspace",
+    "workspace_path",
+    type=click.Path(exists=True),
+    help="Workspace root (default: parent of prove-py).",
+)
+def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None:
+    """Export syntax highlighting data to companion lexer projects."""
+    from prove.export import (
+        build_chroma,
+        build_pygments,
+        build_treesitter,
+        generate_chroma,
+        generate_pygments,
+        generate_treesitter,
+        read_canonical_lists,
+    )
+
+    if workspace_path:
+        workspace = Path(workspace_path)
+    else:
+        # Default: assume prove-py is a sibling directory under workspace
+        workspace = Path(__file__).resolve().parent.parent.parent.parent
+
+    lists = read_canonical_lists()
+    targets = [fmt] if fmt else ["treesitter", "pygments", "chroma"]
+
+    for target in targets:
+        if target == "treesitter":
+            click.echo("export: tree-sitter-prove")
+            ok = generate_treesitter(lists, workspace)
+            if ok and build:
+                build_treesitter(workspace)
+        elif target == "pygments":
+            click.echo("export: pygments-prove")
+            ok = generate_pygments(lists, workspace)
+            if ok and build:
+                build_pygments(workspace)
+        elif target == "chroma":
+            click.echo("export: chroma-lexer-prove")
+            ok = generate_chroma(lists, workspace)
+            if ok and build:
+                build_chroma(workspace)
+
+
 @main.command()
 @click.argument("file", type=click.Path(exists=True))
 def view(file: str) -> None:

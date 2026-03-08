@@ -144,6 +144,28 @@ class TestCLI:
         assert result.exit_code == 0
         assert "Module" in result.output
 
+    def test_export_help(self, runner):
+        result = runner.invoke(main, ["export", "--help"])
+        assert result.exit_code == 0
+        assert "--format" in result.output or "-f" in result.output
+        assert "treesitter" in result.output
+        assert "pygments" in result.output
+        assert "chroma" in result.output
+
+    def test_export_in_help(self, runner):
+        result = runner.invoke(main, ["--help"])
+        assert result.exit_code == 0
+        assert "export" in result.output
+
+    def test_export_runs(self, runner):
+        result = runner.invoke(
+            main,
+            ["export", "-f", "treesitter", "-w", "/workspace"],
+        )
+        # Should succeed (tree-sitter-prove exists in workspace)
+        assert result.exit_code == 0
+        assert "tree-sitter-prove" in result.output
+
 
 # --- Config tests ---
 
