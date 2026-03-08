@@ -160,8 +160,9 @@ def _build_c(
     # Collect foreign library names for linker flags
     extra_flags: list[str] = list(config.build.c_flags)
     link_flags: list[str] = list(config.build.link_flags)
-    # Math runtime always needs libm
+    # Math runtime always needs libm; par_map needs pthreads
     link_flags.append("-lm")
+    link_flags.append("-lpthread")
     for module, _symbols in modules_and_symbols:
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):

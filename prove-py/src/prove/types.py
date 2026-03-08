@@ -89,6 +89,18 @@ class BorrowType:
     inner: Type
 
 
+@dataclass(frozen=True)
+class EffectType:
+    """Type annotated with effects (IO, Fail, Async).
+
+    Wraps a base type with a set of effect labels. For V1.0, effects
+    are informational — violations produce warnings, not errors.
+    """
+
+    base: "Type"
+    effects: frozenset[str]
+
+
 Type = (
     PrimitiveType
     | UnitType
@@ -102,6 +114,7 @@ Type = (
     | ErrorType
     | VariantInfo
     | BorrowType
+    | EffectType
 )
 
 
@@ -205,6 +218,9 @@ def type_name(ty: Type) -> str:
         return ty.name
     if isinstance(ty, BorrowType):
         return f"&{type_name(ty.inner)}"
+    if isinstance(ty, EffectType):
+        effs = " & ".join(sorted(ty.effects))
+        return f"{type_name(ty.base)} & {effs}"
     return str(ty)
 
 
@@ -285,6 +301,11 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return True
     expected = _unwrap_refinement(expected)
     actual = _unwrap_refinement(actual)
+    # EffectType is transparent for compatibility — unwrap to base
+    if isinstance(expected, EffectType):
+        return types_compatible(expected.base, actual)
+    if isinstance(actual, EffectType):
+        return types_compatible(expected, actual.base)
     # BorrowType is compatible with its inner type for read-only access
     if isinstance(expected, BorrowType):
         return types_compatible(expected.inner, actual)

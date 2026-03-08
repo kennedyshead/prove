@@ -75,9 +75,9 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ---
 
-## Concurrency — Structured, Typed, No Data Races (Planned)
+## Concurrency — Parallel Map and Effect Types
 
-Concurrency is planned but not yet implemented. The design goal is structured concurrency with typed effects and no shared mutable state:
+Prove provides `par_map` as a safe concurrency primitive. Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, thread-based parallelism is safe by construction:
 
 ```prove
 inputs fetch_all(urls List<Url>) List<Response>!
@@ -85,7 +85,7 @@ from
     par_map(urls, fetch)
 ```
 
-The ownership system and verb-based effect tracking will combine to eliminate data races at compile time. See [Roadmap](roadmap.md) for the planned async verb family (`detached`, `attached`, `listens`).
+The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. For V1.0, effect annotations are informational — the verb system already enforces purity boundaries. Structured concurrency (task spawning, cancellation, async verbs) is planned for post-1.0. See [Roadmap](roadmap.md) for the planned async verb family (`detached`, `attached`, `listens`).
 
 ---
 
@@ -120,7 +120,7 @@ from
 | Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit (`inputs`/`outputs`) |
 | Null/nil crashes | No null — use `Option<Value>`, enforced by compiler |
-| Race conditions | Ownership + verb system will prevent data races *(concurrency planned)* |
+| Race conditions | Ownership + verb purity guarantee safe `par_map`; structured concurrency planned |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Slow test suites | Property tests generated from contracts |
 | Runtime type errors | Refinement types catch invalid values at compile time |

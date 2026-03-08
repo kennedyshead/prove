@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from prove.types import (
+    BOOLEAN,
     INTEGER,
     STRING,
     AlgebraicType,
+    EffectType,
     GenericInstance,
     PrimitiveType,
     RecordType,
     RefinementType,
+    type_name,
     types_compatible,
 )
 from tests.helpers import check, check_fails
@@ -392,3 +395,33 @@ class TestFieldAccessOnModifiedType:
             "    from\n"
             "        p.name\n"
         )
+
+
+class TestEffectType:
+    """Tests for the EffectType scaffolding."""
+
+    def test_type_name_single_effect(self):
+        t = EffectType(INTEGER, frozenset({"IO"}))
+        assert type_name(t) == "Integer & IO"
+
+    def test_type_name_multiple_effects(self):
+        t = EffectType(STRING, frozenset({"Async", "IO"}))
+        assert type_name(t) == "String & Async & IO"
+
+    def test_compatible_effect_with_base(self):
+        """EffectType is transparent — compatible with its base."""
+        t = EffectType(INTEGER, frozenset({"IO"}))
+        assert types_compatible(INTEGER, t)
+        assert types_compatible(t, INTEGER)
+
+    def test_compatible_effect_with_effect(self):
+        """Two EffectTypes with same base are compatible."""
+        t1 = EffectType(INTEGER, frozenset({"IO"}))
+        t2 = EffectType(INTEGER, frozenset({"Async"}))
+        assert types_compatible(t1, t2)
+
+    def test_incompatible_different_base(self):
+        """EffectTypes with different bases are incompatible."""
+        t1 = EffectType(INTEGER, frozenset({"IO"}))
+        t2 = EffectType(BOOLEAN, frozenset({"IO"}))
+        assert not types_compatible(t1, t2)

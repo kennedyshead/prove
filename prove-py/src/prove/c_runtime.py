@@ -388,6 +388,9 @@ _RUNTIME_FUNCTIONS = {
         "prove_pattern_start",
         "prove_pattern_end",
     ],
+    "prove_par_map": [
+        "prove_par_map",
+    ],
 }
 
 

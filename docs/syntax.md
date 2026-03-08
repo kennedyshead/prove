@@ -12,7 +12,7 @@ keywords: Prove syntax, programming language syntax, Prove language reference
 - **Variables and parameters**: snake_case — `port`, `user_list`, `max_retries`, `db_connection`
 - **Functions**: snake_case — `area`, `binary_search`, `get_users`
 - **Constants**: UPPER_SNAKE_CASE — `MAX_CONNECTIONS`, `LOOKUP_TABLE`, `DEFAULT_PORT`
-- **Effects**: CamelCase — `IO`, `Fail` *(effect types are planned, not yet implemented)*
+- **Effects**: CamelCase — `IO`, `Fail`, `Async` *(effect type scaffolding exists in the type system; effect propagation checking is planned)*
 
 The compiler **enforces** casing. Wrong case is a compile error, not a warning. UPPER_SNAKE_CASE indicates a compile-time constant — no `const` keyword needed.
 
