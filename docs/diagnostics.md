@@ -254,27 +254,9 @@ Lambdas cannot reference variables from an enclosing scope (closures not support
 
 A `matches` function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, `String`, and `Integer`.
 
-### E367 — `match` expression only allowed in `matches` verb
+### E367 — *(moved to I367)*
 
-The `match` expression can only appear inside functions with the `matches` verb. Other verbs should call a `matches` helper or use `explain when` conditions for branching.
-
-```prove
-// Wrong — match in transforms
-
-transforms classify(n Integer) String
-from
-    match n > 0
-        true => "positive"
-        false => "non-positive"
-
-// Correct — use matches verb
-
-matches classify(n Integer) String
-from
-    match n > 0
-        true => "positive"
-        false => "non-positive"
-```
+See [I367](#i367-consider-extracting-match-to-matches-verb) in the Info section.
 
 ### E366 — Recursive function missing `terminates`
 
@@ -385,6 +367,20 @@ transforms process(x Integer) Integer
 ### E382 — Satisfies references undefined type
 
 A `satisfies` annotation references a type that is not defined.
+
+### E383 — Near-miss expected type mismatch
+
+The expected value in a `near_miss` declaration doesn't match the function's return type.
+
+```prove
+// Error — function returns Integer but near_miss expects Boolean
+transforms double(n Integer) Integer
+  near_miss 0 => false
+
+// Correct — expected type matches return type
+transforms double(n Integer) Integer
+  near_miss 0 => 0
+```
 
 ### E384 — Know expression must be Boolean
 
@@ -575,6 +571,20 @@ transforms process(n Integer) Integer
         n
 ```
 
+### W328 — Ensures clause doesn't reference result
+
+An `ensures` postcondition doesn't reference `result`, which likely means it's checking an input rather than constraining the output. Postconditions should constrain the return value.
+
+```prove
+// Warning — checks input, not output
+transforms double(n Integer) Integer
+  ensures n > 0
+
+// Correct — constrains the return value
+transforms double(n Integer) Integer
+  ensures result == n * 2
+```
+
 ### W330 — Surviving mutant
 
 A previous `prove build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
@@ -692,4 +702,24 @@ validates is_active(u User) Boolean
 
 // After formatting
 validates is_active(u User)
+```
+
+### I367 — Consider extracting match to matches verb
+
+A `match` expression appears inside a function that does not use the `matches` verb. While this is allowed, extracting the match logic into a separate `matches` function improves code flow and makes the branching intent explicit.
+
+```prove
+// Info — match in transforms (works, but could be clearer)
+transforms classify(n Integer) String
+from
+    match n > 0
+        true => "positive"
+        false => "non-positive"
+
+// Better — use matches verb
+matches classify(n Integer) String
+from
+    match n > 0
+        true => "positive"
+        false => "non-positive"
 ```

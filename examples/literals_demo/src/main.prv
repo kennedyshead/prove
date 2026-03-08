@@ -22,4 +22,3 @@ from
     // Decimal literal with f suffix
     // Note: This syntax may not be fully supported
     // Demonstrating type modifiers with literals
-    Unit

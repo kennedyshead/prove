@@ -56,6 +56,8 @@ Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). R
 
 `Float` is **opt-in** — `Decimal` is the default for fractional numbers. `Float:[64]` uses IEEE 754 hardware floats for performance-critical domains (scientific computing, graphics, signal processing) where speed matters more than exact precision. Mixing `Float` and `Decimal` requires explicit conversion.
 
+**Decimal precision mappings:** `Decimal:[32]` compiles to C `float`, `Decimal:[64]` (default) compiles to `double`, and `Decimal:[128]` compiles to `long double`. The `Scale:N` modifier is parsed but not yet enforced at runtime.
+
 ```prove
 count as Integer = 42                          // Integer:[64 Signed]
 flags as Integer:[8 Unsigned] = 0xFF

@@ -43,7 +43,7 @@ class ProveLexer(RegexLexer):
             (r"0x[0-9a-fA-F][0-9a-fA-F_]*", Number.Hex),
             (r"0b[01][01_]*", Number.Bin),
             (r"0o[0-7][0-7_]*", Number.Oct),
-            (r"[0-9][0-9_]*\.[0-9][0-9_]*", Number.Float),
+            (r"[0-9][0-9_]*\.[0-9][0-9_]*[fF]?", Number.Float),
             (r"[0-9][0-9_]*", Number.Integer),
             # Fail marker (before operators)
             (r"!", Keyword.Pseudo),

@@ -171,21 +171,21 @@ class TestMatchesVerbRelaxation:
 
 
 class TestMatchRestriction:
-    """Test E367: match expression only allowed in matches verb."""
+    """Test I367: match expression suggestion for non-matches verbs."""
 
-    def test_match_in_transforms_error(self):
-        """E367: match in transforms body."""
-        check_fails(
+    def test_match_in_transforms_info(self):
+        """I367: match in transforms body produces info."""
+        check_info(
             "transforms bad(n Integer) String\n"
             "    from\n"
             "        match n > 0\n"
             "            true => \"yes\"\n"
             "            false => \"no\"\n",
-            "E367",
+            "I367",
         )
 
     def test_match_in_matches_ok(self):
-        """match in matches body is allowed."""
+        """match in matches body is allowed (no I367)."""
         check(
             "module M\n"
             "  type Color is Red | Green | Blue\n"
@@ -197,63 +197,63 @@ class TestMatchRestriction:
             "            Blue => \"blue\"\n"
         )
 
-    def test_match_in_validates_error(self):
-        """E367: match in validates body."""
-        check_fails(
+    def test_match_in_validates_info(self):
+        """I367: match in validates body produces info."""
+        check_info(
             "validates bad(n Integer)\n"
             "    from\n"
             "        match n > 0\n"
             "            true => true\n"
             "            false => false\n",
-            "E367",
+            "I367",
         )
 
-    def test_match_in_reads_error(self):
-        """E367: match in reads body."""
-        check_fails(
+    def test_match_in_reads_info(self):
+        """I367: match in reads body produces info."""
+        check_info(
             "reads bad(n Integer) Integer\n"
             "    from\n"
             "        match n > 0\n"
             "            true => n\n"
             "            false => 0\n",
-            "E367",
+            "I367",
         )
 
-    def test_match_in_creates_error(self):
-        """E367: match in creates body."""
-        check_fails(
+    def test_match_in_creates_info(self):
+        """I367: match in creates body produces info."""
+        check_info(
             "creates bad(n Integer) Integer\n"
             "    from\n"
             "        match n > 0\n"
             "            true => n\n"
             "            false => 0\n",
-            "E367",
+            "I367",
         )
 
-    def test_match_in_inputs_error(self):
-        """E367: match in inputs body."""
-        check_fails(
+    def test_match_in_inputs_info(self):
+        """I367: match in inputs body produces info."""
+        check_info(
             "inputs bad(n Integer) Integer\n"
             "    from\n"
             "        match n > 0\n"
             "            true => n\n"
             "            false => 0\n",
-            "E367",
+            "I367",
         )
 
-    def test_match_in_outputs_error(self):
-        """E367: match in outputs body."""
-        check_fails(
+    def test_match_in_outputs_info(self):
+        """I367: match in outputs body produces info."""
+        check_info(
             "outputs bad(n Integer) Integer\n"
             "    from\n"
             "        match n > 0\n"
             "            true => n\n"
             "            false => 0\n",
-            "E367",
+            "I367",
         )
 
     def test_match_in_main_ok(self):
-        """match in main is exempt from E367."""
+        """match in main is exempt from I367."""
         check(
             "module M\n"
             "  type Color is Red | Green\n"

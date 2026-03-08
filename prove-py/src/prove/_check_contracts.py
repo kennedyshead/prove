@@ -13,9 +13,11 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
+    IndexExpr,
     LambdaExpr,
     ListLiteral,
     MatchExpr,
+    NearMiss,
     Param,
     PipeExpr,
     Stmt,
@@ -29,6 +31,7 @@ from prove.source import Span
 from prove.symbols import Symbol, SymbolKind
 from prove.types import (
     BOOLEAN,
+    UNIT,
     AlgebraicType,
     BorrowType,
     ErrorType,
@@ -41,6 +44,44 @@ from prove.types import (
 
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 _IO_FUNCTIONS = frozenset({"sleep"})
+
+
+def _expr_references_name(expr: Expr, name: str) -> bool:
+    """Walk an expression tree and return True if it references the given name."""
+    if isinstance(expr, IdentifierExpr):
+        return expr.name == name
+    if isinstance(expr, BinaryExpr):
+        return _expr_references_name(expr.left, name) or _expr_references_name(expr.right, name)
+    if isinstance(expr, UnaryExpr):
+        return _expr_references_name(expr.operand, name)
+    if isinstance(expr, CallExpr):
+        if _expr_references_name(expr.func, name):
+            return True
+        return any(_expr_references_name(a, name) for a in expr.args)
+    if isinstance(expr, FieldExpr):
+        return _expr_references_name(expr.obj, name)
+    if isinstance(expr, PipeExpr):
+        return _expr_references_name(expr.left, name) or _expr_references_name(expr.right, name)
+    if isinstance(expr, ValidExpr):
+        if expr.args:
+            return any(_expr_references_name(a, name) for a in expr.args)
+        return False
+    if isinstance(expr, MatchExpr):
+        if expr.subject and _expr_references_name(expr.subject, name):
+            return True
+        for arm in expr.arms:
+            for stmt in arm.body:
+                if isinstance(stmt, ExprStmt) and _expr_references_name(stmt.expr, name):
+                    return True
+        return False
+    if isinstance(expr, LambdaExpr):
+        return _expr_references_name(expr.body, name)
+    if isinstance(expr, FailPropExpr):
+        return _expr_references_name(expr.expr, name)
+    if isinstance(expr, ListLiteral):
+        return any(_expr_references_name(e, name) for e in expr.elements)
+    # TypeIdentifierExpr, IndexExpr, literals — no name references
+    return False
 
 
 class ContractCheckMixin:
@@ -80,6 +121,20 @@ class ContractCheckMixin:
                 self._error(
                     "E380",
                     f"ensures expression must be Boolean, got '{type_name(ens_type)}'",
+                    ens_expr.span if hasattr(ens_expr, "span") else fd.span,
+                )
+            # Skip W328 for validates (implicit Boolean return, ensures
+            # naturally checks input conditions) and for ValidExpr
+            # (validation postconditions don't reference result).
+            if (
+                fd.verb != "validates"
+                and not isinstance(ens_expr, ValidExpr)
+                and not _expr_references_name(ens_expr, "result")
+            ):
+                self._warning(
+                    "W328",
+                    "ensures clause doesn't reference 'result'; "
+                    "postcondition should constrain the return value",
                     ens_expr.span if hasattr(ens_expr, "span") else fd.span,
                 )
             self.symbols.pop_scope()
@@ -187,6 +242,35 @@ class ContractCheckMixin:
                     f"invariant network '{sat_name}'",
                     fd.span,
                 )
+
+        # Type-check `near_miss` expressions
+        # validates has implicit Boolean return (checker stores Unit)
+        nm_return_type = BOOLEAN if fd.verb == "validates" else return_type
+        for nm in fd.near_misses:
+            # Type-check input expression (params are already in scope)
+            self._infer_expr(nm.input)
+
+            # Type-check expected expression — push scope with result available
+            self.symbols.push_scope("near_miss")
+            self.symbols.define(
+                Symbol(
+                    name="result",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=nm_return_type,
+                    span=fd.span,
+                )
+            )
+            expected_type = self._infer_expr(nm.expected)
+            if not isinstance(expected_type, ErrorType) and not types_compatible(
+                nm_return_type, expected_type
+            ):
+                self._error(
+                    "E383",
+                    f"near_miss expected type '{type_name(expected_type)}' "
+                    f"doesn't match return type '{type_name(nm_return_type)}'",
+                    nm.expected.span,
+                )
+            self.symbols.pop_scope()
 
         # Warning: intent set but no ensures/requires
         if fd.intent and not fd.ensures and not fd.requires:
@@ -313,7 +397,7 @@ class ContractCheckMixin:
                     fd.span,
                 )
 
-        # E367: match expression only allowed in matches verb
+        # I367: suggest extracting match to a matches verb function
         if verb != "matches":
             self._check_match_restriction(fd.body, fd.span)
 
@@ -402,19 +486,19 @@ class ContractCheckMixin:
                 for s in arm.body:
                     self._check_pure_stmt(s)
 
-    # ── Match restriction (E367) ────────────────────────────────
+    # ── Match restriction (I367) ────────────────────────────────
 
     def _check_match_restriction(
         self,
         body: list[Stmt | MatchExpr],
         span: Span,
     ) -> None:
-        """E367: match expression only allowed in matches verb."""
+        """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                self._error(
-                    "E367",
-                    "match expression is only allowed in `matches` verb functions",
+                self._info(
+                    "I367",
+                    "consider extracting match to a 'matches' verb function for better code flow",
                     stmt.span,
                 )
             elif isinstance(stmt, VarDecl):
@@ -429,9 +513,9 @@ class ContractCheckMixin:
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            self._error(
-                "E367",
-                "match expression is only allowed in `matches` verb functions",
+            self._info(
+                "I367",
+                "consider extracting match to a 'matches' verb function for better code flow",
                 expr.span,
             )
         elif isinstance(expr, CallExpr):

@@ -29,4 +29,3 @@ from
     sentence as String = "apple,banana,cherry"
     parts as List<String> = split(sentence, ",")
     console(f"Parts: {join(parts, " | ")}")
-    Unit

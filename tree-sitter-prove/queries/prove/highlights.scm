@@ -31,6 +31,7 @@
   "as"
   "binary"
   "comptime"
+  "domain"
   "foreign"
   "from"
   "is"

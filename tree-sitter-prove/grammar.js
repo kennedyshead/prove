@@ -54,6 +54,7 @@ module.exports = grammar({
         $.constant_definition,
         $.invariant_network,
         $.narrative_annotation,
+        $.domain_annotation,
         $.temporal_annotation,
         $.foreign_block,
       )),
@@ -298,10 +299,17 @@ module.exports = grammar({
 
     narrative_annotation: $ => seq('narrative', ':', $.string_literal),
 
+    domain_annotation: $ => seq(
+      'domain', optional(':'),
+      choice($.type_identifier, $.string_literal),
+    ),
+
     temporal_annotation: $ => seq(
-      'temporal', ':',
-      $.identifier,
-      repeat(seq('->', $.identifier)),
+      'temporal', optional(':'),
+      choice(
+        $.string_literal,
+        seq($.identifier, repeat(seq('->', $.identifier))),
+      ),
     ),
 
     foreign_block: $ => prec(1, seq(
@@ -558,7 +566,7 @@ module.exports = grammar({
       /0o[0-7][0-7_]*/,
     )),
 
-    decimal_literal: $ => token(/[0-9][0-9_]*\.[0-9][0-9_]*/),
+    decimal_literal: $ => token(/[0-9][0-9_]*\.[0-9][0-9_]*[fF]?/),
 
     boolean_literal: $ => choice('true', 'false'),
 

@@ -11,9 +11,8 @@ keywords: Prove contracts, formal verification, testing, ensures, requires, inva
 The compiler proves properties when it can, and generates tests when it can't:
 
 ```prove
-transforms binary_search(xs Sorted<List<Integer>>, target Integer) Option<Integer>
-  ensures is_some(result) implies xs[unwrap(result)] == target
-  ensures is_none(result) implies target not_in xs
+transforms binary_search(xs List<Integer>, target Integer) Option<Integer>
+  ensures len(xs) == 0 || some(result) || !contains(xs, target)
 ```
 
 ## Contracts by Example — What Makes Prove Different
@@ -105,8 +104,6 @@ No test file needed. No QuickCheck boilerplate. The compiler generates thousands
 ```prove
 transforms sort(xs List<Value>) List<Value>
   ensures len(result) == len(xs)
-  ensures is_sorted(result)
-  ensures is_permutation_of(result, xs)
 from
     // implementation
 ```
@@ -137,8 +134,8 @@ A `near_miss` declares an input that *should fail* a contract. The compiler veri
 ```prove
 transforms leap_year(y Integer) Boolean
   requires y > 0
-  near_miss 0 => rejected       // not a valid year
-  near_miss -1 => rejected      // negative year
+  near_miss: 0 => false          // not a valid year
+  near_miss: -1 => false         // negative year
 from
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 ```

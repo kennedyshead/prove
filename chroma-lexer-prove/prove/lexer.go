@@ -42,7 +42,7 @@ var (
 				{`0x[0-9a-fA-F][0-9a-fA-F_]*`, chroma.NumberHex, nil},
 				{`0b[01][01_]*`, chroma.NumberBin, nil},
 				{`0o[0-7][0-7_]*`, chroma.NumberOct, nil},
-				{`[0-9][0-9_]*\.[0-9][0-9_]*`, chroma.NumberFloat, nil},
+				{`[0-9][0-9_]*\.[0-9][0-9_]*[fF]?`, chroma.NumberFloat, nil},
 				{`[0-9][0-9_]*`, chroma.Number, nil},
 
 				// Fail marker (before operators so ! is not consumed)

@@ -1375,7 +1375,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     fd.span,
                 )
 
-        # E367: match expression only allowed in matches verb
+        # I367: suggest extracting match to a matches verb function
         if verb != "matches":
             self._check_match_restriction(fd.body, fd.span)
 
@@ -1464,19 +1464,19 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 for s in arm.body:
                     self._check_pure_stmt(s)
 
-    # ── Match restriction (E367) ────────────────────────────────
+    # ── Match restriction (I367) ────────────────────────────────
 
     def _check_match_restriction(
         self,
         body: list[Stmt | MatchExpr],
         span: Span,
     ) -> None:
-        """E367: match expression only allowed in matches verb."""
+        """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                self._error(
-                    "E367",
-                    "match expression is only allowed in `matches` verb functions",
+                self._info(
+                    "I367",
+                    "consider extracting match to a 'matches' verb function for better code flow",
                     stmt.span,
                 )
             elif isinstance(stmt, VarDecl):
@@ -1491,9 +1491,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            self._error(
-                "E367",
-                "match expression is only allowed in `matches` verb functions",
+            self._info(
+                "I367",
+                "consider extracting match to a 'matches' verb function for better code flow",
                 expr.span,
             )
         elif isinstance(expr, CallExpr):

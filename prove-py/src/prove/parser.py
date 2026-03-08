@@ -496,7 +496,8 @@ class Parser:
                 chosen = self._expect(TokenKind.STRING_LIT).value
             elif self._at(TokenKind.NEAR_MISS):
                 self._advance()
-                self._expect(TokenKind.COLON)
+                if self._at(TokenKind.COLON):
+                    self._advance()  # colon is optional
                 nm_input = self._parse_expression(0)
                 self._expect(TokenKind.FAT_ARROW)
                 nm_expected = self._parse_expression(0)

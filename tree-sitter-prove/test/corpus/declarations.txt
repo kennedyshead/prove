@@ -251,6 +251,60 @@ module Test
           (string_literal))))))
 
 ===
+Domain annotation
+===
+
+module Test
+  domain Finance
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (domain_annotation
+      (type_identifier))))
+
+===
+Temporal annotation
+===
+
+module Test
+  temporal authenticate -> authorize -> access
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (temporal_annotation
+      (identifier)
+      (identifier)
+      (identifier))))
+
+===
+Float literal with f suffix
+===
+
+transforms half(x Float) Float
+    from
+        x * 0.5f
+
+---
+
+(source_file
+  (function_definition
+    (verb)
+    (identifier)
+    (parameter_list
+      (parameter (identifier) (type_expression (simple_type (type_identifier)))))
+    (type_expression (simple_type (type_identifier)))
+    (expression
+      (binary_expression
+        (expression (identifier))
+        (expression (decimal_literal))))))
+
+===
 Raw string with regex internals
 ===
 

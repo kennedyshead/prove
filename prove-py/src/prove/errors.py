@@ -90,14 +90,14 @@ for _c in ("E340", "E341"):
 # Control flow E350, E352, E355-E356
 for _c in ("E350", "E352", "E355", "E356"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Verb enforcement E361-E367 (E360 moved to I360)
+# Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367)
 _register_doc_range("E", 361, 367)
 # Pattern matching E370-E371
 _register_doc_range("E", 370, 371)
 # Lookup tables E375-E379
 _register_doc_range("E", 375, 379)
 # Contract checking
-for _c in ("E331", "E380", "E381", "E382", "E384", "E385", "E386"):
+for _c in ("E331", "E380", "E381", "E382", "E383", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Binary lookup tables E387-E389
 _register_doc_range("E", 387, 389)
@@ -108,8 +108,8 @@ _register_doc_range("E", 410, 422)
 # Warnings
 for _c in ("W304", "W311", "W312"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Warnings — contracts W321-W327
-_register_doc_range("W", 321, 327)
+# Warnings — contracts W321-W328
+_register_doc_range("W", 321, 328)
 # Warning — mutation testing W330
 DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 # Warning — unused pure result W332
@@ -117,7 +117,7 @@ DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
 # Warning — domain profile W340-W342
 _register_doc_range("W", 340, 342)
 # Info
-for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I320", "I340", "I360"):
+for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I320", "I340", "I360", "I367"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 
 

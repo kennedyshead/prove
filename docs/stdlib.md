@@ -28,7 +28,7 @@ Verbs fall into two families. **Pure verbs** have no side effects — the compil
 | `transforms` | Convert data from one form to another | `transforms trim(s String) String` |
 | `validates` | Check a condition, return Boolean | `validates has(key String, table Table<Value>)` |
 | `reads` | Extract or query data without changing it | `reads get(key String, table Table<Value>) Option<Value>` |
-| `creates` | Construct a new value from scratch | `creates builder() Builder` |
+| `creates` | Construct a new value from scratch | `creates builder() StringBuilder` |
 | `matches` | Algebraic dispatch (first param must be algebraic) | `matches area(s Shape) Decimal` |
 
 **IO verbs** interact with the outside world:
@@ -881,7 +881,7 @@ from
 | Version | Module | Status | Purpose |
 |---------|--------|--------|---------|
 | v0.6 | **Character** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
-| v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
+| v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
 | v0.6 | **Table** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | v0.7 | **InputOutput** (ext) | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | v0.7 | **Parse** (ext) | Complete | TOML, JSON, URL, and Base64 codecs with `Value` and `Url` types |

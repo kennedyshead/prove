@@ -58,6 +58,8 @@ def _map_float(modifiers: tuple[str, ...]) -> CType:
     for m in modifiers:
         if m == "32":
             return CType("float", is_pointer=False, header=None)
+        if m == "128":
+            return CType("long double", is_pointer=False, header=None)
     return CType("double", is_pointer=False, header=None)
 
 

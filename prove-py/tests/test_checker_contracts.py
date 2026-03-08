@@ -132,6 +132,126 @@ class TestContractChecking:
         )
 
 
+class TestNearMissTypeChecking:
+    """Test type-checking of near_miss expected expressions (E383)."""
+
+    def test_near_miss_expected_type_mismatch(self):
+        """near_miss 1 => false on Integer-returning function → E383."""
+        check_fails(
+            "transforms f(n Integer) Integer\n"
+            "    near_miss 1 => false\n"
+            "    from\n"
+            "        n\n",
+            "E383",
+        )
+
+    def test_near_miss_expected_type_ok(self):
+        """near_miss 1 => 42 on Integer-returning function → passes."""
+        check(
+            "transforms f(n Integer) Integer\n"
+            "    near_miss 1 => 42\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_near_miss_validates_boolean_ok(self):
+        """near_miss 0 => false on validates function → passes (returns Boolean)."""
+        check(
+            "validates f(n Integer)\n"
+            "    near_miss 0 => false\n"
+            "    from\n"
+            "        n > 0\n"
+        )
+
+    def test_near_miss_string_mismatch(self):
+        """near_miss 1 => 'hello' on Integer-returning function → E383."""
+        check_fails(
+            "transforms f(n Integer) Integer\n"
+            '    near_miss 1 => "hello"\n'
+            "    from\n"
+            "        n\n",
+            "E383",
+        )
+
+
+class TestEnsuresWithoutResult:
+    """Test W328: ensures clause doesn't reference result."""
+
+    def test_ensures_without_result_warns(self):
+        """ensures a > 0 doesn't reference result → W328."""
+        check_warns(
+            "transforms f(a Integer) Integer\n"
+            "    ensures a > 0\n"
+            "    explain\n"
+            "        check a\n"
+            "    from\n"
+            "        a\n",
+            "W328",
+        )
+
+    def test_ensures_with_result_ok(self):
+        """ensures result > 0 references result → no W328."""
+        check(
+            "transforms f(a Integer) Integer\n"
+            "    ensures result > 0\n"
+            "    explain\n"
+            "        check result\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_ensures_result_in_field_ok(self):
+        """ensures result.x > 0 references result via field → no W328."""
+        check(
+            "module M\n"
+            "  type Point is\n"
+            "    x Integer\n"
+            "    y Integer\n"
+            "\n"
+            "transforms make_point(n Integer) Point\n"
+            "    ensures result.x > 0\n"
+            "    explain\n"
+            "        check result x\n"
+            "    from\n"
+            "        Point(n, n)\n"
+        )
+
+    def test_ensures_result_in_call_ok(self):
+        """ensures len(result) > 0 references result in call arg → no W328."""
+        check(
+            "transforms f(a List<Integer>) List<Integer>\n"
+            "    ensures len(result) > 0\n"
+            "    explain\n"
+            "        check result length\n"
+            "    from\n"
+            "        a\n"
+        )
+
+    def test_ensures_validates_no_result_ok(self):
+        """validates ensures without result is OK — validates checks input conditions."""
+        check(
+            "validates positive(n Integer)\n"
+            "    ensures n > 0\n"
+            "    from\n"
+            "        n > 0\n"
+        )
+
+    def test_ensures_valid_expr_no_result_ok(self):
+        """ensures valid expr without result is OK — validation postconditions."""
+        check(
+            "validates ok(s String)\n"
+            "    from\n"
+            "        true\n"
+            "\n"
+            "transforms f(s String) String\n"
+            "    ensures valid ok(s)\n"
+            "    explain\n"
+            "        check s\n"
+            "    from\n"
+            "        s\n"
+        )
+
+
 class TestExplainConditionChecking:
     """Test type-checking of explain entry conditions."""
 

@@ -30,4 +30,3 @@ from
     // Get length
     length_value as Integer = length(table)
     console(f"Length: {length_value}")
-    Unit

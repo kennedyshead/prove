@@ -19,4 +19,3 @@ from
     // Pipe operator - chain operations
     result as Integer = nums |> filter(|n| n > 2) |> map(|n| n * 10) |> reduce(0, |acc, n| acc + n)
     console(f"Piped result: {result}")
-    Unit

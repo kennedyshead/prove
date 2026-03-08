@@ -726,3 +726,49 @@ class TestVariantPatternNonAlgebraic:
         c_code = _emit(source)
         # Should emit Some check as pointer null check (String is pointer)
         assert "!= NULL" in c_code or ".tag == 1" in c_code
+
+
+class TestRefinementTypeValidation:
+    """Test numeric refinement type constraint emission."""
+
+    def test_range_constraint(self):
+        """Range constraint like Integer where 1..65535."""
+        source = (
+            "module M\n"
+            "  type Port is Integer where 1..65535\n"
+            "transforms use_port(p Integer) Integer\n"
+            "    from\n"
+            "        port as Port = p\n"
+            "        port\n"
+        )
+        c_code = _emit(source)
+        assert "prove_panic" in c_code
+        assert "port < 1" in c_code or "port > 65535" in c_code
+
+    def test_not_equal_constraint(self):
+        """Comparison constraint like Integer where != 0."""
+        source = (
+            "module M\n"
+            "  type NonZero is Integer where != 0\n"
+            "transforms use_nz(n Integer) Integer\n"
+            "    from\n"
+            "        nz as NonZero = n\n"
+            "        nz\n"
+        )
+        c_code = _emit(source)
+        assert "prove_panic" in c_code
+        assert "!=" in c_code
+
+    def test_greater_equal_constraint(self):
+        """Comparison constraint like Integer where >= 0."""
+        source = (
+            "module M\n"
+            "  type Natural is Integer where >= 0\n"
+            "transforms use_nat(n Integer) Integer\n"
+            "    from\n"
+            "        nat as Natural = n\n"
+            "        nat\n"
+        )
+        c_code = _emit(source)
+        assert "prove_panic" in c_code
+        assert ">=" in c_code

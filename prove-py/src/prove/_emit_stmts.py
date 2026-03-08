@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prove.ast_nodes import (
     Assignment,
+    BinaryExpr,
     BindingPattern,
     CallExpr,
     CommentStmt,
@@ -14,6 +15,7 @@ from prove.ast_nodes import (
     FieldAssignment,
     FunctionDef,
     IdentifierExpr,
+    IntegerLit,
     LiteralPattern,
     MatchExpr,
     RawStringLit,
@@ -21,6 +23,7 @@ from prove.ast_nodes import (
     Stmt,
     TailContinue,
     TailLoop,
+    UnaryExpr,
     ValidExpr,
     VarDecl,
     VariantPattern,
@@ -489,6 +492,79 @@ class StmtEmitterMixin:
             self._line('prove_panic("constraint failed: value does not match pattern");')
             self._indent -= 1
             self._line("}")
+        elif isinstance(constraint, BinaryExpr):
+            self._emit_numeric_refinement(var_name, constraint)
+
+    def _emit_numeric_refinement(self, var_name: str, constraint: BinaryExpr) -> None:
+        """Emit runtime validation for numeric refinement constraints."""
+        from prove.type_inference import BINARY_OP_TO_C
+
+        if constraint.op == "..":
+            # Range: 1..65535 → if (val < 1 || val > 65535) { panic }
+            lo = self._emit_constraint_operand(constraint.left, var_name)
+            hi = self._emit_constraint_operand(constraint.right, var_name)
+            self._line(f"if ({var_name} < {lo} || {var_name} > {hi}) {{")
+            self._indent += 1
+            self._line('prove_panic("refinement type constraint violated: value out of range");')
+            self._indent -= 1
+            self._line("}")
+        elif constraint.op in BINARY_OP_TO_C:
+            c_op = BINARY_OP_TO_C[constraint.op]
+            if constraint.op in ("&&", "||"):
+                # Compound constraint: emit both sides
+                self._emit_compound_refinement(var_name, constraint)
+            else:
+                # Comparison: self != 0 → if (!(val != 0)) { panic }
+                left = self._emit_constraint_operand(constraint.left, var_name)
+                right = self._emit_constraint_operand(constraint.right, var_name)
+                self._line(f"if (!({left} {c_op} {right})) {{")
+                self._indent += 1
+                self._line('prove_panic("refinement type constraint violated");')
+                self._indent -= 1
+                self._line("}")
+
+    def _emit_compound_refinement(self, var_name: str, constraint: BinaryExpr) -> None:
+        """Emit compound constraint (&&, ||)."""
+        from prove.type_inference import BINARY_OP_TO_C
+
+        c_op = BINARY_OP_TO_C[constraint.op]
+        left = self._emit_constraint_condition(constraint.left, var_name)
+        right = self._emit_constraint_condition(constraint.right, var_name)
+        self._line(f"if (!({left} {c_op} {right})) {{")
+        self._indent += 1
+        self._line('prove_panic("refinement type constraint violated");')
+        self._indent -= 1
+        self._line("}")
+
+    def _emit_constraint_condition(self, expr: Expr, var_name: str) -> str:
+        """Emit a constraint sub-expression as a C condition string."""
+        from prove.type_inference import BINARY_OP_TO_C
+
+        if isinstance(expr, BinaryExpr):
+            if expr.op == "..":
+                lo = self._emit_constraint_operand(expr.left, var_name)
+                hi = self._emit_constraint_operand(expr.right, var_name)
+                return f"({var_name} >= {lo} && {var_name} <= {hi})"
+            elif expr.op in BINARY_OP_TO_C:
+                left = self._emit_constraint_operand(expr.left, var_name)
+                right = self._emit_constraint_operand(expr.right, var_name)
+                return f"({left} {BINARY_OP_TO_C[expr.op]} {right})"
+        return "1"
+
+    def _emit_constraint_operand(self, expr: Expr, var_name: str) -> str:
+        """Emit a single operand of a constraint expression, replacing 'self' with var_name."""
+        if isinstance(expr, IdentifierExpr):
+            if expr.name == "self":
+                return var_name
+            return expr.name
+        if isinstance(expr, IntegerLit):
+            return expr.value
+        if isinstance(expr, UnaryExpr) and expr.op == "-":
+            inner = self._emit_constraint_operand(expr.operand, var_name)
+            return f"(-{inner})"
+        if isinstance(expr, BinaryExpr):
+            return self._emit_constraint_condition(expr, var_name)
+        return self._emit_expr(expr)
 
     def _emit_refinement_validation_for_option(
         self, var_name: str, target_ty: Type, option_ct: str | CType, result_var: str
@@ -544,6 +620,28 @@ class StmtEmitterMixin:
             self._line(f"{result_var} = {some_expr};")
             self._indent -= 1
             self._line("}")
+        elif isinstance(constraint, BinaryExpr):
+            cond = self._emit_numeric_option_condition(var_name, constraint)
+            if cond:
+                self._line(f"if (!({cond})) {{")
+                self._indent += 1
+                self._line(f"{result_var} = prove_option_none();")
+                self._indent -= 1
+                self._line("} else {")
+                self._indent += 1
+                self._line(f"{result_var} = {some_expr};")
+                self._indent -= 1
+                self._line("}")
+            else:
+                self._line(f"{result_var} = {some_expr};")
+
+    def _emit_numeric_option_condition(self, var_name: str, constraint: BinaryExpr) -> str | None:
+        """Build a C condition string for a numeric constraint (used in Option context)."""
+        if constraint.op == "..":
+            lo = self._emit_constraint_operand(constraint.left, var_name)
+            hi = self._emit_constraint_operand(constraint.right, var_name)
+            return f"{var_name} >= {lo} && {var_name} <= {hi}"
+        return self._emit_constraint_condition(constraint, var_name)
 
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)

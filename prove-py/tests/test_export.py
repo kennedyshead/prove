@@ -244,9 +244,8 @@ def test_treesitter_keywords_no_phantom_literals(lists, grammar_lits):
     """Keywords not in grammar.js are excluded from highlights."""
     output = _ts_highlights_keywords(lists, grammar_lits)
     # These exist in the compiler but not as grammar literals
-    # when and domain are not grammar literals
+    # when is not a grammar literal
     assert '"when"' not in output
-    assert '"domain"' not in output
     # These should be present (they are grammar literals)
     assert '"from"' in output
     assert '"type"' in output

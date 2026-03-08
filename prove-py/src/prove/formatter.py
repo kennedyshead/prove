@@ -254,7 +254,7 @@ class ProveFormatter:
             lines.append(f'  chosen: "{fd.chosen}"')
         for nm in fd.near_misses:
             lines.append(
-                f"  near_miss: {self._format_expr(nm.input)}  => {self._format_expr(nm.expected)}"
+                f"  near_miss {self._format_expr(nm.input)} => {self._format_expr(nm.expected)}"
             )
         for expr in fd.know:
             lines.append(f"  know: {self._format_expr(expr)}")
@@ -488,10 +488,10 @@ class ProveFormatter:
             lines.append(f'  narrative: """{mod.narrative}"""')
 
         if mod.domain:
-            lines.append(f"  domain: {mod.domain}")
+            lines.append(f"  domain {mod.domain}")
 
         if mod.temporal:
-            lines.append(f"  temporal: {' -> '.join(mod.temporal)}")
+            lines.append(f"  temporal {' -> '.join(mod.temporal)}")
 
         for imp in mod.imports:
             if self._is_unknown_module(imp.span):

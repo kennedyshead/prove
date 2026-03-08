@@ -8,8 +8,8 @@ matches factorial(n Integer) Integer
   explain
       will run until n is 120
   terminates: n == 0
-  near_miss: 70  => true
-  near_miss: 60  => false
+  near_miss 70 => 1
+  near_miss 60 => 1
 from
     1 => 1
     _ => n * factorial(n - 1)

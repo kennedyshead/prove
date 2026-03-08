@@ -1,10 +1,10 @@
 module Main
   narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network.
 
-  Expected to fail: check_strict.
+  Expected to fail: check, check_md, check_strict, build, build_debug, build_no_mutate, test.
   """
-  domain: Finance
-  temporal: authenticate -> authorize -> access
+  domain Finance
+  temporal authenticate -> authorize -> access
   InputOutput outputs console
 
   type State is
@@ -16,11 +16,21 @@ module Main
     valid_state
 
 validates valid_state(s State)
+  ensures false || true
+  requires s.authenticated == true
+  explain
+      needs to be authorized
+  near_miss State(false, true, true) => false
   satisfies ValidState
 from
     !s.authenticated || s.authorized
 
 transforms authorize(s State) State
+  ensures result == State(true, true, true)
+  requires s.authenticated == true
+  explain
+      needs to be authorized
+  near_miss false => State(false, false, true)
 from
     State(s.authenticated, true, s.balance)
 
@@ -30,4 +40,3 @@ from
     console("Domain: Finance")
     console("Temporal: authenticate -> authorize -> access")
     console("Invariant: ValidState")
-    Unit

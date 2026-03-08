@@ -219,6 +219,25 @@
     }
   },
   {
+    "type": "domain_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "string_literal",
+          "named": true
+        },
+        {
+          "type": "type_identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "ensures_clause",
     "named": true,
     "fields": {},
@@ -855,6 +874,10 @@
           "named": true
         },
         {
+          "type": "domain_annotation",
+          "named": true
+        },
+        {
           "type": "foreign_block",
           "named": true
         },
@@ -1185,7 +1208,6 @@
   {
     "type": "source_file",
     "named": true,
-    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
@@ -1239,6 +1261,10 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "string_literal",
           "named": true
         }
       ]
@@ -1638,8 +1664,11 @@
   },
   {
     "type": "doc_comment",
-    "named": true,
-    "extra": true
+    "named": true
+  },
+  {
+    "type": "domain",
+    "named": false
   },
   {
     "type": "ensures",
@@ -1703,8 +1732,7 @@
   },
   {
     "type": "line_comment",
-    "named": true,
-    "extra": true
+    "named": true
   },
   {
     "type": "main",

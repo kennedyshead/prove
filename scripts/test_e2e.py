@@ -277,23 +277,23 @@ def main() -> int:
                 rc = result["returncode"]
                 expected = cmd in expected_failures
 
-                missing_diags = []
-                if cmd == "check" and expected_diags:
-                    stderr = result.get("stderr", "")
-                    for diag in expected_diags:
-                        if f"[{diag}]" not in stderr:
-                            missing_diags.append(diag)
-
-                if missing_diags:
-                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                    failed_example = project_dir
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                elif expected and rc != 0:
+                if expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
-                    status = "OK"
+                    missing_diags = []
+                    if cmd == "check" and expected_diags:
+                        stderr = result.get("stderr", "")
+                        for diag in expected_diags:
+                            if f"[{diag}]" not in stderr:
+                                missing_diags.append(diag)
+                    if missing_diags:
+                        status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                        failed_example = project_dir
+                        failed_command = cmd
+                        failed_result = result
+                        failed_name = str(name)
+                    else:
+                        status = "OK"
                 else:
                     status = f"FAIL ({rc})"
                     failed_example = project_dir
@@ -326,23 +326,23 @@ def main() -> int:
                 rc = result["returncode"]
                 expected = cmd in expected_failures
 
-                missing_diags = []
-                if cmd == "check" and expected_diags:
-                    stderr = result.get("stderr", "")
-                    for diag in expected_diags:
-                        if f"[{diag}]" not in stderr:
-                            missing_diags.append(diag)
-
-                if missing_diags:
-                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                    failed_example = prv_file
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                elif expected and rc != 0:
+                if expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
-                    status = "OK"
+                    missing_diags = []
+                    if cmd == "check" and expected_diags:
+                        stderr = result.get("stderr", "")
+                        for diag in expected_diags:
+                            if f"[{diag}]" not in stderr:
+                                missing_diags.append(diag)
+                    if missing_diags:
+                        status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                        failed_example = prv_file
+                        failed_command = cmd
+                        failed_result = result
+                        failed_name = str(name)
+                    else:
+                        status = "OK"
                 else:
                     status = f"FAIL ({rc})"
                     failed_example = prv_file
