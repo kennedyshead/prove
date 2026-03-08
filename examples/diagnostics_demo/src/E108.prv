@@ -1,0 +1,6 @@
+module DemoE108
+  narrative: """
+  Expected diagnostics: E108
+  """
+from
+    "\EOF

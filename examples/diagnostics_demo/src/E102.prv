@@ -1,0 +1,6 @@
+module DemoE102
+  narrative: """
+  Expected diagnostics: E102
+  """
+from
+    """unterminated

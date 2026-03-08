@@ -1,0 +1,7 @@
+module DemoE410
+  narrative: """
+  Expected diagnostics: E410
+  """
+transforms check() Integer
+from
+    comptime x = 1

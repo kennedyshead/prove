@@ -1,0 +1,9 @@
+module DemoE356
+  narrative: """
+  Expected diagnostics: E356
+  """
+
+transforms id(n Integer) Integer
+  know: 2 + 2 == 5
+from
+    n

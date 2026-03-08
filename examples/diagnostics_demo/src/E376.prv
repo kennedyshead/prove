@@ -1,0 +1,8 @@
+module DemoE376
+  narrative: """
+  Expected diagnostics: E376
+  """
+
+transforms resolve(s String) String
+from
+    TokenKind:s

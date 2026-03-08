@@ -1,0 +1,8 @@
+module DemoW312
+  narrative: """
+  Expected diagnostics: W312
+  """
+
+main() Unit
+from
+    0

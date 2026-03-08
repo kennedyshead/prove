@@ -1,0 +1,8 @@
+module DemoE379
+  narrative: """
+  Expected diagnostics: E379
+  """
+
+main()
+from
+    0

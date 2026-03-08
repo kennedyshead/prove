@@ -1,0 +1,8 @@
+module DemoI302
+  narrative: """
+  Expected diagnostics: I302
+  """
+
+transforms greet(name String) String
+from
+    name

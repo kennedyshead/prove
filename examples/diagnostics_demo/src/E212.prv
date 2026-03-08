@@ -1,0 +1,8 @@
+module DemoE212
+  narrative: """
+  Expected diagnostics: E212
+  """
+
+transforms check()
+from
+    1

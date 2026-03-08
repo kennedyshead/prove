@@ -1,0 +1,9 @@
+module DemoE384
+  narrative: """
+  Expected diagnostics: E384
+  """
+
+transforms bad(a Integer) Integer
+  know: a + 1
+from
+    a

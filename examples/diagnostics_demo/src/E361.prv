@@ -1,0 +1,8 @@
+module DemoE361
+  narrative: """
+  Expected diagnostics: E361
+  """
+
+transforms bad(x Integer) Integer!
+from
+    x

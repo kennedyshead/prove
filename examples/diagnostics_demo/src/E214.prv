@@ -1,0 +1,5 @@
+module DemoE214
+  narrative: """
+  Expected diagnostics: E214
+  """
+type Test<>

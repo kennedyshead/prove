@@ -1,0 +1,10 @@
+module DemoE362
+  narrative: """
+  Expected diagnostics: E362
+  """
+  InputOutput outputs console
+
+transforms bad() Integer
+from
+    console("side effect")
+    0

@@ -1,0 +1,13 @@
+module DemoE331
+  narrative: """
+  Expected diagnostics: E331
+  """
+
+  type Pair is
+    x Integer
+    y Integer
+
+transforms bad(p Pair) Pair
+from
+    p.x = 0
+    p

@@ -1,0 +1,7 @@
+module DemoE213
+  narrative: """
+  Expected diagnostics: E213
+  """
+transforms check() Integer
+from
+    

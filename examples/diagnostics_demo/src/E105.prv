@@ -1,0 +1,6 @@
+module DemoE105
+  narrative: """
+  Expected diagnostics: E105
+  """
+from
+    #r"unterminated

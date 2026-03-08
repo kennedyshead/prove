@@ -1,0 +1,9 @@
+module DemoW323
+  narrative: """
+  Expected diagnostics: W323
+  """
+
+transforms add(a Integer, b Integer) Integer
+  ensures result == a + b
+from
+    a + b

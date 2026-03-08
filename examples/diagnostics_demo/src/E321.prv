@@ -1,0 +1,9 @@
+module DemoE321
+  narrative: """
+  Expected diagnostics: E321
+  """
+
+transforms bad() Integer
+from
+    x as String = 42
+    0

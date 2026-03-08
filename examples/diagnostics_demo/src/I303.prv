@@ -1,0 +1,8 @@
+module DemoI303
+  narrative: """
+  Expected diagnostics: I303
+  """
+
+transforms one() Integer
+from
+    1

@@ -1,0 +1,13 @@
+module DemoE320
+  narrative: """
+  Expected diagnostics: E320
+  """
+  Parse types Value
+  Parse creates value
+
+  type Color is Red
+    | Green
+
+creates wrap(c Color) Value
+from
+    value(c)

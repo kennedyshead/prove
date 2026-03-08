@@ -1,0 +1,4 @@
+module DemoE301
+  narrative: """
+  Expected diagnostics: E301
+  """

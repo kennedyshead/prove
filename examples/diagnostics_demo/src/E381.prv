@@ -1,0 +1,9 @@
+module DemoE381
+  narrative: """
+  Expected diagnostics: E381
+  """
+
+transforms bad(a Integer) Integer
+  requires a + 1
+from
+    a

@@ -1,0 +1,9 @@
+module DemoW327
+  narrative: """
+  Expected diagnostics: W327
+  """
+
+transforms id(n Integer) Integer
+  know: n > 0
+from
+    n

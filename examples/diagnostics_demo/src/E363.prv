@@ -1,0 +1,14 @@
+module DemoE363
+  narrative: """
+  Expected diagnostics: E363
+  """
+  InputOutput outputs console
+
+outputs log_msg(msg String) Unit
+from
+    console(msg)
+
+transforms bad(x Integer) Integer
+from
+    log_msg("side effect")
+    x

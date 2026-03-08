@@ -1,0 +1,9 @@
+module DemoW304
+  narrative: """t"""
+
+matches abs_val(n Integer) Integer
+  requires n >= 0
+from
+    match n >= 0
+        true => n
+        false => 0 - n

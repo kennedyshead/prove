@@ -1,0 +1,6 @@
+module DemoE103
+  narrative: """
+  Expected diagnostics: E103
+  """
+from
+    'a

@@ -1,0 +1,9 @@
+module DemoW311
+  narrative: """
+  Expected diagnostics: W311
+  """
+
+transforms add(a Integer, b Integer) Integer
+  intent: "add two numbers"
+from
+    a + b

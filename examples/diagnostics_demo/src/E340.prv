@@ -1,0 +1,12 @@
+module DemoE340
+  narrative: """
+  Expected diagnostics: E340
+  """
+
+  type Point is
+    x Integer
+    y Integer
+
+transforms bad(p Point) Integer
+from
+    p.z

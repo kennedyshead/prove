@@ -1,0 +1,10 @@
+module DemoE367
+  narrative: """
+  Expected diagnostics: E367
+  """
+
+transforms bad(n Integer) String
+from
+    match n > 0
+        true => "yes"
+        false => "no"

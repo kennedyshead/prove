@@ -1,0 +1,11 @@
+module DemoW324
+  narrative: """
+  Expected diagnostics: W324
+  """
+
+transforms add(a Integer, b Integer) Integer
+  ensures result == a + b
+  explain
+      sum a and b
+from
+    a + b

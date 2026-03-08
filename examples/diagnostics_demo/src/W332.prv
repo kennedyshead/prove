@@ -1,0 +1,13 @@
+module DemoW332
+  narrative: """
+  Expected diagnostics: W332
+  """
+
+transforms pure() Integer
+from
+    1
+
+transforms check() Integer
+from
+    pure()
+    1

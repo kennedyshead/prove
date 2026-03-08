@@ -1,0 +1,8 @@
+module DemoE215
+  narrative: """
+  Expected diagnostics: E215
+  """
+transforms check(x Integer) Integer
+from
+    match x
+        => 1

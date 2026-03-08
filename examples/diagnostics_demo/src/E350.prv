@@ -1,0 +1,12 @@
+module DemoE350
+  narrative: """
+  Expected diagnostics: E350
+  """
+
+inputs may_fail(x Integer) Result<Integer, Error>!
+from
+    x
+
+transforms bad() Integer
+from
+    may_fail(42)!

@@ -1,0 +1,5 @@
+module Demomain
+  narrative: """Test all diagnostics.
+
+  Expected to fail: check, check_md, check_strict, build, build_debug, build_no_mutate, test, test_property_rounds, format_check, format_check_md, format, view.
+  """

@@ -1,0 +1,11 @@
+module DemoE310
+  narrative: """
+  Expected diagnostics: E310
+  """
+
+transforms bad(n Integer) Integer
+  ensures result >= 0
+  explain
+      wrong: bad when x > 0
+from
+    n

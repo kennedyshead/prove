@@ -1,0 +1,9 @@
+module DemoI320
+  narrative: """
+  Expected diagnostics: I320
+  """
+
+transforms check() Integer
+from
+    1
+    2

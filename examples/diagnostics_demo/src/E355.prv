@@ -1,0 +1,11 @@
+module DemoE355
+  narrative: """
+  Expected diagnostics: E355
+  """
+
+  type Positive is Integer where self >= 0
+
+transforms use(n Integer) Integer
+from
+    p as Positive = -1
+    n

@@ -1,0 +1,8 @@
+module DemoE322
+  narrative: """
+  Expected diagnostics: E322
+  """
+
+transforms bad() String
+from
+    42

@@ -1,0 +1,8 @@
+module DemoW330
+  narrative: """
+  Expected diagnostics: W330
+  """
+
+transforms check() Integer
+from
+    1

@@ -1,0 +1,14 @@
+module DemoE371
+  narrative: """
+  Expected diagnostics: E371
+  """
+
+  type Color is Red
+    | Green
+    | Blue
+
+matches name(c Color) String
+from
+    match c
+        Red => "red"
+        Green => "green"

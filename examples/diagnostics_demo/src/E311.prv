@@ -1,0 +1,8 @@
+module DemoE311
+  narrative: """
+  Expected diagnostics: E311
+  """
+
+transforms bad() Integer
+from
+    nonexistent_func(42)

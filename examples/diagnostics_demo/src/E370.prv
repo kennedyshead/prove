@@ -1,0 +1,14 @@
+module DemoE370
+  narrative: """
+  Expected diagnostics: E370
+  """
+
+  type Color is Red
+    | Green
+
+matches bad(c Color) String
+from
+    match c
+        Red => "red"
+        Green => "green"
+        Purple => "purple"

@@ -1,0 +1,8 @@
+module DemoE378
+  narrative: """
+  Expected diagnostics: E378
+  """
+
+main()
+from
+    BoolLit:BooleanLit
