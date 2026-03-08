@@ -88,13 +88,13 @@ def build_module_registry(
         # Also register generic builtins
         type_registry["Result"] = GenericInstance(
             "Result",
-            [TypeVariable("T"), TypeVariable("E")],
+            [TypeVariable("Value"), TypeVariable("Error")],
         )
         type_registry["Option"] = GenericInstance(
             "Option",
-            [TypeVariable("T")],
+            [TypeVariable("Value")],
         )
-        type_registry["List"] = ListType(TypeVariable("T"))
+        type_registry["List"] = ListType(TypeVariable("Value"))
         type_registry["Error"] = PrimitiveType("Error")
 
         if mod_decl is not None:

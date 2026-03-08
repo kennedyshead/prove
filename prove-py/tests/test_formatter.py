@@ -89,7 +89,7 @@ class TestFormatterTypes:
         assert "Done" in result
 
     def test_binary_type(self):
-        source = "module M\n\n  type Table<V> is binary\n"
+        source = "module M\n\n  type Table<Value> is binary\n"
         assert _roundtrip(source) == source
 
     def test_generic_type(self):

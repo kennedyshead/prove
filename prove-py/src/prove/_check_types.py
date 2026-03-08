@@ -441,7 +441,7 @@ class TypeCheckMixin:
 
     def _infer_list(self, expr: ListLiteral) -> Type:
         if not expr.elements:
-            return ListType(TypeVariable("T"))
+            return ListType(TypeVariable("Value"))
         first = self._infer_expr(expr.elements[0])
         for elem in expr.elements[1:]:
             self._infer_expr(elem)
@@ -701,7 +701,7 @@ class TypeCheckMixin:
 
         if isinstance(type_expr, GenericType):
             args = [self._resolve_type_expr(a) for a in type_expr.args]
-            # Special-case List<T> → ListType
+            # Special-case List<Value> → ListType
             if type_expr.name == "List" and len(args) == 1:
                 return ListType(args[0])
             # Check base type exists

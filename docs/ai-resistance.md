@@ -19,7 +19,7 @@ These mechanisms are enforced by the current compiler.
 `explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers.
 
 ```prove
-transforms merge_sort(xs List<T>) Sorted<List<T>>
+transforms merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort the first half
@@ -27,9 +27,9 @@ transforms merge_sort(xs List<T>) Sorted<List<T>>
       merge both sorted halves preserving order
   terminates: len(xs)
 from
-    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
-    left as Sorted<List<T>> = merge_sort(halves.first)
-    right as Sorted<List<T>> = merge_sort(halves.second)
+    halves as Pair<List<Value>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<Value>> = merge_sort(halves.first)
+    right as Sorted<List<Value>> = merge_sort(halves.second)
     merge(left, right)
 ```
 
@@ -46,11 +46,11 @@ Match expressions on algebraic types must cover all variants or include a wildca
 Refinement types encode constraints requiring genuine reasoning, not just pattern matching:
 
 ```prove
-type BalancedTree<T> is
-  Node(left BalancedTree<T>, right BalancedTree<T>)
+type BalancedTree<Value> is
+  Node(left BalancedTree<Value>, right BalancedTree<Value>)
   where abs(left.depth - right.depth) <= 1
 
-transforms insert(tree BalancedTree<T>, val T) BalancedTree<T>
+transforms insert(tree BalancedTree<Value>, val Value) BalancedTree<Value>
   // Can't just pattern match — you need to construct a value
   // that satisfies the depth constraint, which requires
   // understanding rotation logic

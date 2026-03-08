@@ -101,10 +101,10 @@ class TestParserTypes:
         assert decl.body.base_type.name == "Integer"
 
     def test_generic_type(self):
-        decl = parse_module_type("  type Result<T, E> is Ok(value T) | Err(error E)\n")
+        decl = parse_module_type("  type Result<Value, Error> is Ok(value Value) | Err(error Error)\n")
         assert isinstance(decl, TypeDef)
         assert decl.name == "Result"
-        assert decl.type_params == ["T", "E"]
+        assert decl.type_params == ["Value", "Error"]
         assert isinstance(decl.body, AlgebraicTypeDef)
 
     def test_modified_type(self):
@@ -143,10 +143,10 @@ class TestParserTypes:
         assert len(decl.body.fields) == 3
 
     def test_binary_type(self):
-        decl = parse_module_type("  type Table<V> is binary\n")
+        decl = parse_module_type("  type Table<Value> is binary\n")
         assert isinstance(decl, TypeDef)
         assert decl.name == "Table"
-        assert decl.type_params == ["V"]
+        assert decl.type_params == ["Value"]
         assert isinstance(decl.body, BinaryDef)
 
     def test_binary_type_no_params(self):

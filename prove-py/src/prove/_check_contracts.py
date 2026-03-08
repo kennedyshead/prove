@@ -187,7 +187,7 @@ class ContractCheckMixin:
         """Scan fd.requires for validates calls and valid expressions.
 
         Returns a list of (module_name, args) tuples that can be used to
-        narrow Option<V> → V and Result<T, E> → T in the function body.
+        narrow Option<Value> → Value and Result<Value, Error> → Value in the function body.
         """
         narrowings: list[tuple[str, list[Expr]]] = []
         for req_expr in fd.requires:

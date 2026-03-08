@@ -13,7 +13,7 @@ Certain types are built into the language and available without explicit import:
 | Category | Types | Description |
 |----------|-------|-------------|
 | **Primitives** | `Integer`, `Decimal`, `Float`, `Boolean`, `String`, `Character`, `Byte`, `Unit` | Core types with optional modifiers |
-| **Containers** | `List<T>`, `Option<T>`, `Result<T, E>`, `Table<T>` | Generic collection types |
+| **Containers** | `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>` | Generic collection types |
 | **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
 
 These are implicitly available in every module. No import statement needed.
@@ -94,9 +94,9 @@ Types carry constraints, not just shapes. The compiler rejects invalid values st
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535
 type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
-type NonEmpty<T> is List<T> where len > 0
+type NonEmpty<Value> is List<Value> where len > 0
 
-transforms head(xs NonEmpty<T>) T    // no Option needed, emptiness is impossible
+transforms head(xs NonEmpty<Value>) Value    // no Option needed, emptiness is impossible
 ```
 
 The compiler rejects `head([])` statically.
@@ -167,7 +167,7 @@ Rules:
 Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a variant.
 
 ```prove
-type Result<T, E> is Ok(T) | Err(E)
+type Result<Value, Error> is Ok(Value) | Err(Error)
 type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
@@ -203,4 +203,4 @@ from
 
 ## No Null
 
-No null — use `Option<T>`, enforced by the compiler.
+No null — use `Option<Value>`, enforced by the compiler.

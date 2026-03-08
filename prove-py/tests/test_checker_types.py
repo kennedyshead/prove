@@ -250,11 +250,11 @@ class TestModifiedTypeCompat:
         assert not types_compatible(rec, prim)
 
 
-# ── Fix: Option<Refinement(T)> compatibility ─────────────────────────
+# ── Fix: Option<Refinement(Value)> compatibility ─────────────────────────
 
 
 class TestOptionRefinementCompat:
-    """Test that T → Option<Refinement(T)> is allowed."""
+    """Test that Value → Option<Refinement(Value)> is allowed."""
 
     def test_option_refinement_compat(self):
         """String should be assignable to Option<Email> where Email = String where ..."""

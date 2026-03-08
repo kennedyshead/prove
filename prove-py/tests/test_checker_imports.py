@@ -128,7 +128,7 @@ class TestImportVerbWarning:
 
 
 class TestCreatesValue:
-    """Test creates value(V) — explicit verb-gated Record→Value conversion."""
+    """Test creates value(Value) — explicit verb-gated Record→Value conversion."""
 
     def test_creates_value_accepts_record(self):
         """creates value(user) should type-check for serializable records."""
@@ -208,7 +208,7 @@ class TestCreatesValue:
 
 
 class TestRecordValueSerializable:
-    """Test is_json_serializable() — used by creates value(V) gate."""
+    """Test is_json_serializable() — used by creates value(Value) gate."""
 
     def test_record_with_primitives_serializable(self):
         user = RecordType("User", {"id": INTEGER, "name": STRING})

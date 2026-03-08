@@ -127,7 +127,7 @@ module Main
 
   type Port is Integer:[16 Unsigned] where 1 .. 65535
 
-  type Result<T, E> is Ok(T) | Err(E)
+  type Result<Value, Error> is Ok(Value) | Err(Error)
 
   type User is
     id Integer
@@ -572,16 +572,16 @@ The compiler parses each row for operations (`get`, `fetch`, `validate`, `set`, 
 **Loose mode** (no `ensures`): Row count is flexible. Free-form text. Documentation value only.
 
 ```prove
-transforms merge_sort(xs List<T>) Sorted<List<T>>
+transforms merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort both halves
       merge the sorted halves back together
   terminates: len(xs)
 from
-    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
-    left as Sorted<List<T>> = merge_sort(halves.first)
-    right as Sorted<List<T>> = merge_sort(halves.second)
+    halves as Pair<List<Value>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<Value>> = merge_sort(halves.first)
+    right as Sorted<List<Value>> = merge_sort(halves.second)
     merge(left, right)
 ```
 
@@ -646,7 +646,7 @@ This is the inverse of typical AI workflows. Instead of fishing for working code
 Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error.
 
 ```prove
-transforms merge_sort(xs List<T>) Sorted<List<T>>
+transforms merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort the first half
@@ -654,9 +654,9 @@ transforms merge_sort(xs List<T>) Sorted<List<T>>
       merge both sorted halves preserving order
   terminates: len(xs)
 from
-    halves as Pair<List<T>> = split_at(xs, len(xs) / 2)
-    left as Sorted<List<T>> = merge_sort(halves.first)
-    right as Sorted<List<T>> = merge_sort(halves.second)
+    halves as Pair<List<Value>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<Value>> = merge_sort(halves.first)
+    right as Sorted<List<Value>> = merge_sort(halves.second)
     merge(left, right)
 ```
 
@@ -787,7 +787,7 @@ from
 
 `!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) can use `!`. There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
 
-Pure functions that need to represent expected failure cases use `Result<T, E>` and handle them with `match` — these are values, not errors.
+Pure functions that need to represent expected failure cases use `Result<Value, Error>` and handle them with `match` — these are values, not errors.
 
 ```prove
 main()!

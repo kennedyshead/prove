@@ -103,7 +103,7 @@ Testing is not a separate activity. It is woven into the language — contracts 
 No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
 
 ```prove
-transforms sort(xs List<T>) List<T>
+transforms sort(xs List<Value>) List<Value>
   ensures len(result) == len(xs)
   ensures is_sorted(result)
   ensures is_permutation_of(result, xs)

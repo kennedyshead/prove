@@ -4,7 +4,7 @@
 #include "prove_runtime.h"
 #include "prove_string.h"
 
-/* ── Option<T> monomorphization macro ─────────────────────────── */
+/* ── Option<Value> monomorphization macro ─────────────────────── */
 
 #define PROVE_DEFINE_OPTION(T, Name) \
     typedef struct {                  \

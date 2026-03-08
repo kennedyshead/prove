@@ -461,11 +461,11 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
 
     # Builtins (runtime intrinsics — C-backed, not .prv)
     _BUILTIN_SIGS: dict[str, str] = {
-        "len": "(list: List<T>) Integer",
-        "map": "(list: List<T>, fn: (T) -> U) List<U>",
-        "filter": "(list: List<T>, fn: (T) -> Boolean) List<T>",
-        "reduce": "(list: List<T>, init: U, fn: (U, T) -> U) U",
-        "to_string": "(value: T) String",
+        "len": "(list: List<Value>) Integer",
+        "map": "(list: List<Value>, fn: (Value) -> Output) List<Output>",
+        "filter": "(list: List<Value>, fn: (Value) -> Boolean) List<Value>",
+        "reduce": "(list: List<Value>, init: Output, fn: (Output, Value) -> Output) Output",
+        "to_string": "(value: Value) String",
         "clamp": "(value: Integer, low: Integer, high: Integer) Integer",
     }
     for name in _BUILTINS:

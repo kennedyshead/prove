@@ -117,7 +117,7 @@ from
 |---|---|
 | Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit (`inputs`/`outputs`) |
-| Null/nil crashes | No null — use `Option<T>`, enforced by compiler |
+| Null/nil crashes | No null — use `Option<Value>`, enforced by compiler |
 | Race conditions | Ownership + verb system prevents data races |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Slow test suites | Property tests run at compile time when provable |

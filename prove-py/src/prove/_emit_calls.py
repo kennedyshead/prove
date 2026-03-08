@@ -141,7 +141,7 @@ class CallEmitterMixin:
         call_args: list[Expr],
         module_name: str,
     ) -> str:
-        """If the call returns Option<V> and is narrowed by requires, unwrap."""
+        """If the call returns Option<Value> and is narrowed by requires, unwrap."""
         from prove.symbols import FunctionSignature
 
         if not isinstance(sig, FunctionSignature):
@@ -195,7 +195,7 @@ class CallEmitterMixin:
         expr_type: Type,
         target_type: Type,
     ) -> str:
-        """If expr_type is Option<T> and target_type is T, unwrap .value with tag check."""
+        """If expr_type is Option<Value> and target_type is Value, unwrap .value with tag check."""
         if (
             isinstance(expr_type, GenericInstance)
             and expr_type.base_name == "Option"
@@ -224,8 +224,8 @@ class CallEmitterMixin:
         """Coerce call arguments to match parameter types.
 
         Handles:
-        - Option<T> arg → T param: unwrap with .value
-        - Result<T, E> arg → T param: unwrap with prove_result_unwrap_*
+        - Option<Value> arg → Value param: unwrap with .value
+        - Result<Value, Error> arg → Value param: unwrap with prove_result_unwrap_*
         - Prove_Value* arg → int64_t/String* param: prove_value_as_*
         """
         if sig is None or not hasattr(sig, "param_types"):
@@ -240,7 +240,7 @@ class CallEmitterMixin:
             param_ct = map_type(param_ty)
             if arg_ct.decl == param_ct.decl:
                 continue
-            # Option<T> → T: unwrap .value with tag check
+            # Option<Value> → Value: unwrap .value with tag check
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option" and arg_ty.args:
                 inner_ct = map_type(arg_ty.args[0])
                 if inner_ct.decl == param_ct.decl:
@@ -253,7 +253,7 @@ class CallEmitterMixin:
                         f"({arg_str}.tag == 1 ? ({param_ct.decl}){arg_str}.value : {default_val})"
                     )
                     continue
-            # Result<T, E> → T: unwrap
+            # Result<Value, Error> → Value: unwrap
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result" and arg_ty.args:
                 inner_ty = arg_ty.args[0]
                 inner_ct = map_type(inner_ty)
@@ -315,7 +315,7 @@ class CallEmitterMixin:
             # Type-aware dispatch for to_string
             if name == "to_string" and expr.args:
                 arg_type = self._infer_expr_type(expr.args[0])
-                # Unwrap Option<T> → use inner type for dispatch
+                # Unwrap Option<Value> → use inner type for dispatch
                 if (
                     isinstance(arg_type, GenericInstance)
                     and arg_type.base_name == "Option"
@@ -335,7 +335,7 @@ class CallEmitterMixin:
                     return f"prove_string_len({', '.join(args)})"
                 return f"prove_list_len({', '.join(args)})"
 
-            # unwrap(Option<T>) → monomorphized _unwrap call
+            # unwrap(Option<Value>) → monomorphized _unwrap call
             if name == "unwrap" and len(args) == 1 and expr.args:
                 arg_ty = self._infer_expr_type(expr.args[0])
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option":

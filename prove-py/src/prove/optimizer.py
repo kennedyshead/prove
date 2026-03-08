@@ -594,7 +594,7 @@ class Optimizer:
                 ):
                     candidates[decl.name] = decl
                 # Always inline single-return validators (inputs with can_fail)
-                # Their return type already encodes the contract (Option<T>!, Result<T, E>!)
+                # Their return type already encodes the contract (Option<Value>!, Result<Value, Error>!)
                 # But only if no explicit contracts - let those be explicit
                 elif (
                     decl.verb == "inputs"

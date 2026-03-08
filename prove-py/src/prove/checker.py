@@ -347,22 +347,22 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             "Result",
             GenericInstance(
                 "Result",
-                [TypeVariable("T"), TypeVariable("E")],
+                [TypeVariable("Value"), TypeVariable("Error")],
             ),
         )
         self.symbols.define_type(
             "Option",
             GenericInstance(
                 "Option",
-                [TypeVariable("T")],
+                [TypeVariable("Value")],
             ),
         )
-        self.symbols.define_type("List", ListType(TypeVariable("T")))
+        self.symbols.define_type("List", ListType(TypeVariable("Value")))
         self.symbols.define_type(
             "Table",
             GenericInstance(
                 "Table",
-                [TypeVariable("T")],
+                [TypeVariable("Value")],
             ),
         )
         self.symbols.define_type("Error", PrimitiveType("Error"))
@@ -379,44 +379,44 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         }
 
         builtins = [
-            ("len", [ListType(TypeVariable("T"))], INTEGER),
+            ("len", [ListType(TypeVariable("Value"))], INTEGER),
             (
                 "map",
                 [
-                    ListType(TypeVariable("T")),
-                    FunctionType([TypeVariable("T")], TypeVariable("U")),
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], TypeVariable("Output")),
                 ],
-                ListType(TypeVariable("U")),
+                ListType(TypeVariable("Output")),
             ),
             (
                 "each",
                 [
-                    ListType(TypeVariable("T")),
-                    FunctionType([TypeVariable("T")], TypeVariable("U")),
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], TypeVariable("Output")),
                 ],
                 UNIT,
             ),
             (
                 "filter",
                 [
-                    ListType(TypeVariable("T")),
-                    FunctionType([TypeVariable("T")], BOOLEAN),
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], BOOLEAN),
                 ],
-                ListType(TypeVariable("T")),
+                ListType(TypeVariable("Value")),
             ),
             (
                 "reduce",
                 [
-                    ListType(TypeVariable("T")),
-                    TypeVariable("U"),
+                    ListType(TypeVariable("Value")),
+                    TypeVariable("Output"),
                     FunctionType(
-                        [TypeVariable("U"), TypeVariable("T")],
-                        TypeVariable("U"),
+                        [TypeVariable("Output"), TypeVariable("Value")],
+                        TypeVariable("Output"),
                     ),
                 ],
-                TypeVariable("U"),
+                TypeVariable("Output"),
             ),
-            ("to_string", [TypeVariable("T")], STRING),
+            ("to_string", [TypeVariable("Value")], STRING),
             ("clamp", [INTEGER, INTEGER, INTEGER], INTEGER),
         ]
         for name, param_types, return_type in builtins:
@@ -1126,7 +1126,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Scan fd.requires for validates calls and valid expressions.
 
         Returns a list of (module_name, args) tuples that can be used to
-        narrow Option<V> → V and Result<T, E> → T in the function body.
+        narrow Option<Value> → Value and Result<Value, Error> → Value in the function body.
         """
         narrowings: list[tuple[str, list[Expr]]] = []
         for req_expr in fd.requires:
@@ -1988,7 +1988,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if not found:
                     self._error("E370", f"unknown variant '{pattern.name}'", pattern.span)
             elif isinstance(subject_type, GenericInstance):
-                # Handle Result<T, E> and Option<T> variant patterns
+                # Handle Result<Value, Error> and Option<Value> variant patterns
                 self._check_generic_variant_pattern(pattern, subject_type)
         elif isinstance(pattern, WildcardPattern):
             pass  # matches everything
@@ -2090,7 +2090,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         if isinstance(type_expr, GenericType):
             args = [self._resolve_type_expr(a) for a in type_expr.args]
-            # Special-case List<T> → ListType
+            # Special-case List<Value> → ListType
             if type_expr.name == "List" and len(args) == 1:
                 return ListType(args[0])
             # Check base type exists

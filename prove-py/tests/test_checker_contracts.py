@@ -168,14 +168,14 @@ class TestExplainConditionChecking:
 
 
 class TestRequiresOptionNarrowing:
-    """Test that requires Table.has(k, t) narrows Table.get(k, t) from Option<V> to V."""
+    """Test that requires Table.has(k, t) narrows Table.get(k, t) from Option<Value> to Value."""
 
     def test_narrowed_get_infers_inner_type(self):
-        """With requires Table.has(k, t), Table.get(k, t) should narrow to V."""
+        """With requires Table.has(k, t), Table.get(k, t) should narrow to Value."""
         # If narrowing works, assigning Table.get result to a String var should pass
         check(
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "\n"
             "reads lookup(key String, table Table<String>) String\n"
@@ -185,10 +185,10 @@ class TestRequiresOptionNarrowing:
         )
 
     def test_no_narrowing_without_requires(self):
-        """Without requires, Table.get returns Option<V> — E322 mismatch."""
+        """Without requires, Table.get returns Option<Value> — E322 mismatch."""
         check_fails(
             "module Main\n"
-            "  Table types Table V, creates new, validates has, reads get\n"
+            "  Table types Table Value, creates new, validates has, reads get\n"
             "\n"
             "reads lookup(key String, table Table<String>) String\n"
             "    from\n"
@@ -200,7 +200,7 @@ class TestRequiresOptionNarrowing:
         """Unqualified has/get should narrow when sig.module matches."""
         check(
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "\n"
             "reads lookup(key String, table Table<String>) String\n"
@@ -214,7 +214,7 @@ class TestRequiresOptionNarrowing:
         # Different arg names → no narrowing → E322
         check_fails(
             "module Main\n"
-            "  Table types Table V, creates new, validates has, reads get\n"
+            "  Table types Table Value, creates new, validates has, reads get\n"
             "\n"
             "reads lookup(k1 String, k2 String, table Table<String>) String\n"
             "    requires Table.has(k1, table)\n"
@@ -231,7 +231,7 @@ class TestRequiresValidNarrowing:
     """Test that requires valid narrows Result/Option params in function body."""
 
     def test_result_param_narrowed(self):
-        """requires valid object(json_data) should narrow Result<T,E> param to T."""
+        """requires valid object(json_data) should narrow Result<Value,Error> param to Value."""
         # We test this indirectly: if narrowing works, the body type-checks
         check(
             "module M\n"

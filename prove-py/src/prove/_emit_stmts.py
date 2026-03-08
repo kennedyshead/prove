@@ -149,7 +149,7 @@ class StmtEmitterMixin:
                             elif ret_ct.decl == "double":
                                 self._line(f"return prove_result_ok_double({ret_tmp});")
                             elif isinstance(ret_type, GenericInstance) and not ret_ct.is_pointer:
-                                # Struct-like generic (Option<T>, etc.) — heap-allocate
+                                # Struct-like generic (Option<Value>, etc.) — heap-allocate
                                 heap_tmp = self._tmp()
                                 self._line(
                                     f"{ret_ct.decl}* {heap_tmp} = malloc(sizeof({ret_ct.decl}));"
@@ -240,7 +240,7 @@ class StmtEmitterMixin:
                 # Handle GenericType annotations (e.g. Table<Value>, Option<Integer>)
                 type_args = getattr(vd.type_expr, "args", None)
                 if type_args and type_name == "List":
-                    # List<T> → ListType(element=T)
+                    # List<Value> → ListType(element=Value)
                     ta = type_args[0]
                     ta_name = getattr(ta, "name", None)
                     if ta_name:
@@ -393,13 +393,13 @@ class StmtEmitterMixin:
             elif ct.decl == "double":
                 self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_double({tmp});")
             elif isinstance(target_ty, GenericInstance) and not ct.is_pointer:
-                # Struct-like GenericInstance (Option<T>, etc.)
+                # Struct-like GenericInstance (Option<Value>, etc.)
                 self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             else:
                 # For integer types
                 self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_int({tmp});")
         else:
-            # Wrap bare value in Option if annotation is Option<T> but value is T
+            # Wrap bare value in Option if annotation is Option<Value> but value is Value
             if (
                 isinstance(target_ty, GenericInstance)
                 and target_ty.base_name == "Option"
@@ -425,7 +425,7 @@ class StmtEmitterMixin:
                 self._line(f"{ct.decl} {vd.name} = {val};")
 
         # Validate refinement type constraints
-        # Skip validation for GenericInstance (Option<T>) because validation is already
+        # Skip validation for GenericInstance (Option<Value>) because validation is already
         # done in the conversion code. Only validate direct RefinementType assignments.
         if not isinstance(target_ty, GenericInstance):
             check_ty = target_ty
@@ -720,7 +720,7 @@ class StmtEmitterMixin:
         subj: str,
         subj_type: GenericInstance,
     ) -> None:
-        """Emit match on Option<T> as if/else statement."""
+        """Emit match on Option<Value> as if/else statement."""
         first = True
         for arm in m.arms:
             if isinstance(arm.pattern, VariantPattern):
@@ -782,7 +782,7 @@ class StmtEmitterMixin:
         subj: str,
         subj_type: GenericInstance,
     ) -> None:
-        """Emit match on Result<T, E> as if/else on prove_result_is_err."""
+        """Emit match on Result<Value, Error> as if/else on prove_result_is_err."""
         first = True
         for arm in m.arms:
             if isinstance(arm.pattern, VariantPattern):

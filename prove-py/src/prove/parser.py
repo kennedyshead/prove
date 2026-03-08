@@ -1164,7 +1164,7 @@ class Parser:
         # Consume one or more names (identifiers or type identifiers).
         while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER):
             name_tok = self._advance()
-            # Skip optional generic parameters (e.g. Table<V>)
+            # Skip optional generic parameters (e.g. Table<Value>)
             if self._at(TokenKind.LESS):
                 self._advance()  # <
                 depth = 1

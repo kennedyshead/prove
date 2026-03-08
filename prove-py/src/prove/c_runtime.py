@@ -445,6 +445,14 @@ def copy_runtime(
     if stdlib_libs:
         needed_libs.update(stdlib_libs)
 
+    # Resolve transitive header dependencies: if a library's header
+    # includes another library's header, that library must also be copied.
+    _HEADER_DEPS: dict[str, set[str]] = {
+        "prove_parse": {"prove_table", "prove_hash"},
+    }
+    for lib in list(needed_libs):
+        needed_libs.update(_HEADER_DEPS.get(lib, set()))
+
     needed_files: set[str] = set()
     lib_keys = set(_RUNTIME_FUNCTIONS.keys())
     for lib_name in needed_libs:

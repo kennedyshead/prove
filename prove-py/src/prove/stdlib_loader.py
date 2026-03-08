@@ -486,21 +486,18 @@ _KNOWN_TYPES = {
 }
 
 
-_STDLIB_TYPE_VARS: frozenset[str] = frozenset({"Value", "Source"})
+_STDLIB_TYPE_VARS: frozenset[str] = frozenset({"Value", "Output", "Source"})
 
 
 def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance | TypeVariable:
     """Resolve a simple type name to a Type.
 
-    Single uppercase letters that are not known types (e.g. V, T, E)
-    are treated as type variables for generic signatures.
-    Names in _STDLIB_TYPE_VARS are also treated as type variables.
+    Names in _STDLIB_TYPE_VARS are treated as type variables for generic
+    signatures (e.g. Value, Output, Source).
     """
     if name in _KNOWN_TYPES:
         return _KNOWN_TYPES[name]
     if name in _STDLIB_TYPE_VARS:
-        return TypeVariable(name)
-    if len(name) == 1 and name.isupper():
         return TypeVariable(name)
     return PrimitiveType(name)
 
@@ -524,7 +521,7 @@ def _resolve_type_expr(
                 else:
                     args.append(base)
             else:
-                args.append(TypeVariable("T"))
+                args.append(TypeVariable("Value"))
         if type_expr.name == "List" and len(args) == 1:
             return ListType(args[0])
         return GenericInstance(type_expr.name, args)

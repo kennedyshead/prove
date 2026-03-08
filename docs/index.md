@@ -31,7 +31,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 | AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
 | Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit |
-| Null/nil crashes | No null — `Option<T>` enforced by compiler |
+| Null/nil crashes | No null — `Option<Value>` enforced by compiler |
 | "I forgot an edge case" | Compiler generates edge cases from types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
 | Code without reasoning | `explain` documents each step using controlled natural language — verified against contracts |
@@ -79,7 +79,7 @@ validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-reads get(key String, table Table<V>) Option<V>
+reads get(key String, table Table<Value>) Option<Value>
 from
     lookup(table, key)
 
@@ -111,9 +111,9 @@ Types carry constraints, not just shapes.
 ```prove
 type Port is Integer:[16 Unsigned] where 1..65535
 type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
-type NonEmpty<T> is List<T> where len > 0
+type NonEmpty<Value> is List<Value> where len > 0
 
-transforms head(xs NonEmpty<T>) T         // no Option needed — emptiness is impossible
+transforms head(xs NonEmpty<Value>) Value         // no Option needed — emptiness is impossible
 ```
 
 The compiler rejects `head([])` statically.

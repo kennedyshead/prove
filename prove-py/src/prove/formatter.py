@@ -842,7 +842,7 @@ class ProveFormatter:
         """Resolve the return type of a call expression.
 
         When *prefer_result* is True (FailProp context), prefer overloads
-        that return ``Result<T, E>`` over those that don't.
+        that return ``Result<Value, Error>`` over those that don't.
         """
         assert self._symbols is not None
         from prove.types import GenericInstance
@@ -899,16 +899,16 @@ class ProveFormatter:
         return None
 
     def _unwrap_result(self, ty: Type) -> str | None:
-        """Unwrap Result<T, E> to T as the annotation string.
+        """Unwrap Result<Value, Error> to Value as the annotation string.
 
         FailProp (!) propagates the error case, so the variable holds the
-        success type T.  For non-Result return types, stringify as-is.
+        success type Value.  For non-Result return types, stringify as-is.
         """
         from prove.types import ErrorType, GenericInstance, UnitType
 
         if isinstance(ty, (UnitType, ErrorType)):
             return None
-        # Result<T, E> → T (the success type)
+        # Result<Value, Error> → Value (the success type)
         if isinstance(ty, GenericInstance) and ty.base_name == "Result" and ty.args:
             return self._type_to_str(ty.args[0])
         return self._type_to_str(ty)

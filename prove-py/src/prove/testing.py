@@ -529,7 +529,7 @@ class TestGenerator:
     }} while(0);"""
 
     def _random_option_gen(self, name: str, inner_ty: Type) -> str:
-        """Generate C code for a random Option<T> (50% Some, 50% None)."""
+        """Generate C code for a random Option<Value> (50% Some, 50% None)."""
         from prove.c_types import map_type
         from prove.types import PrimitiveType
 
@@ -560,7 +560,7 @@ class TestGenerator:
         return f"Prove_Option_{safe} {name} = Prove_Option_{safe}_none();"
 
     def _random_result_gen(self, name: str) -> str:
-        """Generate C code for a random Result<T, E> (default to Err)."""
+        """Generate C code for a random Result<Value, Error> (default to Err)."""
         return (
             f"Prove_Result_int64_t_Prove_Stringptr {name} = "
             f"Prove_Result_int64_t_Prove_Stringptr_err("
@@ -568,7 +568,7 @@ class TestGenerator:
         )
 
     def _random_list_gen(self, name: str) -> str:
-        """Generate C code for a random List<T> (empty list)."""
+        """Generate C code for a random List<Value> (empty list)."""
         return f"Prove_List* {name} = prove_list_new();"
 
     def _ensures_to_c(self, expr: Expr, result_var: str) -> str | None:

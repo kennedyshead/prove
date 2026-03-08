@@ -26,8 +26,8 @@ Verbs fall into two families. **Pure verbs** have no side effects — the compil
 | Verb | Intent | Example |
 |------|--------|---------|
 | `transforms` | Convert data from one form to another | `transforms trim(s String) String` |
-| `validates` | Check a condition, return Boolean | `validates has(key String, table Table<V>)` |
-| `reads` | Extract or query data without changing it | `reads get(key String, table Table<V>) Option<V>` |
+| `validates` | Check a condition, return Boolean | `validates has(key String, table Table<Value>)` |
+| `reads` | Extract or query data without changing it | `reads get(key String, table Table<Value>) Option<Value>` |
 | `creates` | Construct a new value from scratch | `creates builder() Builder` |
 | `matches` | Algebraic dispatch (first param must be algebraic) | `matches area(s Shape) Decimal` |
 
@@ -255,8 +255,8 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `value(source V) Value` | Wrap any value as a Value |
-| `validates` | `value(source V)` | True if source can be wrapped as a Value |
+| `creates` | `value(source Value) Value` | Wrap any value as a Value |
+| `validates` | `value(source Value)` | True if source can be wrapped as a Value |
 
 ### Formats
 
@@ -630,7 +630,7 @@ from
 
 ## Error
 
-**Module:** `Error` — utilities for `Result<T, E>` and `Option<T>`.
+**Module:** `Error` — utilities for `Result<Value, Error>` and `Option<Value>`.
 
 Validators for inspecting Result and Option values, plus `unwrap_or` for
 providing defaults.
@@ -882,12 +882,12 @@ from
 |---------|--------|--------|---------|
 | v0.6 | **Character** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
 | v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `Builder` for efficient string construction |
-| v0.6 | **Table** | Complete | Hash map `Table<V>` with `creates new`, `reads get`, `transforms add`, `validates has` |
+| v0.6 | **Table** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | v0.7 | **InputOutput** (ext) | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | v0.7 | **Parse** (ext) | Complete | TOML, JSON, URL, and Base64 codecs with `Value` and `Url` types |
 | v0.9.6 | **Math** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
 | v0.9.6 | **Types** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |
-| v0.9.6 | **List** | Complete | Operations on `List<T>`: length, first, last, contains, sort, reverse, range |
+| v0.9.6 | **List** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
 | v0.9.7 | **Path** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | v0.9.7 | **Pattern** | Complete | Regex operations: test, search, replace, split with `Match` type |
 | v0.9.8 | **Format** (ext) | Complete | String/number formatting (pad, hex, bin) and time/date formatting |

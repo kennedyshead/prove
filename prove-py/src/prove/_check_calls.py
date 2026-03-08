@@ -183,7 +183,7 @@ class CallCheckMixin:
 
             ret = sig.return_type
             # Requires-based narrowing for unqualified calls:
-            # Option<V> → V, Result<T, E> → T
+            # Option<Value> → Value, Result<Value, Error> → Value
             if (
                 isinstance(ret, GenericInstance)
                 and ret.base_name in ("Option", "Result")
@@ -281,9 +281,9 @@ class CallCheckMixin:
                 )
                 return ERROR_TY
             ret = sig.return_type
-            # Requires-based narrowing: if the return type is Option<V>
-            # or Result<T, E> and there is a matching validates call in
-            # requires, narrow to V or T respectively.
+            # Requires-based narrowing: if the return type is Option<Value>
+            # or Result<Value, Error> and there is a matching validates call in
+            # requires, narrow to Value respectively.
             if (
                 isinstance(ret, GenericInstance)
                 and ret.base_name in ("Option", "Result")

@@ -723,7 +723,7 @@ class CEmitter(
             if isinstance(inner, GenericInstance) and inner.base_name == "Result":
                 if inner.args:
                     return inner.args[0]
-            # Failable function with concrete return type (not Result<T>)
+            # Failable function with concrete return type (not Result<Value>)
             if not isinstance(inner, ErrorType):
                 return inner
             return ERROR_TY

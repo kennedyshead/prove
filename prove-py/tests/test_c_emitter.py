@@ -470,7 +470,7 @@ class TestRequiresOptionNarrowing:
         """Table.get with requires Table.has should emit .value cast."""
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "\n"
             "reads lookup(key String, table Table<String>) String\n"
@@ -485,7 +485,7 @@ class TestRequiresOptionNarrowing:
         """Unqualified get with requires has should emit .value cast."""
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "\n"
             "reads lookup(key String, table Table<String>) String\n"
@@ -500,7 +500,7 @@ class TestRequiresOptionNarrowing:
         """Table.get without requires should NOT emit .value."""
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has, reads get\n"
+            "  Table types Table Value, creates new, validates has, reads get\n"
             "\n"
             "reads lookup(key String, table Table<String>) Option<String>\n"
             "    from\n"
@@ -514,7 +514,7 @@ class TestRequiresOptionNarrowing:
         """Narrowed call in var decl should use inner type, not Option."""
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "  InputOutput outputs console\n"
             "\n"
@@ -620,12 +620,12 @@ class TestFailableNonResultReturn:
 
 
 class TestTableFieldAccess:
-    """Test field access on Table<V> types."""
+    """Test field access on Table<Value> types."""
 
     def test_table_field_emits_prove_table_get(self):
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "  Parse reads object, validates object\n"
             "\n"
@@ -645,7 +645,7 @@ class TestOptionUnwrap:
         """Option<Integer> compared to Integer should unwrap."""
         source = (
             "module Main\n"
-            "  Table types Table V, creates new, validates has,"
+            "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
             "  Types validates integer\n"
             "\n"

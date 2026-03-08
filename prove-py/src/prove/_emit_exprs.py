@@ -398,7 +398,7 @@ class ExprEmitterMixin:
             return f"({ct.decl})prove_result_unwrap_ptr({tmp})"
         if ct.decl == "double":
             return f"prove_result_unwrap_double({tmp})"
-        # Struct-like GenericInstance (Option<T>, etc.)
+        # Struct-like GenericInstance (Option<Value>, etc.)
         if isinstance(success_type, GenericInstance) and not ct.is_pointer:
             return f"*(({ct.decl}*)prove_result_unwrap_ptr({tmp}))"
         return f"prove_result_unwrap_int({tmp})"

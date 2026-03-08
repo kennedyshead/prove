@@ -276,7 +276,7 @@ def types_compatible(expected: Type, actual: Type) -> bool:
 
     # Unwrap refinement types so Price (Decimal where ...) is
     # compatible with Decimal and with other Decimal refinements.
-    # Allow T → Option<Refinement(T)>: when the Option's inner type is a
+    # Allow Value → Option<Refinement(Value)>: when the Option's inner type is a
     # RefinementType whose base matches actual, the assignment is valid
     # (Option wraps the boundary-failure case).
     if isinstance(expected, GenericInstance) and expected.base_name == "Option" and expected.args:
