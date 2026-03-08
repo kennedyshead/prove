@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network."""
+  narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network.
+
+  Expected to fail: check_strict.
+  """
   domain: Finance
   temporal: authenticate -> authorize -> access
   InputOutput outputs console

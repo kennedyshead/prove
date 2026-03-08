@@ -42,8 +42,62 @@ def _collect_verification_stats(module: Module) -> dict:
     return stats
 
 
+def _print_refutation_challenges(project_dir: Path) -> None:
+    """Generate and display refutation challenges from ensures contracts."""
+    from prove.ast_nodes import FunctionDef
+    from prove.mutator import Mutator
+
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = sorted(src_dir.rglob("*.prv"))
+    total_challenges = 0
+    addressed = 0
+
+    for prv_file in prv_files:
+        try:
+            source = prv_file.read_text()
+            tokens = Lexer(source, str(prv_file)).lex()
+            module = Parser(tokens, str(prv_file)).parse()
+        except Exception:
+            continue
+
+        # Only challenge functions with ensures contracts
+        for decl in module.declarations:
+            if not isinstance(decl, FunctionDef):
+                continue
+            if not decl.ensures:
+                continue
+
+            mutator = Mutator(module, seed=42)
+            result = mutator.generate_mutants(max_mutants=5)
+            if not result.mutants:
+                continue
+
+            fn_challenges = len(result.mutants)
+            fn_addressed = len(decl.why_not)
+            total_challenges += fn_challenges
+            addressed += min(fn_addressed, fn_challenges)
+
+            if fn_addressed >= fn_challenges:
+                continue  # All challenges addressed
+
+            click.echo(f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:")
+            for i, mutant in enumerate(result.mutants):
+                marker = "+" if i < fn_addressed else "-"
+                click.echo(f"    [{marker}] {mutant.description}")
+
+    if total_challenges > 0:
+        click.echo(f"\nrefutation: {addressed}/{total_challenges} challenges addressed")
+    else:
+        click.echo("\nrefutation: no functions with ensures contracts found")
+
+
 def _compile_project(
     project_path: Path,
+    *,
+    coherence: bool = False,
 ) -> tuple[bool, int, int, int, int, dict]:
     """Lex, parse, and check all .prv files under src/.
 
@@ -88,6 +142,7 @@ def _compile_project(
 
         checked += 1
         checker = Checker(local_modules=local_modules, project_dir=project_path)
+        checker._coherence = coherence
         symbols = checker.check(module)
 
         module_stats = _collect_verification_stats(module)
@@ -332,7 +387,9 @@ def _check_summary(
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
 @click.option("--strict", is_flag=True, help="Treat warnings as errors.")
-def check(path: str, md: bool, strict: bool) -> None:
+@click.option("--coherence", is_flag=True, help="Check vocabulary consistency between narrative and code.")
+@click.option("--challenges", is_flag=True, help="Generate refutation challenges from ensures contracts.")
+def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool) -> None:
     """Type-check and lint a Prove project or a single .prv file."""
     target = Path(path)
 
@@ -365,7 +422,11 @@ def check(path: str, md: bool, strict: bool) -> None:
         project_dir = config_path.parent
         ok, checked, errors, warnings, format_issues, stats = _compile_project(
             project_dir,
+            coherence=coherence,
         )
+
+        if challenges:
+            _print_refutation_challenges(project_dir)
 
         md_blocks = 0
         md_errors = 0

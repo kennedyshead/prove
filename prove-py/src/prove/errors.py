@@ -114,8 +114,10 @@ _register_doc_range("W", 321, 327)
 DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 # Warning — unused pure result W332
 DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
+# Warning — domain profile W340-W342
+_register_doc_range("W", 340, 342)
 # Info
-for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I320", "I360"):
+for _c in ("I201", "I300", "I301", "I302", "I303", "I310", "I314", "I320", "I340", "I360"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 
 

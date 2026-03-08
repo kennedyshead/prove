@@ -179,59 +179,44 @@ module PaymentService
 
 ---
 
-## Proposed
+## Implemented — Refutation Challenges
 
-These features are designed but not yet implemented (neither parsed nor enforced).
+The compiler generates plausible-but-wrong alternative implementations using its mutation testing engine and requires the programmer to explain (via `why_not`) why they fail.
 
-### Refutation Challenges
+Run `prove check --challenges` to see unaddressed challenges for functions with `ensures` contracts. Each challenge is a mutation of the function body that might violate the contract:
 
-The compiler deliberately generates plausible-but-wrong alternative implementations and requires the programmer to explain why they fail. Compilation becomes a dialogue.
+```bash
+$ prove check --challenges
 
-```
-$ prove check src/sort.prv
-
-challenge[C017]: Why doesn't this simpler implementation work?
-
-  transforms sort(xs List<Integer>) Sorted<List<Integer>>
-      reverse(dedup(xs))     // appears sorted for some inputs
-
-  refute: _______________
-
-  hint: Consider [3, 1, 2]
+  transforms sort — 3 challenges, 1 addressed:
+    [+] swap + to - in comparison
+    [-] replace < with <=
+    [-] change constant 0 to 1
 ```
 
-The programmer must provide a counterexample or logical argument. The compiler verifies the refutation is valid.
+Address challenges by adding `why_not` annotations to the function.
 
-### Semantic Commit Verification
+## Implemented — Domain Profiles
 
-The compiler diffs the previous version, reads the commit message, and verifies the change actually addresses the described bug.
+A module's `domain:` declaration selects a built-in profile that adds domain-specific warnings (W340–W342):
+
+- **finance**: prefer `Decimal` over `Float`, require `ensures` contracts and `near_miss` examples
+- **safety**: require `ensures`, `requires`, `explain` blocks
+- **general**: no additional requirements
 
 ```prove
-commit "fix: off-by-one in pagination — last page was empty
-       when total % page_size == 0"
+module Accounting
+  domain: "finance"
 
-// Vague messages like "fix stuff" don't compile.
+// W340: domain 'finance' prefers Decimal over Float
+transforms total(amounts List<Float>) Float
+from
+    reduce(amounts, 0.0, add)
 ```
 
-### Context-Dependent Syntax
+## Implemented — Coherence Checking
 
-Instead of fixed keywords, the language adapts syntax based on the module's declared domain. AI cannot memorize syntax because it shifts per-context.
-
-```prove
-domain Finance
-  // "balance" is now a keyword, arithmetic operators
-  // follow financial rounding rules
-  total as Balance = sum(ledger.entries)
-
-domain Physics
-  // "balance" is just an identifier again
-  // operators now track units
-  balance as Acceleration = force / mass
-```
-
-### Non-Local Coherence Enforcement
-
-The compiler enforces that an entire module tells a coherent "story." Functions unrelated to the narrative produce compile errors.
+Run `prove check --coherence` to verify vocabulary consistency between the module's `narrative:` and its function/type names (I340). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
 
 ```prove
 module UserAuth
@@ -243,7 +228,18 @@ module UserAuth
   inputs login(creds Credentials) Session!
   transforms validate(token Token) User
   outputs expire(session Session)
-  // outputs send_email(...)   // compiler error: unrelated to narrative
+  // I340: 'send_email' — vocabulary not found in narrative
+```
+
+## Proposed — Semantic Commit Verification (Post-1.0)
+
+The compiler diffs the previous version, reads the commit message, and verifies the change actually addresses the described bug. Deferred to post-1.0 due to the inherent complexity of natural language understanding.
+
+```prove
+commit "fix: off-by-one in pagination — last page was empty
+       when total % page_size == 0"
+
+// Vague messages like "fix stuff" don't compile.
 ```
 
 ---

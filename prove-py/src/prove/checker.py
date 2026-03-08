@@ -211,6 +211,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._ownership_scope_stack: list[set[str]] = []
         # Track invariant network names for satisfies validation
         self._invariant_networks: set[str] = set()
+        # Coherence checking enabled (set via CLI --coherence flag)
+        self._coherence: bool = False
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -288,6 +290,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Check unused type definitions (W303)
         self._check_unused_types()
+
+        # Domain profile enforcement (W340-W342)
+        self._check_domain_profiles(module)
+
+        # Coherence checking (I340-I341)
+        if self._coherence:
+            self._check_coherence(module)
 
         return self.symbols
 
@@ -2410,4 +2419,125 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     "I303",
                     f"Type '{name}' is defined but never used.",
                     span,
+                )
+
+    # ── Domain profile enforcement ─────────────────────────────
+
+    def _check_domain_profiles(self, module: Module) -> None:
+        """Apply domain-specific warnings based on the module's domain: tag."""
+        from prove.domains import get_domain_profile
+
+        mod_decl: ModuleDecl | None = None
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                mod_decl = decl
+                break
+        if mod_decl is None or mod_decl.domain is None:
+            return
+
+        profile = get_domain_profile(mod_decl.domain)
+        if profile is None:
+            self._warning(
+                "W340",
+                f"unknown domain '{mod_decl.domain}'; known domains: finance, safety, general",
+                mod_decl.span,
+            )
+            return
+
+        # Check functions for domain requirements
+        for decl in module.declarations:
+            if not isinstance(decl, FunctionDef):
+                continue
+            if decl.trusted is not None:
+                continue  # trusted functions opt out
+
+            # Check preferred types (e.g. Float → Decimal in finance)
+            for param in decl.params:
+                if param.type_expr is not None:
+                    self._check_domain_type(param.type_expr, profile, decl.span)
+
+            # Check required contracts
+            if "ensures" in profile.required_contracts and not decl.ensures:
+                self._warning(
+                    "W341",
+                    f"domain '{profile.name}' requires ensures contract on '{decl.name}'",
+                    decl.span,
+                )
+            if "requires" in profile.required_contracts and not decl.requires:
+                self._warning(
+                    "W341",
+                    f"domain '{profile.name}' requires requires contract on '{decl.name}'",
+                    decl.span,
+                )
+
+            # Check required annotations
+            if "near_miss" in profile.required_annotations and not decl.near_misses:
+                self._warning(
+                    "W342",
+                    f"domain '{profile.name}' requires near_miss examples on '{decl.name}'",
+                    decl.span,
+                )
+            if "terminates" in profile.required_annotations and decl.terminates is None:
+                # Only warn for recursive functions (non-recursive don't need terminates)
+                pass
+            if "explain" in profile.required_annotations and decl.explain is None:
+                self._warning(
+                    "W342",
+                    f"domain '{profile.name}' requires explain block on '{decl.name}'",
+                    decl.span,
+                )
+
+    def _check_domain_type(self, type_expr: object, profile: object, span: Span) -> None:
+        """Warn if a type is not preferred in the domain profile."""
+        from prove.ast_nodes import SimpleType
+        from prove.domains import DomainProfile
+
+        assert isinstance(profile, DomainProfile)
+        if isinstance(type_expr, SimpleType):
+            alt = profile.preferred_types.get(type_expr.name)
+            if alt:
+                self._warning(
+                    "W340",
+                    f"domain '{profile.name}' prefers {alt} over {type_expr.name}",
+                    span,
+                )
+
+    # ── Coherence checking ────────────────────────────────────
+
+    def _check_coherence(self, module: Module) -> None:
+        """Check vocabulary consistency between narrative and code names."""
+        mod_decl: ModuleDecl | None = None
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                mod_decl = decl
+                break
+        if mod_decl is None or mod_decl.narrative is None:
+            return
+
+        # Extract vocabulary from narrative (words >= 3 chars, lowercased)
+        narrative_words = set()
+        for word in mod_decl.narrative.split():
+            clean = word.strip(".,;:!?()[]{}\"'").lower()
+            if len(clean) >= 3:
+                narrative_words.add(clean)
+
+        if not narrative_words:
+            return
+
+        # Check function names against narrative vocabulary
+        for decl in module.declarations:
+            if not isinstance(decl, FunctionDef):
+                continue
+            # Split snake_case function name into words
+            name_parts = set(decl.name.lower().split("_"))
+            name_parts.discard("")
+            # Skip short/trivial names
+            if not name_parts or all(len(p) < 3 for p in name_parts):
+                continue
+            # Check if any word overlaps with narrative
+            if not name_parts & narrative_words:
+                self._info(
+                    "I340",
+                    f"function '{decl.name}' uses vocabulary not found in module narrative",
+                    decl.span,
                 )

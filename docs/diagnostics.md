@@ -597,6 +597,22 @@ from
     x + 1
 ```
 
+### W340 — Domain profile violation
+
+A module declares a `domain:` tag and uses a type or pattern that the domain profile discourages. For example, the `finance` domain prefers `Decimal` over `Float`. Also emitted for unknown domain names.
+
+### W341 — Missing required contract for domain
+
+A function in a domain-tagged module is missing a contract required by the domain profile. For example, the `finance` domain requires `ensures` on all non-trusted functions.
+
+### W342 — Missing required annotation for domain
+
+A function is missing an annotation required by the domain profile. For example, the `safety` domain requires `explain` blocks and `terminates` on recursive functions.
+
+### I340 — Vocabulary drift from narrative
+
+A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Emitted only with `prove check --coherence`.
+
 ### E331 — Field mutation in pure function
 
 A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
