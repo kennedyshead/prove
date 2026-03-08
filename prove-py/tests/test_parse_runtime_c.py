@@ -371,6 +371,41 @@ class TestJsonRoundTrip:
         assert "OK" in result.stdout
 
 
+class TestJsonNullString:
+    def test_emit_json_null_text(self, tmp_path, runtime_dir):
+        """JSON emitter should handle NULL text pointer without crashing."""
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                /* Create a Value with NULL text — simulates uninitialized field */
+                Prove_Value *v = prove_value_text(NULL);
+                Prove_String *out = prove_emit_json(v);
+                /* Should emit "null" for NULL text */
+                if (!prove_string_eq(out, prove_string_from_cstr("null"))) return 1;
+
+                /* Object with a NULL-text field */
+                Prove_Table *tbl = prove_table_new();
+                tbl = prove_table_add(
+                    prove_string_from_cstr("name"), prove_value_text(NULL), tbl);
+                tbl = prove_table_add(
+                    prove_string_from_cstr("id"), prove_value_number(42), tbl);
+                Prove_Value *obj = prove_value_object(tbl);
+                Prove_String *out2 = prove_emit_json(obj);
+                /* Should not crash */
+                if (!out2 || out2->length == 0) return 2;
+
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="json_null_text")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
+
 class TestValueTag:
     def test_tag_names(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\

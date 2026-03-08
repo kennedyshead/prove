@@ -658,6 +658,63 @@ class TestOptionUnwrap:
         assert ".value" in c_code
 
 
+class TestRegionCleanup:
+    """Test that prove_region_exit is emitted before return statements."""
+
+    def test_pure_function_region_exit_before_return(self):
+        source = (
+            "transforms double(x Integer) Integer\n"
+            "    from\n"
+            "        x * 2\n"
+        )
+        c_code = _emit(source)
+        # region_exit must appear before the return
+        exit_idx = c_code.index("prove_region_exit")
+        return_idx = c_code.index("return", exit_idx)
+        assert exit_idx < return_idx
+
+    def test_failable_function_region_exit_before_return(self):
+        source = (
+            "module Main\n"
+            "  InputOutput inputs console\n"
+            "\n"
+            "inputs greeting() String!\n"
+            "    from\n"
+            "        console()\n"
+        )
+        c_code = _emit(source)
+        # Find the function body (skip main)
+        fn_start = c_code.index("prv_inputs_greeting")
+        fn_code = c_code[fn_start:]
+        # region_exit should appear before result_ok return
+        exit_idx = fn_code.index("prove_region_exit")
+        return_idx = fn_code.index("return", exit_idx)
+        assert exit_idx < return_idx
+
+    def test_failable_error_prop_region_exit(self):
+        """Error propagation should exit region before returning error."""
+        source = (
+            "inputs risky() Integer!\n"
+            "    from\n"
+            "        42\n"
+            "\n"
+            "inputs caller() Integer!\n"
+            "    from\n"
+            "        x as Integer = risky()!\n"
+            "        x\n"
+        )
+        c_code = _emit(source)
+        # Find the caller function
+        fn_start = c_code.index("prv_inputs_caller")
+        fn_code = c_code[fn_start:]
+        # Should have region_exit inside error check block
+        assert "prove_region_exit" in fn_code
+        err_check = fn_code.index("prove_result_is_err")
+        exit_after_err = fn_code.index("prove_region_exit", err_check)
+        return_after_err = fn_code.index("return", exit_after_err)
+        assert exit_after_err < return_after_err
+
+
 class TestVariantPatternNonAlgebraic:
     """Test VariantPattern in non-algebraic match (e.g. match on String)."""
 
