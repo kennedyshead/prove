@@ -1038,6 +1038,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
                     cd.span,
                 )
+            # Static refinement check for constants
+            self._static_check_refinement(expected, cd.value, cd.span)
 
     def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
         """Validate a binary lookup table (E379, E387)."""
@@ -1120,6 +1122,137 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             "use primitive expressions (comparisons, ranges, boolean ops)",
             expr.span,
         )
+
+    def _static_check_refinement(self, resolved: Type, value: Expr, span: Span) -> None:
+        """Statically check refinement type constraints for constant values.
+
+        When assigning a literal to a refinement type, evaluate the constraint
+        at compile time. Emit E355 if the constraint fails.
+        """
+        if not isinstance(resolved, RefinementType) or resolved.constraint is None:
+            return
+
+        # Extract the literal value from the expression
+        lit_value = self._extract_literal_value(value)
+        if lit_value is None:
+            return  # Non-literal — fall through to runtime check
+
+        # Evaluate the constraint with the literal substituted for 'self'
+        result = self._eval_refinement_constraint(resolved.constraint, lit_value)
+        if result is False:
+            self._error(
+                "E355",
+                f"value {lit_value!r} violates refinement constraint on '{resolved.name}'",
+                span,
+            )
+
+    def _extract_literal_value(self, expr: Expr) -> object | None:
+        """Extract a Python literal value from an AST literal expression."""
+        if isinstance(expr, IntegerLit):
+            return int(expr.value)
+        if isinstance(expr, DecimalLit):
+            return float(expr.value)
+        if isinstance(expr, FloatLit):
+            return float(expr.value[:-1])
+        if isinstance(expr, StringLit):
+            return expr.value
+        if isinstance(expr, BooleanLit):
+            return expr.value
+        if isinstance(expr, CharLit):
+            return expr.value
+        if isinstance(expr, UnaryExpr) and expr.op == "-":
+            inner = self._extract_literal_value(expr.operand)
+            if isinstance(inner, (int, float)):
+                return -inner
+        return None
+
+    def _eval_refinement_constraint(self, constraint: Expr, value: object) -> bool | None:
+        """Evaluate a refinement constraint with a concrete value.
+
+        Returns True (passes), False (fails), or None (indeterminate).
+        """
+        if isinstance(constraint, BinaryExpr):
+            # Range: 1..65535 means value >= 1 and value <= 65535
+            if constraint.op == "..":
+                lo = self._extract_literal_value(constraint.left)
+                hi = self._extract_literal_value(constraint.right)
+                if lo is not None and hi is not None and isinstance(value, (int, float)):
+                    return lo <= value <= hi
+                return None
+
+            left = self._eval_refinement_constraint_expr(constraint.left, value)
+            right = self._eval_refinement_constraint_expr(constraint.right, value)
+            if left is None or right is None:
+                return None
+
+            op = constraint.op
+            if op == ">=":
+                return left >= right
+            if op == "<=":
+                return left <= right
+            if op == ">":
+                return left > right
+            if op == "<":
+                return left < right
+            if op == "==":
+                return left == right
+            if op == "!=":
+                return left != right
+            if op == "&&":
+                return bool(left) and bool(right)
+            if op == "||":
+                return bool(left) or bool(right)
+
+        if isinstance(constraint, UnaryExpr) and constraint.op == "!":
+            inner = self._eval_refinement_constraint(constraint.operand, value)
+            if inner is not None:
+                return not inner
+
+        # RegexLit constraints: can validate string literals
+        if isinstance(constraint, (RegexLit, RawStringLit)):
+            if isinstance(value, str):
+                import re
+
+                pattern = constraint.pattern if isinstance(constraint, RegexLit) else constraint.value
+                try:
+                    return bool(re.fullmatch(pattern, value))
+                except re.error:
+                    return None
+
+        return None
+
+    def _eval_refinement_constraint_expr(self, expr: Expr, value: object) -> object | None:
+        """Evaluate a sub-expression in a refinement constraint."""
+        if isinstance(expr, IdentifierExpr) and expr.name == "self":
+            return value
+        if isinstance(expr, IntegerLit):
+            return int(expr.value)
+        if isinstance(expr, DecimalLit):
+            return float(expr.value)
+        if isinstance(expr, FloatLit):
+            return float(expr.value[:-1])
+        if isinstance(expr, StringLit):
+            return expr.value
+        if isinstance(expr, BooleanLit):
+            return expr.value
+        if isinstance(expr, UnaryExpr) and expr.op == "-":
+            inner = self._eval_refinement_constraint_expr(expr.operand, value)
+            if isinstance(inner, (int, float)):
+                return -inner
+        if isinstance(expr, BinaryExpr):
+            left = self._eval_refinement_constraint_expr(expr.left, value)
+            right = self._eval_refinement_constraint_expr(expr.right, value)
+            if left is not None and right is not None:
+                op = expr.op
+                if op == "+":
+                    return left + right
+                if op == "-":
+                    return left - right
+                if op == "*":
+                    return left * right
+                if op == "%":
+                    return left % right
+        return None
 
     # ── Requires-based option narrowing ─────────────────────────
 
@@ -1486,6 +1619,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = expected
         else:
             resolved = inferred
+
+        # Static refinement check: reject invalid constants at compile time
+        self._static_check_refinement(resolved, vd.value, vd.span)
 
         existing = self.symbols.define(
             Symbol(

@@ -274,6 +274,110 @@ class TestOptionRefinementCompat:
         assert types_compatible(option_email, INTEGER) is False
 
 
+class TestStaticRefinementChecking:
+    """Static refinement constraint checking at compile time."""
+
+    def test_positive_literal_passes(self):
+        check(
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        p as Positive = 42\n"
+            "        n\n"
+        )
+
+    def test_negative_literal_rejected(self):
+        check_fails(
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        p as Positive = -1\n"
+            "        n\n",
+            "E355",
+        )
+
+    def test_port_range_valid(self):
+        check(
+            "module M\n"
+            "  type Port is Integer where 1 .. 65535\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        p as Port = 8080\n"
+            "        n\n"
+        )
+
+    def test_port_range_zero_rejected(self):
+        check_fails(
+            "module M\n"
+            "  type Port is Integer where 1 .. 65535\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        p as Port = 0\n"
+            "        n\n",
+            "E355",
+        )
+
+    def test_port_range_too_large_rejected(self):
+        check_fails(
+            "module M\n"
+            "  type Port is Integer where 1 .. 65535\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        p as Port = 70000\n"
+            "        n\n",
+            "E355",
+        )
+
+    def test_nonzero_rejects_zero(self):
+        check_fails(
+            "module M\n"
+            "  type NonZero is Integer where != 0\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        nz as NonZero = 0\n"
+            "        n\n",
+            "E355",
+        )
+
+    def test_nonzero_accepts_positive(self):
+        check(
+            "module M\n"
+            "  type NonZero is Integer where != 0\n"
+            "transforms use(n Integer) Integer\n"
+            "    from\n"
+            "        nz as NonZero = 42\n"
+            "        n\n"
+        )
+
+    def test_constant_refinement_rejected(self):
+        check_fails(
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
+            "  BAD as Positive = -5\n",
+            "E355",
+        )
+
+    def test_constant_refinement_accepted(self):
+        check(
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
+            "  GOOD as Positive = 100\n"
+        )
+
+    def test_non_literal_skips_static_check(self):
+        """Non-literal values should not trigger static refinement errors."""
+        check(
+            "module M\n"
+            "  type Positive is Integer where >= 0\n"
+            "transforms add(a Integer, b Integer) Positive\n"
+            "    from\n"
+            "        result as Positive = a + b\n"
+            "        result\n"
+        )
+
+
 class TestFieldAccessOnModifiedType:
     """Field access on User:[Mutable] should resolve through underlying RecordType."""
 
