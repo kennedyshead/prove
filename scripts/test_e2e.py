@@ -44,6 +44,31 @@ def parse_intent_directives(prv_file: Path) -> set[str]:
     return expected_failures
 
 
+def parse_expected_diagnostics(target: Path) -> set[str]:
+    """Parse 'Expected diagnostics: E101, W302' from all .prv files in target."""
+    expected_diags = set()
+
+    files_to_check = []
+    if target.is_dir():
+        files_to_check = list(target.rglob("*.prv"))
+    elif target.is_file() and target.suffix == ".prv":
+        files_to_check = [target]
+
+    for prv_file in files_to_check:
+        try:
+            content = prv_file.read_text()
+            for line in content.splitlines():
+                line = line.strip()
+                match = re.search(r"Expected diagnostics:\s*([\w,\s]+)", line)
+                if match:
+                    codes = match.group(1).replace(" ", "").split(",")
+                    expected_diags.update(codes)
+        except Exception:
+            pass
+
+    return expected_diags
+
+
 def get_expected_failures(target: Path) -> set[str]:
     """Get expected failures for a project or single file."""
     expected = set()
@@ -200,7 +225,9 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Run e2e tests on Prove examples")
-    parser.add_argument("filter", nargs="?", default=None, help="Filter examples by name substring")
+    parser.add_argument(
+        "filter", nargs="?", default=None, help="Filter examples by name substring"
+    )
     args = parser.parse_args()
 
     print(f"Testing examples in: {EXAMPLES_DIR}")
@@ -230,8 +257,12 @@ def main() -> int:
 
     # Apply filter if specified
     if args.filter:
-        projects = [p for p in projects if args.filter in str(p.relative_to(EXAMPLES_DIR))]
-        single_files = [f for f in single_files if args.filter in str(f.relative_to(EXAMPLES_DIR))]
+        projects = [
+            p for p in projects if args.filter in str(p.relative_to(EXAMPLES_DIR))
+        ]
+        single_files = [
+            f for f in single_files if args.filter in str(f.relative_to(EXAMPLES_DIR))
+        ]
 
     # Test projects
     for project_dir in projects:
@@ -239,12 +270,27 @@ def main() -> int:
         print(f"\nTesting project: {name}")
         try:
             results, expected_failures = test_project(project_dir)
+            expected_diags = parse_expected_diagnostics(project_dir)
             all_results[str(name)] = results
 
             for cmd, result in results.items():
                 rc = result["returncode"]
                 expected = cmd in expected_failures
-                if expected and rc != 0:
+
+                missing_diags = []
+                if cmd == "check" and expected_diags:
+                    stderr = result.get("stderr", "")
+                    for diag in expected_diags:
+                        if f"[{diag}]" not in stderr:
+                            missing_diags.append(diag)
+
+                if missing_diags:
+                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                    failed_example = project_dir
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
+                elif expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
                     status = "OK"
@@ -257,7 +303,7 @@ def main() -> int:
                 print(f"  prove {cmd}: {status}")
 
             if failed_example:
-                all_failures.append((failed_name, failed_command, failed_result))
+                all_failures.append((failed_name, failed_command, failed_result or {}))
                 failed_example = None
                 failed_command = ""
                 failed_result = None
@@ -273,12 +319,27 @@ def main() -> int:
         print(f"\nTesting single file: {name}")
         try:
             results, expected_failures = test_single_file(prv_file)
+            expected_diags = parse_expected_diagnostics(prv_file)
             all_results[str(name)] = results
 
             for cmd, result in results.items():
                 rc = result["returncode"]
                 expected = cmd in expected_failures
-                if expected and rc != 0:
+
+                missing_diags = []
+                if cmd == "check" and expected_diags:
+                    stderr = result.get("stderr", "")
+                    for diag in expected_diags:
+                        if f"[{diag}]" not in stderr:
+                            missing_diags.append(diag)
+
+                if missing_diags:
+                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                    failed_example = prv_file
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
+                elif expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
                     status = "OK"
@@ -291,7 +352,7 @@ def main() -> int:
                 print(f"  prove {cmd}: {status}")
 
             if failed_example:
-                all_failures.append((failed_name, failed_command, failed_result))
+                all_failures.append((failed_name, failed_command, failed_result or {}))
                 failed_example = None
                 failed_command = ""
                 failed_result = None
