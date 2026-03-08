@@ -137,9 +137,10 @@ from
 ```prove
 module Example
   narrative: """An example of email update"""
-  import Console inputs reads, outputs writes
-  import Json creates json, reads json
-  import Value validates value
+  InputOutput inputs console file, outputs console
+  Parse creates json value, types Value, reads json object, validates json
+  Types validates string object value
+  Table types Table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
@@ -153,24 +154,41 @@ module Example
 inputs email() Option<Email>!
 from
     console("What is your email?")
+    // The Email type is a String with boundries and console return String, so Option<Email>
+    user_input as Option<Email> = console()
+    user_input
 
+/// test
 transforms user(json_data Result<Value, String>) User
   requires valid object(json_data)
 from
+    // as requires already checked and unwrapped we only need to cast to Table
     data as Table<Value> = object(json_data)
     User(data.id, data.name, data.email)
 
+/// test2
 matches ensure_user(raw String) User
+  ensures valid json(json_data)
+  requires valid string(raw)
+  explain
+      if raw argument is more than an empty string
+      we parse the json string
+      and return the user
+      if the string is an empty string we return a User
 from
     Some(raw) =>
         json_data as Result<Value, String> = json(raw)
         user(json_data)
     _ => User()
 
-validates id(id Option<Integer>)
-  requires valid integer(id)
+inputs user() User!
 from
-    id > 0
+    raw as String = file(USER_FILE)!
+    ensure_user(raw)
+
+validates email(email Option<Email>)
+from
+    email
 
 transforms set_email(user User, email Option<Email>) User
   requires valid email(email)
@@ -187,21 +205,18 @@ outputs save(json_data String)!
 from
     file(USER_FILE, json_data)!
 
-outputs update_email(id Option<Integer>) User!
-  ensures valid user(updated)
-  requires valid id(id)
-  explain
-      we get an email address
-      we fetch the user
-      we set the email to user
-      change the user to json string and save it
-      return the updated user
+main()!
 from
+    // this is inputs email that reads from stdin, the validation of email is done through the type boundries
     email as Option<Email> = email()
-    user as User = user(id)!
+    // this is inputs user that reads from user.json
+    user as User = user()!
+    // Set the new email and get updated user
     updated as User = set_email(user, email)
+    // save user.json
     save(dump_user(updated))
     updated
+    console(f"Saved user email {updated.email}")
 ```
 
 `explain` is LSP-suggested, not compiler-required — but `ensures` without `explain` produces a warning, since promises should be documented.
