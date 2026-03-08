@@ -1955,6 +1955,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         return ListType(first)
 
     def _infer_comptime(self, expr: ComptimeExpr) -> Type:
+        # Register comptime built-in functions so type-checking passes
+        comptime_builtins = {
+            "platform": FunctionType([], STRING),
+            "read": FunctionType([STRING], STRING),
+        }
+        for name, ty in comptime_builtins.items():
+            if self.symbols.lookup(name) is None:
+                self.symbols.define(
+                    Symbol(
+                        name=name,
+                        kind=SymbolKind.FUNCTION,
+                        resolved_type=ty,
+                        span=expr.span,
+                    )
+                )
         result = UNIT
         for stmt in expr.body:
             result = self._check_stmt(stmt)

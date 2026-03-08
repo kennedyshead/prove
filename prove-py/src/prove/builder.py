@@ -25,6 +25,7 @@ class BuildResult:
     binary: Path | None = None
     diagnostics: list[Diagnostic] = field(default_factory=list)
     c_error: str | None = None
+    comptime_dependencies: set[Path] = field(default_factory=set)
 
 
 def build_project(
@@ -107,6 +108,7 @@ def _build_c(
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
     stdlib_libs: set[str] = set()
+    comptime_deps: set[Path] = set()
     for module, symbols in modules_and_symbols:
         memo_info = None
         runtime_deps = None
@@ -127,6 +129,7 @@ def _build_c(
                         runtime_deps.add_module(imp.module)
         emitter = CEmitter(module, symbols, memo_info)
         c_sources.append(emitter.emit())
+        comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:
             stdlib_libs.update(runtime_deps.get_libs())
 
@@ -198,4 +201,9 @@ def _build_c(
             c_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
         )
 
-    return BuildResult(ok=True, binary=binary_path, diagnostics=all_diags)
+    return BuildResult(
+        ok=True,
+        binary=binary_path,
+        diagnostics=all_diags,
+        comptime_dependencies=comptime_deps,
+    )

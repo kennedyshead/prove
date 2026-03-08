@@ -108,18 +108,25 @@ When `optimize = true` in `prove.toml`, the compiler runs optimization passes on
 
 ## Comptime (Compile-Time Computation)
 
-The compiler includes a tree-walking interpreter that evaluates pure constant expressions at compile time. The optimizer calls this interpreter to fold pure function calls with constant arguments — for example, `double(21)` becomes `42` during compilation. A `read()` function is available for file IO in comptime contexts.
+The compiler includes a tree-walking interpreter that evaluates pure constant expressions at compile time. The optimizer calls this interpreter to fold pure function calls with constant arguments — for example, `double(21)` becomes `42` during compilation.
+
+Comptime blocks execute at compile time and produce C constants. Available built-in functions: `read(path)` for file IO, `platform()` for target detection, `len()`, `contains()`. User-defined pure functions are also callable from comptime contexts. Files accessed via `read()` are tracked as build dependencies.
 
 ```prove
-// Compile-time constant folding (working today)
+// Compile-time constant folding
 MAX_SIZE as Integer = double(512)       // folded to 1024 at compile time
 
-// File reading at compile time (working today)
+// File reading at compile time
 ROUTES as String = comptime
-  read("routes.json")
-```
+    read("routes.json")
 
-**Current limitations:** `comptime` blocks in user code are parsed but not yet fully wired for execution. Build dependency tracking (recompile when a file read by comptime changes) is not yet implemented. Full comptime execution with conditional compilation is planned for v1.0.
+// Conditional compilation via comptime match
+MAX_CONNECTIONS as Integer = comptime
+    match platform()
+        "linux" => 4096
+        "macos" => 2048
+        _ => 1024
+```
 
 ---
 

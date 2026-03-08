@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -183,6 +184,7 @@ class ComptimeInterpreter:
 
         args = [self._eval_expr(a) for a in expr.args]
 
+        # Built-in comptime functions
         if func_name == "read":
             if len(args) != 1 or not isinstance(args[0], str):
                 raise CompileError(
@@ -210,13 +212,90 @@ class ComptimeInterpreter:
                 )
             return file_path.read_text()
 
+        if func_name == "platform":
+            if args:
+                raise CompileError(
+                    [
+                        Diagnostic(
+                            severity=Severity.ERROR,
+                            code="E420",
+                            message="platform() takes no arguments",
+                            labels=[],
+                        )
+                    ]
+                )
+            plat = sys.platform
+            if plat.startswith("linux"):
+                return "linux"
+            if plat == "darwin":
+                return "macos"
+            if plat == "win32":
+                return "windows"
+            return plat
+
+        if func_name == "len":
+            if len(args) != 1:
+                raise CompileError(
+                    [
+                        Diagnostic(
+                            severity=Severity.ERROR,
+                            code="E420",
+                            message="len() expects a single argument",
+                            labels=[],
+                        )
+                    ]
+                )
+            val = args[0]
+            if isinstance(val, (str, list)):
+                return len(val)
+            raise CompileError(
+                [
+                    Diagnostic(
+                        severity=Severity.ERROR,
+                        code="E420",
+                        message="len() requires a string or list argument",
+                        labels=[],
+                    )
+                ]
+            )
+
+        if func_name == "contains":
+            if len(args) != 2:
+                raise CompileError(
+                    [
+                        Diagnostic(
+                            severity=Severity.ERROR,
+                            code="E420",
+                            message="contains() expects two arguments",
+                            labels=[],
+                        )
+                    ]
+                )
+            if isinstance(args[0], str) and isinstance(args[1], str):
+                return args[1] in args[0]
+            if isinstance(args[0], list):
+                return args[1] in args[0]
+            return False
+
+        if func_name == "to_upper":
+            if len(args) == 1 and isinstance(args[0], str):
+                return args[0].upper()
+
+        if func_name == "to_lower":
+            if len(args) == 1 and isinstance(args[0], str):
+                return args[0].lower()
+
+        # Try user-defined pure function call
+        result = self.evaluate_pure_call(func_name, args, "transforms")
+        if result is not None:
+            return result
+
         raise CompileError(
             [
                 Diagnostic(
                     severity=Severity.ERROR,
                     code="E422",
-                    message=f"unknown function '{func_name}' in comptime "
-                    f"(only 'read' is supported)",
+                    message=f"unknown function '{func_name}' in comptime",
                     labels=[],
                 )
             ]

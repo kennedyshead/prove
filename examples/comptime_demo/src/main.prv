@@ -1,0 +1,21 @@
+module Main
+  narrative: """Demonstrates compile-time computation with comptime blocks."""
+  InputOutput outputs console
+
+  BUFFER_SIZE as Integer = comptime
+      512 * 2
+
+  PLATFORM as String = comptime
+      platform()
+
+  MAX_ITEMS as Integer = comptime
+      match platform()
+          "linux" => 4096
+          "macos" => 2048
+          _ => 1024
+
+main() Unit
+from
+    console(f"Buffer size: {BUFFER_SIZE}")
+    console(f"Platform: {PLATFORM}")
+    console(f"Max items: {MAX_ITEMS}")

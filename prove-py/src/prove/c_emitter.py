@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from prove._emit_calls import CallEmitterMixin
@@ -111,6 +112,7 @@ class CEmitter(
         self._record_to_value: set[str] = set()  # record names needing Value converters
         self._expected_emit_type: Type | None = None
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
+        self.comptime_dependencies: set["Path"] = set()  # files read by comptime
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -419,9 +421,21 @@ class CEmitter(
         from prove.interpreter import ComptimeInterpreter
 
         source_dir = Path(self._module.span.file).parent if self._module.span.file else Path(".")
-        interpreter = ComptimeInterpreter(module_source_dir=source_dir)
+        # Collect user-defined pure functions for comptime evaluation
+        func_defs: dict[str, "FunctionDef"] = {}
+        for decl in self._module.declarations:
+            if isinstance(decl, FunctionDef):
+                func_defs[decl.name] = decl
+            elif isinstance(decl, ModuleDecl):
+                for d in decl.body:
+                    if isinstance(d, FunctionDef):
+                        func_defs[d.name] = d
+        interpreter = ComptimeInterpreter(
+            module_source_dir=source_dir, function_defs=func_defs
+        )
         try:
             result = interpreter.evaluate(expr)
+            self.comptime_dependencies.update(result.dependencies)
             return result.value
         except Exception as e:
             diag = Diagnostic(
