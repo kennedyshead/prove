@@ -124,20 +124,6 @@ A variant can have multiple values (stacked entries like `TrueLit`), but reverse
 
 Lookup tables must be exhaustive — every variant needs at least one value, and all values must be unique across the table.
 
-### CSV Declaration (Upcoming v1.X)
-
-*CSV-based lookup declaration is planned for version 1.X and not yet implemented.*
-
-For large lookup tables, data can be loaded from a CSV file at compile time instead of manual declaration:
-
-```prove
-type TokenKind:[Lookup] is String where @("tokens.csv")
-```
-
-The CSV must have columns matching the variant names and values.
-
-Once the compiler is self-hosted (written in Prove), a compiled program can generate CSV files which then get embedded into a new binary at compile time. This creates a binary-table lookup system that could eventually form the foundation of a database built on binary lookup files.
-
 ### Multi-Type Lookup (Upcoming v1.X)
 
 *Multi-type lookups are planned for version 1.X and not yet implemented.*
