@@ -105,6 +105,7 @@ class CEmitter(
         self._current_func: FunctionDef | None = None
         self._in_main = False
         self._in_tail_loop = False
+        self._in_region_scope = False
         self._foreign_names: set[str] = set()
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
@@ -607,6 +608,7 @@ class CEmitter(
 
         # Enter region for short-lived allocations
         self._line("prove_region_enter(prove_global_region());")
+        self._in_region_scope = True
 
         # Reset locals
         self._locals.clear()
@@ -631,6 +633,7 @@ class CEmitter(
 
         # Exit region
         self._line("prove_region_exit(prove_global_region());")
+        self._in_region_scope = False
         self._indent -= 1
         self._line("}")
         self._line("")

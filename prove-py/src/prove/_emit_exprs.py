@@ -370,7 +370,15 @@ class ExprEmitterMixin:
             self._indent -= 1
             self._line("}")
         else:
-            self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+            if self._in_region_scope:
+                self._line(f"if (prove_result_is_err({tmp})) {{")
+                self._indent += 1
+                self._line("prove_region_exit(prove_global_region());")
+                self._line(f"return {tmp};")
+                self._indent -= 1
+                self._line("}")
+            else:
+                self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
         # Unwrap the success value
         inner_type = self._infer_expr_type(expr.expr)
         if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
