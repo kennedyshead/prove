@@ -137,11 +137,9 @@ from
 ```prove
 module Example
   narrative: """An example of email update"""
-  inputs reads console
-  outputs writes console
-  creates json from string
-  reads json as value
-  validates value is object
+  import Console inputs reads, outputs writes
+  import Json creates json, reads json
+  import Value validates value
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
