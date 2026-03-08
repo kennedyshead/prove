@@ -22,7 +22,7 @@ Prove_String *prove_text_slice(Prove_String *s, int64_t start, int64_t end);
 bool          prove_text_starts_with(Prove_String *s, Prove_String *prefix);
 bool          prove_text_ends_with(Prove_String *s, Prove_String *suffix);
 bool          prove_text_contains(Prove_String *s, Prove_String *sub);
-Prove_Option_int64_t prove_text_index_of(Prove_String *s, Prove_String *sub);
+Prove_Option prove_text_index_of(Prove_String *s, Prove_String *sub);
 
 /* ── String transformations ──────────────────────────────────── */
 

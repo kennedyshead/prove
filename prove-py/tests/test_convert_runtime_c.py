@@ -16,7 +16,7 @@ class TestConvertInteger:
                 Prove_String *s = prove_string_from_cstr("42");
                 Prove_Result r = prove_convert_integer_str(s);
                 if (prove_result_is_ok(r)) {
-                    printf("%lld\\n", (long long)r.ok_int);
+                    printf("%lld\\n", (long long)(int64_t)(intptr_t)r.value);
                 } else {
                     printf("ERR\\n");
                 }
@@ -35,7 +35,7 @@ class TestConvertInteger:
                 Prove_String *s = prove_string_from_cstr("-100");
                 Prove_Result r = prove_convert_integer_str(s);
                 if (prove_result_is_ok(r)) {
-                    printf("%lld\\n", (long long)r.ok_int);
+                    printf("%lld\\n", (long long)(int64_t)(intptr_t)r.value);
                 }
                 return 0;
             }
@@ -85,7 +85,7 @@ class TestConvertFloat:
                 Prove_String *s = prove_string_from_cstr("3.14");
                 Prove_Result r = prove_convert_float_str(s);
                 if (prove_result_is_ok(r)) {
-                    printf("%.2f\\n", r.ok_double);
+                    printf("%.2f\\n", prove_result_unwrap_double(r));
                 }
                 return 0;
             }

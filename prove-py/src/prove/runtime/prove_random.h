@@ -20,14 +20,30 @@ double prove_random_decimal_range(double min, double max);
 
 bool prove_random_boolean(void);
 
-/* ── Choice ──────────────────────────────────────────────────── */
+/* ── Choice (unified) ────────────────────────────────────────── */
 
-int64_t       prove_random_choice_int(Prove_List *list);
-Prove_String *prove_random_choice_str(Prove_List *list);
+void *prove_random_choice_raw(Prove_List *list);
 
-/* ── Shuffle ─────────────────────────────────────────────────── */
+/* Typed wrappers for overload dispatch */
+static inline int64_t prove_random_choice_int(Prove_List *list) {
+    return (int64_t)(intptr_t)prove_random_choice_raw(list);
+}
 
-Prove_List *prove_random_shuffle_int(Prove_List *list);
-Prove_List *prove_random_shuffle_str(Prove_List *list);
+static inline Prove_String *prove_random_choice_str(Prove_List *list) {
+    return (Prove_String *)prove_random_choice_raw(list);
+}
+
+/* ── Shuffle (unified) ───────────────────────────────────────── */
+
+Prove_List *prove_random_shuffle_raw(Prove_List *list);
+
+/* Typed wrappers — shuffle preserves element types, so both return Prove_List* */
+static inline Prove_List *prove_random_shuffle_int(Prove_List *list) {
+    return prove_random_shuffle_raw(list);
+}
+
+static inline Prove_List *prove_random_shuffle_str(Prove_List *list) {
+    return prove_random_shuffle_raw(list);
+}
 
 #endif /* PROVE_RANDOM_H */

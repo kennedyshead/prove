@@ -23,13 +23,13 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 2) return 2;
-                Prove_List *row0 = *(Prove_List **)prove_list_get(rows, 0);
+                Prove_List *row0 = (Prove_List *)prove_list_get(rows, 0);
                 if (prove_list_len(row0) != 3) return 3;
-                Prove_String *cell = *(Prove_String **)prove_list_get(row0, 0);
+                Prove_String *cell = (Prove_String *)prove_list_get(row0, 0);
                 Prove_String *expected = prove_string_from_cstr("a");
                 if (!prove_string_eq(cell, expected)) return 4;
-                Prove_List *row1 = *(Prove_List **)prove_list_get(rows, 1);
-                Prove_String *cell1 = *(Prove_String **)prove_list_get(row1, 1);
+                Prove_List *row1 = (Prove_List *)prove_list_get(rows, 1);
+                Prove_String *cell1 = (Prove_String *)prove_list_get(row1, 1);
                 Prove_String *expected1 = prove_string_from_cstr("2");
                 if (!prove_string_eq(cell1, expected1)) return 5;
                 printf("OK\\n");
@@ -52,8 +52,8 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 2) return 2;
-                Prove_List *row1 = *(Prove_List **)prove_list_get(rows, 1);
-                Prove_String *cell = *(Prove_String **)prove_list_get(row1, 0);
+                Prove_List *row1 = (Prove_List *)prove_list_get(rows, 1);
+                Prove_String *cell = (Prove_String *)prove_list_get(row1, 0);
                 Prove_String *expected = prove_string_from_cstr("hello, world");
                 if (!prove_string_eq(cell, expected)) return 3;
                 printf("OK\\n");
@@ -76,8 +76,8 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 2) return 2;
-                Prove_List *row1 = *(Prove_List **)prove_list_get(rows, 1);
-                Prove_String *cell = *(Prove_String **)prove_list_get(row1, 0);
+                Prove_List *row1 = (Prove_List *)prove_list_get(rows, 1);
+                Prove_String *cell = (Prove_String *)prove_list_get(row1, 0);
                 Prove_String *expected = prove_string_from_cstr("say \\"hi\\"");
                 if (!prove_string_eq(cell, expected)) return 3;
                 printf("OK\\n");
@@ -100,15 +100,15 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 2) return 2;
-                Prove_List *row0 = *(Prove_List **)prove_list_get(rows, 0);
+                Prove_List *row0 = (Prove_List *)prove_list_get(rows, 0);
                 if (prove_list_len(row0) != 3) return 3;
                 Prove_String *empty = prove_string_from_cstr("");
-                Prove_String *cell1 = *(Prove_String **)prove_list_get(row0, 1);
+                Prove_String *cell1 = (Prove_String *)prove_list_get(row0, 1);
                 if (!prove_string_eq(cell1, empty)) return 4;
-                Prove_List *row1 = *(Prove_List **)prove_list_get(rows, 1);
-                Prove_String *first = *(Prove_String **)prove_list_get(row1, 0);
+                Prove_List *row1 = (Prove_List *)prove_list_get(rows, 1);
+                Prove_String *first = (Prove_String *)prove_list_get(row1, 0);
                 if (!prove_string_eq(first, empty)) return 5;
-                Prove_String *last = *(Prove_String **)prove_list_get(row1, 2);
+                Prove_String *last = (Prove_String *)prove_list_get(row1, 2);
                 if (!prove_string_eq(last, empty)) return 6;
                 printf("OK\\n");
                 prove_runtime_cleanup();
@@ -130,9 +130,9 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 3) return 2;
-                Prove_List *row0 = *(Prove_List **)prove_list_get(rows, 0);
+                Prove_List *row0 = (Prove_List *)prove_list_get(rows, 0);
                 if (prove_list_len(row0) != 1) return 3;
-                Prove_String *cell = *(Prove_String **)prove_list_get(row0, 0);
+                Prove_String *cell = (Prove_String *)prove_list_get(row0, 0);
                 Prove_String *expected = prove_string_from_cstr("one");
                 if (!prove_string_eq(cell, expected)) return 4;
                 printf("OK\\n");
@@ -155,8 +155,8 @@ class TestCsvParse:
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);
                 if (prove_list_len(rows) != 2) return 2;
-                Prove_List *row1 = *(Prove_List **)prove_list_get(rows, 1);
-                Prove_String *cell = *(Prove_String **)prove_list_get(row1, 0);
+                Prove_List *row1 = (Prove_List *)prove_list_get(rows, 1);
+                Prove_String *cell = (Prove_String *)prove_list_get(row1, 0);
                 Prove_String *expected = prove_string_from_cstr("c");
                 if (!prove_string_eq(cell, expected)) return 3;
                 printf("OK\\n");
@@ -197,19 +197,19 @@ class TestCsvEmit:
             #include <string.h>
             int main(void) {
                 prove_runtime_init();
-                Prove_List *row0 = prove_list_new(sizeof(Prove_String *), 4);
+                Prove_List *row0 = prove_list_new(4);
                 Prove_String *a = prove_string_from_cstr("a");
                 Prove_String *b = prove_string_from_cstr("b");
-                prove_list_push(&row0, &a);
-                prove_list_push(&row0, &b);
-                Prove_List *row1 = prove_list_new(sizeof(Prove_String *), 4);
+                prove_list_push(row0, (void*)a);
+                prove_list_push(row0, (void*)b);
+                Prove_List *row1 = prove_list_new(4);
                 Prove_String *c1 = prove_string_from_cstr("1");
                 Prove_String *c2 = prove_string_from_cstr("2");
-                prove_list_push(&row1, &c1);
-                prove_list_push(&row1, &c2);
-                Prove_List *rows = prove_list_new(sizeof(Prove_List *), 4);
-                prove_list_push(&rows, &row0);
-                prove_list_push(&rows, &row1);
+                prove_list_push(row1, (void*)c1);
+                prove_list_push(row1, (void*)c2);
+                Prove_List *rows = prove_list_new(4);
+                prove_list_push(rows, (void*)row0);
+                prove_list_push(rows, (void*)row1);
                 Prove_String *out = prove_emit_csv(rows);
                 Prove_String *expected = prove_string_from_cstr("a,b\\r\\n1,2\\r\\n");
                 if (!prove_string_eq(out, expected)) {
@@ -231,13 +231,13 @@ class TestCsvEmit:
             #include <stdio.h>
             int main(void) {
                 prove_runtime_init();
-                Prove_List *row = prove_list_new(sizeof(Prove_String *), 4);
+                Prove_List *row = prove_list_new(4);
                 Prove_String *f1 = prove_string_from_cstr("hello, world");
                 Prove_String *f2 = prove_string_from_cstr("say \\"hi\\"");
-                prove_list_push(&row, &f1);
-                prove_list_push(&row, &f2);
-                Prove_List *rows = prove_list_new(sizeof(Prove_List *), 4);
-                prove_list_push(&rows, &row);
+                prove_list_push(row, (void*)f1);
+                prove_list_push(row, (void*)f2);
+                Prove_List *rows = prove_list_new(4);
+                prove_list_push(rows, (void*)row);
                 Prove_String *out = prove_emit_csv(rows);
                 Prove_String *expected = prove_string_from_cstr(
                     "\\"hello, world\\",\\"say \\"\\"hi\\"\\"\\\"\\r\\n");

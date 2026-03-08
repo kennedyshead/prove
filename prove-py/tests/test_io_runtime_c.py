@@ -118,9 +118,9 @@ class TestSystemChannel:
             int main(void) {
                 prove_runtime_init();
                 Prove_String *cmd = prove_string_from_cstr("echo");
-                Prove_List *args = prove_list_new(sizeof(Prove_String *), 4);
+                Prove_List *args = prove_list_new(4);
                 Prove_String *arg1 = prove_string_from_cstr("hello");
-                prove_list_push(&args, &arg1);
+                prove_list_push(args, (void*)arg1);
 
                 Prove_ProcessResult pr = prove_io_system_inputs(cmd, args);
                 if (pr.exit_code != 0) return 1;
@@ -242,7 +242,7 @@ class TestProcessChannel:
                 int64_t n = prove_list_len(args);
                 if (n != 3) return 1;
                 /* argv[1] should be "foo" */
-                Prove_String *a1 = *(Prove_String **)prove_list_get(args, 1);
+                Prove_String *a1 = (Prove_String *)prove_list_get(args, 1);
                 Prove_String *expected = prove_string_from_cstr("foo");
                 if (!prove_string_eq(a1, expected)) return 2;
                 printf("OK\\n");

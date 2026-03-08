@@ -135,9 +135,9 @@ Prove_Url *prove_parse_url_transform(Prove_Url *source, Prove_Table *params) {
     }
 
     for (int64_t i = 0; i < nkeys && nparts < 62; i++) {
-        Prove_String *key = *(Prove_String **)prove_list_get(keys, i);
-        Prove_Option_voidptr opt = prove_table_get(key, params);
-        if (Prove_Option_voidptr_is_none(opt)) continue;
+        Prove_String *key = (Prove_String *)prove_list_get(keys, i);
+        Prove_Option opt = prove_table_get(key, params);
+        if (opt.tag == 0) continue;
         Prove_Value *val = (Prove_Value *)opt.value;
 
         Prove_String *val_str;

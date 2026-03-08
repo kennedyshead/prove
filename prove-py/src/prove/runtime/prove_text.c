@@ -38,26 +38,26 @@ bool prove_text_contains(Prove_String *s, Prove_String *sub) {
     return strstr(s->data, sub->data) != NULL;
 }
 
-Prove_Option_int64_t prove_text_index_of(Prove_String *s, Prove_String *sub) {
-    if (!s || !sub) return Prove_Option_int64_t_none();
-    if (sub->length == 0) return Prove_Option_int64_t_some(0);
-    if (sub->length > s->length) return Prove_Option_int64_t_none();
+Prove_Option prove_text_index_of(Prove_String *s, Prove_String *sub) {
+    if (!s || !sub) return prove_option_none();
+    if (sub->length == 0) return prove_option_some((Prove_Value*)(intptr_t)0);
+    if (sub->length > s->length) return prove_option_none();
     char *found = strstr(s->data, sub->data);
-    if (!found) return Prove_Option_int64_t_none();
-    return Prove_Option_int64_t_some((int64_t)(found - s->data));
+    if (!found) return prove_option_none();
+    return prove_option_some((Prove_Value*)(intptr_t)(found - s->data));
 }
 
 /* ── String transformations ──────────────────────────────────── */
 
 Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
-    Prove_List *list = prove_list_new(sizeof(Prove_String *), 8);
+    Prove_List *list = prove_list_new(8);
     if (!s || s->length == 0) {
         return list;
     }
     if (!sep || sep->length == 0) {
         /* Empty separator: return list with the original string */
         Prove_String *copy = prove_string_new(s->data, s->length);
-        prove_list_push(&list, &copy);
+        prove_list_push(list, copy);
         return list;
     }
 
@@ -73,11 +73,11 @@ Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
         }
         if (found) {
             Prove_String *part = prove_string_new(start, (int64_t)(found - start));
-            prove_list_push(&list, &part);
+            prove_list_push(list, part);
             start = found + sep_len;
         } else {
             Prove_String *part = prove_string_new(start, (int64_t)(end - start));
-            prove_list_push(&list, &part);
+            prove_list_push(list, part);
             break;
         }
     }
@@ -91,8 +91,8 @@ Prove_String *prove_text_join(Prove_List *parts, Prove_String *sep) {
     /* Calculate total length */
     int64_t total = 0;
     for (int64_t i = 0; i < parts->length; i++) {
-        Prove_String **sp = (Prove_String **)prove_list_get(parts, i);
-        if (*sp) total += (*sp)->length;
+        Prove_String *sp = (Prove_String *)prove_list_get(parts, i);
+        if (sp) total += sp->length;
         if (i > 0 && sep) total += sep->length;
     }
 
@@ -107,10 +107,10 @@ Prove_String *prove_text_join(Prove_List *parts, Prove_String *sep) {
             memcpy(dst, sep->data, (size_t)sep->length);
             dst += sep->length;
         }
-        Prove_String **sp = (Prove_String **)prove_list_get(parts, i);
-        if (*sp && (*sp)->length > 0) {
-            memcpy(dst, (*sp)->data, (size_t)(*sp)->length);
-            dst += (*sp)->length;
+        Prove_String *sp = (Prove_String *)prove_list_get(parts, i);
+        if (sp && sp->length > 0) {
+            memcpy(dst, sp->data, (size_t)sp->length);
+            dst += sp->length;
         }
     }
     result->data[total] = '\0';

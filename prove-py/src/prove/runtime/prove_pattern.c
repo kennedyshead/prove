@@ -75,28 +75,28 @@ bool prove_pattern_match(Prove_String *text, Prove_String *pattern) {
 
 /* ── search ──────────────────────────────────────────────────── */
 
-Prove_Option_Prove_Matchptr prove_pattern_search(Prove_String *text, Prove_String *pattern) {
+Prove_Option prove_pattern_search(Prove_String *text, Prove_String *pattern) {
     if (!text || !pattern)
-        return Prove_Option_Prove_Matchptr_none();
+        return prove_option_none();
 
     regex_t *re = _get_regex(pattern->data);
     if (!re)
-        return Prove_Option_Prove_Matchptr_none();
+        return prove_option_none();
 
     regmatch_t match;
     int rc = regexec(re, text->data, 1, &match, 0);
 
     if (rc != 0)
-        return Prove_Option_Prove_Matchptr_none();
+        return prove_option_none();
 
     Prove_Match *m = _make_match(text, (int64_t)match.rm_so, (int64_t)match.rm_eo);
-    return Prove_Option_Prove_Matchptr_some(m);
+    return prove_option_some((Prove_Value *)m);
 }
 
 /* ── find_all ────────────────────────────────────────────────── */
 
 Prove_List *prove_pattern_find_all(Prove_String *text, Prove_String *pattern) {
-    Prove_List *result = prove_list_new(sizeof(Prove_Match *), 8);
+    Prove_List *result = prove_list_new(8);
     if (!text || !pattern) return result;
 
     regex_t *re = _get_regex(pattern->data);
@@ -110,7 +110,7 @@ Prove_List *prove_pattern_find_all(Prove_String *text, Prove_String *pattern) {
         int64_t start = offset + (int64_t)match.rm_so;
         int64_t end = offset + (int64_t)match.rm_eo;
         Prove_Match *m = _make_match(text, start, end);
-        prove_list_push(&result, &m);
+        prove_list_push(result, m);
 
         /* Advance past match (avoid infinite loop on zero-length match) */
         int64_t advance = (int64_t)match.rm_eo;
@@ -177,11 +177,11 @@ Prove_String *prove_pattern_replace(Prove_String *text, Prove_String *pattern, P
 /* ── split ───────────────────────────────────────────────────── */
 
 Prove_List *prove_pattern_split(Prove_String *text, Prove_String *pattern) {
-    Prove_List *result = prove_list_new(sizeof(Prove_String *), 8);
+    Prove_List *result = prove_list_new(8);
     if (!text || !pattern) {
         if (text) {
             Prove_String *copy = prove_string_new(text->data, text->length);
-            prove_list_push(&result, &copy);
+            prove_list_push(result, copy);
         }
         return result;
     }
@@ -189,7 +189,7 @@ Prove_List *prove_pattern_split(Prove_String *text, Prove_String *pattern) {
     regex_t *re = _get_regex(pattern->data);
     if (!re) {
         Prove_String *copy = prove_string_new(text->data, text->length);
-        prove_list_push(&result, &copy);
+        prove_list_push(result, copy);
         return result;
     }
 
@@ -202,7 +202,7 @@ Prove_List *prove_pattern_split(Prove_String *text, Prove_String *pattern) {
         int64_t seg_start = offset;
         int64_t seg_end = offset + (int64_t)match.rm_so;
         Prove_String *seg = prove_string_new(text->data + seg_start, seg_end - seg_start);
-        prove_list_push(&result, &seg);
+        prove_list_push(result, seg);
 
         int64_t advance = (int64_t)match.rm_eo;
         if (advance == (int64_t)match.rm_so) advance++;
@@ -215,7 +215,7 @@ Prove_List *prove_pattern_split(Prove_String *text, Prove_String *pattern) {
     /* Remainder */
     if (offset <= text->length) {
         Prove_String *seg = prove_string_new(text->data + offset, text->length - offset);
-        prove_list_push(&result, &seg);
+        prove_list_push(result, seg);
     }
 
     return result;

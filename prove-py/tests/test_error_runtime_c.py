@@ -49,7 +49,7 @@ class TestErrorOption:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_int64_t o = Prove_Option_int64_t_some(42);
+                Prove_Option o = prove_option_some((Prove_Value*)(intptr_t)(42));
                 printf("%s\\n", prove_error_some_int(o) ? "some" : "none");
                 printf("%s\\n", prove_error_none_int(o) ? "none" : "some");
                 return 0;
@@ -66,7 +66,7 @@ class TestErrorOption:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_int64_t o = Prove_Option_int64_t_none();
+                Prove_Option o = prove_option_none();
                 printf("%s\\n", prove_error_some_int(o) ? "some" : "none");
                 printf("%s\\n", prove_error_none_int(o) ? "none" : "some");
                 return 0;
@@ -84,7 +84,7 @@ class TestErrorOption:
             #include <stdio.h>
             int main(void) {
                 Prove_String *s = prove_string_from_cstr("hello");
-                Prove_Option_Prove_Stringptr o = Prove_Option_Prove_Stringptr_some(s);
+                Prove_Option o = prove_option_some((Prove_Value*)s);
                 printf("%s\\n", prove_error_some_str(o) ? "some" : "none");
                 return 0;
             }
@@ -98,7 +98,7 @@ class TestErrorOption:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_Prove_Stringptr o = Prove_Option_Prove_Stringptr_none();
+                Prove_Option o = prove_option_none();
                 printf("%s\\n", prove_error_none_str(o) ? "none" : "some");
                 return 0;
             }
@@ -114,7 +114,7 @@ class TestErrorUnwrapOr:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_int64_t o = Prove_Option_int64_t_some(42);
+                Prove_Option o = prove_option_some((Prove_Value*)(intptr_t)(42));
                 printf("%lld\\n", (long long)prove_error_unwrap_or_int(o, 0));
                 return 0;
             }
@@ -128,7 +128,7 @@ class TestErrorUnwrapOr:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_int64_t o = Prove_Option_int64_t_none();
+                Prove_Option o = prove_option_none();
                 printf("%lld\\n", (long long)prove_error_unwrap_or_int(o, 99));
                 return 0;
             }
@@ -143,7 +143,7 @@ class TestErrorUnwrapOr:
             #include <stdio.h>
             int main(void) {
                 Prove_String *s = prove_string_from_cstr("hello");
-                Prove_Option_Prove_Stringptr o = Prove_Option_Prove_Stringptr_some(s);
+                Prove_Option o = prove_option_some((Prove_Value*)s);
                 Prove_String *def = prove_string_from_cstr("default");
                 Prove_String *r = prove_error_unwrap_or_str(o, def);
                 printf("%.*s\\n", (int)r->length, r->data);
@@ -159,7 +159,7 @@ class TestErrorUnwrapOr:
             #include "prove_error.h"
             #include <stdio.h>
             int main(void) {
-                Prove_Option_Prove_Stringptr o = Prove_Option_Prove_Stringptr_none();
+                Prove_Option o = prove_option_none();
                 Prove_String *def = prove_string_from_cstr("default");
                 Prove_String *r = prove_error_unwrap_or_str(o, def);
                 printf("%.*s\\n", (int)r->length, r->data);

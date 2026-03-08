@@ -148,19 +148,7 @@ def map_type(ty: Type) -> CType:
         if ty.base_name == "Table":
             return CType("Prove_Table*", is_pointer=True, header="prove_table.h")
         if ty.base_name == "Option":
-            # Monomorphize: Option<Integer> -> Prove_Option_int64_t
-            # Known Option types in runtime: int64_t, Prove_String*, Prove_Match*, void*
-            _KNOWN_OPTION_TYPES = {"int64_t", "Prove_Stringptr", "Prove_Matchptr"}
-            if ty.args:
-                inner = map_type(ty.args[0])
-                safe = inner.decl.replace("*", "ptr").replace(" ", "_")
-                if safe in _KNOWN_OPTION_TYPES:
-                    return CType(f"Prove_Option_{safe}", is_pointer=False, header="prove_option.h")
-                if inner.is_pointer:
-                    # Generic pointer types use Prove_Option_voidptr
-                    return CType("Prove_Option_voidptr", is_pointer=False, header="prove_option.h")
-                return CType(f"Prove_Option_{safe}", is_pointer=False, header="prove_option.h")
-            return CType("Prove_Option_int64_t", is_pointer=False, header="prove_option.h")
+            return CType("Prove_Option", is_pointer=False, header="prove_option.h")
         return CType(mangle_type_name(ty.base_name), is_pointer=False, header=None)
 
     if isinstance(ty, FunctionType):

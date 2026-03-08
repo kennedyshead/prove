@@ -28,8 +28,8 @@ class TestTomlParse:
                 if (!prove_value_is_object(root)) return 2;
                 Prove_Table *t = prove_value_as_object(root);
                 Prove_String *key = prove_string_from_cstr("name");
-                Prove_Option_voidptr opt = prove_table_get(key, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 3;
+                Prove_Option opt = prove_table_get(key, t);
+                if (prove_option_is_none(opt)) return 3;
                 Prove_Value *val = (Prove_Value *)opt.value;
                 if (!prove_value_is_text(val)) return 4;
                 Prove_String *expected = prove_string_from_cstr("hello");
@@ -55,8 +55,8 @@ class TestTomlParse:
                 Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
                 Prove_Table *t = prove_value_as_object(root);
                 Prove_String *key = prove_string_from_cstr("port");
-                Prove_Option_voidptr opt = prove_table_get(key, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 2;
+                Prove_Option opt = prove_table_get(key, t);
+                if (prove_option_is_none(opt)) return 2;
                 Prove_Value *val = (Prove_Value *)opt.value;
                 if (!prove_value_is_number(val)) return 3;
                 if (prove_value_as_number(val) != 8080) return 4;
@@ -82,14 +82,14 @@ class TestTomlParse:
                 Prove_Table *t = prove_value_as_object(root);
 
                 Prove_String *k1 = prove_string_from_cstr("debug");
-                Prove_Option_voidptr o1 = prove_table_get(k1, t);
-                if (Prove_Option_voidptr_is_none(o1)) return 2;
+                Prove_Option o1 = prove_table_get(k1, t);
+                if (prove_option_is_none(o1)) return 2;
                 Prove_Value *v1 = (Prove_Value *)o1.value;
                 if (!prove_value_as_bool(v1)) return 3;
 
                 Prove_String *k2 = prove_string_from_cstr("verbose");
-                Prove_Option_voidptr o2 = prove_table_get(k2, t);
-                if (Prove_Option_voidptr_is_none(o2)) return 4;
+                Prove_Option o2 = prove_table_get(k2, t);
+                if (prove_option_is_none(o2)) return 4;
                 Prove_Value *v2 = (Prove_Value *)o2.value;
                 if (prove_value_as_bool(v2)) return 5;
 
@@ -116,15 +116,15 @@ class TestTomlParse:
                 Prove_Table *t = prove_value_as_object(root);
 
                 Prove_String *pkg_key = prove_string_from_cstr("package");
-                Prove_Option_voidptr opt = prove_table_get(pkg_key, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 2;
+                Prove_Option opt = prove_table_get(pkg_key, t);
+                if (prove_option_is_none(opt)) return 2;
                 Prove_Value *pkg = (Prove_Value *)opt.value;
                 if (!prove_value_is_object(pkg)) return 3;
 
                 Prove_Table *pkg_tbl = prove_value_as_object(pkg);
                 Prove_String *name_key = prove_string_from_cstr("name");
-                Prove_Option_voidptr nopt = prove_table_get(name_key, pkg_tbl);
-                if (Prove_Option_voidptr_is_none(nopt)) return 4;
+                Prove_Option nopt = prove_table_get(name_key, pkg_tbl);
+                if (prove_option_is_none(nopt)) return 4;
                 Prove_Value *name_val = (Prove_Value *)nopt.value;
                 Prove_String *expected = prove_string_from_cstr("myapp");
                 if (!prove_string_eq(prove_value_as_text(name_val), expected)) return 5;
@@ -151,17 +151,17 @@ class TestTomlParse:
                 Prove_Table *t = prove_value_as_object(root);
 
                 Prove_String *key = prove_string_from_cstr("nums");
-                Prove_Option_voidptr opt = prove_table_get(key, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 2;
+                Prove_Option opt = prove_table_get(key, t);
+                if (prove_option_is_none(opt)) return 2;
                 Prove_Value *val = (Prove_Value *)opt.value;
                 if (!prove_value_is_array(val)) return 3;
 
                 Prove_List *arr = prove_value_as_array(val);
                 if (prove_list_len(arr) != 3) return 4;
 
-                Prove_Value *first = *(Prove_Value **)prove_list_get(arr, 0);
+                Prove_Value *first = (Prove_Value *)prove_list_get(arr, 0);
                 if (prove_value_as_number(first) != 1) return 5;
-                Prove_Value *third = *(Prove_Value **)prove_list_get(arr, 2);
+                Prove_Value *third = (Prove_Value *)prove_list_get(arr, 2);
                 if (prove_value_as_number(third) != 3) return 6;
 
                 printf("OK\\n");
@@ -198,8 +198,8 @@ class TestTomlRoundTrip:
                 /* Check values preserved */
                 Prove_Table *t = prove_value_as_object(v2);
                 Prove_String *nk = prove_string_from_cstr("name");
-                Prove_Option_voidptr opt = prove_table_get(nk, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 3;
+                Prove_Option opt = prove_table_get(nk, t);
+                if (prove_option_is_none(opt)) return 3;
                 Prove_String *expected = prove_string_from_cstr("test");
                 Prove_Value *nv = (Prove_Value *)opt.value;
                 if (!prove_string_eq(prove_value_as_text(nv), expected)) return 4;
@@ -233,16 +233,16 @@ class TestJsonParse:
 
                 Prove_Table *t = prove_value_as_object(root);
                 Prove_String *nk = prove_string_from_cstr("name");
-                Prove_Option_voidptr opt = prove_table_get(nk, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 3;
+                Prove_Option opt = prove_table_get(nk, t);
+                if (prove_option_is_none(opt)) return 3;
                 Prove_String *expected = prove_string_from_cstr("test");
                 Prove_Value *nv = (Prove_Value *)opt.value;
                 if (!prove_string_eq(prove_value_as_text(nv), expected))
                     return 4;
 
                 Prove_String *ck = prove_string_from_cstr("count");
-                Prove_Option_voidptr copt = prove_table_get(ck, t);
-                if (Prove_Option_voidptr_is_none(copt)) return 5;
+                Prove_Option copt = prove_table_get(ck, t);
+                if (prove_option_is_none(copt)) return 5;
                 if (prove_value_as_number((Prove_Value *)copt.value) != 42) return 6;
 
                 printf("OK\\n");
@@ -267,7 +267,7 @@ class TestJsonParse:
                 if (!prove_value_is_array(root)) return 2;
                 Prove_List *arr = prove_value_as_array(root);
                 if (prove_list_len(arr) != 3) return 3;
-                Prove_Value *second = *(Prove_Value **)prove_list_get(arr, 1);
+                Prove_Value *second = (Prove_Value *)prove_list_get(arr, 1);
                 if (prove_value_as_number(second) != 2) return 4;
                 printf("OK\\n");
                 prove_runtime_cleanup();
@@ -357,8 +357,8 @@ class TestJsonRoundTrip:
                 /* Check value preserved */
                 Prove_Table *t = prove_value_as_object(v2);
                 Prove_String *ak = prove_string_from_cstr("a");
-                Prove_Option_voidptr opt = prove_table_get(ak, t);
-                if (Prove_Option_voidptr_is_none(opt)) return 3;
+                Prove_Option opt = prove_table_get(ak, t);
+                if (prove_option_is_none(opt)) return 3;
                 if (prove_value_as_number((Prove_Value *)opt.value) != 1) return 4;
 
                 printf("OK\\n");
@@ -381,7 +381,7 @@ class TestValueTag:
                 Prove_Value *vt = prove_value_text(prove_string_from_cstr("x"));
                 Prove_Value *vn = prove_value_number(42);
                 Prove_Value *vb = prove_value_bool(true);
-                Prove_Value *va = prove_value_array(prove_list_new(sizeof(Prove_Value*), 4));
+                Prove_Value *va = prove_value_array(prove_list_new(4));
                 Prove_Value *vo = prove_value_object(prove_table_new());
                 Prove_Value *vl = prove_value_null();
 

@@ -13,9 +13,9 @@ class TestListLength:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
                 printf("%lld\\n", (long long)prove_list_ops_length(l));
                 return 0;
             }
@@ -29,7 +29,7 @@ class TestListLength:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 printf("%lld\\n", (long long)prove_list_ops_length(l));
                 return 0;
             }
@@ -45,12 +45,12 @@ class TestListFirstLast:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
-                Prove_Option_int64_t opt = prove_list_ops_first_int(l);
-                printf("%s %lld\\n", Prove_Option_int64_t_is_some(opt) ? "some" : "none",
-                       (long long)opt.value);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
+                Prove_Option opt = prove_list_ops_first_int(l);
+                printf("%s %lld\\n", prove_option_is_some(opt) ? "some" : "none",
+                       (long long)(int64_t)(intptr_t)opt.value);
                 return 0;
             }
         """)
@@ -63,9 +63,9 @@ class TestListFirstLast:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
-                Prove_Option_int64_t opt = prove_list_ops_first_int(l);
-                printf("%s\\n", Prove_Option_int64_t_is_none(opt) ? "none" : "some");
+                Prove_List *l = prove_list_new(4);
+                Prove_Option opt = prove_list_ops_first_int(l);
+                printf("%s\\n", prove_option_is_none(opt) ? "none" : "some");
                 return 0;
             }
         """)
@@ -78,12 +78,12 @@ class TestListFirstLast:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
-                Prove_Option_int64_t opt = prove_list_ops_last_int(l);
-                printf("%s %lld\\n", Prove_Option_int64_t_is_some(opt) ? "some" : "none",
-                       (long long)opt.value);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
+                Prove_Option opt = prove_list_ops_last_int(l);
+                printf("%s %lld\\n", prove_option_is_some(opt) ? "some" : "none",
+                       (long long)(int64_t)(intptr_t)opt.value);
                 return 0;
             }
         """)
@@ -98,9 +98,9 @@ class TestListContains:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
                 printf("%s\\n", prove_list_ops_contains_int(l, 20) ? "yes" : "no");
                 return 0;
             }
@@ -114,9 +114,9 @@ class TestListContains:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
                 printf("%s\\n", prove_list_ops_contains_int(l, 99) ? "yes" : "no");
                 return 0;
             }
@@ -130,11 +130,11 @@ class TestListContains:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(Prove_String *), 4);
+                Prove_List *l = prove_list_new(4);
                 Prove_String *a = prove_string_from_cstr("hello");
                 Prove_String *b = prove_string_from_cstr("world");
-                prove_list_push(&l, &a);
-                prove_list_push(&l, &b);
+                prove_list_push(l, (void*)a);
+                prove_list_push(l, (void*)b);
                 Prove_String *needle = prove_string_from_cstr("hello");
                 printf("%s\\n", prove_list_ops_contains_str(l, needle) ? "yes" : "no");
                 Prove_String *missing = prove_string_from_cstr("foo");
@@ -155,12 +155,12 @@ class TestListIndex:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
-                Prove_Option_int64_t opt = prove_list_ops_index_int(l, 20);
-                if (Prove_Option_int64_t_is_some(opt)) {
-                    printf("%lld\\n", (long long)opt.value);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
+                Prove_Option opt = prove_list_ops_index_int(l, 20);
+                if (prove_option_is_some(opt)) {
+                    printf("%lld\\n", (long long)(int64_t)(intptr_t)opt.value);
                 } else {
                     printf("none\\n");
                 }
@@ -176,11 +176,11 @@ class TestListIndex:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {10, 20, 30};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
-                Prove_Option_int64_t opt = prove_list_ops_index_int(l, 99);
-                printf("%s\\n", Prove_Option_int64_t_is_none(opt) ? "none" : "some");
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
+                Prove_Option opt = prove_list_ops_index_int(l, 99);
+                printf("%s\\n", prove_option_is_none(opt) ? "none" : "some");
                 return 0;
             }
         """)
@@ -195,12 +195,12 @@ class TestListSort:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {30, 10, 20};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
                 Prove_List *sorted = prove_list_ops_sort_int(l);
                 for (int64_t i = 0; i < sorted->length; i++) {
-                    printf("%lld ", (long long)*(int64_t *)prove_list_get(sorted, i));
+                    printf("%lld ", (long long)(int64_t)(intptr_t)prove_list_get(sorted, i));
                 }
                 printf("\\n");
                 return 0;
@@ -215,16 +215,16 @@ class TestListSort:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(Prove_String *), 4);
+                Prove_List *l = prove_list_new(4);
                 Prove_String *c = prove_string_from_cstr("cherry");
                 Prove_String *a = prove_string_from_cstr("apple");
                 Prove_String *b = prove_string_from_cstr("banana");
-                prove_list_push(&l, &c);
-                prove_list_push(&l, &a);
-                prove_list_push(&l, &b);
+                prove_list_push(l, (void*)c);
+                prove_list_push(l, (void*)a);
+                prove_list_push(l, (void*)b);
                 Prove_List *sorted = prove_list_ops_sort_str(l);
                 for (int64_t i = 0; i < sorted->length; i++) {
-                    Prove_String *s = *(Prove_String **)prove_list_get(sorted, i);
+                    Prove_String *s = (Prove_String *)prove_list_get(sorted, i);
                     printf("%.*s ", (int)s->length, s->data);
                 }
                 printf("\\n");
@@ -242,12 +242,12 @@ class TestListReverse:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 int64_t vals[] = {1, 2, 3};
-                for (int i = 0; i < 3; i++) prove_list_push(&l, &vals[i]);
+                for (int i = 0; i < 3; i++) prove_list_push(l, (void*)(intptr_t)vals[i]);
                 Prove_List *rev = prove_list_ops_reverse(l);
                 for (int64_t i = 0; i < rev->length; i++) {
-                    printf("%lld ", (long long)*(int64_t *)prove_list_get(rev, i));
+                    printf("%lld ", (long long)(int64_t)(intptr_t)prove_list_get(rev, i));
                 }
                 printf("\\n");
                 return 0;
@@ -264,12 +264,12 @@ class TestListSlice:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 8);
-                for (int64_t i = 0; i < 5; i++) prove_list_push(&l, &i);
+                Prove_List *l = prove_list_new(8);
+                for (int64_t i = 0; i < 5; i++) prove_list_push(l, (void*)(intptr_t)i);
                 Prove_List *s = prove_list_ops_slice(l, 1, 4);
                 printf("len=%lld:", (long long)s->length);
                 for (int64_t i = 0; i < s->length; i++) {
-                    printf(" %lld", (long long)*(int64_t *)prove_list_get(s, i));
+                    printf(" %lld", (long long)(int64_t)(intptr_t)prove_list_get(s, i));
                 }
                 printf("\\n");
                 return 0;
@@ -288,7 +288,7 @@ class TestListRange:
             int main(void) {
                 Prove_List *l = prove_list_ops_range(1, 6);
                 for (int64_t i = 0; i < l->length; i++) {
-                    printf("%lld ", (long long)*(int64_t *)prove_list_get(l, i));
+                    printf("%lld ", (long long)(int64_t)(intptr_t)prove_list_get(l, i));
                 }
                 printf("\\n");
                 return 0;
@@ -319,7 +319,7 @@ class TestListEmpty:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
+                Prove_List *l = prove_list_new(4);
                 printf("%s\\n", prove_list_ops_empty(l) ? "yes" : "no");
                 return 0;
             }
@@ -333,9 +333,8 @@ class TestListEmpty:
             #include "prove_list_ops.h"
             #include <stdio.h>
             int main(void) {
-                Prove_List *l = prove_list_new(sizeof(int64_t), 4);
-                int64_t v = 42;
-                prove_list_push(&l, &v);
+                Prove_List *l = prove_list_new(4);
+                prove_list_push(l, (void*)(intptr_t)42);
                 printf("%s\\n", prove_list_ops_empty(l) ? "yes" : "no");
                 return 0;
             }

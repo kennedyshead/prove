@@ -374,12 +374,12 @@ class TestText:
                 Prove_String *wo = prove_string_from_cstr("world");
                 Prove_String *zz = prove_string_from_cstr("xyz");
 
-                Prove_Option_int64_t r1 = prove_text_index_of(s, wo);
-                if (!Prove_Option_int64_t_is_some(r1)) return 1;
-                if (r1.value != 6) return 2;
+                Prove_Option r1 = prove_text_index_of(s, wo);
+                if (!prove_option_is_some(r1)) return 1;
+                if ((int64_t)(intptr_t)r1.value != 6) return 2;
 
-                Prove_Option_int64_t r2 = prove_text_index_of(s, zz);
-                if (!Prove_Option_int64_t_is_none(r2)) return 3;
+                Prove_Option r2 = prove_text_index_of(s, zz);
+                if (!prove_option_is_none(r2)) return 3;
 
                 printf("OK\\n");
                 return 0;
@@ -401,10 +401,10 @@ class TestText:
                 Prove_List *parts = prove_text_split(s, sep);
                 if (prove_list_len(parts) != 3) return 1;
 
-                Prove_String **p0 = (Prove_String **)prove_list_get(parts, 0);
-                if (!prove_string_eq(*p0, prove_string_from_cstr("a"))) return 2;
-                Prove_String **p2 = (Prove_String **)prove_list_get(parts, 2);
-                if (!prove_string_eq(*p2, prove_string_from_cstr("c"))) return 3;
+                Prove_String *p0 = (Prove_String *)prove_list_get(parts, 0);
+                if (!prove_string_eq(p0, prove_string_from_cstr("a"))) return 2;
+                Prove_String *p2 = (Prove_String *)prove_list_get(parts, 2);
+                if (!prove_string_eq(p2, prove_string_from_cstr("c"))) return 3;
 
                 /* Join back together */
                 Prove_String *joined = prove_text_join(parts, prove_string_from_cstr("-"));
@@ -553,18 +553,18 @@ class TestTable:
                 if (!prove_table_has(k1, t)) return 3;
                 if (!prove_table_has(k2, t)) return 4;
 
-                Prove_Option_voidptr r1 = prove_table_get(k1, t);
-                if (!Prove_Option_voidptr_is_some(r1)) return 5;
-                if ((int64_t)r1.value != 42) return 6;
+                Prove_Option r1 = prove_table_get(k1, t);
+                if (!prove_option_is_some(r1)) return 5;
+                if ((int64_t)(intptr_t)r1.value != 42) return 6;
 
-                Prove_Option_voidptr r2 = prove_table_get(k2, t);
-                if ((int64_t)r2.value != 99) return 7;
+                Prove_Option r2 = prove_table_get(k2, t);
+                if ((int64_t)(intptr_t)r2.value != 99) return 7;
 
                 /* Missing key */
                 Prove_String *k3 = prove_string_from_cstr("missing");
                 if (prove_table_has(k3, t)) return 8;
-                Prove_Option_voidptr r3 = prove_table_get(k3, t);
-                if (Prove_Option_voidptr_is_some(r3)) return 9;
+                Prove_Option r3 = prove_table_get(k3, t);
+                if (prove_option_is_some(r3)) return 9;
 
                 printf("OK\\n");
                 return 0;
@@ -587,8 +587,8 @@ class TestTable:
                 t = prove_table_add(k, (void*)2, t);
 
                 if (prove_table_length(t) != 1) return 1;
-                Prove_Option_voidptr r = prove_table_get(k, t);
-                if ((int64_t)r.value != 2) return 2;
+                Prove_Option r = prove_table_get(k, t);
+                if ((int64_t)(intptr_t)r.value != 2) return 2;
 
                 printf("OK\\n");
                 return 0;
@@ -672,9 +672,9 @@ class TestTable:
                 for (int i = 0; i < 100; i++) {
                     snprintf(buf, sizeof(buf), "key_%d", i);
                     Prove_String *k = prove_string_from_cstr(buf);
-                    Prove_Option_voidptr r = prove_table_get(k, t);
-                    if (!Prove_Option_voidptr_is_some(r)) return 2;
-                    if ((int64_t)r.value != i) return 3;
+                    Prove_Option r = prove_table_get(k, t);
+                    if (!prove_option_is_some(r)) return 2;
+                    if ((int64_t)(intptr_t)r.value != i) return 3;
                 }
 
                 printf("OK\\n");

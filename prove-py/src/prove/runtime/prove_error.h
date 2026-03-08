@@ -16,56 +16,66 @@ static inline bool prove_error_err(Prove_Result r) {
     return r.tag == 1;
 }
 
-/* ── Option validators ───────────────────────────────────────── */
-/* Options are monomorphized but all share tag at offset 0:
-   tag == 1 means Some, tag == 0 means None.
-   Guard the PROVE_DEFINE_OPTION calls so they don't conflict
-   with prove_list_ops.h which defines the same types. */
+/* ── Unified Option validators ───────────────────────────────── */
 
-#ifndef PROVE_OPTION_INT64_T_DEFINED
-#define PROVE_OPTION_INT64_T_DEFINED
-PROVE_DEFINE_OPTION(int64_t, Prove_Option_int64_t)
-#endif
-
-#ifndef PROVE_OPTION_STRINGPTR_DEFINED
-#define PROVE_OPTION_STRINGPTR_DEFINED
-PROVE_DEFINE_OPTION(Prove_String*, Prove_Option_Prove_Stringptr)
-#endif
-
-static inline bool prove_error_some_int(Prove_Option_int64_t o) {
+static inline bool prove_error_some(Prove_Option o) {
     return o.tag == 1;
 }
 
-static inline bool prove_error_none_int(Prove_Option_int64_t o) {
+static inline bool prove_error_none(Prove_Option o) {
     return o.tag == 0;
 }
 
-static inline bool prove_error_some_str(Prove_Option_Prove_Stringptr o) {
+/* ── Typed Option validators (aliases for overload dispatch) ── */
+
+static inline bool prove_error_some_int(Prove_Option o) {
     return o.tag == 1;
 }
 
-static inline bool prove_error_none_str(Prove_Option_Prove_Stringptr o) {
+static inline bool prove_error_some_str(Prove_Option o) {
+    return o.tag == 1;
+}
+
+static inline bool prove_error_none_int(Prove_Option o) {
     return o.tag == 0;
 }
 
-/* ── unwrap_or ───────────────────────────────────────────────── */
+static inline bool prove_error_none_str(Prove_Option o) {
+    return o.tag == 0;
+}
 
-static inline int64_t prove_error_unwrap_or_int(Prove_Option_int64_t o, int64_t def) {
+/* ── Typed unwrap (extract inner type from Option.value) ───── */
+
+static inline int64_t prove_error_unwrap_int(Prove_Option o) {
+    if (o.tag == 0) prove_panic("unwrap on None option");
+    return (int64_t)(intptr_t)o.value;
+}
+
+static inline Prove_String *prove_error_unwrap_str(Prove_Option o) {
+    if (o.tag == 0) prove_panic("unwrap on None option");
+    return (Prove_String *)o.value;
+}
+
+/* ── Typed unwrap_or ─────────────────────────────────────────── */
+
+static inline int64_t prove_error_unwrap_or_int(Prove_Option o, int64_t def) {
+    return o.tag == 1 ? (int64_t)(intptr_t)o.value : def;
+}
+
+static inline Prove_String *prove_error_unwrap_or_str(Prove_Option o, Prove_String *def) {
+    return o.tag == 1 ? (Prove_String *)o.value : def;
+}
+
+/* ── Unified unwrap ──────────────────────────────────────────── */
+
+static inline Prove_Value *prove_error_unwrap(Prove_Option o) {
+    return prove_option_unwrap(o);
+}
+
+/* ── Unified unwrap_or ───────────────────────────────────────── */
+
+static inline Prove_Value *prove_error_unwrap_or(Prove_Option o, Prove_Value *def) {
     return o.tag == 1 ? o.value : def;
-}
-
-static inline Prove_String *prove_error_unwrap_or_str(Prove_Option_Prove_Stringptr o, Prove_String *def) {
-    return o.tag == 1 ? o.value : def;
-}
-
-/* ── unwrap ──────────────────────────────────────────────────── */
-
-static inline int64_t prove_error_unwrap_int(Prove_Option_int64_t o) {
-    return Prove_Option_int64_t_unwrap(o);
-}
-
-static inline Prove_String *prove_error_unwrap_str(Prove_Option_Prove_Stringptr o) {
-    return Prove_Option_Prove_Stringptr_unwrap(o);
 }
 
 #endif /* PROVE_ERROR_H */

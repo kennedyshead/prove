@@ -124,7 +124,7 @@ bool prove_value_as_bool(Prove_Value *v) {
 
 Prove_List *prove_value_as_array(Prove_Value *v) {
     if (v && v->tag == PROVE_VALUE_ARRAY) return v->array;
-    return prove_list_new(sizeof(Prove_Value *), 4);
+    return prove_list_new(4);
 }
 
 Prove_Table *prove_value_as_object(Prove_Value *v) {
@@ -275,12 +275,12 @@ static Prove_Value *_toml_parse_string(TomlParser *p) {
 /* Parse a TOML array */
 static Prove_Value *_toml_parse_array(TomlParser *p) {
     p->pos++; /* skip [ */
-    Prove_List *arr = prove_list_new(sizeof(Prove_Value *), 8);
+    Prove_List *arr = prove_list_new(8);
     _toml_skip_ws_nl(p);
     while (!_toml_at_end(p) && _toml_peek(p) != ']') {
         Prove_Value *elem = _toml_parse_value(p);
         if (!elem) return NULL;
-        prove_list_push(&arr, &elem);
+        prove_list_push(arr, elem);
         _toml_skip_ws_nl(p);
         if (_toml_peek(p) == ',') {
             p->pos++;
@@ -463,7 +463,7 @@ static void _toml_emit_value(Prove_Value *v, Prove_Builder **b) {
             int64_t n = prove_list_len(v->array);
             for (int64_t i = 0; i < n; i++) {
                 if (i > 0) *b = prove_text_write_cstr(*b, ", ");
-                Prove_Value *elem = *(Prove_Value **)prove_list_get(v->array, i);
+                Prove_Value *elem = (Prove_Value *)prove_list_get(v->array, i);
                 _toml_emit_value(elem, b);
             }
             *b = prove_text_write_char(*b, ']');
@@ -485,9 +485,9 @@ static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder
     int64_t nkeys = prove_list_len(keys);
 
     for (int64_t i = 0; i < nkeys; i++) {
-        Prove_String *key = *(Prove_String **)prove_list_get(keys, i);
-        Prove_Option_voidptr opt = prove_table_get(key, t);
-        if (Prove_Option_voidptr_is_none(opt)) continue;
+        Prove_String *key = (Prove_String *)prove_list_get(keys, i);
+        Prove_Option opt = prove_table_get(key, t);
+        if (prove_option_is_none(opt)) continue;
         Prove_Value *val = (Prove_Value *)opt.value;
         if (val && val->tag == PROVE_VALUE_OBJECT) continue; /* sections later */
         *b = prove_text_write(*b, key);
@@ -498,9 +498,9 @@ static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder
 
     /* Then emit sections */
     for (int64_t i = 0; i < nkeys; i++) {
-        Prove_String *key = *(Prove_String **)prove_list_get(keys, i);
-        Prove_Option_voidptr opt = prove_table_get(key, t);
-        if (Prove_Option_voidptr_is_none(opt)) continue;
+        Prove_String *key = (Prove_String *)prove_list_get(keys, i);
+        Prove_Option opt = prove_table_get(key, t);
+        if (prove_option_is_none(opt)) continue;
         Prove_Value *val = (Prove_Value *)opt.value;
         if (!val || val->tag != PROVE_VALUE_OBJECT) continue;
 

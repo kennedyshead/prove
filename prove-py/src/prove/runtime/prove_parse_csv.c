@@ -80,7 +80,7 @@ static Prove_String *_csv_parse_unquoted(CsvParser *p) {
 /* Parse a single row. Returns a List of Prove_String*.
  * Advances past the line ending (CRLF or LF). */
 static Prove_List *_csv_parse_row(CsvParser *p) {
-    Prove_List *fields = prove_list_new(sizeof(Prove_String *), 8);
+    Prove_List *fields = prove_list_new(8);
 
     for (;;) {
         Prove_String *field;
@@ -92,7 +92,7 @@ static Prove_List *_csv_parse_row(CsvParser *p) {
             field = _csv_parse_unquoted(p);
         }
 
-        prove_list_push(&fields, &field);
+        prove_list_push(fields, field);
 
         if (_csv_at_end(p))
             break;
@@ -120,7 +120,7 @@ Prove_Result prove_parse_csv(Prove_String *source) {
     p.pos = 0;
     p.err[0] = '\0';
 
-    Prove_List *rows = prove_list_new(sizeof(Prove_List *), 8);
+    Prove_List *rows = prove_list_new(8);
 
     while (!_csv_at_end(&p)) {
         /* Skip trailing empty lines */
@@ -135,7 +135,7 @@ Prove_Result prove_parse_csv(Prove_String *source) {
         if (!row) {
             return prove_result_err(prove_string_from_cstr(p.err));
         }
-        prove_list_push(&rows, &row);
+        prove_list_push(rows, row);
     }
 
     return prove_result_ok_ptr(rows);
@@ -146,13 +146,13 @@ Prove_String *prove_emit_csv(Prove_List *rows) {
     int64_t nrows = prove_list_len(rows);
 
     for (int64_t i = 0; i < nrows; i++) {
-        Prove_List *row = *(Prove_List **)prove_list_get(rows, i);
+        Prove_List *row = (Prove_List *)prove_list_get(rows, i);
         int64_t ncols = prove_list_len(row);
 
         for (int64_t j = 0; j < ncols; j++) {
             if (j > 0) b = prove_text_write_char(b, ',');
 
-            Prove_String *field = *(Prove_String **)prove_list_get(row, j);
+            Prove_String *field = (Prove_String *)prove_list_get(row, j);
             const char *data = field->data;
             int64_t len = field->length;
 

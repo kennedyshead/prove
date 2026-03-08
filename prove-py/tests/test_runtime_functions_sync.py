@@ -8,25 +8,36 @@ import re
 from prove.c_runtime import _RUNTIME_FUNCTIONS
 
 
-def _parse_header_functions(header_text: str) -> set[str]:
-    """Extract non-static prove_* function declarations from a C header.
+def _parse_header_functions(header_text: str, *, include_static_inline: bool = False) -> set[str]:
+    """Extract prove_* function declarations from a C header.
 
-    Only matches lines that look like function declarations (return type
-    followed by function name and opening paren), not function calls
-    inside macro bodies or inline functions.
+    When include_static_inline is False (default), only matches public
+    (non-static) declarations — used to check that public API functions
+    are registered.
+
+    When include_static_inline is True, also matches static inline wrappers
+    — used to verify that registered functions actually exist in headers.
     """
     funcs: set[str] = set()
-    # Match function declarations at the start of a line:
-    # return_type prove_xxx(  — possibly with qualifiers like const, _Noreturn
     decl_pat = re.compile(
-        r"^(?!static\b)"  # not static
-        r"[A-Za-z_][\w\s*]*?"  # return type (e.g. "ProveString*", "int", "void")
+        r"^[A-Za-z_][\w\s*]*?"  # return type
         r"\b(prove_\w+)\s*\(",  # function name + opening paren
+    )
+    static_inline_pat = re.compile(
+        r"^static\s+inline\s+[A-Za-z_][\w\s*]*?"
+        r"\b(prove_\w+)\s*\(",
     )
     for line in header_text.splitlines():
         stripped = line.strip()
         # Skip lines that are clearly not declarations
         if stripped.startswith(("//", "/*", "*", "#", "}", "if ", "return ")):
+            continue
+        # Check static inline first
+        if stripped.startswith("static"):
+            if include_static_inline and "inline" in stripped.split("(")[0]:
+                m = static_inline_pat.match(stripped)
+                if m:
+                    funcs.add(m.group(1))
             continue
         m = decl_pat.match(stripped)
         if m:
@@ -72,14 +83,14 @@ def test_no_stale_entries() -> None:
     """Every function in _RUNTIME_FUNCTIONS must exist in the corresponding .h file."""
     pkg = importlib.resources.files("prove.runtime")
 
-    # Parse all header functions
+    # Parse all header functions (including static inline wrappers)
     all_funcs: set[str] = set()
     for item in pkg.iterdir():
         if not item.name.endswith(".h"):
             continue
         with importlib.resources.as_file(item) as path:
             text = path.read_text()
-        all_funcs.update(_parse_header_functions(text))
+        all_funcs.update(_parse_header_functions(text, include_static_inline=True))
 
     stale: list[str] = []
     for lib, funcs in sorted(_RUNTIME_FUNCTIONS.items()):

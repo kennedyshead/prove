@@ -7,10 +7,6 @@
 #include "prove_hash.h"
 #include "prove_option.h"
 
-/* ── Option<void*> for generic get ───────────────────────────── */
-
-PROVE_DEFINE_OPTION(void*, Prove_Option_voidptr)
-
 /* ── Hash table type ─────────────────────────────────────────── */
 
 typedef struct {
@@ -31,7 +27,7 @@ typedef struct {
 Prove_Table  *prove_table_new(void);
 bool          prove_table_has(Prove_String *key, Prove_Table *table);
 Prove_Table  *prove_table_add(Prove_String *key, void *value, Prove_Table *table);
-Prove_Option_voidptr prove_table_get(Prove_String *key, Prove_Table *table);
+Prove_Option  prove_table_get(Prove_String *key, Prove_Table *table);
 Prove_Table  *prove_table_remove(Prove_String *key, Prove_Table *table);
 Prove_List   *prove_table_keys(Prove_Table *table);
 Prove_List   *prove_table_values(Prove_Table *table);

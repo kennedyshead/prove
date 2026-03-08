@@ -54,6 +54,10 @@ static inline int64_t prove_clamp(int64_t val, int64_t lo, int64_t hi) {
     return val < lo ? lo : (val > hi ? hi : val);
 }
 
+/* ── Forward declaration for Value (defined in prove_parse.h) ── */
+
+typedef struct Prove_Value Prove_Value;
+
 /* ── Runtime lifecycle ────────────────────────────────────────── */
 
 void prove_runtime_init(void);

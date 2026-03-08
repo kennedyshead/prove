@@ -300,9 +300,9 @@ class StmtEmitterMixin:
                     )
                     self._line(
                         f"if (!prove_result_is_err({cv_tmp})) "
-                        f"{vd.name} = {tgt_ct.decl}_some(prove_result_unwrap_int({cv_tmp}));"
+                        f"{vd.name} = prove_option_some((Prove_Value*)(intptr_t)prove_result_unwrap_int({cv_tmp}));"
                     )
-                    self._line(f"else {vd.name} = {tgt_ct.decl}_none();")
+                    self._line(f"else {vd.name} = prove_option_none();")
                 else:
                     # Generic fallback: cast the value
                     # Check if inner type has refinement constraint
@@ -320,12 +320,12 @@ class StmtEmitterMixin:
                         )
                     else:
                         self._line(
-                            f"{vd.name} = {tgt_ct.decl}_some(({target_inner.decl}){raw_tmp}.value);"
+                            f"{vd.name} = prove_option_some({raw_tmp}.value);"
                         )
                 self._indent -= 1
                 self._line("} else {")
                 self._indent += 1
-                self._line(f"{vd.name} = {tgt_ct.decl}_none();")
+                self._line(f"{vd.name} = prove_option_none();")
                 self._indent -= 1
                 self._line("}")
                 self._locals[vd.name] = target_ty
@@ -420,7 +420,11 @@ class StmtEmitterMixin:
                         tmp_val, target_ty.args[0], ct.decl, vd.name
                     )
                 else:
-                    self._line(f"{ct.decl} {vd.name} = {ct.decl}_some({val});")
+                    inner_ct = map_type(target_ty.args[0]) if target_ty.args else map_type(INTEGER)
+                    if inner_ct.is_pointer:
+                        self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*){val});")
+                    else:
+                        self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});")
             else:
                 self._line(f"{ct.decl} {vd.name} = {val};")
 
@@ -483,6 +487,13 @@ class StmtEmitterMixin:
         rt = target_ty
         constraint = rt.constraint
 
+        # Determine the right cast for wrapping the value
+        inner_ct = map_type(target_ty)
+        if inner_ct.is_pointer:
+            some_expr = f"prove_option_some((Prove_Value*){var_name})"
+        else:
+            some_expr = f"prove_option_some((Prove_Value*)(intptr_t){var_name})"
+
         if isinstance(constraint, RegexLit):
             self._needed_headers.add("prove_pattern.h")
             escaped_pattern = constraint.pattern.replace("\\", "\\\\")
@@ -491,11 +502,11 @@ class StmtEmitterMixin:
             )
             self._indent += 1
             # Return None for Option type - silent failure
-            self._line(f"{result_var} = {option_ct}_none();")
+            self._line(f"{result_var} = prove_option_none();")
             self._indent -= 1
             self._line("} else {")
             self._indent += 1
-            self._line(f"{result_var} = {option_ct}_some({var_name});")
+            self._line(f"{result_var} = {some_expr};")
             self._indent -= 1
             self._line("}")
         elif isinstance(constraint, RawStringLit):
@@ -506,11 +517,11 @@ class StmtEmitterMixin:
             )
             self._indent += 1
             # Return None for Option type - silent failure
-            self._line(f"{result_var} = {option_ct}_none();")
+            self._line(f"{result_var} = prove_option_none();")
             self._indent -= 1
             self._line("} else {")
             self._indent += 1
-            self._line(f"{result_var} = {option_ct}_some({var_name});")
+            self._line(f"{result_var} = {some_expr};")
             self._indent -= 1
             self._line("}")
 
@@ -735,15 +746,16 @@ class StmtEmitterMixin:
                         inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                         inner_ct = map_type(inner_ty)
                         bind_name = arm.pattern.fields[0].name
+                        cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
                         if bind_name == subj:
                             # Avoid C self-init UB when binding
                             # shadows subject
                             alias = self._tmp()
-                            self._line(f"{inner_ct.decl} {alias} = ({inner_ct.decl}){subj}.value;")
+                            self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
                             self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                         else:
                             self._line(
-                                f"{inner_ct.decl} {bind_name} = ({inner_ct.decl}){subj}.value;"
+                                f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;"
                             )
                         self._locals[bind_name] = inner_ty
                     self._emit_match_arm_body(arm.body)
@@ -799,18 +811,17 @@ class StmtEmitterMixin:
                         bind_name = arm.pattern.fields[0].name
                         # Use temp to avoid shadowing when bind_name == subj
                         tmp = self._tmp()
-                        if inner_ct.decl == "int64_t":
+                        if inner_ct.is_pointer:
                             self._line(
-                                f"{inner_ct.decl} {tmp} = {subj}.ok_int;"
+                                f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){subj}.value;"
                             )
                         elif inner_ct.decl == "double":
                             self._line(
-                                f"{inner_ct.decl} {tmp} = {subj}.ok_double;"
+                                f"{inner_ct.decl} {tmp} = prove_result_unwrap_double({subj});"
                             )
                         else:
                             self._line(
-                                f"{inner_ct.decl} {tmp} = "
-                                f"({inner_ct.decl}){subj}.ok_ptr;"
+                                f"{inner_ct.decl} {tmp} = ({inner_ct.decl})(intptr_t){subj}.value;"
                             )
                         self._line(f"{inner_ct.decl} {bind_name} = {tmp};")
                         self._locals[bind_name] = inner_ty

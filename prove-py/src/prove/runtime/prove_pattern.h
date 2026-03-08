@@ -15,16 +15,10 @@ typedef struct {
     Prove_String *text;
 } Prove_Match;
 
-/* Option<Match> */
-#ifndef PROVE_OPTION_MATCHPTR_DEFINED
-#define PROVE_OPTION_MATCHPTR_DEFINED
-PROVE_DEFINE_OPTION(Prove_Match*, Prove_Option_Prove_Matchptr)
-#endif
-
 /* ── Pattern functions ───────────────────────────────────────── */
 
 bool          prove_pattern_match(Prove_String *text, Prove_String *pattern);
-Prove_Option_Prove_Matchptr prove_pattern_search(Prove_String *text, Prove_String *pattern);
+Prove_Option  prove_pattern_search(Prove_String *text, Prove_String *pattern);
 Prove_List   *prove_pattern_find_all(Prove_String *text, Prove_String *pattern);
 Prove_String *prove_pattern_replace(Prove_String *text, Prove_String *pattern, Prove_String *replacement);
 Prove_List   *prove_pattern_split(Prove_String *text, Prove_String *pattern);

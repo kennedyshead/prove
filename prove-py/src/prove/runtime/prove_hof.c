@@ -1,24 +1,22 @@
 #include "prove_hof.h"
-#include <string.h>
 
 Prove_List *prove_list_map(
     Prove_List *list,
-    void *(*fn)(const void *),
-    size_t result_elem_size
+    void *(*fn)(void *)
 ) {
-    if (!list) return prove_list_new(result_elem_size, 4);
-    Prove_List *out = prove_list_new(result_elem_size, list->length);
+    if (!list) return prove_list_new(4);
+    Prove_List *out = prove_list_new(list->length);
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
         void *mapped = fn(elem);
-        prove_list_push(&out, mapped);
+        prove_list_push(out, mapped);
     }
     return out;
 }
 
 void prove_list_each(
     Prove_List *list,
-    void (*fn)(const void *)
+    void (*fn)(void *)
 ) {
     if (!list) return;
     for (int64_t i = 0; i < list->length; i++) {
@@ -29,27 +27,29 @@ void prove_list_each(
 
 Prove_List *prove_list_filter(
     Prove_List *list,
-    bool (*pred)(const void *)
+    bool (*pred)(void *)
 ) {
-    if (!list) return prove_list_new(list ? list->elem_size : sizeof(int64_t), 4);
-    Prove_List *out = prove_list_new(list->elem_size, list->length);
+    if (!list) return prove_list_new(4);
+    Prove_List *out = prove_list_new(list->length);
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
         if (pred(elem)) {
-            prove_list_push(&out, elem);
+            prove_list_push(out, elem);
         }
     }
     return out;
 }
 
-void prove_list_reduce(
+void *prove_list_reduce(
     Prove_List *list,
-    void *accum,
-    void (*fn)(void *accum, const void *elem)
+    void *init,
+    void *(*fn)(void *accum, void *elem)
 ) {
-    if (!list) return;
+    if (!list) return init;
+    void *accum = init;
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
-        fn(accum, elem);
+        accum = fn(accum, elem);
     }
+    return accum;
 }

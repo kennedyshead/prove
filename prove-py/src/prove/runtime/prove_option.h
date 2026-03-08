@@ -2,38 +2,33 @@
 #define PROVE_OPTION_H
 
 #include "prove_runtime.h"
-#include "prove_string.h"
 
-/* ── Option<Value> monomorphization macro ─────────────────────── */
+/* ── Unified Option<Value> ────────────────────────────────────── */
 
-#define PROVE_DEFINE_OPTION(T, Name) \
-    typedef struct {                  \
-        uint8_t tag; /* 0=None, 1=Some */ \
-        T       value;                \
-    } Name;                           \
-    static inline Name Name##_some(T val) { \
-        Name opt; opt.tag = 1; opt.value = val; return opt; \
-    }                                 \
-    static inline Name Name##_none(void) { \
-        Name opt; opt.tag = 0; memset(&opt.value, 0, sizeof(T)); return opt; \
-    }                                 \
-    static inline bool Name##_is_some(Name opt) { return opt.tag == 1; } \
-    static inline bool Name##_is_none(Name opt) { return opt.tag == 0; } \
-    static inline T Name##_unwrap(Name opt) {                        \
-        if (opt.tag == 0) prove_panic("unwrap on None option");      \
-        return opt.value;                                            \
-    }
+typedef struct {
+    uint8_t       tag;    /* 0 = None, 1 = Some */
+    Prove_Value  *value;
+} Prove_Option;
 
-/* ── Common Option instantiations ──────────────────────────────── */
+static inline Prove_Option prove_option_some(Prove_Value *v) {
+    return (Prove_Option){1, v};
+}
 
-#ifndef PROVE_OPTION_INT64_T_DEFINED
-#define PROVE_OPTION_INT64_T_DEFINED
-PROVE_DEFINE_OPTION(int64_t, Prove_Option_int64_t)
-#endif
+static inline Prove_Option prove_option_none(void) {
+    return (Prove_Option){0, NULL};
+}
 
-#ifndef PROVE_OPTION_STRINGPTR_DEFINED
-#define PROVE_OPTION_STRINGPTR_DEFINED
-PROVE_DEFINE_OPTION(Prove_String*, Prove_Option_Prove_Stringptr)
-#endif
+static inline bool prove_option_is_some(Prove_Option o) {
+    return o.tag == 1;
+}
+
+static inline bool prove_option_is_none(Prove_Option o) {
+    return o.tag == 0;
+}
+
+static inline Prove_Value *prove_option_unwrap(Prove_Option o) {
+    if (o.tag == 0) prove_panic("unwrap on None option");
+    return o.value;
+}
 
 #endif /* PROVE_OPTION_H */

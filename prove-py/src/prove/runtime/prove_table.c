@@ -92,17 +92,17 @@ Prove_Table *prove_table_add(Prove_String *key, void *value, Prove_Table *table)
     return table;
 }
 
-Prove_Option_voidptr prove_table_get(Prove_String *key, Prove_Table *table) {
+Prove_Option prove_table_get(Prove_String *key, Prove_Table *table) {
     if (!table || !key || table->count == 0) {
-        return Prove_Option_voidptr_none();
+        return prove_option_none();
     }
     uint32_t hash = _hash_key(key);
     int64_t slot = _find_slot(table->entries, table->capacity, key, hash);
     Prove_TableEntry *e = &table->entries[slot];
     if (e->key) {
-        return Prove_Option_voidptr_some(e->value);
+        return prove_option_some((Prove_Value *)e->value);
     }
-    return Prove_Option_voidptr_none();
+    return prove_option_none();
 }
 
 Prove_Table *prove_table_remove(Prove_String *key, Prove_Table *table) {
@@ -146,26 +146,26 @@ Prove_Table *prove_table_remove(Prove_String *key, Prove_Table *table) {
 }
 
 Prove_List *prove_table_keys(Prove_Table *table) {
-    Prove_List *list = prove_list_new(sizeof(Prove_String *), table ? table->count + 1 : 4);
+    Prove_List *list = prove_list_new(table ? table->count + 1 : 4);
     if (!table) return list;
 
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
             Prove_String *k = table->entries[i].key;
-            prove_list_push(&list, &k);
+            prove_list_push(list, k);
         }
     }
     return list;
 }
 
 Prove_List *prove_table_values(Prove_Table *table) {
-    Prove_List *list = prove_list_new(sizeof(void *), table ? table->count + 1 : 4);
+    Prove_List *list = prove_list_new(table ? table->count + 1 : 4);
     if (!table) return list;
 
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
             void *v = table->entries[i].value;
-            prove_list_push(&list, &v);
+            prove_list_push(list, v);
         }
     }
     return list;

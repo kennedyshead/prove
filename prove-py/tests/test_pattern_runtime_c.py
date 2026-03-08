@@ -62,9 +62,9 @@ class TestPatternSearch:
             int main(void) {
                 Prove_String *t = prove_string_from_cstr("hello 123 world");
                 Prove_String *p = prove_string_from_cstr("[0-9]+");
-                Prove_Option_Prove_Matchptr opt = prove_pattern_search(t, p);
-                if (Prove_Option_Prove_Matchptr_is_some(opt)) {
-                    Prove_Match *m = opt.value;
+                Prove_Option opt = prove_pattern_search(t, p);
+                if (prove_option_is_some(opt)) {
+                    Prove_Match *m = (Prove_Match*)opt.value;
                     printf("found %.*s at %lld-%lld\\n",
                            (int)m->text->length, m->text->data,
                            (long long)m->start, (long long)m->end);
@@ -85,8 +85,8 @@ class TestPatternSearch:
             int main(void) {
                 Prove_String *t = prove_string_from_cstr("hello world");
                 Prove_String *p = prove_string_from_cstr("[0-9]+");
-                Prove_Option_Prove_Matchptr opt = prove_pattern_search(t, p);
-                printf("%s\\n", Prove_Option_Prove_Matchptr_is_none(opt) ? "none" : "some");
+                Prove_Option opt = prove_pattern_search(t, p);
+                printf("%s\\n", prove_option_is_none(opt) ? "none" : "some");
                 return 0;
             }
         """)
@@ -106,7 +106,7 @@ class TestPatternFindAll:
                 Prove_List *matches = prove_pattern_find_all(t, p);
                 printf("count=%lld\\n", (long long)matches->length);
                 for (int64_t i = 0; i < matches->length; i++) {
-                    Prove_Match *m = *(Prove_Match **)prove_list_get(matches, i);
+                    Prove_Match *m = (Prove_Match *)prove_list_get(matches, i);
                     printf("%.*s ", (int)m->text->length, m->text->data);
                 }
                 printf("\\n");
@@ -167,7 +167,7 @@ class TestPatternSplit:
                 Prove_List *parts = prove_pattern_split(t, p);
                 printf("count=%lld\\n", (long long)parts->length);
                 for (int64_t i = 0; i < parts->length; i++) {
-                    Prove_String *s = *(Prove_String **)prove_list_get(parts, i);
+                    Prove_String *s = (Prove_String *)prove_list_get(parts, i);
                     printf("[%.*s]", (int)s->length, s->data);
                 }
                 printf("\\n");
@@ -189,9 +189,9 @@ class TestPatternMatchAccessors:
             int main(void) {
                 Prove_String *t = prove_string_from_cstr("hello 42 world");
                 Prove_String *p = prove_string_from_cstr("[0-9]+");
-                Prove_Option_Prove_Matchptr opt = prove_pattern_search(t, p);
-                if (Prove_Option_Prove_Matchptr_is_some(opt)) {
-                    Prove_Match *m = opt.value;
+                Prove_Option opt = prove_pattern_search(t, p);
+                if (prove_option_is_some(opt)) {
+                    Prove_Match *m = (Prove_Match*)opt.value;
                     Prove_String *txt = prove_pattern_text(m);
                     printf("text=%.*s start=%lld end=%lld\\n",
                            (int)txt->length, txt->data,

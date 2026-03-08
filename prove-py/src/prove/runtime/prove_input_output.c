@@ -88,7 +88,7 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
 
     argv[0] = cmd->data;
     for (int64_t i = 0; i < nargs; i++) {
-        Prove_String *arg = *(Prove_String **)prove_list_get(args, i);
+        Prove_String *arg = (Prove_String *)prove_list_get(args, i);
         argv[i + 1] = arg->data;
     }
     argv[nargs + 1] = NULL;
@@ -195,10 +195,10 @@ bool prove_io_system_validates(Prove_String *cmd) {
 Prove_List *prove_io_dir_inputs(Prove_String *path) {
     DIR *d = opendir(path->data);
     if (!d) {
-        return prove_list_new(sizeof(Prove_DirEntry), 4);
+        return prove_list_new(4);
     }
 
-    Prove_List *list = prove_list_new(sizeof(Prove_DirEntry), 16);
+    Prove_List *list = prove_list_new(16);
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
         /* Skip . and .. */
@@ -232,7 +232,10 @@ Prove_List *prove_io_dir_inputs(Prove_String *path) {
             entry.tag = 0;  /* File */
         }
 
-        prove_list_push(&list, &entry);
+        /* Heap-allocate entry so list stores a pointer */
+        Prove_DirEntry *ep = malloc(sizeof(Prove_DirEntry));
+        *ep = entry;
+        prove_list_push(list, ep);
     }
     closedir(d);
     return list;
@@ -262,10 +265,10 @@ void prove_io_init_args(int argc, char **argv) {
 }
 
 Prove_List *prove_io_process_inputs(void) {
-    Prove_List *list = prove_list_new(sizeof(Prove_String *), _prove_argc > 0 ? _prove_argc : 4);
+    Prove_List *list = prove_list_new(_prove_argc > 0 ? _prove_argc : 4);
     for (int i = 0; i < _prove_argc; i++) {
         Prove_String *s = prove_string_from_cstr(_prove_argv[i]);
-        prove_list_push(&list, &s);
+        prove_list_push(list, s);
     }
     return list;
 }

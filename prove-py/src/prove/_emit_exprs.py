@@ -490,16 +490,17 @@ class ExprEmitterMixin:
                                 inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                                 inner_ct = map_type(inner_ty)
                                 bind_name = vp.fields[0].name
+                                cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
                                 if bind_name == subj:
                                     alias = self._tmp()
                                     self._line(
-                                        f"{inner_ct.decl} {alias} = ({inner_ct.decl}){subj}.value;"
+                                        f"{inner_ct.decl} {alias} = {cast}{subj}.value;"
                                     )
                                     self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                                 else:
                                     self._line(
                                         f"{inner_ct.decl} {bind_name} = "
-                                        f"({inner_ct.decl}){subj}.value;"
+                                        f"{cast}{subj}.value;"
                                     )
                                 self._locals[bind_name] = inner_ty
                             for i, s in enumerate(arm.body):
@@ -731,7 +732,8 @@ class ExprEmitterMixin:
                 ):
                     inner = part_type.args[0]
                     inner_ct = map_type(inner)
-                    unwrapped = f"({inner_ct.decl}){val}.value"
+                    cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
+                    unwrapped = f"{cast}{val}.value"
                     c_name = self._to_string_func(inner)
                     parts.append(f"{c_name}({unwrapped})")
                 else:
@@ -748,18 +750,19 @@ class ExprEmitterMixin:
 
     def _emit_list_literal(self, expr: ListLiteral) -> str:
         if not expr.elements:
-            return "prove_list_new(sizeof(int64_t), 4)"
+            return "prove_list_new(4)"
         # Determine element type
         elem_type = self._infer_expr_type(expr.elements[0])
         ct = map_type(elem_type)
 
         tmp = self._tmp()
-        self._line(f"Prove_List *{tmp} = prove_list_new(sizeof({ct.decl}), {len(expr.elements)});")
+        self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
         for elem in expr.elements:
             val = self._emit_expr(elem)
-            etmp = self._tmp()
-            self._line(f"{ct.decl} {etmp} = {val};")
-            self._line(f"prove_list_push(&{tmp}, &{etmp});")
+            if ct.is_pointer:
+                self._line(f"prove_list_push({tmp}, (void*){val});")
+            else:
+                self._line(f"prove_list_push({tmp}, (void*)(intptr_t){val});")
         return tmp
 
     # -- Index expression -------------------------------------------
@@ -770,7 +773,9 @@ class ExprEmitterMixin:
         obj_type = self._infer_expr_type(expr.obj)
         if isinstance(obj_type, ListType):
             elem_ct = map_type(obj_type.element)
-            return f"(*({elem_ct.decl}*)prove_list_get({obj}, {idx}))"
+            if elem_ct.is_pointer:
+                return f"({elem_ct.decl})prove_list_get({obj}, {idx})"
+            return f"({elem_ct.decl})(intptr_t)prove_list_get({obj}, {idx})"
         return f"{obj}[{idx}]"
 
     # -- Lookup access ----------------------------------------------

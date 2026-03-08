@@ -116,7 +116,7 @@ static Prove_Value *_json_parse_number(JsonParser *p) {
 /* Parse a JSON array */
 static Prove_Value *_json_parse_array(JsonParser *p) {
     p->pos++; /* skip [ */
-    Prove_List *arr = prove_list_new(sizeof(Prove_Value *), 8);
+    Prove_List *arr = prove_list_new(8);
     _json_skip_ws(p);
 
     if (_json_peek(p) == ']') {
@@ -127,7 +127,7 @@ static Prove_Value *_json_parse_array(JsonParser *p) {
     while (!_json_at_end(p)) {
         Prove_Value *elem = _json_parse_value(p);
         if (!elem) return NULL;
-        prove_list_push(&arr, &elem);
+        prove_list_push(arr, elem);
         _json_skip_ws(p);
         if (_json_peek(p) == ',') {
             p->pos++;
@@ -288,7 +288,7 @@ static void _json_emit_value(Prove_Value *v, Prove_Builder **b) {
             int64_t n = prove_list_len(v->array);
             for (int64_t i = 0; i < n; i++) {
                 if (i > 0) *b = prove_text_write_char(*b, ',');
-                Prove_Value *elem = *(Prove_Value **)prove_list_get(v->array, i);
+                Prove_Value *elem = (Prove_Value *)prove_list_get(v->array, i);
                 _json_emit_value(elem, b);
             }
             *b = prove_text_write_char(*b, ']');
@@ -300,11 +300,11 @@ static void _json_emit_value(Prove_Value *v, Prove_Builder **b) {
             int64_t nkeys = prove_list_len(keys);
             for (int64_t i = 0; i < nkeys; i++) {
                 if (i > 0) *b = prove_text_write_char(*b, ',');
-                Prove_String *key = *(Prove_String **)prove_list_get(keys, i);
+                Prove_String *key = (Prove_String *)prove_list_get(keys, i);
                 _json_emit_string(key, b);
                 *b = prove_text_write_char(*b, ':');
-                Prove_Option_voidptr opt = prove_table_get(key, v->object);
-                if (Prove_Option_voidptr_is_some(opt)) {
+                Prove_Option opt = prove_table_get(key, v->object);
+                if (prove_option_is_some(opt)) {
                     _json_emit_value((Prove_Value *)opt.value, b);
                 } else {
                     *b = prove_text_write_cstr(*b, "null");

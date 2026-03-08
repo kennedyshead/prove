@@ -156,7 +156,8 @@ class CallEmitterMixin:
         bindings = resolve_type_vars(sig.param_types, actual_types)
         inner = substitute_type_vars(ret.args[0], bindings)
         inner_ct = map_type(inner)
-        return f"({inner_ct.decl}){call_str}.value"
+        cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
+        return f"{cast}{call_str}.value"
 
     def _resolve_call_sig(self, expr: Expr) -> FunctionSignature | None:
         """Resolve the FunctionSignature for a call expression, if any."""
@@ -210,9 +211,11 @@ class CallEmitterMixin:
                 # For numeric types, use 0 as default; for pointers, use NULL
                 if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
                     default_val = "NULL"
+                    cast = f"({inner_ct.decl})"
                 else:
                     default_val = "0"
-                return f"({expr_str}.tag == 1 ? ({inner_ct.decl}){expr_str}.value : {default_val})"
+                    cast = f"({inner_ct.decl})(intptr_t)"
+                return f"({expr_str}.tag == 1 ? {cast}{expr_str}.value : {default_val})"
         return expr_str
 
     def _coerce_call_args(
@@ -247,10 +250,12 @@ class CallEmitterMixin:
                     # Only unwrap if Some (tag == 1), otherwise use default value
                     if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
                         default_val = "NULL"
+                        cast = f"({param_ct.decl})"
                     else:
                         default_val = "0"
+                        cast = f"({param_ct.decl})(intptr_t)"
                     result[i] = (
-                        f"({arg_str}.tag == 1 ? ({param_ct.decl}){arg_str}.value : {default_val})"
+                        f"({arg_str}.tag == 1 ? {cast}{arg_str}.value : {default_val})"
                     )
                     continue
             # Result<Value, Error> → Value: unwrap
@@ -335,12 +340,15 @@ class CallEmitterMixin:
                     return f"prove_string_len({', '.join(args)})"
                 return f"prove_list_len({', '.join(args)})"
 
-            # unwrap(Option<Value>) → monomorphized _unwrap call
+            # unwrap(Option<Value>) → prove_option_unwrap with typed cast
             if name == "unwrap" and len(args) == 1 and expr.args:
                 arg_ty = self._infer_expr_type(expr.args[0])
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option":
-                    opt_ct = map_type(arg_ty)
-                    return f"{opt_ct.decl}_unwrap({args[0]})"
+                    inner_ty = arg_ty.args[0] if arg_ty.args else INTEGER
+                    inner_ct = map_type(inner_ty)
+                    if inner_ct.is_pointer:
+                        return f"({inner_ct.decl})prove_option_unwrap({args[0]})"
+                    return f"({inner_ct.decl})(intptr_t)prove_option_unwrap({args[0]})"
                 # Result unwrap
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result":
                     if arg_ty.args:
@@ -455,11 +463,12 @@ class CallEmitterMixin:
                 elem_type = self._infer_expr_type(expr.args[0])
                 ct = map_type(elem_type)
                 tmp = self._tmp()
-                self._line(f"Prove_List *{tmp} = prove_list_new(sizeof({ct.decl}), {len(args)});")
+                self._line(f"Prove_List *{tmp} = prove_list_new({len(args)});")
                 for i, arg in enumerate(args):
-                    etmp = self._tmp()
-                    self._line(f"{ct.decl} {etmp} = {arg};")
-                    self._line(f"prove_list_push(&{tmp}, &{etmp});")
+                    if ct.is_pointer:
+                        self._line(f"prove_list_push({tmp}, (void*){arg});")
+                    else:
+                        self._line(f"prove_list_push({tmp}, (void*)(intptr_t){arg});")
                 return tmp
             # Pad record constructors with missing fields using defaults
             resolved = self._symbols.resolve_type(name)
@@ -555,8 +564,7 @@ class CallEmitterMixin:
 
         # Emit lambda with correct types
         fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
-        result_ct = map_type(result_elem_type)
-        return f"prove_list_map({list_arg}, {fn_name}, sizeof({result_ct.decl}))"
+        return f"prove_list_map({list_arg}, {fn_name})"
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
@@ -575,9 +583,14 @@ class CallEmitterMixin:
             idx = self._tmp()
             self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
             self._indent += 1
-            self._line(
-                f"{elem_ct.decl} {param} = *({elem_ct.decl}*)prove_list_get({list_arg}, {idx});"
-            )
+            if elem_ct.is_pointer:
+                self._line(
+                    f"{elem_ct.decl} {param} = ({elem_ct.decl})prove_list_get({list_arg}, {idx});"
+                )
+            else:
+                self._line(
+                    f"{elem_ct.decl} {param} = ({elem_ct.decl})(intptr_t)prove_list_get({list_arg}, {idx});"
+                )
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
             # Retain captured pointer vars before the call — the callee
@@ -631,8 +644,12 @@ class CallEmitterMixin:
             "reduce",
             accum_type=accum_type,
         )
-        self._line(f"prove_list_reduce({list_arg}, &{accum_tmp}, {fn_name});")
-        return accum_tmp
+        init_cast = f"(void*){accum_tmp}" if accum_ct.is_pointer else f"(void*)(intptr_t){accum_tmp}"
+        result_tmp = self._tmp()
+        self._line(f"void *{result_tmp} = prove_list_reduce({list_arg}, {init_cast}, {fn_name});")
+        if accum_ct.is_pointer:
+            return f"({accum_ct.decl}){result_tmp}"
+        return f"({accum_ct.decl})(intptr_t){result_tmp}"
 
     def _emit_hof_lambda(
         self,
@@ -651,9 +668,10 @@ class CallEmitterMixin:
             wrapper = f"_lambda_{self._tmp_counter}"
             self._tmp_counter += 1
             elem_ct = map_type(elem_type)
+            unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
             lam = (
-                f"static bool {wrapper}(const void *_arg) {{\n"
-                f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
+                f"static bool {wrapper}(void *_arg) {{\n"
+                f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
                 f"    return {fn}(_x);\n"
                 f"}}\n"
             )
@@ -686,19 +704,19 @@ class CallEmitterMixin:
                     wrapper = f"_lambda_{self._tmp_counter}"
                     self._tmp_counter += 1
                     ret_ct = map_type(ret_type) if ret_type else elem_ct
+                    unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
                     if kind == "map":
+                        wrap = "(void*)" if ret_ct.is_pointer else "(void*)(intptr_t)"
                         lam = (
-                            f"static void *{wrapper}(const void *_arg) {{\n"
-                            f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
-                            f"    static {ret_ct.decl} _result;\n"
-                            f"    _result = {c_fn}(_x);\n"
-                            f"    return &_result;\n"
+                            f"static void *{wrapper}(void *_arg) {{\n"
+                            f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
+                            f"    return {wrap}{c_fn}(_x);\n"
                             f"}}\n"
                         )
                     elif kind == "filter":
                         lam = (
-                            f"static bool {wrapper}(const void *_arg) {{\n"
-                            f"    {elem_ct.decl} _x = *({elem_ct.decl}*)_arg;\n"
+                            f"static bool {wrapper}(void *_arg) {{\n"
+                            f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
                             f"    return {c_fn}(_x);\n"
                             f"}}\n"
                         )
@@ -712,62 +730,67 @@ class CallEmitterMixin:
         self._tmp_counter += 1
         elem_ct = map_type(elem_type)
 
+        elem_unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+
         if kind == "map":
-            # void *fn(const void *_arg)
+            # void *fn(void *_arg)
             param = expr.params[0] if expr.params else "_x"
             # Save and set locals for lambda body
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
             body_code = self._emit_expr(expr.body)
+            body_type = self._infer_expr_type(expr.body)
             self._locals = saved_locals
+            body_ct = map_type(body_type)
+            wrap = "(void*)" if body_ct.is_pointer else "(void*)(intptr_t)"
             lam = (
-                f"static void *{name}(const void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
-                f"    static {elem_ct.decl} _result;\n"
-                f"    _result = {body_code};\n"
-                f"    return &_result;\n"
+                f"static void *{name}(void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
+                f"    return {wrap}({body_code});\n"
                 f"}}\n"
             )
         elif kind == "filter":
-            # bool fn(const void *_arg)
+            # bool fn(void *_arg)
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
             lam = (
-                f"static bool {name}(const void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
+                f"static bool {name}(void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
                 f"    return {body_code};\n"
                 f"}}\n"
             )
         elif kind == "reduce":
-            # void fn(void *_accum, const void *_elem)
+            # void *fn(void *_accum, void *_elem)
             accum_param = expr.params[0] if len(expr.params) > 0 else "_acc"
             elem_param = expr.params[1] if len(expr.params) > 1 else "_el"
             accum_ct = map_type(accum_type) if accum_type else elem_ct
+            accum_unwrap = f"({accum_ct.decl})" if accum_ct.is_pointer else f"({accum_ct.decl})(intptr_t)"
+            accum_wrap = "(void*)" if accum_ct.is_pointer else "(void*)(intptr_t)"
             saved_locals = dict(self._locals)
             self._locals[accum_param] = accum_type if accum_type else elem_type
             self._locals[elem_param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
             lam = (
-                f"static void {name}(void *_accum, const void *_elem) {{\n"
-                f"    {accum_ct.decl} {accum_param} = *({accum_ct.decl}*)_accum;\n"
-                f"    {elem_ct.decl} {elem_param} = *({elem_ct.decl}*)_elem;\n"
-                f"    *({accum_ct.decl}*)_accum = {body_code};\n"
+                f"static void *{name}(void *_accum, void *_elem) {{\n"
+                f"    {accum_ct.decl} {accum_param} = {accum_unwrap}_accum;\n"
+                f"    {elem_ct.decl} {elem_param} = {elem_unwrap}_elem;\n"
+                f"    return {accum_wrap}({body_code});\n"
                 f"}}\n"
             )
         elif kind == "each":
-            # void fn(const void *_arg)
+            # void fn(void *_arg)
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
             lam = (
-                f"static void {name}(const void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = *({elem_ct.decl}*)_arg;\n"
+                f"static void {name}(void *_arg) {{\n"
+                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
                 f"    {body_code};\n"
                 f"}}\n"
             )
