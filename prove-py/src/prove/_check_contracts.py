@@ -155,13 +155,14 @@ class ContractCheckMixin:
                 )
             self.symbols.pop_scope()
 
-        # Validate `satisfies` — each named type must exist
+        # Validate `satisfies` — each name must be a type or invariant network
         for sat_name in fd.satisfies:
             resolved = self.symbols.resolve_type(sat_name)
-            if resolved is None:
+            if resolved is None and sat_name not in self._invariant_networks:
                 self._error(
                     "E382",
-                    f"satisfies references undefined type '{sat_name}'",
+                    f"satisfies references undefined type or "
+                    f"invariant network '{sat_name}'",
                     fd.span,
                 )
 

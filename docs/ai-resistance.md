@@ -101,9 +101,9 @@ The Prove Source License covers the language, its specification, and `.prv` sour
 
 ## Parsed (Syntax Ready, Enforcement Upcoming)
 
-These keywords are parsed and stored in the AST, but the compiler does not yet enforce their semantic claims. They currently serve as documentation.
+These keywords are parsed and stored in the AST, but the compiler does not yet enforce their semantic claims. They currently serve as documentation and structural annotations.
 
-**Known limitation:** The parsing support for these features is incomplete — using `domain`, `temporal`, or `invariant_network` in module blocks can cause spurious linting errors and syntax highlighting issues in editors. The `module_features_demo` example is expected-to-fail for this reason. These keywords are safe in function-level annotations (`why_not`, `chosen`, `intent`).
+All module-level keywords (`domain`, `temporal`, `invariant_network`) and function-level annotations (`why_not`, `chosen`, `intent`, `satisfies`) parse cleanly. The `satisfies` annotation validates that the referenced type or invariant network exists.
 
 ### Counterfactual Annotations: `why_not`, `chosen`
 

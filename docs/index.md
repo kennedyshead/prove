@@ -10,7 +10,7 @@ keywords: programming language, intent-first, AI resistance, code scraping prote
 
 **A programming language designed to mitigate AI slop and code scraping.**
 
-Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't.
+Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. This strict enforcement, coupled with features like explicit verbs and verifiable explain blocks, makes it exceptionally difficult for AI to generate semantically correct and compilable code without true understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't. [Learn more about Prove's AI Resistance](ai-resistance.md)
 
 ```prove
 transforms add(a Integer, b Integer) Integer
@@ -27,14 +27,14 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
 | Problem | How Prove solves it |
 |---|---|
-| AI scrapes your code for training | Binary AST format + anti-training license + semantic normalization |
-| AI slop PRs waste maintainer time | Compiler rejects code without explanations and intent |
-| Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
-| "Works on my machine" | Verb system makes IO explicit |
-| Null/nil crashes | No null — `Option<Value>` enforced by compiler |
-| "I forgot an edge case" | Compiler generates edge cases from types |
-| Runtime type errors | Refinement types catch invalid values at compile time |
-| Code without reasoning | `explain` documents each step using controlled natural language — verified against contracts |
+  | [AI scrapes your code for training](ai-resistance.md#anti-training-license-for-prove-code) | Binary AST format + anti-training license + semantic normalization |
+  | [AI slop PRs waste maintainer time](ai-resistance.md#implementation-explanation-as-code) | Compiler rejects code without explanations and intent |
+  | [Tests are separate from code](contracts.md) | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
+  | ["Works on my machine"](design.md#cli-first-toolchain-prove) | Verb system makes IO explicit |
+  | [Null/nil crashes](design.md#error-handling-errors-are-values) | No null — `Option<Value>` enforced by compiler |
+  | ["I forgot an edge case"](ai-resistance.md#adversarial-type-puzzles-refinement-types) | Compiler generates edge cases from types |
+  | [Runtime type errors](types.md) | Refinement types catch invalid values at compile time |
+  | [Code without reasoning](ai-resistance.md#implementation-explanation-as-code) | `explain` documents each step using controlled natural language — verified against contracts |
 
 ---
 
@@ -210,6 +210,8 @@ from
 
 ### No Loops — Functional Iteration
 
+Prove enforces functional iteration (map, filter, reduce) over traditional loops to ensure pure functions, immutability, easier formal verification, improved testability, and a simpler language design.
+
 ```prove
 names as List<String> = map(users, |u| u.name)
 active as List<User> = filter(users, |u| u.active)
@@ -224,7 +226,7 @@ result as List<String> = users
 
 ### Error Handling
 
-Errors are values. `!` propagates failures. No exceptions.
+Errors are values. `!` propagates failures. No exceptions. This explicit approach prevents silent failures, enhances predictability, and simplifies reasoning about program outcomes.
 
 ```prove
 main()!
@@ -236,62 +238,17 @@ from
 
 ---
 
-## Complete Example
+## Simple Example
 
-A RESTful inventory service demonstrating the full feature set:
-
+Here's a basic function definition that transforms an integer and ensures its output:
 ```prove
-module InventoryService
-  narrative: """
-    Products are added to inventory with validated stock levels.
-    Orders consume stock. The system ensures stock never goes negative
-    and all monetary calculations use exact decimal arithmetic.
-    """
-
-  type Port is Integer:[16 Unsigned] where 1 .. 65535
-
-  type Price is Decimal:[128 Scale:2] where self >= 0
-
-  type Sku is String where r"^[A-Z]{2,4}-[0-9]{4,8}$"
-
-  type Product is
-    sku Sku
-    name String
-    price Price
-    stock Quantity
-
-/// Checks whether every item in an order can be fulfilled.
-validates fulfillable(order Order)
+transforms double(n Integer) Integer
+  ensures result == n * 2
 from
-    all(order.items, |item| in_stock(item.product, item.quantity))
-
-/// Places an order: validates stock, calculates total, deducts inventory.
-outputs place_order(db Database, order Order, tax TaxRule) Order!
-  ensures result.status == Confirmed
-  requires fulfillable(order)
-from
-    total as Price = calculate_total(order.items, None, tax)
-    confirmed as Order = Order(order.id, order.items, Confirmed, total)
-    insert(db, "orders", confirmed)!
-    deduct_stock(all_products(db)!, order.items) |> update_all(db, "products")!
-    confirmed
-
-/// Routes incoming HTTP requests.
-inputs request(route Route, body String, db Database) Response!
-from
-    Get("/health") => ok("healthy")
-    Get("/products") => all_products(db)! |> encode |> ok
-    Post("/orders") => parse_order(body)! |> place_order(db, tax)! |> encode |> created
-    _ => not_found()
-
-main()!
-from
-    cfg as Config = load_config("inventory.yaml")!
-    db as Database = connect(cfg.db_url)!
-    server as Server = new_server()
-    route(server, "/", request)
-    listen(server, cfg.port)!
+    n * 2
 ```
+
+For a more comprehensive demonstration of Prove's features, see the [Inventory Service Example](examples/inventory_service.md).
 
 ---
 
@@ -300,6 +257,13 @@ from
 ```
 Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
 ```
+*   **Lexer:** Breaks source code into a stream of tokens.
+*   **Parser:** Transforms the token stream into an Abstract Syntax Tree (AST).
+*   **Checker:** Performs type checking, semantic analysis, and contract verification.
+*   **Prover:** Generates and verifies proofs for intent and contracts.
+*   **Optimizer:** Applies various optimizations to the AST.
+*   **C Emitter:** Translates the optimized AST into C source code.
+*   **gcc/clang:** Compiles the C code into a native binary.
 
 The example above — JSON parsing, console I/O, guarded file writes — compiles to a **37 KB** native binary. The runtime is stripped to only the modules actually used.
 
@@ -317,7 +281,9 @@ v0.8.3 — Formatter type inference, lint system overhaul, `proof` → `explain`
 
 Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove).
 
-The Gitea instance is a paid service for issue creators. Developers who want contributor access can reach out to magnusknutas&#x5B;at&#x5D;botwork&#x2E;se.
+## Contributing
+
+For information on contributing to Prove, see our [Contributing Guide](contributing.md).
 
 ## License
 

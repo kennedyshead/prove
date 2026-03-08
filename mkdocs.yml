@@ -52,9 +52,12 @@ nav:
       - Diagnostic Philosophy: diagnostics-philosophy.md
       - Compiler Features: compiler.md
   - AI Resistance: ai-resistance.md
+  - Examples:
+      - Inventory Service: examples/inventory_service.md
   - Project:
       - Design Decisions: design.md
       - Roadmap: roadmap.md
+      - Contributing: contributing.md
       - Inspirations: inspirations.md
   - Blog:
       - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md

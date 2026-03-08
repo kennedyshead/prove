@@ -1191,6 +1191,7 @@ class Parser:
         self._skip_newlines()
 
         narrative = None
+        domain = None
         temporal = None
         imports: list[ImportDecl] = []
         types: list[TypeDef] = []
@@ -1216,13 +1217,27 @@ class Parser:
                         narrative = self._advance().value
                     else:
                         narrative = self._expect(TokenKind.STRING_LIT).value
+                elif self._at(TokenKind.DOMAIN):
+                    self._advance()
+                    if self._at(TokenKind.COLON):
+                        self._advance()
+                    if self._at(TokenKind.STRING_LIT):
+                        domain = self._advance().value
+                    else:
+                        domain = self._expect(TokenKind.TYPE_IDENTIFIER).value
                 elif self._at(TokenKind.TEMPORAL):
                     self._advance()
-                    self._expect(TokenKind.COLON)
-                    steps = [self._expect(TokenKind.IDENTIFIER).value]
-                    while self._at(TokenKind.ARROW):
+                    if self._at(TokenKind.COLON):
                         self._advance()
-                        steps.append(self._expect(TokenKind.IDENTIFIER).value)
+                    if self._at(TokenKind.STRING_LIT):
+                        # temporal: "a -> b -> c" — parse arrow chain from string
+                        raw = self._advance().value
+                        steps = [s.strip() for s in raw.split("->")]
+                    else:
+                        steps = [self._expect(TokenKind.IDENTIFIER).value]
+                        while self._at(TokenKind.ARROW):
+                            self._advance()
+                            steps.append(self._expect(TokenKind.IDENTIFIER).value)
                     temporal = steps
                 elif self._at(TokenKind.DOC_COMMENT):
                     # Collect doc comment(s) before type or function
@@ -1292,6 +1307,7 @@ class Parser:
         return ModuleDecl(
             name_tok.value,
             narrative,
+            domain,
             temporal,
             imports,
             types,
@@ -1307,7 +1323,14 @@ class Parser:
     def _parse_invariant_network(self) -> InvariantNetwork:
         start = self._current().span
         self._advance()  # 'invariant_network'
-        name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+        # Accept optional colon (for module header reference syntax)
+        if self._at(TokenKind.COLON):
+            self._advance()
+        # Accept TYPE_IDENTIFIER or STRING_LIT for the network name
+        if self._at(TokenKind.STRING_LIT):
+            name_tok = self._advance()
+        else:
+            name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
         self._skip_newlines()
 
         constraints: list[Expr] = []
@@ -1479,9 +1502,7 @@ class Parser:
         self._expect(TokenKind.RPAREN)
         return path_tok.value
 
-    def _load_csv_entries(
-        self, csv_path: str, num_columns: int, start: Span
-    ) -> list[LookupEntry]:
+    def _load_csv_entries(self, csv_path: str, num_columns: int, start: Span) -> list[LookupEntry]:
         """Load entries from a CSV file at compile time."""
         import csv
         from pathlib import Path
@@ -1511,8 +1532,7 @@ class Parser:
                 values = row[1 : num_columns + 1]
                 if len(values) != num_columns:
                     self._error(
-                        f"CSV row '{variant}' has {len(values)} columns, "
-                        f"expected {num_columns}",
+                        f"CSV row '{variant}' has {len(values)} columns, expected {num_columns}",
                         self._current().span,
                         code="E379",
                     )

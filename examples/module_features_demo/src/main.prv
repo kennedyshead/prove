@@ -1,31 +1,21 @@
 module Main
-  narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network.
-
-  Expected to fail: check, check_md, check_strict, build, build_debug, build_no_mutate, view, test, test_property_rounds, format_check, format_check_md.
-  """
-  
-  domain: "finance"
-  temporal: "authenticate -> authorize -> access"
-  invariant_network: "valid_state"
+  narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network."""
+  domain: Finance
+  temporal: authenticate -> authorize -> access
   InputOutput outputs console
-
-  type Account is
-    balance Integer
 
   type State is
     authenticated Boolean
     authorized Boolean
     balance Integer
 
-  invariant_network "valid_state"
-    ensures valid_state(s State) Boolean
-    from
-        s.authenticated => s.authorized
-
+  invariant_network ValidState
+    valid_state
 
 validates valid_state(s State)
+  satisfies ValidState
 from
-      not s.authenticated or s.authorized
+    !s.authenticated || s.authorized
 
 transforms authorize(s State) State
 from
@@ -34,8 +24,7 @@ from
 main() Result<Unit, Error>!
 from
     console("Module features demo")
-    console("Domain: finance")
+    console("Domain: Finance")
     console("Temporal: authenticate -> authorize -> access")
-    console("Invariant: valid_state")
-    
+    console("Invariant: ValidState")
     Unit

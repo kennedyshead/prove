@@ -545,6 +545,7 @@ class LookupEntry:
 class ModuleDecl:
     name: str
     narrative: str | None
+    domain: str | None  # domain tag (e.g. "Finance")
     temporal: list[str] | None  # list of ordered step names
     imports: list[ImportDecl]
     types: list[TypeDef]

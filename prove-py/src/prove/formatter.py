@@ -487,6 +487,9 @@ class ProveFormatter:
         if mod.narrative:
             lines.append(f'  narrative: """{mod.narrative}"""')
 
+        if mod.domain:
+            lines.append(f"  domain: {mod.domain}")
+
         if mod.temporal:
             lines.append(f"  temporal: {' -> '.join(mod.temporal)}")
 

@@ -614,6 +614,49 @@ class TestParserModules:
         assert decl.name == "Accounting"
         assert len(decl.constraints) >= 1
 
+    def test_invariant_network_string_name(self):
+        source = '  invariant_network "valid_state"\n    total >= 0\n'
+        decl = parse_module_invariant(source)
+        assert isinstance(decl, InvariantNetwork)
+        assert decl.name == "valid_state"
+
+    def test_invariant_network_colon_syntax(self):
+        source = '  invariant_network: "valid_state"\n'
+        decl = parse_module_invariant(source)
+        assert isinstance(decl, InvariantNetwork)
+        assert decl.name == "valid_state"
+
+    def test_module_with_domain(self):
+        source = "module PaymentService\n  domain: Finance\n"
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert decl.domain == "Finance"
+
+    def test_module_with_domain_string(self):
+        source = 'module PaymentService\n  domain: "finance"\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert decl.domain == "finance"
+
+    def test_module_with_all_features(self):
+        source = (
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "  domain: Finance\n"
+            "  temporal: authenticate -> authorize -> access\n"
+        )
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert decl.narrative == "Test"
+        assert decl.domain == "Finance"
+        assert decl.temporal == ["authenticate", "authorize", "access"]
+
+    def test_temporal_string_syntax(self):
+        source = 'module Auth\n  temporal: "authenticate -> authorize -> access"\n'
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert decl.temporal == ["authenticate", "authorize", "access"]
+
 
 class TestParserAIResistance:
     def test_why_not_chosen(self):

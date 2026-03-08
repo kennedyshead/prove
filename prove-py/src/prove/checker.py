@@ -209,6 +209,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._moved_vars: set[str] = set()
         # Track scope depth for ownership - reset on function entry
         self._ownership_scope_stack: list[set[str]] = []
+        # Track invariant network names for satisfies validation
+        self._invariant_networks: set[str] = set()
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -248,6 +250,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     self._register_constant(cd)
                 for fb in decl.foreign_blocks:
                     self._register_foreign_block(fb)
+                for inv in decl.invariants:
+                    self._invariant_networks.add(inv.name)
                 for item in decl.body:
                     if isinstance(item, FunctionDef):
                         self._register_function(item)

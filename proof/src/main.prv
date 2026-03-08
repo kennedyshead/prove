@@ -1,0 +1,7 @@
+module Main
+  narrative: """A new Prove project."""
+  InputOutput outputs console
+
+main() Result<Unit, Error>!
+from
+    console("Hello from Prove!")
