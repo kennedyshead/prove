@@ -16,3 +16,4 @@ build
 .prove
 .opencode
 conversations
+.hidden/
