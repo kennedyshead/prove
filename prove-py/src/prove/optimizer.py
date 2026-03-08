@@ -13,6 +13,7 @@ from typing import Any
 from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
+    BindingPattern,
     BooleanLit,
     CallExpr,
     CharLit,
@@ -25,12 +26,14 @@ from prove.ast_nodes import (
     FunctionDef,
     IdentifierExpr,
     IntegerLit,
+    LambdaExpr,
     LiteralPattern,
     MainDef,
     MatchArm,
     MatchExpr,
     Module,
     ModuleDecl,
+    PipeExpr,
     StringLit,
     TailContinue,
     TailLoop,
@@ -103,6 +106,7 @@ class Optimizer:
         self._symbols = symbols
         self._memo_info = MemoizationInfo()
         self._runtime_deps = RuntimeDeps()
+        self._elision_candidates: set[str] = set()
 
     def optimize(self) -> Module:
         module = self._collect_runtime_deps(self._module)
@@ -110,6 +114,8 @@ class Optimizer:
         module = self._dead_branch_elimination(module)
         module = self._ct_eval_pure_calls(module)
         module = self._inline_small_functions(module)
+        module = self._iterator_fusion(module)
+        module = self._copy_elision(module)
         module = self._dead_code_elimination(module)
         module = self._identify_memoization_candidates(module)
         module = self._match_compilation(module)
@@ -122,6 +128,10 @@ class Optimizer:
     def get_runtime_deps(self) -> RuntimeDeps:
         """Return runtime dependencies discovered during optimization."""
         return self._runtime_deps
+
+    def get_elision_candidates(self) -> set[str]:
+        """Return variable names eligible for move-instead-of-copy."""
+        return self._elision_candidates
 
     # ── Pass 0: Runtime Dependency Collection ─────────────────────
 
@@ -458,6 +468,254 @@ class Optimizer:
                     elif isinstance(result, str):
                         return StringLit(value=result, span=expr.span)
         return expr
+
+    # ── Pass 2c: Iterator Fusion ───────────────────────────────────
+
+    def _iterator_fusion(self, module: Module) -> Module:
+        """Fuse chained HOF calls into single-pass operations.
+
+        Detects patterns:
+        - map(filter(list, pred), func) → fused_map_filter(list, pred, func)
+        - filter(map(list, func), pred) → fused_filter_map(list, func, pred)
+        - map(map(list, f), g) → map(list, composed(f, g))
+        """
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                new_decls.append(self._fuse_iterators_in_func(decl))
+            elif isinstance(decl, MainDef):
+                new_body = [self._fuse_iterators_in_stmt(s) for s in decl.body]
+                new_decls.append(replace(decl, body=new_body))
+            elif isinstance(decl, ModuleDecl):
+                new_body = [
+                    self._fuse_iterators_in_func(d) if isinstance(d, FunctionDef) else d
+                    for d in decl.body
+                ]
+                new_decls.append(replace(decl, body=new_body))
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    def _fuse_iterators_in_func(self, fd: FunctionDef) -> FunctionDef:
+        """Apply iterator fusion within a function body."""
+        new_body = [self._fuse_iterators_in_stmt(s) for s in fd.body]
+        return replace(fd, body=new_body)
+
+    def _fuse_iterators_in_stmt(self, stmt: Any) -> Any:
+        """Apply iterator fusion within a statement."""
+        if isinstance(stmt, VarDecl):
+            new_val = self._fuse_iterators_in_expr(stmt.value)
+            if new_val is not stmt.value:
+                return replace(stmt, value=new_val)
+        elif isinstance(stmt, ExprStmt):
+            new_expr = self._fuse_iterators_in_expr(stmt.expr)
+            if new_expr is not stmt.expr:
+                return replace(stmt, expr=new_expr)
+        elif isinstance(stmt, MatchExpr):
+            new_arms = []
+            for arm in stmt.arms:
+                new_arm_body = [self._fuse_iterators_in_stmt(s) for s in arm.body]
+                new_arms.append(replace(arm, body=new_arm_body))
+            new_subj = self._fuse_iterators_in_expr(stmt.subject) if stmt.subject else None
+            return replace(stmt, arms=new_arms, subject=new_subj)
+        return stmt
+
+    def _fuse_iterators_in_expr(self, expr: Expr) -> Expr:
+        """Detect and fuse chained HOF calls in an expression."""
+        if not isinstance(expr, CallExpr):
+            if isinstance(expr, PipeExpr):
+                new_left = self._fuse_iterators_in_expr(expr.left)
+                new_right = self._fuse_iterators_in_expr(expr.right)
+                if new_left is not expr.left or new_right is not expr.right:
+                    return replace(expr, left=new_left, right=new_right)
+            if isinstance(expr, BinaryExpr):
+                new_left = self._fuse_iterators_in_expr(expr.left)
+                new_right = self._fuse_iterators_in_expr(expr.right)
+                if new_left is not expr.left or new_right is not expr.right:
+                    return replace(expr, left=new_left, right=new_right)
+            return expr
+
+        func = expr.func
+        if not isinstance(func, IdentifierExpr):
+            return expr
+
+        outer_name = func.name
+        args = expr.args
+
+        # Recursively fuse nested args first
+        new_args = [self._fuse_iterators_in_expr(a) for a in args]
+        if any(na is not oa for na, oa in zip(new_args, args)):
+            expr = replace(expr, args=new_args)
+            args = new_args
+
+        # map(map(list, f), g) → map(list, composed(f, g))
+        if outer_name == "map" and len(args) == 2:
+            inner = args[0]
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "map"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                f = inner.args[1]
+                g = args[1]
+                # Compose: \x -> g(f(x))
+                if isinstance(f, LambdaExpr) and isinstance(g, LambdaExpr):
+                    # compose lambdas: \x -> g_body[g_param -> f_body[f_param -> x]]
+                    composed = LambdaExpr(
+                        params=f.params,
+                        body=CallExpr(
+                            func=g.func if isinstance(g.func, IdentifierExpr) else IdentifierExpr(name="__composed", span=expr.span),
+                            args=[CallExpr(func=f.func if isinstance(f.func, IdentifierExpr) else IdentifierExpr(name="__inner", span=expr.span), args=[IdentifierExpr(name=f.params[0], span=expr.span)], span=expr.span)] if isinstance(f, LambdaExpr) and len(f.params) == 1 else [f],
+                            span=expr.span,
+                        ),
+                        span=expr.span,
+                    )
+                    return CallExpr(
+                        func=IdentifierExpr(name="map", span=expr.span),
+                        args=[list_arg, composed],
+                        span=expr.span,
+                    )
+                # Non-lambda case: mark as fused for emitter
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_map_map", span=expr.span),
+                    args=[list_arg, f, g],
+                    span=expr.span,
+                )
+
+        # map(filter(list, pred), func) → fused single pass
+        if outer_name == "map" and len(args) == 2:
+            inner = args[0]
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "filter"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                pred = inner.args[1]
+                func_arg = args[1]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_map_filter", span=expr.span),
+                    args=[list_arg, pred, func_arg],
+                    span=expr.span,
+                )
+
+        # filter(map(list, func), pred) → fused single pass
+        if outer_name == "filter" and len(args) == 2:
+            inner = args[0]
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "map"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                func_arg = inner.args[1]
+                pred = args[1]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_filter_map", span=expr.span),
+                    args=[list_arg, func_arg, pred],
+                    span=expr.span,
+                )
+
+        return expr
+
+    # ── Pass 2d: Copy Elision ────────────────────────────────────────
+
+    def _copy_elision(self, module: Module) -> Module:
+        """Mark last-use variables for move semantics instead of copy.
+
+        Performs simple liveness analysis per function: if a variable is used
+        exactly once after its definition, mark the use as a move (no copy
+        needed). This is recorded as an annotation on the AST node.
+        """
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                new_decls.append(self._elide_copies_in_func(decl))
+            elif isinstance(decl, MainDef):
+                new_body = self._mark_last_uses(decl.body)
+                new_decls.append(replace(decl, body=new_body))
+            elif isinstance(decl, ModuleDecl):
+                new_body = [
+                    self._elide_copies_in_func(d) if isinstance(d, FunctionDef) else d
+                    for d in decl.body
+                ]
+                new_decls.append(replace(decl, body=new_body))
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    def _elide_copies_in_func(self, fd: FunctionDef) -> FunctionDef:
+        """Mark last-use identifiers in a function body."""
+        new_body = self._mark_last_uses(fd.body)
+        return replace(fd, body=new_body)
+
+    def _mark_last_uses(self, stmts: list[Any]) -> list[Any]:
+        """Analyze variable usage and mark last uses for move semantics.
+
+        Walk the statement list backwards to find last uses of locally-defined
+        variables. When a variable's last use is as a function argument or
+        assignment source, mark it for move semantics.
+        """
+        # Collect locally defined variable names
+        local_defs: set[str] = set()
+        for stmt in stmts:
+            if isinstance(stmt, VarDecl):
+                local_defs.add(stmt.name)
+
+        if not local_defs:
+            return stmts
+
+        # Count uses of each local in the body
+        use_counts: dict[str, int] = {n: 0 for n in local_defs}
+        for stmt in stmts:
+            self._count_uses_in_stmt(stmt, use_counts)
+
+        # For variables used exactly once: the single use is the last use,
+        # which can be a move instead of a copy. We record this in the
+        # module's elision set for the emitter to use.
+        for name, count in use_counts.items():
+            if count == 1:
+                self._elision_candidates.add(name)
+
+        return stmts
+
+    def _count_uses_in_stmt(self, stmt: Any, counts: dict[str, int]) -> None:
+        """Count uses of tracked variables in a statement."""
+        if isinstance(stmt, VarDecl):
+            self._count_uses_in_expr(stmt.value, counts)
+        elif isinstance(stmt, ExprStmt):
+            self._count_uses_in_expr(stmt.expr, counts)
+        elif isinstance(stmt, Assignment):
+            self._count_uses_in_expr(stmt.value, counts)
+        elif isinstance(stmt, MatchExpr):
+            if stmt.subject:
+                self._count_uses_in_expr(stmt.subject, counts)
+            for arm in stmt.arms:
+                for s in arm.body:
+                    self._count_uses_in_stmt(s, counts)
+
+    def _count_uses_in_expr(self, expr: Expr, counts: dict[str, int]) -> None:
+        """Count uses of tracked variables in an expression."""
+        if isinstance(expr, IdentifierExpr):
+            if expr.name in counts:
+                counts[expr.name] += 1
+        elif isinstance(expr, CallExpr):
+            for arg in expr.args:
+                self._count_uses_in_expr(arg, counts)
+        elif isinstance(expr, BinaryExpr):
+            self._count_uses_in_expr(expr.left, counts)
+            self._count_uses_in_expr(expr.right, counts)
+        elif isinstance(expr, UnaryExpr):
+            self._count_uses_in_expr(expr.operand, counts)
+        elif isinstance(expr, PipeExpr):
+            self._count_uses_in_expr(expr.left, counts)
+            self._count_uses_in_expr(expr.right, counts)
+        elif isinstance(expr, FailPropExpr):
+            self._count_uses_in_expr(expr.expr, counts)
 
     # ── Pass 2b: Dead Code Elimination ─────────────────────────────
 

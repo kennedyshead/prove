@@ -718,10 +718,10 @@ class StmtEmitterMixin:
                         elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                             pass  # Dead code — record always matches its own type
                         first = False
+                elif self._is_integer_literal_match(m):
+                    self._emit_integer_switch_stmt(m, subj)
                 else:
-                    for arm in m.arms:
-                        for s in arm.body:
-                            self._emit_stmt(s)
+                    self._emit_literal_match_stmt(m, subj)
         # Restore locals (match arm bindings are scoped to arms)
         self._locals = saved_locals
 
@@ -909,6 +909,84 @@ class StmtEmitterMixin:
                 self._indent -= 1
             first = False
         # Close trailing if without else
+        if m.arms and not isinstance(m.arms[-1].pattern, (WildcardPattern, BindingPattern)):
+            self._line("}")
+
+    # ── Integer switch and literal match emission ─────────────────
+
+    def _is_integer_literal_match(self, m: MatchExpr) -> bool:
+        """Check if a match can be emitted as a C switch statement.
+
+        Requires: all arms are integer literal patterns, optionally with
+        a single wildcard/binding pattern as default.
+        """
+        has_literal = False
+        for arm in m.arms:
+            if isinstance(arm.pattern, LiteralPattern):
+                if arm.pattern.kind not in ("integer", None):
+                    # String or boolean literals can't use switch
+                    try:
+                        int(arm.pattern.value)
+                    except (ValueError, TypeError):
+                        return False
+                has_literal = True
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                continue  # Wildcard becomes default
+            else:
+                return False
+        return has_literal
+
+    def _emit_integer_switch_stmt(self, m: MatchExpr, subj: str) -> None:
+        """Emit a match on integer literals as a C switch statement."""
+        self._line(f"switch ({subj}) {{")
+        for arm in m.arms:
+            if isinstance(arm.pattern, LiteralPattern):
+                self._line(f"case {arm.pattern.value}L: {{")
+                self._indent += 1
+                self._emit_match_arm_body(arm.body)
+                self._line("break;")
+                self._indent -= 1
+                self._line("}")
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                self._line("default: {")
+                self._indent += 1
+                if isinstance(arm.pattern, BindingPattern):
+                    subj_type = self._infer_expr_type(m.subject) if m.subject else None
+                    if subj_type:
+                        bct = map_type(subj_type)
+                        self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                self._emit_match_arm_body(arm.body)
+                self._line("break;")
+                self._indent -= 1
+                self._line("}")
+        self._line("}")
+
+    def _emit_literal_match_stmt(self, m: MatchExpr, subj: str) -> None:
+        """Emit a match on non-integer literals as an if-else chain."""
+        first = True
+        for arm in m.arms:
+            if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                if first:
+                    self._line("{")
+                else:
+                    self._line("} else {")
+                self._indent += 1
+                if isinstance(arm.pattern, BindingPattern):
+                    subj_type = self._infer_expr_type(m.subject) if m.subject else None
+                    if subj_type:
+                        bct = map_type(subj_type)
+                        self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                self._emit_match_arm_body(arm.body)
+                self._indent -= 1
+                self._line("}")
+            elif isinstance(arm.pattern, LiteralPattern):
+                cond = self._emit_literal_cond(subj, arm.pattern)
+                keyword = "if" if first else "} else if"
+                self._line(f"{keyword} ({cond}) {{")
+                self._indent += 1
+                self._emit_match_arm_body(arm.body)
+                self._indent -= 1
+            first = False
         if m.arms and not isinstance(m.arms[-1].pattern, (WildcardPattern, BindingPattern)):
             self._line("}")
 

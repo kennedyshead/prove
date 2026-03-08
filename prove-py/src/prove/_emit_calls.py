@@ -308,6 +308,13 @@ class CallEmitterMixin:
                 return self._emit_hof_filter(expr)
             if name == "reduce" and len(expr.args) == 3:
                 return self._emit_hof_reduce(expr)
+            # Fused iterator patterns from optimizer
+            if name == "__fused_map_filter" and len(expr.args) == 3:
+                return self._emit_fused_map_filter(expr)
+            if name == "__fused_filter_map" and len(expr.args) == 3:
+                return self._emit_fused_filter_map(expr)
+            if name == "__fused_map_map" and len(expr.args) == 3:
+                return self._emit_fused_map_map(expr)
 
         args = [self._emit_expr(a) for a in expr.args]
 
@@ -799,3 +806,160 @@ class CallEmitterMixin:
 
         self._lambdas.append(lam)
         return name
+
+    # ── Fused iterator emission ─────────────────────────────────
+
+    def _emit_fused_map_filter(self, expr: CallExpr) -> str:
+        """Emit map(filter(list, pred), func) as a single-pass loop.
+
+        Args: [list, pred, func]
+        Fuses filter+map into one loop: iterate, test predicate, if passes apply func.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        result_tmp = self._tmp()
+        idx = self._tmp()
+        elem_var = self._tmp()
+
+        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+
+        # Emit predicate test
+        pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"if ({pred_code}) {{")
+        self._indent += 1
+
+        # Emit map function application
+        map_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
+        wrap = f"(void*){map_code}" if elem_ct.is_pointer else f"(void*)(intptr_t){map_code}"
+        self._line(f"prove_list_push({result_tmp}, {wrap});")
+
+        self._indent -= 1
+        self._line("}")
+        self._indent -= 1
+        self._line("}")
+        return result_tmp
+
+    def _emit_fused_filter_map(self, expr: CallExpr) -> str:
+        """Emit filter(map(list, func), pred) as a single-pass loop.
+
+        Args: [list, func, pred]
+        Fuses map+filter into one loop: iterate, apply func, test predicate on result.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        result_tmp = self._tmp()
+        idx = self._tmp()
+        elem_var = self._tmp()
+        mapped_var = self._tmp()
+
+        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+
+        # Apply map function then test predicate
+        map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+
+        # Test predicate on mapped result — pass as elem for simplicity
+        pred_code = self._emit_fused_lambda_inline(expr.args[2], mapped_var, elem_type)
+        self._line(f"if ({pred_code}) {{")
+        self._indent += 1
+
+        wrap = f"{mapped_var}"
+        self._line(f"prove_list_push({result_tmp}, {wrap});")
+
+        self._indent -= 1
+        self._line("}")
+        self._indent -= 1
+        self._line("}")
+        return result_tmp
+
+    def _emit_fused_map_map(self, expr: CallExpr) -> str:
+        """Emit map(map(list, f), g) as a single-pass loop.
+
+        Args: [list, f, g]
+        Fuses two maps into one loop: iterate, apply f then g.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+        list_type = self._infer_expr_type(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        result_tmp = self._tmp()
+        idx = self._tmp()
+        elem_var = self._tmp()
+
+        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+
+        # Apply f then g
+        f_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        mid_var = self._tmp()
+        self._line(f"void *{mid_var} = (void*)(intptr_t){f_code};")
+
+        # Apply g to f's result
+        g_code = self._emit_fused_lambda_inline(expr.args[2], mid_var, elem_type)
+        wrap = f"(void*)(intptr_t){g_code}"
+        self._line(f"prove_list_push({result_tmp}, {wrap});")
+
+        self._indent -= 1
+        self._line("}")
+        return result_tmp
+
+    def _emit_fused_lambda_inline(self, expr: Expr, arg_var: str, elem_type: Type) -> str:
+        """Inline a lambda or function reference for fused iteration."""
+        if isinstance(expr, LambdaExpr) and expr.params:
+            # Inline the lambda body with the parameter bound to arg_var
+            saved = dict(self._locals)
+            self._locals[expr.params[0]] = elem_type
+            # Temporarily alias the parameter name
+            old_param = expr.params[0]
+            # Emit body with parameter replaced by arg_var
+            body = expr.body
+            if isinstance(body, IdentifierExpr) and body.name == old_param:
+                self._locals = saved
+                return arg_var
+            # For other bodies, declare the param as a local alias
+            elem_ct = map_type(elem_type)
+            self._line(f"{elem_ct.decl} {old_param} = {arg_var};")
+            result = self._emit_expr(body)
+            self._locals = saved
+            return result
+        if isinstance(expr, IdentifierExpr):
+            # Named function reference
+            fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
+            if fn_sig:
+                c_name = mangle_name(fn_sig.verb, expr.name, list(fn_sig.param_types) if fn_sig.param_types else None)
+                return f"{c_name}({arg_var})"
+        # Fallback: emit as regular call
+        return f"(({self._emit_expr(expr)})((void*)(intptr_t){arg_var}))"

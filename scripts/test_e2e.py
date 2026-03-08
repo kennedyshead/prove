@@ -190,8 +190,22 @@ def test_project(project_dir: Path) -> tuple[dict, set[str]]:
 
 
 def main() -> int:
-    """Run e2e tests on all examples."""
+    """Run e2e tests on all examples.
+
+    Usage:
+        python scripts/test_e2e.py                  # run all examples
+        python scripts/test_e2e.py hello_world       # filter by name substring
+        python scripts/test_e2e.py comptime_demo     # run a single project
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run e2e tests on Prove examples")
+    parser.add_argument("filter", nargs="?", default=None, help="Filter examples by name substring")
+    args = parser.parse_args()
+
     print(f"Testing examples in: {EXAMPLES_DIR}")
+    if args.filter:
+        print(f"Filter: {args.filter}")
     print("-" * 60)
 
     failed_example: Path | None = None
@@ -213,6 +227,11 @@ def main() -> int:
             project_prv_files.add(prv)
 
     single_files = [f for f in all_prv_files if f not in project_prv_files]
+
+    # Apply filter if specified
+    if args.filter:
+        projects = [p for p in projects if args.filter in str(p.relative_to(EXAMPLES_DIR))]
+        single_files = [f for f in single_files if args.filter in str(f.relative_to(EXAMPLES_DIR))]
 
     # Test projects
     for project_dir in projects:

@@ -13,6 +13,7 @@ from prove.ast_nodes import (
     FunctionDef,
     IdentifierExpr,
     IntegerLit,
+    LambdaExpr,
     LiteralPattern,
     MainDef,
     MatchArm,
@@ -22,6 +23,7 @@ from prove.ast_nodes import (
     SimpleType,
     TailContinue,
     TailLoop,
+    VarDecl,
     WildcardPattern,
 )
 from prove.optimizer import Optimizer
@@ -463,3 +465,202 @@ class TestMatchCompilation:
         merged = new_fd.body[0]
         assert isinstance(merged, MatchExpr)
         assert len(merged.arms) == 2
+
+
+# ── Iterator Fusion tests ────────────────────────────────────────
+
+
+class TestIteratorFusion:
+    def test_map_filter_fused(self):
+        """map(filter(list, pred), func) should be fused into __fused_map_filter."""
+        # filter(xs, pred)
+        inner = CallExpr(
+            func=IdentifierExpr("filter", _SPAN),
+            args=[
+                IdentifierExpr("xs", _SPAN),
+                LambdaExpr(params=["x"], body=BinaryExpr(
+                    IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN
+                ), span=_SPAN),
+            ],
+            span=_SPAN,
+        )
+        # map(filter(xs, pred), func)
+        outer = CallExpr(
+            func=IdentifierExpr("map", _SPAN),
+            args=[
+                inner,
+                LambdaExpr(params=["x"], body=BinaryExpr(
+                    IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN
+                ), span=_SPAN),
+            ],
+            span=_SPAN,
+        )
+        fd = _make_func(
+            "test_fusion",
+            params=[_make_param("xs")],
+            body=[ExprStmt(outer, _SPAN)],
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        assert isinstance(new_fd, FunctionDef)
+        stmt = new_fd.body[0]
+        assert isinstance(stmt, ExprStmt)
+        call = stmt.expr
+        assert isinstance(call, CallExpr)
+        assert isinstance(call.func, IdentifierExpr)
+        assert call.func.name == "__fused_map_filter"
+        assert len(call.args) == 3  # list, pred, func
+
+    def test_filter_map_fused(self):
+        """filter(map(list, func), pred) should be fused into __fused_filter_map."""
+        # map(xs, func)
+        inner = CallExpr(
+            func=IdentifierExpr("map", _SPAN),
+            args=[
+                IdentifierExpr("xs", _SPAN),
+                LambdaExpr(params=["x"], body=BinaryExpr(
+                    IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN
+                ), span=_SPAN),
+            ],
+            span=_SPAN,
+        )
+        # filter(map(xs, func), pred)
+        outer = CallExpr(
+            func=IdentifierExpr("filter", _SPAN),
+            args=[
+                inner,
+                LambdaExpr(params=["x"], body=BinaryExpr(
+                    IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN
+                ), span=_SPAN),
+            ],
+            span=_SPAN,
+        )
+        fd = _make_func(
+            "test_fusion",
+            params=[_make_param("xs")],
+            body=[ExprStmt(outer, _SPAN)],
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        stmt = new_fd.body[0]
+        call = stmt.expr
+        assert isinstance(call, CallExpr)
+        assert call.func.name == "__fused_filter_map"
+        assert len(call.args) == 3
+
+    def test_map_map_fused(self):
+        """map(map(list, f), g) should be fused into __fused_map_map."""
+        # map(xs, f)
+        inner = CallExpr(
+            func=IdentifierExpr("map", _SPAN),
+            args=[
+                IdentifierExpr("xs", _SPAN),
+                IdentifierExpr("double", _SPAN),
+            ],
+            span=_SPAN,
+        )
+        # map(map(xs, f), g)
+        outer = CallExpr(
+            func=IdentifierExpr("map", _SPAN),
+            args=[
+                inner,
+                IdentifierExpr("negate", _SPAN),
+            ],
+            span=_SPAN,
+        )
+        fd = _make_func(
+            "test_fusion",
+            params=[_make_param("xs")],
+            body=[ExprStmt(outer, _SPAN)],
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        stmt = new_fd.body[0]
+        call = stmt.expr
+        assert isinstance(call, CallExpr)
+        assert call.func.name == "__fused_map_map"
+        assert len(call.args) == 3
+
+    def test_single_map_unchanged(self):
+        """A single map() call should not be fused."""
+        call = CallExpr(
+            func=IdentifierExpr("map", _SPAN),
+            args=[
+                IdentifierExpr("xs", _SPAN),
+                IdentifierExpr("double", _SPAN),
+            ],
+            span=_SPAN,
+        )
+        fd = _make_func(
+            "test_no_fusion",
+            params=[_make_param("xs")],
+            body=[ExprStmt(call, _SPAN)],
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        stmt = new_fd.body[0]
+        assert isinstance(stmt.expr, CallExpr)
+        assert stmt.expr.func.name == "map"  # unchanged
+
+
+# ── Copy Elision tests ───────────────────────────────────────────
+
+
+class TestCopyElision:
+    def test_single_use_var_marked(self):
+        """A variable used exactly once should be marked for elision."""
+        body = [
+            VarDecl(
+                name="tmp",
+                type_expr=SimpleType("Integer", _SPAN),
+                value=IntegerLit("42", _SPAN),
+                span=_SPAN,
+            ),
+            ExprStmt(IdentifierExpr("tmp", _SPAN), _SPAN),
+        ]
+        fd = _make_func("test_elision", body=body)
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        opt = Optimizer(module, symbols)
+        opt.optimize()
+
+        assert "tmp" in opt.get_elision_candidates()
+
+    def test_multi_use_var_not_marked(self):
+        """A variable used more than once should NOT be marked for elision."""
+        body = [
+            VarDecl(
+                name="tmp",
+                type_expr=SimpleType("Integer", _SPAN),
+                value=IntegerLit("42", _SPAN),
+                span=_SPAN,
+            ),
+            ExprStmt(
+                BinaryExpr(
+                    IdentifierExpr("tmp", _SPAN),
+                    "+",
+                    IdentifierExpr("tmp", _SPAN),
+                    _SPAN,
+                ),
+                _SPAN,
+            ),
+        ]
+        fd = _make_func("test_no_elision", body=body)
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        opt = Optimizer(module, symbols)
+        opt.optimize()
+
+        assert "tmp" not in opt.get_elision_candidates()
