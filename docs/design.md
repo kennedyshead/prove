@@ -75,7 +75,9 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ---
 
-## Concurrency — Structured, Typed, No Data Races
+## Concurrency — Structured, Typed, No Data Races (Planned)
+
+Concurrency is planned but not yet implemented. The design goal is structured concurrency with typed effects and no shared mutable state:
 
 ```prove
 inputs fetch_all(urls List<Url>) List<Response>!
@@ -83,7 +85,7 @@ from
     par_map(urls, fetch)
 ```
 
-The ownership system and effect types combine to eliminate data races at compile time.
+The ownership system and verb-based effect tracking will combine to eliminate data races at compile time. See [Roadmap](roadmap.md) for the planned async verb family (`detached`, `attached`, `listens`).
 
 ---
 
@@ -104,8 +106,8 @@ from
 ## Zero-Cost Abstractions
 
 - Pure functions auto-memoized and inlined — *v0.9.5 ✓*
-- Region-based memory for short-lived allocations — *v0.9.5 ✓*
-- Reference counting only where ownership is shared (compiler-inserted) — *v0.9.4: linear types with Own modifier now enforced*
+- Region-based memory runtime exists — *v0.9.5 ✓ (per-function scoping planned)*
+- Basic use-after-move detection for `Own` modifier — *partial (comprehensive tracking planned)*
 - No GC pauses, predictable performance
 - Native code output
 
@@ -118,9 +120,9 @@ from
 | Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
 | "Works on my machine" | Verb system makes IO explicit (`inputs`/`outputs`) |
 | Null/nil crashes | No null — use `Option<Value>`, enforced by compiler |
-| Race conditions | Ownership + verb system prevents data races |
+| Race conditions | Ownership + verb system will prevent data races *(concurrency planned)* |
 | "I forgot an edge case" | Compiler generates edge cases from types |
-| Slow test suites | Property tests run at compile time when provable |
+| Slow test suites | Property tests generated from contracts |
 | Runtime type errors | Refinement types catch invalid values at compile time |
 
 ---

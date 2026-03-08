@@ -89,7 +89,7 @@ from
 
 ## Refinement Types
 
-Types carry constraints, not just shapes. The compiler rejects invalid values statically — no unnecessary runtime checks, no `unwrap()`.
+Types carry constraints, not just shapes. The compiler validates values against constraints — currently via runtime checks inserted at assignment boundaries, with static rejection of provably-invalid literals planned.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535
@@ -99,7 +99,7 @@ type NonEmpty<Value> is List<Value> where len > 0
 transforms head(xs NonEmpty<Value>) Value    // no Option needed, emptiness is impossible
 ```
 
-The compiler rejects `head([])` statically.
+The compiler rejects `head([])` at the type level — `[]` is not a `NonEmpty`.
 
 ## Lookup Types (Bidirectional Maps)
 
@@ -150,7 +150,7 @@ Rules:
 
 ## Algebraic Types with Exhaustive Matching
 
-Like Rust/Haskell, but with row polymorphism. Compiler errors if you forget a variant.
+Compiler errors if you forget a variant.
 
 ```prove
 type Result<Value, Error> is Ok(Value) | Err(Error)
@@ -166,7 +166,7 @@ from
 
 ## Effect Types
 
-IO is encoded in the verb, not in annotations. The compiler knows which functions touch the world (`inputs`/`outputs`) and which are pure (`transforms`/`validates`). Pure functions get automatic memoization and parallelism.
+IO is encoded in the verb, not in annotations. The compiler knows which functions touch the world (`inputs`/`outputs`) and which are pure (`transforms`/`validates`). Pure functions get automatic memoization.
 
 ```prove
 inputs read_config(path Path) String!               // IO inherent, ! = can fail

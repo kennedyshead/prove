@@ -91,7 +91,7 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ## Optimizer
 
-When `optimize = true` in `prove.toml` (the default), the compiler runs eight optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+When `optimize = true` in `prove.toml`, the compiler runs optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
 
 | Pass | What it does |
 |------|-------------|
@@ -108,20 +108,18 @@ When `optimize = true` in `prove.toml` (the default), the compiler runs eight op
 
 ## Comptime (Compile-Time Computation)
 
-The compiler includes a full compile-time interpreter that executes `comptime` blocks during compilation. Arbitrary computation at compile time, including IO. Files read during comptime become build dependencies — if the file changes, the module is recompiled.
+The compiler includes a tree-walking interpreter that evaluates pure constant expressions at compile time. The optimizer calls this interpreter to fold pure function calls with constant arguments — for example, `double(21)` becomes `42` during compilation. A `read()` function is available for file IO in comptime contexts.
 
 ```prove
-MAX_CONNECTIONS as Integer = comptime
-  match cfg.target
-    "embedded" => 16
-    _ => 1024
+// Compile-time constant folding (working today)
+MAX_SIZE as Integer = double(512)       // folded to 1024 at compile time
 
-LOOKUP_TABLE as List<Integer:[32 Unsigned]> = comptime
-  collect(map(0..256, crc32_step))
-
-ROUTES as List<Route> = comptime
-  decode(read("routes.json"))         // IO allowed — routes.json becomes a build dep
+// File reading at compile time (working today)
+ROUTES as String = comptime
+  read("routes.json")
 ```
+
+**Current limitations:** `comptime` blocks in user code are parsed but not yet fully wired for execution. Build dependency tracking (recompile when a file read by comptime changes) is not yet implemented. Full comptime execution with conditional compilation is planned for v1.0.
 
 ---
 

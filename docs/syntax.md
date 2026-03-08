@@ -12,7 +12,7 @@ keywords: Prove syntax, programming language syntax, Prove language reference
 - **Variables and parameters**: snake_case — `port`, `user_list`, `max_retries`, `db_connection`
 - **Functions**: snake_case — `area`, `binary_search`, `get_users`
 - **Constants**: UPPER_SNAKE_CASE — `MAX_CONNECTIONS`, `LOOKUP_TABLE`, `DEFAULT_PORT`
-- **Effects**: CamelCase — `IO`, `Fail`, `Async`
+- **Effects**: CamelCase — `IO`, `Fail` *(effect types are planned, not yet implemented)*
 
 The compiler **enforces** casing. Wrong case is a compile error, not a warning. UPPER_SNAKE_CASE indicates a compile-time constant — no `const` keyword needed.
 
@@ -508,7 +508,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `terminates` | Required for recursive functions — declares a measure expression that decreases on each call. Compiler error if omitted |
 | `trusted` | Explicitly marks a function as unverified — acknowledges the gap when `ensures` would otherwise be expected |
 | `valid` | References a `validates` function as a predicate |
-| `comptime` | Marks code for compile-time evaluation *(parsed; execution upcoming in v0.9.2)* |
+| `comptime` | Marks code for compile-time evaluation *(constant folding working; full comptime blocks planned)* |
 | `foreign` | Declares a C FFI block inside a module — `foreign "libname"` |
 
 ### Interface Contracts: `requires`, `ensures`
@@ -723,7 +723,7 @@ from
     // implementation
 ```
 
-`know` = the compiler can prove it (free). `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
+`know` = the compiler verifies it is a valid boolean expression (full proof engine planned). `assume` = the compiler adds a runtime check. `believe` = the compiler tries to break it with generated tests.
 
 ### Verification Chain: `trusted`
 
