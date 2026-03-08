@@ -44,6 +44,11 @@ from prove.types import (
 
 class StmtEmitterMixin:
 
+    def _emit_region_exit(self) -> None:
+        """Emit prove_region_exit if inside a region scope."""
+        if self._in_region_scope:
+            self._line("prove_region_exit(prove_global_region());")
+
     def _emit_explain_branches(self, fd: FunctionDef, ret_type: Type) -> None:
         """Emit if/else-if chains from explain entries with `when` conditions.
 
@@ -82,6 +87,7 @@ class StmtEmitterMixin:
                 else:
                     expr = self._stmt_expr(stmt)
                     if expr is not None:
+                        self._emit_region_exit()
                         self._line(f"return {self._emit_expr(expr)};")
                     else:
                         self._emit_stmt(stmt)
@@ -99,6 +105,7 @@ class StmtEmitterMixin:
             else:
                 expr = self._stmt_expr(stmt)
                 if expr is not None:
+                    self._emit_region_exit()
                     self._line(f"return {self._emit_expr(expr)};")
                 else:
                     self._emit_stmt(stmt)
@@ -124,10 +131,12 @@ class StmtEmitterMixin:
                         # Already returns Result — just emit and return ok
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
+                        self._emit_region_exit()
                         self._line("return prove_result_ok();")
                     elif isinstance(ret_type, UnitType):
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
+                        self._emit_region_exit()
                         self._line("return prove_result_ok();")
                     else:
                         # Non-Result return: capture and wrap
@@ -137,6 +146,7 @@ class StmtEmitterMixin:
                             ret_ct = map_type(ret_type)
                             self._line(f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};")
                             self._emit_releases(ret_tmp)
+                            self._emit_region_exit()
                             if isinstance(ret_type, RecordType):
                                 heap_tmp = self._tmp()
                                 self._line(
@@ -161,6 +171,7 @@ class StmtEmitterMixin:
                         else:
                             self._emit_stmt(stmt)
                             self._emit_releases(None)
+                            self._emit_region_exit()
                             self._line("return prove_result_ok();")
                 else:
                     expr = self._stmt_expr(stmt)
@@ -180,6 +191,7 @@ class StmtEmitterMixin:
                                     emit_val = f"{expr.name}.tag == 1"
                         self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
                         self._emit_releases(ret_tmp)
+                        self._emit_region_exit()
                         self._line(f"return {ret_tmp};")
                     else:
                         self._emit_stmt(stmt)
@@ -382,7 +394,15 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             elif is_failable:
-                self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+                if self._in_region_scope:
+                    self._line(f"if (prove_result_is_err({tmp})) {{")
+                    self._indent += 1
+                    self._line("prove_region_exit(prove_global_region());")
+                    self._line(f"return {tmp};")
+                    self._indent -= 1
+                    self._line("}")
+                else:
+                    self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
             else:
                 self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
             # Unwrap the success value
@@ -877,6 +897,7 @@ class StmtEmitterMixin:
                 # Base case in tail loop — emit as return
                 expr = self._stmt_expr(s)
                 if expr is not None:
+                    self._emit_region_exit()
                     self._line(f"return {self._emit_expr(expr)};")
                 else:
                     self._emit_stmt(s)
@@ -1004,6 +1025,7 @@ class StmtEmitterMixin:
                 # Last statement is the return value (base case)
                 expr = self._stmt_expr(stmt)
                 if expr is not None:
+                    self._emit_region_exit()
                     self._line(f"return {self._emit_expr(expr)};")
                 else:
                     self._emit_stmt(stmt)

@@ -241,6 +241,10 @@ Prove_Result prove_parse_json(Prove_String *source) {
 static void _json_emit_value(Prove_Value *v, Prove_Builder **b);
 
 static void _json_emit_string(Prove_String *s, Prove_Builder **b) {
+    if (!s) {
+        *b = prove_text_write_cstr(*b, "null");
+        return;
+    }
     *b = prove_text_write_char(*b, '"');
     /* Escape special characters */
     for (int64_t i = 0; i < s->length; i++) {
