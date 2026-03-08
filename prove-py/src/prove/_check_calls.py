@@ -425,19 +425,60 @@ class CallCheckMixin:
                         )
 
     def _track_moved_expr(self, expr: Expr) -> None:
-        """Mark variables as moved based on expression type."""
+        """Mark variables as moved based on expression type.
+
+        Handles complex expressions: nested calls (f(g(owned))),
+        field access (x.inner), and pipe expressions (x |> f).
+        """
         if isinstance(expr, IdentifierExpr):
             sym = self.symbols.lookup(expr.name)
             if sym is not None and has_own_modifier(sym.resolved_type):
                 self._moved_vars.add(expr.name)
         elif isinstance(expr, FieldExpr):
-            self._track_moved_expr(expr.base)
+            # Track field path for partial move: x.inner moves x.inner
+            path = self._expr_to_field_path(expr)
+            if path:
+                self._moved_vars.add(path)
+            # Also recurse into base for whole-object tracking
+            self._track_moved_expr(expr.obj)
+        elif isinstance(expr, CallExpr):
+            # Nested calls: f(g(owned)) — owned is consumed by g
+            for arg in expr.args:
+                self._track_moved_expr(arg)
+        elif isinstance(expr, PipeExpr):
+            # x |> f — x is consumed
+            self._track_moved_expr(expr.left)
+
+    def _expr_to_field_path(self, expr: Expr) -> str | None:
+        """Convert a FieldExpr chain to a dotted path string."""
+        if isinstance(expr, IdentifierExpr):
+            return expr.name
+        if isinstance(expr, FieldExpr):
+            base = self._expr_to_field_path(expr.obj)
+            if base:
+                return f"{base}.{expr.field}"
+        return None
 
     def _check_moved_var(self, name: str, span: Span) -> None:
-        """Check if a variable has been moved and report error if so."""
+        """Check if a variable has been moved and report error if so.
+
+        Also checks for partial moves: if x.inner was moved,
+        accessing x reports use-after-move.
+        """
         if name in self._moved_vars:
             self._error(
                 "E340",
                 f"use of moved value '{name}'",
                 span,
             )
+            return
+        # Check if any field of this variable was moved (partial move)
+        prefix = f"{name}."
+        for moved in self._moved_vars:
+            if moved.startswith(prefix):
+                self._error(
+                    "E340",
+                    f"use of partially moved value '{name}' (field '{moved}' was moved)",
+                    span,
+                )
+                return

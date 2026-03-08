@@ -2353,13 +2353,28 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         return True
 
     def _check_moved_var(self, name: str, span: Span) -> None:
-        """Check if a variable has been moved and report error if so."""
+        """Check if a variable has been moved and report error if so.
+
+        Also checks for partial moves: if x.inner was moved,
+        accessing x reports use-after-move.
+        """
         if name in self._moved_vars:
             self._error(
                 "E340",
                 f"use of moved value '{name}'",
                 span,
             )
+            return
+        # Check if any field of this variable was moved (partial move)
+        prefix = f"{name}."
+        for moved in self._moved_vars:
+            if moved.startswith(prefix):
+                self._error(
+                    "E340",
+                    f"use of partially moved value '{name}' (field '{moved}' was moved)",
+                    span,
+                )
+                return
 
     # ── Unused checks ───────────────────────────────────────────
 
