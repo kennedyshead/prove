@@ -22,13 +22,14 @@ module Main
     from
         s.authenticated => s.authorized
 
-  validates valid_state(s State)
-  from
-        not s.authenticated or s.authorized
 
-  transforms authorize(s State) State
-  from
-      State(s.authenticated, true, s.balance)
+validates valid_state(s State)
+from
+      not s.authenticated or s.authorized
+
+transforms authorize(s State) State
+from
+    State(s.authenticated, true, s.balance)
 
 main() Result<Unit, Error>!
 from
