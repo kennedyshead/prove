@@ -90,3 +90,7 @@ validates address(address Address)
 - Pairs naturally with async verbs (`listens`) for non-blocking servers
 - Address parsing/validation via standard channel pattern
 - Depends on `streams` verb (see io-improvement.md) and optionally `listens` (see async-plan.md)
+
+## Finishing Requirements
+
+- Ensure all relevant documentation is up to date.

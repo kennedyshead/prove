@@ -38,3 +38,7 @@ Same pattern as `listens` in the async family.
 - Makes streaming IO intent explicit at the call site
 - Fits the existing verb family symmetry: each IO verb has an async counterpart
 - `System` name covers files, processes, stdin/stdout — all local/OS-level IO
+
+## Finishing Requirements
+
+- Ensure all relevant documentation is up to date.
