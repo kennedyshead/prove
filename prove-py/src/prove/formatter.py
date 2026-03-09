@@ -317,7 +317,9 @@ class ProveFormatter:
         body = td.body
         if isinstance(body, LookupTypeDef):
             if body.is_binary:
-                return self._format_binary_lookup_type_def(td.name, body)
+                return self._format_binary_lookup_type_def(
+                    td.name, body, mods, params
+                )
             return self._format_lookup_type_def(td.name, mods, params, body)
 
         if isinstance(body, RecordTypeDef):
@@ -394,10 +396,17 @@ class ProveFormatter:
             return f'"{_escape_string(entry.value)}"'
         return entry.value
 
-    def _format_binary_lookup_type_def(self, name: str, body: LookupTypeDef) -> str:
+    def _format_binary_lookup_type_def(
+        self, name: str, body: LookupTypeDef, mods: str = "", params: str = ""
+    ) -> str:
         """Format a binary lookup type definition."""
         col_types = " ".join(self._format_type_expr(vt) for vt in body.value_types)
-        lines = [f"binary {name} {col_types} where"]
+        if mods:
+            # Parsed via type Name:[Lookup] is Type1 Type2 where
+            lines = [f"type {name}{mods}{params} is {col_types} where"]
+        else:
+            # Parsed via binary Name Type1 Type2 where
+            lines = [f"binary {name} {col_types} where"]
 
         for entry in body.entries:
             if entry.values:

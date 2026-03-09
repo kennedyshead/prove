@@ -930,12 +930,33 @@ class ExprEmitterMixin:
             return self._emit_binary_lookup(expr, lookup)
 
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
-            # Forward: literal -> variant constructor
             value = operand.value
             if isinstance(operand, BooleanLit):
                 value = "true" if operand.value else "false"
+            str_value = str(value)
+
+            # Binary lookup: cross-column literal lookup
+            if lookup.is_binary and lookup.value_types:
+                for entry in lookup.entries:
+                    if str_value in entry.values:
+                        col_idx = self._binary_column_index(
+                            lookup, self._expected_emit_type
+                        )
+                        val = entry.values[col_idx]
+                        kind = entry.value_kinds[col_idx]
+                        if kind == "string":
+                            escaped = self._escape_c_string(val)
+                            return f'prove_string_from_cstr("{escaped}")'
+                        if kind == "integer":
+                            return f"{val}L"
+                        if kind == "boolean":
+                            return val
+                        return f'prove_string_from_cstr("{val}")'
+                return "/* lookup miss */ 0"
+
+            # Single-column: literal -> variant constructor
             for entry in lookup.entries:
-                if entry.value == str(value):
+                if entry.value == str_value:
                     return f"{entry.variant}()"
             return "/* lookup miss */ 0"
         if isinstance(operand, TypeIdentifierExpr):

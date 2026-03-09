@@ -567,11 +567,40 @@ class TypeCheckMixin:
 
         operand = expr.operand
 
-        # Forward: literal -> variant
+        # Forward: literal -> variant (or binary cross-column lookup)
         if isinstance(operand, (StringLit, IntegerLit, BooleanLit)):
             value = operand.value
             if isinstance(operand, BooleanLit):
                 value = "true" if operand.value else "false"
+
+            # Binary lookup: search all columns, return target column type
+            if lookup.is_binary and lookup.value_types:
+                from prove.types import type_name as tn
+
+                str_value = str(value)
+                for entry in lookup.entries:
+                    if str_value in entry.values:
+                        # Found the row — determine return type from context
+                        expected = self._expected_type
+                        if expected is not None:
+                            for vt in lookup.value_types:
+                                col_type = self._resolve_type_expr(vt)
+                                if tn(col_type) == tn(expected):
+                                    self._used_types.add(type_name)
+                                    return col_type
+                        # No expected type — return the algebraic type
+                        resolved = self.symbols.resolve_type(type_name)
+                        if resolved is not None:
+                            self._used_types.add(type_name)
+                        return resolved if resolved else ERROR_TY
+                self._error(
+                    "E377",
+                    f"value {value!r} not found in lookup table '{type_name}'",
+                    expr.span,
+                )
+                return ERROR_TY
+
+            # Single-column lookup: return algebraic type
             for entry in lookup.entries:
                 if entry.value == str(value):
                     resolved = self.symbols.resolve_type(type_name)

@@ -126,14 +126,12 @@ A variant can have multiple values (stacked entries like `TrueLit`), but reverse
 
 Lookup tables must be exhaustive — every variant needs at least one value, and all values must be unique across the table.
 
-### Multi-Type Lookup (Upcoming v1.X)
-
-*Multi-type lookups are planned for version 1.X and not yet implemented.*
+### Multi-Type Lookup
 
 A lookup can map to multiple primitive types simultaneously:
 
 ```prove
-type TokenKind:[Lookup] is String | Integer where
+type TokenKind:[Lookup] is String Integer where
     One | "one" | 1
     Two | "two" | 2
 ```

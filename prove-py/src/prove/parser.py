@@ -1387,12 +1387,31 @@ class Parser:
     # ── Lookup type body ────────────────────────────────────────────
 
     def _parse_lookup_type_body(self) -> LookupTypeDef:
-        """Parse: ValueType where + indented Variant | value rows."""
+        """Parse: ValueType [ValueType ...] where + indented entries."""
         start = self._current().span
-        value_type = self._parse_type_expr()
+
+        # Parse one or more column types until 'where'
+        value_types: list[TypeExpr] = []
+        while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
+            value_types.append(self._parse_type_expr())
+
+        value_type = value_types[0] if value_types else SimpleType("Unit", start)
         self._expect(TokenKind.WHERE)
         self._skip_newlines()
 
+        if len(value_types) > 1:
+            # Multi-column: reuse binary lookup entry parsing
+            entries = self._parse_binary_lookup_entries(len(value_types))
+            end = self._current().span
+            return LookupTypeDef(
+                value_type=value_type,
+                entries=entries,
+                span=self._span(start, end),
+                value_types=tuple(value_types),
+                is_binary=True,
+            )
+
+        # Single-column: existing stacking logic
         entries: list[LookupEntry] = []
         last_variant: str | None = None
         if self._at(TokenKind.INDENT):
