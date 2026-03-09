@@ -15,6 +15,7 @@ typedef struct {
 Prove_String *prove_string_new(const char *src, int64_t len);
 Prove_String *prove_string_new_region(ProveRegion *r, const char *src, int64_t len);
 Prove_String *prove_string_from_cstr(const char *src);
+Prove_String *prove_string_from_cstr_region(ProveRegion *r, const char *src);
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b);
 bool          prove_string_eq(Prove_String *a, Prove_String *b);
 int64_t       prove_string_len(Prove_String *s);

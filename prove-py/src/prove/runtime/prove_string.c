@@ -29,6 +29,12 @@ Prove_String *prove_string_from_cstr(const char *src) {
     return prove_string_new(src, len);
 }
 
+Prove_String *prove_string_from_cstr_region(ProveRegion *r, const char *src) {
+    if (!src) return prove_string_new_region(r, "", 0);
+    int64_t len = (int64_t)strlen(src);
+    return prove_string_new_region(r, src, len);
+}
+
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b) {
     if (!a) { if (b) prove_retain(b); return b; }
     if (!b) { prove_retain(a); return a; }
