@@ -109,8 +109,8 @@ item builds on the ones above it.
 
 ### 1. User-Facing Lookup Modifier
 
-Expose `type Name:[Lookup]` syntax for user code (currently `binary` keyword
-is stdlib-only). No new runtime work — reuses existing lookup table emission.
+`type Name:[Lookup]` syntax for user code with multi-column support.
+No new runtime work — reuses existing lookup table emission.
 
 **Docs impact:** `types.md`, `syntax.md`
 

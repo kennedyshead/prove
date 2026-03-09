@@ -3,5 +3,5 @@ module DemoE387
   Expected diagnostics: E387
   """
 
-  binary BadTable String Float where
+  type BadTable:[Lookup] is String Float where
     First | "first" | 1.5

@@ -3,6 +3,6 @@ module DemoE379
   Expected diagnostics: E379
   """
 
-  binary Status String Integer where
+  type Status:[Lookup] is String Integer where
     Active | "active" | 1
     Pending | "pending"
