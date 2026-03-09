@@ -2,5 +2,7 @@ module DemoE104
   narrative: """
   Expected diagnostics: E104
   """
+
+transforms check() String
 from
-    /unterminated
+    /[unterminated

@@ -1,6 +1,6 @@
-module DemoE367
+module DemoI367
   narrative: """
-  Expected diagnostics: E367
+  Expected diagnostics: I367
   """
 
 transforms bad(n Integer) String

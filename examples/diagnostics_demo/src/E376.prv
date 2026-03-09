@@ -3,6 +3,10 @@ module DemoE376
   Expected diagnostics: E376
   """
 
+  type Color:[Lookup] is String where
+    Red | "red"
+    Green | "green"
+
 transforms resolve(s String) String
 from
-    TokenKind:s
+    Color:s

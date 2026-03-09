@@ -2,3 +2,11 @@ module DemoE301
   narrative: """
   Expected diagnostics: E301
   """
+
+transforms double(n Integer) Integer
+from
+    n * 2
+
+transforms double(n Integer) Integer
+from
+    n + n

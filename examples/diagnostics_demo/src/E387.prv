@@ -3,6 +3,5 @@ module DemoE387
   Expected diagnostics: E387
   """
 
-main()
-from
-    0
+  binary BadTable String Float where
+    First | "first" | 1.5

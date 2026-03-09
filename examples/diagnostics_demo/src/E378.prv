@@ -3,6 +3,10 @@ module DemoE378
   Expected diagnostics: E378
   """
 
-main()
+  type Priority:[Lookup] is String where
+    High | "urgent"
+    High | "critical"
+
+transforms check() String
 from
-    BoolLit:BooleanLit
+    Priority:High

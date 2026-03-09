@@ -1,5 +1,7 @@
 module DemoW304
-  narrative: """t"""
+  narrative: """
+  Expected diagnostics: W304
+  """
 
 matches abs_val(n Integer) Integer
   requires n >= 0

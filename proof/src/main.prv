@@ -2,13 +2,22 @@ module Main
   narrative: """A new Prove project."""
   InputOutput outputs console, inputs process file
   List reads last
-  Parse transforms unwrap, validates toml, creates toml, reads text
+  Parse validates toml, creates toml, transforms unwrap
+
+  type Config is
+    name String
+
+transforms config(content String) Config
+  requires valid toml(content)
+from
+    Config(toml(content))
 
 inputs cli_build() String!
 from
     load as String = file("prove.toml")!
-    conf as Table<Value> = toml(load)!
-    text(conf.name)
+    match load
+        Some(load) => config(load).name
+        _ => "Unable to load prove.toml"
 
 main() Result<Unit, Error>!
 from

@@ -3,6 +3,6 @@ module DemoE375
   Expected diagnostics: E375
   """
 
-main()
-from
-    0
+  type Status:[Lookup] is String where
+    Active | "active"
+    Enabled | "active"

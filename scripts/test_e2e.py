@@ -277,23 +277,25 @@ def main() -> int:
                 rc = result["returncode"]
                 expected = cmd in expected_failures
 
-                if expected and rc != 0:
+                # Check expected diagnostics first (applies even when
+                # the command is expected to fail)
+                missing_diags = []
+                if cmd == "check" and expected_diags:
+                    stderr = result.get("stderr", "")
+                    for diag in expected_diags:
+                        if f"[{diag}]" not in stderr:
+                            missing_diags.append(diag)
+
+                if missing_diags:
+                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                    failed_example = project_dir
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
+                elif expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
-                    missing_diags = []
-                    if cmd == "check" and expected_diags:
-                        stderr = result.get("stderr", "")
-                        for diag in expected_diags:
-                            if f"[{diag}]" not in stderr:
-                                missing_diags.append(diag)
-                    if missing_diags:
-                        status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                        failed_example = project_dir
-                        failed_command = cmd
-                        failed_result = result
-                        failed_name = str(name)
-                    else:
-                        status = "OK"
+                    status = "OK"
                 else:
                     status = f"FAIL ({rc})"
                     failed_example = project_dir
@@ -326,23 +328,25 @@ def main() -> int:
                 rc = result["returncode"]
                 expected = cmd in expected_failures
 
-                if expected and rc != 0:
+                # Check expected diagnostics first (applies even when
+                # the command is expected to fail)
+                missing_diags = []
+                if cmd == "check" and expected_diags:
+                    stderr = result.get("stderr", "")
+                    for diag in expected_diags:
+                        if f"[{diag}]" not in stderr:
+                            missing_diags.append(diag)
+
+                if missing_diags:
+                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+                    failed_example = prv_file
+                    failed_command = cmd
+                    failed_result = result
+                    failed_name = str(name)
+                elif expected and rc != 0:
                     status = "EXPECTED FAIL"
                 elif rc == 0:
-                    missing_diags = []
-                    if cmd == "check" and expected_diags:
-                        stderr = result.get("stderr", "")
-                        for diag in expected_diags:
-                            if f"[{diag}]" not in stderr:
-                                missing_diags.append(diag)
-                    if missing_diags:
-                        status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                        failed_example = prv_file
-                        failed_command = cmd
-                        failed_result = result
-                        failed_name = str(name)
-                    else:
-                        status = "OK"
+                    status = "OK"
                 else:
                     status = f"FAIL ({rc})"
                     failed_example = prv_file

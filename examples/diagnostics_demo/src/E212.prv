@@ -3,6 +3,5 @@ module DemoE212
   Expected diagnostics: E212
   """
 
-transforms check()
-from
-    1
+  type Bad is
+    42

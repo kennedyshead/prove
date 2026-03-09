@@ -1,5 +1,7 @@
 module DemoE313
-  narrative: """test"""
+  narrative: """
+  Expected diagnostics: E313
+  """
 
 transforms run() Integer
 from

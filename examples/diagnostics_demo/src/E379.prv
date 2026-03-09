@@ -3,6 +3,6 @@ module DemoE379
   Expected diagnostics: E379
   """
 
-main()
-from
-    0
+  binary Status String Integer where
+    Active | "active" | 1
+    Pending | "pending"

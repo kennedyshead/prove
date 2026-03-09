@@ -2,7 +2,8 @@ module DemoI314
   narrative: """
   Expected diagnostics: I314
   """
+  Nonexistent reads something
 
 transforms angle(x Integer) Integer
 from
-    spin(x)
+    x

@@ -2,7 +2,8 @@ module DemoW312
   narrative: """
   Expected diagnostics: W312
   """
+  InputOutput transforms file
 
-main() Unit
+transforms check() Integer
 from
-    0
+    1

@@ -1,3 +1,4 @@
+// Expected diagnostics: I201
 transforms check() Integer
 from
     1
