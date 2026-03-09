@@ -33,7 +33,7 @@ The compiler POC is implemented in Python (>=3.11). The goal is to validate the 
 
 ### Compilation Target: Native Code
 
-As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via direct assembly emission (x86_64 + ARM64). No VM, no interpreter for production output.
+As close to the CPU as possible. The compiler does the heavy lifting at compile time so the output is fast and memory-efficient. Target: native code via C emission compiled by gcc/clang. An earlier ASM backend (x86_64) was prototyped at v0.2 and archived — C emission provides better portability and optimization. No VM, no interpreter for production output.
 
 ### First POC: Self-Hosting Compiler
 
@@ -85,7 +85,7 @@ from
     par_map(urls, fetch)
 ```
 
-The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. For V1.0, effect annotations are informational — the verb system already enforces purity boundaries. Structured concurrency (task spawning, cancellation, async verbs) is planned for post-1.0. See [Roadmap](roadmap.md) for the planned async verb family (`detached`, `attached`, `listens`).
+The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries. The async verb family (`detached`, `attached`, `listens`) provides structured concurrency backed by stackful coroutines (`prove_coro`). See the [Syntax Reference](syntax.md#async-verbs) for details.
 
 ---
 

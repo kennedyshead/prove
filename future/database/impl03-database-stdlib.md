@@ -2,7 +2,7 @@
 
 ## Overview
 
-General-purpose stdlib module for managing lookup tables (`:[Lookup]` types). Provides storage, versioning, diffs, merges, and compilation to binary lookup tables.
+General-purpose stdlib module for managing lookup tables (`:[Lookup]` types). Provides storage, versioning, diffs, merges, and compilation to lookup tables.
 
 This module is infrastructure — it knows nothing about what the lookup tables contain. Domain-specific logic (ML weights, user data, configuration) is built on top by application code.
 

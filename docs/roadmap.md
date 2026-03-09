@@ -33,11 +33,11 @@ after V1.0 is stable.
 | v0.8 | Formatter type inference |
 | v0.8.1 | Lint system overhaul — diagnostic code splits, doc links, Suggestions |
 | v0.8.2 | `proof` → `explain` migration |
-| v0.8.3 | Remaining lints (E316, E317, W302, W303, W323, W326) — 506 tests |
+| v0.8.3 | Remaining lints (E316, E317, I302, I303, W323, W326) — 506 tests |
 | v0.9 | Lexer export tool — 612 tests |
 | v0.9.1 | Documentation parity — mark unimplemented features, add missing diagnostics |
 | v0.9.5 | Auto-Memoization + Memory Regions |
-| v0.9.6 | Mutation Testing, Stdlib: List, Math, Convert |
+| v0.9.6 | Mutation Testing, Stdlib: List, Math, Types |
 | v0.9.7 | Stdlib: Path, Pattern |
 | v0.9.8 | Stdlib: Format, Error |
 | v0.9.9 | Stdlib: Random, Time, Bytes, Hash; Format + Parse extensions |
@@ -107,7 +107,7 @@ Three documented passes are not yet implemented:
 Future work planned after V1.0 is stable. Listed in dependency order — each
 item builds on the ones above it.
 
-### 1. User-Facing Lookup Modifier
+### 1. User-Facing Lookup Modifier *(implemented)*
 
 `type Name:[Lookup]` syntax for user code with multi-column support.
 No new runtime work — reuses existing lookup table emission.
@@ -129,12 +129,12 @@ tables and compiled binaries. Depends on the Lookup modifier.
 
 **Docs impact:** `cli.md`
 
-### 4. Async Verb Family
+### 4. Async Verb Family *(implemented)*
 
-Three new verbs for structured concurrency: `detached` (fire-and-forget),
+Three verbs for structured concurrency: `detached` (fire-and-forget),
 `attached` (spawn and await), `listens` (loop until exit). The `&` marker
-at call sites, analogous to `!` for fallibility. Independent of the database
-work — can be implemented in parallel.
+at call sites, analogous to `!` for fallibility. Lexer, parser, checker,
+and C emitter support is complete. Runtime backed by `prove_coro`.
 
 **Docs impact:** `syntax.md`, `types.md`
 

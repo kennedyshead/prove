@@ -158,7 +158,7 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 | `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
 
-**Async verbs:**
+### Async Verbs
 
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|

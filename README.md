@@ -47,7 +47,7 @@ from
 | Edge cases slip through | Compiler generates edge cases from refinement types |
 | Runtime type errors | Refinement types catch invalid values at compile time |
 
-**Self-hosting target**: The V1.0 bootstrap compiler (Python) is feature-complete with 805 tests and 12 stdlib modules. V2.0 will rewrite the compiler in Prove itself.
+**Self-hosting target**: The V1.0 bootstrap compiler (Python, v0.9.9) has 1061 unit tests, 331 e2e tests, and 17 stdlib modules. V2.0 will rewrite the compiler in Prove itself.
 
 ---
 
@@ -110,7 +110,7 @@ The build system performs **runtime stripping** — only C runtime modules actua
 ./scripts/dev-setup.sh          # install all dependencies
 cd prove-py && pip install -e ".[dev]"
 
-python -m pytest tests/ -v      # run tests (805 tests)
+python -m pytest tests/ -v      # run tests (1061 tests)
 ruff check src/ tests/          # lint
 mypy src/                       # type check
 python scripts/test_e2e.py      # end-to-end CLI tests (from workspace root)
