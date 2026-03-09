@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from prove.ast_nodes import (
+    AsyncCallExpr,
     BinaryExpr,
     BinaryLookupExpr,
     BindingPattern,
@@ -125,6 +126,9 @@ class ExprEmitterMixin:
 
         if isinstance(expr, FailPropExpr):
             return self._emit_fail_prop(expr)
+
+        if isinstance(expr, AsyncCallExpr):
+            return self._emit_async_call(expr)
 
         if isinstance(expr, MatchExpr):
             return self._emit_match_expr(expr)
@@ -398,6 +402,30 @@ class ExprEmitterMixin:
         ):
             return f"{tmp}"
         return self._unwrap_result_value(tmp, inner_type)
+
+    def _emit_async_call(self, expr: AsyncCallExpr) -> str:
+        """Emit an async call (expr&).
+
+        For attached calls: pass _coro as first arg so the caller can yield.
+        For detached calls: bare call, no _coro threading.
+        """
+        inner = expr.expr
+        if isinstance(inner, CallExpr) and isinstance(inner.func, IdentifierExpr):
+            fname = inner.func.name
+            # Look up the callee's verb
+            sig = self._symbols.resolve_function_any(fname)
+            if sig and sig.verb == "attached":
+                # Pass _coro as implicit first argument
+                args = [self._emit_expr(a) for a in inner.args]
+                args_str = ", ".join(["_coro"] + args)
+                from prove.c_types import mangle_name
+                if sig.param_types:
+                    mangled = mangle_name(sig.verb, fname, sig.param_types)
+                else:
+                    mangled = fname
+                return f"{mangled}({args_str})"
+        # Detached or bare: emit the inner expression directly
+        return self._emit_expr(inner)
 
     def _unwrap_result_value(self, tmp: str, success_type: Type) -> str:
         """Emit the correct prove_result_unwrap_* call for a success type."""

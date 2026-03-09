@@ -3,6 +3,6 @@ module DemoI360
   Expected diagnostics: I360
   """
 
-validates positive(x Integer) Boolean
+validates positive(x Integer)
 from
     x > 0

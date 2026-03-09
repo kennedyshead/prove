@@ -168,7 +168,13 @@ from
 
 ## Effect Types
 
-IO is encoded in the verb, not in annotations. The compiler knows which functions touch the world (`inputs`/`outputs`) and which are pure (`transforms`/`validates`). Pure functions get automatic memoization.
+Effects are encoded in the verb, not in type annotations. The compiler tracks three effect families:
+
+| Family | Verbs | Effect |
+|--------|-------|--------|
+| **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
+| **IO** | `inputs`, `outputs` | Reads from or writes to the external world. `!` marks additional fallibility |
+| **Async** | `detached`, `attached`, `listens` | Concurrent execution via cooperative coroutines. No blocking IO allowed inside |
 
 ```prove
 inputs read_config(path Path) String!               // IO inherent, ! = can fail
@@ -176,7 +182,21 @@ inputs read_config(path Path) String!               // IO inherent, ! = can fail
 transforms parse(s String) Result<Config, Error>   // pure — failure in return type
 
 transforms rewrite(c Config) Config                // pure, infallible, parallelizable
+
+detached log(event Event) Unit                     // async, fire-and-forget
+from
+    send(event)&
+
+attached fetch(url String) String                  // async, caller awaits result
+from
+    request(url)&
 ```
+
+The compiler enforces effect boundaries:
+- Pure verbs cannot call IO or async functions
+- `attached` and `listens` cannot call blocking IO (`inputs`/`outputs`) — they run cooperatively and blocking would stall the yield cycle
+- `detached` may call IO freely — it runs independently and blocking only affects its own coroutine, not the caller
+- The `&` marker at a call site signals async dispatch, analogous to `!` for error propagation
 
 ## Ownership Lite (Linear Types with Compiler-Inferred Borrows)
 

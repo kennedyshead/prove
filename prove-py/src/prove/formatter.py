@@ -29,6 +29,7 @@ def _escape_string(value: str) -> str:
 
 from prove.ast_nodes import (
     AlgebraicTypeDef,
+    AsyncCallExpr,
     Assignment,
     BinaryExpr,
     BinaryLookupExpr,
@@ -126,8 +127,18 @@ class ProveFormatter:
         self._unused_type_spans: set[tuple[str, int, int]] = set()
         self._unused_import_spans: set[tuple[str, int, int]] = set()
         self._unknown_module_spans: set[tuple[str, int, int]] = set()
+        self._strip_async_marker_spans: set[tuple[str, int, int]] = set()
+        self._attached_to_inputs_spans: set[tuple[str, int, int]] = set()
         for d in diagnostics or []:
-            if d.code == "I300":
+            if d.code == "I375":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._strip_async_marker_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I376":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._attached_to_inputs_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I300":
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_var_spans.add((s.file, s.start_line, s.start_col))
@@ -187,7 +198,11 @@ class ProveFormatter:
             + (f" where {self._format_expr(p.constraint)}" if p.constraint else "")
             for p in fd.params
         )
-        sig = f"{fd.verb} {fd.name}({params})"
+        verb = fd.verb
+        s = fd.span
+        if (s.file, s.start_line, s.start_col) in self._attached_to_inputs_spans:
+            verb = "inputs"
+        sig = f"{verb} {fd.name}({params})"
         if fd.return_type and fd.verb != "validates":
             sig += f" {self._format_type_expr(fd.return_type)}"
         if fd.can_fail:
@@ -632,6 +647,12 @@ class ProveFormatter:
             return f"{self._format_expr(expr.left)} |> {self._format_expr(expr.right)}"
         if isinstance(expr, FailPropExpr):
             return f"{self._format_expr(expr.expr)}!"
+        if isinstance(expr, AsyncCallExpr):
+            s = expr.span
+            key = (s.file, s.start_line, s.start_col)
+            if key in self._strip_async_marker_spans:
+                return self._format_expr(expr.expr)
+            return f"{self._format_expr(expr.expr)}&"
         if isinstance(expr, LambdaExpr):
             return self._format_lambda(expr)
         if isinstance(expr, ValidExpr):

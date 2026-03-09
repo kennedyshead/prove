@@ -34,6 +34,7 @@ _VALUE_TOKENS = frozenset(
         TokenKind.RPAREN,
         TokenKind.RBRACKET,
         TokenKind.BANG,
+        TokenKind.AMPERSAND,
         TokenKind.INTERP_END,
     }
 )
@@ -652,6 +653,8 @@ class Lexer:
                 self._emit(TokenKind.GREATER, ">", start_line, start_col)
             case "!":
                 self._emit(TokenKind.BANG, "!", start_line, start_col)
+            case "&":
+                self._emit(TokenKind.AMPERSAND, "&", start_line, start_col)
             case "=":
                 self._emit(TokenKind.ASSIGN, "=", start_line, start_col)
             case ".":

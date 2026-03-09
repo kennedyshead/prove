@@ -158,6 +158,58 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 | `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
 
+**Async verbs:**
+
+| Verb | Purpose | Compiler enforces |
+|------|---------|-------------------|
+| `detached` | Spawn and move on — fire-and-forget | No `!`. No blocking IO calls. Body runs concurrently; caller does not wait |
+| `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. No blocking IO calls |
+| `listens` | Cooperative loop — processes items until `Exit()` | `from` block must be a single `match` with an `Exit()` arm |
+
+Async verbs form a third family alongside pure and IO. The key difference from IO verbs: async bodies must not call blocking `inputs`/`outputs` functions. Concurrency is cooperative — no threads, no data races.
+
+### The `&` Marker
+
+`&` marks an async call at the call site. It mirrors `!` for failable calls:
+
+| Marker | Meaning | Example |
+|--------|---------|---------|
+| `!` | can fail — propagate error | `result = parse(input)!` |
+| `&` | async invocation — dispatch to coroutine | `data = fetch(url)&` |
+
+The verb (`detached`, `attached`, `listens`) declares intent at the function level. `&` only appears at call sites inside async bodies where work is dispatched to another async function.
+
+```prove
+// Fire and forget — spawn and move on, no result
+detached log(event Event) Unit
+from
+    send(event)&
+
+// Spawn and await — caller blocks until result is ready
+attached fetch(url String) String
+from
+    request(url)&
+
+// Loop until Exit() arm — processes each item from source
+listens event(source EventSource) Event
+from
+    Exit()     => _
+    Data(item) => process(item)&
+```
+
+**Safety rules the compiler enforces:**
+
+| Code | Trigger | Severity |
+|------|---------|----------|
+| E370 | `attached` declared without a return type | Error |
+| E371 | Blocking `inputs`/`outputs` call in `attached` or `listens` body (`detached` is exempt) | Error |
+| E372 | Async function called without `&` inside an async body | Error |
+| E373 | `&` used outside an async body | Error |
+| E374 | `detached` or `listens` declared with a return type (caller never waits) | Error |
+| E151 | `listens` body missing an `Exit()` arm | Error |
+| I375 | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
+| I376 | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
+
 ```prove
 matches area(s Shape) Decimal
 from
@@ -327,7 +379,7 @@ The LSP shows inferred types inline as you type, so you always know what the com
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`.
+IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) have neither IO nor `!` — they are concurrent but not directly blocking.
 
 ```prove
 transforms area(s Shape) Decimal
@@ -495,6 +547,9 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `creates` | Declares a pure function that constructs a new value |
 | `inputs` | Declares a function that reads from the outside world (database, file, network) |
 | `outputs` | Declares a function that writes to the outside world |
+| `detached` | Declares a fire-and-forget async function — spawns a coroutine and returns immediately |
+| `attached` | Declares an awaited async function — spawns a coroutine and blocks until it completes |
+| `listens` | Declares a cooperative loop — processes items until an `Exit()` arm is matched |
 | `main` | The program's entry point — can freely mix reading and writing |
 | `from` | Marks where the function body starts — "the result comes from..." |
 | `where` | Adds a value constraint to a type — `Integer where 1..65535` |

@@ -201,6 +201,14 @@ class FailPropExpr:
 
 
 @dataclass(frozen=True)
+class AsyncCallExpr:
+    """Async call: expr& — desugars to passing caller's coro context."""
+
+    expr: Expr
+    span: Span
+
+
+@dataclass(frozen=True)
 class LambdaExpr:
     params: list[str]
     body: Expr
@@ -290,6 +298,7 @@ Expr = Union[
     FieldExpr,
     PipeExpr,
     FailPropExpr,
+    AsyncCallExpr,
     LambdaExpr,
     ValidExpr,
     MatchExpr,

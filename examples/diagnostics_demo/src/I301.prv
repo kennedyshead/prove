@@ -10,4 +10,3 @@ matches name(c Color) String
 from
     match c
         _ => "any"
-        Red => "red"
