@@ -3,7 +3,7 @@ module DemoE389
   Expected diagnostics: E389
   """
 
-  binary TokenKind String Integer where
+  type TokenKind:[Lookup] is String Integer where
     First | "first" | 1
     Second | "second" | 2
 

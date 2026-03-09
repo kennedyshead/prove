@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import traceback
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
@@ -214,6 +215,63 @@ def test_project(project_dir: Path) -> tuple[dict, set[str]]:
     return results, expected_failures
 
 
+def _run_project(project_dir: Path) -> tuple[str, str, dict, set[str], set[str]]:
+    """Worker: test one project, return (kind, name, results, expected_failures, expected_diags)."""
+    name = str(project_dir.relative_to(EXAMPLES_DIR))
+    results, expected_failures = test_project(project_dir)
+    expected_diags = parse_expected_diagnostics(project_dir)
+    return "project", name, results, expected_failures, expected_diags
+
+
+def _run_single_file(prv_file: Path) -> tuple[str, str, dict, set[str], set[str]]:
+    """Worker: test one file, return (kind, name, results, expected_failures, expected_diags)."""
+    name = str(prv_file.relative_to(EXAMPLES_DIR))
+    results, expected_failures = test_single_file(prv_file)
+    expected_diags = parse_expected_diagnostics(prv_file)
+    return "file", name, results, expected_failures, expected_diags
+
+
+def _evaluate_results(
+    name: str,
+    results: dict,
+    expected_failures: set[str],
+    expected_diags: set[str],
+) -> tuple[list[tuple[str, str]], list[tuple[str, str, dict]]]:
+    """Evaluate test results for one example.
+
+    Returns (lines, failures) where lines are (cmd, status) pairs for display
+    and failures are (name, cmd, result) tuples.
+    """
+    lines: list[tuple[str, str]] = []
+    failures: list[tuple[str, str, dict]] = []
+
+    for cmd, result in results.items():
+        rc = result["returncode"]
+        expected = cmd in expected_failures
+
+        missing_diags = []
+        if cmd == "check" and expected_diags:
+            stderr = result.get("stderr", "")
+            for diag in expected_diags:
+                if f"[{diag}]" not in stderr:
+                    missing_diags.append(diag)
+
+        if missing_diags:
+            status = f"FAIL (missing diags: {', '.join(missing_diags)})"
+            failures.append((name, cmd, result))
+        elif expected and rc != 0:
+            status = "EXPECTED FAIL"
+        elif rc == 0:
+            status = "OK"
+        else:
+            status = f"FAIL ({rc})"
+            failures.append((name, cmd, result))
+
+        lines.append((cmd, status))
+
+    return lines, failures
+
+
 def main() -> int:
     """Run e2e tests on all examples.
 
@@ -221,6 +279,8 @@ def main() -> int:
         python scripts/test_e2e.py                  # run all examples
         python scripts/test_e2e.py hello_world       # filter by name substring
         python scripts/test_e2e.py comptime_demo     # run a single project
+        python scripts/test_e2e.py -j1               # run sequentially
+        python scripts/test_e2e.py -j8               # run with 8 workers
     """
     import argparse
 
@@ -228,19 +288,22 @@ def main() -> int:
     parser.add_argument(
         "filter", nargs="?", default=None, help="Filter examples by name substring"
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=os.cpu_count() or 4,
+        help="Number of parallel workers (default: cpu count, -j1 for sequential)",
+    )
     args = parser.parse_args()
+
+    jobs: int = max(1, args.jobs)
 
     print(f"Testing examples in: {EXAMPLES_DIR}")
     if args.filter:
         print(f"Filter: {args.filter}")
+    print(f"Workers: {jobs}")
     print("-" * 60)
-
-    failed_example: Path | None = None
-    failed_command: str = ""
-    failed_result: dict | None = None
-    failed_name: str = ""
-    all_results: dict[str, dict] = {}
-    all_failures: list[tuple[str, str, dict]] = []
 
     # Find all prove.toml files (projects)
     project_dirs = sorted(EXAMPLES_DIR.rglob("prove.toml"))
@@ -264,107 +327,55 @@ def main() -> int:
             f for f in single_files if args.filter in str(f.relative_to(EXAMPLES_DIR))
         ]
 
-    # Test projects
-    for project_dir in projects:
-        name = project_dir.relative_to(EXAMPLES_DIR)
-        print(f"\nTesting project: {name}")
-        try:
-            results, expected_failures = test_project(project_dir)
-            expected_diags = parse_expected_diagnostics(project_dir)
-            all_results[str(name)] = results
+    total = len(projects) + len(single_files)
+    if total == 0:
+        print("No examples found.")
+        return 0
 
-            for cmd, result in results.items():
-                rc = result["returncode"]
-                expected = cmd in expected_failures
+    # Collect all results: name -> (kind, results, expected_failures, expected_diags)
+    collected: dict[str, tuple[str, dict, set[str], set[str]]] = {}
+    errors: dict[str, str] = {}
+    completed = 0
 
-                # Check expected diagnostics first (applies even when
-                # the command is expected to fail)
-                missing_diags = []
-                if cmd == "check" and expected_diags:
-                    stderr = result.get("stderr", "")
-                    for diag in expected_diags:
-                        if f"[{diag}]" not in stderr:
-                            missing_diags.append(diag)
+    with ProcessPoolExecutor(max_workers=jobs) as pool:
+        futures = {}
+        for p in projects:
+            futures[pool.submit(_run_project, p)] = p
+        for f in single_files:
+            futures[pool.submit(_run_single_file, f)] = f
 
-                if missing_diags:
-                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                    failed_example = project_dir
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                elif expected and rc != 0:
-                    status = "EXPECTED FAIL"
-                elif rc == 0:
-                    status = "OK"
-                else:
-                    status = f"FAIL ({rc})"
-                    failed_example = project_dir
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                print(f"  prove {cmd}: {status}")
+        for future in as_completed(futures):
+            completed += 1
+            try:
+                kind, name, results, expected_failures, expected_diags = (
+                    future.result()
+                )
+                collected[name] = (kind, results, expected_failures, expected_diags)
+                print(f"  [{completed}/{total}] {name}")
+            except Exception as e:
+                target = futures[future]
+                name = str(target.relative_to(EXAMPLES_DIR))
+                errors[name] = str(e)
+                print(f"  [{completed}/{total}] {name} ERROR: {e}")
+                traceback.print_exc()
 
-            if failed_example:
-                all_failures.append((failed_name, failed_command, failed_result or {}))
-                failed_example = None
-                failed_command = ""
-                failed_result = None
-                failed_name = ""
+    # Print per-example details sorted by name
+    all_failures: list[tuple[str, str, dict]] = []
 
-        except Exception as e:
-            print(f"  ERROR: {e}")
-            traceback.print_exc()
+    for name in sorted(collected):
+        kind, results, expected_failures, expected_diags = collected[name]
+        label = "project" if kind == "project" else "single file"
+        print(f"\nTesting {label}: {name}")
 
-    # Test single files
-    for prv_file in single_files:
-        name = prv_file.relative_to(EXAMPLES_DIR)
-        print(f"\nTesting single file: {name}")
-        try:
-            results, expected_failures = test_single_file(prv_file)
-            expected_diags = parse_expected_diagnostics(prv_file)
-            all_results[str(name)] = results
+        lines, failures = _evaluate_results(
+            name, results, expected_failures, expected_diags
+        )
+        for cmd, status in lines:
+            print(f"  prove {cmd}: {status}")
+        all_failures.extend(failures)
 
-            for cmd, result in results.items():
-                rc = result["returncode"]
-                expected = cmd in expected_failures
-
-                # Check expected diagnostics first (applies even when
-                # the command is expected to fail)
-                missing_diags = []
-                if cmd == "check" and expected_diags:
-                    stderr = result.get("stderr", "")
-                    for diag in expected_diags:
-                        if f"[{diag}]" not in stderr:
-                            missing_diags.append(diag)
-
-                if missing_diags:
-                    status = f"FAIL (missing diags: {', '.join(missing_diags)})"
-                    failed_example = prv_file
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                elif expected and rc != 0:
-                    status = "EXPECTED FAIL"
-                elif rc == 0:
-                    status = "OK"
-                else:
-                    status = f"FAIL ({rc})"
-                    failed_example = prv_file
-                    failed_command = cmd
-                    failed_result = result
-                    failed_name = str(name)
-                print(f"  prove {cmd}: {status}")
-
-            if failed_example:
-                all_failures.append((failed_name, failed_command, failed_result or {}))
-                failed_example = None
-                failed_command = ""
-                failed_result = None
-                failed_name = ""
-
-        except Exception as e:
-            print(f"  ERROR: {e}")
-            traceback.print_exc()
+    for name in sorted(errors):
+        print(f"\n{name}: ERROR - {errors[name]}")
 
     # Print all failures
     if all_failures:
@@ -389,30 +400,18 @@ def main() -> int:
     total_failed = 0
     total_expected_fail = 0
 
-    # Re-parse expected failures for summary
-    expected_map: dict[str, set[str]] = {}
-    for proj in projects:
-        name = str(proj.relative_to(EXAMPLES_DIR))
-        expected_map[name] = get_expected_failures(proj)
-    for prv_file in single_files:
-        name = str(prv_file.relative_to(EXAMPLES_DIR))
-        expected_map[name] = get_expected_failures(prv_file)
-
-    for name, results in all_results.items():
-        if "error" in results:
-            print(f"  {name}: ERROR")
-            total_failed += 1
-            continue
-
-        expected = expected_map.get(name, set())
+    for name in collected:
+        _, results, expected_failures, _ = collected[name]
         for cmd, result in results.items():
             total_tests += 1
             if result["returncode"] == 0:
                 total_passed += 1
-            elif cmd in expected:
+            elif cmd in expected_failures:
                 total_expected_fail += 1
             else:
                 total_failed += 1
+
+    total_failed += len(errors)
 
     print(
         f"Total: {total_tests} tests, {total_passed} passed, {total_expected_fail} expected failures, {total_failed} unexpected failures"

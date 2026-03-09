@@ -1,11 +1,6 @@
 module Main
-  narrative: """Demonstrates binary lookup tables with multi-column runtime lookups."""
+  narrative: """Demonstrates multi-column lookup tables with runtime lookups."""
   InputOutput outputs console
-
-  binary HttpStatus String Integer where
-    Ok | "OK" | 200
-    NotFound | "Not Found" | 404
-    ServerError | "Internal Server Error" | 500
 
   type Color:[Lookup] is String Integer where
     Red | "red" | 0xFF0000
@@ -15,12 +10,6 @@ module Main
 main() Result<Unit, Error>!
 from
     // Forward lookup: variant -> string column
-    name as String = HttpStatus:Ok
-    console(f"Status name: {name}")
-    // Forward lookup: variant -> integer column
-    code as Integer = HttpStatus:NotFound
-    console(f"Status code: {code}")
-    // :[Lookup] syntax: variant -> string column
     color_name as String = Color:Red
     console(f"Color name: {color_name}")
     // :[Lookup] syntax: variant -> integer column

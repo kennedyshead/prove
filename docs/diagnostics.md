@@ -347,12 +347,12 @@ TokenKind:BooleanLit  // E378 — BooleanLit has 2 values ("true", "false")
 
 Wrap the reverse lookup in a `matches` function if you need to handle stacked variants.
 
-### E379 — Binary lookup column count mismatch
+### E379 — Lookup column count mismatch
 
-An entry in a `binary` lookup table has a different number of values than columns declared.
+An entry in a multi-column `:[Lookup]` table has a different number of values than columns declared.
 
 ```prove
-binary TokenKind String Integer Decimal where
+type TokenKind:[Lookup] is String Integer Decimal where
     First | "first" | 1          // E379 — 2 values, expected 3
 ```
 
@@ -418,20 +418,20 @@ transforms process(order Order) Receipt
 
 A `believe` expression must evaluate to `Boolean`. See also E384 (`know`) and E385 (`assume`).
 
-### E387 — Unsupported type in binary lookup column
+### E387 — Unsupported type in lookup column
 
-A `binary` lookup table column uses an unsupported type. Allowed column types: `String`, `Integer`, `Decimal`, `Boolean`.
+A multi-column `:[Lookup]` table column uses an unsupported type. Allowed column types: `String`, `Integer`, `Decimal`, `Boolean`.
 
-### E388 — CSV file not found for binary lookup
+### E388 — CSV file not found for lookup
 
-The CSV file referenced in a `binary` lookup `file(...)` declaration was not found at the specified path.
+The CSV file referenced in a `:[Lookup]` table `file(...)` declaration was not found at the specified path.
 
-### E389 — Binary lookup column type not found
+### E389 — Lookup column type not found
 
-A binary lookup expression `TypeName:variable` was used in a function whose return type does not match any column in the binary lookup table.
+A lookup expression `TypeName:variable` was used in a function whose return type does not match any column in the lookup table.
 
 ```prove
-binary TokenKind String Integer where
+type TokenKind:[Lookup] is String Integer where
     First | "first" | 1
 
 transforms bad(kind TokenKind) Decimal  // E389 — Decimal not a column
