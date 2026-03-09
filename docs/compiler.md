@@ -110,7 +110,7 @@ When `optimize = true` in `prove.toml`, the compiler runs optimization passes on
 
 The compiler includes a tree-walking interpreter that evaluates pure constant expressions at compile time. The optimizer calls this interpreter to fold pure function calls with constant arguments — for example, `double(21)` becomes `42` during compilation.
 
-Comptime blocks execute at compile time and produce C constants. Available built-in functions: `read(path)` for file IO, `platform()` for target detection, `len()`, `contains()`. User-defined pure functions are also callable from comptime contexts. Files accessed via `read()` are tracked as build dependencies.
+Comptime expressions execute at compile time and produce C constants. They work in any expression position — variable declarations, function bodies, etc. Available built-in functions: `read(path)` for file IO, `platform()` for target detection, `len()`, `contains()`. User-defined pure functions are also callable from comptime contexts.
 
 ```prove
 // Compile-time constant folding

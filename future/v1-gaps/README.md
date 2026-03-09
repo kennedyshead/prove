@@ -56,14 +56,14 @@ constraints are:
 
 | # | Status | Notes |
 |---|--------|-------|
-| 01 | Not started | |
-| 02 | Not started | |
-| 03 | Not started | |
-| 04 | Not started | |
-| 05 | Not started | |
-| 06 | Not started | |
-| 07 | Not started | |
-| 08 | Not started | |
-| 09 | Not started | |
-| 10 | Not started | |
-| 11 | Not started | |
+| 01 | Done | `comptime` expressions work everywhere; build dep tracking and comptime match remaining |
+| 02 | Done | Assignment, nested, return-position, field-path moves all tracked; borrow inference active |
+| 03 | Done | Per-function regions, string+list region allocation, escape analysis guard |
+| 04 | Mostly done | Parsing, domain profiles, temporal W390, invariant W391; counterfactual/formal proof remaining |
+| 05 | Partial | Refinement static rejection for literals (E355); runtime values still use runtime checks |
+| 06 | Partial | `ClaimProver` for constants/algebraic identities; no general proof or chain propagation |
+| 07 | Done | Iterator fusion, copy elision, jump tables all implemented |
+| 08 | Done | All 16 stdlib modules have C runtime test files |
+| 09 | Partial | `prove export` wired; `prove lint` never implemented (part of `prove check`) |
+| 10 | Not started | `par_map` runtime exists but not callable from user code |
+| 11 | Not started | Depends on gap04 |

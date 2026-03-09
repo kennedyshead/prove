@@ -1536,7 +1536,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
 
         # I367: suggest extracting match to a matches verb function
-        if verb != "matches":
+        # listens bodies are inherently match-based, so exempt from this check
+        if verb not in ("matches", "listens"):
             self._check_match_restriction(fd.body, fd.span)
 
     def _check_async_body(self, fd: FunctionDef) -> None:
@@ -2233,10 +2234,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif (
             self._current_function
             and isinstance(self._current_function, FunctionDef)
-            and self._current_function.verb == "matches"
+            and self._current_function.verb in ("matches", "listens")
             and self._current_function.params
         ):
-            # Implicit match in a matches verb function: use first parameter type
+            # Implicit match in a matches/listens verb function: use first parameter type
             subject_type = self._resolve_type_expr(
                 self._current_function.params[0].type_expr
             )

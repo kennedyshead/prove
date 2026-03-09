@@ -162,11 +162,11 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
-| `detached` | Spawn and move on — fire-and-forget | No `!`. No blocking IO calls. Body runs concurrently; caller does not wait |
+| `detached` | Spawn and move on — fire-and-forget | No return type. Body runs concurrently; caller does not wait |
 | `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. No blocking IO calls |
-| `listens` | Cooperative loop — processes items until `Exit()` | `from` block must be a single `match` with an `Exit()` arm |
+| `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. No return type |
 
-Async verbs form a third family alongside pure and IO. The key difference from IO verbs: async bodies must not call blocking `inputs`/`outputs` functions. Concurrency is cooperative — no threads, no data races.
+Async verbs form a third family alongside pure and IO. The key difference from IO verbs: `attached` and `listens` bodies must not call blocking `inputs`/`outputs` functions — they run cooperatively and blocking would stall the yield cycle. `detached` is exempt since it runs independently. Concurrency is cooperative — no threads, no data races. Runtime backed by `prove_coro` stackful coroutines (`ucontext_t` on POSIX, sequential fallback on Windows).
 
 ### The `&` Marker
 
@@ -179,22 +179,85 @@ Async verbs form a third family alongside pure and IO. The key difference from I
 
 The verb (`detached`, `attached`, `listens`) declares intent at the function level. `&` only appears at call sites inside async bodies where work is dispatched to another async function.
 
-```prove
-// Fire and forget — spawn and move on, no result
-detached log(event Event) Unit
-from
-    send(event)&
+### `detached` — Fire and Forget
 
-// Spawn and await — caller blocks until result is ready
+Spawns a coroutine and returns immediately. The caller does not wait for completion. Cannot declare a return type (E374). May call blocking IO freely since it runs independently.
+
+```prove
+type Event is
+    Info(message String)
+  | Warning(message String)
+
+/// Log an event — fire and forget, caller moves on immediately.
+detached log(event Event)
+from
+    console(event.message)
+```
+
+### `attached` — Spawn and Await
+
+Spawns a coroutine and blocks the caller until the result is ready. Must declare a return type (E370). Cannot call blocking IO (E371) — use `&` to dispatch to other async functions instead.
+
+```prove
+/// Fetch and parse data — caller waits for the result.
 attached fetch(url String) String
 from
     request(url)&
+```
 
-// Loop until Exit() arm — processes each item from source
-listens event(source EventSource) Event
+### `listens` — Cooperative Loop
+
+The `listens` verb declares a cooperative loop that processes items from an algebraic type source until an `Exit` arm terminates the loop. This is the async equivalent of iterating over a stream.
+
+**Key rules:**
+
+- The first parameter must be an algebraic type — the loop dispatches on its variants
+- The `from` block must be a single implicit match (bare arms, no `match` keyword)
+- One arm must match the `Exit` variant — this terminates the loop
+- Cannot declare a return type (E374) — `listens` never produces a value
+- Cannot call blocking IO (E371) — use `&` to dispatch to async functions
+
+```prove
+type Command is
+    Process(data String)
+  | Tick
+  | Exit
+
+/// Handle commands until Exit — cooperative loop.
+listens dispatcher(source Command)
 from
-    Exit()     => _
-    Data(item) => process(item)&
+    Exit           => source
+    Process(data)  => handle(data)&
+    Tick           => heartbeat()&
+```
+
+The `from` block works like the `matches` verb — arms are matched against the first parameter without an explicit `match` keyword. Each iteration of the loop yields cooperatively, then dispatches the next item to the matching arm. When the `Exit` variant is matched, the loop terminates.
+
+**Full example — async event processor:**
+
+```prove
+module EventProcessor
+  narrative: """Process events using all three async verbs."""
+  InputOutput outputs console
+
+  type Event is Data(payload String)
+    | Exit
+
+/// Fire and forget — log without blocking.
+detached fire(msg String)
+from
+    console(msg)
+
+/// Cooperative loop — process events until Exit.
+listens handler(source Event)
+from
+    Exit        => source
+    Data(text)  => fire(text)&
+
+main() Unit
+from
+    fire("system started")
+    fire("processing complete")
 ```
 
 **Safety rules the compiler enforces:**
@@ -206,7 +269,7 @@ from
 | E372 | Async function called without `&` inside an async body | Error |
 | E373 | `&` used outside an async body | Error |
 | E374 | `detached` or `listens` declared with a return type (caller never waits) | Error |
-| E151 | `listens` body missing an `Exit()` arm | Error |
+| E151 | `listens` body missing an `Exit` arm | Error |
 | I375 | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | I376 | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
 
@@ -379,7 +442,7 @@ The LSP shows inferred types inline as you type, so you always know what the com
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) have neither IO nor `!` — they are concurrent but not directly blocking.
+IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) are concurrent — `detached` may call IO freely (runs independently), while `attached` and `listens` must not block.
 
 ```prove
 transforms area(s Shape) Decimal
@@ -549,7 +612,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `outputs` | Declares a function that writes to the outside world |
 | `detached` | Declares a fire-and-forget async function — spawns a coroutine and returns immediately |
 | `attached` | Declares an awaited async function — spawns a coroutine and blocks until it completes |
-| `listens` | Declares a cooperative loop — processes items until an `Exit()` arm is matched |
+| `listens` | Declares a cooperative loop — dispatches on the first parameter's algebraic type until an `Exit` arm terminates the loop |
 | `main` | The program's entry point — can freely mix reading and writing |
 | `from` | Marks where the function body starts — "the result comes from..." |
 | `where` | Adds a value constraint to a type — `Integer where 1..65535` |
