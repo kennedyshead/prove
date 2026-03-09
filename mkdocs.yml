@@ -98,4 +98,4 @@ plugins:
       cache_safe: true
 
 hooks:
-  - hooks/copy_well_known.py
+  - docs/hooks/copy_well_known.py
