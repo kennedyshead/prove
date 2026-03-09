@@ -24,16 +24,16 @@ module Log
 
 detached debug(string String)
 from
-    console(f"{WHITE}[DEBUG]{string}{RESET}")
+    console(f"{BLUE}[DEBUG]{string}{RESET}")
 
 detached info(string String)
 from
-    console(f"{GREEN}[DEBUG]{string}{RESET}")
+    console(f"{GREEN}[INFO]{string}{RESET}")
 
-detached waring(string String)
+detached warning(string String)
 from
-    console(f"{YELLOW}[DEBUG]{string}{RESET}")
+    console(f"{YELLOW}[WARNING]{string}{RESET}")
 
 detached error(string String)
 from
-    console(f"{RED}[DEBUG]{string}{RESET}")
+    console(f"{RED}[ERROR]{string}{RESET}")

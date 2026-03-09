@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.resources
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -670,6 +671,23 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 def stdlib_link_flags(module_name: str) -> list[str]:
     """Return linker flags required by a stdlib module."""
     return _STDLIB_LINK_FLAGS.get(module_name.lower(), [])
+
+
+def stdlib_pure_prv_path(module_name: str) -> Path | None:
+    """Return the .prv Path for a pure (non-binary) stdlib module.
+
+    Returns None if the module is binary (has C implementations) or unknown.
+    """
+    key = module_name.lower()
+    prv_rel = _STDLIB_MODULES.get(key)
+    if prv_rel is None:
+        return None
+    # Check if any functions have binary C mappings
+    for (mod, _verb, _func) in _BINARY_C_MAP:
+        if mod == key:
+            return None  # has binary implementations
+    stdlib_dir = Path(__file__).parent / "stdlib"
+    return stdlib_dir / prv_rel
 
 
 def is_stdlib_module(module_name: str) -> bool:

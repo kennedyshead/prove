@@ -1,0 +1,11 @@
+module Main
+  narrative: """Demonstrates Log module for colored console output."""
+  Log detached debug info warning error
+
+main() Unit
+from
+    debug(" application started")
+    info(" loading configuration")
+    warning(" disk usage above 80%")
+    error(" connection timed out")
+    debug(" shutting down")

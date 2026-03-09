@@ -9,14 +9,18 @@
  * On POSIX systems (macOS, Linux) coroutines use ucontext_t for
  * true stackful cooperative multitasking.
  *
- * On Windows (or when ucontext is unavailable) a sequential fallback
- * is used: coroutines run to completion immediately without yielding.
- * The same API compiles and produces correct single-threaded results.
+ * On Windows and macOS (where ucontext is deprecated/broken on ARM64)
+ * a sequential fallback is used: coroutines run to completion
+ * immediately without yielding.  The same API compiles and produces
+ * correct single-threaded results.
  */
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32) || defined(_WIN64) || defined(__APPLE__)
 #  define PROVE_CORO_SEQUENTIAL 1
 #else
+#  ifndef _XOPEN_SOURCE
+#    define _XOPEN_SOURCE 600
+#  endif
 #  include <ucontext.h>
 #  define PROVE_CORO_SEQUENTIAL 0
 #endif

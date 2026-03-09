@@ -2,31 +2,35 @@ module Main
   narrative: """Demonstrates Table module operations"""
   InputOutput outputs console
   Table types Table, validates has, reads length keys get
-  Parse reads json, creates json, types Value, transforms unwrap
+  Parse creates json, reads object text
   Text transforms join
 
-main() Result<Unit, Error>!
+main() Unit
 from
     // Create a table by parsing JSON
     json_str as String = """{"name": "Alice", "city": "Stockholm", "age": 30}"""
     parsed as Result<Value, String> = json(json_str)
-    table as Table<Value> = unwrap(parsed)
-    // Check if key exists
-    has_name as Boolean = valid has(table, "name")
-    has_age as Boolean = valid has(table, "age")
-    console(f"Has name: {has_name}")
-    console(f"Has age: {has_age}")
-    // Get values (returns Option<Value>)
-    name_opt as Option<Value> = get("name", table)
-    city_opt as Option<Value> = get("city", table)
-    // Extract text from values
-    name as String = unwrap(name_opt)
-    city as String = unwrap(city_opt)
-    console(f"Name: {name}")
-    console(f"City: {city}")
-    // Get all keys and values
-    all_keys as List<String> = keys(table)
-    console(f"Keys: {join(all_keys, ", ")}")
-    // Get length
-    length_value as Integer = length(table)
-    console(f"Length: {length_value}")
+    match parsed
+        Ok(value) =>
+            table as Table<Value> = object(value)
+            // Check if key exists
+            has_name as Boolean = valid has("name", table)
+            has_age as Boolean = valid has("age", table)
+            console(f"Has name: {has_name}")
+            console(f"Has age: {has_age}")
+            // Get values (returns Option<Value>)
+            name_opt as Option<Value> = get("name", table)
+            match name_opt
+                Some(v) => console(f"Name: {text(v)}")
+                None => console("No name")
+            city_opt as Option<Value> = get("city", table)
+            match city_opt
+                Some(v) => console(f"City: {text(v)}")
+                None => console("No city")
+            // Get all keys
+            all_keys as List<String> = keys(table)
+            console(f"Keys: {join(all_keys, ", ")}")
+            // Get length
+            length_value as Integer = length(table)
+            console(f"Length: {length_value}")
+        Err(e) => console(f"Parse error: {e}")
