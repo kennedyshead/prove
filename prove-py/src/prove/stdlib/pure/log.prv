@@ -1,32 +1,39 @@
 module Log
   narrative: """Console color constants for terminal output."""
+  InputOutput outputs console
 
-  /// Reset all formatting to default.
-  RESET as String = "\e[0m"
+  RESET as String = "[0m"
 
-  /// Bold text style.
-  BOLD as String = "\e[1m"
+  BOLD as String = "[1m"
 
-  /// Dim text style.
-  DIM as String = "\e[2m"
+  DIM as String = "[2m"
 
-  /// Red foreground color.
-  RED as String = "\e[31m"
+  RED as String = "[31m"
 
-  /// Green foreground color.
-  GREEN as String = "\e[32m"
+  GREEN as String = "[32m"
 
-  /// Yellow foreground color.
-  YELLOW as String = "\e[33m"
+  YELLOW as String = "[33m"
 
-  /// Blue foreground color.
-  BLUE as String = "\e[34m"
+  BLUE as String = "[34m"
 
-  /// Magenta foreground color.
-  MAGENTA as String = "\e[35m"
+  MAGENTA as String = "[35m"
 
-  /// Cyan foreground color.
-  CYAN as String = "\e[36m"
+  CYAN as String = "[36m"
 
-  /// White foreground color.
-  WHITE as String = "\e[37m"
+  WHITE as String = "[37m"
+
+detached debug(string String)
+from
+    console(f"{WHITE}[DEBUG]{string}{RESET}")
+
+detached info(string String)
+from
+    console(f"{GREEN}[DEBUG]{string}{RESET}")
+
+detached waring(string String)
+from
+    console(f"{YELLOW}[DEBUG]{string}{RESET}")
+
+detached error(string String)
+from
+    console(f"{RED}[DEBUG]{string}{RESET}")

@@ -6,7 +6,7 @@ keywords: Prove stdlib, standard library, List, Text, Parse, Math, Time, Hash, B
 
 # Standard Library
 
-The Prove standard library is a set of modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 17 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -249,7 +249,7 @@ Access command-line arguments.
 
 **Module:** `Parse` — encoding and decoding of structured data formats.
 
-Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode, `validates` to check syntax.
+Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode, `validates` to check syntax. Supported formats: JSON, TOML, URL, Base64, CSV.
 
 ### Value Construction
 
@@ -262,6 +262,9 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
+| `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
+| `reads` | `json(value Value) String` | Encode Value to JSON |
+| `validates` | `json(source String)` | True if source is valid JSON |
 | `creates` | `toml(source String) Result<Value, String>` | Decode TOML to Value |
 | `reads` | `toml(value Value) String` | Encode Value to TOML |
 | `validates` | `toml(source String)` | True if source is valid TOML |
@@ -876,6 +879,48 @@ from
 
 ---
 
+## Log
+
+**Module:** `Log` — console color constants and structured logging.
+
+A pure-Prove module providing ANSI terminal color constants and logging functions. The constants are available immediately; the logging functions use the `detached` verb for fire-and-forget output.
+
+### Constants
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `RESET` | `\033[0m` | Reset terminal formatting |
+| `BOLD` | `\033[1m` | Bold text |
+| `DIM` | `\033[2m` | Dim text |
+| `RED` | `\033[31m` | Red text |
+| `GREEN` | `\033[32m` | Green text |
+| `YELLOW` | `\033[33m` | Yellow text |
+| `BLUE` | `\033[34m` | Blue text |
+| `MAGENTA` | `\033[35m` | Magenta text |
+| `CYAN` | `\033[36m` | Cyan text |
+| `WHITE` | `\033[37m` | White text |
+
+### Logging
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `detached` | `debug(string String)` | Log a debug message (white) |
+| `detached` | `info(string String)` | Log an info message (green) |
+| `detached` | `warning(string String)` | Log a warning message (yellow) |
+| `detached` | `error(string String)` | Log an error message (red) |
+
+```prove
+Log types RESET RED GREEN, detached info error
+
+detached log_status(ok Boolean)
+from
+    match ok
+        true => Log.info("System healthy")
+        false => Log.error("System degraded")
+```
+
+---
+
 ## Module Summary
 
 | Version | Module | Status | Purpose |
@@ -884,7 +929,7 @@ from
 | v0.6 | **Text** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
 | v0.6 | **Table** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | v0.7 | **InputOutput** (ext) | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
-| v0.7 | **Parse** (ext) | Complete | TOML, JSON, URL, and Base64 codecs with `Value` and `Url` types |
+| v0.7 | **Parse** (ext) | Complete | JSON, TOML, URL, Base64, and CSV codecs with `Value` and `Url` types |
 | v0.9.6 | **Math** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
 | v0.9.6 | **Types** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |
 | v0.9.6 | **List** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
@@ -896,3 +941,4 @@ from
 | v0.9.9 | **Hash** | Complete | Cryptographic hashing: SHA-256, SHA-512, BLAKE3, HMAC-SHA256 |
 | v0.9.9 | **Random** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | v0.9.9 | **Time** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
+| v0.9.9 | **Log** | Complete | ANSI color constants and structured logging with `detached` verb |

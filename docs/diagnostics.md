@@ -167,9 +167,25 @@ An interpolated expression in an f-string must be a stringable type (`String`, `
 
 A function call has a different number of arguments than the function signature expects.
 
-### E331 — Argument type mismatch
+### E331 — Argument type mismatch / Field mutation in pure function
 
-An argument type does not match the corresponding parameter type in the function signature.
+This code is used in two contexts:
+
+1. **Call checking:** An argument type does not match the corresponding parameter type in the function signature.
+2. **Purity enforcement:** A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
+
+```prove
+// Context 1 — argument type mismatch
+transforms run(n Integer) Integer
+from
+    needs_int("hello")
+
+// Context 2 — field mutation in pure function (construct new value instead)
+transforms set_email(user User, email Email) User
+from
+    user.email = email
+    user
+```
 
 ### E340 — Field not found
 
@@ -277,21 +293,41 @@ from
         _ => n * factorial(n - 1)
 ```
 
-### E370 — Unknown variant
+### E151 — `listens` body missing `Exit()` arm
 
-A match arm references a variant that does not exist in the algebraic type.
+A `listens` function's body must be a single `match` expression with an `Exit()` arm.
 
-### E371 — Non-exhaustive match
+### E370 — Unknown variant / `attached` without return type
 
-A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
+This code is used in two contexts:
 
-### E372 — Unknown variant for generic type
+1. **Pattern matching:** A match arm references a variant that does not exist in the algebraic type.
+2. **Async verbs:** An `attached` function is declared without a return type. `attached` spawns a coroutine and blocks until a result is ready — it must declare what it returns.
 
-A match arm on a `Result` or `Option` uses a variant name that does not belong to that type (e.g. `Some(x)` on a `Result`, or `Ok(x)` on an `Option`).
+### E371 — Non-exhaustive match / blocking IO in async body
 
-### E373 — Non-exhaustive match on generic type
+This code is used in two contexts:
 
-A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
+1. **Pattern matching:** A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
+2. **Async verbs:** A blocking `inputs`/`outputs` call appears inside an `attached` or `listens` body. `detached` is exempt since it runs independently.
+
+### E372 — Unknown variant for generic type / async call without `&`
+
+This code is used in two contexts:
+
+1. **Pattern matching:** A match arm on a `Result` or `Option` uses a variant name that does not belong to that type (e.g. `Some(x)` on a `Result`, or `Ok(x)` on an `Option`).
+2. **Async verbs:** An async function is called without the `&` marker inside an async body.
+
+### E373 — Non-exhaustive match on generic type / `&` used outside async body
+
+This code is used in two contexts:
+
+1. **Pattern matching:** A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
+2. **Async verbs:** The `&` async dispatch marker is used at a call site outside of an async function body.
+
+### E374 — `detached` or `listens` declared with a return type
+
+`detached` is fire-and-forget — the caller never waits for a result. `listens` is a cooperative loop — it processes items until exit. Neither should declare a return type.
 
 ### E375 — Duplicate value in lookup table
 
@@ -631,22 +667,6 @@ A function is missing an annotation required by the domain profile. For example,
 
 A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Emitted only with `prove check --coherence`.
 
-### E331 — Field mutation in pure function
-
-A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
-
-```prove
-// Error — mutates field in transforms
-transforms set_email(user User, email Email) User
-from
-    user.email = email
-    user
-
-// Correct — construct new value
-transforms set_email(user User, email Email) User
-from
-    User(user.id, user.name, email)
-```
 
 ---
 
@@ -735,3 +755,11 @@ from
         true => "positive"
         false => "non-positive"
 ```
+
+### I375 — `&` on a non-async callee
+
+The `&` async dispatch marker is used on a call to a function that is not an async verb (`detached`, `attached`, `listens`). The marker has no effect. `prove format` removes it.
+
+### I376 — `attached` body has no `&` calls
+
+An `attached` function body contains no `&` async dispatch calls. This likely means the function should use `inputs` instead. `prove format` changes the verb.

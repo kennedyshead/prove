@@ -288,7 +288,7 @@ The example above — JSON parsing, console I/O, guarded file writes — compile
 
 ## Status
 
-v0.8.3 — Formatter type inference, lint system overhaul, `proof` → `explain` migration, and remaining lint diagnostics are complete. The compiler lexes, parses, type-checks, emits C, and produces native binaries. 506 tests pass across every stage. Next up: v0.9 (lexer export tool) and v1.0 (self-hosting).
+v0.9.9 — Full standard library (17 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. The compiler lexes, parses, type-checks, emits C, and produces native binaries. Next up: comptime execution blocks (v0.9.2) and V1.0 (all features complete).
 
 ## Repository
 
