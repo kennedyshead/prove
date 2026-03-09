@@ -7,6 +7,11 @@ module Main
     NotFound | "Not Found" | 404
     ServerError | "Internal Server Error" | 500
 
+  type Color:[Lookup] is String Integer where
+    Red | "red" | 0xFF0000
+    Green | "green" | 0x00FF00
+    Blue | "blue" | 0x0000FF
+
 main() Result<Unit, Error>!
 from
     // Forward lookup: variant -> string column
@@ -15,3 +20,15 @@ from
     // Forward lookup: variant -> integer column
     code as Integer = HttpStatus:NotFound
     console(f"Status code: {code}")
+    // :[Lookup] syntax: variant -> string column
+    color_name as String = Color:Red
+    console(f"Color name: {color_name}")
+    // :[Lookup] syntax: variant -> integer column
+    color_hex as Integer = Color:Blue
+    console(f"Color hex: {color_hex}")
+    // using string as key
+    color_from_string as Integer = Color:"blue"
+    console(f"Color from string {color_from_string}")
+    // using integer as key
+    color_from_integer as Integer = Color:0x0000FF
+    console(f"Color from integer {color_from_integer}")
