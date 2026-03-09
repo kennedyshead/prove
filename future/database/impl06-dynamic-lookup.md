@@ -13,14 +13,12 @@ Building a Prove program that can modify its own lookup tables at runtime by:
 - impl01: Async verbs
 - impl02: Kind:[Lookup] modifier
 - impl03: Database stdlib (storage, versioning, diffs, merges)
+- impl04: Process execution (already available via `InputOutput.system`)
 
 ## Phase 1: AST File Output
 
-Add `outputs file()` capability to write to AST (.prv) from running program.
-
-```prove
-outputs file(path String, content String)!
-```
+`outputs file(path String, content String) Result<Unit, Error>!` is already available
+in the `InputOutput` stdlib — no new implementation needed.
 
 ## Phase 2: Database-Backed Updates
 
@@ -67,20 +65,19 @@ See `future/database-merge-conflicts.md` for conflict types and resolution frame
 
 ## Phase 3: Subprocess Compilation
 
-Spawn `prove build` from running program:
+Spawn `prove build` from running program using `system` from `InputOutput`:
 
 ```prove
 inputs compile_new_binary()!
 from
-    result as ProcessResult = exec("prove", ["build",
+    result as ProcessResult = system("prove", ["build",
         "--output", "bin/lookup_v" + get_next_version(),
         "console_lookup.prv"
-    ])!
+    ])
 
-    if result.code != 0
-        fail("Compile failed: " + result.stderr)
-
-    ok()
+    match result.exit_code != 0
+        True  => fail("Compile failed: " + result.standard_error)
+        False => ok()
 ```
 
 ## Phase 4: Subprocess Lookup
@@ -90,8 +87,8 @@ Call sibling binary for lookups:
 ```prove
 transforms lookup_word(word String) String
 from
-    result as ProcessResult = exec("bin/lookup_v" + current_version, [word])!
-    trim(result.stdout)
+    result as ProcessResult = system("bin/lookup_v" + current_version, [word])
+    trim(result.standard_output)
 ```
 
 ## Full Example
@@ -150,15 +147,14 @@ module ConsoleLookup
 
     inputs compile_new_binary()!
     from
-        result as ProcessResult = exec("prove", ["build",
+        result as ProcessResult = system("prove", ["build",
             "--output", "bin/lookup_v" + get_next_version(),
             "console_lookup.prv"
-        ])!
+        ])
 
-        if result.code != 0
-            fail("Compile failed: " + result.stderr)
-
-        ok()
+        match result.exit_code != 0
+            True  => fail("Compile failed: " + result.standard_error)
+            False => ok()
 ```
 
 ## Key Challenges
@@ -172,7 +168,7 @@ module ConsoleLookup
 
 ## Exit Criteria
 
-- [ ] `outputs file()` writes .prv files
+- [x] `outputs file()` writes .prv files (already in InputOutput)
 - [ ] Database stdlib used for all table modifications
 - [ ] Stale version rejection works
 - [ ] Custom resolver merge works

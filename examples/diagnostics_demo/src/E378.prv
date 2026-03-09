@@ -5,7 +5,7 @@ module DemoE378
 
   type Priority:[Lookup] is String where
     High | "urgent"
-    High | "critical"
+         | "critical"
 
 transforms check() String
 from

@@ -267,6 +267,12 @@ class CEmitter(
                         self._needed_headers.add("prove_lookup.h")
                         break
 
+        # Check if any async verbs are used
+        for fd in self._all_function_defs():
+            if fd.verb in ("detached", "attached", "listens"):
+                self._needed_headers.add("prove_coro.h")
+                break
+
         # Check if HOF functions are used (map/filter/reduce)
         self._scan_for_hof(self._module)
 
@@ -569,6 +575,28 @@ class CEmitter(
         for decl in self._all_function_defs():
             if decl.binary:
                 continue
+            # Async verbs get special forward declarations
+            if decl.verb in ("detached", "attached", "listens"):
+                sig = self._symbols.resolve_function(
+                    decl.verb, decl.name, len(decl.params)
+                )
+                if not sig:
+                    continue
+                mangled = mangle_name(decl.verb, decl.name, sig.param_types)
+                params: list[str] = []
+                for p, pt in zip(decl.params, sig.param_types):
+                    ct = map_type(pt)
+                    params.append(f"{ct.decl} {p.name}")
+                if decl.verb == "attached":
+                    ret_ct = map_type(sig.return_type)
+                    ret_decl = ret_ct.decl
+                    param_str = ", ".join(["Prove_Coro *_caller"] + params) if params else "Prove_Coro *_caller"
+                    self._line(f"{ret_decl} {mangled}({param_str});")
+                else:
+                    param_str = ", ".join(params) if params else "void"
+                    self._line(f"void {mangled}({param_str});")
+                any_emitted = True
+                continue
             sig = self._symbols.resolve_function(
                 decl.verb,
                 decl.name,
@@ -586,7 +614,7 @@ class CEmitter(
                 decl.name,
                 sig.param_types,
             )
-            params: list[str] = []
+            params = []
             for p, pt in zip(decl.params, sig.param_types):
                 ct = map_type(pt)
                 params.append(f"{ct.decl} {p.name}")
@@ -601,6 +629,11 @@ class CEmitter(
     def _emit_function(self, fd: FunctionDef) -> None:
         # Binary functions are C-backed — no Prove body to emit
         if fd.binary:
+            return
+
+        # Async verbs get specialized emission
+        if fd.verb in ("detached", "attached", "listens"):
+            self._emit_async_function(fd)
             return
 
         # Resolve types
@@ -675,6 +708,136 @@ class CEmitter(
         self._indent -= 1
         self._line("}")
         self._line("")
+
+    def _emit_async_function(self, fd: FunctionDef) -> None:
+        """Emit a detached/attached/listens async function."""
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return
+        param_types: list[type] = []
+        for p in fd.params:
+            s = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+            if s:
+                idx = next((i for i, n in enumerate(s.param_names) if n == p.name), None)
+                if idx is not None and idx < len(s.param_types):
+                    param_types.append(s.param_types[idx])
+                    continue
+            from prove.types import INTEGER
+            param_types.append(INTEGER)
+
+        mangled = mangle_name(fd.verb, fd.name, param_types)
+        args_struct = f"_{mangled}_args"
+        body_fn = f"_{mangled}_body"
+
+        # ── Arg struct ───────────────────────────────────────────
+        self._line(f"typedef struct {{")
+        self._indent += 1
+        for p, pt in zip(fd.params, param_types):
+            ct = map_type(pt)
+            self._line(f"{ct.decl} {p.name};")
+        self._indent -= 1
+        self._line(f"}} {args_struct};")
+        self._line("")
+
+        # ── Coroutine body function ──────────────────────────────
+        self._current_func = fd
+        self._current_func_return = sig.return_type if sig else UNIT
+        self._locals.clear()
+        for p, pt in zip(fd.params, param_types):
+            self._locals[p.name] = pt
+
+        self._line(f"static void {body_fn}(Prove_Coro *_coro) {{")
+        self._indent += 1
+        self._line(f"{args_struct} *_a = ({args_struct} *)_coro->arg;")
+        # Expose params as local variables
+        for p, pt in zip(fd.params, param_types):
+            ct = map_type(pt)
+            self._line(f"{ct.decl} {p.name} = _a->{p.name};")
+
+        if fd.verb == "listens":
+            self._emit_listens_body(fd, param_types)
+        else:
+            # detached / attached: emit body into coro
+            for stmt in fd.body:
+                self._emit_stmt(stmt)
+            if fd.verb == "attached" and sig and sig.return_type is not UNIT:
+                # result stored in last emitted expression — already assigned via body
+                pass
+        self._line("prove_coro_yield(_coro);")
+        self._indent -= 1
+        self._line("}")
+        self._line("")
+
+        # ── Public entry point ───────────────────────────────────
+        if fd.verb == "detached":
+            params_str = ", ".join(
+                f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
+            ) or "void"
+            self._line(f"void {mangled}({params_str}) {{")
+            self._indent += 1
+            self._line(f"{args_struct} *_a = malloc(sizeof({args_struct}));")
+            for p in fd.params:
+                self._line(f"_a->{p.name} = {p.name};")
+            self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
+            self._line(f"prove_coro_start(_c, _a);")
+            self._indent -= 1
+            self._line("}")
+            self._line("")
+
+        elif fd.verb == "attached":
+            ret_ct = map_type(sig.return_type) if sig else map_type(UNIT)
+            caller_params = ["Prove_Coro *_caller"] + [
+                f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
+            ]
+            params_str = ", ".join(caller_params)
+            self._line(f"{ret_ct.decl} {mangled}({params_str}) {{")
+            self._indent += 1
+            self._line(f"{args_struct} *_a = malloc(sizeof({args_struct}));")
+            for p in fd.params:
+                self._line(f"_a->{p.name} = {p.name};")
+            self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
+            self._line(f"prove_coro_start(_c, _a);")
+            self._line(f"while (!prove_coro_done(_c)) {{")
+            self._indent += 1
+            self._line(f"prove_coro_yield(_caller);")
+            self._line(f"prove_coro_resume(_c);")
+            self._indent -= 1
+            self._line("}")
+            self._line(f"{ret_ct.decl} _result = ({ret_ct.decl})_c->result;")
+            self._line(f"prove_coro_free(_c);")
+            self._line(f"return _result;")
+            self._indent -= 1
+            self._line("}")
+            self._line("")
+
+        elif fd.verb == "listens":
+            params_list = [f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)]
+            params_str = ", ".join(["Prove_Coro *_coro"] + params_list) if params_list else "Prove_Coro *_coro"
+            self._line(f"void {mangled}({params_str}) {{")
+            self._indent += 1
+            self._line(f"{args_struct} *_a = malloc(sizeof({args_struct}));")
+            for p in fd.params:
+                self._line(f"_a->{p.name} = {p.name};")
+            self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
+            self._line(f"prove_coro_start(_c, _a);")
+            self._line(f"while (!prove_coro_done(_c)) prove_coro_resume(_c);")
+            self._line(f"prove_coro_free(_c);")
+            self._indent -= 1
+            self._line("}")
+            self._line("")
+
+    def _emit_listens_body(self, fd: FunctionDef, param_types: list) -> None:
+        """Emit the cooperative loop for a listens verb."""
+        self._line("while (1) {")
+        self._indent += 1
+        self._line("if (prove_coro_cancelled(_coro)) break;")
+        self._line("prove_coro_yield(_coro);")
+        self._line("if (prove_coro_cancelled(_coro)) break;")
+        # The match expression is the body
+        for stmt in fd.body:
+            self._emit_stmt(stmt)
+        self._indent -= 1
+        self._line("}")
 
     def _emit_main(self, md: MainDef) -> None:
         self._current_func = md

@@ -25,6 +25,7 @@ from prove.ast_nodes import (
     ExplainEntry,
     Expr,
     ExprStmt,
+    AsyncCallExpr,
     FailPropExpr,
     FieldAssignment,
     FieldDef,
@@ -115,6 +116,9 @@ _VERBS = frozenset(
         TokenKind.READS,
         TokenKind.CREATES,
         TokenKind.MATCHES,
+        TokenKind.DETACHED,
+        TokenKind.ATTACHED,
+        TokenKind.LISTENS,
     }
 )
 
@@ -547,6 +551,10 @@ class Parser:
         if in_indent and self._at(TokenKind.DEDENT):
             self._advance()
 
+        # listens body must be a single MatchExpr with an Exit() arm
+        if verb == "listens" and not is_binary:
+            self._validate_listens_body(body, verb_tok.span)
+
         end = self._current().span
         span = self._span(start, end)
         return FunctionDef(
@@ -573,6 +581,27 @@ class Parser:
             doc_comment=doc_comment,
             span=span,
         )
+
+    def _validate_listens_body(self, body: list, span: Span) -> None:
+        """Validate that a listens body has a single MatchExpr with an Exit() arm."""
+        if len(body) != 1 or not isinstance(body[0], MatchExpr):
+            self._error(
+                "`listens` body must be a single match expression",
+                span,
+                "E150",
+            )
+            return
+        match_expr = body[0]
+        has_exit = any(
+            isinstance(arm.pattern, VariantPattern) and arm.pattern.name == "Exit"
+            for arm in match_expr.arms
+        )
+        if not has_exit:
+            self._error(
+                "`listens` match must have an `Exit()` arm",
+                span,
+                "E151",
+            )
 
     def _parse_main_def(self, doc_comment: str | None) -> MainDef:
         start = self._current().span
@@ -1876,12 +1905,22 @@ class Parser:
         while True:
             tok = self._current()
 
-            # Postfix operators: !, ., (), []
+            # Postfix operators: !, &, ., (), []
             if tok.kind == TokenKind.BANG and not self._is_prefix_bang():
                 if _POSTFIX_BP < min_bp:
                     break
                 self._advance()
                 left = FailPropExpr(
+                    left,
+                    self._span(left.span, tok.span),
+                )
+                continue
+
+            if tok.kind == TokenKind.AMPERSAND:
+                if _POSTFIX_BP < min_bp:
+                    break
+                self._advance()
+                left = AsyncCallExpr(
                     left,
                     self._span(left.span, tok.span),
                 )

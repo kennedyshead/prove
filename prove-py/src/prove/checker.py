@@ -13,6 +13,7 @@ from prove._check_contracts import ContractCheckMixin
 from prove._check_types import TypeCheckMixin
 from prove.ast_nodes import (
     AlgebraicTypeDef,
+    AsyncCallExpr,
     Assignment,
     BinaryDef,
     BinaryExpr,
@@ -116,9 +117,26 @@ from prove.types import (
 # Verbs considered pure (no IO side effects allowed)
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
+# Async verb family
+_ASYNC_VERBS = frozenset({"detached", "attached", "listens"})
+
+# IO (blocking) verbs — forbidden inside async bodies
+_BLOCKING_VERBS = frozenset({"inputs", "outputs"})
+
 # Verbs that need ownership of their parameters (skip borrow inference)
 _VERBS_NEED_OWNERSHIP = frozenset(
-    {"outputs", "matches", "creates", "validates", "inputs", "transforms", "reads"}
+    {
+        "outputs",
+        "matches",
+        "creates",
+        "validates",
+        "inputs",
+        "transforms",
+        "reads",
+        "detached",
+        "attached",
+        "listens",
+    }
 )
 
 # Built-in functions considered to perform IO
@@ -1445,9 +1463,83 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     fd.span,
                 )
 
+        # Async verb rules
+        if verb in _ASYNC_VERBS:
+            self._check_async_body(fd)
+            if verb == "attached" and fd.return_type is None:
+                self._error("E370", "`attached` verb must have a return type", fd.span)
+            if verb in ("detached", "listens") and fd.return_type is not None:
+                self._error(
+                    "E374",
+                    f"`{verb}` verb cannot declare a return type; "
+                    f"the caller does not wait for a result",
+                    fd.span,
+                )
+            if verb == "attached" and not self._has_async_call_in_body(fd.body):
+                self._info(
+                    "I376",
+                    "`attached` body has no `&` calls; "
+                    "consider using `inputs` instead",
+                    fd.span,
+                )
+
         # I367: suggest extracting match to a matches verb function
         if verb != "matches":
             self._check_match_restriction(fd.body, fd.span)
+
+    def _check_async_body(self, fd: FunctionDef) -> None:
+        """Enforce async body rules: no blocking IO calls; async calls must use &."""
+        for stmt in fd.body:
+            self._check_async_stmt(stmt, fd)
+
+    def _check_async_stmt(self, stmt: Stmt | MatchExpr, fd: FunctionDef) -> None:
+        if isinstance(stmt, VarDecl):
+            self._check_async_expr(stmt.value, fd)
+        elif isinstance(stmt, Assignment):
+            self._check_async_expr(stmt.value, fd)
+        elif isinstance(stmt, ExprStmt):
+            self._check_async_expr(stmt.expr, fd)
+        elif isinstance(stmt, MatchExpr):
+            if stmt.subject:
+                self._check_async_expr(stmt.subject, fd)
+            for arm in stmt.arms:
+                for s in arm.body:
+                    self._check_async_stmt(s, fd)
+
+    def _check_async_expr(self, expr: Expr, fd: FunctionDef) -> None:
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                fname = expr.func.name
+                sig = self.symbols.resolve_function_any(fname)
+                if sig:
+                    if sig.verb in _BLOCKING_VERBS and fd.verb != "detached":
+                        self._error(
+                            "E371",
+                            f"async body cannot call blocking IO function '{fname}'; "
+                            f"use an async verb instead",
+                            expr.span,
+                        )
+                    elif sig.verb in _ASYNC_VERBS and sig.verb != "detached":
+                        # attached/listens calls must use & at call site
+                        self._error(
+                            "E372",
+                            f"async function '{fname}' must be called with `&`",
+                            expr.span,
+                        )
+            for arg in expr.args:
+                self._check_async_expr(arg, fd)
+        elif isinstance(expr, AsyncCallExpr):
+            self._check_async_expr(expr.expr, fd)
+        elif isinstance(expr, FailPropExpr):
+            self._check_async_expr(expr.expr, fd)
+        elif isinstance(expr, BinaryExpr):
+            self._check_async_expr(expr.left, fd)
+            self._check_async_expr(expr.right, fd)
+        elif isinstance(expr, UnaryExpr):
+            self._check_async_expr(expr.operand, fd)
+        elif isinstance(expr, PipeExpr):
+            self._check_async_expr(expr.left, fd)
+            self._check_async_expr(expr.right, fd)
 
     def _has_pure_overload(self, name: str) -> bool:
         """Check if a function name has at least one pure verb overload."""
@@ -1525,6 +1617,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._check_pure_expr(expr.right)
         elif isinstance(expr, FailPropExpr):
             self._check_pure_expr(expr.expr)
+        elif isinstance(expr, AsyncCallExpr):
+            self._check_pure_expr(expr.expr)
         elif isinstance(expr, LambdaExpr):
             self._check_pure_expr(expr.body)
         elif isinstance(expr, MatchExpr):
@@ -1580,6 +1674,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif isinstance(expr, LambdaExpr):
             self._check_match_in_expr(expr.body)
         elif isinstance(expr, FailPropExpr):
+            self._check_match_in_expr(expr.expr)
+        elif isinstance(expr, AsyncCallExpr):
             self._check_match_in_expr(expr.expr)
 
     def _check_unused_pure_result(self, stmt: Stmt | MatchExpr) -> None:
@@ -1827,6 +1923,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return self._infer_pipe(expr)
         if isinstance(expr, FailPropExpr):
             return self._infer_fail_prop(expr, expected_type=expected_type)
+        if isinstance(expr, AsyncCallExpr):
+            return self._infer_async_call(expr, expected_type=expected_type)
         if isinstance(expr, MatchExpr):
             return self._infer_match(expr, expected_type=expected_type)
         if isinstance(expr, LambdaExpr):
@@ -1977,6 +2075,73 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if inner.args:
                 return inner.args[0]
         return ERROR_TY
+
+    def _infer_async_call(
+        self, expr: AsyncCallExpr, expected_type: Type | None = None
+    ) -> Type:
+        """Type-check async call (&). Same type as the inner expression."""
+        # Verify we're inside an async body
+        if self._current_function is not None and isinstance(
+            self._current_function, FunctionDef
+        ):
+            if self._current_function.verb not in _ASYNC_VERBS:
+                self._error(
+                    "E373",
+                    "`&` async call outside an async verb body",
+                    expr.span,
+                )
+
+        # I375: & on a non-async callee is a no-op — format can strip it
+        if isinstance(expr.expr, CallExpr) and isinstance(expr.expr.func, IdentifierExpr):
+            callee_sig = self.symbols.resolve_function_any(expr.expr.func.name)
+            if callee_sig and callee_sig.verb not in _ASYNC_VERBS:
+                self._info(
+                    "I375",
+                    f"`&` has no effect on non-async function '{expr.expr.func.name}'; "
+                    f"`prove format` will remove it",
+                    expr.span,
+                )
+
+        return self._infer_expr(expr.expr, expected_type=expected_type)
+
+    def _has_async_call_in_body(self, body: list) -> bool:
+        """Return True if any AsyncCallExpr appears anywhere in body."""
+        for stmt in body:
+            if self._stmt_has_async_call(stmt):
+                return True
+        return False
+
+    def _stmt_has_async_call(self, stmt: object) -> bool:
+        if isinstance(stmt, VarDecl):
+            return self._expr_has_async_call(stmt.value)
+        if isinstance(stmt, Assignment):
+            return self._expr_has_async_call(stmt.value)
+        if isinstance(stmt, ExprStmt):
+            return self._expr_has_async_call(stmt.expr)
+        if isinstance(stmt, MatchExpr):
+            if stmt.subject and self._expr_has_async_call(stmt.subject):
+                return True
+            return any(
+                self._stmt_has_async_call(s)
+                for arm in stmt.arms
+                for s in arm.body
+            )
+        return False
+
+    def _expr_has_async_call(self, expr: Expr) -> bool:
+        if isinstance(expr, AsyncCallExpr):
+            return True
+        if isinstance(expr, CallExpr):
+            return any(self._expr_has_async_call(a) for a in expr.args)
+        if isinstance(expr, (BinaryExpr,)):
+            return self._expr_has_async_call(expr.left) or self._expr_has_async_call(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return self._expr_has_async_call(expr.operand)
+        if isinstance(expr, (FailPropExpr, AsyncCallExpr)):
+            return self._expr_has_async_call(expr.expr)
+        if isinstance(expr, PipeExpr):
+            return self._expr_has_async_call(expr.left) or self._expr_has_async_call(expr.right)
+        return False
 
     @staticmethod
     def _exprs_equal(a: Expr, b: Expr) -> bool:

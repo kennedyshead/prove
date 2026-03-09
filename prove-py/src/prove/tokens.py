@@ -20,6 +20,9 @@ class TokenKind(Enum):
     CREATES = auto()
     MATCHES = auto()
     TYPES = auto()
+    DETACHED = auto()
+    ATTACHED = auto()
+    LISTENS = auto()
 
     # Type modifiers
     BINARY = auto()
@@ -92,6 +95,7 @@ class TokenKind(Enum):
     AND = auto()
     OR = auto()
     BANG = auto()
+    AMPERSAND = auto()
     PIPE_ARROW = auto()
     FAT_ARROW = auto()
     DOT_DOT = auto()
@@ -143,6 +147,9 @@ KEYWORDS: dict[str, TokenKind] = {
     "creates": TokenKind.CREATES,
     "matches": TokenKind.MATCHES,
     "types": TokenKind.TYPES,
+    "detached": TokenKind.DETACHED,
+    "attached": TokenKind.ATTACHED,
+    "listens": TokenKind.LISTENS,
     "binary": TokenKind.BINARY,
     "main": TokenKind.MAIN,
     "from": TokenKind.FROM,

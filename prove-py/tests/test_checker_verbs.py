@@ -210,3 +210,94 @@ class TestChannelDispatch:
             "        0\n",
             "E363",
         )
+
+
+class TestAsyncVerbs:
+    """Test async verb (detached/attached/listens) enforcement."""
+
+    def test_detached_parses(self):
+        check(
+            "detached fire(x Integer)\n"
+            "    from\n"
+            "        y as Integer = x + 1\n"
+        )
+
+    def test_attached_requires_return_type(self):
+        check_fails(
+            "attached no_ret(x Integer)\n"
+            "    from\n"
+            "        x\n",
+            "E370",
+        )
+
+    def test_attached_with_return_type_passes(self):
+        check(
+            "attached get(x Integer) Integer\n"
+            "    from\n"
+            "        x\n"
+        )
+
+    def test_detached_allows_io(self):
+        check(
+            "module M\n"
+            "  InputOutput outputs console\n"
+            "detached log(msg String)\n"
+            "    from\n"
+            "        console(msg)\n"
+        )
+
+    def test_attached_blocking_io_error(self):
+        check_fails(
+            "module M\n"
+            "  InputOutput inputs console\n"
+            "attached bad(x Integer) String\n"
+            "    from\n"
+            "        console()\n",
+            "E371",
+        )
+
+    def test_async_call_outside_async_body_error(self):
+        check_fails(
+            "attached helper(x Integer) Integer\n"
+            "    from\n"
+            "        x\n"
+            "transforms bad(x Integer) Integer\n"
+            "    from\n"
+            "        helper(x)&\n",
+            "E373",
+        )
+
+    def test_detached_with_return_type_error(self):
+        check_fails(
+            "detached fire(x Integer) Integer\n"
+            "    from\n"
+            "        x\n",
+            "E374",
+        )
+
+    def test_listens_with_return_type_error(self):
+        check_fails(
+            "listens loop(src Integer) Integer\n"
+            "    from\n"
+            "        Exit() => _\n",
+            "E374",
+        )
+
+    def test_ampersand_on_pure_fn_info(self):
+        check_info(
+            "transforms add_one(x Integer) Integer\n"
+            "    from\n"
+            "        x + 1\n"
+            "attached caller(x Integer) Integer\n"
+            "    from\n"
+            "        add_one(x)&\n",
+            "I375",
+        )
+
+    def test_attached_no_async_calls_info(self):
+        check_info(
+            "attached sync_fn(x Integer) Integer\n"
+            "    from\n"
+            "        x + 1\n",
+            "I376",
+        )

@@ -58,6 +58,7 @@ _CORE_FILES = {
     "prove_option",
     "prove_result",
     "prove_text",
+    "prove_coro",
 }
 
 # Mapping of stdlib module names to the C runtime libraries they require.
@@ -98,6 +99,16 @@ _RUNTIME_FUNCTIONS = {
         "prove_runtime_init",
         "prove_runtime_cleanup",
         "prove_global_region",
+    ],
+    "prove_coro": [
+        "prove_coro_new",
+        "prove_coro_start",
+        "prove_coro_resume",
+        "prove_coro_yield",
+        "prove_coro_cancel",
+        "prove_coro_done",
+        "prove_coro_cancelled",
+        "prove_coro_free",
     ],
     "prove_arena": [
         "prove_arena_new",
