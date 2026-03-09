@@ -2,70 +2,70 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://prove.botwork.se/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/SECURITY/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/ai-resistance/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/cli/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/compiler/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/contracts/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/contributing/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/design/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/diagnostics-philosophy/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/diagnostics/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/inspirations/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/roadmap/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/stdlib/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/syntax/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/types/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/blog/2026-03-04-why-i-built-my-own-programming-language/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
     <url>
          <loc>https://prove.botwork.se/examples/inventory_service/</loc>
-         <lastmod>2026-03-08</lastmod>
+         <lastmod>2026-03-09</lastmod>
     </url>
 </urlset>
