@@ -189,11 +189,8 @@ module.exports = grammar({
 
     // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
-      'attached',
       'creates',
-      'detached',
       'inputs',
-      'listens',
       'matches',
       'outputs',
       'reads',

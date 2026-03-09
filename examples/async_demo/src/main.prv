@@ -1,0 +1,27 @@
+module Main
+  narrative: """Demonstrates async verb family: detached, attached, listens."""
+  InputOutput outputs console
+
+  type Event is Data(payload String)
+    | Exit
+
+/// Fire and forget — logs a message without waiting.
+detached fire(msg String)
+from
+    console(msg)
+
+/// Spawn and await — doubles an integer.
+attached double(x Integer) Integer
+from
+    x * 2
+
+/// Cooperative loop — processes events until Exit.
+listens handler(source Event)
+from
+    Exit => 0
+    Data(payload) => fire(payload)&
+
+main() Unit
+from
+    fire("hello from detached")
+    fire("async verbs working")

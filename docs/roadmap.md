@@ -48,57 +48,65 @@ All versions above are complete. Current version: **v0.9.9**.
 
 ## Remaining for V1.0
 
-These features are partially implemented or parsed-only and need to be completed
-before V1.0 can ship.
+Features that are partially implemented or have remaining gaps. Items marked
+*(done)* were completed during the v0.9.x cycle.
 
-### Comptime Execution
+### Comptime Execution *(done)*
 
-The compile-time interpreter exists and handles constant folding of pure
-function calls. Remaining work:
+`comptime` expressions work in any position — variable declarations, function
+bodies, etc. The tree-walking interpreter evaluates pure constant expressions
+and `read()` for file I/O. Results are inlined as C constants at compile time.
 
-- Wire `comptime { ... }` blocks for full execution in user code
-- Build dependency tracking (files read via comptime become rebuild triggers)
-- Comptime match for conditional compilation
+Remaining polish:
 
-### Linear Types and Ownership
+- Build dependency tracking (files read via comptime `read()` should trigger rebuilds)
+- Comptime match for conditional compilation (documented but not verified end-to-end)
 
-Basic use-after-move detection and `Own`/`Mutable` modifiers are implemented.
-Remaining work:
+### Linear Types and Ownership *(done)*
 
-- Assignment moves (`x = y` where y is `Own`)
-- Nested and return-position moves
-- Comprehensive borrow inference across function bodies
+Move tracking covers assignment, nested calls, pipe expressions, field paths,
+and return position. Borrow inference active for read-only parameters.
 
-### Memory Regions
+### Memory Regions *(done)*
 
-The region runtime (`prove_region.c`) exists and is initialized. Remaining work:
+Per-function region scoping with `prove_region_enter/exit` in all functions.
+String and list literals use region allocation inside functions; return-position
+values use malloc to prevent dangling pointers (escape analysis).
 
-- Per-function region scoping (currently only wraps `main`)
-- Route temporary allocations through `prove_region_alloc`
+### AI-Resistance Enforcement *(mostly done)*
 
-### AI-Resistance Enforcement
+- Parsing complete for all keywords (`domain`, `temporal`, `invariant_network`,
+  `why_not`, `chosen`, `intent`)
+- Domain profiles enforced (W340–W342), coherence checking active
+- Temporal effect ordering enforced (W390)
+- Invariant network constraints type-checked (E396) with W391 when no `ensures`
 
-Keywords `domain`, `temporal`, `invariant_network`, `why_not`, `chosen`, and
-`intent` are parsed into the AST. Remaining work:
+Remaining:
 
-- Fix incomplete parsing that causes spurious linting errors
-- Temporal effect ordering verification across call graphs
-- Invariant network constraint checking
-- Counterfactual plausibility verification
+- Counterfactual annotations (`why_not`/`chosen`) — parsed but no semantic checking
+- Formal invariant network verification (constraint expressions validated
+  syntactically, not proven against implementations)
 
-### C Runtime Test Coverage
+### C Runtime Test Coverage *(done)*
 
-Four stdlib modules lack dedicated C runtime test files:
+All 16 stdlib modules now have dedicated C runtime test files.
 
-- Time, Random, Hash, Bytes
+### Optimizer Passes *(done)*
 
-### Optimizer Passes
+All documented passes implemented: iterator fusion, copy elision, match to
+jump tables, plus tail call optimization, dead branch elimination, small
+function inlining, dead code elimination, memoization candidates, and
+match compilation.
 
-Three documented passes are not yet implemented:
+### Remaining Gaps
 
-- Iterator fusion (`map(filter(...))` → single pass)
-- Copy elision (avoid copies when source not reused)
-- Match to jump tables (efficient decision trees)
+| Feature | Status | Priority |
+|---------|--------|----------|
+| Verification chain propagation | `ensures` stats reported but no per-call-site warnings | Low |
+| Formal `know` proofs | Lightweight `ClaimProver` (constants, algebraic identities); no general proof | Low |
+| `par_map` concurrency | Runtime scaffolding exists; not callable from user code | Low (may defer) |
+| Row polymorphism | Mentioned in `types.md`; not implemented | Low |
+| Lint fixes | I367/I320 thresholds, unused constant detection, module struct return validation | Medium |
 
 ---
 
@@ -112,41 +120,52 @@ item builds on the ones above it.
 `type Name:[Lookup]` syntax for user code with multi-column support.
 No new runtime work — reuses existing lookup table emission.
 
-**Docs impact:** `types.md`, `syntax.md`
-
-### 2. Database Stdlib
-
-General-purpose stdlib module for managing `:[Lookup]` tables at runtime.
-Storage, versioning, diffs, three-way merge with user-provided conflict
-resolution. Depends on the Lookup modifier.
-
-**Docs impact:** `stdlib.md`
-
-### 3. Compiler CLI Extensions
-
-`prove compiler --load` and `--dump` for converting between `.prv` lookup
-tables and compiled binaries. Depends on the Lookup modifier.
-
-**Docs impact:** `cli.md`
-
-### 4. Async Verb Family *(implemented)*
+### 2. Async Verb Family *(implemented)*
 
 Three verbs for structured concurrency: `detached` (fire-and-forget),
 `attached` (spawn and await), `listens` (loop until exit). The `&` marker
 at call sites, analogous to `!` for fallibility. Lexer, parser, checker,
 and C emitter support is complete. Runtime backed by `prove_coro`.
 
-**Docs impact:** `syntax.md`, `types.md`
+### 3. IO Improvement — `streams` Verb
 
-### 5. Dynamic Self-Modifying Lookup
+A `streams` verb for the IO family, mirroring `listens` in the async family.
+Loops over an IO source with exit-via-match-arm semantics. Completes the
+verb family symmetry:
+
+| Pattern | IO | Async |
+|---------|-----|-------|
+| Push, move on | `outputs` | `detached` |
+| Pull, await | `inputs` | `attached` |
+| Loop until exit | `streams` | `listens` |
+
+Also includes renaming `InputOutput` module to `System` to reflect its full
+scope (files, processes, stdin/stdout, environment).
+
+### 4. Network Stdlib
+
+New `Network` module for TCP and UDP communication. Uses IO verbs for blocking
+operations and async verbs for non-blocking. Depends on the `streams` verb for
+accept loops and message streaming.
+
+### 5. Database Stdlib
+
+General-purpose stdlib module for managing `:[Lookup]` tables at runtime.
+Storage, versioning, diffs, three-way merge with user-provided conflict
+resolution. Depends on the Lookup modifier.
+
+### 6. Compiler CLI Extensions
+
+`prove compiler --load` and `--dump` for converting between `.prv` lookup
+tables and compiled binaries. Depends on the Lookup modifier.
+
+### 7. Dynamic Self-Modifying Lookup
 
 Programs that modify their own lookup tables at runtime using the Database
 stdlib, recompile, and call the new binary. Depends on the Database stdlib
 and async verbs.
 
-**Docs impact:** `compiler.md`, `stdlib.md`
-
-### 6. Self-Hosted Compiler (V2.0)
+### 8. Self-Hosted Compiler (V2.0)
 
 Rewrite the Prove compiler in Prove and compile it with the V1.0 Python
 bootstrap:

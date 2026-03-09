@@ -293,9 +293,22 @@ from
         _ => n * factorial(n - 1)
 ```
 
-### E151 — `listens` body missing `Exit()` arm
+### E151 — `listens` body missing `Exit` arm
 
-A `listens` function's body must be a single `match` expression with an `Exit()` arm.
+A `listens` function's `from` block must be a single implicit match (bare arms) with an `Exit` arm. The `Exit` variant terminates the cooperative loop.
+
+```prove
+// Error — no Exit arm
+listens handler(source Event)
+from
+    Data(text) => process(text)&
+
+// Correct — Exit arm terminates the loop
+listens handler(source Event)
+from
+    Exit       => source
+    Data(text) => process(text)&
+```
 
 ### E370 — Unknown variant / `attached` without return type
 
@@ -327,7 +340,7 @@ This code is used in two contexts:
 
 ### E374 — `detached` or `listens` declared with a return type
 
-`detached` is fire-and-forget — the caller never waits for a result. `listens` is a cooperative loop — it processes items until exit. Neither should declare a return type.
+`detached` is fire-and-forget — the caller never waits for a result. `listens` is a cooperative loop — it processes items from the first parameter's algebraic type until the `Exit` arm terminates the loop. Neither should declare a return type.
 
 ### E375 — Duplicate value in lookup table
 
