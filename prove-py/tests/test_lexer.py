@@ -115,6 +115,10 @@ class TestLexerLiterals:
         result = lex(r'"hello\nworld"')
         assert result == [(TokenKind.STRING_LIT, "hello\nworld")]
 
+    def test_string_escape_esc(self):
+        result = lex(r'"\e[31m"')
+        assert result == [(TokenKind.STRING_LIT, "\x1b[31m")]
+
     def test_string_interpolation(self):
         result = lex('f"hello {name}"')
         k = [r[0] for r in result]

@@ -1,0 +1,8 @@
+Usage: proof build [OPTIONS] [PATH]
+
+  Compile a Prove project.
+
+Options:
+  --no-mutate  Disable mutation testing.
+  --debug      Compile with debug symbols (-g) and no optimization.
+  --help       Show this message and exit.

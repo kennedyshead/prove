@@ -607,6 +607,26 @@ class TestParserModules:
         assert imp.items[2] == ImportItem("inputs", "console", imp.items[2].span)
         assert imp.items[3] == ImportItem("inputs", "file", imp.items[3].span)
 
+    def test_import_constant_identifiers(self):
+        source = "module Foo\n  Log RED GREEN RESET\n"
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.imports) == 1
+        imp = decl.imports[0]
+        assert imp.module == "Log"
+        assert len(imp.items) == 3
+        assert imp.items[0].name == "RED"
+        assert imp.items[1].name == "GREEN"
+        assert imp.items[2].name == "RESET"
+
+    def test_doc_comment_before_constant(self):
+        source = "module Foo\n  /// My constant.\n  MY_CONST as Integer = 42\n"
+        decl = parse_decl(source)
+        assert isinstance(decl, ModuleDecl)
+        assert len(decl.constants) == 1
+        assert decl.constants[0].name == "MY_CONST"
+        assert decl.constants[0].doc_comment == "My constant."
+
     def test_invariant_network(self):
         source = "  invariant_network Accounting\n    total >= 0\n"
         decl = parse_module_invariant(source)

@@ -1,0 +1,32 @@
+module Log
+  narrative: """Console color constants for terminal output."""
+
+  /// Reset all formatting to default.
+  RESET as String = "\e[0m"
+
+  /// Bold text style.
+  BOLD as String = "\e[1m"
+
+  /// Dim text style.
+  DIM as String = "\e[2m"
+
+  /// Red foreground color.
+  RED as String = "\e[31m"
+
+  /// Green foreground color.
+  GREEN as String = "\e[32m"
+
+  /// Yellow foreground color.
+  YELLOW as String = "\e[33m"
+
+  /// Blue foreground color.
+  BLUE as String = "\e[34m"
+
+  /// Magenta foreground color.
+  MAGENTA as String = "\e[35m"
+
+  /// Cyan foreground color.
+  CYAN as String = "\e[36m"
+
+  /// White foreground color.
+  WHITE as String = "\e[37m"

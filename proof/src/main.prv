@@ -1,7 +1,7 @@
 module Main
   narrative: """A new Prove project."""
   InputOutput outputs console, inputs process file
-  List reads last
+  List reads value
   Parse validates toml, creates toml
 
   type Package is
@@ -10,29 +10,30 @@ module Main
   type Config is
     package Package
 
-transforms config(content String) Table<Value>
-  ensures result == toml(content)
-  requires valid toml(content)
-  explain
-      content string is parsed to toml
-from
-    toml(content)
+  HELP_TXT as String = "help.txt"
 
-matches config(data Result<String, Error>) String
-from
-    Ok(content) => Config(config(content)).package.name
-    Err(_) => "Unable to load prove.toml"
+  PROVE_TOML as String = "prove.toml"
 
-inputs cli_build() String!
+/// Parse the toml data to Config struct
+matches config(data Result<String, Error>) Config
+  requires valid toml(data)
 from
-    load as Result<String, Error> = file("prove.toml")
-    config(load)
+    Config(toml(data))
+
+/// Run the build command
+inputs build_command(arguments List<String>, config Config) String!
+  requires value(1, arguments) == "build"
+from
+    f"Built {config.package.name}"
 
 main() Result<Unit, Error>!
 from
+    // Get arguments
     arguments as List<String> = process()
-    out as String = match last(arguments)
-        "build" => cli_build()!
-        _ => """build    Builds the binary"""
-    console(last(arguments))
+    // Load config
+    load as Result<String, Error> = file(PROVE_TOML)
+    config as Config = config(load)
+    out as String = match value(1, arguments)
+        "build" => build_command(arguments, config)!
+        _ => file(HELP_TXT)!
     console(out)
