@@ -13,7 +13,6 @@ from typing import Any
 from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
-    BindingPattern,
     BooleanLit,
     CallExpr,
     CharLit,
@@ -98,6 +97,39 @@ class RuntimeDeps:
         return self._libs
 
 
+class EscapeInfo:
+    """Tracks escape analysis information for function allocations.
+
+    A value escapes if it's returned, stored in a mutable parameter,
+    stored in a global, or passed to an escaping function.
+    Non-escaping values can use region allocation instead of arena/malloc.
+    """
+
+    def __init__(self) -> None:
+        self._escapes: set[tuple[str, str]] = set()  # (func_name, var_name)
+        self._noescape_calls: set[tuple[str, str]] = set()  # (func_name, call_name)
+
+    def mark_escapes(self, func_name: str, var_name: str) -> None:
+        """Mark that a variable escapes in a function."""
+        self._escapes.add((func_name, var_name))
+
+    def mark_noescape_call(self, func_name: str, call_name: str) -> None:
+        """Mark that a call doesn't cause escape (pure function)."""
+        self._noescape_calls.add((func_name, call_name))
+
+    def escapes(self, func_name: str, var_name: str) -> bool:
+        """Check if a variable escapes in a function. Conservative: defaults to True."""
+        return (func_name, var_name) in self._escapes
+
+    def is_noescape_call(self, func_name: str, call_name: str) -> bool:
+        """Check if a call is known to be pure/non-escaping."""
+        return (func_name, call_name) in self._noescape_calls
+
+    def get_escaping_vars(self, func_name: str) -> set[str]:
+        """Get all escaping variables in a function."""
+        return {v for f, v in self._escapes if f == func_name}
+
+
 class Optimizer:
     """Multi-pass AST optimizer."""
 
@@ -107,6 +139,7 @@ class Optimizer:
         self._memo_info = MemoizationInfo()
         self._runtime_deps = RuntimeDeps()
         self._elision_candidates: set[str] = set()
+        self._escape_info = EscapeInfo()
 
     def optimize(self) -> Module:
         module = self._collect_runtime_deps(self._module)
@@ -119,6 +152,7 @@ class Optimizer:
         module = self._dead_code_elimination(module)
         module = self._identify_memoization_candidates(module)
         module = self._match_compilation(module)
+        module = self._escape_analysis(module)
         return module
 
     def get_memo_info(self) -> MemoizationInfo:
@@ -132,6 +166,10 @@ class Optimizer:
     def get_elision_candidates(self) -> set[str]:
         """Return variable names eligible for move-instead-of-copy."""
         return self._elision_candidates
+
+    def get_escape_info(self) -> EscapeInfo:
+        """Return escape analysis information."""
+        return self._escape_info
 
     # ── Pass 0: Runtime Dependency Collection ─────────────────────
 
@@ -566,8 +604,20 @@ class Optimizer:
                     composed = LambdaExpr(
                         params=f.params,
                         body=CallExpr(
-                            func=g.func if isinstance(g.func, IdentifierExpr) else IdentifierExpr(name="__composed", span=expr.span),
-                            args=[CallExpr(func=f.func if isinstance(f.func, IdentifierExpr) else IdentifierExpr(name="__inner", span=expr.span), args=[IdentifierExpr(name=f.params[0], span=expr.span)], span=expr.span)] if isinstance(f, LambdaExpr) and len(f.params) == 1 else [f],
+                            func=g.func
+                            if isinstance(g.func, IdentifierExpr)
+                            else IdentifierExpr(name="__composed", span=expr.span),
+                            args=[
+                                CallExpr(
+                                    func=f.func
+                                    if isinstance(f.func, IdentifierExpr)
+                                    else IdentifierExpr(name="__inner", span=expr.span),
+                                    args=[IdentifierExpr(name=f.params[0], span=expr.span)],
+                                    span=expr.span,
+                                )
+                            ]
+                            if isinstance(f, LambdaExpr) and len(f.params) == 1
+                            else [f],
                             span=expr.span,
                         ),
                         span=expr.span,
@@ -1270,3 +1320,142 @@ class Optimizer:
                 result.append(stmt)
                 i += 1
         return result
+
+    # ── Pass 5: Escape Analysis ─────────────────────────────────────
+
+    PURE_FUNCTIONS: frozenset[str] = frozenset(
+        {
+            "string.length",
+            "string.is_empty",
+            "string.to_upper",
+            "string.to_lower",
+            "string.trim",
+            "string.reverse",
+            "list.length",
+            "list.is_empty",
+            "list.first",
+            "list.last",
+            "list.sum",
+            "list.product",
+            "table.length",
+        }
+    )
+
+    def _escape_analysis(self, module: Module) -> Module:
+        """Analyze which values escape their enclosing function.
+
+        A value escapes if:
+        1. It's returned from the function
+        2. It's stored in a mutable parameter
+        3. It's stored in a global/module variable
+        4. It's passed to a function that may store it beyond current scope
+
+        Conservative: defaults to escaping if uncertain.
+        """
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                self._analyze_function_escape(decl.name, decl.params, decl.body)
+            elif isinstance(decl, MainDef):
+                self._analyze_function_escape("main", [], decl.body)
+            elif isinstance(decl, ModuleDecl):
+                for item in decl.body:
+                    if isinstance(item, FunctionDef):
+                        self._analyze_function_escape(item.name, item.params, item.body)
+        return module
+
+    def _analyze_function_escape(
+        self,
+        func_name: str,
+        params: list[Any],
+        body: list[Any],
+    ) -> None:
+        local_vars: set[str] = set()
+        self._collect_local_vars(body, local_vars)
+
+        param_names = {p.name for p in params}
+
+        self._check_escapes_in_body(func_name, body, local_vars, param_names)
+
+    def _collect_local_vars(self, body: list[Any], vars_set: set[str]) -> None:
+        for stmt in body:
+            if isinstance(stmt, VarDecl):
+                vars_set.add(stmt.name)
+            elif hasattr(stmt, "body"):
+                if isinstance(stmt, (MatchExpr,)):
+                    for arm in getattr(stmt, "arms", []):
+                        self._collect_local_vars(arm.body, vars_set)
+                elif isinstance(stmt, list):
+                    self._collect_local_vars(stmt, vars_set)
+
+    def _check_escapes_in_body(
+        self,
+        func_name: str,
+        body: list[Any],
+        local_vars: set[str],
+        param_names: set[str],
+    ) -> None:
+        for stmt in body:
+            self._check_stmt_escape(func_name, stmt, local_vars, param_names)
+
+    def _check_stmt_escape(
+        self,
+        func_name: str,
+        stmt: Any,
+        local_vars: set[str],
+        param_names: set[str],
+    ) -> None:
+        if isinstance(stmt, VarDecl):
+            if stmt.value:
+                self._check_expr_escape(func_name, stmt.value, local_vars, param_names)
+        elif isinstance(stmt, Assignment):
+            self._check_assignment_escape(func_name, stmt, local_vars, param_names)
+        elif isinstance(stmt, ExprStmt):
+            self._check_expr_escape(func_name, stmt.expr, local_vars, param_names)
+        elif isinstance(stmt, MatchExpr):
+            for arm in stmt.arms:
+                self._check_escapes_in_body(func_name, arm.body, local_vars, param_names)
+
+    def _check_assignment_escape(
+        self,
+        func_name: str,
+        assignment: Assignment,
+        local_vars: set[str],
+        param_names: set[str],
+    ) -> None:
+        target = assignment.target
+        if isinstance(target, IdentifierExpr):
+            target_name = target.name
+            if target_name in param_names:
+                if assignment.value:
+                    self._check_expr_escape(func_name, assignment.value, local_vars, param_names)
+
+    def _check_expr_escape(
+        self,
+        func_name: str,
+        expr: Any,
+        local_vars: set[str],
+        param_names: set[str],
+    ) -> None:
+        if isinstance(expr, CallExpr):
+            func_expr = expr.func
+            if isinstance(func_expr, IdentifierExpr):
+                func_ref = func_expr.name
+                for arg in expr.args:
+                    if isinstance(arg, IdentifierExpr) and arg.name in local_vars:
+                        full_func = f"{func_name}.{func_ref}"
+                        if not self._is_pure_function(full_func):
+                            self._escape_info.mark_escapes(func_name, arg.name)
+            for arg in expr.args:
+                self._check_expr_escape(func_name, arg, local_vars, param_names)
+        elif isinstance(expr, IdentifierExpr):
+            pass
+        elif hasattr(expr, "elements"):
+            for elem in getattr(expr, "elements", []):
+                self._check_expr_escape(func_name, elem, local_vars, param_names)
+        elif hasattr(expr, "body"):
+            if isinstance(expr, MatchExpr):
+                for arm in expr.arms:
+                    self._check_escapes_in_body(func_name, arm.body, local_vars, param_names)
+
+    def _is_pure_function(self, func_name: str) -> bool:
+        return func_name in self.PURE_FUNCTIONS

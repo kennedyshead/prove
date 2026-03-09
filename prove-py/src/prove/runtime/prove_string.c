@@ -13,6 +13,16 @@ Prove_String *prove_string_new(const char *src, int64_t len) {
     return s;
 }
 
+Prove_String *prove_string_new_region(ProveRegion *r, const char *src, int64_t len) {
+    Prove_String *s = (Prove_String *)prove_region_alloc(r, sizeof(Prove_String) + (size_t)len + 1);
+    s->length = len;
+    if (src && len > 0) {
+        memcpy(s->data, src, (size_t)len);
+    }
+    s->data[len] = '\0';
+    return s;
+}
+
 Prove_String *prove_string_from_cstr(const char *src) {
     if (!src) return prove_string_new("", 0);
     int64_t len = (int64_t)strlen(src);

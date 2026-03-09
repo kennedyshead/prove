@@ -270,15 +270,16 @@ class ExprEmitterMixin:
             val_type = obj_type.args[0] if obj_type.args else INTEGER
             val_ct = map_type(val_type)
             get_expr = f'prove_table_get(prove_string_from_cstr("{expr.field}"), {obj})'
+            unwrap = f"prove_option_unwrap({get_expr})"
             if val_ct.is_pointer:
-                return f"({val_ct.decl}){get_expr}.value"
+                return f"({val_ct.decl}){unwrap}"
             if val_ct.decl == "int64_t":
-                return f"prove_value_to_number({get_expr}.value)"
+                return f"prove_value_to_number({unwrap})"
             if val_ct.decl == "double":
-                return f"prove_value_to_decimal({get_expr}.value)"
+                return f"prove_value_to_decimal({unwrap})"
             if val_ct.decl == "bool":
-                return f"prove_value_to_bool({get_expr}.value)"
-            return f"({val_ct.decl}){get_expr}.value"
+                return f"prove_value_to_bool({unwrap})"
+            return f"({val_ct.decl}){unwrap}"
         # Pointer types use ->
         ct = map_type(obj_type)
         if ct.is_pointer:
@@ -387,9 +388,16 @@ class ExprEmitterMixin:
                 return self._unwrap_result_value(tmp, success_type)
         # Failable function with non-Result return -- the C ABI still wraps
         # in Prove_Result, so we need to unwrap.
-        if not isinstance(inner_type, (ErrorType, GenericInstance)):
-            return self._unwrap_result_value(tmp, inner_type)
-        return f"{tmp}"
+        if isinstance(inner_type, ErrorType):
+            return f"{tmp}"
+        # Result without args already handled above; bare Result has no value.
+        if (
+            isinstance(inner_type, GenericInstance)
+            and inner_type.base_name == "Result"
+            and not inner_type.args
+        ):
+            return f"{tmp}"
+        return self._unwrap_result_value(tmp, inner_type)
 
     def _unwrap_result_value(self, tmp: str, success_type: Type) -> str:
         """Emit the correct prove_result_unwrap_* call for a success type."""
@@ -439,6 +447,17 @@ class ExprEmitterMixin:
         subj = self._emit_expr(m.subject)
         subj_type = self._resolve_prim_type(self._infer_expr_type(m.subject))
 
+        # Detect Option<T> subject — literal/wildcard patterns need unwrapping
+        is_option_subj = (
+            isinstance(subj_type, GenericInstance)
+            and subj_type.base_name == "Option"
+            and subj_type.args
+        )
+        if is_option_subj:
+            opt_tmp = self._tmp()
+            self._line(f"Prove_Option {opt_tmp} = {subj};")
+            subj = opt_tmp
+
         if not isinstance(subj_type, AlgebraicType):
             # Non-algebraic match: emit as if/else-if chain
             result_type = self._infer_match_result_type(m)
@@ -473,7 +492,20 @@ class ExprEmitterMixin:
                     self._indent -= 1
                     self._line("}")
                 elif isinstance(arm.pattern, LiteralPattern):
-                    cond = self._emit_literal_cond(subj, arm.pattern)
+                    if is_option_subj:
+                        # Unwrap Option: check tag==1 (Some) and compare inner value
+                        inner_ty = subj_type.args[0]
+                        inner_ct = map_type(inner_ty)
+                        cast = (
+                            f"({inner_ct.decl})"
+                            if inner_ct.is_pointer
+                            else f"({inner_ct.decl})(intptr_t)"
+                        )
+                        unwrapped = f"{cast}{subj}.value"
+                        inner_cond = self._emit_literal_cond(unwrapped, arm.pattern)
+                        cond = f"{subj}.tag == 1 && {inner_cond}"
+                    else:
+                        cond = self._emit_literal_cond(subj, arm.pattern)
                     keyword = "if" if first else "} else if"
                     self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
@@ -498,18 +530,17 @@ class ExprEmitterMixin:
                                 inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                                 inner_ct = map_type(inner_ty)
                                 bind_name = vp.fields[0].name
-                                cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
+                                cast = (
+                                    f"({inner_ct.decl})"
+                                    if inner_ct.is_pointer
+                                    else f"({inner_ct.decl})(intptr_t)"
+                                )
                                 if bind_name == subj:
                                     alias = self._tmp()
-                                    self._line(
-                                        f"{inner_ct.decl} {alias} = {cast}{subj}.value;"
-                                    )
+                                    self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
                                     self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                                 else:
-                                    self._line(
-                                        f"{inner_ct.decl} {bind_name} = "
-                                        f"{cast}{subj}.value;"
-                                    )
+                                    self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
                                 self._locals[bind_name] = inner_ty
                             for i, s in enumerate(arm.body):
                                 if not is_unit and i == len(arm.body) - 1:
@@ -740,7 +771,11 @@ class ExprEmitterMixin:
                 ):
                     inner = part_type.args[0]
                     inner_ct = map_type(inner)
-                    cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
+                    cast = (
+                        f"({inner_ct.decl})"
+                        if inner_ct.is_pointer
+                        else f"({inner_ct.decl})(intptr_t)"
+                    )
                     unwrapped = f"{cast}{val}.value"
                     c_name = self._to_string_func(inner)
                     parts.append(f"{c_name}({unwrapped})")
@@ -759,12 +794,19 @@ class ExprEmitterMixin:
     def _emit_list_literal(self, expr: ListLiteral) -> str:
         if not expr.elements:
             return "prove_list_new(4)"
+
         # Determine element type
         elem_type = self._infer_expr_type(expr.elements[0])
         ct = map_type(elem_type)
 
         tmp = self._tmp()
-        self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
+        # Use region allocation if inside a function with escape analysis
+        if self._use_region_allocation():
+            self._line(
+                f"Prove_List *{tmp} = prove_list_new_region({self._get_region_ptr()}, {len(expr.elements)});"
+            )
+        else:
+            self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
         for elem in expr.elements:
             val = self._emit_expr(elem)
             if ct.is_pointer:
@@ -814,16 +856,12 @@ class ExprEmitterMixin:
                 if entry.variant == operand.name:
                     # Binary lookup: select column by expected type
                     if lookup.is_binary and entry.values:
-                        col_idx = self._binary_column_index(
-                            lookup, self._expected_emit_type
-                        )
+                        col_idx = self._binary_column_index(lookup, self._expected_emit_type)
                         val = entry.values[col_idx]
                         kind = entry.value_kinds[col_idx]
                         if kind == "string":
                             escaped = self._escape_c_string(val)
-                            return (
-                                f'prove_string_from_cstr("{escaped}")'
-                            )
+                            return f'prove_string_from_cstr("{escaped}")'
                         if kind == "integer":
                             return f"{val}L"
                         if kind == "boolean":
@@ -875,9 +913,7 @@ class ExprEmitterMixin:
 
         return "/* unsupported binary lookup */ 0"
 
-    def _binary_column_index(
-        self, lookup: object, expected: Type | None
-    ) -> int:
+    def _binary_column_index(self, lookup: object, expected: Type | None) -> int:
         """Return the column index matching expected type, or 0."""
         from prove.ast_nodes import LookupTypeDef
 

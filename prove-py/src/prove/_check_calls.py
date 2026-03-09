@@ -182,6 +182,11 @@ class CallCheckMixin:
                     )
 
             ret = sig.return_type
+            # Failable functions return Result<T, Error> at call site
+            if sig.can_fail and not (
+                isinstance(ret, GenericInstance) and ret.base_name == "Result"
+            ):
+                ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
             # Requires-based narrowing for unqualified calls:
             # Option<Value> → Value, Result<Value, Error> → Value
             if (
@@ -281,6 +286,11 @@ class CallCheckMixin:
                 )
                 return ERROR_TY
             ret = sig.return_type
+            # Failable functions return Result<T, Error> at call site
+            if sig.can_fail and not (
+                isinstance(ret, GenericInstance) and ret.base_name == "Result"
+            ):
+                ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
             # Requires-based narrowing: if the return type is Option<Value>
             # or Result<Value, Error> and there is a matching validates call in
             # requires, narrow to Value respectively.
@@ -344,6 +354,12 @@ class CallCheckMixin:
                 )
                 return ERROR_TY
             return field_type
+
+        # Table field access returns the value type
+        if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Table":
+            if obj_type.args:
+                return obj_type.args[0]
+            return ERROR_TY
 
         # Allow field access on GenericInstance, AlgebraicType, etc. without error
         # (duck typing / deferred check for generics)

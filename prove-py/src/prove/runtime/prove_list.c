@@ -10,6 +10,15 @@ Prove_List *prove_list_new(int64_t initial_cap) {
     return l;
 }
 
+Prove_List *prove_list_new_region(ProveRegion *r, int64_t initial_cap) {
+    if (initial_cap < 4) initial_cap = 4;
+    Prove_List *l = (Prove_List *)prove_region_alloc(r, sizeof(Prove_List));
+    l->data = (void **)prove_region_alloc(r, sizeof(void *) * (size_t)initial_cap);
+    l->length = 0;
+    l->capacity = initial_cap;
+    return l;
+}
+
 void prove_list_push(Prove_List *list, void *elem) {
     if (list->length >= list->capacity) {
         int64_t new_cap = list->capacity * 2;

@@ -1,7 +1,20 @@
 module Main
   narrative: """A new Prove project."""
-  InputOutput outputs console
+  InputOutput outputs console, inputs process file
+  List reads last
+  Parse transforms unwrap, validates toml, creates toml
+
+inputs cli_build() String!
+from
+    load as String = file("prove.toml")!
+    conf as Table<Value> = toml(load)!
+    conf.name
 
 main() Result<Unit, Error>!
 from
-    console("Hello from Prove!")
+    arguments as List<String> = process()
+    out as String = match unwrap(last(arguments))
+        "build" => cli_build()!
+        _ => """build    Builds the binary"""
+    console(unwrap(last(arguments)))
+    console(out)

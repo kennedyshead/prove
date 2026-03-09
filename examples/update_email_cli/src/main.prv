@@ -71,7 +71,7 @@ from
 main()!
 from
     // this is inputs email that reads from stdin, the validation of email is done through the type boundries
-    email as Option<Email> = email()
+    email as Option<Email> = email()!
     // this is inputs user that reads from user.json
     user as User = user()!
     // Set the new email and get updated user

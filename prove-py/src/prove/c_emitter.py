@@ -47,7 +47,7 @@ from prove.ast_nodes import (
 )
 from prove.c_types import mangle_name, map_type
 from prove.errors import Diagnostic, Severity
-from prove.optimizer import MemoizationInfo
+from prove.optimizer import EscapeInfo, MemoizationInfo
 from prove.symbols import SymbolTable
 from prove.types import (
     BOOLEAN,
@@ -91,10 +91,12 @@ class CEmitter(
         module: Module,
         symbols: SymbolTable,
         memo_info: "MemoizationInfo | None" = None,
+        escape_info: "EscapeInfo | None" = None,
     ) -> None:
         self._module = module
         self._symbols = symbols
         self._memo_info = memo_info
+        self._escape_info = escape_info
         self._out: list[str] = []
         self._indent = 0
         self._tmp_counter = 0
@@ -310,6 +312,44 @@ class CEmitter(
         self._tmp_counter += 1
         return f"_tmp{self._tmp_counter}"
 
+    def _in_function_with_escape_info(self) -> bool:
+        """Check if we're inside a function with escape analysis info."""
+        return self._escape_info is not None and self._current_func is not None
+
+    def _get_current_function_name(self) -> str | None:
+        """Get the name of the current function being emitted."""
+        if isinstance(self._current_func, FunctionDef):
+            return self._current_func.name
+        return None
+
+    def _use_region_allocation(self, var_name: str | None = None) -> bool:
+        """Check if we should use region allocation for this allocation.
+
+        If var_name is provided, check if that specific variable escapes.
+        Otherwise, conservatively use region allocation for intermediate values.
+        """
+        if not self._in_function_with_escape_info():
+            return False
+
+        func_name = self._get_current_function_name()
+        if func_name is None:
+            return False
+
+        # If we know the variable name, check if it escapes
+        if var_name is not None:
+            if self._escape_info.escapes(func_name, var_name):
+                return False  # Escaping - use malloc
+
+        # For now, use region allocation for everything inside functions
+        # This is safe because:
+        # - Return values are copied before region exit
+        # - The global region persists across function calls
+        return True
+
+    def _get_region_ptr(self) -> str:
+        """Get the region pointer to use for allocations."""
+        return "prove_global_region()"
+
     # ── Includes ───────────────────────────────────────────────
 
     def _emit_includes(self) -> None:
@@ -431,9 +471,7 @@ class CEmitter(
                 for d in decl.body:
                     if isinstance(d, FunctionDef):
                         func_defs[d.name] = d
-        interpreter = ComptimeInterpreter(
-            module_source_dir=source_dir, function_defs=func_defs
-        )
+        interpreter = ComptimeInterpreter(module_source_dir=source_dir, function_defs=func_defs)
         try:
             result = interpreter.evaluate(expr)
             self.comptime_dependencies.update(result.dependencies)

@@ -39,6 +39,13 @@ Prove_Option prove_list_ops_last_str(Prove_List *list) {
     return prove_option_some((Prove_Value *)list->data[list->length - 1]);
 }
 
+/* ── Value (get element at position) ───────────────────────── */
+
+Prove_Value *prove_list_ops_value(int64_t position, Prove_List *list) {
+    if (!list || position < 0 || position >= list->length) return NULL;
+    return (Prove_Value *)list->data[position];
+}
+
 /* ── Empty ───────────────────────────────────────────────────── */
 
 bool prove_list_ops_empty(Prove_List *list) {

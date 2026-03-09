@@ -112,6 +112,7 @@ def _build_c(
     for module, symbols in modules_and_symbols:
         memo_info = None
         runtime_deps = None
+        escape_info = None
         if config.build.optimize:
             from prove.optimizer import Optimizer
 
@@ -119,6 +120,7 @@ def _build_c(
             module = optimizer.optimize()
             memo_info = optimizer.get_memo_info()
             runtime_deps = optimizer.get_runtime_deps()
+            escape_info = optimizer.get_escape_info()
         else:
             from prove.optimizer import RuntimeDeps
 
@@ -127,7 +129,7 @@ def _build_c(
                 if isinstance(decl, ModuleDecl):
                     for imp in decl.imports:
                         runtime_deps.add_module(imp.module)
-        emitter = CEmitter(module, symbols, memo_info)
+        emitter = CEmitter(module, symbols, memo_info, escape_info)
         c_sources.append(emitter.emit())
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:

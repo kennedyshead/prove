@@ -2,6 +2,7 @@
 #define PROVE_STRING_H
 
 #include "prove_runtime.h"
+#include "prove_region.h"
 
 /* ── Prove_String ─────────────────────────────────────────────── */
 
@@ -12,6 +13,7 @@ typedef struct {
 } Prove_String;
 
 Prove_String *prove_string_new(const char *src, int64_t len);
+Prove_String *prove_string_new_region(ProveRegion *r, const char *src, int64_t len);
 Prove_String *prove_string_from_cstr(const char *src);
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b);
 bool          prove_string_eq(Prove_String *a, Prove_String *b);

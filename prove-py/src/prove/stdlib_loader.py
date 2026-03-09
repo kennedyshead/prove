@@ -251,6 +251,7 @@ _register_module(
     prv_file="list.prv",
     c_map={
         ("reads", "length"): "prove_list_ops_length",
+        ("reads", "value"): "prove_list_ops_value",
         ("validates", "empty"): "prove_list_ops_empty",
         ("transforms", "slice"): "prove_list_ops_slice",
         ("transforms", "reverse"): "prove_list_ops_reverse",

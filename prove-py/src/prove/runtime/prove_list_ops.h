@@ -17,6 +17,10 @@ Prove_Option prove_list_ops_first_str(Prove_List *list);
 Prove_Option prove_list_ops_last_int(Prove_List *list);
 Prove_Option prove_list_ops_last_str(Prove_List *list);
 
+/* ── Value (get element at position) ───────────────────────── */
+
+Prove_Value *prove_list_ops_value(int64_t position, Prove_List *list);
+
 /* ── Empty ───────────────────────────────────────────────────── */
 
 bool prove_list_ops_empty(Prove_List *list);
