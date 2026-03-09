@@ -17,3 +17,6 @@ build
 .opencode
 conversations
 .hidden/
+MEMORY.md
+.pytest_cache
+.claudeignore
