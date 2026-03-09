@@ -20,3 +20,5 @@ conversations
 MEMORY.md
 .pytest_cache
 .claudeignore
+.envrc
+.venv
