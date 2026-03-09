@@ -423,8 +423,7 @@ Prove_Result prove_parse_toml(Prove_String *source) {
         if (!_toml_at_end(&p) && _toml_peek(&p) == '\n') p.pos++;
     }
 
-    Prove_Value *result = prove_value_object(root);
-    return prove_result_ok_ptr(result);
+    return prove_result_ok_ptr(root);
 }
 
 /* ── TOML emitter (uses Builder for O(n) emission) ───────────── */

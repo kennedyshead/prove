@@ -285,6 +285,14 @@ A match arm references a variant that does not exist in the algebraic type.
 
 A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
 
+### E372 — Unknown variant for generic type
+
+A match arm on a `Result` or `Option` uses a variant name that does not belong to that type (e.g. `Some(x)` on a `Result`, or `Ok(x)` on an `Option`).
+
+### E373 — Non-exhaustive match on generic type
+
+A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
+
 ### E375 — Duplicate value in lookup table
 
 A `[Lookup]` type contains duplicate values. Every value in the table must be unique so that reverse lookups are unambiguous.

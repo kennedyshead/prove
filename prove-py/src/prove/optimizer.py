@@ -21,11 +21,14 @@ from prove.ast_nodes import (
     Expr,
     ExprStmt,
     FailPropExpr,
+    FieldExpr,
     FloatLit,
     FunctionDef,
     IdentifierExpr,
+    IndexExpr,
     IntegerLit,
     LambdaExpr,
+    ListLiteral,
     LiteralPattern,
     MainDef,
     MatchArm,
@@ -33,6 +36,7 @@ from prove.ast_nodes import (
     Module,
     ModuleDecl,
     PipeExpr,
+    StringInterp,
     StringLit,
     TailContinue,
     TailLoop,
@@ -844,10 +848,18 @@ class Optimizer:
 
     def _find_called_in_expr(self, expr: Expr, called: set[str]) -> None:
         """Recursively find function calls in an expression."""
-        if isinstance(expr, CallExpr) and isinstance(expr.func, IdentifierExpr):
-            called.add(expr.func.name)
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                called.add(expr.func.name)
+            else:
+                self._find_called_in_expr(expr.func, called)
             for arg in expr.args:
                 self._find_called_in_expr(arg, called)
+        elif isinstance(expr, FieldExpr):
+            self._find_called_in_expr(expr.obj, called)
+        elif isinstance(expr, IndexExpr):
+            self._find_called_in_expr(expr.obj, called)
+            self._find_called_in_expr(expr.index, called)
         elif isinstance(expr, MatchExpr):
             if expr.subject:
                 self._find_called_in_expr(expr.subject, called)
@@ -860,6 +872,17 @@ class Optimizer:
             self._find_called_in_expr(expr.right, called)
         elif isinstance(expr, UnaryExpr):
             self._find_called_in_expr(expr.operand, called)
+        elif isinstance(expr, PipeExpr):
+            self._find_called_in_expr(expr.left, called)
+            self._find_called_in_expr(expr.right, called)
+        elif isinstance(expr, LambdaExpr):
+            self._find_called_in_expr(expr.body, called)
+        elif isinstance(expr, StringInterp):
+            for part in expr.parts:
+                self._find_called_in_expr(part, called)
+        elif isinstance(expr, ListLiteral):
+            for elem in expr.elements:
+                self._find_called_in_expr(elem, called)
         elif isinstance(expr, VarDecl):
             self._find_called_in_expr(expr.value, called)
         elif isinstance(expr, FailPropExpr):

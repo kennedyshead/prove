@@ -2,28 +2,37 @@ module Main
   narrative: """A new Prove project."""
   InputOutput outputs console, inputs process file
   List reads last
-  Parse validates toml, creates toml, transforms unwrap
+  Parse validates toml, creates toml
 
-  type Config is
+  type Package is
     name String
 
-transforms config(content String) Config
+  type Config is
+    package Package
+
+transforms config(content String) Table<Value>
+  ensures result == toml(content)
   requires valid toml(content)
+  explain
+      content string is parsed to toml
 from
-    Config(toml(content))
+    toml(content)
+
+matches config(data Result<String, Error>) String
+from
+    Ok(content) => Config(config(content)).package.name
+    Err(_) => "Unable to load prove.toml"
 
 inputs cli_build() String!
 from
-    load as String = file("prove.toml")!
-    match load
-        Some(load) => config(load).name
-        _ => "Unable to load prove.toml"
+    load as Result<String, Error> = file("prove.toml")
+    config(load)
 
 main() Result<Unit, Error>!
 from
     arguments as List<String> = process()
-    out as String = match unwrap(last(arguments))
+    out as String = match last(arguments)
         "build" => cli_build()!
         _ => """build    Builds the binary"""
-    console(unwrap(last(arguments)))
+    console(last(arguments))
     console(out)

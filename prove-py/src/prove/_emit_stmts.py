@@ -214,18 +214,99 @@ class StmtEmitterMixin:
                     if expr is not None:
                         ret_tmp = self._tmp()
                         ret_ct = map_type(ret_type)
-                        # For validates functions returning bool: if returning an Option,
-                        # check if it's Some (tag == 1)
-                        emit_val = self._emit_expr(expr)
-                        if isinstance(ret_type, PrimitiveType) and ret_type.name == "Boolean":
-                            expr_type = self._infer_expr_type(expr)
+                        # Check if expression returns Result but function does not
+                        expr_type = self._infer_expr_type(expr)
+                        needs_ret_unwrap = False
+                        is_result_expr = (
+                            isinstance(expr_type, GenericInstance)
+                            and expr_type.base_name == "Result"
+                        )
+                        is_result_ret = (
+                            isinstance(ret_type, GenericInstance)
+                            and ret_type.base_name == "Result"
+                        )
+                        if is_result_expr and not is_result_ret:
+                                needs_ret_unwrap = True
+                        if not needs_ret_unwrap and not isinstance(expr, FailPropExpr):
+                            call_sig = self._resolve_call_sig(expr)
                             if (
-                                isinstance(expr_type, GenericInstance)
-                                and expr_type.base_name == "Option"
+                                call_sig is not None
+                                and call_sig.can_fail
+                                and not (
+                                    isinstance(call_sig.return_type, GenericInstance)
+                                    and call_sig.return_type.base_name == "Result"
+                                )
                             ):
-                                if isinstance(expr, IdentifierExpr):
-                                    emit_val = f"{expr.name}.tag == 1"
-                        self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
+                                needs_ret_unwrap = True
+
+                        emit_val = self._emit_expr(expr)
+                        if needs_ret_unwrap:
+                            # Unwrap Result for non-failable return
+                            res_tmp = self._tmp()
+                            self._line(f"Prove_Result {res_tmp} = {emit_val};")
+                            self._line(
+                                f"if (prove_result_is_err({res_tmp}))"
+                                f' prove_panic("unexpected error");'
+                            )
+                            # Check for Value → concrete coercion
+                            success_ty = (
+                                expr_type.args[0]
+                                if isinstance(expr_type, GenericInstance)
+                                and expr_type.base_name == "Result"
+                                and expr_type.args
+                                else None
+                            )
+                            coercion = None
+                            if (
+                                success_ty is not None
+                                and self._is_value_type(success_ty)
+                                and not self._is_value_type(ret_type)
+                            ):
+                                coercion = self._value_coercion_expr("_val_tmp", ret_type)
+                            unwrap = f"prove_result_unwrap_ptr({res_tmp})"
+                            if coercion is not None:
+                                val_tmp = self._tmp()
+                                self._line(
+                                    f"Prove_Value* {val_tmp} ="
+                                    f" (Prove_Value*){unwrap};"
+                                )
+                                cc = self._value_coercion_expr(val_tmp, ret_type)
+                                self._line(f"{ret_ct.decl} {ret_tmp} = {cc};")
+                            elif isinstance(ret_type, RecordType):
+                                cast = f"*(({ret_ct.decl}*){unwrap})"
+                                self._line(f"{ret_ct.decl} {ret_tmp} = {cast};")
+                            elif ret_ct.is_pointer:
+                                self._line(
+                                    f"{ret_ct.decl} {ret_tmp} ="
+                                    f" ({ret_ct.decl}){unwrap};"
+                                )
+                            elif ret_ct.decl == "double":
+                                self._line(
+                                    f"{ret_ct.decl} {ret_tmp} ="
+                                    f" prove_result_unwrap_double({res_tmp});"
+                                )
+                            elif (
+                                isinstance(ret_type, GenericInstance)
+                                and not ret_ct.is_pointer
+                            ):
+                                cast = f"*(({ret_ct.decl}*){unwrap})"
+                                self._line(f"{ret_ct.decl} {ret_tmp} = {cast};")
+                            else:
+                                self._line(
+                                    f"{ret_ct.decl} {ret_tmp} ="
+                                    f" prove_result_unwrap_int({res_tmp});"
+                                )
+                        else:
+                            # For validates functions returning bool: if returning an Option,
+                            # check if it's Some (tag == 1)
+                            if isinstance(ret_type, PrimitiveType) and ret_type.name == "Boolean":
+                                if (
+                                    isinstance(expr_type, GenericInstance)
+                                    and expr_type.base_name == "Option"
+                                ):
+                                    if isinstance(expr, IdentifierExpr):
+                                        emit_val = f"{expr.name}.tag == 1"
+                            self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
                         self._emit_releases(ret_tmp)
                         self._emit_region_exit()
                         self._line(f"return {ret_tmp};")

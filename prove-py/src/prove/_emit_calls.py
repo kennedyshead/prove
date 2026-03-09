@@ -23,6 +23,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     Type,
+    TypeVariable,
     resolve_type_vars,
     substitute_type_vars,
 )
@@ -270,6 +271,24 @@ class CallEmitterMixin:
                     else:
                         result[i] = f"prove_result_unwrap_int({arg_str})"
                     continue
+                # Compound: Result<Value, E> → concrete: unwrap + extract
+                if inner_ct.decl == "Prove_Value*":
+                    unwrapped = f"(Prove_Value*)prove_result_unwrap_ptr({arg_str})"
+                    if param_ct.decl == "Prove_String*":
+                        result[i] = f"prove_value_as_text({unwrapped})"
+                        continue
+                    if not param_ct.is_pointer and param_ct.decl in (
+                        "int64_t", "int32_t", "int16_t", "int8_t",
+                        "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+                    ):
+                        result[i] = f"prove_value_as_number({unwrapped})"
+                        continue
+                    if param_ct.decl in ("double", "float"):
+                        result[i] = f"prove_value_as_decimal({unwrapped})"
+                        continue
+                    if param_ct.decl == "bool":
+                        result[i] = f"prove_value_as_bool({unwrapped})"
+                        continue
             # Prove_Value* → concrete type extraction
             if arg_ct.decl == "Prove_Value*" and not param_ct.is_pointer:
                 if param_ct.decl in (
@@ -292,6 +311,62 @@ class CallEmitterMixin:
                 result[i] = f"prove_value_as_text({arg_str})"
                 continue
         return result
+
+    def _emit_table_to_record(
+        self, table_expr: str, record_type: RecordType,
+    ) -> str:
+        """Emit code that maps a Prove_Table* to a record struct.
+
+        For each record field, looks up the key in the table, panics if
+        missing, and converts the Value to the field's C type.  Nested
+        record fields are handled recursively.
+        """
+        field_args: list[str] = []
+        for fname, ftype in record_type.fields.items():
+            opt_tmp = self._tmp()
+            self._line(
+                f"Prove_Option {opt_tmp} = prove_table_get("
+                f"prove_string_from_cstr(\"{fname}\"), "
+                f"{table_expr});"
+            )
+            self._line(
+                f"if ({opt_tmp}.tag == 0) prove_panic("
+                f"\"Tried to map non existent value "
+                f"'{fname}' to type '{record_type.name}'\");"
+            )
+            val_tmp = self._tmp()
+            self._line(
+                f"Prove_Value* {val_tmp} = "
+                f"(Prove_Value*){opt_tmp}.value;"
+            )
+            # Resolve field to concrete C value
+            resolved = self._symbols.resolve_type(ftype.name) \
+                if isinstance(ftype, PrimitiveType) else ftype
+            if isinstance(resolved, RecordType):
+                # Nested record: extract inner table and recurse
+                tbl_tmp = self._tmp()
+                self._line(
+                    f"Prove_Table* {tbl_tmp} = "
+                    f"prove_value_as_object({val_tmp});"
+                )
+                inner = self._emit_table_to_record(
+                    tbl_tmp, resolved,
+                )
+                field_args.append(inner)
+            else:
+                coerced = self._value_coercion_expr(
+                    val_tmp, ftype,
+                )
+                field_args.append(
+                    coerced if coerced else val_tmp,
+                )
+        result_tmp = self._tmp()
+        ct = map_type(record_type)
+        self._line(
+            f"{ct.decl} {result_tmp} = "
+            f"{record_type.name}({', '.join(field_args)});"
+        )
+        return result_tmp
 
     def _emit_call(self, expr: CallExpr) -> str:
         if isinstance(expr.func, IdentifierExpr):
@@ -380,7 +455,7 @@ class CallEmitterMixin:
             sig = self._symbols.resolve_function(None, name, n_args)
             # Type-based disambiguation for overloaded stdlib functions
             if expr.args:
-                from prove.types import TypeVariable, types_compatible
+                from prove.types import types_compatible
 
                 actual_types = [self._infer_expr_type(a) for a in expr.args]
                 if sig is None or (
@@ -480,13 +555,31 @@ class CallEmitterMixin:
             # Pad record constructors with missing fields using defaults
             resolved = self._symbols.resolve_type(name)
             if isinstance(resolved, RecordType):
+                # Table<Value> → Record: map table fields to record
+                if len(expr.args) == 1:
+                    arg_ty = self._infer_expr_type(expr.args[0])
+                    is_table_value = (
+                        isinstance(arg_ty, GenericInstance)
+                        and arg_ty.base_name == "Table"
+                        and arg_ty.args
+                        and isinstance(arg_ty.args[0], TypeVariable)
+                    )
+                    if is_table_value:
+                        return self._emit_table_to_record(
+                            args[0], resolved,
+                        )
                 # Coerce args to match record field types
-
                 field_types = list(resolved.fields.values())
-                fake_sig = type("Sig", (), {"param_types": field_types})()
-                args = self._coerce_call_args(args, expr.args, fake_sig)
+                fake_sig = type(
+                    "Sig", (), {"param_types": field_types},
+                )()
+                args = self._coerce_call_args(
+                    args, expr.args, fake_sig,
+                )
                 if len(args) < len(resolved.fields):
-                    for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
+                    for fname, ftype in itertools.islice(
+                        resolved.fields.items(), len(args), None,
+                    ):
                         args.append(self._default_for_type(ftype))
             elif len(args) < len(getattr(resolved, "fields", {})):
                 for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):

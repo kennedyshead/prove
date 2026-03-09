@@ -787,6 +787,68 @@ class TestBinaryLookup:
         )
 
 
+class TestImplicitValueReturn:
+    """Test E395 implicit Value → concrete return type coercion."""
+
+    def test_value_return_as_string(self):
+        """E395: function returns Value but declares String."""
+        check_fails(
+            "module M\n"
+            "  Parse creates json\n"
+            "\n"
+            "transforms name(source String) String\n"
+            "    requires valid json(source)\n"
+            "    from\n"
+            "        json(source)\n",
+            "E395",
+        )
+
+    def test_table_value_return_as_table_string(self):
+        """E395: function returns Table<Value> but declares Table<String>."""
+        check_fails(
+            "module M\n"
+            "  Parse creates toml\n"
+            "\n"
+            "transforms config(source String) Table<String>\n"
+            "    requires valid toml(source)\n"
+            "    from\n"
+            "        toml(source)\n",
+            "E395",
+        )
+
+    def test_table_value_return_ok(self):
+        """No E395 when return type matches: Table<Value> → Table<Value>."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  Parse creates toml\n"
+            "\n"
+            "transforms config(source String) Table<Value>\n"
+            "    requires valid toml(source)\n"
+            "    from\n"
+            "        toml(source)\n",
+        )
+        assert not any(d.code == "E395" for d in diags)
+
+    def test_validates_exempt(self):
+        """No E395 for validates verb (implicit Boolean return)."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  Parse validates value\n"
+            "  type User is\n"
+            "    id Integer\n"
+            "    name String\n"
+            "\n"
+            "validates ok(u User)\n"
+            "    from\n"
+            "        value(u)\n",
+        )
+        assert not any(d.code == "E395" for d in diags)
+
+
 class TestValueCoercion:
     """Test I311 Value → concrete type coercion diagnostics."""
 
@@ -794,11 +856,11 @@ class TestValueCoercion:
         """I311: Value → Table<Value> coercion emits info diagnostic."""
         check_info(
             "module M\n"
-            "  Parse creates toml\n"
+            "  Parse creates json\n"
             "\n"
             "outputs run(source String) Unit!\n"
             "    from\n"
-            "        conf as Table<Value> = toml(source)!\n"
+            "        conf as Table<Value> = json(source)!\n"
             "        conf\n",
             "I311",
         )
@@ -807,11 +869,11 @@ class TestValueCoercion:
         """I311: Value → String coercion emits info diagnostic."""
         check_info(
             "module M\n"
-            "  Parse creates toml\n"
+            "  Parse creates json\n"
             "\n"
             "outputs run(source String) Unit!\n"
             "    from\n"
-            "        val as String = toml(source)!\n"
+            "        val as String = json(source)!\n"
             "        val\n",
             "I311",
         )
@@ -822,11 +884,11 @@ class TestValueCoercion:
 
         diags = check_all(
             "module M\n"
-            "  Parse creates toml\n"
+            "  Parse creates json\n"
             "\n"
             "outputs run(source String) Unit!\n"
             "    from\n"
-            "        val as Value = toml(source)!\n"
+            "        val as Value = json(source)!\n"
             "        val\n",
         )
         assert not any(d.code == "I311" for d in diags)

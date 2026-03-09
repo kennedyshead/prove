@@ -837,6 +837,38 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         names = self._module_imports.get(module_name)
         return names is not None and func_name in names
 
+    @staticmethod
+    def _has_implicit_value_coercion(
+        expected: Type, actual: Type,
+    ) -> bool:
+        """Detect when Value (TypeVariable) silently satisfies a concrete type.
+
+        Returns True when ``actual`` is bare Value where ``expected`` is
+        concrete, or when a Table<Value> is used where Table<String> etc.
+        is declared.  Skips List<Value> since that commonly arises from
+        HOF type inference (filter/map/reduce) rather than Parse.
+        """
+        # Bare Value → concrete type (e.g. requires-narrowed Result<Value>)
+        if isinstance(actual, TypeVariable) and actual.name == "Value":
+            if isinstance(expected, TypeVariable) and expected.name == "Value":
+                return False
+            if isinstance(expected, PrimitiveType) and expected.name == "Value":
+                return False
+            return True
+        # Table<Value> → Table<String> (Parse table mismatch)
+        if (
+            isinstance(expected, GenericInstance)
+            and isinstance(actual, GenericInstance)
+            and expected.base_name == actual.base_name
+            and expected.base_name == "Table"
+            and len(expected.args) == len(actual.args)
+        ):
+            return any(
+                Checker._has_implicit_value_coercion(e, a)
+                for e, a in zip(expected.args, actual.args)
+            )
+        return False
+
     # ── Pass 2: Checking ────────────────────────────────────────
 
     def _check_function(self, fd: FunctionDef) -> None:
@@ -959,6 +991,24 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"got '{type_name(body_type)}'",
                     fd.span,
                 )
+
+        # Check for implicit Value → concrete coercion:
+        # types_compatible passes because Value is a TypeVariable,
+        # but the user needs explicit conversion (e.g. Parse.text()).
+        if (
+            fd.verb != "validates"
+            and not isinstance(body_type, ErrorType)
+            and not isinstance(return_type, ErrorType)
+            and self._has_implicit_value_coercion(return_type, body_type)
+        ):
+            self._error(
+                "E395",
+                f"implicit Value conversion: body returns "
+                f"'{type_name(body_type)}' but function declares "
+                f"'{type_name(return_type)}'; "
+                f"use Parse accessors to extract the concrete type",
+                fd.span,
+            )
 
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
@@ -1376,6 +1426,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 is_matchable = isinstance(first_type, (AlgebraicType, ErrorType)) or (
                     isinstance(first_type, PrimitiveType)
                     and first_type.name in ("String", "Integer")
+                ) or (
+                    isinstance(first_type, GenericInstance)
+                    and first_type.base_name in ("Result", "Option")
                 )
                 if not is_matchable:
                     self._error(
@@ -1960,6 +2013,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         subject_type = ERROR_TY
         if expr.subject is not None:
             subject_type = self._infer_expr(expr.subject)
+        elif (
+            self._current_function
+            and isinstance(self._current_function, FunctionDef)
+            and self._current_function.verb == "matches"
+            and self._current_function.params
+        ):
+            # Implicit match in a matches verb function: use first parameter type
+            subject_type = self._resolve_type_expr(
+                self._current_function.params[0].type_expr
+            )
 
         # W304: match on condition already guaranteed by requires
         if expr.subject is not None and isinstance(self._current_function, FunctionDef):
@@ -1987,6 +2050,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Check exhaustiveness for algebraic types
         if isinstance(subject_type, AlgebraicType):
             self._check_exhaustiveness(expr, subject_type)
+        elif isinstance(subject_type, GenericInstance) and subject_type.base_name in ("Result", "Option"):
+            self._check_generic_exhaustiveness(expr, subject_type)
 
         # I301: detect unreachable arms after always-matching record pattern
         resolved_subj = subject_type
@@ -2193,18 +2258,39 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Map variant name → inner type for builtin generic types
         inner_type: Type | None = None
+        valid = False
         if base == "Result" and len(args) >= 2:
             if name == "Ok":
                 inner_type = args[0]
+                valid = True
             elif name == "Err":
                 inner_type = args[1]
+                valid = True
+            else:
+                self.diagnostics.append(make_diagnostic(
+                    Severity.ERROR, "E372",
+                    f"unknown variant '{name}' for Result type",
+                    labels=[DiagnosticLabel(span=pattern.span, message="")],
+                    notes=["Result has variants Ok and Err, "
+                           "e.g. Ok(value) => ... | Err(e) => ..."],
+                ))
         elif base == "Option" and len(args) >= 1:
             if name == "Some":
                 inner_type = args[0]
+                valid = True
             elif name == "None":
                 inner_type = None  # No binding for None
+                valid = True
+            else:
+                self.diagnostics.append(make_diagnostic(
+                    Severity.ERROR, "E372",
+                    f"unknown variant '{name}' for Option type",
+                    labels=[DiagnosticLabel(span=pattern.span, message="")],
+                    notes=["Option has variants Some and None, "
+                           "e.g. Some(value) => ... | None => ..."],
+                ))
 
-        if inner_type is not None:
+        if valid and inner_type is not None:
             for sub in pattern.fields:
                 self._check_pattern(sub, inner_type)
 
@@ -2250,6 +2336,45 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                                 replacement=arms_str,
                             )
                         ],
+                    )
+                )
+
+    def _check_generic_exhaustiveness(
+        self, expr: MatchExpr, subject_type: GenericInstance
+    ) -> None:
+        """Check match exhaustiveness for Result/Option generic types."""
+        base = subject_type.base_name
+        if base == "Result":
+            required = {"Ok", "Err"}
+        elif base == "Option":
+            required = {"Some", "None"}
+        else:
+            return
+
+        covered: set[str] = set()
+        has_wildcard = False
+
+        for arm in expr.arms:
+            if isinstance(arm.pattern, VariantPattern):
+                if arm.pattern.name in required:
+                    covered.add(arm.pattern.name)
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                has_wildcard = True
+
+        if not has_wildcard:
+            missing = required - covered
+            if missing:
+                names = ", ".join(sorted(missing))
+                arms_str = " | ".join(
+                    f"{v}(x) => ..." if v not in ("None",) else f"{v} => ..."
+                    for v in sorted(missing)
+                )
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.ERROR, "E373",
+                        f"non-exhaustive match on {base}: missing {names}",
+                        labels=[DiagnosticLabel(span=expr.span, message="")],
+                        notes=[f"add the missing arms: {arms_str}"],
                     )
                 )
 

@@ -9,8 +9,8 @@ module Parse
 creates value(source Source) Value
 binary
 
-/// Parse a TOML string into a Value
-creates toml(source String) Result<Value, String>
+/// Parse a TOML string into a Table
+creates toml(source String) Result<Table<Value>, String>
 binary
 
 /// Serialize a Value to TOML string
@@ -100,21 +100,3 @@ binary
 /// Validate a CSV string
 validates csv(source String)
 binary
-
-/// Unwrap Table<Value>
-transforms unwrap(table Result<Value, String>) Table<Value>
-  requires valid object(table)
-from
-    table
-
-/// Unwrap String
-transforms unwrap(text Option<Value>) String
-  requires valid text(text)
-from
-    text
-
-/// Unwrap Integer
-transforms unwrap(number Option<Value>) Integer
-  requires valid integer(number)
-from
-    number

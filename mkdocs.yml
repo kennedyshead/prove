@@ -1,4 +1,14 @@
 site_name: Prove
+nav:
+  - Home: index.md
+  - Language:
+      - Syntax Reference: syntax.md
+      - Type System: types.md
+      - Contracts & Testing: contracts.md
+      - Standard Library: stdlib.md
+  - Compiler:
+      - CLI Reference: cli.md
+      - Diagnostic Codes: diagnostics.md
 site_description: An intent-first programming language designed to mitigate AI slop and code scraping
 site_url: https://prove.botwork.se
 site_author: Magnus Knutas

@@ -570,6 +570,56 @@ class ExprEmitterMixin:
                                     self._emit_stmt(s)
                             self._indent -= 1
                             self._line("}")
+                    elif isinstance(subj_type, GenericInstance) and subj_type.base_name == "Result":
+                        if vp.name == "Ok":
+                            keyword = "if" if first else "} else if"
+                            self._line(f"{keyword} ({subj}.tag == 0) {{")
+                            self._indent += 1
+                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                                inner_ty = subj_type.args[0] if subj_type.args else INTEGER
+                                inner_ct = map_type(inner_ty)
+                                bind_name = vp.fields[0].name
+                                cast = (
+                                    f"({inner_ct.decl})"
+                                    if inner_ct.is_pointer
+                                    else f"({inner_ct.decl})(intptr_t)"
+                                )
+                                if bind_name == subj:
+                                    alias = self._tmp()
+                                    self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
+                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                                else:
+                                    self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
+                                self._locals[bind_name] = inner_ty
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
+                        elif vp.name == "Err":
+                            keyword = "if" if first else "} else if"
+                            self._line(f"{keyword} ({subj}.tag == 1) {{")
+                            self._indent += 1
+                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                                bind_name = vp.fields[0].name
+                                self._line(f"Prove_String* {bind_name} = {subj}.error;")
+                                err_ty = subj_type.args[1] if len(subj_type.args) > 1 else ERROR_TY
+                                self._locals[bind_name] = err_ty
+                            for i, s in enumerate(arm.body):
+                                if not is_unit and i == len(arm.body) - 1:
+                                    e = self._stmt_expr(s)
+                                    if e is not None:
+                                        self._line(f"{tmp} = {self._emit_expr(e)};")
+                                    else:
+                                        self._emit_stmt(s)
+                                else:
+                                    self._emit_stmt(s)
+                            self._indent -= 1
                     elif map_type(subj_type).is_pointer:
                         if vp.name == "Some":
                             keyword = "if" if first else "} else if"
@@ -719,7 +769,9 @@ class ExprEmitterMixin:
             if arm.body:
                 last = arm.body[-1]
                 if isinstance(last, ExprStmt):
-                    return self._infer_expr_type(last.expr)
+                    ty = self._infer_expr_type(last.expr)
+                    if not isinstance(ty, ErrorType):
+                        return ty
         return UNIT
 
     # -- Lambda expressions -----------------------------------------

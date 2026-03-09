@@ -170,6 +170,82 @@ class TestMatchesVerbRelaxation:
         )
 
 
+class TestGenericPatternMatching:
+    """Test E372/E373: invalid variants and exhaustiveness on Result/Option."""
+
+    def test_result_ok_err_valid(self):
+        """Ok/Err patterns on Result pass."""
+        check(
+            "matches handle(r Result<String, Error>) String\n"
+            "    from\n"
+            "        match r\n"
+            "            Ok(value) => value\n"
+            '            Err(e) => "error"\n'
+        )
+
+    def test_result_wrong_variant(self):
+        """Some(x) on Result gives E372."""
+        check_fails(
+            "matches handle(r Result<String, Error>) String\n"
+            "    from\n"
+            "        match r\n"
+            '            Some(value) => value\n'
+            '            _ => "error"\n',
+            "E372",
+        )
+
+    def test_option_wrong_variant(self):
+        """Ok(x) on Option gives E372."""
+        check_fails(
+            "matches handle(o Option<String>) String\n"
+            "    from\n"
+            "        match o\n"
+            '            Ok(value) => value\n'
+            '            _ => "error"\n',
+            "E372",
+        )
+
+    def test_result_non_exhaustive(self):
+        """Ok(x) only, no wildcard gives E373."""
+        check_fails(
+            "matches handle(r Result<String, Error>) String\n"
+            "    from\n"
+            "        match r\n"
+            '            Ok(value) => value\n',
+            "E373",
+        )
+
+    def test_option_non_exhaustive(self):
+        """Some(x) only, no wildcard gives E373."""
+        check_fails(
+            "matches handle(o Option<String>) String\n"
+            "    from\n"
+            "        match o\n"
+            '            Some(value) => value\n',
+            "E373",
+        )
+
+    def test_result_wildcard_covers(self):
+        """Ok(x) + _ passes (wildcard covers Err)."""
+        check(
+            "matches handle(r Result<String, Error>) String\n"
+            "    from\n"
+            "        match r\n"
+            "            Ok(value) => value\n"
+            '            _ => "error"\n'
+        )
+
+    def test_option_exhaustive(self):
+        """Some(x) + None passes."""
+        check(
+            "matches handle(o Option<String>) String\n"
+            "    from\n"
+            "        match o\n"
+            "            Some(value) => value\n"
+            '            None => "nothing"\n'
+        )
+
+
 class TestMatchRestriction:
     """Test I367: match expression suggestion for non-matches verbs."""
 

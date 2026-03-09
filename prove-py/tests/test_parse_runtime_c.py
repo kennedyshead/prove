@@ -24,9 +24,7 @@ class TestTomlParse:
                 Prove_String *src = prove_string_from_cstr("name = \\"hello\\"\\n");
                 Prove_Result r = prove_parse_toml(src);
                 if (prove_result_is_err(r)) return 1;
-                Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
-                if (!prove_value_is_object(root)) return 2;
-                Prove_Table *t = prove_value_as_object(root);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r);
                 Prove_String *key = prove_string_from_cstr("name");
                 Prove_Option opt = prove_table_get(key, t);
                 if (prove_option_is_none(opt)) return 3;
@@ -52,8 +50,7 @@ class TestTomlParse:
                 Prove_String *src = prove_string_from_cstr("port = 8080\\n");
                 Prove_Result r = prove_parse_toml(src);
                 if (prove_result_is_err(r)) return 1;
-                Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
-                Prove_Table *t = prove_value_as_object(root);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r);
                 Prove_String *key = prove_string_from_cstr("port");
                 Prove_Option opt = prove_table_get(key, t);
                 if (prove_option_is_none(opt)) return 2;
@@ -78,8 +75,7 @@ class TestTomlParse:
                 Prove_String *src = prove_string_from_cstr("debug = true\\nverbose = false\\n");
                 Prove_Result r = prove_parse_toml(src);
                 if (prove_result_is_err(r)) return 1;
-                Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
-                Prove_Table *t = prove_value_as_object(root);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r);
 
                 Prove_String *k1 = prove_string_from_cstr("debug");
                 Prove_Option o1 = prove_table_get(k1, t);
@@ -112,8 +108,7 @@ class TestTomlParse:
                     "[package]\\nname = \\"myapp\\"\\nversion = \\"1.0\\"\\n");
                 Prove_Result r = prove_parse_toml(src);
                 if (prove_result_is_err(r)) return 1;
-                Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
-                Prove_Table *t = prove_value_as_object(root);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r);
 
                 Prove_String *pkg_key = prove_string_from_cstr("package");
                 Prove_Option opt = prove_table_get(pkg_key, t);
@@ -147,8 +142,7 @@ class TestTomlParse:
                 Prove_String *src = prove_string_from_cstr("nums = [1, 2, 3]\\n");
                 Prove_Result r = prove_parse_toml(src);
                 if (prove_result_is_err(r)) return 1;
-                Prove_Value *root = (Prove_Value *)prove_result_unwrap_ptr(r);
-                Prove_Table *t = prove_value_as_object(root);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r);
 
                 Prove_String *key = prove_string_from_cstr("nums");
                 Prove_Option opt = prove_table_get(key, t);
@@ -185,18 +179,15 @@ class TestTomlRoundTrip:
                     "name = \\"test\\"\\ncount = 42\\n");
                 Prove_Result r1 = prove_parse_toml(src);
                 if (prove_result_is_err(r1)) return 1;
-                Prove_Value *v1 = (Prove_Value *)prove_result_unwrap_ptr(r1);
+                Prove_Table *t1 = (Prove_Table *)prove_result_unwrap_ptr(r1);
 
-                /* Emit */
-                Prove_String *emitted = prove_emit_toml(v1);
+                /* Emit (prove_emit_toml takes Prove_Value*) */
+                Prove_String *emitted = prove_emit_toml(prove_value_object(t1));
 
                 /* Re-parse */
                 Prove_Result r2 = prove_parse_toml(emitted);
                 if (prove_result_is_err(r2)) return 2;
-                Prove_Value *v2 = (Prove_Value *)prove_result_unwrap_ptr(r2);
-
-                /* Check values preserved */
-                Prove_Table *t = prove_value_as_object(v2);
+                Prove_Table *t = (Prove_Table *)prove_result_unwrap_ptr(r2);
                 Prove_String *nk = prove_string_from_cstr("name");
                 Prove_Option opt = prove_table_get(nk, t);
                 if (prove_option_is_none(opt)) return 3;

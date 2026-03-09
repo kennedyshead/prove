@@ -139,7 +139,8 @@ class CallCheckMixin:
                     extra = self._builtin_extra_types.get((name, i))
                     if extra and any(types_compatible(e, actual) for e in extra):
                         continue
-                    if sig.verb == "validates" and isinstance(actual, GenericInstance):
+                    # Option<T> auto-unwraps where T is expected
+                    if isinstance(actual, GenericInstance):
                         if actual.base_name == "Option" and actual.args:
                             inner = actual.args[0]
                             if types_compatible(expected, inner):
@@ -187,6 +188,13 @@ class CallCheckMixin:
                 isinstance(ret, GenericInstance) and ret.base_name == "Result"
             ):
                 ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
+            # Resolve generic type variables in return type
+            if sig.module and arg_types:
+                bindings = resolve_type_vars(
+                    sig.param_types, arg_types,
+                )
+                if bindings:
+                    ret = substitute_type_vars(ret, bindings)
             # Requires-based narrowing for unqualified calls:
             # Option<Value> → Value, Result<Value, Error> → Value
             if (
@@ -200,12 +208,7 @@ class CallCheckMixin:
                     sig.module,
                     expr.args,
                 ):
-                    bindings = resolve_type_vars(
-                        sig.param_types,
-                        arg_types,
-                    )
-                    inner = substitute_type_vars(ret.args[0], bindings)
-                    return inner
+                    return ret.args[0]
             return ret
 
         if isinstance(expr.func, TypeIdentifierExpr):
@@ -227,6 +230,7 @@ class CallCheckMixin:
             # Fall back to type lookup (record constructor)
             resolved = self.symbols.resolve_type(name)
             if resolved is not None:
+                self._used_types.add(name)
                 return resolved
             self._error("E311", f"undefined function '{name}'", expr.span)
             return ERROR_TY
@@ -291,9 +295,16 @@ class CallCheckMixin:
                 isinstance(ret, GenericInstance) and ret.base_name == "Result"
             ):
                 ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
-            # Requires-based narrowing: if the return type is Option<Value>
-            # or Result<Value, Error> and there is a matching validates call in
-            # requires, narrow to Value respectively.
+            # Resolve generic type variables in return type
+            if arg_types:
+                bindings = resolve_type_vars(
+                    sig.param_types, arg_types,
+                )
+                if bindings:
+                    ret = substitute_type_vars(ret, bindings)
+            # Requires-based narrowing: if the return type is Option<T>
+            # or Result<T, E> and there is a matching validates call in
+            # requires, narrow to T respectively.
             if (
                 isinstance(ret, GenericInstance)
                 and ret.base_name in ("Option", "Result")
@@ -304,12 +315,7 @@ class CallCheckMixin:
                     module_name,
                     expr.args,
                 ):
-                    bindings = resolve_type_vars(
-                        sig.param_types,
-                        arg_types,
-                    )
-                    inner = substitute_type_vars(ret.args[0], bindings)
-                    return inner
+                    return ret.args[0]
             return ret
 
         # For complex expressions (e.g., method-like calls), infer the function type

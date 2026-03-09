@@ -331,7 +331,7 @@ class TestFormatterTypeInference:
             '    console("done")\n'
         )
         result = _format_with_types(source)
-        assert "doc as Value = toml(source)!" in result
+        assert "doc as Table<Value> = toml(source)!" in result
 
     def test_roundtrip_stable_with_types(self):
         """Formatting twice with type inference produces identical output."""

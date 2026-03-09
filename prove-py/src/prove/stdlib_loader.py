@@ -521,6 +521,8 @@ def _resolve_type_expr(
                     args.append(PrimitiveType(base.name, modifiers=mods))
                 else:
                     args.append(base)
+            elif isinstance(a, GenericType):
+                args.append(_resolve_type_expr(a))
             else:
                 args.append(TypeVariable("Value"))
         if type_expr.name == "List" and len(args) == 1:

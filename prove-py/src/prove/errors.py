@@ -93,7 +93,7 @@ for _c in ("E350", "E352", "E355", "E356"):
 # Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367)
 _register_doc_range("E", 361, 367)
 # Pattern matching E370-E371
-_register_doc_range("E", 370, 371)
+_register_doc_range("E", 370, 373)
 # Lookup tables E375-E379
 _register_doc_range("E", 375, 379)
 # Contract checking
