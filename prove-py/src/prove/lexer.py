@@ -364,6 +364,7 @@ class Lexer:
             "{": "{",
             "}": "}",
             "0": "\0",
+            "e": "\x1b",
         }
         if ch in escape_map:
             return escape_map[ch]

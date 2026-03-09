@@ -447,6 +447,12 @@ _register_module(
     },
 )
 
+_register_module(
+    "log",
+    display="Log",
+    prv_file="pure/log.prv",
+)
+
 
 def binary_c_name(
     module: str,
@@ -465,6 +471,54 @@ def binary_c_name(
 
 # Cache loaded signatures
 _cache: dict[str, list[FunctionSignature]] = {}
+
+
+# ── Stdlib constants ──────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class StdlibConstant:
+    """A constant exported from a pure-Prove stdlib module."""
+
+    name: str
+    type_name: str
+    raw_value: str
+
+
+_const_cache: dict[str, list[StdlibConstant]] = {}
+
+
+def load_stdlib_constants(module_name: str) -> list[StdlibConstant]:
+    """Load constant definitions from a stdlib module.
+
+    Returns an empty list if the module has no constants.
+    """
+    normalized = module_name.lower()
+
+    if normalized in _const_cache:
+        return _const_cache[normalized]
+
+    module = _parse_stdlib_module(normalized)
+    if module is None:
+        _const_cache[normalized] = []
+        return []
+
+    from prove.ast_nodes import ModuleDecl, StringLit
+
+    constants: list[StdlibConstant] = []
+    for decl in module.declarations:
+        if isinstance(decl, ModuleDecl):
+            for const in decl.constants:
+                type_name = "String"
+                if const.type_expr is not None and hasattr(const.type_expr, "name"):
+                    type_name = const.type_expr.name
+                raw_value = ""
+                if isinstance(const.value, StringLit):
+                    raw_value = const.value.value
+                constants.append(StdlibConstant(const.name, type_name, raw_value))
+
+    _const_cache[normalized] = constants
+    return constants
 
 
 _KNOWN_TYPES = {

@@ -458,6 +458,24 @@ class CEmitter(
                 else:
                     self._line(f"#define {name} {self._emit_expr(val)}")
                 any_emitted = True
+
+            # Emit #defines for imported stdlib constants
+            from prove.stdlib_loader import load_stdlib_constants
+
+            for imp in decl.imports:
+                stdlib_consts = load_stdlib_constants(imp.module)
+                if not stdlib_consts:
+                    continue
+                consts_by_name = {c.name: c for c in stdlib_consts}
+                for item in imp.items:
+                    const = consts_by_name.get(item.name)
+                    if const is not None:
+                        escaped = self._escape_c_string(const.raw_value)
+                        self._line(
+                            f'#define {item.name} prove_string_from_cstr("{escaped}")'
+                        )
+                        any_emitted = True
+
         if any_emitted:
             self._line("")
 
@@ -1114,4 +1132,5 @@ class CEmitter(
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
+            .replace("\x1b", "\\x1b")
         )

@@ -92,6 +92,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "bytes": {"prove_bytes"},
     "hash": {"prove_hash_crypto", "prove_bytes"},
     "time": {"prove_time"},
+    "log": set(),
 }
 
 _RUNTIME_FUNCTIONS = {

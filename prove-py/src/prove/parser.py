@@ -1192,7 +1192,7 @@ class Parser:
 
         items: list[ImportItem] = []
         # Consume one or more names (identifiers or type identifiers).
-        while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER):
+        while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER) or self._at(TokenKind.CONSTANT_IDENTIFIER):
             name_tok = self._advance()
             # Skip optional generic parameters (e.g. Table<Value>)
             if self._at(TokenKind.LESS):
@@ -1284,6 +1284,8 @@ class Parser:
                         body.append(self._parse_function_def(doc))
                     elif self._at(TokenKind.MAIN):
                         body.append(self._parse_main_def(doc))
+                    elif self._at(TokenKind.CONSTANT_IDENTIFIER):
+                        constants.append(self._parse_constant_def(doc))
                     else:
                         tok = self._current()
                         if not self._recovery_mode:
@@ -1703,7 +1705,7 @@ class Parser:
 
     # ── Constant definitions ─────────────────────────────────────
 
-    def _parse_constant_def(self) -> ConstantDef:
+    def _parse_constant_def(self, doc: str | None = None) -> ConstantDef:
         start = self._current().span
         name_tok = self._advance()  # CONSTANT_IDENTIFIER
 
@@ -1720,7 +1722,7 @@ class Parser:
             value = self._parse_expression(0)
 
         end = self._current().span
-        return ConstantDef(name_tok.value, type_expr, value, self._span(start, end))
+        return ConstantDef(name_tok.value, type_expr, value, self._span(start, end), doc_comment=doc)
 
     def _parse_comptime_expr(self) -> ComptimeExpr:
         start = self._current().span

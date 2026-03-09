@@ -243,6 +243,12 @@ class ContractCheckMixin:
                     fd.span,
                 )
 
+        # Check invariant network constraints for functions with `satisfies`
+        self._check_invariant_constraints(fd, return_type)
+
+        # Check temporal ordering of operations in function body
+        self._check_temporal_ordering(fd)
+
         # Type-check `near_miss` expressions
         # validates has implicit Boolean return (checker stores Unit)
         nm_return_type = BOOLEAN if fd.verb == "validates" else return_type
@@ -612,3 +618,164 @@ class ContractCheckMixin:
         if isinstance(expr, FieldExpr):
             return self._check_expr_readonly(expr.base, param_names)
         return True
+
+    # ── Invariant network enforcement ───────────────────────────
+
+    def _check_invariant_constraints(
+        self, fd: FunctionDef, return_type: Type
+    ) -> None:
+        """Type-check invariant network constraints for functions with `satisfies`.
+
+        For each invariant network referenced by `satisfies`, the constraint
+        expressions are type-checked in a scope where `result` is bound to the
+        function's return type and all parameters are in scope. This validates
+        that constraint expressions are well-typed.
+        """
+        for sat_name in fd.satisfies:
+            inv = self._invariant_network_defs.get(sat_name)
+            if inv is None or not inv.constraints:
+                continue
+
+            # Type-check each constraint expression in a scope with `result`
+            self.symbols.push_scope(f"invariant_{sat_name}")
+            self.symbols.define(
+                Symbol(
+                    name="result",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=return_type,
+                    span=fd.span,
+                )
+            )
+            for constraint in inv.constraints:
+                # Bare function names in constraints are references to validates
+                # functions that should be applied to the result — accept them
+                # as valid Boolean constraints without full type-inference.
+                if isinstance(constraint, IdentifierExpr):
+                    sig = self.symbols.resolve_function_any(constraint.name)
+                    if sig is not None:
+                        continue  # Known function reference — accepted
+                constraint_type = self._infer_expr(constraint)
+                if (
+                    not isinstance(constraint_type, ErrorType)
+                    and not types_compatible(BOOLEAN, constraint_type)
+                ):
+                    self._error(
+                        "E396",
+                        f"invariant constraint in '{sat_name}' must be Boolean, "
+                        f"got '{type_name(constraint_type)}'",
+                        constraint.span if hasattr(constraint, "span") else fd.span,
+                    )
+            self.symbols.pop_scope()
+
+            # Warn if there are no `ensures` clauses to support verification
+            if not fd.ensures:
+                diag = make_diagnostic(
+                    Severity.WARNING,
+                    "W391",
+                    f"function satisfies invariant '{sat_name}' but has no "
+                    f"'ensures' clause; add ensures clauses to document "
+                    f"invariant satisfaction",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        f"The '{sat_name}' invariant has constraints that cannot "
+                        f"be automatically verified without postconditions."
+                    ],
+                )
+                self.diagnostics.append(diag)
+
+    # ── Temporal ordering enforcement ────────────────────────────
+
+    def _collect_call_names_from_body(self, body: list) -> list[str]:
+        """Collect all top-level function call names from a body in order."""
+        names: list[str] = []
+        for stmt in body:
+            self._collect_call_names_stmt(stmt, names)
+        return names
+
+    def _collect_call_names_stmt(self, stmt: Stmt | MatchExpr, names: list[str]) -> None:
+        """Recursively collect function call names from a statement."""
+        if isinstance(stmt, VarDecl):
+            self._collect_call_names_expr(stmt.value, names)
+        elif isinstance(stmt, Assignment):
+            self._collect_call_names_expr(stmt.value, names)
+        elif isinstance(stmt, FieldAssignment):
+            self._collect_call_names_expr(stmt.value, names)
+        elif isinstance(stmt, ExprStmt):
+            self._collect_call_names_expr(stmt.expr, names)
+        elif isinstance(stmt, MatchExpr):
+            if stmt.subject is not None:
+                self._collect_call_names_expr(stmt.subject, names)
+            for arm in stmt.arms:
+                for s in arm.body:
+                    self._collect_call_names_stmt(s, names)
+
+    def _collect_call_names_expr(self, expr: Expr, names: list[str]) -> None:
+        """Recursively collect function call names from an expression."""
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                names.append(expr.func.name)
+            elif isinstance(expr.func, FieldExpr) and isinstance(
+                expr.func.obj, IdentifierExpr
+            ):
+                names.append(expr.func.field)
+            for arg in expr.args:
+                self._collect_call_names_expr(arg, names)
+        elif isinstance(expr, BinaryExpr):
+            self._collect_call_names_expr(expr.left, names)
+            self._collect_call_names_expr(expr.right, names)
+        elif isinstance(expr, UnaryExpr):
+            self._collect_call_names_expr(expr.operand, names)
+        elif isinstance(expr, PipeExpr):
+            self._collect_call_names_expr(expr.left, names)
+            self._collect_call_names_expr(expr.right, names)
+        elif isinstance(expr, FailPropExpr):
+            self._collect_call_names_expr(expr.expr, names)
+        elif isinstance(expr, MatchExpr):
+            if expr.subject is not None:
+                self._collect_call_names_expr(expr.subject, names)
+            for arm in expr.arms:
+                for s in arm.body:
+                    self._collect_call_names_stmt(s, names)
+        elif isinstance(expr, LambdaExpr):
+            self._collect_call_names_expr(expr.body, names)
+
+    def _check_temporal_ordering(self, fd: FunctionDef) -> None:
+        """Warn when temporal operations appear out of declared order (W390).
+
+        If the module declares `temporal: a -> b -> c`, any function that calls
+        temporal operations must call them in that order. Calling `b` before `a`
+        in the same function body is flagged.
+        """
+        if not self._temporal_order:
+            return
+
+        temporal_set = set(self._temporal_order)
+        call_names = self._collect_call_names_from_body(fd.body)
+
+        # Extract temporal steps in the order they appear in the body
+        ordered_steps = [(name, i) for i, name in enumerate(call_names) if name in temporal_set]
+
+        if len(ordered_steps) < 2:
+            return
+
+        declared_order = {step: pos for pos, step in enumerate(self._temporal_order)}
+
+        prev_pos = -1
+        prev_name: str | None = None
+        for name, _call_idx in ordered_steps:
+            step_pos = declared_order.get(name, -1)
+            if step_pos < prev_pos:
+                diag = make_diagnostic(
+                    Severity.WARNING,
+                    "W390",
+                    f"temporal operation '{name}' appears before '{prev_name}'; "
+                    f"declared order: {' -> '.join(self._temporal_order)}",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        "Reorder the calls to match the declared temporal sequence."
+                    ],
+                )
+                self.diagnostics.append(diag)
+                return  # Report first violation only
+            prev_pos = step_pos
+            prev_name = name

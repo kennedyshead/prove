@@ -514,6 +514,7 @@ class ConstantDef:
     type_expr: TypeExpr | None
     value: Expr
     span: Span
+    doc_comment: str | None = None
 
 
 @dataclass(frozen=True)

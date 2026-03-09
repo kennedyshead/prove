@@ -38,6 +38,7 @@ from prove.ast_nodes import (
     ImportDecl,
     IndexExpr,
     IntegerLit,
+    InvariantNetwork,
     LambdaExpr,
     ListLiteral,
     LiteralPattern,
@@ -229,6 +230,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._ownership_scope_stack: list[set[str]] = []
         # Track invariant network names for satisfies validation
         self._invariant_networks: set[str] = set()
+        # Full invariant network definitions for constraint type-checking
+        self._invariant_network_defs: dict[str, InvariantNetwork] = {}
+        # Temporal ordering: list of step names from module temporal declaration
+        self._temporal_order: list[str] = []
         # Coherence checking enabled (set via CLI --coherence flag)
         self._coherence: bool = False
 
@@ -272,6 +277,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     self._register_foreign_block(fb)
                 for inv in decl.invariants:
                     self._invariant_networks.add(inv.name)
+                    self._invariant_network_defs[inv.name] = inv
+                if decl.temporal:
+                    self._temporal_order = list(decl.temporal)
                 for item in decl.body:
                     if isinstance(item, FunctionDef):
                         self._register_function(item)
@@ -723,7 +731,38 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         for s in stdlib_sigs:
             stdlib_all_by_name.setdefault(s.name, []).append(s)
 
+        # Load constants for constant-import detection
+        from prove.stdlib_loader import load_stdlib_constants
+
+        stdlib_consts = load_stdlib_constants(imp.module)
+        stdlib_consts_by_name = {c.name: c for c in stdlib_consts}
+
         for item in imp.items:
+            # Constant imports (ALL_CAPS names like RED, BOLD, RESET)
+            is_const_name = (
+                len(item.name) >= 2
+                and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
+            )
+            if is_const_name:
+                const = stdlib_consts_by_name.get(item.name)
+                if const is not None:
+                    resolved = PrimitiveType(const.type_name)
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.CONSTANT,
+                            resolved_type=resolved,
+                            span=item.span,
+                        )
+                    )
+                else:
+                    self._error(
+                        "E315",
+                        f"constant '{item.name}' not found in module '{imp.module}'",
+                        item.span,
+                    )
+                continue
+
             # Type imports (verb="types" or bare CamelCase with no verb)
             is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
             if is_type_import:
@@ -974,6 +1013,19 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if i < len(fd.body) - 1:
                 self._check_unused_pure_result(stmt)
             body_type = self._check_stmt(stmt)
+
+        # Track return-position move: if the last expression is an Own-typed
+        # identifier, mark it as moved (consumed by the return). This closes
+        # the tracking gap where returning an owned variable wasn't recorded.
+        # Only handles simple identifiers to avoid false positives on field
+        # accesses and complex expressions.
+        if fd.body and not isinstance(fd.body[-1], VarDecl):
+            last_stmt = fd.body[-1]
+            ret_expr = last_stmt.expr if isinstance(last_stmt, ExprStmt) else None
+            if isinstance(ret_expr, IdentifierExpr):
+                ret_sym = self.symbols.lookup(ret_expr.name)
+                if ret_sym is not None and has_own_modifier(ret_sym.resolved_type):
+                    self._moved_vars.add(ret_expr.name)
 
         # Validate return type
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
