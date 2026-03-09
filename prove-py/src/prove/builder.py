@@ -94,7 +94,53 @@ def build_project(
     if has_errors:
         return BuildResult(ok=False, diagnostics=all_diags)
 
-    return _build_c(project_dir, config, modules_and_symbols, all_diags, debug=debug)
+    # Compile pure stdlib modules that are imported by the project
+    user_module_count = len(modules_and_symbols)
+    _compile_pure_stdlib(modules_and_symbols, all_diags)
+
+    return _build_c(
+        project_dir, config, modules_and_symbols, all_diags,
+        debug=debug, user_module_count=user_module_count,
+    )
+
+
+def _compile_pure_stdlib(
+    modules_and_symbols: list[tuple[Module, SymbolTable]],
+    all_diags: list[Diagnostic],
+) -> None:
+    """Find and compile pure stdlib modules imported by the project."""
+    from prove.stdlib_loader import stdlib_pure_prv_path
+
+    # Collect all imported module names
+    seen: set[str] = set()
+    for module, _symbols in modules_and_symbols:
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    seen.add(imp.module)
+
+    # For each imported module, check if it's a pure stdlib module
+    for mod_name in seen:
+        prv_path = stdlib_pure_prv_path(mod_name)
+        if prv_path is None or not prv_path.exists():
+            continue
+
+        source = prv_path.read_text()
+        filename = str(prv_path)
+        try:
+            tokens = Lexer(source, filename).lex()
+            stdlib_module = Parser(tokens, filename).parse()
+        except CompileError as e:
+            all_diags.extend(e.diagnostics)
+            continue
+
+        checker = Checker()
+        symbols = checker.check(stdlib_module)
+        all_diags.extend(checker.diagnostics)
+        if checker.has_errors():
+            continue
+
+        modules_and_symbols.append((stdlib_module, symbols))
 
 
 def _build_c(
@@ -104,6 +150,7 @@ def _build_c(
     all_diags: list[Diagnostic],
     *,
     debug: bool = False,
+    user_module_count: int | None = None,
 ) -> BuildResult:
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
@@ -134,6 +181,15 @@ def _build_c(
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:
             stdlib_libs.update(runtime_deps.get_libs())
+
+    # Generate forward declarations for pure stdlib functions
+    if user_module_count is not None and user_module_count < len(c_sources):
+        forward_decls = _extract_forward_decls(c_sources[user_module_count:])
+        if forward_decls:
+            header = "\n".join(forward_decls) + "\n"
+            for i in range(user_module_count):
+                # Insert forward declarations after the last #include
+                c_sources[i] = _inject_forward_decls(c_sources[i], header)
 
     # Set up build directory
     build_dir = project_dir / "build"
@@ -215,3 +271,33 @@ def _build_c(
         diagnostics=all_diags,
         comptime_dependencies=comptime_deps,
     )
+
+
+import re
+
+_FORWARD_DECL_RE = re.compile(
+    r"^(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$"
+)
+
+
+def _extract_forward_decls(stdlib_c_sources: list[str]) -> list[str]:
+    """Extract function forward declarations from pure stdlib C sources."""
+    decls: list[str] = []
+    for src in stdlib_c_sources:
+        for line in src.splitlines():
+            line = line.strip()
+            if _FORWARD_DECL_RE.match(line):
+                decls.append(line)
+    return decls
+
+
+def _inject_forward_decls(c_source: str, decls: str) -> str:
+    """Insert forward declarations after the last #include line."""
+    lines = c_source.split("\n")
+    insert_at = 0
+    for i, line in enumerate(lines):
+        if line.startswith("#include"):
+            insert_at = i + 1
+    lines.insert(insert_at, "\n// Forward declarations for pure stdlib modules")
+    lines.insert(insert_at + 1, decls)
+    return "\n".join(lines)

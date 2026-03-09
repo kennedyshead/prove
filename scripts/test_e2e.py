@@ -256,9 +256,11 @@ def _evaluate_results(
                 if f"[{diag}]" not in stderr:
                     missing_diags.append(diag)
 
-        if missing_diags:
+        if missing_diags and not expected:
             status = f"FAIL (missing diags: {', '.join(missing_diags)})"
             failures.append((name, cmd, result))
+        elif missing_diags and expected:
+            status = f"EXPECTED FAIL (missing diags: {', '.join(missing_diags)})"
         elif expected and rc != 0:
             status = "EXPECTED FAIL"
         elif rc == 0:

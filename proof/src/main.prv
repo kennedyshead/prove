@@ -1,8 +1,9 @@
 module Main
   narrative: """A new Prove project."""
-  InputOutput outputs console, inputs process file
+  InputOutput inputs process file
   List reads value
   Parse validates toml, creates toml
+  Log detached info
 
   type Package is
     name String
@@ -36,4 +37,4 @@ from
     out as String = match value(1, arguments)
         "build" => build_command(arguments, config)!
         _ => file(HELP_TXT)!
-    console(out)
+    info(out)

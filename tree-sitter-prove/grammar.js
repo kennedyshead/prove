@@ -189,8 +189,11 @@ module.exports = grammar({
 
     // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
+      'attached',
       'creates',
+      'detached',
       'inputs',
+      'listens',
       'matches',
       'outputs',
       'reads',
@@ -582,7 +585,7 @@ module.exports = grammar({
 
     type_identifier: $ => /[A-Z][a-zA-Z0-9]*/,
 
-    constant_identifier: $ => /[A-Z][A-Z0-9_]+/,
+    constant_identifier: $ => token(prec(1, /[A-Z][A-Z0-9_]+/)),
   },
 });
 

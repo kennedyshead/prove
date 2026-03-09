@@ -710,11 +710,23 @@
       "members": [
         {
           "type": "STRING",
+          "value": "attached"
+        },
+        {
+          "type": "STRING",
           "value": "creates"
         },
         {
           "type": "STRING",
+          "value": "detached"
+        },
+        {
+          "type": "STRING",
           "value": "inputs"
+        },
+        {
+          "type": "STRING",
+          "value": "listens"
         },
         {
           "type": "STRING",
@@ -2724,8 +2736,15 @@
       "value": "[A-Z][a-zA-Z0-9]*"
     },
     "constant_identifier": {
-      "type": "PATTERN",
-      "value": "[A-Z][A-Z0-9_]+"
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 1,
+        "content": {
+          "type": "PATTERN",
+          "value": "[A-Z][A-Z0-9_]+"
+        }
+      }
     }
   },
   "extras": [
