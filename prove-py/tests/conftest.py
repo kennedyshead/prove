@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from prove.c_compiler import find_c_compiler
@@ -22,7 +24,7 @@ def needs_cc(_cc: str | None) -> None:
 
 
 @pytest.fixture(scope="session")
-def _runtime_dir_session(tmp_path_factory: pytest.TempPathFactory, _cc: str | None) -> None:
+def _runtime_dir_session(tmp_path_factory: pytest.TempPathFactory, _cc: str | None) -> Path | None:
     """Copy runtime files once per session. Returns None when no compiler."""
     if _cc is None:
         return None
@@ -32,6 +34,6 @@ def _runtime_dir_session(tmp_path_factory: pytest.TempPathFactory, _cc: str | No
 
 
 @pytest.fixture
-def runtime_dir(_runtime_dir_session, needs_cc):
+def runtime_dir(_runtime_dir_session: Path | None, needs_cc: None) -> Path | None:
     """Return the session-scoped runtime directory (skips if no compiler)."""
     return _runtime_dir_session

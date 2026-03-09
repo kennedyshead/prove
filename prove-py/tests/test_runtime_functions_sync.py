@@ -51,8 +51,8 @@ def test_runtime_functions_match_headers() -> None:
 
     # Build reverse map: function -> library
     registered: dict[str, str] = {}
-    for lib, funcs in _RUNTIME_FUNCTIONS.items():
-        for fn in funcs:
+    for lib, reg_fns in _RUNTIME_FUNCTIONS.items():
+        for fn in reg_fns:
             registered[fn] = lib
 
     all_header_funcs: dict[str, set[str]] = {}  # header_basename -> functions
@@ -63,13 +63,13 @@ def test_runtime_functions_match_headers() -> None:
         basename = item.name.removesuffix(".h")
         with importlib.resources.as_file(item) as path:
             text = path.read_text()
-        funcs = _parse_header_functions(text)
-        if funcs:
-            all_header_funcs[basename] = funcs
+        hdr_fns = _parse_header_functions(text)
+        if hdr_fns:
+            all_header_funcs[basename] = hdr_fns
 
     missing: list[str] = []
-    for header, funcs in sorted(all_header_funcs.items()):
-        for fn in sorted(funcs):
+    for header, hdr_fns in sorted(all_header_funcs.items()):
+        for fn in sorted(hdr_fns):
             if fn not in registered:
                 missing.append(f"  {header}: {fn}")
 

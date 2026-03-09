@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import textwrap
 
-from runtime_helpers import compile_and_run
+from tests.runtime_helpers import compile_and_run
 
 
 class TestFormatPad:

@@ -140,6 +140,11 @@ def _build_c(
     gen_dir = build_dir / "gen"
     gen_dir.mkdir(parents=True, exist_ok=True)
 
+    if debug:
+        (gen_dir / ".clangd").write_text(
+            "CompileFlags:\n  Add: -I../runtime\n"
+        )
+
     # Write generated C
     gen_c_files: list[Path] = []
     for i, c_src in enumerate(c_sources):

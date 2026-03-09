@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from prove.checker import Checker
+from prove.errors import Diagnostic
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.symbols import SymbolTable
+from prove.ast_nodes import Module
 
 
-def parse_check(source: str) -> tuple:
+def parse_check(source: str) -> tuple[Module, SymbolTable]:
     """Parse and check source, return (module, symbols)."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()
@@ -29,7 +31,7 @@ def check(source: str) -> SymbolTable:
     return st
 
 
-def check_fails(source: str, error_code: str) -> list:
+def check_fails(source: str, error_code: str) -> list[Diagnostic]:
     """Parse and check source, asserting the given error code appears."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()
@@ -43,7 +45,7 @@ def check_fails(source: str, error_code: str) -> list:
     return matching
 
 
-def check_warns(source: str, warning_code: str) -> list:
+def check_warns(source: str, warning_code: str) -> list[Diagnostic]:
     """Parse and check source, asserting the given warning code appears."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()
@@ -57,7 +59,7 @@ def check_warns(source: str, warning_code: str) -> list:
     return matching
 
 
-def check_info(source: str, info_code: str) -> list:
+def check_info(source: str, info_code: str) -> list[Diagnostic]:
     """Parse and check source, asserting the given info-level diagnostic appears."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()
@@ -71,7 +73,7 @@ def check_info(source: str, info_code: str) -> list:
     return matching
 
 
-def check_all(source: str) -> list:
+def check_all(source: str) -> list[Diagnostic]:
     """Parse and check source, return all diagnostics."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()

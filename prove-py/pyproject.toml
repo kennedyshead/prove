@@ -29,6 +29,7 @@ prove-lsp = "prove.lsp:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
+"prove" = ["py.typed"]
 "prove.runtime" = ["*.h", "*.c"]
 "prove.stdlib" = ["*.prv"]
 
@@ -50,3 +51,14 @@ markers = [
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+warn_return_any = false
+disable_error_code = ["union-attr", "arg-type", "list-item"]
+
+[[tool.pyright]]
+disable = ["missing-module-docstring"]

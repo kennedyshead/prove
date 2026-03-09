@@ -17,7 +17,7 @@ def compile_and_run(
     extra_flags: list[str] | None = None,
     args: list[str] | None = None,
     compiler: str | None = None,
-) -> subprocess.CompletedProcess:
+) -> subprocess.CompletedProcess[str]:
     """Compile a C test program against the runtime and run it."""
     src = tmp_path / f"{name}.c"
     src.write_text(c_code)

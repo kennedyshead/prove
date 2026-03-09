@@ -21,6 +21,7 @@ from prove.ast_nodes import (
     Module,
     Param,
     SimpleType,
+    Stmt,
     TailContinue,
     TailLoop,
     VarDecl,
@@ -37,8 +38,8 @@ def _make_func(
     name: str,
     verb: str = "transforms",
     params: list[Param] | None = None,
-    body: list | None = None,
-    terminates=None,
+    body: list[Stmt] | None = None,
+    terminates: BinaryExpr | None = None,
 ) -> FunctionDef:
     """Helper to build a minimal FunctionDef."""
     return FunctionDef(

@@ -6,10 +6,11 @@ from prove.checker import Checker
 from prove.domains import DomainProfile, get_domain_profile
 from prove.lexer import Lexer
 from prove.parser import Parser
+from prove.errors import Diagnostic
 from tests.helpers import check_warns
 
 
-def _check_with_coherence(source: str) -> list:
+def _check_with_coherence(source: str) -> list[Diagnostic]:
     """Parse and check source with coherence enabled, return all diagnostics."""
     tokens = Lexer(source, "<test>").lex()
     module = Parser(tokens, "<test>").parse()

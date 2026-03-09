@@ -10,7 +10,7 @@ _DUMMY = Span("<test>", 1, 1, 1, 1)
 
 def _make_fd(**kwargs) -> FunctionDef:
     """Create a minimal FunctionDef for testing."""
-    defaults = dict(
+    defaults: dict[str, object] = dict(
         verb="transforms", name="f", params=[], return_type=None,
         can_fail=False, ensures=[], requires=[],
         explain=None, terminates=None, trusted=None, binary=False,

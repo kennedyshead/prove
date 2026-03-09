@@ -2,13 +2,13 @@ module Main
   narrative: """A new Prove project."""
   InputOutput outputs console, inputs process file
   List reads last
-  Parse transforms unwrap, validates toml, creates toml
+  Parse transforms unwrap, validates toml, creates toml, reads text
 
 inputs cli_build() String!
 from
     load as String = file("prove.toml")!
     conf as Table<Value> = toml(load)!
-    conf.name
+    text(conf.name)
 
 main() Result<Unit, Error>!
 from

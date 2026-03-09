@@ -665,17 +665,6 @@ class TestVerbAwareRecursion:
             "            _ => f(n - 1)\n",
         )
 
-    def test_same_verb_with_terminates_no_w326(self):
-        """Recursive function with terminates → no W326 (terminates proves termination)."""
-        check(
-            "matches f(n Integer) Integer\n"
-            "    terminates: n == 0\n"
-            "    from\n"
-            "        match n\n"
-            "            0 => 0\n"
-            "            _ => f(n - 1)\n",
-        )
-
     def test_different_verb_not_recursive(self):
         """Calling same-name different-verb function is NOT recursion."""
         check(

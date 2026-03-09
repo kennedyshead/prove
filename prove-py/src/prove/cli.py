@@ -9,7 +9,7 @@ import click
 
 from prove import __version__
 from prove.config import find_config, load_config
-from prove.errors import CompileError, DiagnosticRenderer, Severity
+from prove.errors import CompileError, Diagnostic, DiagnosticRenderer, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from prove.symbols import SymbolTable
 
 
-def _collect_verification_stats(module: Module) -> dict:
+def _collect_verification_stats(module: Module) -> dict[str, int]:
     """Collect verification statistics from a module."""
     from prove.ast_nodes import FunctionDef, MainDef
 
@@ -585,8 +585,8 @@ def _format_source(source: str, filename: str) -> str | None:
         return None
     from prove.formatter import ProveFormatter
 
-    symbols = _try_check(source, filename)
-    return ProveFormatter(symbols=symbols).format(module)
+    symbols, diagnostics = _try_check(source, filename)
+    return ProveFormatter(symbols=symbols, diagnostics=diagnostics).format(module)
 
 
 def _format_md_prove_blocks(text: str) -> str:
@@ -642,8 +642,8 @@ def _format_excerpt(filename: str, original: str, formatted: str) -> str:
 def _try_check(
     source: str,
     filename: str,
-    local_modules: dict | None = None,
-) -> tuple[SymbolTable | None, list]:
+    local_modules: dict[str, object] | None = None,
+) -> tuple[SymbolTable | None, list[Diagnostic]]:
     """Run checker on source, returning symbols and diagnostics.
 
     Returns the symbol table even when the checker finds errors, because
@@ -700,7 +700,7 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     prv_files = sorted(target.rglob("*.prv")) if target.is_dir() else [target]
 
     # Build local module registry for cross-file type inference
-    local_modules: dict | None = None
+    local_modules: dict[str, object] | None = None
     if target.is_dir() and len(prv_files) > 1:
         from prove.module_resolver import build_module_registry
 

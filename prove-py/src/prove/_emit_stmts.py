@@ -449,7 +449,12 @@ class StmtEmitterMixin:
                     else:
                         self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});")
             else:
-                self._line(f"{ct.decl} {vd.name} = {val};")
+                # Cast when pointer types differ (e.g. Prove_Value* → Prove_Table*)
+                val_ct = map_type(value_ty)
+                if ct.is_pointer and val_ct.decl != ct.decl:
+                    self._line(f"{ct.decl} {vd.name} = ({ct.decl}){val};")
+                else:
+                    self._line(f"{ct.decl} {vd.name} = {val};")
 
         # Validate refinement type constraints
         # Skip validation for GenericInstance (Option<Value>) because validation is already

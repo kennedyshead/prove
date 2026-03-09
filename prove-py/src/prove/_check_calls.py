@@ -358,7 +358,12 @@ class CallCheckMixin:
         # Table field access returns the value type
         if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Table":
             if obj_type.args:
-                return obj_type.args[0]
+                inner = obj_type.args[0]
+                # Concrete table access: resolve TypeVariable to PrimitiveType
+                # so type checking catches mismatches (e.g. Value vs String)
+                if isinstance(inner, TypeVariable):
+                    return PrimitiveType(inner.name)
+                return inner
             return ERROR_TY
 
         # Allow field access on GenericInstance, AlgebraicType, etc. without error

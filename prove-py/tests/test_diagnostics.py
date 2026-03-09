@@ -8,18 +8,19 @@ Each diagnostic is tested for:
 
 from __future__ import annotations
 
+from prove.errors import Diagnostic
 from tests.helpers import check_all, check_info, check_warns
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
 
-def _codes(diagnostics: list) -> set[str]:
+def _codes(diagnostics: list[Diagnostic]) -> set[str]:
     """Extract diagnostic codes from a list of diagnostics."""
     return {d.code for d in diagnostics}
 
 
-def _has_notes(diagnostics: list) -> bool:
+def _has_notes(diagnostics: list[Diagnostic]) -> bool:
     """Check that at least one diagnostic has notes."""
     return any(d.notes for d in diagnostics)
 
