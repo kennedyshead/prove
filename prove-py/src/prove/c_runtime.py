@@ -136,6 +136,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_string_new",
         "prove_string_new_region",
         "prove_string_from_cstr",
+        "prove_string_from_cstr_region",
         "prove_string_concat",
         "prove_string_eq",
         "prove_string_len",

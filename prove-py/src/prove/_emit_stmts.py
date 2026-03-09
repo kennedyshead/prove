@@ -180,7 +180,10 @@ class StmtEmitterMixin:
                         if expr is not None:
                             ret_tmp = self._tmp()
                             ret_ct = map_type(ret_type)
-                            self._line(f"{ret_ct.decl} {ret_tmp} = {self._emit_expr(expr)};")
+                            self._in_return_position = True
+                            ret_val = self._emit_expr(expr)
+                            self._in_return_position = False
+                            self._line(f"{ret_ct.decl} {ret_tmp} = {ret_val};")
                             self._emit_releases(ret_tmp)
                             self._emit_region_exit()
                             if isinstance(ret_type, RecordType):
@@ -239,7 +242,9 @@ class StmtEmitterMixin:
                             ):
                                 needs_ret_unwrap = True
 
+                        self._in_return_position = True
                         emit_val = self._emit_expr(expr)
+                        self._in_return_position = False
                         if needs_ret_unwrap:
                             # Unwrap Result for non-failable return
                             res_tmp = self._tmp()

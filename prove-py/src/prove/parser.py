@@ -2075,6 +2075,10 @@ class Parser:
         if tok.kind == TokenKind.PIPE:
             return self._parse_lambda()
 
+        # Comptime expression
+        if tok.kind == TokenKind.COMPTIME:
+            return self._parse_comptime_expr()
+
         # Literals
         if tok.kind == TokenKind.INTEGER_LIT:
             self._advance()

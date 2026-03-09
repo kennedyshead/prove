@@ -73,18 +73,26 @@ class ExprEmitterMixin:
 
         if isinstance(expr, PathLit):
             escaped = self._escape_c_string(expr.value)
+            if self._use_region_allocation():
+                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, StringLit):
             escaped = self._escape_c_string(expr.value)
+            if self._use_region_allocation():
+                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, TripleStringLit):
             escaped = self._escape_c_string(expr.value)
+            if self._use_region_allocation():
+                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, RawStringLit):
             escaped = self._escape_c_string(expr.value)
+            if self._use_region_allocation():
+                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, StringInterp):

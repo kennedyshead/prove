@@ -108,6 +108,7 @@ class CEmitter(
         self._in_main = False
         self._in_tail_loop = False
         self._in_region_scope = False
+        self._in_return_position = False
         self._foreign_names: set[str] = set()
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
@@ -334,6 +335,9 @@ class CEmitter(
         If var_name is provided, check if that specific variable escapes.
         Otherwise, conservatively use region allocation for intermediate values.
         """
+        if self._in_return_position:
+            return False
+
         if not self._in_function_with_escape_info():
             return False
 
