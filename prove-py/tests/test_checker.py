@@ -785,3 +785,48 @@ class TestBinaryLookup:
             "        TokenKind:kind\n",
             "E389",
         )
+
+
+class TestValueCoercion:
+    """Test I311 Value → concrete type coercion diagnostics."""
+
+    def test_value_to_table_coercion_info(self):
+        """I311: Value → Table<Value> coercion emits info diagnostic."""
+        check_info(
+            "module M\n"
+            "  Parse creates toml\n"
+            "\n"
+            "outputs run(source String) Unit!\n"
+            "    from\n"
+            "        conf as Table<Value> = toml(source)!\n"
+            "        conf\n",
+            "I311",
+        )
+
+    def test_value_to_string_coercion_info(self):
+        """I311: Value → String coercion emits info diagnostic."""
+        check_info(
+            "module M\n"
+            "  Parse creates toml\n"
+            "\n"
+            "outputs run(source String) Unit!\n"
+            "    from\n"
+            "        val as String = toml(source)!\n"
+            "        val\n",
+            "I311",
+        )
+
+    def test_value_to_value_no_info(self):
+        """No I311 when target type is also Value (no coercion needed)."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  Parse creates toml\n"
+            "\n"
+            "outputs run(source String) Unit!\n"
+            "    from\n"
+            "        val as Value = toml(source)!\n"
+            "        val\n",
+        )
+        assert not any(d.code == "I311" for d in diags)

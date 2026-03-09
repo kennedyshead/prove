@@ -684,6 +684,10 @@ A user-defined type is declared but never referenced. The formatter removes it.
 
 A variable declared via `x = expr` without a type annotation. The formatter adds `as Type` based on type inference.
 
+### I311 — Value coercion is checked at runtime
+
+A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is assigned from a `Value` expression. The compiler inserts a runtime coercion via `prove_value_as_*()`, but the type cannot be verified at compile time.
+
 ### I314 — Unknown module in import
 
 An import references a module that is not part of the standard library. The formatter removes the import line.

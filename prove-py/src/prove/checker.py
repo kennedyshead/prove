@@ -347,6 +347,23 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             )
         )
 
+    @staticmethod
+    def _is_value_coercion(inferred: Type, expected: Type) -> bool:
+        """Check if this is a Value → concrete type coercion."""
+        is_value = (isinstance(inferred, TypeVariable) and inferred.name == "Value") or (
+            isinstance(inferred, PrimitiveType) and inferred.name == "Value"
+        )
+        if not is_value:
+            return False
+        # Target must be a concrete container or primitive, not Value itself
+        if isinstance(expected, TypeVariable) and expected.name == "Value":
+            return False
+        if isinstance(expected, PrimitiveType) and expected.name == "Value":
+            return False
+        if isinstance(expected, (GenericInstance, ListType, PrimitiveType)):
+            return True
+        return False
+
     # ── Pass 1: Registration ────────────────────────────────────
 
     def _register_builtins(self) -> None:
@@ -1623,6 +1640,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._error(
                     "E321",
                     f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
+                    vd.span,
+                )
+            # Detect Value → concrete type coercion (runtime-checked)
+            if self._is_value_coercion(inferred, expected):
+                self._info(
+                    "I311",
+                    f"Value → '{type_name(expected)}' coercion is checked at runtime",
                     vd.span,
                 )
             resolved = expected

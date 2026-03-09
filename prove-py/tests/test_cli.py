@@ -157,10 +157,17 @@ class TestCLI:
         assert result.exit_code == 0
         assert "export" in result.output
 
-    def test_export_runs(self, runner):
+    def test_export_runs(self, runner, tmp_path):
+        # Create minimal workspace with stub grammar.js containing sentinels
+        ts_dir = tmp_path / "tree-sitter-prove"
+        ts_dir.mkdir()
+        (ts_dir / "grammar.js").write_text(
+            "// PROVE-EXPORT-BEGIN: verbs\n"
+            "// PROVE-EXPORT-END: verbs\n"
+        )
         result = runner.invoke(
             main,
-            ["export", "-f", "treesitter", "-w", "/workspace"],
+            ["export", "-f", "treesitter", "-w", str(tmp_path)],
         )
         # Should succeed (tree-sitter-prove exists in workspace)
         assert result.exit_code == 0

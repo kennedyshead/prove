@@ -41,11 +41,44 @@ from prove.types import (
     RecordType,
     RefinementType,
     Type,
+    TypeVariable,
     UnitType,
 )
 
 
 class StmtEmitterMixin:
+
+    # ── Value → concrete type coercion helpers ─────────────────────
+
+    def _is_value_type(self, ty: Type) -> bool:
+        """Check if ty represents the Value type (TypeVariable or PrimitiveType)."""
+        return (isinstance(ty, TypeVariable) and ty.name == "Value") or (
+            isinstance(ty, PrimitiveType) and ty.name == "Value"
+        )
+
+    def _value_coercion_expr(self, raw_expr: str, target_ty: Type) -> str | None:
+        """Return a prove_value_as_*() call to coerce a Prove_Value* to target_ty.
+
+        Returns None if no coercion is needed (target is also Value).
+        """
+        if self._is_value_type(target_ty):
+            return None
+        if isinstance(target_ty, GenericInstance) and target_ty.base_name == "Table":
+            return f"prove_value_as_object({raw_expr})"
+        if isinstance(target_ty, ListType):
+            return f"prove_value_as_array({raw_expr})"
+        if isinstance(target_ty, GenericInstance) and target_ty.base_name == "List":
+            return f"prove_value_as_array({raw_expr})"
+        if isinstance(target_ty, PrimitiveType):
+            if target_ty.name == "String":
+                return f"prove_value_as_text({raw_expr})"
+            if target_ty.name == "Integer":
+                return f"prove_value_as_number({raw_expr})"
+            if target_ty.name in ("Decimal", "Float"):
+                return f"prove_value_as_decimal({raw_expr})"
+            if target_ty.name == "Boolean":
+                return f"prove_value_as_bool({raw_expr})"
+        return None
 
     def _emit_region_exit(self) -> None:
         """Emit prove_region_exit if inside a region scope."""
@@ -409,7 +442,33 @@ class StmtEmitterMixin:
             else:
                 self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
             # Unwrap the success value
-            if isinstance(target_ty, RecordType):
+            # Detect Value → concrete coercion: when the Result's success type
+            # is Value but the target annotation is a concrete type, we must
+            # extract the inner value via prove_value_as_*() instead of casting.
+            success_ty = (
+                value_ty.args[0]
+                if isinstance(value_ty, GenericInstance)
+                and value_ty.base_name == "Result"
+                and value_ty.args
+                else None
+            )
+            coercion = None
+            if (
+                success_ty is not None
+                and self._is_value_type(success_ty)
+                and not self._is_value_type(target_ty)
+            ):
+                coercion = self._value_coercion_expr("_val_tmp", target_ty)
+
+            if coercion is not None:
+                # Two-step unwrap: first get Prove_Value*, then coerce
+                val_tmp = self._tmp()
+                self._line(
+                    f"Prove_Value* {val_tmp} = (Prove_Value*)prove_result_unwrap_ptr({tmp});"
+                )
+                coercion_call = self._value_coercion_expr(val_tmp, target_ty)
+                self._line(f"{ct.decl} {vd.name} = {coercion_call};")
+            elif isinstance(target_ty, RecordType):
                 self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             elif ct.is_pointer:
                 self._line(f"{ct.decl} {vd.name} = ({ct.decl})prove_result_unwrap_ptr({tmp});")
@@ -449,9 +508,15 @@ class StmtEmitterMixin:
                     else:
                         self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});")
             else:
-                # Cast when pointer types differ (e.g. Prove_Value* → Prove_Table*)
+                # Value → concrete coercion (e.g. Prove_Value* → Prove_Table*)
                 val_ct = map_type(value_ty)
-                if ct.is_pointer and val_ct.decl != ct.decl:
+                if (
+                    self._is_value_type(value_ty)
+                    and not self._is_value_type(target_ty)
+                    and (coerce := self._value_coercion_expr(val, target_ty)) is not None
+                ):
+                    self._line(f"{ct.decl} {vd.name} = {coerce};")
+                elif ct.is_pointer and val_ct.decl != ct.decl:
                     self._line(f"{ct.decl} {vd.name} = ({ct.decl}){val};")
                 else:
                     self._line(f"{ct.decl} {vd.name} = {val};")
