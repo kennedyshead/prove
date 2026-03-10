@@ -1,0 +1,20 @@
+module StoreModel
+  narrative: """Writes trained LSP ML completion model into Store format.
+  InputOutput outputs console
+
+  Reads data/completions_model.json and data/bigrams_model.json produced
+  by scripts/ml_train.py and writes them into data/lsp-ml-store/ using the
+  Store stdlib.
+
+  Expected to fail: build.
+  (Blocked on impl03 loads/saves tests passing.)
+  """
+  InputOutput outputs console
+
+// TODO: implement once impl03 loads/saves are stable.
+
+// The Python bridge scripts/ml_store.py handles this in the meantime.
+
+main()
+from
+    console("store_model.prv: not yet implemented — use scripts/ml_store.py")
