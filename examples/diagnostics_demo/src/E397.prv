@@ -1,0 +1,9 @@
+module DemoE397
+  narrative: """
+  Expected diagnostics: E397
+  """
+
+  type OpaqueHandle is binary
+
+transforms demo() Integer
+binary

@@ -6,7 +6,7 @@ Binary lookup tables as the foundation for the Prove store. Uses `Kind:[Lookup]`
 
 ## Status
 
-- `binary` keyword: ✅ Complete (parsed); restriction to stdlib pending (E397)
+- `binary` keyword: ✅ Complete (parsed + E397 restriction)
 - `type Name:[Lookup]` syntax: ✅ Complete
 
 ## Current Syntax (stdlib only)
@@ -53,68 +53,36 @@ modifier path in `parser.py` (lines ~769–793). `binary` parsing unchanged.
 `_emit_type_def` in `_emit_types.py` handles `LookupTypeDef` — generates C enum
 and (when `is_binary=True`) column arrays via `_emit_binary_lookup_tables`.
 
-### 4. Restrict `binary` to stdlib (pending — E397)
+### 4. Restrict `binary` to stdlib ✅ Done (E397)
 
-`binary` is still parseable in user code. Two uses need guarding:
+Two uses guarded in `checker.py`:
 
-**Function body marker** (`parser.py` line ~542 sets `is_binary=True` on `FunctionDef`):
-```python
-# checker.py — in _check_function():
-if fd.binary and not self._is_stdlib_source():
-    self._error("E397", "`binary` is reserved for stdlib implementations", fd.span)
-```
+**Function body marker** — `_check_function()` emits E397 when `fd.binary`
+is used outside a stdlib module (uses existing `_is_stdlib` flag set from
+`is_stdlib_module(decl.name)`).
 
-**Type body** (`type X is binary` → `BinaryDef` in `ast_nodes.py`):
-```python
-# checker.py — in _check_type_def():
-if isinstance(body, BinaryDef) and not self._is_stdlib_source():
-    self._error("E397", "`binary` is reserved for stdlib type definitions", td.span)
-```
-
-**Helper** — the checker already reads `module.span.file` (line 249). Stdlib `.prv`
-files live under `.../prove/stdlib/`; programmatic stubs use `"<stdlib>"`:
-```python
-def _is_stdlib_source(self) -> bool:
-    f = self._module.span.file if self._module.span else ""
-    return f.startswith("<") or "/stdlib/" in f
-```
+**Type body** — `_register_type()` emits E397 when `BinaryDef` is used
+outside a stdlib module.
 
 **Wiring:**
-- `errors.py`: extend `_register_doc_range("E", 391, 394)` to include 397,
-  or add `_register_doc_range("E", 397, 397)`
-- `diagnostics_demo/src/E397.prv`: example that triggers the error
-- Next available code after E396 (E397 — E398–E409 free; E410+ = comptime)
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `prove-py/src/prove/checker.py` | Add `_is_stdlib_source()` + E397 checks in `_check_function` and `_check_type_def` |
-| `prove-py/src/prove/errors.py` | Register E397 in doc range |
-| `examples/diagnostics_demo/src/E397.prv` | New — triggers E397 |
-| `examples/binary_lookup_demo/src/main.prv` | New — demo of `:[Lookup]` usage |
+- `errors.py`: E397 registered in `DIAGNOSTIC_DOCS`
+- `diagnostics.md`: E397 documented
+- `diagnostics_demo/src/E397.prv`: example that triggers both errors
+- `test_checker.py`: two tests (`test_e397_binary_function_body_non_stdlib`,
+  `test_e397_binary_type_body_non_stdlib`)
 
 ## Example
 
-`examples/binary_lookup_demo/src/main.prv`
-
-## Verification
-
-```bash
-cd examples/binary_lookup_demo
-prove build
-./binary_lookup_demo
-# Output:
-# Status name: OK
-# Status code: 404
-```
+`examples/lookup_demo/src/main.prv` — demonstrates `:[Lookup]` with forward
+and reverse lookups.
 
 ## Exit Criteria
 
-- [ ] `binary` keyword removed from user code, kept in stdlib only
+- [x] `binary` keyword restricted to stdlib only (E397)
 - [x] `type Name:[Lookup] is ... where` parses correctly
 - [x] Lookup tables compile to C arrays
 - [x] Runtime lookup works (`TypeName:Variant`)
-- [ ] Example updated and passes
+- [x] Example exists and works (`examples/lookup_demo`)
 - [x] Stdlib `binary` keyword unchanged
-- [ ] Docs updated: `types.md` (Lookup modifier syntax), `syntax.md` (type modifiers)
+- [x] Docs updated: `types.md` (Lookup modifier syntax), `syntax.md` (type modifiers)
+- [x] Diagnostics: E397 documented, E395/E396 registered, W390/W391 registered

@@ -1,9 +1,12 @@
 module Main
   narrative: """
+  List validates contains
+  List reads length
+  InputOutput outputs console
   The prove language compiler proof! Created as a statement, the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
   """
-  InputOutput inputs process file
+  InputOutput inputs process file, outputs console
   List reads value
   Parse validates toml, creates toml
   Log detached info
@@ -11,9 +14,18 @@ module Main
   type Package is
     name String
     version String
+    authors List<String>
+    license String
+
+  type Build is
+    target String
+    optimize Boolean
+    mutate Boolean
+    debug Boolean
 
   type Config is
     package Package
+    build Build
 
   HELP_TXT as String = comptime
       read("help.txt")
@@ -27,10 +39,10 @@ from
     Config(toml(data))
 
 /// Run the build command
-inputs build_command(arguments List<String>, config Config) String!
+inputs build_command(arguments List<String>, config Config)!
   requires value(1, arguments) == "build"
 from
-    f"Built {config.package.version}"
+    info(f"{config.package.name} {config.package.version} now available in build folder")
 
 main() Result<Unit, Error>!
 from
@@ -39,7 +51,6 @@ from
     // Load config
     load as Result<String, Error> = file(PROVE_TOML)
     config as Config = config(load)
-    out as String = match value(1, arguments)
+    match value(1, arguments)
         "build" => build_command(arguments, config)!
-        _ => HELP_TXT
-    info(out)
+        _ => console(HELP_TXT)
