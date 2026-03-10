@@ -399,6 +399,11 @@ class TypeEmitterMixin:
             self._line("")
 
         elif isinstance(body, LookupTypeDef):
+            # Store-backed lookup: no static emission — data is runtime-only
+            if body.is_store_backed:
+                self._line(f"/* Store-backed lookup type: {td.name} */")
+                self._line("")
+                return
             # Lookup type: generate C enum from entries
             # Build unique variant names (skip duplicates with same variant name)
             seen_variants: set[str] = set()

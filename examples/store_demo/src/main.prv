@@ -1,14 +1,15 @@
 module Main
   narrative: """Demonstrates Store module operations: creating stores, saving/loading tables, computing diffs and patches, integrity hashing, merge, and subprocess compilation."""
   InputOutput outputs console, inputs system, types ProcessResult
-  Store outputs store table
+  Store outputs store table add
     inputs table version
     validates store table merged
     transforms diff patch merge
     reads integrity merged
     types Store StoreTable TableDiff MergeResult Version
 
-    type Color:[Lookup StoreTable] is String | Integer
+  type Color:[Lookup] is String | Integer
+    runtime
 
 main() Result<Unit, Error>!
 from
@@ -19,7 +20,7 @@ from
     exists as Boolean = valid store("/tmp/prove_store_demo")
     console(f"Store exists: {exists}")
     // 3. Load a table (creates it if missing)
-    colors as StoreTable = table(db, "colors")!
+    colors as Color = table(db, "colors")!
     console("Loaded table: colors")
     // 4. Compute integrity hash of empty table
     hash_empty as String = integrity(colors)
@@ -51,7 +52,7 @@ from
     // 12. Subprocess: run prove build --help to verify compilation toolchain
     build_result as ProcessResult = system("prove", ["build", "--help"])
     // create a row
-    row as Color = {Red, "red", 0xFF0000}
+    row as Color = Color(Red, "red", 0xFF0000)
     // Add to StoreTable
     add(colors, row)
     color as Integer = colors:"red"

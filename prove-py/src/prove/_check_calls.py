@@ -40,6 +40,13 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 
 class CallCheckMixin:
     def _infer_call(self, expr: CallExpr, expected_type: Type | None = None) -> Type:
+        # Early intercept: store-backed row construction Color(Red, "red", 0xFF0000)
+        # Must happen before arg inference since the variant name (Red) is not resolvable.
+        if isinstance(expr.func, TypeIdentifierExpr):
+            func_name = expr.func.name
+            if func_name in self._store_lookup_types:
+                return self._infer_store_row_construction(expr, func_name)
+
         # Determine function name and resolve
         arg_types = [self._infer_expr(a) for a in expr.args]
         arg_count = len(expr.args)
@@ -214,6 +221,7 @@ class CallCheckMixin:
         if isinstance(expr.func, TypeIdentifierExpr):
             # Type constructor call — try as function first (variant constructors)
             name = expr.func.name
+
             sig = self.symbols.resolve_function(None, name, arg_count)
             if sig is None:
                 sig = self.symbols.resolve_function_any(name, arg_types)
@@ -322,6 +330,30 @@ class CallCheckMixin:
         func_type = self._infer_expr(expr.func)
         if isinstance(func_type, FunctionType):
             return func_type.return_type
+        return ERROR_TY
+
+    def _infer_store_row_construction(self, expr: CallExpr, name: str) -> Type:
+        """Type-check Color(Red, "red", 0xFF0000) for store-backed lookup types."""
+        lookup = self._lookup_tables.get(name)
+        arg_count = len(expr.args)
+        if lookup and lookup.value_types:
+            expected_n = len(lookup.value_types) + 1  # variant + columns
+            if arg_count != expected_n:
+                self._error(
+                    "E330",
+                    f"store-backed row constructor expects {expected_n} "
+                    f"arguments (variant + {len(lookup.value_types)} columns), "
+                    f"got {arg_count}",
+                    expr.span,
+                )
+            # Skip first arg (variant name — a TypeIdentifierExpr, not resolvable);
+            # infer remaining args (column values) to validate types.
+            for a in expr.args[1:]:
+                self._infer_expr(a)
+        resolved = self.symbols.resolve_type(name)
+        if resolved is not None:
+            self._used_types.add(name)
+            return resolved
         return ERROR_TY
 
     def _infer_field(self, expr: FieldExpr) -> Type:

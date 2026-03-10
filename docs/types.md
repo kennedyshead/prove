@@ -148,6 +148,46 @@ Rules:
 - **Native types only** — only primitive types are supported (String, Integer, Boolean, Byte)
 - **Compile-time only** — this is not a runtime type; the lookup type is resolved at compile time based on usage context
 
+### Store-Backed Lookup (Runtime)
+
+A `[Lookup]` type with `runtime` instead of `where` gets its data from a [Store](stdlib/table-list-store.md#store) at runtime instead of compiled-in entries. The type definition declares the column schema — pipe-separated types — and the data is populated dynamically.
+
+```prove
+type Color:[Lookup] is String | Integer
+  runtime
+```
+
+The variable is typed as the lookup type, but backed by a `StoreTable` at the C level:
+
+```prove
+Store outputs store, inputs table, validates store table
+    types Store StoreTable
+
+db as Store = store("/tmp/my_store")!
+colors as Color = table(db, "colors")!
+```
+
+Rows are constructed with the type name and added to the table:
+
+```prove
+row as Color = Color(Red, "red", 0xFF0000)
+add(colors, row)
+```
+
+Runtime lookup uses `variable:"key"` syntax (lowercase variable, not uppercase type name):
+
+```prove
+color as Integer = colors:"red"    // returns 0xFF0000
+```
+
+The column indices are resolved at compile time from the schema. The lookup key column is determined by the operand type (`String` → column 0), and the value column is determined by the expected return type (`Integer` → column 1).
+
+Rules:
+- **Schema from type** — the pipe-separated types define column count and types
+- **No `where` entries** — data is runtime-only, not compiled in
+- **Variable lookup** — `variable:"key"` instead of `TypeName:"key"`
+- **Type compatibility** — a store-backed lookup type is interchangeable with `StoreTable` in function arguments
+
 ## Option and Result
 
 Prove has no null. Instead, two algebraic types handle absence and failure:

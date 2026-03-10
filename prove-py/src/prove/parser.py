@@ -64,6 +64,7 @@ from prove.ast_nodes import (
     RegexLit,
     SimpleType,
     Stmt,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -1387,11 +1388,47 @@ class Parser:
     # ── Lookup type body ────────────────────────────────────────────
 
     def _parse_lookup_type_body(self) -> LookupTypeDef:
-        """Parse: ValueType [ValueType ...] where + indented entries."""
+        """Parse: ValueType [ValueType ...] where + indented entries,
+        or pipe-separated types with runtime body for store-backed lookups."""
         start = self._current().span
 
-        # Parse one or more column types until 'where'
+        # Parse first column type
         value_types: list[TypeExpr] = []
+        value_types.append(self._parse_type_expr())
+
+        # Check for pipe-separated column types: String | Integer (store-backed)
+        if self._at(TokenKind.PIPE):
+            while self._at(TokenKind.PIPE):
+                self._advance()  # consume |
+                value_types.append(self._parse_type_expr())
+            # Expect indented 'runtime' block
+            self._skip_newlines()
+            self._expect(TokenKind.INDENT)
+            self._skip_newlines()
+            tok = self._current()
+            if tok.kind == TokenKind.IDENTIFIER and tok.value == "runtime":
+                self._advance()
+            else:
+                self._error(
+                    "expected 'runtime' after store-backed lookup column types",
+                    tok.span,
+                    code="E213",
+                )
+                raise _ParseError
+            self._skip_newlines()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
+            end = self._current().span
+            return LookupTypeDef(
+                value_type=value_types[0],
+                entries=[],
+                span=self._span(start, end),
+                value_types=tuple(value_types),
+                is_binary=True,
+                is_store_backed=True,
+            )
+
+        # Existing: space-separated column types until 'where'
         while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
             value_types.append(self._parse_type_expr())
 
@@ -2159,6 +2196,13 @@ class Parser:
 
         # Identifiers
         if tok.kind == TokenKind.IDENTIFIER:
+            # Check for store lookup: variable:"key" or variable:identifier
+            if self._peek(1).kind == TokenKind.COLON and self._peek(2).kind in (
+                TokenKind.STRING_LIT,
+                TokenKind.INTERP_START,
+                TokenKind.INTEGER_LIT,
+            ):
+                return self._parse_store_lookup_expr()
             self._advance()
             return IdentifierExpr(tok.value, tok.span)
 
@@ -2292,6 +2336,15 @@ class Parser:
 
         end = tok.span
         return LookupAccessExpr(type_name, operand, self._span(start, end))
+
+    def _parse_store_lookup_expr(self) -> StoreLookupExpr:
+        """Parse variable:"key" or variable:identifier for store-backed lookups."""
+        start = self._current().span
+        table_var = self._advance().value  # IDENTIFIER
+        self._advance()  # COLON
+        operand = self._parse_prefix()
+        end = operand.span
+        return StoreLookupExpr(table_var, operand, self._span(start, end))
 
     def _parse_match_expr(self) -> MatchExpr:
         start = self._current().span

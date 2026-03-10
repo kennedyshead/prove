@@ -9,7 +9,9 @@ from prove.ast_nodes import (
     Expr,
     FieldExpr,
     IdentifierExpr,
+    IntegerLit,
     LambdaExpr,
+    StringLit,
     TypeIdentifierExpr,
     ValidExpr,
 )
@@ -586,6 +588,18 @@ class CallEmitterMixin:
                     # prove_store_merge takes a 4th resolver arg (NULL = no resolver)
                     if c_name == "prove_store_merge" and len(args) == 3:
                         args.append("NULL")
+                    # prove_store_table_add: unpack store row components
+                    if c_name == "prove_store_table_add" and len(args) == 2:
+                        row_var = args[1]
+                        if hasattr(self, "_store_rows") and row_var in self._store_rows:
+                            variant_name, vals_name = self._store_rows[row_var]
+                            return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
+                        # Row arg is the raw variable name — look up by expr
+                        if isinstance(expr.args[1], IdentifierExpr):
+                            rn = expr.args[1].name
+                            if hasattr(self, "_store_rows") and rn in self._store_rows:
+                                variant_name, vals_name = self._store_rows[rn]
+                                return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
                         call_str,
@@ -652,6 +666,9 @@ class CallEmitterMixin:
 
         if isinstance(expr.func, TypeIdentifierExpr):
             name = expr.func.name
+            # Store-backed lookup row construction: Color(Red, "red", 0xFF0000)
+            if name in self._store_lookup_types:
+                return self._emit_store_row_construction(name, expr, args)
             # ByteArray(String) constructor
             if name == "ByteArray" and len(args) == 1:
                 return f"prove_bytes_from_string({args[0]})"
@@ -1211,3 +1228,62 @@ class CallEmitterMixin:
                 return f"{c_name}({arg_var})"
         # Fallback: emit as regular call
         return f"(({self._emit_expr(expr)})((void*)(intptr_t){arg_var}))"
+
+    def _emit_store_row_construction(
+        self, type_name: str, expr: CallExpr, args: list[str]
+    ) -> str:
+        """Emit store-backed row construction: Color(Red, "red", 0xFF0000).
+
+        Emits variant name + column values array as C locals.
+        The VarDecl name is used as the prefix for _variant and _vals.
+        """
+        from prove.ast_nodes import LookupTypeDef
+
+        lookup = self._lookup_tables.get(type_name)
+        if lookup is None or not isinstance(lookup, LookupTypeDef):
+            return f"/* unknown store row type {type_name} */ 0"
+
+        n_cols = len(lookup.value_types)
+        row_tmp = self._tmp()
+
+        # First arg is variant name (TypeIdentifierExpr) — emit as string
+        variant_arg = expr.args[0]
+        if hasattr(variant_arg, "name"):
+            variant_str = variant_arg.name
+        else:
+            variant_str = str(args[0])
+        escaped_variant = self._escape_c_string(variant_str)
+        self._line(
+            f'Prove_String *{row_tmp}_variant = prove_string_from_cstr("{escaped_variant}");'
+        )
+
+        # Column values — all stored as Prove_String* in StoreTable
+        self._line(f"Prove_String *{row_tmp}_vals[{n_cols}];")
+        for i in range(n_cols):
+            arg_expr = expr.args[i + 1]  # skip variant arg
+            col_type_name = ""
+            if i < len(lookup.value_types):
+                vt = lookup.value_types[i]
+                col_type_name = vt.name if hasattr(vt, "name") else ""
+
+            if isinstance(arg_expr, StringLit):
+                escaped = self._escape_c_string(arg_expr.value)
+                self._line(f'{row_tmp}_vals[{i}] = prove_string_from_cstr("{escaped}");')
+            elif isinstance(arg_expr, IntegerLit):
+                # Convert integer to string for storage
+                self._line(
+                    f"{row_tmp}_vals[{i}] = prove_string_from_int({arg_expr.value}L);"
+                )
+            else:
+                # Generic: emit as-is, convert to string if needed
+                c_val = args[i + 1]
+                if col_type_name == "Integer":
+                    self._line(f"{row_tmp}_vals[{i}] = prove_string_from_int({c_val});")
+                else:
+                    self._line(f"{row_tmp}_vals[{i}] = {c_val};")
+
+        # Track this temp as a store row for add() to find
+        if not hasattr(self, "_store_rows"):
+            self._store_rows = {}
+        self._store_rows[row_tmp] = (f"{row_tmp}_variant", f"{row_tmp}_vals")
+        return row_tmp

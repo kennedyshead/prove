@@ -278,6 +278,15 @@ class BinaryLookupExpr:
     span: Span
 
 
+@dataclass(frozen=True)
+class StoreLookupExpr:
+    """Runtime store-backed lookup: variable:"key"."""
+
+    table_var: str  # "colors"
+    operand: Expr  # StringLit("red"), IntegerLit, IdentifierExpr
+    span: Span
+
+
 Expr = Union[
     IntegerLit,
     DecimalLit,
@@ -307,6 +316,7 @@ Expr = Union[
     LookupExpr,
     LookupAccessExpr,
     BinaryLookupExpr,
+    StoreLookupExpr,
 ]
 
 
@@ -455,6 +465,7 @@ class LookupTypeDef:
     value_types: tuple[TypeExpr, ...] = ()  # Multi-column types (binary)
     is_binary: bool = False
     csv_path: str | None = None
+    is_store_backed: bool = False
 
 
 TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef, LookupTypeDef]

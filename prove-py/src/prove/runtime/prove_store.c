@@ -782,6 +782,43 @@ Prove_Result prove_store_rollback(Prove_Store *store, Prove_String *name, int64_
     return prove_result_ok_ptr(table);
 }
 
+/* ── Store-backed row addition (stdlib entry point) ────────── */
+
+void prove_store_table_add(Prove_StoreTable *table, Prove_StoreTable *row) {
+    /* In practice, add() with store-backed lookup rows is handled by the
+       compiler emitting prove_store_table_add_variant() directly.
+       This stub exists for the runtime function registry. */
+    (void)table;
+    (void)row;
+}
+
+/* ── Store-backed lookup ────────────────────────────────────── */
+
+Prove_String *prove_store_table_find(Prove_StoreTable *table,
+                                      Prove_String *key,
+                                      int64_t key_col,
+                                      int64_t val_col) {
+    if (!table) prove_panic("store lookup: null table");
+    for (int64_t i = 0; i < table->variant_count; i++) {
+        if (key_col < table->column_count &&
+            prove_string_eq(table->values[i][key_col], key)) {
+            if (val_col < table->column_count) {
+                return table->values[i][val_col];
+            }
+        }
+    }
+    prove_panic("store lookup: key not found");
+    return NULL;
+}
+
+int64_t prove_store_table_find_int(Prove_StoreTable *table,
+                                    Prove_String *key,
+                                    int64_t key_col,
+                                    int64_t val_col) {
+    Prove_String *result = prove_store_table_find(table, key, key_col, val_col);
+    return strtoll(result->data, NULL, 10);
+}
+
 /* ── Version channel ────────────────────────────────────────── */
 
 Prove_Result prove_store_version_inputs(Prove_Store *store, Prove_String *name) {

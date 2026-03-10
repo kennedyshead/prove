@@ -182,4 +182,20 @@ void prove_store_table_add_variant(Prove_StoreTable *table,
                                     Prove_String *variant_name,
                                     Prove_String **values);
 
+/* ── Store-backed row addition (stdlib entry point) ────────── */
+
+void prove_store_table_add(Prove_StoreTable *table, Prove_StoreTable *row);
+
+/* ── Store-backed lookup ───────────────────────────────────── */
+
+Prove_String *prove_store_table_find(Prove_StoreTable *table,
+                                      Prove_String *key,
+                                      int64_t key_col,
+                                      int64_t val_col);
+
+int64_t prove_store_table_find_int(Prove_StoreTable *table,
+                                    Prove_String *key,
+                                    int64_t key_col,
+                                    int64_t val_col);
+
 #endif /* PROVE_STORE_H */

@@ -32,6 +32,7 @@ from prove.ast_nodes import (
     RawStringLit,
     RegexLit,
     SimpleType,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -148,6 +149,8 @@ class TypeCheckMixin:
             return self._infer_comptime(expr)
         if isinstance(expr, LookupAccessExpr):
             return self._check_lookup_access_expr(expr)
+        if isinstance(expr, StoreLookupExpr):
+            return self._check_store_lookup_expr(expr)
         return ERROR_TY
 
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:
@@ -666,6 +669,45 @@ class TypeCheckMixin:
             "lookup operand must be a literal or variant name",
             expr.span,
         )
+        return ERROR_TY
+
+    def _check_store_lookup_expr(self, expr: StoreLookupExpr) -> Type:
+        """Type-check a store-backed lookup: variable:"key"."""
+        from prove.ast_nodes import LookupTypeDef
+
+        # Resolve the table variable
+        sym = self.symbols.lookup(expr.table_var)
+        if sym is None:
+            self._error("E310", f"undefined name '{expr.table_var}'", expr.span)
+            return ERROR_TY
+
+        # Get the type name and check it's a store-backed lookup type
+        var_type = sym.resolved_type
+        type_name_str = getattr(var_type, "name", "")
+        if type_name_str not in self._store_lookup_types:
+            self._error(
+                "E377",
+                f"'{expr.table_var}' is not a store-backed [Lookup] variable",
+                expr.span,
+            )
+            return ERROR_TY
+
+        lookup = self._lookup_tables.get(type_name_str)
+        if lookup is None or not isinstance(lookup, LookupTypeDef):
+            return ERROR_TY
+
+        # Infer operand type
+        self._infer_expr(expr.operand)
+
+        # Return type from expected context (e.g., Integer from `color as Integer = ...`)
+        expected = self._expected_type
+        if expected is not None:
+            return expected
+
+        # Fallback: return first column type
+        if lookup.value_types:
+            return self._resolve_type_expr(lookup.value_types[0])
+
         return ERROR_TY
 
     def _check_binary_lookup_access(

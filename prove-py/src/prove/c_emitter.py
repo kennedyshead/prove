@@ -37,6 +37,7 @@ from prove.ast_nodes import (
     PathLit,
     PipeExpr,
     RawStringLit,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -113,6 +114,8 @@ class CEmitter(
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
         self._lookup_tables: dict[str, LookupTypeDef] = {}
+        self._store_lookup_types: set[str] = set()
+        self._store_var_types: dict[str, str] = {}  # var_name → lookup type name
         self._record_to_value: set[str] = set()  # record names needing Value converters
         self._expected_emit_type: Type | None = None
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
@@ -130,6 +133,8 @@ class CEmitter(
                 for td in decl.types:
                     if isinstance(td.body, LookupTypeDef):
                         self._lookup_tables[td.name] = td.body
+                        if td.body.is_store_backed:
+                            self._store_lookup_types.add(td.name)
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -988,6 +993,12 @@ class CEmitter(
 
         if isinstance(expr, LookupAccessExpr):
             return self._infer_lookup_type(expr)
+
+        if isinstance(expr, StoreLookupExpr):
+            # Return the expected emit type or Integer as fallback
+            if self._expected_emit_type:
+                return self._expected_emit_type
+            return INTEGER
 
         return ERROR_TY
 

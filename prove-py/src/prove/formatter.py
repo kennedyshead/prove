@@ -73,6 +73,7 @@ from prove.ast_nodes import (
     RefinementTypeDef,
     RegexLit,
     SimpleType,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -308,6 +309,11 @@ class ProveFormatter:
 
         body = td.body
         if isinstance(body, LookupTypeDef):
+            if body.is_store_backed:
+                col_types = " | ".join(
+                    self._format_type_expr(vt) for vt in body.value_types
+                )
+                return f"type {td.name}{mods}{params} is {col_types}\n  runtime"
             if body.is_binary:
                 return self._format_binary_lookup_type_def(
                     td.name, body, mods, params
@@ -671,6 +677,8 @@ class ProveFormatter:
             return f"{expr.type_name}:{self._format_expr(expr.operand, 99)}"
         if isinstance(expr, BinaryLookupExpr):
             return f"{expr.type_name}:{self._format_expr(expr.operand, 99)}"
+        if isinstance(expr, StoreLookupExpr):
+            return f"{expr.table_var}:{self._format_expr(expr.operand, 99)}"
         return "???"
 
     def _format_binary(self, expr: BinaryExpr, parent_prec: int) -> str:

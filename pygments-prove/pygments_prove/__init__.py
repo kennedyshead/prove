@@ -88,6 +88,7 @@ class ProveLexer(RegexLexer):
                         "main",
                         "match",
                         "module",
+                        "runtime",
                         "type",
                         "types",
                         "valid",
