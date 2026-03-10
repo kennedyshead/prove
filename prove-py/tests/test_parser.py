@@ -571,12 +571,12 @@ class TestParserModules:
         assert imp.items[1].name == "length"
 
     def test_import_types_verb(self):
-        source = "module Foo\n  InputOutput types ExitCode, inputs console\n"
+        source = "module Foo\n  System types ExitCode, inputs console\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
         imp = decl.imports[0]
-        assert imp.module == "InputOutput"
+        assert imp.module == "System"
         assert len(imp.items) == 2
         assert imp.items[0].verb == "types"
         assert imp.items[0].name == "ExitCode"
@@ -595,12 +595,12 @@ class TestParserModules:
         assert imp.items[1].name == "login"
 
     def test_import_verb_group(self):
-        source = "module Foo\n  InputOutput outputs console file, inputs console file\n"
+        source = "module Foo\n  System outputs console file, inputs console file\n"
         decl = parse_decl(source)
         assert isinstance(decl, ModuleDecl)
         assert len(decl.imports) == 1
         imp = decl.imports[0]
-        assert imp.module == "InputOutput"
+        assert imp.module == "System"
         assert len(imp.items) == 4
         assert imp.items[0] == ImportItem("outputs", "console", imp.items[0].span)
         assert imp.items[1] == ImportItem("outputs", "file", imp.items[1].span)

@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates lambdas, pipes, and higher-order functions"""
-  InputOutput outputs console
+  System outputs console
   Text transforms join
   Parse reads text
 

@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Hash module operations"""
-  InputOutput outputs console
+  System outputs console
   Hash creates hmac sha256 sha512 blake3
   Bytes types ByteArray, creates hex, reads hex
 

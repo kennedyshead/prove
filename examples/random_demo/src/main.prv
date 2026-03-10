@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Random module operations"""
-  InputOutput outputs console
+  System outputs console
   Random inputs integer decimal boolean choice shuffle
   Parse reads text
   Text transforms join

@@ -114,7 +114,7 @@ class TestCallChecking:
     def test_imported_console(self):
         check(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Unit\n"
             "    from\n"
             '        console("hello")\n'
@@ -208,7 +208,7 @@ class TestIntegration:
     def test_hello_world(self):
         check(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Unit\n"
             "    from\n"
             '        console("Hello from Prove!")\n'
@@ -268,10 +268,10 @@ class TestIntegration:
         check(
             "module Main\n"
             '  narrative: "test"\n'
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Unit\n"
             "    from\n"
-            '        InputOutput.console("hello")\n'
+            '        System.console("hello")\n'
         )
 
     def test_string_interpolation(self):
@@ -295,7 +295,7 @@ class TestIntegration:
     def test_main_with_result(self):
         check(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
             '        console("starting")\n'
@@ -566,8 +566,8 @@ class TestArityMismatchFallthrough:
         # outputs fetch(msg String).
         check(
             "module Main\n"
-            "  InputOutput inputs console\n"
-            "  InputOutput outputs console\n"
+            "  System inputs console\n"
+            "  System outputs console\n"
             "inputs fetch() String\n"
             "    from\n"
             "        console()\n"

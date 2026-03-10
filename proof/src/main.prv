@@ -3,7 +3,7 @@ module Main
   The prove language compiler proof! Created as a statement, the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
   """
-  InputOutput inputs process file, outputs console
+  System inputs process file, outputs console
   List reads value
   Parse validates toml, creates toml
   Log detached info

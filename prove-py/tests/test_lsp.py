@@ -148,7 +148,7 @@ class TestAnalyze:
     def test_analyze_caches_state(self):
         from prove.lsp import _state
 
-        source = 'module Main\n  InputOutput outputs console\nmain()\nfrom\n    console("hi")\n'
+        source = 'module Main\n  System outputs console\nmain()\nfrom\n    console("hi")\n'
         uri = "file:///cache_test.prv"
         ds = _analyze(uri, source)
         assert _state.get(uri) is ds
@@ -171,13 +171,13 @@ class TestBuildImportIndex:
         index = build_import_index()
         assert "console" in index
         suggestions = index["console"]
-        assert any(s.module == "InputOutput" and s.verb == "outputs" for s in suggestions)
+        assert any(s.module == "System" and s.verb == "outputs" for s in suggestions)
 
     def test_index_contains_file(self):
         index = build_import_index()
         assert "file" in index
         suggestions = index["file"]
-        assert any(s.module == "InputOutput" and s.verb == "inputs" for s in suggestions)
+        assert any(s.module == "System" and s.verb == "inputs" for s in suggestions)
 
     def test_index_no_duplicates_from_aliases(self):
         index = build_import_index()
@@ -231,58 +231,58 @@ class TestBuildImportEdit:
     def test_new_import_in_module(self):
         source = "module Main\ntransforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n"
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
+        suggestion = ImportSuggestion(module="System", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert "InputOutput outputs console" in edit.new_text
+        assert "System outputs console" in edit.new_text
         # Should insert after the module line
         assert edit.range.start.line == 1
 
     def test_extend_existing_import(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs run() Unit\n"
             "from\n"
             '    console("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="file")
+        suggestion = ImportSuggestion(module="System", verb="outputs", name="file")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
-        assert edit.new_text == "  InputOutput outputs console file"
+        assert edit.new_text == "  System outputs console file"
         # Should replace line 1 (the existing import line)
         assert edit.range.start.line == 1
 
     def test_already_imported_returns_none(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs run() Unit\n"
             "from\n"
             '    console("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
+        suggestion = ImportSuggestion(module="System", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
     def test_no_module_returns_none(self):
         ds = DocumentState()  # module is None
-        suggestion = ImportSuggestion(module="InputOutput", verb="outputs", name="console")
+        suggestion = ImportSuggestion(module="System", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
 
     def test_extend_existing_import_different_verb(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs run() Unit\n"
             "from\n"
             '    console("hi")\n'
         )
         ds = self._make_ds(source)
-        suggestion = ImportSuggestion(module="InputOutput", verb="inputs", name="file")
+        suggestion = ImportSuggestion(module="System", verb="inputs", name="file")
         edit = _build_import_edit(ds, suggestion)
         assert edit is not None
         # Same module — extends existing line with new verb group
@@ -319,7 +319,7 @@ class TestCompletion:
         labels = _complete_labels("<test://bi>")
         for fn in ("len", "map", "filter", "reduce", "to_string", "clamp"):
             assert fn in labels, f"builtin '{fn}' missing from completions"
-        # println/print/readln are no longer builtins — they come from InputOutput
+        # println/print/readln are no longer builtins — they come from System
         for fn in ("println", "print", "readln"):
             assert fn not in labels, f"removed builtin '{fn}' should not be in completions"
 
@@ -348,12 +348,12 @@ class TestCompletion:
         _analyze("<test://det>", "")
         result = _complete("<test://det>")
         console_items = [
-            i for i in result.items if "console" in i.label and "InputOutput" in i.label
+            i for i in result.items if "console" in i.label and "System" in i.label
         ]
         assert len(console_items) >= 1
         item = console_items[0]
         assert item.label_details is not None
-        assert item.label_details.description == "InputOutput"
+        assert item.label_details.description == "System"
 
     def test_symbol_table_completions_when_parsed(self):
         """User-defined names should appear when the file parses."""
@@ -393,7 +393,7 @@ class TestCompletion:
         assert item.additional_text_edits is not None
         assert len(item.additional_text_edits) == 1
         edit = item.additional_text_edits[0]
-        assert "InputOutput" in edit.new_text
+        assert "System" in edit.new_text
         assert "file" in edit.new_text
 
     def test_stdlib_completion_no_duplicate_import(self):
@@ -402,15 +402,15 @@ class TestCompletion:
             "file:///noimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "\n"
             "main()\nfrom\n"
             '    console("hi")\n',
         )
         result = _complete("file:///noimport.prv")
-        # Find console with InputOutput prefix
+        # Find console with System prefix
         console_items = [
-            i for i in result.items if "console" in i.label and "InputOutput" in i.label
+            i for i in result.items if "console" in i.label and "System" in i.label
         ]
         # outputs is imported (shows with verb detail), others show "Auto-import"
         assert len(console_items) == 3
@@ -449,7 +449,7 @@ class TestCompletion:
             "        Get => ok()\n",
         )
         result = _complete("file:///parseerr.prv")
-        file_items = [i for i in result.items if "file" in i.label and "InputOutput" in i.label]
+        file_items = [i for i in result.items if "file" in i.label and "System" in i.label]
 
         assert len(file_items) >= 1
         item = file_items[0]
@@ -457,7 +457,7 @@ class TestCompletion:
             "auto-import should work even when file has parse errors"
         )
         edit = item.additional_text_edits[0]
-        assert "InputOutput" in edit.new_text
+        assert "System" in edit.new_text
         assert "file" in edit.new_text
         # Should insert after narrative (line 2), not at end of file
         assert edit.range.start.line == 2
@@ -468,7 +468,7 @@ class TestCompletion:
             "file:///afterimport.prv",
             "module Main\n"
             '  narrative: """Test"""\n'
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "\n"
             "outputs handle()\n"
             "from\n"
@@ -476,20 +476,20 @@ class TestCompletion:
             "        Get => ok()\n",
         )
         result = _complete("file:///afterimport.prv")
-        file_items = [i for i in result.items if "file" in i.label and "InputOutput" in i.label]
+        file_items = [i for i in result.items if "file" in i.label and "System" in i.label]
 
         assert len(file_items) >= 1
         item = file_items[0]
         assert item.additional_text_edits is not None
         edit = item.additional_text_edits[0]
-        # Should insert after "InputOutput outputs console" (line 2), so at line 3
+        # Should insert after "System outputs console" (line 2), so at line 3
         assert edit.range.start.line == 3
 
     def test_channel_dispatch_shows_all_verbs(self):
         """file has inputs, outputs, validates — all should appear."""
         _analyze("<test://dispatch>", "")
         result = _complete("<test://dispatch>")
-        file_items = [i for i in result.items if "file" in i.label and "InputOutput" in i.label]
+        file_items = [i for i in result.items if "file" in i.label and "System" in i.label]
         verbs_found = set()
         for item in file_items:
             if item.label_details and item.label_details.detail:
@@ -504,7 +504,7 @@ class TestCompletion:
         _analyze("<test://sig>", "")
         result = _complete("<test://sig>")
         console_items = [
-            i for i in result.items if "console" in i.label and "InputOutput" in i.label
+            i for i in result.items if "console" in i.label and "System" in i.label
         ]
         assert len(console_items) >= 1
         item = console_items[0]
@@ -554,7 +554,7 @@ class TestCompletionNoDuplicateSignature:
         result = completion(params)
 
         for item in result.items:
-            if item.label == "InputOutput console":
+            if item.label == "System console":
                 label_has_sig = "(" in item.label and ")" in item.label
                 detail_has_sig = "(" in (item.detail or "") and ")" in (item.detail or "")
 

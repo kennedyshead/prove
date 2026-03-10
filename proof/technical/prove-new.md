@@ -101,7 +101,7 @@ Writes `<name>/src/main.prv` with a starter module:
 ```prove
 module Main
   narrative: """A new Prove project."""
-  InputOutput outputs console
+  System outputs console
 
 main() Result<Unit, Error>!
 from

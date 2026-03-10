@@ -78,11 +78,11 @@ Table reads keys get, types Table
 
 main() Result<Unit, Error>!
 from
-    source as String = InputOutput.file("config.toml")!
+    source as String = System.file("config.toml")!
     doc as Value = Parse.toml(source)!
     root as Table<Value> = Parse.object(doc)
     names as List<String> = Table.keys(root)
-    InputOutput.console("Keys: " + join(names, ", "))
+    System.console("Keys: " + join(names, ", "))
 ```
 
 ---

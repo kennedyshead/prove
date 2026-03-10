@@ -29,7 +29,7 @@ class TestVerbEnforcement:
     def test_pure_calls_io_error(self):
         check_fails(
             "module M\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "transforms bad() Integer\n"
             "    from\n"
             '        console("side effect")\n'
@@ -57,7 +57,7 @@ class TestVerbEnforcement:
     def test_reads_rejects_io(self):
         check_fails(
             "module M\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "reads bad() Integer\n"
             "    from\n"
             '        console("side effect")\n'
@@ -112,7 +112,7 @@ class TestVerbEnforcement:
     def test_main_allows_io(self):
         check(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Unit\n"
             "    from\n"
             '        console("hello from main")\n'
@@ -121,7 +121,7 @@ class TestVerbEnforcement:
     def test_inputs_allows_io(self):
         check(
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "inputs read_input() String\n"
             "    from\n"
             "        console()\n"
@@ -135,8 +135,8 @@ class TestChannelDispatch:
         """Two functions with same name but different verbs should coexist."""
         check(
             "module Main\n"
-            "  InputOutput inputs console\n"
-            "  InputOutput outputs console\n"
+            "  System inputs console\n"
+            "  System outputs console\n"
             "inputs load() String\n"
             "    from\n"
             "        console()\n"
@@ -150,7 +150,7 @@ class TestChannelDispatch:
         """Calling same-name function should resolve via verb context."""
         check(
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "inputs fetch() String\n"
             "    from\n"
             "        console()\n"
@@ -175,7 +175,7 @@ class TestChannelDispatch:
     def test_outputs_allows_io(self):
         check(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs write_output(msg String) Unit\n"
             "    from\n"
             "        console(msg)\n"
@@ -185,7 +185,7 @@ class TestChannelDispatch:
         """transforms calling a user-defined outputs function -> E363."""
         check_fails(
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs log_msg(msg String) Unit\n"
             "    from\n"
             "        console(msg)\n"
@@ -200,7 +200,7 @@ class TestChannelDispatch:
         """transforms calling a user-defined inputs function -> E363."""
         check_fails(
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "inputs get_data() String\n"
             "    from\n"
             "        console()\n"
@@ -240,7 +240,7 @@ class TestAsyncVerbs:
     def test_detached_allows_io(self):
         check(
             "module M\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "detached log(msg String)\n"
             "    from\n"
             "        console(msg)\n"
@@ -249,7 +249,7 @@ class TestAsyncVerbs:
     def test_attached_blocking_io_error(self):
         check_fails(
             "module M\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "attached bad(x Integer) String\n"
             "    from\n"
             "        console()\n",

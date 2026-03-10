@@ -193,6 +193,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `creates` | Declares a pure function that constructs a new value. See [Functions & Verbs](functions.md#intent-verbs) |
 | `inputs` | Declares a function that reads from the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
 | `outputs` | Declares a function that writes to the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
+| `streams` | Declares a blocking IO loop over a source. See [Functions & Verbs](functions.md#streams--blocking-io-loop) |
 | `detached` | Declares a fire-and-forget async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `listens` | Declares a cooperative loop. See [Functions & Verbs](functions.md#async-verbs) |

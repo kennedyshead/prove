@@ -131,14 +131,14 @@ class TestFixI302:
     def test_removes_from_multi_verb_groups(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console, inputs file\n"
+            "  System outputs console, inputs file\n"
             "\n"
             "transforms greet(name String) String\n"
             "from\n"
             "    name\n"
         )
         result = check_and_format(source)
-        assert "InputOutput" not in result
+        assert "System" not in result
         assert "console" not in result
         assert "file" not in result
 

@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Format module operations"""
-  InputOutput outputs console
+  System outputs console
   Format transforms hex pad_left pad_right center bin octal decimal
 
 main() Result<Unit, Error>!

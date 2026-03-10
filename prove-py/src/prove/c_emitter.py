@@ -110,6 +110,7 @@ class CEmitter(
         self._in_tail_loop = False
         self._in_region_scope = False
         self._in_return_position = False
+        self._in_streams_loop = False
         self._foreign_names: set[str] = set()
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
@@ -603,6 +604,22 @@ class CEmitter(
         for decl in self._all_function_defs():
             if decl.binary:
                 continue
+            # Streams verb: void return, no coroutine
+            if decl.verb == "streams":
+                sig = self._symbols.resolve_function(
+                    decl.verb, decl.name, len(decl.params)
+                )
+                if not sig:
+                    continue
+                mangled = mangle_name(decl.verb, decl.name, sig.param_types)
+                params: list[str] = []
+                for p, pt in zip(decl.params, sig.param_types):
+                    ct = map_type(pt)
+                    params.append(f"{ct.decl} {p.name}")
+                param_str = ", ".join(params) if params else "void"
+                self._line(f"void {mangled}({param_str});")
+                any_emitted = True
+                continue
             # Async verbs get special forward declarations
             if decl.verb in ("detached", "attached", "listens"):
                 sig = self._symbols.resolve_function(
@@ -662,6 +679,11 @@ class CEmitter(
         # Async verbs get specialized emission
         if fd.verb in ("detached", "attached", "listens"):
             self._emit_async_function(fd)
+            return
+
+        # Streams verb: blocking loop with match body
+        if fd.verb == "streams":
+            self._emit_streams_function(fd)
             return
 
         # Resolve types
@@ -853,6 +875,63 @@ class CEmitter(
             self._indent -= 1
             self._line("}")
             self._line("")
+
+    def _emit_streams_function(self, fd: FunctionDef) -> None:
+        """Emit a streams verb function — blocking loop with match body."""
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return
+
+        param_types: list[Type] = []
+        for p in fd.params:
+            if sig:
+                idx = next(
+                    (i for i, n in enumerate(sig.param_names) if n == p.name), None
+                )
+                if idx is not None and idx < len(sig.param_types):
+                    param_types.append(sig.param_types[idx])
+                    continue
+            param_types.append(INTEGER)
+
+        ret_type = sig.return_type if sig else UNIT
+        self._current_func_return = ret_type
+        self._current_func = fd
+        self._current_requires = fd.requires
+
+        mangled = mangle_name(fd.verb, fd.name, param_types)
+
+        params: list[str] = []
+        for p, pt in zip(fd.params, param_types):
+            ct = map_type(pt)
+            params.append(f"{ct.decl} {p.name}")
+        param_str = ", ".join(params) if params else "void"
+
+        self._line(f"void {mangled}({param_str}) {{")
+        self._indent += 1
+
+        self._line("prove_region_enter(prove_global_region());")
+        self._in_region_scope = True
+
+        self._locals.clear()
+        for p, pt in zip(fd.params, param_types):
+            self._locals[p.name] = pt
+
+        # Blocking loop — match body handles dispatch and exit
+        self._line("while (1) {")
+        self._indent += 1
+        self._in_streams_loop = True
+        for stmt in fd.body:
+            self._emit_stmt(stmt)
+        self._in_streams_loop = False
+        self._indent -= 1
+        self._line("}")
+        self._line("_streams_exit:;")
+
+        self._line("prove_region_exit(prove_global_region());")
+        self._in_region_scope = False
+        self._indent -= 1
+        self._line("}")
+        self._line("")
 
     def _emit_listens_body(self, fd: FunctionDef, param_types: list) -> None:
         """Emit the cooperative loop for a listens verb."""

@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates advanced contract features: terminates, explain, near_miss."""
-  InputOutput outputs console
+  System outputs console
 
 matches factorial(n Integer) Integer
   ensures result >= 1

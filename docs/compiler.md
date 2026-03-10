@@ -189,7 +189,7 @@ The compiler enforces purity rules based on the function's verb. Pure verbs (`tr
 - Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E363)
 - Cannot be failable with `!` (E361)
 
-IO verbs (`inputs`, `outputs`) have no such restrictions.
+IO verbs (`inputs`, `outputs`, `streams`) have no such restrictions.
 
 See [Diagnostic Codes](diagnostics.md#e361-pure-function-cannot-be-failable) for details on each enforcement error.
 
@@ -260,7 +260,7 @@ match valid merged(result)
 A running Prove program can spawn `prove build` to recompile itself or a sibling module:
 
 ```prove
-InputOutput inputs system, types ProcessResult
+System inputs system, types ProcessResult
 
 result as ProcessResult = system("prove", ["build", "path/to/project"])
 ```

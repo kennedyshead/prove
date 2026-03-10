@@ -2,7 +2,7 @@ module DemoW312
   narrative: """
   Expected diagnostics: W312
   """
-  InputOutput transforms file
+  System transforms file
 
 transforms check() Integer
 from

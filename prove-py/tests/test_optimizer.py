@@ -198,7 +198,7 @@ class TestTCOIntegration:
         (src_dir / "main.prv").write_text(
             "module TcoTest\n"
             '  narrative: """TCO test"""\n'
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "matches count(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
@@ -238,7 +238,7 @@ class TestTCOIntegration:
 
         source = (
             "module FactTest\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "transforms fact(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"

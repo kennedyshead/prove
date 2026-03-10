@@ -23,6 +23,7 @@ class TokenKind(Enum):
     DETACHED = auto()
     ATTACHED = auto()
     LISTENS = auto()
+    STREAMS = auto()
 
     # Type modifiers
     BINARY = auto()
@@ -150,6 +151,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "detached": TokenKind.DETACHED,
     "attached": TokenKind.ATTACHED,
     "listens": TokenKind.LISTENS,
+    "streams": TokenKind.STREAMS,
     "binary": TokenKind.BINARY,
     "main": TokenKind.MAIN,
     "from": TokenKind.FROM,

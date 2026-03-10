@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Bytes module operations."""
-  InputOutput outputs console
+  System outputs console
   Bytes types ByteArray
   Bytes creates byte hex
   Bytes reads hex at

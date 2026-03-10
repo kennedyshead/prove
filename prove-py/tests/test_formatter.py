@@ -169,15 +169,15 @@ class TestFormatterAnnotations:
 
 class TestFormatterImports:
     def test_import(self):
-        source = "module Foo\n  InputOutput outputs console\n"
+        source = "module Foo\n  System outputs console\n"
         assert _roundtrip(source) == source
 
     def test_import_verb_groups(self):
-        source = "module Foo\n  InputOutput outputs console, inputs file\n"
+        source = "module Foo\n  System outputs console, inputs file\n"
         assert _roundtrip(source) == source
 
     def test_import_types_verb(self):
-        source = "module Foo\n  InputOutput inputs console file\n"
+        source = "module Foo\n  System inputs console file\n"
         assert _roundtrip(source) == source
 
 
@@ -317,7 +317,7 @@ class TestFormatterTypeInference:
         source = (
             "module Main\n"
             '  narrative: """test"""\n'
-            "  InputOutput inputs file, outputs console\n"
+            "  System inputs file, outputs console\n"
             "  Parse creates text object, reads toml text, types Value\n"
             "  Table reads keys get, types Table, validates has\n"
             "  Text transforms join\n"

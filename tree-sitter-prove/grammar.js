@@ -202,6 +202,7 @@ module.exports = grammar({
       'matches',
       'outputs',
       'reads',
+      'streams',
       'transforms',
       'validates',
     ),

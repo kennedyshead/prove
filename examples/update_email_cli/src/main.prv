@@ -1,6 +1,6 @@
 module Example
   narrative: """An example of email update"""
-  InputOutput inputs console file, outputs console
+  System inputs console file, outputs console
   Parse creates json value, types Value, reads json object, validates json
   Types validates string object value
   Table types Table

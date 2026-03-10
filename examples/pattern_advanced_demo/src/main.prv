@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates advanced Pattern module operations"""
-  InputOutput outputs console
+  System outputs console
   Pattern reads search find_all text start end, transforms replace split, types Match
   List reads length
   Text validates contains, transforms join

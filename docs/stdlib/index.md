@@ -42,7 +42,7 @@ The distinction matters: pure verbs cannot call IO functions, cannot use `!`, an
 
 ### Channel Dispatch
 
-For example, `InputOutput` is organized by *channels*. The `file` channel has three verbs:
+For example, `System` is organized by *channels*. The `file` channel has three verbs:
 
 ```prove
 inputs file(path String) String!          // read a file
@@ -62,7 +62,7 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[Text](character-text.md#text)** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
 | **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
-| **[InputOutput](io-path.md#inputoutput)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
+| **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, and CSV codecs with `Value` and `Url` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
 | **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |

@@ -1060,7 +1060,7 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                 elif ds.module is not None:
                     # Already imported - mark it but don't skip
                     already_imported = True
-            # Label shows module + verb + name (e.g., "InputOutput outputs console")
+            # Label shows module + verb + name (e.g., "System outputs console")
             label = f"{s.module} {s.verb or 'function'} {name}"
             # Detail: "Auto-import" for importable, verb for already imported
             detail = "Auto-import" if not already_imported else (s.verb or "")
@@ -1529,7 +1529,7 @@ def _build_import_edit_text(
             continue
 
         # Import lines: indented "ModuleName verb name, name"
-        # e.g. "  InputOutput outputs console"
+        # e.g. "  System outputs console"
         if line.startswith("  ") and stripped:
             parts = stripped.split()
             if len(parts) >= 3 and parts[0][0].isupper() and parts[1] in _IMPORT_VERBS:

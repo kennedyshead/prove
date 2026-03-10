@@ -120,6 +120,7 @@ _VERBS = frozenset(
         TokenKind.DETACHED,
         TokenKind.ATTACHED,
         TokenKind.LISTENS,
+        TokenKind.STREAMS,
     }
 )
 
@@ -552,8 +553,8 @@ class Parser:
         if in_indent and self._at(TokenKind.DEDENT):
             self._advance()
 
-        # listens body must be a single MatchExpr with an Exit() arm
-        if verb == "listens" and not is_binary:
+        # listens/streams body must be a single MatchExpr with an Exit() arm
+        if verb in ("listens", "streams") and not is_binary:
             self._validate_listens_body(body, verb_tok.span)
 
         end = self._current().span
@@ -584,10 +585,10 @@ class Parser:
         )
 
     def _validate_listens_body(self, body: list, span: Span) -> None:
-        """Validate that a listens body has a single MatchExpr with an Exit() arm."""
+        """Validate that a listens/streams body has a single MatchExpr with an Exit() arm."""
         if len(body) != 1 or not isinstance(body[0], MatchExpr):
             self._error(
-                "`listens` body must be a single match expression",
+                "`listens`/`streams` body must be a single match expression",
                 span,
                 "E150",
             )
@@ -599,7 +600,7 @@ class Parser:
         )
         if not has_exit:
             self._error(
-                "`listens` match must have an `Exit()` arm",
+                "`listens`/`streams` match must have an `Exit()` arm",
                 span,
                 "E151",
             )

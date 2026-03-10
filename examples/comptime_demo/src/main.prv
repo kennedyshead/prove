@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates compile-time computation with comptime blocks."""
-  InputOutput outputs console
+  System outputs console
 
   BUFFER_SIZE as Integer = comptime
       512 * 2

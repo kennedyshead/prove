@@ -1,4 +1,4 @@
-"""Tests for the InputOutput C runtime (file, system, dir, process channels).
+"""Tests for the System C runtime (file, system, dir, process channels).
 
 Each test compiles a standalone C program that exercises the runtime and
 checks results via exit codes and stdout.

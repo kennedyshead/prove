@@ -2,7 +2,7 @@ module DemoE363
   narrative: """
   Expected diagnostics: E363
   """
-  InputOutput outputs console
+  System outputs console
 
 outputs log_msg(msg String) Unit
 from

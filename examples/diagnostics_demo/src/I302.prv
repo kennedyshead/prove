@@ -2,7 +2,7 @@ module DemoI302
   narrative: """
   Expected diagnostics: I302
   """
-  InputOutput outputs console
+  System outputs console
 
 transforms greet(name String) String
 from

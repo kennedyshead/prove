@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Character module operations."""
-  InputOutput outputs console
+  System outputs console
   Character validates alpha digit alnum upper lower space
   Character reads at
 
