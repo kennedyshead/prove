@@ -196,7 +196,29 @@ See [Diagnostic Codes](diagnostics.md#e361-pure-function-cannot-be-failable) for
 
 ## Runtime Modification
 
-Prove supports a pattern for programs that modify their own lookup data at runtime using the **Store** stdlib and **subprocess compilation**.
+Prove supports a pattern for programs that modify their own lookup data at runtime using the **Store** stdlib, **store-backed lookup types**, and **subprocess compilation**.
+
+### Store-Backed Lookup Types
+
+A `[Lookup]` type with `runtime` declares a schema-typed table that gets its data from a Store at runtime instead of compiled-in `where` entries:
+
+```prove
+type Color:[Lookup] is String | Integer
+  runtime
+
+Store outputs store table, inputs table
+    validates store table, types Store StoreTable
+
+db as Store = store("/tmp/my_store")!
+colors as Color = table(db, "colors")!
+row as Color = Color(Red, "red", 0xFF0000)
+add(colors, row)
+color as Integer = colors:"red"    // 0xFF0000
+```
+
+The variable `colors` is typed as `Color` (carrying schema information) but backed by a `StoreTable` at the C level. The column schema is initialized from the type definition when the table is first loaded.
+
+See [Store-Backed Lookup](types.md#store-backed-lookup-runtime) for the full type system reference.
 
 ### Store-Backed Table Management
 
