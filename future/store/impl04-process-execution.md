@@ -51,4 +51,4 @@ that do not exist. Use `system` and `.exit_code`/`.standard_output`/`.standard_e
 - [x] `system` verb implemented (InputOutput)
 - [x] `ProcessResult` type available with `exit_code`, `standard_output`, `standard_error`
 - [x] `outputs file()` available for writing `.prv` source (InputOutput)
-- [ ] impl06 example updated to use correct names
+- [x] impl06 example updated to use correct names

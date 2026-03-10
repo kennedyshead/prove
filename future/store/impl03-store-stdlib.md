@@ -126,6 +126,6 @@ store_dir/
 - [x] `merge` accepts user-provided resolver function via `Verb<Conflict, Resolution>`
 - [x] `compiles` produces binary from table
 - [x] `integrity` / `versions` / `rollbacks` work
-- [ ] Tests pass
-- [ ] Docs updated: `stdlib.md` (Store module), `store-merge-conflicts.md` folded in or referenced
-- [ ] Add Store to the Language Tour on the home page (index.md) — spotlight as a unique feature
+- [x] Tests pass
+- [x] Docs updated: `stdlib.md` (Store module), `store-merge-conflicts.md` folded in or referenced
+- [x] Add Store to the Language Tour on the home page (index.md) — spotlight as a unique feature

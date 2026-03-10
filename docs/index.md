@@ -127,6 +127,19 @@ from
     serve(config.port, db)!
 ```
 
+### Store — Versioned Data Tables
+
+Prove includes a built-in [`Store`](stdlib/table-list-store.md#store) module for persistent lookup tables with versioning, diffs, and three-way merging. Tables use optimistic concurrency — stale writes fail fast, and conflicts are resolved with user-provided callbacks.
+
+```prove
+inputs update(path String, name String) StoreTable!
+from
+    db as Store = Store.store(path)!
+    table as StoreTable = Store.table(db, name)!
+    // Save — fails if another process wrote a newer version
+    Store.table(db, table)!
+```
+
 ---
 
 ## Simple Example
