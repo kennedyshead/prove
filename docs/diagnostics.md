@@ -322,7 +322,7 @@ This code is used in two contexts:
 This code is used in two contexts:
 
 1. **Pattern matching:** A match expression on an algebraic type does not cover all variants and has no catch-all (`_`) pattern.
-2. **Async verbs:** A blocking `inputs`/`outputs` call appears inside an `attached` or `listens` body. `detached` is exempt since it runs independently.
+2. **Async verbs:** A blocking `inputs`/`outputs` call appears inside a `listens` body. `detached` and `attached` are exempt — `detached` runs independently, and `attached` has its own coroutine stack for safe blocking IO.
 
 ### E372 — Unknown variant for generic type / async call without `&`
 
@@ -515,6 +515,12 @@ A constraint expression inside an `invariant_network` referenced by `satisfies` 
 ### E397 — `binary` is reserved for stdlib
 
 The `binary` keyword (as a function body marker or type body) is reserved for stdlib implementations. User code should use `:[Lookup]` for lookup tables or wrap stdlib types with Prove functions.
+
+### E398 — IO-bearing `attached` called outside async context
+
+An `attached` function whose body contains blocking IO calls (`inputs`/`outputs`) was called via `&` from a context that does not cooperatively yield. IO-bearing `attached` functions are only safe when called from a `listens` or another `attached` body, because those contexts yield cooperatively while the child coroutine performs IO.
+
+`attached` functions that contain only pure computation (no IO) can be called from any async body.
 
 ### E410 — Tail recursion not supported in comptime
 

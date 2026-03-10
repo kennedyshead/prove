@@ -107,6 +107,8 @@ _register_doc_range("E", 387, 389)
 _register_doc_range("E", 391, 396)
 # Reserved keyword E397
 DIAGNOSTIC_DOCS["E397"] = f"{_DOCS_BASE}#E397"
+# Attached IO context E398
+DIAGNOSTIC_DOCS["E398"] = f"{_DOCS_BASE}#E398"
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
 # Warnings

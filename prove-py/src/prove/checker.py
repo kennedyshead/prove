@@ -203,6 +203,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self.diagnostics: list[Diagnostic] = []
         self._current_function: FunctionDef | MainDef | None = None
         self._io_function_names: set[str] = set()
+        self._attached_with_io: set[str] = set()
         # Track imports: module_name -> set of imported function names
         self._module_imports: dict[str, set[str]] = {}
         # Track which imports are actually used: (module_name, func_name)
@@ -301,6 +302,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         for decl in module.declarations:
             if isinstance(decl, FunctionDef) and decl.verb in ("inputs", "outputs"):
                 self._io_function_names.add(decl.name)
+
+        # Collect attached functions whose bodies contain blocking IO calls
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef) and decl.verb == "attached":
+                if self._body_has_blocking_calls(decl.body):
+                    self._attached_with_io.add(decl.name)
+            elif isinstance(decl, ModuleDecl):
+                for item in decl.body:
+                    if isinstance(item, FunctionDef) and item.verb == "attached":
+                        if self._body_has_blocking_calls(item.body):
+                            self._attached_with_io.add(item.name)
 
         # Pass 2: check bodies
         for decl in module.declarations:
@@ -1607,7 +1619,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 fname = expr.func.name
                 sig = self.symbols.resolve_function_any(fname)
                 if sig:
-                    if sig.verb in _BLOCKING_VERBS and fd.verb != "detached":
+                    if sig.verb in _BLOCKING_VERBS and fd.verb not in ("detached", "attached"):
                         self._error(
                             "E371",
                             f"async body cannot call blocking IO function '{fname}'; "
@@ -1624,7 +1636,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             for arg in expr.args:
                 self._check_async_expr(arg, fd)
         elif isinstance(expr, AsyncCallExpr):
-            self._check_async_expr(expr.expr, fd)
+            # The & wrapper satisfies E371/E372, so only check arguments
+            inner = expr.expr
+            if isinstance(inner, FailPropExpr):
+                inner = inner.expr
+            if isinstance(inner, CallExpr):
+                for arg in inner.args:
+                    self._check_async_expr(arg, fd)
         elif isinstance(expr, FailPropExpr):
             self._check_async_expr(expr.expr, fd)
         elif isinstance(expr, BinaryExpr):
@@ -1635,6 +1653,47 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif isinstance(expr, PipeExpr):
             self._check_async_expr(expr.left, fd)
             self._check_async_expr(expr.right, fd)
+
+    def _body_has_blocking_calls(self, body: list) -> bool:
+        """Check if body contains direct calls to blocking IO functions."""
+        for stmt in body:
+            if isinstance(stmt, VarDecl) and self._expr_has_blocking_call(stmt.value):
+                return True
+            if isinstance(stmt, ExprStmt) and self._expr_has_blocking_call(stmt.expr):
+                return True
+            if isinstance(stmt, Assignment) and self._expr_has_blocking_call(
+                stmt.value
+            ):
+                return True
+            if isinstance(stmt, MatchExpr):
+                for arm in stmt.arms:
+                    if self._body_has_blocking_calls(arm.body):
+                        return True
+        return False
+
+    def _expr_has_blocking_call(self, expr: Expr) -> bool:
+        """Check if expression contains a call to a blocking IO function."""
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                sig = self.symbols.resolve_function_any(expr.func.name)
+                if sig and sig.verb in _BLOCKING_VERBS:
+                    return True
+            return any(self._expr_has_blocking_call(a) for a in expr.args)
+        if isinstance(expr, FailPropExpr):
+            return self._expr_has_blocking_call(expr.expr)
+        if isinstance(expr, AsyncCallExpr):
+            return self._expr_has_blocking_call(expr.expr)
+        if isinstance(expr, BinaryExpr):
+            return self._expr_has_blocking_call(
+                expr.left
+            ) or self._expr_has_blocking_call(expr.right)
+        if isinstance(expr, PipeExpr):
+            return self._expr_has_blocking_call(
+                expr.left
+            ) or self._expr_has_blocking_call(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return self._expr_has_blocking_call(expr.operand)
+        return False
 
     def _has_pure_overload(self, name: str) -> bool:
         """Check if a function name has at least one pure verb overload."""
@@ -2230,14 +2289,29 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # I375: & on a non-async callee is a no-op — format can strip it
         if isinstance(expr.expr, CallExpr) and isinstance(expr.expr.func, IdentifierExpr):
-            callee_sig = self.symbols.resolve_function_any(expr.expr.func.name)
+            callee_name = expr.expr.func.name
+            callee_sig = self.symbols.resolve_function_any(callee_name)
             if callee_sig and callee_sig.verb not in _ASYNC_VERBS:
                 self._info(
                     "I375",
-                    f"`&` has no effect on non-async function '{expr.expr.func.name}'; "
+                    f"`&` has no effect on non-async function '{callee_name}'; "
                     f"`prove format` will remove it",
                     expr.span,
                 )
+            # E377: IO-bearing attached called outside async context
+            elif callee_sig and callee_sig.verb == "attached":
+                if callee_name in self._attached_with_io:
+                    if (
+                        self._current_function
+                        and isinstance(self._current_function, FunctionDef)
+                        and self._current_function.verb not in ("listens", "attached")
+                    ):
+                        self._error(
+                            "E398",
+                            f"IO-bearing `attached` function '{callee_name}' "
+                            f"can only be called from a `listens` or `attached` body",
+                            expr.span,
+                        )
 
         return self._infer_expr(expr.expr, expected_type=expected_type)
 
