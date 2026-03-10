@@ -803,6 +803,29 @@ class TestBinaryLookup:
             "E389",
         )
 
+    def test_e397_binary_function_body_non_stdlib(self):
+        """E397: binary function body in non-stdlib module."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "transforms demo() Integer\n"
+            "    binary\n",
+            "E397",
+        )
+
+    def test_e397_binary_type_body_non_stdlib(self):
+        """E397: binary type body in non-stdlib module."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  type OpaqueHandle is binary\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n",
+            "E397",
+        )
+
 
 class TestImplicitValueReturn:
     """Test E395 implicit Value → concrete return type coercion."""

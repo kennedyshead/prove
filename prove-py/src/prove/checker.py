@@ -547,6 +547,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = RefinementType(td.name, base, body.constraint)
 
         elif isinstance(body, BinaryDef):
+            # E397: `binary` type body is reserved for stdlib type definitions
+            if not self._is_stdlib:
+                self._error(
+                    "E397",
+                    "`binary` is reserved for stdlib type definitions",
+                    td.span,
+                )
             # Binary types are opaque C-backed types — no fields visible to Prove
             resolved = PrimitiveType(td.name)
 
@@ -1011,6 +1018,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Check verb rules
         self._check_verb_rules(fd)
 
+        # E397: `binary` body marker is reserved for stdlib implementations
+        if fd.binary and not self._is_stdlib:
+            self._error(
+                "E397",
+                "`binary` is reserved for stdlib implementations",
+                fd.span,
+            )
+
         # Binary functions have no Prove body — skip body and return checks
         if fd.binary:
             self.symbols.pop_scope()
@@ -1129,14 +1144,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         is_inputs_no_args = fd.verb == "inputs" and not fd.params
         body_len = len(fd.body)
         no_contracts = not fd.requires and not fd.ensures
-        if body_len > 1 and no_contracts and not is_inputs_no_args:
+        if body_len > 3 and no_contracts and not is_inputs_no_args:
             self._info(
                 "I320",
                 f"Function '{fd.name}' has {body_len} statements but no contracts. "
                 "Consider adding requires/ensures for mutation testing.",
                 fd.span,
             )
-        elif body_len > 1 and fd.verb in ("transforms", "matches") and no_contracts:
+        elif body_len > 3 and fd.verb in ("transforms", "matches") and no_contracts:
             self._info(
                 "I320",
                 f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "

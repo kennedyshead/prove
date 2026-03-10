@@ -103,8 +103,10 @@ for _c in ("E331", "E380", "E381", "E382", "E383", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Binary lookup tables E387-E389
 _register_doc_range("E", 387, 389)
-# Explain verification E391-E394 (E390 replaced by W323)
-_register_doc_range("E", 391, 394)
+# Explain verification E391-E396 (E390 replaced by W323)
+_register_doc_range("E", 391, 396)
+# Reserved keyword E397
+DIAGNOSTIC_DOCS["E397"] = f"{_DOCS_BASE}#E397"
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
 # Warnings
@@ -118,6 +120,8 @@ DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
 # Warning — domain profile W340-W342
 _register_doc_range("W", 340, 342)
+# Warning — temporal/satisfies W390-W391
+_register_doc_range("W", 390, 391)
 # Info
 for _c in (
     "I201", "I300", "I301", "I302", "I303", "I310", "I311",
