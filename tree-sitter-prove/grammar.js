@@ -378,6 +378,7 @@ module.exports = grammar({
       $._literal,
       $.identifier,
       $.type_identifier,
+      $.constant_identifier,
     ),
 
     pipe_expression: $ => prec.left(PREC.PIPE, seq(
