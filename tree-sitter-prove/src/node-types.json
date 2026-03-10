@@ -1639,6 +1639,10 @@
     "named": false
   },
   {
+    "type": "attached",
+    "named": false
+  },
+  {
     "type": "believe",
     "named": false
   },
@@ -1665,6 +1669,10 @@
   {
     "type": "decimal_literal",
     "named": true
+  },
+  {
+    "type": "detached",
+    "named": false
   },
   {
     "type": "doc_comment",
@@ -1737,6 +1745,10 @@
   {
     "type": "line_comment",
     "named": true
+  },
+  {
+    "type": "listens",
+    "named": false
   },
   {
     "type": "main",
