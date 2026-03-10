@@ -186,11 +186,11 @@ from
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
 | [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs` call in `attached` or `listens` body (`detached` is exempt) | Error |
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | Async function called without `&` inside an async body | Error |
-| [E373](diagnostics.md#e373---used-outside-an-async-body) | `&` used outside an async body | Error |
+| [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async body | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
-| [E151](diagnostics.md#e151--listens-body-missing-an-exit-arm) | `listens` body missing an `Exit` arm | Error |
-| [I375](diagnostics.md#i375---on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
-| [I376](diagnostics.md#i376--attached-body-with-no--calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
+| [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
+| [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
+| [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
 
 ---
 

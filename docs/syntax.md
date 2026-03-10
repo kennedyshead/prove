@@ -209,5 +209,5 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `terminates` | Required for recursive functions. See [Contracts](contracts.md#terminates) |
 | `trusted` | Marks a function as unverified. See [Contracts](contracts.md#trusted) |
 | `valid` | References a `validates` function as a predicate |
-| `comptime` | Marks code for compile-time evaluation. See [Compiler](compiler.md#comptime) |
+| `comptime` | Marks code for compile-time evaluation. See [Compiler](compiler.md#comptime-compile-time-computation) |
 | `foreign` | Declares a C FFI block inside a module |

@@ -176,7 +176,7 @@ This is the inverse of typical AI workflows. Instead of fishing for working code
 
 ## terminates
 
-Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error ([E366](diagnostics.md#e366--recursive-function-without-terminates)).
+Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error ([E366](diagnostics.md#e366-recursive-function-missing-terminates)).
 
 ```prove
 transforms merge_sort(xs List<Value>) Sorted<List<Value>>
@@ -212,9 +212,9 @@ from
 
 - **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, and [refinement types](types.md#refinement-types). Provable claims pass silently; unprovable claims emit a warning (W327) and fall back to a runtime assertion.
 - **`assume`** — the compiler adds a runtime check. If the assumption fails at runtime, the program panics.
-- **`believe`** — the compiler tries to break it with generated tests. Requires `ensures` to be present ([E393](diagnostics.md#e393--believe-requires-ensures)).
+- **`believe`** — the compiler tries to break it with generated tests. Requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)).
 
-All three are type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384--epistemic-expression-must-be-boolean), [E385](diagnostics.md#e385--epistemic-expression-must-be-boolean), [E386](diagnostics.md#e386--epistemic-expression-must-be-boolean)).
+All three are type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)).
 
 ---
 
@@ -237,7 +237,7 @@ from
 
 ## near_miss
 
-`near_miss` declares inputs that *almost* break the code but don't — the compiler verifies each near-miss exercises a distinct boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322--redundant-near-miss)).
+`near_miss` declares inputs that *almost* break the code but don't — the compiler verifies each near-miss exercises a distinct boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322-duplicate-near-miss-input)).
 
 ```prove
 validates leap_year(y Year)

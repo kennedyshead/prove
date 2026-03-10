@@ -35,11 +35,11 @@ from
 
 ### Verb Purity Enforcement
 
-The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361--pure-function-cannot-be-failable), [E362](diagnostics.md#e362--pure-function-calls-builtin-io), [E363](diagnostics.md#e363--pure-function-calls-io-function).
+The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-builtin), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
 
 ### Exhaustive Match
 
-[Match expressions](types.md#pattern-matching) on algebraic types must cover all variants or include a wildcard. The compiler rejects non-exhaustive matches and warns about unreachable arms ([I301](diagnostics.md#i301--unreachable-match-arm)). AI-generated code that forgets a variant does not compile.
+[Match expressions](types.md#pattern-matching) on algebraic types must cover all variants or include a wildcard. The compiler rejects non-exhaustive matches and warns about unreachable arms ([I301](diagnostics.md#i301-unreachable-match-arm)). AI-generated code that forgets a variant does not compile.
 
 ### Adversarial Type Puzzles (Refinement Types)
 
@@ -58,7 +58,7 @@ transforms insert(tree BalancedTree<Value>, val Value) BalancedTree<Value>
 
 ### Adversarial Near-Miss Examples
 
-[`near_miss`](contracts.md#near-miss) declares inputs that *almost* break the code but don't. The compiler verifies each near-miss exercises a distinct branch or boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322--redundant-near-miss)). AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.
+[`near_miss`](contracts.md#near_miss) declares inputs that *almost* break the code but don't. The compiler verifies each near-miss exercises a distinct branch or boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322-duplicate-near-miss-input)). AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.
 
 ```prove
 validates leap_year(y Year)
@@ -71,7 +71,7 @@ from
 
 ### Epistemic Checking (Basic)
 
-[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384--epistemic-expression-must-be-boolean), [E385](diagnostics.md#e385--epistemic-expression-must-be-boolean), [E386](diagnostics.md#e386--epistemic-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393--believe-requires-ensures)). Full semantic enforcement (proving `know` claims, inserting runtime checks for `assume`, generating adversarial tests for `believe`) is upcoming.
+[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)). Full semantic enforcement (proving `know` claims, inserting runtime checks for `assume`, generating adversarial tests for `believe`) is upcoming.
 
 ```prove
 transforms process_order(order Order) Receipt
