@@ -1,6 +1,8 @@
 module Log
   narrative: """Console color constants for terminal output."""
   InputOutput outputs console
+  Time inputs time, types Time
+  Format transforms time
 
   RESET as String = "[0m"
 
@@ -24,16 +26,18 @@ module Log
 
 detached debug(string String)
 from
-    console(f"{BLUE}[DEBUG]{string}{RESET}")
+    now as Time = time()
+    console(f"{BLUE}[DEBUG][{time(now, "HH:ii")}] {string}{RESET}")
 
 detached info(string String)
 from
-    console(f"{GREEN}[INFO]{string}{RESET}")
+    now as Time = time()
+    console(f"{GREEN}[INFO][{time(now, "HH:ii")}] {string}{RESET}")
 
 detached warning(string String)
 from
-    console(f"{YELLOW}[WARNING]{string}{RESET}")
+    console(f"{YELLOW}[WARNING] {string}{RESET}")
 
 detached error(string String)
 from
-    console(f"{RED}[ERROR]{string}{RESET}")
+    console(f"{RED}[ERROR] {string}{RESET}")
