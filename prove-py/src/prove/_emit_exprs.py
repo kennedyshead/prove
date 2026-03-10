@@ -1118,19 +1118,32 @@ class ExprEmitterMixin:
     ) -> str:
         """Generate a C condition comparing subj to a literal pattern."""
         val = pat.value
-        # Need coercion if Prove type is Value OR C return type is Prove_Value*
-        needs_coerce = (subj_type and self._is_value_type(subj_type)) or (
-            subj_expr and self._c_returns_value_ptr(subj_expr)
+        # True Value type: data is a real Prove_Value struct → use prove_value_as_*
+        is_true_value = subj_type and self._is_value_type(subj_type)
+        # Resolved Value: C function returns Prove_Value* but the Prove type
+        # resolved to a concrete type (e.g. String).  The pointer is actually
+        # the concrete type (Prove_String*, int64_t, …) — cast, don't access
+        # as Prove_Value struct.
+        is_resolved_value = (
+            not is_true_value
+            and subj_expr is not None
+            and self._c_returns_value_ptr(subj_expr)
         )
         if pat.kind == "boolean" or val in ("true", "false"):
-            if needs_coerce:
+            if is_true_value:
                 subj = f"prove_value_as_bool({subj})"
+            elif is_resolved_value:
+                subj = f"(bool)(intptr_t){subj}"
             return subj if val == "true" else f"!({subj})"
         if pat.kind == "string":
             escaped = self._escape_c_string(val)
-            if needs_coerce:
+            if is_true_value:
                 subj = f"prove_value_as_text({subj})"
+            elif is_resolved_value:
+                subj = f"(Prove_String*){subj}"
             return f'prove_string_eq({subj}, prove_string_from_cstr("{escaped}"))'
-        if needs_coerce:
+        if is_true_value:
             subj = f"prove_value_as_number({subj})"
+        elif is_resolved_value:
+            subj = f"(int64_t)(intptr_t){subj}"
         return f"{subj} == {val}L"

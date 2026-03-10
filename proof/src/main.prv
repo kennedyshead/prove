@@ -10,6 +10,7 @@ module Main
 
   type Package is
     name String
+    version String
 
   type Config is
     package Package
@@ -29,7 +30,7 @@ from
 inputs build_command(arguments List<String>, config Config) String!
   requires value(1, arguments) == "build"
 from
-    f"Built {config.package.name}"
+    f"Built {config.package.version}"
 
 main() Result<Unit, Error>!
 from
