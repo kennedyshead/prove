@@ -85,7 +85,7 @@ from
     par_map(urls, fetch)
 ```
 
-The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries. The async verb family (`detached`, `attached`, `listens`) provides structured concurrency backed by stackful coroutines (`prove_coro`). See the [Syntax Reference](syntax.md#async-verbs) for details.
+The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries. The [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) provides structured concurrency backed by stackful coroutines (`prove_coro`).
 
 ---
 
@@ -117,13 +117,13 @@ from
 
 | Pain in existing languages | How Prove solves it |
 |---|---|
-| Tests are separate from code | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
-| "Works on my machine" | Verb system makes IO explicit (`inputs`/`outputs`) |
-| Null/nil crashes | No null — use `Option<Value>`, enforced by compiler |
+| Tests are separate from code | Testing is part of the definition — [`ensures`, `requires`, `near_miss`](contracts.md) |
+| "Works on my machine" | [Verb system](functions.md#intent-verbs) makes IO explicit (`inputs`/`outputs`) |
+| Null/nil crashes | No null — use [`Option<Value>`](types.md#option-and-result), enforced by compiler |
 | Race conditions | Ownership + verb purity guarantee safe `par_map`; structured concurrency planned |
-| "I forgot an edge case" | Compiler generates edge cases from types |
-| Slow test suites | Property tests generated from contracts |
-| Runtime type errors | Refinement types catch invalid values at compile time |
+| "I forgot an edge case" | Compiler generates edge cases from [refinement types](types.md#refinement-types) |
+| Slow test suites | Property tests generated from [contracts](contracts.md#auto-testing) |
+| Runtime type errors | [Refinement types](types.md#refinement-types) catch invalid values at compile time |
 
 ---
 
@@ -166,3 +166,33 @@ Once the compiler is self-hosted (V2.0, written in Prove and compiled by the V1.
 ### Licensing reflects this
 
 The language and `.prv` source code are covered by the **Prove Source License v1.0**, which prohibits use as AI training data. The AI-assisted tooling (bootstrap compiler, docs, lexers) is licensed under **Apache-2.0**. This separation ensures legal clarity: the parts built with AI help use a license compatible with that workflow, while the human-authored language retains its protections.
+
+---
+
+## Inspirations
+
+Prove draws from many languages but combines their ideas into something none of them offer: **intent-first programming**, where every function declares its purpose, guarantees, and reasoning before the implementation begins. The languages below shaped individual features — the [verb system](functions.md#intent-verbs), the [contracts](contracts.md), the [type safety](types.md) — but the synthesis is uniquely Prove's.
+
+| Language | What Prove borrows | What Prove avoids |
+|---|---|---|
+| **Rust** | Ownership model, exhaustive matching, no null | Lifetime annotation burden, borrow checker complexity |
+| **Haskell** | Type system, pure functions, algebraic types | IO monad complexity, lazy evaluation surprises |
+| **Go** | Parameter syntax (`name Type`), simplicity as goal | Weak type system, error handling verbosity |
+| **Python** | Indentation-based blocks, readability philosophy | Dynamic typing, runtime errors |
+| **Zig** | `comptime` (compile-time computation with IO) | Manual memory management |
+| **Ada/SPARK** | Contract-based programming, formal verification | Verbose syntax |
+| **Idris/Agda** | Dependent types for encoding invariants | Academic accessibility barrier |
+| **Elm** | Eliminating runtime exceptions, compiler as assistant | Limited to frontend |
+| **F#** | Pragmatic algebraic types, pipeline operator | — |
+
+---
+
+## Contributing
+
+The Gitea instance at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove) is a paid service for issue creators.
+
+Developers who want contributor access can reach out to magnusknutas[at]botwork.se.
+
+### Development Setup
+
+To set up your development environment, run `./scripts/dev-setup.sh` from the workspace root to install all dependencies. If a tool or package is missing during development, run the script first. If it's still missing after running the script, add the dependency to `dev-setup.sh`.
