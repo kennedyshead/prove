@@ -15,6 +15,8 @@ license = ""
 [build]
 target = "native"
 optimize = true
+mutate = true
+debug = false
 
 [test]
 property_rounds = 1000

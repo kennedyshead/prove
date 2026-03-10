@@ -1,7 +1,17 @@
-[project]
+[package]
 name = "character_demo"
 version = "0.1.0"
-edition = "2024-11-15"
+authors = []
+license = ""
 
-[target]
-output = "character_demo"
+[build]
+target = "native"
+optimize = true
+mutate = true
+debug = false
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90
