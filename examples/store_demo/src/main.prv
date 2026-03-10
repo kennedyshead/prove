@@ -1,0 +1,8 @@
+module Main
+  narrative: """Demonstrates Store module operations. Expected to fail: build."""
+  InputOutput outputs console
+
+main() Result<Unit, Error>!
+from
+    console("Store module available")
+    console("done")
