@@ -323,24 +323,32 @@ class TestMatchRestriction:
         )
 
     def test_match_in_inputs_info(self):
-        """I367: match in inputs body produces info."""
+        """I367: match in inputs body produces info (4+ arms)."""
         check_info(
-            "inputs bad(n Integer) Integer\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "inputs bad(d Dir) Integer\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => n\n"
-            "            false => 0\n",
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
             "I367",
         )
 
     def test_match_in_outputs_info(self):
-        """I367: match in outputs body produces info."""
+        """I367: match in outputs body produces info (4+ arms)."""
         check_info(
-            "outputs bad(n Integer) Integer\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "outputs bad(d Dir) Integer\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => n\n"
-            "            false => 0\n",
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
             "I367",
         )
 
