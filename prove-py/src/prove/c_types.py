@@ -140,6 +140,18 @@ def map_type(ty: Type) -> CType:
             return CType(
                 "Prove_Version*", is_pointer=True, header="prove_store.h"
             )
+        if name == "Conflict":
+            return CType(
+                "Prove_Conflict*", is_pointer=True, header="prove_store.h"
+            )
+        if name == "Resolution":
+            return CType(
+                "Prove_Resolution*", is_pointer=True, header="prove_store.h"
+            )
+        if name == "MergeResult":
+            return CType(
+                "Prove_MergeResult*", is_pointer=True, header="prove_store.h"
+            )
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

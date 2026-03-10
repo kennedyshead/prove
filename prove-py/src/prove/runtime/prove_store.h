@@ -144,6 +144,19 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                                       Prove_TableDiff *remote,
                                       Prove_ResolverFn resolver);
 
+/* ── MergeResult accessors ──────────────────────────────────── */
+
+bool              prove_store_merged_validates(Prove_MergeResult *mr);
+Prove_StoreTable *prove_store_merged(Prove_MergeResult *mr);
+Prove_List       *prove_store_conflicts(Prove_MergeResult *mr);
+
+/* ── Conflict accessors ────────────────────────────────────── */
+
+Prove_String *prove_store_conflict_variant(Prove_Conflict *c);
+Prove_String *prove_store_conflict_column(Prove_Conflict *c);
+Prove_String *prove_store_conflict_local_value(Prove_Conflict *c);
+Prove_String *prove_store_conflict_remote_value(Prove_Conflict *c);
+
 /* ── Lookup channel ─────────────────────────────────────────── */
 
 Prove_Result prove_store_lookup_outputs(Prove_Store *store, Prove_String *name);

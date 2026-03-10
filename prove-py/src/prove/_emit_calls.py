@@ -577,6 +577,9 @@ class CallEmitterMixin:
                 args = self._coerce_call_args(args, expr.args, sig)
                 c_name = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
+                    # prove_store_merge takes a 4th resolver arg (NULL = no resolver)
+                    if c_name == "prove_store_merge" and len(args) == 3:
+                        args.append("NULL")
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
                         call_str,

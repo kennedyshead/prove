@@ -593,6 +593,53 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
     return mr;
 }
 
+/* ── MergeResult accessors ─────────────────────────────────── */
+
+bool prove_store_merged_validates(Prove_MergeResult *mr) {
+    if (!mr) return false;
+    return mr->tag == PROVE_MERGE_MERGED;
+}
+
+Prove_StoreTable *prove_store_merged(Prove_MergeResult *mr) {
+    if (!mr) prove_panic("Store.merged: null result");
+    if (mr->tag != PROVE_MERGE_MERGED) prove_panic("Store.merged: result is conflicted");
+    return mr->data.table;
+}
+
+Prove_List *prove_store_conflicts(Prove_MergeResult *mr) {
+    if (!mr) prove_panic("Store.conflicts: null result");
+    if (mr->tag != PROVE_MERGE_CONFLICTED) prove_panic("Store.conflicts: result is merged");
+    return mr->data.conflicts;
+}
+
+/* ── Conflict accessors ───────────────────────────────────── */
+
+Prove_String *prove_store_conflict_variant(Prove_Conflict *c) {
+    if (!c) prove_panic("Store.variant: null conflict");
+    if (c->tag == PROVE_CONFLICT_VALUE) return c->data.value.variant;
+    if (c->tag == PROVE_CONFLICT_ADDITION) return c->data.addition.variant;
+    prove_panic("Store.variant: schema conflict has no variant");
+    return NULL;
+}
+
+Prove_String *prove_store_conflict_column(Prove_Conflict *c) {
+    if (!c) prove_panic("Store.column: null conflict");
+    if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.column: not a value conflict");
+    return c->data.value.column;
+}
+
+Prove_String *prove_store_conflict_local_value(Prove_Conflict *c) {
+    if (!c) prove_panic("Store.local_value: null conflict");
+    if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.local_value: not a value conflict");
+    return c->data.value.local_val;
+}
+
+Prove_String *prove_store_conflict_remote_value(Prove_Conflict *c) {
+    if (!c) prove_panic("Store.remote_value: null conflict");
+    if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.remote_value: not a value conflict");
+    return c->data.value.remote_val;
+}
+
 /* ── Lookup channel ─────────────────────────────────────────── */
 
 Prove_Result prove_store_lookup_outputs(Prove_Store *store, Prove_String *name) {
