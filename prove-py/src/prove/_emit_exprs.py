@@ -549,7 +549,7 @@ class ExprEmitterMixin:
                         inner_cond = self._emit_literal_cond(unwrapped, arm.pattern, inner_ty)
                         cond = f"{subj}.tag == 1 && {inner_cond}"
                     else:
-                        cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
+                        cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
                     keyword = "if" if first else "} else if"
                     self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
@@ -1110,19 +1110,27 @@ class ExprEmitterMixin:
         return ERROR_TY
 
     def _emit_literal_cond(
-        self, subj: str, pat: LiteralPattern, subj_type: Type | None = None,
+        self,
+        subj: str,
+        pat: LiteralPattern,
+        subj_type: Type | None = None,
+        subj_expr: Expr | None = None,
     ) -> str:
         """Generate a C condition comparing subj to a literal pattern."""
         val = pat.value
+        # Need coercion if Prove type is Value OR C return type is Prove_Value*
+        needs_coerce = (subj_type and self._is_value_type(subj_type)) or (
+            subj_expr and self._c_returns_value_ptr(subj_expr)
+        )
         if pat.kind == "boolean" or val in ("true", "false"):
-            if subj_type and self._is_value_type(subj_type):
+            if needs_coerce:
                 subj = f"prove_value_as_bool({subj})"
             return subj if val == "true" else f"!({subj})"
         if pat.kind == "string":
             escaped = self._escape_c_string(val)
-            if subj_type and self._is_value_type(subj_type):
+            if needs_coerce:
                 subj = f"prove_value_as_text({subj})"
             return f'prove_string_eq({subj}, prove_string_from_cstr("{escaped}"))'
-        if subj_type and self._is_value_type(subj_type):
+        if needs_coerce:
             subj = f"prove_value_as_number({subj})"
         return f"{subj} == {val}L"

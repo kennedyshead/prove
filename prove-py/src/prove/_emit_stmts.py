@@ -1176,7 +1176,7 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             elif isinstance(arm.pattern, LiteralPattern):
-                cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
+                cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
                 keyword = "if" if first else "} else if"
                 self._line(f"{keyword} ({cond}) {{")
                 self._indent += 1
@@ -1255,7 +1255,7 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             elif isinstance(arm.pattern, LiteralPattern):
-                cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
+                cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
                 keyword = "if" if first else "} else if"
                 self._line(f"{keyword} ({cond}) {{")
                 self._indent += 1
