@@ -1,5 +1,7 @@
 module Main
-  narrative: """A new Prove project."""
+  narrative: """
+  The prove language proof compiler! As a statement we create the tool to manage prove written all in pure prove code!
+  """
   InputOutput inputs process file
   List reads value
   Parse validates toml, creates toml

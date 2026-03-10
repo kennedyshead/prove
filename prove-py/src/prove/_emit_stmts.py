@@ -1160,6 +1160,7 @@ class StmtEmitterMixin:
 
     def _emit_tail_match_as_if_else(self, m: MatchExpr, subj: str) -> None:
         """Emit a non-algebraic match as if/else inside a tail loop."""
+        subj_type = self._infer_expr_type(m.subject) if m.subject else UNIT
         first = True
         for arm in m.arms:
             if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
@@ -1169,14 +1170,13 @@ class StmtEmitterMixin:
                     self._line("} else {")
                 self._indent += 1
                 if isinstance(arm.pattern, BindingPattern):
-                    subj_type = self._infer_expr_type(m.subject) if m.subject else UNIT
                     bct = map_type(subj_type)
                     self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
                 self._emit_match_arm_body(arm.body)
                 self._indent -= 1
                 self._line("}")
             elif isinstance(arm.pattern, LiteralPattern):
-                cond = self._emit_literal_cond(subj, arm.pattern)
+                cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
                 keyword = "if" if first else "} else if"
                 self._line(f"{keyword} ({cond}) {{")
                 self._indent += 1
@@ -1238,6 +1238,7 @@ class StmtEmitterMixin:
 
     def _emit_literal_match_stmt(self, m: MatchExpr, subj: str) -> None:
         """Emit a match on non-integer literals as an if-else chain."""
+        subj_type = self._infer_expr_type(m.subject) if m.subject else None
         first = True
         for arm in m.arms:
             if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
@@ -1247,7 +1248,6 @@ class StmtEmitterMixin:
                     self._line("} else {")
                 self._indent += 1
                 if isinstance(arm.pattern, BindingPattern):
-                    subj_type = self._infer_expr_type(m.subject) if m.subject else None
                     if subj_type:
                         bct = map_type(subj_type)
                         self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
@@ -1255,7 +1255,7 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             elif isinstance(arm.pattern, LiteralPattern):
-                cond = self._emit_literal_cond(subj, arm.pattern)
+                cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
                 keyword = "if" if first else "} else if"
                 self._line(f"{keyword} ({cond}) {{")
                 self._indent += 1

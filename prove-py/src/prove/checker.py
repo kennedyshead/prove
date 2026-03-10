@@ -236,6 +236,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._temporal_order: list[str] = []
         # Coherence checking enabled (set via CLI --coherence flag)
         self._coherence: bool = False
+        # Set when checking a stdlib module itself (skip E316 for builtins it provides)
+        self._is_stdlib: bool = False
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -267,6 +269,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             elif isinstance(decl, MainDef):
                 self._register_main(decl)
             elif isinstance(decl, ModuleDecl):
+                from prove.stdlib_loader import is_stdlib_module
+
+                self._is_stdlib = is_stdlib_module(decl.name)
                 for imp in decl.imports:
                     self._register_import(imp)
                 for td in decl.types:
@@ -600,14 +605,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     def _register_function(self, fd: FunctionDef) -> None:
         """Register a function signature."""
-        # E316: function name shadows builtin
-        if fd.name in _BUILTIN_FUNCTIONS:
-            self._error(
-                "E316",
-                f"'{fd.name}' shadows the built-in function '{fd.name}'. Choose a different name.",
-                fd.span,
-            )
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
+        # E316: function name shadows builtin (only if param types also match —
+        # overloads with different types are allowed; stdlib modules are exempt)
+        if fd.name in _BUILTIN_FUNCTIONS and not self._is_stdlib:
+            builtin_sig = self.symbols.resolve_function(None, fd.name, len(param_types))
+            if builtin_sig is not None and all(
+                types_compatible(a, b)
+                for a, b in zip(builtin_sig.param_types, param_types)
+            ):
+                self._error(
+                    "E316",
+                    f"'{fd.name}' shadows the built-in function '{fd.name}'. Choose a different name.",
+                    fd.span,
+                )
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
         sig = FunctionSignature(
             verb=fd.verb,
