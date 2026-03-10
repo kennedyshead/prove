@@ -80,9 +80,11 @@ On textDocument/completion:
 | `:[Lookup]` types (impl02) | Mostly done | `binary` keyword restriction (E397) pending — not blocking for PoC |
 | Store stdlib (impl03) | Mostly done | `merges` + tests remaining — Phase 3 needs `loads`/`saves`/`compiles` only |
 | Process execution (impl04) | Done | Not needed until Phase 3 Prove program |
+| Compiler CLI (impl05) | Done | `prove compiler --load/--dump`, PDAT binary format, LSP cache switched to PDAT |
 | Async verbs (impl01) | Not required | Phases 1–5 are all synchronous |
 
 **Phases 1–2 can start immediately** (Python only, no compiler changes needed).
+**Phase 4 is complete** (`_ProjectIndexer` with PDAT binary cache).
 Phase 3 in Prove unblocks once impl03 `loads`/`saves` tests pass.
 
 ## Phases
@@ -157,19 +159,19 @@ No probabilities needed at this stage — relative counts are enough for ranking
 
 #### Python bridge (use first)
 
-`scripts/ml_store.py` reads the trained JSON and writes Store-format `.prv` files
-directly. The Store format for a lookup table is a `.prv` file containing a
-`:[Lookup]` type definition — the same format impl03 reads and writes internally.
+`scripts/ml_store.py` reads the trained JSON and writes PDAT binary files
+using `store_binary.write_pdat()`. The PDAT format matches `prove_store.c` exactly —
+files are interchangeable with the C runtime at execution time.
 
 Store layout at `data/lsp-ml-store/`:
 
 ```
 data/lsp-ml-store/
     bigrams/
-        current.prv     ← bigram model as :[Lookup] table
+        current.bin     ← bigram model as PDAT binary
         versions/
     completions/
-        current.prv     ← completion contexts as :[Lookup] table
+        current.bin     ← completion contexts as PDAT binary
         versions/
 ```
 
@@ -206,19 +208,16 @@ Phase 2 and writes it into the Store. Mark with `Expected to fail: build.` in it
 
 ---
 
-### Phase 4 — Project Indexer in LSP
+### Phase 4 — Project Indexer in LSP ✓
+
+**Status: Complete** (implemented in impl05)
 
 **Modified file:** `prove-py/src/prove/lsp.py`
 
-Add `_ProjectIndexer` class. This runs inside the LSP process — no subprocess.
+`_ProjectIndexer` class is implemented and runs inside the LSP process.
 
-**Project root detection** (called when any `.prv` file is opened):
-
-Walk up from the opened file's directory until finding:
-1. A `prove.toml` file, or
-2. A directory that is the workspace root reported by the LSP client
-
-Fall back to the directory of the opened file if neither is found.
+**Project root detection:** walks up from the opened file to find `prove.toml`,
+falls back to the file's directory.
 
 **Cache location:** `<project-root>/.prove_cache/` — created on first index run.
 
@@ -227,40 +226,33 @@ Fall back to the directory of the opened file if neither is found.
 - Every `TypeDef` and `ConstantDef`: name, kind, file, line
 - Local token bigrams (same format as global model)
 
-**Storage format:** same Store `:[Lookup]` table files as the global model,
-written to `.prove_cache/index/current.prv` and `.prove_cache/bigrams/current.prv`.
+**Storage format:** PDAT binary files via `store_binary.write_pdat()`.
 
-**Incremental updates:** on `didSave`, re-parse only the changed file and patch
-the Store table using `diffs`/`patches`. On full workspace open, re-index everything.
-Store's optimistic concurrency (`saves` rejects stale versions) handles the case where
-multiple files are saved quickly — the second save reloads and retries automatically.
+**Incremental updates:** on `didSave`, re-parse only the changed file via
+`patch_file()`, rebuild in-memory tables, write PDAT cache.
 
 **Triggers:**
-- `workspace/didOpen` → full re-index of all `.prv` files under project root
-- `textDocument/didSave` → re-index saved file, patch tables
-- `textDocument/didOpen` → re-index if file not yet in cache
+- `index_all_files()` → full re-index of all `.prv` files under project root
+- `patch_file()` → re-index saved file, rebuild tables
 
 Cache layout:
 
 ```
 <project-root>/
     .prove_cache/
-        index/
-            current.prv      # symbols: name → file, line, kind, signature
-            versions/
         bigrams/
-            current.prv      # local n-gram frequencies
+            current.bin      # local n-gram frequencies (PDAT)
+            versions/
+        completions/
+            current.bin      # completion contexts (PDAT)
             versions/
 ```
 
-Add `.prove_cache/` to the default `.gitignore` template in `scripts/dev-setup.sh`
-and document it in `docs/`.
-
 **Exit criteria:**
-- [ ] `_ProjectIndexer` detects project root correctly for stdlib, examples, and a fresh project
-- [ ] `.prove_cache/` is created and populated on workspace open
-- [ ] Table is updated (not fully rebuilt) on single-file save
-- [ ] No LSP errors or crashes when `.prove_cache/` is missing or corrupted
+- [x] `_ProjectIndexer` detects project root correctly
+- [x] `.prove_cache/` is created and populated on workspace open
+- [x] Table is updated (not fully rebuilt) on single-file save
+- [x] No LSP errors or crashes when `.prove_cache/` is missing or corrupted
 
 ---
 
@@ -308,7 +300,8 @@ return existing_items + ml_items
 | `scripts/ml_store.py` | Python | New | Phase 3 — Python bridge |
 | `data/lsp-ml-store/` | Store `.prv` | New | Phase 3 — committed model artifact |
 | `tools/lsp-ml/store_model.prv` | Prove | New | Phase 3 — Prove target, expected to fail initially |
-| `prove-py/src/prove/lsp.py` | Python | Modify | Phases 4–5: add `_ProjectIndexer` + `_MLCompletionProvider` |
+| `prove-py/src/prove/lsp.py` | Python | Modified | Phase 4 done (`_ProjectIndexer` implemented, PDAT binary cache). Phase 5: add `_MLCompletionProvider` |
+| `prove-py/src/prove/store_binary.py` | Python | New | PDAT reader/writer used by LSP cache and `prove compiler` CLI |
 
 ## What This Demonstrates
 

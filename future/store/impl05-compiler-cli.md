@@ -1,58 +1,56 @@
-# impl05: Compiler CLI Commands
+# impl05: Compiler CLI Commands ✓
+
+**Status: Complete**
 
 ## Overview
 
-Add `--load` and `--dump` flags to `prove compiler` for lookup table data management.
+Added `--load` and `--dump` flags to `prove compiler` for lookup table data management.
 
-## Commands
+## What Was Implemented
 
-### prove compiler --load <file.prv>
+### `src/prove/store_binary.py` (new)
 
-Compiles Prove source lookup table to binary:
+Python implementation of the PDAT binary format matching `prove_store.c` exactly:
 
-```
-Input:  ast/types.prv
-Output: binaries/types.bin
-```
+- `write_pdat(path, name, columns, variants, version)` — write PDAT from structured data
+- `read_pdat(path)` — read PDAT, return `{name, version, columns, variants}`
+- `prv_to_pdat(prv_path, output_path)` — parse `.prv`, extract binary `:[Lookup]`, write PDAT
+- `pdat_to_prv(bin_path, output)` — read PDAT, generate `.prv` source with module declaration
 
-```bash
-prove compiler --load ast/types.prv
-prove compiler --load ast/math.prv
-```
+### `src/prove/cli.py` (modified)
 
-### prove compiler --dump
-
-Dumps binary to Prove source for viewing/editing:
-
-```
-Input:  binaries/types.bin
-Output: stdout (or --output file.prv)
-```
+Added `prove compiler` subcommand after `prove view`:
 
 ```bash
-prove compiler --dump binaries/types.bin
-prove compiler --dump --output types.prv
+prove compiler --load src/data.prv        # .prv → .dat
+prove compiler --dump Data.dat            # .dat → stdout
+prove compiler --dump Data.dat -o out.prv # .dat → file
+prove compiler src/data.prv              # auto-detect from extension
 ```
 
-Replaces current `prove view` command for binary files.
+### LSP cache switched to PDAT binary
 
-## Data Flow
+`_ProjectIndexer` in `lsp.py` now writes cache as PDAT `.bin` files instead of `.prv` text:
+- `.prove_cache/bigrams/current.bin`
+- `.prove_cache/completions/current.bin`
 
-```
-AST (.prv)  ──prove compiler --load──→  Binary (.bin)
-Binary (.bin)  ──prove compiler --dump──→  AST (.prv)
-```
+### Tests
 
-## Implementation
+`tests/test_store_binary.py` — 15 tests covering:
+- Write/read roundtrip (single, multi-column, empty, unicode)
+- Error handling (bad magic, bad version)
+- Format validation (magic bytes, version field)
+- `.prv` ↔ PDAT conversion and full roundtrip
 
-- Parse `.prv` files with `:[Lookup]` type definitions
-- Compile to binary lookup tables
-- Add `--output` flag for custom paths
+### Docs
+
+`docs/cli.md` updated with `prove compiler` command reference.
 
 ## Exit Criteria
 
-- [ ] `--load` compiles .prv to .bin
-- [ ] `--dump` converts .bin to .prv
-- [ ] `--output` flag works
-- [ ] Tests pass
-- [ ] Docs updated: `cli.md` (`prove compiler --load/--dump` commands)
+- [x] `--load` compiles .prv to .dat
+- [x] `--dump` converts .dat to .prv
+- [x] `--output` flag works
+- [x] Tests pass (15/15 new + full suite)
+- [x] Docs updated: `cli.md` (`prove compiler --load/--dump` commands)
+- [x] LSP cache uses PDAT binary format
