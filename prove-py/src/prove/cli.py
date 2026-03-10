@@ -853,6 +853,49 @@ def view(file: str) -> None:
     _dump_ast(module, 0)
 
 
+@main.command()
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--load", "mode", flag_value="load", help="Compile .prv lookup to PDAT binary.")
+@click.option("--dump", "mode", flag_value="dump", help="Dump PDAT binary to .prv source.")
+@click.option("--output", "-o", type=click.Path(), default=None, help="Output path.")
+def compiler(file: str, mode: str | None, output: str | None) -> None:
+    """Convert between .prv lookup types and PDAT binary format."""
+    from prove.store_binary import pdat_to_prv, prv_to_pdat
+
+    if mode is None:
+        # Auto-detect from file extension
+        if file.endswith(".prv"):
+            mode = "load"
+        elif file.endswith(".dat") or file.endswith(".bin"):
+            mode = "dump"
+        else:
+            click.echo("Error: specify --load or --dump, or use .prv/.dat extension.", err=True)
+            raise SystemExit(1)
+
+    if mode == "load":
+        try:
+            out = prv_to_pdat(file, output)
+        except CompileError as e:
+            renderer = DiagnosticRenderer(color=True)
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            raise SystemExit(1)
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            raise SystemExit(1)
+        click.echo(f"Wrote {out}")
+    else:
+        try:
+            source = pdat_to_prv(file, output)
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            raise SystemExit(1)
+        if output:
+            click.echo(f"Wrote {output}")
+        else:
+            click.echo(source, nl=False)
+
+
 def _dump_ast(node: object, depth: int) -> None:
     """Print a readable AST dump."""
     indent = "  " * depth
