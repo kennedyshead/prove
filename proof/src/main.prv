@@ -40,5 +40,5 @@ from
     config as Config = config(load)
     out as String = match value(1, arguments)
         "build" => build_command(arguments, config)!
-        _ => file(HELP_TXT)!
+        _ => HELP_TXT
     info(out)

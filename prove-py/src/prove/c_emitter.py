@@ -996,12 +996,28 @@ class CEmitter(
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
+            narrowed_types = [
+                self._narrow_for_requires(a, t)
+                for a, t in zip(expr.args, actual_types)
+            ] if actual_types else []
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
                     name,
-                    arg_types=actual_types if actual_types else None,
+                    arg_types=narrowed_types if narrowed_types else None,
                 )
+            elif narrowed_types:
+                # Re-resolve with narrowed types if initial sig doesn't match
+                from prove.types import types_compatible, TypeVariable as TV
+                if sig.param_types and not all(
+                    isinstance(p, TV) or types_compatible(p, a)
+                    for p, a in zip(sig.param_types, narrowed_types)
+                ):
+                    better = self._symbols.resolve_function_any(
+                        name, narrowed_types,
+                    )
+                    if better is not None:
+                        sig = better
             if sig:
                 ret = sig.return_type
                 # Resolve type variables using actual arg types
@@ -1014,9 +1030,9 @@ class CEmitter(
                 if (
                     sig.module
                     and isinstance(ret, GenericInstance)
-                    and ret.base_name == "Option"
+                    and ret.base_name in ("Option", "Result")
                     and ret.args
-                    and self._is_option_narrowed(
+                    and self._is_requires_narrowed(
                         name,
                         expr.args,
                         sig.module,
@@ -1050,9 +1066,9 @@ class CEmitter(
                 ret = sig.return_type
                 if (
                     isinstance(ret, GenericInstance)
-                    and ret.base_name == "Option"
+                    and ret.base_name in ("Option", "Result")
                     and ret.args
-                    and self._is_option_narrowed(
+                    and self._is_requires_narrowed(
                         name,
                         expr.args,
                         module_name,

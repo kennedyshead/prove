@@ -52,7 +52,7 @@ class CallEmitterMixin:
             fpt = get_type_key(pts[0]) if pts else None
         return binary_c_name(sig.module, verb, sig.name, fpt)
 
-    def _is_option_narrowed(
+    def _is_requires_narrowed(
         self,
         func_name: str,
         args: list[Expr],
@@ -135,6 +135,28 @@ class CallEmitterMixin:
                 return True
         return False
 
+    def _narrow_for_requires(self, expr: Expr, inferred: Type) -> Type:
+        """Narrow Result<T,E>/Option<T> to T if expr is mentioned in requires valid."""
+        if not self._current_requires:
+            return inferred
+        if not isinstance(expr, IdentifierExpr):
+            return inferred
+        if not (isinstance(inferred, GenericInstance) and inferred.base_name in ("Option", "Result") and inferred.args):
+            return inferred
+        param_name = expr.name
+        for req_expr in self._current_requires:
+            # requires valid func(param) form
+            if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
+                for a in req_expr.args:
+                    if isinstance(a, IdentifierExpr) and a.name == param_name:
+                        return inferred.args[0]
+            # requires func(param) form (CallExpr with validates function)
+            if isinstance(req_expr, CallExpr):
+                for a in req_expr.args:
+                    if isinstance(a, IdentifierExpr) and a.name == param_name:
+                        return inferred.args[0]
+        return inferred
+
     def _maybe_unwrap_option(
         self,
         call_str: str,
@@ -150,7 +172,7 @@ class CallEmitterMixin:
         ret = sig.return_type
         if not (isinstance(ret, GenericInstance) and ret.base_name == "Option" and ret.args):
             return call_str
-        if not self._is_option_narrowed(sig.name, call_args, module_name):
+        if not self._is_requires_narrowed(sig.name, call_args, module_name):
             return call_str
         # Resolve type variables against actual arg types
         actual_types = [self._infer_expr_type(a) for a in call_args]
@@ -159,6 +181,31 @@ class CallEmitterMixin:
         inner_ct = map_type(inner)
         cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
         return f"{cast}{call_str}.value"
+
+    def _maybe_unwrap_result(
+        self,
+        call_str: str,
+        sig: FunctionSignature,
+        call_args: list[Expr],
+        module_name: str,
+    ) -> str:
+        """If the call returns Result<T,E> and is narrowed by requires, unwrap."""
+        from prove.symbols import FunctionSignature
+
+        if not isinstance(sig, FunctionSignature):
+            return call_str
+        ret = sig.return_type
+        if not (isinstance(ret, GenericInstance) and ret.base_name == "Result" and ret.args):
+            return call_str
+        if not self._is_requires_narrowed(sig.name, call_args, module_name):
+            return call_str
+        # Resolve type variables against actual arg types
+        actual_types = [self._infer_expr_type(a) for a in call_args]
+        bindings = resolve_type_vars(sig.param_types, actual_types)
+        inner = substitute_type_vars(ret.args[0], bindings)
+        tmp = self._tmp()
+        self._line(f"Prove_Result {tmp} = {call_str};")
+        return self._unwrap_result_value(tmp, inner)
 
     def _resolve_call_sig(self, expr: Expr) -> FunctionSignature | None:
         """Resolve the FunctionSignature for a call expression, if any."""
@@ -504,16 +551,20 @@ class CallEmitterMixin:
                 from prove.types import types_compatible
 
                 actual_types = [self._infer_expr_type(a) for a in expr.args]
+                narrowed_types = [
+                    self._narrow_for_requires(a, t)
+                    for a, t in zip(expr.args, actual_types)
+                ]
                 if sig is None or (
                     sig.param_types
                     and not all(
                         isinstance(p, TypeVariable) or types_compatible(p, a)
-                        for p, a in zip(sig.param_types, actual_types)
+                        for p, a in zip(sig.param_types, narrowed_types)
                     )
                 ):
                     any_sig = self._symbols.resolve_function_any(
                         name,
-                        actual_types,
+                        narrowed_types,
                     )
                     if any_sig is not None:
                         sig = any_sig
@@ -533,12 +584,21 @@ class CallEmitterMixin:
                         expr.args,
                         sig.module,
                     )
+                    call_str = self._maybe_unwrap_result(
+                        call_str,
+                        sig,
+                        expr.args,
+                        sig.module,
+                    )
                     return call_str
 
             # User function — resolve with type-aware dispatch for overloads
             if sig is None:
                 if expr.args:
-                    actual = [self._infer_expr_type(a) for a in expr.args]
+                    actual = [
+                        self._narrow_for_requires(a, self._infer_expr_type(a))
+                        for a in expr.args
+                    ]
                     sig = self._symbols.resolve_function_by_types(None, name, actual)
                 if sig is None:
                     sig = self._symbols.resolve_function(None, name, n_args)
@@ -644,7 +704,10 @@ class CallEmitterMixin:
             # Type-aware resolution for overloaded functions
             sig = None
             if expr.args:
-                actual = [self._infer_expr_type(a) for a in expr.args]
+                actual = [
+                    self._narrow_for_requires(a, self._infer_expr_type(a))
+                    for a in expr.args
+                ]
                 sig = self._symbols.resolve_function_by_types(None, name, actual)
             if sig is None:
                 sig = self._symbols.resolve_function(None, name, n_args)
@@ -663,11 +726,23 @@ class CallEmitterMixin:
                         expr.args,
                         module_name,
                     )
+                    call_str = self._maybe_unwrap_result(
+                        call_str,
+                        sig,
+                        expr.args,
+                        module_name,
+                    )
                     return call_str
             if sig and sig.verb is not None:
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 call_str = f"{mangled}({', '.join(args)})"
                 call_str = self._maybe_unwrap_option(
+                    call_str,
+                    sig,
+                    expr.args,
+                    module_name,
+                )
+                call_str = self._maybe_unwrap_result(
                     call_str,
                     sig,
                     expr.args,
