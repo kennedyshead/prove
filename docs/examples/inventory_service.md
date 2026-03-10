@@ -9,6 +9,10 @@ module InventoryService
     Orders consume stock. The system ensures stock never goes negative
     and all monetary calculations use exact decimal arithmetic.
     """
+  Store outputs store table
+    inputs table
+    validates store table
+    types Store StoreTable
 
   type Port is Integer:[16 Unsigned] where 1 .. 65535
 
@@ -27,29 +31,31 @@ validates fulfillable(order Order)
 from
     all(order.items, |item| in_stock(item.product, item.quantity))
 
-/// Places an order: validates stock, calculates total, deducts inventory.
+/// Places an order: validates stock, calculates total, persists via Store.
 outputs place_order(db Store, order Order, tax TaxRule) Order!
   ensures result.status == Confirmed
   requires fulfillable(order)
+  explain
+      stock: requires clause guarantees all items are in stock
 from
     total as Price = calculate_total(order.items, None, tax)
     confirmed as Order = Order(order.id, order.items, Confirmed, total)
-    insert(db, "orders", confirmed)!
-    deduct_stock(all_products(db)!, order.items) |> update_all(db, "products")!
+    insert_order(db, confirmed)!
+    deduct_stock(db, order.items)!
     confirmed
 
 /// Routes incoming HTTP requests.
 inputs request(route Route, body String, db Store) Response!
 from
     Get("/health") => ok("healthy")
-    Get("/products") => all_products(db)! |> encode |> ok
+    Get("/products") => table(db, "products")! |> encode |> ok
     Post("/orders") => parse_order(body)! |> place_order(db, tax)! |> encode |> created
     _ => not_found()
 
 main()!
 from
     cfg as Config = load_config("inventory.yaml")!
-    db as Store = connect(cfg.db_url)!
+    db as Store = store(cfg.db_path)!
     server as Server = new_server()
     route(server, "/", request)
     listen(server, cfg.port)!

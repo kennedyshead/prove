@@ -191,3 +191,65 @@ The compiler enforces purity rules based on the function's verb. Pure verbs (`tr
 IO verbs (`inputs`, `outputs`) have no such restrictions.
 
 See [Diagnostic Codes](diagnostics.md#e361-pure-function-cannot-be-failable) for details on each enforcement error.
+
+---
+
+## Runtime Modification
+
+Prove supports a pattern for programs that modify their own lookup data at runtime using the **Store** stdlib and **subprocess compilation**.
+
+### Store-Backed Table Management
+
+The `Store` module provides persistent storage for lookup tables with versioning, diffs, and merges. Tables are stored in a directory-based format with optimistic concurrency control.
+
+```prove
+Store outputs store table, inputs table version
+    validates store table merged, transforms diff patch merge
+    reads integrity merged
+    types Store StoreTable TableDiff MergeResult Version
+
+// Create a store and load a table (creates empty table if missing)
+db as Store = store("/tmp/my_store")!
+colors as StoreTable = table(db, "colors")!
+
+// Save a table (version checked — stale writes are rejected)
+table(db, colors)!
+```
+
+The load → modify → save cycle uses optimistic concurrency: if the on-disk version has changed since the table was loaded, the save fails with a stale-version error. The caller must reload and retry, or use three-way merge.
+
+### Three-Way Merge
+
+When two writers modify the same table concurrently, compute diffs and merge them:
+
+```prove
+d1 as TableDiff = diff(base, local_table)
+d2 as TableDiff = diff(base, remote_table)
+result as MergeResult = merge(base, d1, d2)
+
+match valid merged(result)
+    True => table(db, merged(result))!
+    False => console("Merge had conflicts")
+```
+
+### Subprocess Recompilation
+
+A running Prove program can spawn `prove build` to recompile itself or a sibling module:
+
+```prove
+InputOutput inputs system, types ProcessResult
+
+result as ProcessResult = system("prove", ["build", "path/to/project"])
+```
+
+### Self-Modifying Binary Pattern
+
+Combining Store with subprocess compilation enables self-modifying binaries:
+
+1. Load a lookup table from the store
+2. Modify the table (add/remove/update entries)
+3. Save the updated table back to the store
+4. Spawn `prove build` to compile a new binary that includes the updated data
+5. The new binary reads from the same store, picking up the changes
+
+This pattern keeps data in persistent storage (the store) while allowing the compiled binary to be regenerated with updated lookup tables.
