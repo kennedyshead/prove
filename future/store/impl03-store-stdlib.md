@@ -1,4 +1,4 @@
-# impl03: Database Stdlib
+# impl03: Store Stdlib
 
 ## Overview
 
@@ -9,53 +9,53 @@ This module is infrastructure — it knows nothing about what the lookup tables 
 ## Module
 
 ```prove
-/// Database for managing lookup tables.
+/// Store for managing lookup tables.
 /// Handles storage, versioning, diffs, merges, and binary compilation.
 
-module Database
+module Store
 
-/// Initialize a new database in given directory.
-creates database(path String) Database!
+/// Initialize a new store in given directory.
+creates store(path String) Store!
 
 /// Load a lookup table by name.
-loads(db Database, name String) DatabaseTable!
+loads(db Store, name String) StoreTable!
 
 /// Save a lookup table. Rejects if version is stale.
-saves(db Database, table DatabaseTable) Unit!
+saves(db Store, table StoreTable) Unit!
 
 /// Compute diff between two tables.
-diffs(old DatabaseTable, new DatabaseTable) TableDiff!
+diffs(old StoreTable, new StoreTable) TableDiff!
 
 /// Apply diff to a table.
-patches(table DatabaseTable, diff TableDiff) DatabaseTable!
+patches(table StoreTable, diff TableDiff) StoreTable!
 
 /// Three-way merge with user-provided conflict resolver.
-merges(base DatabaseTable, local TableDiff, remote TableDiff, resolver (Conflict) Resolution) MergeResult!
+merges(base StoreTable, local TableDiff, remote TableDiff, resolver (Conflict) Resolution) MergeResult!
 
 /// Compile table to binary lookup.
-compiles(db Database, name String) Binary!
+compiles(db Store, name String) Binary!
 
 /// Load compiled binary from file.
 loads_binary(path String) Binary!
 
 /// Get integrity hash of a table.
-integrity(table DatabaseTable) String!
+integrity(table StoreTable) String!
 
 /// Rollback to a previous version.
-rollbacks(db Database, name String, version Integer) DatabaseTable!
+rollbacks(db Store, name String, version Integer) StoreTable!
 
 /// List all versions of a table.
-versions(db Database, name String) List<Version>!
+versions(db Store, name String) List<Version>!
 
 end
 ```
 
 ## Types
 
-- `Database` — database handle (directory-backed)
-- `DatabaseTable` — a versioned lookup table (variants + columns + version number)
+- `Store` — store handle (directory-backed)
+- `StoreTable` — a versioned lookup table (variants + columns + version number)
 - `TableDiff` — structural diff between two tables
-- `MergeResult` — merge outcome: `Ok(DatabaseTable)` or `Err(String)`
+- `MergeResult` — merge outcome: `Ok(StoreTable)` or `Err(String)`
 - `Binary` — compiled binary lookup table
 - `Version` — version metadata (number, timestamp, hash)
 
@@ -76,15 +76,15 @@ type Resolution is
     Reject(reason String)
 ```
 
-See `future/database-merge-conflicts.md` for full conflict semantics.
+See `future/store-merge-conflicts.md` for full conflict semantics.
 
 ## Concurrency Model
 
-Version-based optimistic concurrency. Every `DatabaseTable` carries a version number incremented on each save. If the stored version has advanced past what the caller loaded, `saves` returns `Err(StaleVersion)`.
+Version-based optimistic concurrency. Every `StoreTable` carries a version number incremented on each save. If the stored version has advanced past what the caller loaded, `saves` returns `Err(StaleVersion)`.
 
 ```prove
 // Load version 3
-table as DatabaseTable = loads(db, "http_status")!
+table as StoreTable = loads(db, "http_status")!
 
 // Another process saves version 4 in the meantime...
 
@@ -93,7 +93,7 @@ match saves(db, table)
     Ok(_) => log("Saved")
     Err(StaleVersion(_, _)) =>
         // Reload, re-apply changes, retry
-        fresh as DatabaseTable = loads(db, "http_status")!
+        fresh as StoreTable = loads(db, "http_status")!
         // ...
 ```
 
@@ -106,7 +106,7 @@ Uses existing parser/AST infrastructure from the compiler to read and write `.pr
 ### Storage Layout
 
 ```
-database_dir/
+store_dir/
     http_status/
         current.prv       # Current version
         versions/
@@ -117,11 +117,12 @@ database_dir/
 
 ## Exit Criteria
 
-- [ ] Database module in stdlib
+- [ ] Store module in stdlib
 - [ ] Version-based `saves` with stale rejection
 - [ ] `diffs` / `patches` work for variant additions, removals, and value changes
 - [ ] `merges` accepts user-provided resolver function
 - [ ] `compiles` produces binary from table
 - [ ] `integrity` / `versions` / `rollbacks` work
 - [ ] Tests pass
-- [ ] Docs updated: `stdlib.md` (Database module), `database-merge-conflicts.md` folded in or referenced
+- [ ] Docs updated: `stdlib.md` (Store module), `store-merge-conflicts.md` folded in or referenced
+- [ ] Add Store to the Language Tour on the home page (index.md) — spotlight as a unique feature

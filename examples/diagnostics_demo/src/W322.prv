@@ -1,0 +1,10 @@
+module DemoW322
+  narrative: """
+  Expected diagnostics: W322
+  """
+
+transforms square(n Integer) Integer
+  near_miss 0 => 0
+  near_miss 0 => 1
+from
+    n * n

@@ -1,0 +1,8 @@
+module DemoE421
+  narrative: """
+  Expected diagnostics: E421
+  Expected to fail: build, build_debug, build_no_mutate
+  """
+
+  CONTENT as String = comptime
+      read("missing_file.txt")

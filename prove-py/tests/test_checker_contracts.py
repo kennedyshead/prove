@@ -347,15 +347,30 @@ class TestRequiresOptionNarrowing:
         )
 
 
-# ── Fix: requires valid narrows parameter types ──────────────────────
+# ── requires valid type checking ─────────────────────────────────────
 
 
-class TestRequiresValidNarrowing:
-    """Test that requires valid narrows Result/Option params in function body."""
+class TestRequiresValidTypeChecking:
+    """Test that requires valid clauses type-check their arguments."""
 
-    def test_result_param_narrowed(self):
-        """requires valid object(json_data) should narrow Result<Value,Error> param to Value."""
-        # We test this indirectly: if narrowing works, the body type-checks
+    def test_incompatible_param_type_error(self):
+        """E331: requires valid expects Integer but receives String — genuinely incompatible."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "validates positive(n Integer) Boolean\n"
+            "    from\n"
+            "        n > 0\n"
+            "\n"
+            "transforms extract(data String) String\n"
+            "    requires valid positive(data)\n"
+            "    from\n"
+            "        data\n",
+            "E331",
+        )
+
+    def test_matching_type_no_error(self):
+        """No E331 when requires valid argument type matches the validator parameter."""
         check(
             "module M\n"
             "  type Payload is\n"
@@ -365,7 +380,7 @@ class TestRequiresValidNarrowing:
             "    from\n"
             "        true\n"
             "\n"
-            "transforms extract(data Result<Payload, String>) String\n"
+            "transforms extract(data Payload) String\n"
             "    requires valid object(data)\n"
             "    from\n"
             "        data.data\n"

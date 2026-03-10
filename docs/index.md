@@ -87,7 +87,7 @@ creates builder() Builder
 from
     allocate_buffer()
 
-inputs users(db Database) List<User>!
+inputs users(db Store) List<User>!
 from
     query(db, "SELECT * FROM users")!
 
@@ -245,7 +245,7 @@ Errors are values. `!` propagates failures. No exceptions. This explicit approac
 main()!
 from
     config as Config = load("app.yaml")!
-    db as Database = connect(config.db_url)!
+    db as Store = connect(config.db_url)!
     serve(config.port, db)!
 ```
 

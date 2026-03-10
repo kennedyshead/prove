@@ -1995,6 +1995,37 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 # Function reference: valid error → FunctionType([Diagnostic], Boolean)
                 if sig is not None and sig.param_types:
                     return FunctionType(list(sig.param_types), BOOLEAN)
+            # Check argument types against the validator's parameter types
+            if sig is not None and expr.args is not None:
+                for i, (param_ty, arg_expr) in enumerate(
+                    zip(sig.param_types, expr.args)
+                ):
+                    # Snapshot diagnostics: _infer_expr may emit E310 for args
+                    # that are not yet in scope (e.g. local vars in ensures clauses).
+                    # Roll back those side-effect diagnostics if the arg is unresolved.
+                    _diag_count = len(self.diagnostics)
+                    arg_ty = self._infer_expr(arg_expr)
+                    if isinstance(arg_ty, ErrorType):
+                        del self.diagnostics[_diag_count:]
+                        continue
+                    # Allow Option<T>→T coercions: the C emitter generates .value
+                    # unwrapping for params narrowed via requires valid
+                    if (
+                        isinstance(arg_ty, GenericInstance)
+                        and arg_ty.base_name == "Option"
+                        and arg_ty.args
+                        and types_compatible(param_ty, arg_ty.args[0])
+                    ):
+                        continue
+                    if not types_compatible(param_ty, arg_ty):
+                        self._error(
+                            "E331",
+                            f"argument type mismatch: expected "
+                            f"'{type_name(param_ty)}', got '{type_name(arg_ty)}'",
+                            arg_expr.span
+                            if hasattr(arg_expr, "span")
+                            else expr.span,
+                        )
             return BOOLEAN
         if isinstance(expr, ComptimeExpr):
             return self._infer_comptime(expr)

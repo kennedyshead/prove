@@ -126,6 +126,20 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_ByteArray*", is_pointer=True, header="prove_bytes.h")
         if name == "Url":
             return CType("Prove_Url*", is_pointer=True, header="prove_parse.h")
+        if name == "Store":
+            return CType("Prove_Store*", is_pointer=True, header="prove_store.h")
+        if name == "StoreTable":
+            return CType(
+                "Prove_StoreTable*", is_pointer=True, header="prove_store.h"
+            )
+        if name == "TableDiff":
+            return CType(
+                "Prove_TableDiff*", is_pointer=True, header="prove_store.h"
+            )
+        if name == "Version":
+            return CType(
+                "Prove_Version*", is_pointer=True, header="prove_store.h"
+            )
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

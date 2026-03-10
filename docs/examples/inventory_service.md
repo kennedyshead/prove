@@ -28,7 +28,7 @@ from
     all(order.items, |item| in_stock(item.product, item.quantity))
 
 /// Places an order: validates stock, calculates total, deducts inventory.
-outputs place_order(db Database, order Order, tax TaxRule) Order!
+outputs place_order(db Store, order Order, tax TaxRule) Order!
   ensures result.status == Confirmed
   requires fulfillable(order)
 from
@@ -39,7 +39,7 @@ from
     confirmed
 
 /// Routes incoming HTTP requests.
-inputs request(route Route, body String, db Database) Response!
+inputs request(route Route, body String, db Store) Response!
 from
     Get("/health") => ok("healthy")
     Get("/products") => all_products(db)! |> encode |> ok
@@ -49,7 +49,7 @@ from
 main()!
 from
     cfg as Config = load_config("inventory.yaml")!
-    db as Database = connect(cfg.db_url)!
+    db as Store = connect(cfg.db_url)!
     server as Server = new_server()
     route(server, "/", request)
     listen(server, cfg.port)!

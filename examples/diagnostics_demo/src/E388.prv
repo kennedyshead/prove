@@ -1,0 +1,6 @@
+module DemoE388
+  narrative: """
+  Expected diagnostics: E388
+  """
+
+  binary DataTable String where file("missing.csv")

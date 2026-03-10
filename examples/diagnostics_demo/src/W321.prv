@@ -1,0 +1,11 @@
+module DemoW321
+  narrative: """
+  Expected diagnostics: W321
+  """
+
+transforms compute(a Integer) Integer
+  ensures result > 0
+  explain
+      vague: xyz qrs tuv
+from
+    a + 1

@@ -1,0 +1,9 @@
+module DemoE326
+  narrative: """
+  Expected diagnostics: E326
+  """
+
+transforms demo(n Integer) Integer
+from
+    x as Unit = n
+    n

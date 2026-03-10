@@ -1,0 +1,9 @@
+module DemoE315
+  narrative: """
+  Expected diagnostics: E315
+  """
+  Math reads missing_function
+
+transforms demo(n Integer) Integer
+from
+    n

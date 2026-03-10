@@ -97,7 +97,7 @@ No exceptions. Every failure path is visible in the type signature. Uses `!` for
 main()!
 from
     config as Config = read_config("app.yaml")!
-    db as Database = connect(config.db_url)!
+    db as Store = connect(config.db_url)!
     serve(config.port, db)!
 ```
 
