@@ -47,6 +47,7 @@ overloads for `List<Integer>` and `List<String>`.
 | `reads` | `length(items List<Value>) Integer` | Number of elements |
 | `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
 | `reads` | `last(items List<Value>) Option<Value>` | Last element, or None |
+| `reads` | `value(position Integer, items List<Value>) Value` | Element at position (0-based) |
 | `validates` | `empty(items List<Value>)` | True if list has no elements |
 
 ### Search
@@ -86,6 +87,53 @@ from
 
 ## Store
 
-**Module:** `Store` — persistent key-value storage.
+**Module:** `Store` — persistent key-value storage with versioning and compilation.
 
-*Store is planned but not yet fully documented. Documentation will be added once the module is stable.*
+Defines four binary types: `Store` (storage handle), `StoreTable` (table handle), `TableDiff` (structural diff), `Version` (version record).
+
+### Store Operations
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `outputs` | `store(path String) Result<Store, Error>!` | Create a new store at a directory path |
+| `validates` | `store(path String)` | True if store directory exists |
+
+### Table Operations
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `inputs` | `table(store Store, name String) Result<StoreTable, Error>!` | Load a table by name |
+| `outputs` | `table(store Store, table StoreTable) Result<Unit, Error>!` | Save a table with optimistic concurrency |
+| `validates` | `table(store Store, name String)` | True if table exists in store |
+
+### Diff and Patch
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `diff(old StoreTable, new StoreTable) TableDiff` | Compute structural diff between two tables |
+| `transforms` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
+
+### Lookup Compilation
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `outputs` | `lookup(store Store, name String) Result<Unit, Error>!` | Compile a table to lookup format |
+| `inputs` | `lookup(path String) Result<List<String>, Error>!` | Load a compiled lookup |
+
+### Integrity and Versioning
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `integrity(table StoreTable) String` | Compute integrity hash of a table |
+| `outputs` | `rollback(store Store, name String, version Integer) Result<StoreTable, Error>!` | Rollback to a previous version |
+| `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
+
+```prove
+Store outputs store, inputs table lookup, validates store table, transforms diff patch
+Store reads integrity, outputs rollback, inputs version, types Store StoreTable
+
+inputs load_table(path String, name String) StoreTable!
+from
+    db as Store = Store.store(path)!
+    Store.table(db, name)!
+```

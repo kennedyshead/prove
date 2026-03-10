@@ -52,7 +52,7 @@ from
 
 ### System Channel
 
-Execute system commands and exit with a status code. Types: `ProcessResult` (binary), `ExitCode` (binary).
+Execute system commands and exit with a status code. Type: `ProcessResult` (binary).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|

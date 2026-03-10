@@ -504,6 +504,10 @@ The `believe` keyword requires `ensures` to be present on the function.
 
 A `when` condition in an explain entry must evaluate to `Boolean`.
 
+### E396 — Invariant constraint must be Boolean
+
+A constraint expression inside an `invariant_network` referenced by `satisfies` does not evaluate to `Boolean`.
+
 ### E410 — Tail recursion not supported in comptime
 
 A `comptime` block contains a tail-recursive construct. Comptime evaluation does not support tail recursion.
@@ -554,7 +558,7 @@ The file path passed to `read()` in a `comptime` block does not exist relative t
 
 ### E422 — Unknown function in comptime
 
-A `comptime` block calls a function that is not available in the compile-time interpreter. Currently only `read` is supported.
+A `comptime` block calls a function that is not available in the compile-time interpreter. Built-in comptime functions: `read`, `platform`, `len`, `contains`, `to_upper`, `to_lower`. User-defined pure functions are also callable.
 
 ---
 
@@ -675,6 +679,26 @@ A function in a domain-tagged module is missing a contract required by the domai
 ### W342 — Missing required annotation for domain
 
 A function is missing an annotation required by the domain profile. For example, the `safety` domain requires `explain` blocks and `terminates` on recursive functions.
+
+### W390 — Temporal operation out of declared order
+
+A function calls temporal operations in an order that violates the module's `temporal:` declaration. If the module declares `temporal: a -> b -> c`, calling `b` before `a` in the same function body is flagged.
+
+```prove
+module Auth
+  temporal: authenticate -> authorize -> access
+
+// Warning — authorize before authenticate
+inputs bad_flow(creds Credentials, resource Resource) Data!
+from
+    perm as Permission = authorize(token, resource)
+    token as Token = authenticate(creds)!
+    access(perm, resource)!
+```
+
+### W391 — Satisfies invariant without ensures
+
+A function declares `satisfies` for an invariant network but has no `ensures` clauses. Without postconditions, the compiler cannot verify that the function actually satisfies the invariant's constraints.
 
 ### I340 — Vocabulary drift from narrative
 

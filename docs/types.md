@@ -257,7 +257,7 @@ Branch on *what something is*, not on *whether something is true*. Types and con
 
 ## Error Propagation
 
-`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) can use `!`. There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
+`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) and `main` can use `!`. Pure verbs cannot be failable ([E361](diagnostics.md#e361-pure-function-cannot-be-failable)). There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
 
 Pure functions that need to represent expected failure cases use `Result<Value, Error>` and handle them with `match` — these are values, not errors.
 

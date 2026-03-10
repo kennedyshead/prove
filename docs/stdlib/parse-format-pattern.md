@@ -16,8 +16,7 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `value(source Value) Value` | Wrap any value as a Value |
-| `validates` | `value(source Value)` | True if source can be wrapped as a Value |
+| `creates` | `value(source Source) Value` | Wrap a source as a Value |
 
 ### Formats
 
@@ -26,14 +25,13 @@ Parse uses a universal `Value` type (binary) that represents any parsed value. T
 | `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
 | `reads` | `json(value Value) String` | Encode Value to JSON |
 | `validates` | `json(source String)` | True if source is valid JSON |
-| `creates` | `toml(source String) Result<Value, String>` | Decode TOML to Value |
+| `creates` | `toml(source String) Result<Table<Value>, String>` | Decode TOML to Table |
 | `reads` | `toml(value Value) String` | Encode Value to TOML |
 | `validates` | `toml(source String)` | True if source is valid TOML |
-| `validates` | `value(source Source)` | True if source can be wrapped as a Value |
 
 ### Value Accessors
 
-Extract typed data from a `Value`. Each accessor has a corresponding validator.
+Extract typed data from a `Value`. For corresponding validators, see [Types — Value Validators](math-types.md#value-validators).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
@@ -44,18 +42,6 @@ Extract typed data from a `Value`. Each accessor has a corresponding validator.
 | `reads` | `bool(v Value) Boolean` | Extract boolean content |
 | `reads` | `array(v Value) List<Value>` | Extract array content |
 | `reads` | `object(v Value) Table<Value>` | Extract object/table content |
-
-### Value Validators
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `validates` | `text(v Value) Boolean` | Check if Value is a string |
-| `validates` | `number(v Value) Boolean` | Check if Value is an integer |
-| `validates` | `decimal(v Value) Boolean` | Check if Value is a float |
-| `validates` | `bool(v Value) Boolean` | Check if Value is a boolean |
-| `validates` | `array(v Value) Boolean` | Check if Value is an array |
-| `validates` | `object(v Value) Boolean` | Check if Value is an object/table |
-| `validates` | `null(v Value) Boolean` | Check if Value is null |
 
 ### URL
 

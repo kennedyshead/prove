@@ -16,19 +16,19 @@ Most programming languages weren't built for humans. They were built with comput
 
 Then there's AI. It generates code at an unprecedented scale, but it's trained on our collective work without consent, and to be honest most of that code is kind of iffy. The more we rely on it, the more we lose: innovation slows, open source dies, and we're frozen at the exact moment each LLM was trained. When everyone stops writing code, nothing new gets invented.
 
-I started Prove conceptually six years ago. These frustrations built up, but the real trigger came when I shipped AI written code — code with strict guard rails, that failed misserably. The AI's response? "Sorry my bad."
+I started Prove conceptually six years ago. These frustrations built up, but the real trigger came when I shipped AI written code — code with strict guard rails, that failed miserably. The AI's response? "Sorry my bad."
 
 That's when it hit me: I used AI out of laziness, but I'd bear the responsibility for its failures. The lack of accountability, and the never ending ping-pong prompting was the final straw. I realized we need languages that make intent explicit — where code can't be faked, where the compiler enforces understanding.
 
 ## The Verb Pattern
 
-Look at most codebases: `def validate_email`, `def new_email`, `def get_email`. We write the cryptic word `def` three times and add the word `validate, new, get` plus a strange looking `_` because we need unique names. The `fn`/`def`/`function` keywords tell us what something is — but we already knew that so its 100% redundant, it's the compiler/interpreter that need the fn/function statement.
+Look at most codebases: `def validate_email`, `def new_email`, `def get_email`. We write the cryptic word `def` three times and add the word `validate, new, get` plus a strange looking `_` because we need unique names. The `fn`/`def`/`function` keywords tell us what something is — but we already knew that so it's 100% redundant, it's the compiler/interpreter that need the fn/function statement.
 
 Prove uses verbs instead: validates, transforms, reads, creates. A function's purpose is in its signature, not a prefixed name. The compiler enforces it. You can't claim to validate something and secretly modify state.
 
 ## The Explain Statement
 
-Here's where things really gets wild. The explain statement isn't just documentation — it's executable natural language. The compiler parses it and translates it directly to code execution.
+Here's where things really get wild. The explain statement isn't just documentation — it's executable natural language. The compiler parses it and translates it directly to code execution.
 
 ### Python with docstring
 
@@ -69,7 +69,7 @@ async def update_email(user_id: int, new_email: str) -> User:
     return user
 ```
 
-### Prove with Explain (declerative ensures/requires guards execution)
+### Prove with Explain (declarative ensures/requires guards execution)
 
 ```prove
 outputs update_email(id Option<Integer>, email Option<Email>) User:[Mutable]!
@@ -121,4 +121,3 @@ Prove is an intent-first programming language. If it compiles, you understood wh
 [^2]: [Coq / Rocq](https://rocq-prover.org/) — a proof assistant used for program verification
 [^3]: [F\*](https://www.fstar-lang.org/) — a proof-oriented programming language from Microsoft Research
 [^4]: [Idris](https://www.idris-lang.org/) — a dependently typed programming language
-[^5]: [Python](https://www.python.org/) — the language used in the comparison examples

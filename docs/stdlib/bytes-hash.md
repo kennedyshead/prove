@@ -92,8 +92,8 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | `validates` | `hmac(data ByteArray, key ByteArray, signature ByteArray)` | Verify HMAC-SHA256 signature |
 
 ```prove
-Hash reads sha256, creates sha256 hmac, validates hmac, types ByteArray
-Bytes creates byte
+Hash reads sha256, creates sha256 hmac, validates hmac
+Bytes creates byte, types ByteArray
 
 reads checksum(content String) String
 from
