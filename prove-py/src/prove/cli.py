@@ -175,8 +175,8 @@ def main() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--no-mutate", is_flag=True, help="Disable mutation testing.")
-@click.option("--debug", is_flag=True, help="Compile with debug symbols (-g) and no optimization.")
-def build(path: str, no_mutate: bool, debug: bool) -> None:
+@click.option("--debug", is_flag=True, default=None, help="Compile with debug symbols (-g) and no optimization.")
+def build(path: str, no_mutate: bool, debug: bool | None) -> None:
     """Compile a Prove project."""
     from prove.builder import build_project
 
@@ -186,8 +186,12 @@ def build(path: str, no_mutate: bool, debug: bool) -> None:
         click.echo(f"building {config.package.name}...")
         project_dir = config_path.parent
 
+        # CLI flags override config values
+        effective_debug = debug if debug is not None else config.build.debug
+        effective_mutate = not no_mutate and config.build.mutate
+
         renderer = DiagnosticRenderer(color=True)
-        result = build_project(project_dir, config, debug=debug)
+        result = build_project(project_dir, config, debug=effective_debug)
 
         for diag in result.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -197,7 +201,7 @@ def build(path: str, no_mutate: bool, debug: bool) -> None:
                 click.echo(f"error: {result.c_error}", err=True)
             raise SystemExit(1)
 
-        if not no_mutate:
+        if effective_mutate:
             click.echo("running mutation testing...")
             from prove.checker import Checker
             from prove.module_resolver import build_module_registry
