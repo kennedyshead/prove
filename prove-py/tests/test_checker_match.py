@@ -250,13 +250,17 @@ class TestMatchRestriction:
     """Test I367: match expression suggestion for non-matches verbs."""
 
     def test_match_in_transforms_info(self):
-        """I367: match in transforms body produces info."""
+        """I367: match in transforms body produces info (4+ arms)."""
         check_info(
-            "transforms bad(n Integer) String\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "transforms bad(d Dir) String\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => \"yes\"\n"
-            "            false => \"no\"\n",
+            "        match d\n"
+            "            North => \"n\"\n"
+            "            South => \"s\"\n"
+            "            East => \"e\"\n"
+            "            West => \"w\"\n",
             "I367",
         )
 
@@ -274,35 +278,47 @@ class TestMatchRestriction:
         )
 
     def test_match_in_validates_info(self):
-        """I367: match in validates body produces info."""
+        """I367: match in validates body produces info (4+ arms)."""
         check_info(
-            "validates bad(n Integer)\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "validates bad(d Dir)\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => true\n"
-            "            false => false\n",
+            "        match d\n"
+            "            North => true\n"
+            "            South => true\n"
+            "            East => false\n"
+            "            West => false\n",
             "I367",
         )
 
     def test_match_in_reads_info(self):
-        """I367: match in reads body produces info."""
+        """I367: match in reads body produces info (4+ arms)."""
         check_info(
-            "reads bad(n Integer) Integer\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "reads bad(d Dir) Integer\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => n\n"
-            "            false => 0\n",
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
             "I367",
         )
 
     def test_match_in_creates_info(self):
-        """I367: match in creates body produces info."""
+        """I367: match in creates body produces info (4+ arms)."""
         check_info(
-            "creates bad(n Integer) Integer\n"
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "creates bad(d Dir) Integer\n"
             "    from\n"
-            "        match n > 0\n"
-            "            true => n\n"
-            "            false => 0\n",
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
             "I367",
         )
 

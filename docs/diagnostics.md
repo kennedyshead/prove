@@ -504,9 +504,17 @@ The `believe` keyword requires `ensures` to be present on the function.
 
 A `when` condition in an explain entry must evaluate to `Boolean`.
 
+### E395 — Implicit Value conversion
+
+The function body returns `Value` (or `Table<Value>`) but the declared return type is a concrete type like `String` or `Table<String>`. This implicit conversion is not allowed — use explicit conversion or change the return type.
+
 ### E396 — Invariant constraint must be Boolean
 
 A constraint expression inside an `invariant_network` referenced by `satisfies` does not evaluate to `Boolean`.
+
+### E397 — `binary` is reserved for stdlib
+
+The `binary` keyword (as a function body marker or type body) is reserved for stdlib implementations. User code should use `:[Lookup]` for lookup tables or wrap stdlib types with Prove functions.
 
 ### E410 — Tail recursion not supported in comptime
 
