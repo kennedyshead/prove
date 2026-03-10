@@ -470,15 +470,15 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                     c->data.value.remote_val = remote->changed[r].new_value;
 
                     if (resolver) {
-                        Prove_Resolution res = resolver(*c);
-                        if (res.tag == PROVE_RESOLUTION_REJECT) {
+                        Prove_Resolution *res = resolver(c);
+                        if (res->tag == PROVE_RESOLUTION_REJECT) {
                             has_unresolved = true;
                             prove_list_push(conflicts, c);
                         } else {
-                            if (res.tag == PROVE_RESOLUTION_KEEP_REMOTE) {
+                            if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
                                 local->changed[l].new_value = remote->changed[r].new_value;
-                            } else if (res.tag == PROVE_RESOLUTION_USE_VALUE) {
-                                local->changed[l].new_value = res.data.use_value;
+                            } else if (res->tag == PROVE_RESOLUTION_USE_VALUE) {
+                                local->changed[l].new_value = res->data.use_value;
                             }
                             free(c);
                         }
@@ -509,12 +509,12 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                 }
 
                 if (resolver) {
-                    Prove_Resolution res = resolver(*c);
-                    if (res.tag == PROVE_RESOLUTION_REJECT) {
+                    Prove_Resolution *res = resolver(c);
+                    if (res->tag == PROVE_RESOLUTION_REJECT) {
                         has_unresolved = true;
                         prove_list_push(conflicts, c);
                     } else {
-                        if (res.tag == PROVE_RESOLUTION_KEEP_REMOTE) {
+                        if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
                             for (int64_t col = 0; col < base->column_count; col++) {
                                 local->added[l].values[col] = remote->added[r].values[col];
                             }

@@ -2683,6 +2683,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Special-case List<Value> → ListType
             if type_expr.name == "List" and len(args) == 1:
                 return ListType(args[0])
+            # Special-case Verb<P1, ..., Pn, R> → FunctionType
+            if type_expr.name == "Verb" and len(args) >= 1:
+                return FunctionType(list(args[:-1]), args[-1])
             # Check base type exists
             base = self.symbols.resolve_type(type_expr.name)
             if base is None:

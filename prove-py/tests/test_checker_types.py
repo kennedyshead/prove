@@ -137,6 +137,14 @@ class TestTypeResolution:
             "        0\n"
         )
 
+    def test_verb_type_resolves(self):
+        """Verb<Integer, String> resolves to FunctionType."""
+        check(
+            "transforms apply(fn Verb<Integer, String>, x Integer) String\n"
+            "    from\n"
+            "        fn(x)\n"
+        )
+
 
 class TestTypeChecking:
     """Test type inference and checking."""

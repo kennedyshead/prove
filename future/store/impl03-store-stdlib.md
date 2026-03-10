@@ -29,8 +29,11 @@ diffs(old StoreTable, new StoreTable) TableDiff!
 /// Apply diff to a table.
 patches(table StoreTable, diff TableDiff) StoreTable!
 
+/// Three-way merge of two diffs against a base table.
+transforms merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult
+
 /// Three-way merge with user-provided conflict resolver.
-merges(base StoreTable, local TableDiff, remote TableDiff, resolver (Conflict) Resolution) MergeResult!
+transforms merge(base StoreTable, local TableDiff, remote TableDiff, resolver Verb<Conflict, Resolution>) MergeResult
 
 /// Compile table to binary lookup.
 compiles(db Store, name String) Binary!
@@ -120,7 +123,7 @@ store_dir/
 - [x] Store module in stdlib
 - [x] Version-based `saves` with stale rejection
 - [x] `diffs` / `patches` work for variant additions, removals, and value changes
-- [ ] `merges` accepts user-provided resolver function
+- [x] `merge` accepts user-provided resolver function via `Verb<Conflict, Resolution>`
 - [x] `compiles` produces binary from table
 - [x] `integrity` / `versions` / `rollbacks` work
 - [ ] Tests pass

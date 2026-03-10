@@ -489,9 +489,9 @@ class TestMergeWithResolver:
             #include "prove_store.h"
             #include <stdio.h>
 
-            Prove_Resolution keep_remote(Prove_Conflict c) {
-                Prove_Resolution r;
-                r.tag = PROVE_RESOLUTION_KEEP_REMOTE;
+            Prove_Resolution* keep_remote(Prove_Conflict *c) {
+                Prove_Resolution *r = (Prove_Resolution*)calloc(1, sizeof(Prove_Resolution));
+                r->tag = PROVE_RESOLUTION_KEEP_REMOTE;
                 return r;
             }
 
@@ -588,10 +588,10 @@ class TestMergeResolverReject:
             #include "prove_store.h"
             #include <stdio.h>
 
-            Prove_Resolution reject_all(Prove_Conflict c) {
-                Prove_Resolution r;
-                r.tag = PROVE_RESOLUTION_REJECT;
-                r.data.reject_reason = prove_string_from_cstr("nope");
+            Prove_Resolution* reject_all(Prove_Conflict *c) {
+                Prove_Resolution *r = (Prove_Resolution*)calloc(1, sizeof(Prove_Resolution));
+                r->tag = PROVE_RESOLUTION_REJECT;
+                r->data.reject_reason = prove_string_from_cstr("nope");
                 return r;
             }
 
@@ -636,10 +636,10 @@ class TestMergeResolverUseValue:
             #include "prove_store.h"
             #include <stdio.h>
 
-            Prove_Resolution use_custom(Prove_Conflict c) {
-                Prove_Resolution r;
-                r.tag = PROVE_RESOLUTION_USE_VALUE;
-                r.data.use_value = prove_string_from_cstr("42");
+            Prove_Resolution* use_custom(Prove_Conflict *c) {
+                Prove_Resolution *r = (Prove_Resolution*)calloc(1, sizeof(Prove_Resolution));
+                r->tag = PROVE_RESOLUTION_USE_VALUE;
+                r->data.use_value = prove_string_from_cstr("42");
                 return r;
             }
 

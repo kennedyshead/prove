@@ -309,6 +309,29 @@ The compiler enforces effect boundaries:
 - `listens` dispatches on the first parameter's algebraic type — the `from` block is an implicit match with a mandatory `Exit` arm
 - The `&` marker at a call site signals async dispatch, analogous to `!` for error propagation
 
+## Function Types (`Verb`)
+
+`Verb<P1, P2, ..., R>` describes a function that takes parameters of types `P1, P2, ...` and returns `R`. The last type argument is always the return type; all preceding arguments are parameter types. `Verb<R>` with a single argument describes a zero-parameter function returning `R`.
+
+This allows stdlib functions to accept callbacks without hardcoded special-casing:
+
+```prove
+// A function that takes a Conflict and returns a Resolution
+resolver as Verb<Conflict, Resolution>
+
+// Used as a parameter type in function signatures
+transforms merge(base StoreTable, local TableDiff, remote TableDiff,
+                 resolver Verb<Conflict, Resolution>) MergeResult
+
+// Called with a lambda
+Store.merge(base, local, remote, |c| KeepRemote)
+
+// Or with a named function reference
+Store.merge(base, local, remote, my_resolver)
+```
+
+Convention: `Verb` mirrors the language's verb-based function declarations. The type resolves internally to a C function pointer with the correct parameter and return types.
+
 ## Ownership Lite (Linear Types with Compiler-Inferred Borrows)
 
 Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.

@@ -22,6 +22,7 @@ from prove.types import (
     INTEGER,
     STRING,
     UNIT,
+    FunctionType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -617,6 +618,8 @@ def _resolve_type_expr(
                 args.append(TypeVariable("Value"))
         if type_expr.name == "List" and len(args) == 1:
             return ListType(args[0])
+        if type_expr.name == "Verb" and len(args) >= 1:
+            return FunctionType(list(args[:-1]), args[-1])
         return GenericInstance(type_expr.name, args)
 
     if isinstance(type_expr, ModifiedType):

@@ -335,7 +335,14 @@ verified_emails as List<String> = filter(emails, valid email)
 - **Single expression only** — no multi-line bodies, no statements. If you need more, write a named function.
 - **Must be pure** — no IO effects inside a lambda. Side effects require a named function.
 - **No closures** — lambdas cannot reference variables from the enclosing scope. All values must be passed as arguments or accessed through the lambda's own parameters.
-- **Only as arguments** — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function.
+- **Only as arguments** — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function or a [`Verb`](types.md#function-types-verb) parameter.
+
+Lambdas work with any function parameter typed as `Verb<P1, ..., R>`:
+
+```prove
+// Store merge with a lambda resolver
+result as MergeResult = Store.merge(base, local, remote, |c| KeepRemote)
+```
 
 ---
 

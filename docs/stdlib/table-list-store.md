@@ -113,6 +113,28 @@ Defines four binary types: `Store` (storage handle), `StoreTable` (table handle)
 | `transforms` | `diff(old StoreTable, new StoreTable) TableDiff` | Compute structural diff between two tables |
 | `transforms` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
 
+### Merge
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult` | Three-way merge (conflicts reported) |
+| `transforms` | `merge(base StoreTable, local TableDiff, remote TableDiff, resolver Verb<Conflict, Resolution>) MergeResult` | Three-way merge with conflict resolver |
+| `validates` | `merged(result MergeResult)` | True if merge succeeded without conflicts |
+| `reads` | `merged(result MergeResult) StoreTable` | Get merged table from successful result |
+| `reads` | `conflicts(result MergeResult) List<Conflict>` | Get conflict list from conflicted result |
+
+Additional types: `Conflict` (conflict details), `Resolution` (resolver decision), `MergeResult` (merge outcome).
+
+The 3-arg `merge` detects conflicts and returns them. The 4-arg overload passes each conflict to a resolver callback typed as [`Verb<Conflict, Resolution>`](../types.md#function-types-verb):
+
+```prove
+// Merge without resolver — conflicts returned in MergeResult
+result as MergeResult = Store.merge(base, local_diff, remote_diff)
+
+// Merge with lambda resolver — keep remote on all conflicts
+result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemote)
+```
+
 ### Lookup Compilation
 
 | Verb | Signature | Description |
@@ -129,8 +151,9 @@ Defines four binary types: `Store` (storage handle), `StoreTable` (table handle)
 | `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
 
 ```prove
-Store outputs store, inputs table lookup, validates store table, transforms diff patch
-Store reads integrity, outputs rollback, inputs version, types Store StoreTable
+Store outputs store, inputs table lookup, validates store table, transforms diff patch merge
+Store reads integrity merged conflicts, outputs rollback, inputs version
+Store validates merged, types Store StoreTable Conflict Resolution MergeResult
 
 inputs load_table(path String, name String) StoreTable!
 from

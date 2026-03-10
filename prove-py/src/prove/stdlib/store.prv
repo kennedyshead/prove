@@ -47,6 +47,10 @@ binary
 transforms merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult
 binary
 
+/// Three-way merge with a conflict resolver
+transforms merge(base StoreTable, local TableDiff, remote TableDiff, resolver Verb<Conflict, Resolution>) MergeResult
+binary
+
 /// Compile a table to lookup format
 outputs lookup(store Store, name String) Result<Unit, Error>!
 binary
