@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     PathLit,
     PipeExpr,
     RawStringLit,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -152,6 +153,9 @@ class ExprEmitterMixin:
 
         if isinstance(expr, BinaryLookupExpr):
             return self._emit_binary_lookup_expr(expr)
+
+        if isinstance(expr, StoreLookupExpr):
+            return self._emit_store_lookup_expr(expr)
 
         if isinstance(expr, ValidExpr):
             # Prefer validates verb since valid X(...) means validates
@@ -1088,6 +1092,45 @@ class ExprEmitterMixin:
             # Reverse: string → variant index
             return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
         return "/* unsupported binary lookup */ 0"
+
+    def _emit_store_lookup_expr(self, expr: StoreLookupExpr) -> str:
+        """Emit runtime store-backed lookup: colors:"red" → prove_store_table_find_int(...)."""
+        from prove.ast_nodes import LookupTypeDef
+
+        table_var = expr.table_var
+        key_c = self._emit_expr(expr.operand)
+
+        # Determine column indices from schema and expected return type
+        type_name_str = self._store_var_types.get(table_var, "")
+
+        lookup = self._lookup_tables.get(type_name_str)
+        if lookup is None or not isinstance(lookup, LookupTypeDef):
+            return f"/* unknown store lookup */ 0"
+
+        # key_col: index of column matching the key type (String)
+        # val_col: index of column matching the expected return type
+        key_col = 0
+        val_col = 0
+        ret_type = self._expected_emit_type or self._current_return_type()
+        ret_name = self._type_name_str(ret_type)
+
+        for i, vt in enumerate(lookup.value_types):
+            col_name = vt.name if hasattr(vt, "name") else ""
+            if col_name == ret_name:
+                val_col = i
+            elif col_name == "String":
+                key_col = i
+
+        self._needed_headers.add("prove_store.h")
+
+        # Wrap key in Prove_String if it's a C string literal
+        if isinstance(expr.operand, StringLit):
+            escaped = self._escape_c_string(expr.operand.value)
+            key_c = f'prove_string_from_cstr("{escaped}")'
+
+        if ret_name == "Integer":
+            return f"prove_store_table_find_int({table_var}, {key_c}, {key_col}, {val_col})"
+        return f"prove_store_table_find({table_var}, {key_c}, {key_col}, {val_col})"
 
     def _infer_lookup_type(self, expr: LookupAccessExpr) -> Type:
         """Infer the type of a lookup access expression."""

@@ -273,6 +273,11 @@ def is_json_serializable(ty: Type) -> bool:
     return False
 
 
+# Store-backed lookup type names — populated by the checker at registration time.
+# types_compatible uses this to treat these types as interchangeable with StoreTable.
+STORE_BACKED_TYPES: set[str] = set()
+
+
 def types_compatible(expected: Type, actual: Type) -> bool:
     """Check structural compatibility between two types.
 
@@ -317,6 +322,15 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if isinstance(actual, PrimitiveType) and actual.modifiers:
         if isinstance(expected, (RecordType, AlgebraicType)):
             return actual.name == expected.name
+    # Store-backed lookup types are interchangeable with StoreTable
+    if STORE_BACKED_TYPES:
+        exp_name = getattr(expected, "name", "")
+        act_name = getattr(actual, "name", "")
+        if (
+            (exp_name == "StoreTable" and act_name in STORE_BACKED_TYPES)
+            or (act_name == "StoreTable" and exp_name in STORE_BACKED_TYPES)
+        ):
+            return True
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):

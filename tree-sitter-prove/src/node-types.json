@@ -1180,6 +1180,21 @@
     }
   },
   {
+    "type": "runtime_lookup_type_body",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "satisfies_clause",
     "named": true,
     "fields": {},
@@ -1330,6 +1345,10 @@
         },
         {
           "type": "refinement_type_body",
+          "named": true
+        },
+        {
+          "type": "runtime_lookup_type_body",
           "named": true
         },
         {
@@ -1639,10 +1658,6 @@
     "named": false
   },
   {
-    "type": "attached",
-    "named": false
-  },
-  {
     "type": "believe",
     "named": false
   },
@@ -1669,10 +1684,6 @@
   {
     "type": "decimal_literal",
     "named": true
-  },
-  {
-    "type": "detached",
-    "named": false
   },
   {
     "type": "doc_comment",
@@ -1745,10 +1756,6 @@
   {
     "type": "line_comment",
     "named": true
-  },
-  {
-    "type": "listens",
-    "named": false
   },
   {
     "type": "main",
@@ -1824,6 +1831,10 @@
   },
   {
     "type": "requires",
+    "named": false
+  },
+  {
+    "type": "runtime",
     "named": false
   },
   {

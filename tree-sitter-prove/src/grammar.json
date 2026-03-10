@@ -289,6 +289,10 @@
         {
           "type": "SYMBOL",
           "name": "lookup_type_body"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "runtime_lookup_type_body"
         }
       ]
     },
@@ -478,6 +482,39 @@
                 }
               ]
             }
+          }
+        ]
+      }
+    },
+    "runtime_lookup_type_body": {
+      "type": "PREC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "type_expression"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "|"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "type_expression"
+                }
+              ]
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "runtime"
           }
         ]
       }
@@ -710,23 +747,11 @@
       "members": [
         {
           "type": "STRING",
-          "value": "attached"
-        },
-        {
-          "type": "STRING",
           "value": "creates"
         },
         {
           "type": "STRING",
-          "value": "detached"
-        },
-        {
-          "type": "STRING",
           "value": "inputs"
-        },
-        {
-          "type": "STRING",
-          "value": "listens"
         },
         {
           "type": "STRING",
@@ -2769,6 +2794,10 @@
     [
       "expression",
       "pattern"
+    ],
+    [
+      "algebraic_variant",
+      "simple_type"
     ]
   ],
   "precedences": [],

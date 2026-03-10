@@ -480,6 +480,7 @@ _register_module(
         ("reads", "integrity"): "prove_store_integrity",
         ("outputs", "rollback"): "prove_store_rollback",
         ("inputs", "version"): "prove_store_version_inputs",
+        ("outputs", "add"): "prove_store_table_add",
     },
 )
 

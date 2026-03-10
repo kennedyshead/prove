@@ -59,6 +59,7 @@ from prove.ast_nodes import (
     RegexLit,
     SimpleType,
     Stmt,
+    StoreLookupExpr,
     StringInterp,
     StringLit,
     TripleStringLit,
@@ -90,6 +91,7 @@ from prove.types import (
     ERROR_TY,
     FLOAT,
     INTEGER,
+    STORE_BACKED_TYPES,
     STRING,
     UNIT,
     AlgebraicType,
@@ -222,6 +224,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._local_modules = local_modules
         # Lookup tables per type name for TypeName: resolution
         self._lookup_tables: dict[str, LookupTypeDef] = {}
+        # Store-backed lookup type names (runtime data, not compile-time)
+        self._store_lookup_types: set[str] = set()
+        STORE_BACKED_TYPES.clear()
         # Expected type context for bidirectional type inference (e.g. binary lookups)
         self._expected_type: Type | None = None
         # Ownership tracking: variables that have been moved (passed to Own parameters)
@@ -558,42 +563,52 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = PrimitiveType(td.name)
 
         elif isinstance(body, LookupTypeDef):
-            # Lookup types: build AlgebraicType from entries
-            seen_variants: dict[str, None] = {}
-            for entry in body.entries:
-                seen_variants[entry.variant] = None
-            variant_names = list(seen_variants.keys())
-            variants = [VariantInfo(name, {}) for name in variant_names]
-            resolved = AlgebraicType(td.name, variants, type_params)
-            # Store lookup table for accessor resolution
-            self._lookup_tables[td.name] = body
-            # Register each variant as a zero-arg constructor
-            for name in variant_names:
-                vsig = FunctionSignature(
-                    verb=None,
-                    name=name,
-                    param_names=[],
-                    param_types=[],
-                    return_type=resolved,
-                    can_fail=False,
-                    span=td.span,
-                )
-                self.symbols.define_function(vsig)
-
-            if body.is_binary:
-                # Validate binary lookup table
-                self._validate_binary_lookup(body, td.span)
+            if body.is_store_backed:
+                # Store-backed lookup: zero variants (dynamic), register schema
+                resolved = AlgebraicType(td.name, [], type_params)
+                self._lookup_tables[td.name] = body
+                self._store_lookup_types.add(td.name)
+                STORE_BACKED_TYPES.add(td.name)
+                # Validate column types
+                if body.is_binary:
+                    self._validate_binary_lookup(body, td.span)
             else:
-                # Validate: check for duplicate values (E375)
-                seen_values: set[str] = set()
+                # Static lookup types: build AlgebraicType from entries
+                seen_variants: dict[str, None] = {}
                 for entry in body.entries:
-                    if entry.value in seen_values:
-                        self._error(
-                            "E375",
-                            f"duplicate value '{entry.value}' in lookup table",
-                            entry.span,
-                        )
-                    seen_values.add(entry.value)
+                    seen_variants[entry.variant] = None
+                variant_names = list(seen_variants.keys())
+                variants = [VariantInfo(name, {}) for name in variant_names]
+                resolved = AlgebraicType(td.name, variants, type_params)
+                # Store lookup table for accessor resolution
+                self._lookup_tables[td.name] = body
+                # Register each variant as a zero-arg constructor
+                for name in variant_names:
+                    vsig = FunctionSignature(
+                        verb=None,
+                        name=name,
+                        param_names=[],
+                        param_types=[],
+                        return_type=resolved,
+                        can_fail=False,
+                        span=td.span,
+                    )
+                    self.symbols.define_function(vsig)
+
+                if body.is_binary:
+                    # Validate binary lookup table
+                    self._validate_binary_lookup(body, td.span)
+                else:
+                    # Validate: check for duplicate values (E375)
+                    seen_values: set[str] = set()
+                    for entry in body.entries:
+                        if entry.value in seen_values:
+                            self._error(
+                                "E375",
+                                f"duplicate value '{entry.value}' in lookup table",
+                                entry.span,
+                            )
+                        seen_values.add(entry.value)
 
         else:
             resolved = ERROR_TY
@@ -1867,11 +1882,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         if expected is not None:
             if not types_compatible(expected, inferred):
-                self._error(
-                    "E321",
-                    f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
-                    vd.span,
-                )
+                # Allow StoreTable → store-backed lookup type assignment
+                expected_name = getattr(expected, "name", "")
+                actual_name = getattr(inferred, "name", "")
+                if not (
+                    expected_name in self._store_lookup_types
+                    and actual_name == "StoreTable"
+                ):
+                    self._error(
+                        "E321",
+                        f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
+                        vd.span,
+                    )
             # Detect Value → concrete type coercion (runtime-checked)
             if self._is_value_coercion(inferred, expected):
                 self._info(
@@ -2063,6 +2085,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Runtime binary lookup — type already resolved by checker
             col = self._resolve_type_expr(SimpleType(expr.column_type, expr.span))
             return col if col else ERROR_TY
+        if isinstance(expr, StoreLookupExpr):
+            return self._check_store_lookup_expr(expr)
         return ERROR_TY
 
     def _infer_identifier(self, expr: IdentifierExpr) -> Type:

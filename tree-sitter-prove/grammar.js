@@ -26,6 +26,7 @@ module.exports = grammar({
 
   conflicts: $ => [
     [$.expression, $.pattern],
+    [$.algebraic_variant, $.simple_type],
   ],
 
   rules: {
@@ -96,6 +97,7 @@ module.exports = grammar({
       $.refinement_type_body,
       $.binary_type_body,
       $.lookup_type_body,
+      $.runtime_lookup_type_body,
     ),
 
     binary_type_body: $ => 'binary',
@@ -140,6 +142,12 @@ module.exports = grammar({
       '|',
       $.string_literal,
       repeat(seq('|', $.string_literal)),
+    )),
+
+    runtime_lookup_type_body: $ => prec(1, seq(
+      $.type_expression,
+      repeat(seq('|', $.type_expression)),
+      'runtime',
     )),
 
     // ─── Type Expressions ──────────────────────────────────────

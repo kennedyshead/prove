@@ -438,6 +438,9 @@ _RUNTIME_FUNCTIONS = {
         "prove_store_version_inputs",
         "prove_store_table_new",
         "prove_store_table_add_variant",
+        "prove_store_table_find",
+        "prove_store_table_find_int",
+        "prove_store_table_add",
     ],
 }
 

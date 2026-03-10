@@ -359,6 +359,45 @@ class StmtEmitterMixin:
             pass  # comments don't emit C code
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
+        # Store-backed lookup type annotations: Color at C level is either
+        # a StoreTable* (for table loads) or a row construction (variant+vals).
+        if vd.type_expr:
+            type_name_str = getattr(vd.type_expr, "name", "")
+            if type_name_str in self._store_lookup_types:
+                val = self._emit_expr(vd.value)
+                # Check if this is a row construction (variant + vals arrays)
+                if hasattr(self, "_store_rows") and val in self._store_rows:
+                    variant_name, vals_name = self._store_rows[val]
+                    self._store_rows[vd.name] = (variant_name, vals_name)
+                    self._locals[vd.name] = self._symbols.resolve_type(type_name_str) or ERROR_TY
+                    self._store_var_types[vd.name] = type_name_str
+                    return
+                # Otherwise it's a table load — emit as Prove_StoreTable*
+                self._needed_headers.add("prove_store.h")
+                self._line(f"Prove_StoreTable *{vd.name} = {val};")
+                # Initialize column schema from lookup type if table is empty
+                lookup = self._lookup_tables.get(type_name_str)
+                if lookup and lookup.value_types:
+                    col_count = len(lookup.value_types)
+                    self._line(f"if ({vd.name}->column_count == 0) {{")
+                    self._indent += 1
+                    self._line(f"{vd.name}->column_count = {col_count};")
+                    self._line(
+                        f"{vd.name}->column_names = (Prove_String **)calloc("
+                        f"{col_count}, sizeof(Prove_String *));"
+                    )
+                    for i, vt in enumerate(lookup.value_types):
+                        col_name = vt.name if hasattr(vt, "name") else "unknown"
+                        self._line(
+                            f'{vd.name}->column_names[{i}] = '
+                            f'prove_string_from_cstr("{col_name}");'
+                        )
+                    self._indent -= 1
+                    self._line("}")
+                self._locals[vd.name] = self._symbols.resolve_type("StoreTable") or ERROR_TY
+                self._store_var_types[vd.name] = type_name_str
+                return
+
         # Determine target type: from annotation if present, else from value
         target_ty = self._infer_expr_type(vd.value)
         if vd.type_expr:
