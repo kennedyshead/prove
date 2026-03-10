@@ -1,176 +1,321 @@
 # LSP ML PoC — Store-Backed Completion Model
 
-## Overview
+## What This Is
 
-A completion model for the LSP trained on `.prv` source, where the model lives as
-Store `:[Lookup]` tables and is compiled to binary for fast inference. Dogfoods
-impl02 (binary lookup) + impl03 (Store stdlib) while delivering real LSP value.
+The Prove LSP (`prove-py/src/prove/lsp.py`) already provides diagnostics, hover,
+go-to-definition, and basic keyword/symbol completions. Those completions are purely
+structural — they know what symbols exist but not which ones are likely given the
+current context.
 
-## Prerequisites
+This PoC adds **context-aware completions** by training a statistical model on `.prv`
+source code and serving it directly from the LSP. The model is stored as Prove
+`:[Lookup]` tables (impl02) managed by the Store stdlib (impl03), which makes this
+also a real-world exercise of those two features.
 
-| Requirement | Status |
-|------------|--------|
-| `:[Lookup]` types (impl02) | Mostly done — `binary` keyword restriction pending |
-| Store stdlib (impl03) | Mostly done — `merges` + tests remaining |
-| Process execution (impl04) | Done |
-| Async verbs (impl01) | Not required for Phase 1–4 |
+The approach is **n-gram statistics**, not neural networks. Given the last 1–2 tokens
+before the cursor, the model returns the tokens most frequently seen next in the
+corpus. For a small DSL this works well and is fast enough to query inline in the LSP
+without a separate process.
 
-Phases 1–2 can start today (Python only). Phase 3 in Prove unblocks once impl03
-tests pass.
+## Background Reading
+
+Before starting, read these in order:
+
+1. `future/store/impl02-binary-lookup.md` — `:[Lookup]` types and how they compile to C arrays
+2. `future/store/impl03-store-stdlib.md` — Store stdlib: versioned table storage, diffs, merges
+3. `prove-py/src/prove/lsp.py` — existing LSP, especially the completion handler near the bottom
 
 ## Two Index Sources
 
 The LSP maintains two separate indexes, merged at completion time:
 
-| Source | Scope | Location |
-|--------|-------|----------|
-| **Global model** | stdlib + all known `.prv` corpus | `data/lsp-ml-store/` (ships with tool) |
-| **Project index** | current workspace `.prv` files | `<project-root>/.prove_cache/` |
+| Source | Scope | Location | Who builds it |
+|--------|-------|----------|---------------|
+| **Global model** | stdlib + all `.prv` corpus | `data/lsp-ml-store/` (committed) | Offline training scripts, rebuilt manually when corpus grows |
+| **Project index** | current workspace `.prv` files | `<project-root>/.prove_cache/` | LSP itself, incrementally on every file open/save |
 
-The project index is built and updated by the LSP itself, incrementally, as files are
-opened and saved. It captures local symbols, types, and usage patterns specific to the
-project — things the global model cannot know.
+The global model knows Prove idioms from the full codebase. The project index knows
+the specific symbols, types, and patterns in the workspace the developer is editing.
+At completion time, project suggestions are ranked above global ones.
 
 ## Architecture
 
 ```
-stdlib + corpus .prv files          local project .prv files
-        │                                    │
-        ▼  [scripts/ml_extract.py]           ▼  [LSP: on open/save]
-  token n-gram data (JSON)          symbol + usage index
-        │                                    │
-        ▼  [scripts/ml_train.py]             ▼  [LSP: _ProjectIndexer]
-  Store tables (global model)       .prove_cache/
-    data/lsp-ml-store/                index/current.prv   (symbols, types)
-      completions/current.prv         bigrams/current.prv (local n-grams)
-      bigrams/current.prv
-        │                                    │
-        └──────────────┬─────────────────────┘
-                       ▼  [lsp.py completion handler]
-              merged ranked completions
+OFFLINE (run once, output committed to repo)
+────────────────────────────────────────────
+stdlib + examples + tests .prv files
+        │
+        ▼  scripts/ml_extract.py
+           Uses Lexer + Parser to walk all .prv files.
+           Outputs token sequences as data/completions_raw.json.
+        │
+        ▼  scripts/ml_train.py
+           Builds (prev2, prev1) → [(next_token, count)] frequency tables.
+           Outputs data/completions_model.json + data/bigrams_model.json.
+        │
+        ▼  scripts/ml_store.py  (Python bridge, see Phase 3)
+           Writes trained tables into Store format.
+           Output committed at data/lsp-ml-store/.
+
+ONLINE (runs inside the LSP process)
+─────────────────────────────────────
+On workspace open:
+  LSP loads data/lsp-ml-store/ → _MLCompletionProvider (global model)
+  LSP detects project root → loads .prove_cache/ → _ProjectIndexer
+
+On textDocument/didOpen, textDocument/didSave:
+  _ProjectIndexer re-indexes changed file → updates .prove_cache/
+
+On textDocument/completion:
+  global_suggestions  ← global model query (prev2, prev1, prefix)
+  project_suggestions ← project index query (prev2, prev1, prefix)
+  final items ← merge(symbol_items, keyword_items,
+                       project_suggestions, global_suggestions)
 ```
+
+## Prerequisites
+
+| Requirement | Status | Notes |
+|------------|--------|-------|
+| `:[Lookup]` types (impl02) | Mostly done | `binary` keyword restriction (E397) pending — not blocking for PoC |
+| Store stdlib (impl03) | Mostly done | `merges` + tests remaining — Phase 3 needs `loads`/`saves`/`compiles` only |
+| Process execution (impl04) | Done | Not needed until Phase 3 Prove program |
+| Async verbs (impl01) | Not required | Phases 1–5 are all synchronous |
+
+**Phases 1–2 can start immediately** (Python only, no compiler changes needed).
+Phase 3 in Prove unblocks once impl03 `loads`/`saves` tests pass.
 
 ## Phases
 
-### Phase 1 — Data Extraction (Python)
+### Phase 1 — Data Extraction
 
-`scripts/ml_extract.py`
+**New file:** `scripts/ml_extract.py`
 
-- Walk all `.prv` files (stdlib, examples, test fixtures) using existing `Lexer` + `Parser`
-- Extract completion contexts: for each token position, record preceding 2–3 tokens
-  as context and current token as label
-- Extract `(verb, param-type, return-type)` triples from `FunctionDef` nodes for
-  type suggestions
-- Output: `data/completions_raw.json`
+Walks all `.prv` source using the existing `Lexer` and `Parser` (already in
+`prove-py/src/prove/`) and produces a JSON training dataset.
 
-### Phase 2 — Model Training (Python)
+For each token in each file, record:
+- The 2 preceding tokens as context (`prev2`, `prev1`)
+- The current token as the label (`next`)
+- The file and line number (for debugging bad training data)
 
-`scripts/ml_train.py`
+Also extract structured triples from `FunctionDef` AST nodes:
+- `(verb, first_param_type, return_type)` — for type-aware completions after a verb
 
-- Read `completions_raw.json`
-- Build frequency tables: `(tok_n-2, tok_n-1) → [(tok_n, count)]`
-- Normalize to probabilities, keep top-K per context (K=10)
-- Output: `data/completions_model.json` + `data/bigrams_model.json`
+Source files to walk:
+- `prove-py/src/prove/stdlib/` — highest signal, idiomatic Prove
+- `examples/` — user-facing patterns
+- `prove-py/tests/` fixture `.prv` snippets — broad coverage
 
-N-gram statistics over a DSL work very well and fit naturally into `:[Lookup]` tables.
-No neural nets needed for v1.
+Output: `data/completions_raw.json`
 
-### Phase 3 — Model Storage in Prove (Store stdlib)
-
-`tools/lsp-ml/store_model.prv`
-
-```prove
-import Store
-import InputOutput
-
-inputs store_model(data_path String, store_path String)!
-from
-    db as Store = store(store_path)!
-    // load JSON, populate StoreTable, save
+```json
+[
+  {"prev2": "transforms", "prev1": "run", "next": "(", "file": "stdlib/text.prv", "line": 12},
+  {"prev2": "run", "prev1": "(", "next": "input", "file": "stdlib/text.prv", "line": 12},
+  ...
+]
 ```
 
-Until Prove IO is fully stable, a thin Python bridge (`scripts/ml_store.py`) writes
-the Store tables directly using the same `.prv` file format.
+**Exit criteria:**
+- [ ] Script runs without error against the full repo
+- [ ] Output covers stdlib, examples, and test fixtures
+- [ ] `data/completions_raw.json` committed (or generated as part of build)
 
-Store layout:
+---
+
+### Phase 2 — Model Training
+
+**New file:** `scripts/ml_train.py`
+
+Reads `data/completions_raw.json` and builds frequency tables.
+
+Algorithm:
+1. Group records by `(prev2, prev1)` context key
+2. Count occurrences of each `next` token per context
+3. Sort by count descending, keep top 10 per context (configurable via `K`)
+4. Repeat for unigram fallback: group by `prev1` only (used when `prev2` is unknown)
+
+Output:
+- `data/completions_model.json` — bigram model `{context_key: [(token, count), ...]}`
+- `data/bigrams_model.json` — unigram fallback `{prev1: [(token, count), ...]}`
+
+No probabilities needed at this stage — relative counts are enough for ranking.
+
+**Exit criteria:**
+- [ ] Script produces both output files without error
+- [ ] Top completions for common contexts are sensible (manual spot-check)
+- [ ] Both output files committed alongside extraction output
+
+---
+
+### Phase 3 — Model Storage via Store Stdlib
+
+**New files:**
+- `scripts/ml_store.py` — Python bridge (immediate)
+- `tools/lsp-ml/store_model.prv` — Prove program (later, when impl03 is stable)
+
+#### Python bridge (use first)
+
+`scripts/ml_store.py` reads the trained JSON and writes Store-format `.prv` files
+directly. The Store format for a lookup table is a `.prv` file containing a
+`:[Lookup]` type definition — the same format impl03 reads and writes internally.
+
+Store layout at `data/lsp-ml-store/`:
 
 ```
 data/lsp-ml-store/
-    completions/current.prv   # context → completion entries
-    bigrams/current.prv       # bigram frequency table
+    bigrams/
+        current.prv     ← bigram model as :[Lookup] table
+        versions/
+    completions/
+        current.prv     ← completion contexts as :[Lookup] table
+        versions/
 ```
 
-Tables use `:[Lookup]` types:
+Table schemas:
 
 ```prove
+// bigrams/current.prv
+// (prev_token, next_token) → frequency count
 type Bigram:[Lookup] is String String Integer where
-    ...  // (prev_token, next_token, count)
+    transforms_run    | "transforms" | "run"    | 142
+    run_open_paren    | "run"        | "("      | 138
+    ...
+
+// completions/current.prv
+// (prev2, prev1) → top completion as pipe-separated ranked list
+type Completion:[Lookup] is String String String where
+    transforms_name   | "transforms" | "name"  | "(|String|Integer"
+    ...
 ```
 
-### Phase 4 — Project Indexer in LSP (Python, `lsp.py`)
+The pipe-separated completion string is a simple encoding for top-K results within
+the lookup table value constraints. The LSP splits on `|` to recover the ranked list.
 
-Add `_ProjectIndexer` class that runs inside the LSP process:
+#### Prove program (target state)
 
-- **Root detection**: walk up from the opened file to find the project root (directory
-  containing `prove.toml` or the first `.prv` file at root level)
-- **Cache location**: `<project-root>/.prove_cache/` — created on first index
-- **Triggers**: index on `textDocument/didOpen`, `textDocument/didSave`; full re-index
-  on workspace open
-- **What is indexed**:
-  - All symbol names (functions, types, constants) defined in project `.prv` files
-  - Local bigrams extracted from project source
-  - Per-file symbol tables for go-to-definition / hover
-- **Storage**: same Store table format as the global model — `:[Lookup]` tables in
-  `.prove_cache/index/` and `.prove_cache/bigrams/`
-- **Invalidation**: each table carries a version hash; stale entries are patched via
-  `diffs`/`patches` (Store optimistic concurrency handles concurrent editor saves)
+`tools/lsp-ml/store_model.prv` — a Prove program that reads the JSON produced by
+Phase 2 and writes it into the Store. Mark with `Expected to fail: build.` in its
+`narrative:` until impl03 tests are passing.
+
+**Exit criteria:**
+- [ ] `scripts/ml_store.py` writes valid Store tables at `data/lsp-ml-store/`
+- [ ] Tables load correctly in a manual Python REPL test
+- [ ] `tools/lsp-ml/store_model.prv` stub exists (even if failing)
+
+---
+
+### Phase 4 — Project Indexer in LSP
+
+**Modified file:** `prove-py/src/prove/lsp.py`
+
+Add `_ProjectIndexer` class. This runs inside the LSP process — no subprocess.
+
+**Project root detection** (called when any `.prv` file is opened):
+
+Walk up from the opened file's directory until finding:
+1. A `prove.toml` file, or
+2. A directory that is the workspace root reported by the LSP client
+
+Fall back to the directory of the opened file if neither is found.
+
+**Cache location:** `<project-root>/.prove_cache/` — created on first index run.
+
+**What gets indexed** per project file:
+- Every `FunctionDef`: name, verb, param names+types, return type, file, line
+- Every `TypeDef` and `ConstantDef`: name, kind, file, line
+- Local token bigrams (same format as global model)
+
+**Storage format:** same Store `:[Lookup]` table files as the global model,
+written to `.prove_cache/index/current.prv` and `.prove_cache/bigrams/current.prv`.
+
+**Incremental updates:** on `didSave`, re-parse only the changed file and patch
+the Store table using `diffs`/`patches`. On full workspace open, re-index everything.
+Store's optimistic concurrency (`saves` rejects stale versions) handles the case where
+multiple files are saved quickly — the second save reloads and retries automatically.
+
+**Triggers:**
+- `workspace/didOpen` → full re-index of all `.prv` files under project root
+- `textDocument/didSave` → re-index saved file, patch tables
+- `textDocument/didOpen` → re-index if file not yet in cache
+
+Cache layout:
 
 ```
 <project-root>/
     .prove_cache/
         index/
-            current.prv      # symbol table: name → file, line, kind, signature
+            current.prv      # symbols: name → file, line, kind, signature
             versions/
         bigrams/
             current.prv      # local n-gram frequencies
             versions/
 ```
 
-`.prove_cache/` should be added to the project's `.gitignore`.
+Add `.prove_cache/` to the default `.gitignore` template in `scripts/dev-setup.sh`
+and document it in `docs/`.
 
-### Phase 5 — Merged Completion Handler (Python, `lsp.py`)
+**Exit criteria:**
+- [ ] `_ProjectIndexer` detects project root correctly for stdlib, examples, and a fresh project
+- [ ] `.prove_cache/` is created and populated on workspace open
+- [ ] Table is updated (not fully rebuilt) on single-file save
+- [ ] No LSP errors or crashes when `.prove_cache/` is missing or corrupted
 
-Add `_MLCompletionProvider` class that merges both sources:
-- Loads global model tables from `data/lsp-ml-store/` at server startup
-- Loads project index from `.prove_cache/` when a workspace is opened
-- In completion handler: query both, score and merge, deduplicate
+---
+
+### Phase 5 — Merged Completion Handler
+
+**Modified file:** `prove-py/src/prove/lsp.py`
+
+Add `_MLCompletionProvider` that merges global model + project index into the
+existing completion response.
+
+Query logic:
+1. Extract the 2 tokens immediately before the completion cursor from the document
+2. Look up `(prev2, prev1)` in project bigrams → ranked list
+3. Look up `(prev2, prev1)` in global bigrams → ranked list
+4. Fall back to `(prev1,)` unigram if bigram has no match
+5. Merge: project results first, then global results, deduplicate by token value
+6. Append existing symbol/keyword completions at the end
 
 ```python
-# In lsp.py completion handler:
-global_suggestions  = global_model.complete(context_tokens, prefix)
-project_suggestions = project_index.complete(context_tokens, prefix)
-items = merge_completions(symbol_items, keyword_items,
-                          project_suggestions, global_suggestions)
+# Sketch of the completion handler addition in lsp.py:
+context = _extract_context_tokens(doc, params.position, n=2)
+project_hits = project_indexer.complete(context, prefix)
+global_hits  = global_model.complete(context, prefix)
+ml_items = _to_completion_items(project_hits + global_hits, seen=set())
+return existing_items + ml_items
 ```
 
-Project suggestions are ranked above global ones for the same prefix — local
-context beats corpus frequency.
+`_extract_context_tokens` tokenizes the line up to the cursor using the existing
+`Lexer`, returning the last N non-whitespace tokens.
+
+**Exit criteria:**
+- [ ] Completions include ML suggestions in the VS Code / Neovim LSP client
+- [ ] Project-local symbols rank above global suggestions for the same prefix
+- [ ] No measurable latency regression on completion requests (target: < 20ms added)
+- [ ] Gracefully degrades to existing completions if model files are missing
+
+---
 
 ## File Map
 
-| File | Language | Notes |
-|------|----------|-------|
-| `scripts/ml_extract.py` | Python | New |
-| `scripts/ml_train.py` | Python | New |
-| `scripts/ml_store.py` | Python | New — bridge until Prove IO is ready |
-| `tools/lsp-ml/store_model.prv` | Prove | New — PoC, expected to fail until impl03 done |
-| `prove-py/src/prove/lsp.py` | Python | Add `_ProjectIndexer` + `_MLCompletionProvider` |
+| File | Language | Status | Notes |
+|------|----------|--------|-------|
+| `scripts/ml_extract.py` | Python | New | Phase 1 |
+| `scripts/ml_train.py` | Python | New | Phase 2 |
+| `scripts/ml_store.py` | Python | New | Phase 3 — Python bridge |
+| `data/lsp-ml-store/` | Store `.prv` | New | Phase 3 — committed model artifact |
+| `tools/lsp-ml/store_model.prv` | Prove | New | Phase 3 — Prove target, expected to fail initially |
+| `prove-py/src/prove/lsp.py` | Python | Modify | Phases 4–5: add `_ProjectIndexer` + `_MLCompletionProvider` |
 
 ## What This Demonstrates
 
-- Store stdlib storing real structured data (ML weights as lookup tables)
-- `:[Lookup]` binary tables for fast O(1) inference in the LSP
-- Project-local indexing with `.prove_cache/` for workspace-aware completions
-- Feedback loop: as more `.prv` code is written, the model can be retrained and
-  Store tables updated with `diffs`/`patches` — no full rewrite needed
-- Store optimistic concurrency naturally handles concurrent LSP saves without locking
+- The Store stdlib managing real structured data (statistical model as versioned lookup tables)
+- `:[Lookup]` binary tables providing O(1) inference suitable for inline LSP use
+- Project-local indexing: the LSP builds and maintains its own workspace cache without
+  a separate daemon or database
+- Store's `diffs`/`patches` enabling incremental cache updates — only changed files
+  are re-indexed, not the whole project
+- Store's optimistic concurrency handling concurrent editor saves without file locking
