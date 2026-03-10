@@ -1,0 +1,9 @@
+module DemoE422
+  narrative: """
+  Expected diagnostics: E422
+  Expected to fail: build, build_debug, build_no_mutate
+  """
+  Math reads sqrt
+
+  VALUE as Float = comptime
+      sqrt(4.0f)

@@ -1,0 +1,9 @@
+module DemoW340
+  narrative: """
+  Expected diagnostics: W340
+  """
+  domain unknown_domain
+
+transforms demo(n Integer) Integer
+from
+    n

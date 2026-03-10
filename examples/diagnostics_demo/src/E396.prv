@@ -1,0 +1,12 @@
+module DemoE396
+  narrative: """
+  Expected diagnostics: E396
+  """
+
+  invariant_network BadCheck
+    42
+
+transforms demo(n Integer) Integer
+  satisfies BadCheck
+from
+    n

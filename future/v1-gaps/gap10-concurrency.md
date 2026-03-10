@@ -15,7 +15,7 @@ else is V1.0.
 - No `par_map` or parallel/concurrent references anywhere in `prove-py/src/`
 - No `EffectType` class in `types.py`
 - No concurrency runtime files
-- The async verbs plan (`future/database/impl01-async-verbs.md`) covers database-
+- The async verbs plan (`future/store/impl01-async-verbs.md`) covers store-
   specific async but is separate from general concurrency
 
 ## What's Missing

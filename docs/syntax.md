@@ -309,7 +309,7 @@ creates builder() Builder
 from
     allocate_buffer()
 
-inputs request(route Route, body String, db Database) Response!
+inputs request(route Route, body String, db Store) Response!
 from
     Get(/health) => ok("healthy")
     Get(/users) => users(db)! |> encode |> ok
@@ -911,7 +911,7 @@ Pure functions that need to represent expected failure cases use `Result<Value, 
 main()!
 from
     config as Config = load("app.yaml")!
-    db as Database = connect(config.db_url)!
+    db as Store = connect(config.db_url)!
     serve(config.port, db)!
 ```
 
@@ -931,13 +931,13 @@ validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-/// Retrieves all users from the database.
-inputs users(db Database) List<User>!
+/// Retrieves all users from the store.
+inputs users(db Store) List<User>!
 from
     query(db, "SELECT * FROM users")!
 
 /// Creates a new user from a request body.
-outputs create(db Database, body String) User!
+outputs create(db Store, body String) User!
   ensures email(result.email)
 from
     user as User = decode(body)!
@@ -945,7 +945,7 @@ from
     user
 
 /// Routes incoming HTTP requests.
-inputs request(route Route, body String, db Database) Response!
+inputs request(route Route, body String, db Store) Response!
 from
     Get("/health") => ok("healthy")
     Get("/users")  => users(db)! |> encode |> ok
@@ -956,7 +956,7 @@ from
 main()!
 from
     port as Port = 8080
-    db as Database = connect("postgres://localhost/app")!
+    db as Store = connect("postgres://localhost/app")!
     server as Server = new_server()
     route(server, "/", request)
     listen(server, port)!

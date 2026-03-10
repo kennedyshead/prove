@@ -186,7 +186,7 @@ class TestParserFunctions:
         assert decl.can_fail is True
 
     def test_outputs(self):
-        source = "outputs add_product(db Database, product Product)!\n    from\n        db\n"
+        source = "outputs add_product(db Store, product Product)!\n    from\n        db\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
         assert decl.verb == "outputs"
@@ -513,7 +513,7 @@ class TestParserImplicitMatch:
 
     def test_mixed_stmts_and_arms(self):
         source = (
-            "inputs request(route Route, db Database) Response!\n"
+            "inputs request(route Route, db Store) Response!\n"
             "    from\n"
             "        user as User = authenticate()!\n"
             '        Get("/health") => ok("healthy")\n'

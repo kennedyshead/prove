@@ -1,0 +1,11 @@
+module DemoW328
+  narrative: """
+  Expected diagnostics: W328
+  """
+
+transforms add(a Integer, b Integer) Integer
+  ensures a > 0
+  explain
+      check a
+from
+    a + b

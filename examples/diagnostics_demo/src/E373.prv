@@ -1,0 +1,9 @@
+module DemoE373
+  narrative: """
+  Expected diagnostics: E373
+  """
+
+transforms demo(r Result<Integer, Error>) String
+from
+    match r
+        Ok(x) => "ok"

@@ -1,0 +1,12 @@
+module DemoW391
+  narrative: """
+  Expected diagnostics: W391
+  """
+
+  invariant_network Positive
+    n > 0
+
+transforms demo(n Integer) Integer
+  satisfies Positive
+from
+    n + 1

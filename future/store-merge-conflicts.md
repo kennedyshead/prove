@@ -1,23 +1,23 @@
-# Database Merge Conflicts
+# Store Merge Conflicts
 
 ## Overview
 
-Conflict handling when modifying lookup tables managed by the Database stdlib. The Database operates on general-purpose lookup tables (any `:[Lookup]` type), not domain-specific data.
+Conflict handling when modifying lookup tables managed by the Store stdlib. The Store operates on general-purpose lookup tables (any `:[Lookup]` type), not domain-specific data.
 
 ## Design Principle
 
-The Database stdlib provides conflict **detection** and **infrastructure**. It does not implement domain-specific resolution logic. Resolution is either:
+The Store stdlib provides conflict **detection** and **infrastructure**. It does not implement domain-specific resolution logic. Resolution is either:
 
 1. **Default** — version-based optimistic concurrency (reject stale writes)
 2. **Custom** — user-provided resolver via algebraic match
 
 ## Version-Based Concurrency (Default)
 
-Every `DatabaseTable` carries a version number. When saving, the caller must provide the version they loaded. If the stored version has advanced, the write is rejected with an `Error`.
+Every `StoreTable` carries a version number. When saving, the caller must provide the version they loaded. If the stored version has advanced, the write is rejected with an `Error`.
 
 ```prove
 // Load at version 3
-ast as DatabaseTable = load(db, "http_status")!   // version: 3
+ast as StoreTable = load(db, "http_status")!   // version: 3
 
 // Meanwhile, another process saves version 4...
 
@@ -33,8 +33,8 @@ match saves(db, ast)
     Ok(_) => log("Saved")
     Err(StaleVersion(expected, got)) =>
         // Reload and retry, or report to user
-        fresh as DatabaseTable = load(db, "http_status")!
-        merged as DatabaseTable = apply_my_changes(fresh)
+        fresh as StoreTable = load(db, "http_status")!
+        merged as StoreTable = apply_my_changes(fresh)
         saves(db, merged)!
 ```
 
@@ -42,7 +42,7 @@ This is standard optimistic concurrency control. No locks, no blocking. Stale wr
 
 ## Custom Conflict Resolution
 
-For cases where the caller wants to merge rather than reject, the Database provides a `merges` function that accepts a user-written resolver. The resolver is a function that pattern-matches on `Conflict` — an algebraic type describing what diverged.
+For cases where the caller wants to merge rather than reject, the Store provides a `merges` function that accepts a user-written resolver. The resolver is a function that pattern-matches on `Conflict` — an algebraic type describing what diverged.
 
 ### Conflict Types
 
@@ -74,7 +74,7 @@ type Resolution is
 
 ### User-Written Resolver
 
-The resolver is a plain Prove function. The user writes it, the Database calls it:
+The resolver is a plain Prove function. The user writes it, the Store calls it:
 
 ```prove
 /// Example: resolver for an HttpStatus lookup table.
@@ -146,7 +146,7 @@ These cases merge automatically without invoking the resolver:
 
 ## Edge Cases
 
-### Empty Database
+### Empty Store
 
 Loading from a path that doesn't exist:
 - `load` returns `Err(NotFound)` — caller decides whether to create
@@ -155,7 +155,7 @@ Loading from a path that doesn't exist:
 
 Corrupted or unparseable lookup table:
 - `load` returns `Err(ParseError)` — caller handles
-- Database never silently accepts bad data
+- Store never silently accepts bad data
 
 ### Concurrent Modification
 
@@ -174,7 +174,7 @@ Binary out of sync with source lookup table:
 
 ### Phase 1: Version-Based Saves
 
-- Every `DatabaseTable` tracks a version number
+- Every `StoreTable` tracks a version number
 - `saves` rejects stale versions with `Err(StaleVersion)`
 - Full recompile after each save
 
@@ -193,5 +193,5 @@ Binary out of sync with source lookup table:
 ## References
 
 - impl02: Binary lookup tables (`:[Lookup]` modifier)
-- impl03: Database stdlib (module API)
-- impl06: Dynamic runtime modification (runtime use of Database)
+- impl03: Store stdlib (module API)
+- impl06: Dynamic runtime modification (runtime use of Store)

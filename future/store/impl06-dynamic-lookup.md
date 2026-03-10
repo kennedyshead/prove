@@ -3,7 +3,7 @@
 ## Overview
 
 Building a Prove program that can modify its own lookup tables at runtime by:
-1. Loading and updating tables via the Database stdlib
+1. Loading and updating tables via the Store stdlib
 2. Handling stale versions (or merging with a custom resolver)
 3. Recompiling to a new binary
 4. Calling the new binary for lookups
@@ -12,7 +12,7 @@ Building a Prove program that can modify its own lookup tables at runtime by:
 
 - impl01: Async verbs
 - impl02: Kind:[Lookup] modifier
-- impl03: Database stdlib (storage, versioning, diffs, merges)
+- impl03: Store stdlib (storage, versioning, diffs, merges)
 - impl04: Process execution (already available via `InputOutput.system`)
 
 ## Phase 1: AST File Output
@@ -20,40 +20,40 @@ Building a Prove program that can modify its own lookup tables at runtime by:
 `outputs file(path String, content String) Result<Unit, Error>!` is already available
 in the `InputOutput` stdlib — no new implementation needed.
 
-## Phase 2: Database-Backed Updates
+## Phase 2: Store-Backed Updates
 
-Use the Database stdlib to load, modify, and save lookup tables. The Database
+Use the Store stdlib to load, modify, and save lookup tables. The Store
 handles versioning — stale writes are rejected, and the caller decides how to
 recover (retry, merge, or fail).
 
 ```prove
-inputs update_table(db Database, name String, new_entries List<Entry>)!
+inputs update_table(db Store, name String, new_entries List<Entry>)!
 from
-    table as DatabaseTable = loads(db, name)!
-    updated as DatabaseTable = add_entries(table, new_entries)
+    table as StoreTable = loads(db, name)!
+    updated as StoreTable = add_entries(table, new_entries)
 
     match saves(db, updated)
         Ok(_) => ok()
         Err(StaleVersion(_, _)) =>
             // Reload and retry with fresh version
-            fresh as DatabaseTable = loads(db, name)!
-            retried as DatabaseTable = add_entries(fresh, new_entries)
+            fresh as StoreTable = loads(db, name)!
+            retried as StoreTable = add_entries(fresh, new_entries)
             saves(db, retried)!
 ```
 
 For cases needing merge instead of simple retry, provide a resolver:
 
 ```prove
-inputs update_table_with_merge(db Database, name String, new_entries List<Entry>, resolver (Conflict) Resolution)!
+inputs update_table_with_merge(db Store, name String, new_entries List<Entry>, resolver (Conflict) Resolution)!
 from
-    table as DatabaseTable = loads(db, name)!
-    updated as DatabaseTable = add_entries(table, new_entries)
+    table as StoreTable = loads(db, name)!
+    updated as StoreTable = add_entries(table, new_entries)
     diff as TableDiff = diffs(table, updated)!
 
     match saves(db, updated)
         Ok(_) => ok()
         Err(StaleVersion(_, _)) =>
-            fresh as DatabaseTable = loads(db, name)!
+            fresh as StoreTable = loads(db, name)!
             remote_diff as TableDiff = diffs(table, fresh)!
             merged as MergeResult = merges(table, remote_diff, diff, resolver)!
             match merged
@@ -61,7 +61,7 @@ from
                 Err(msg) => fail("Merge failed: " + msg)
 ```
 
-See `future/database-merge-conflicts.md` for conflict types and resolution framework.
+See `future/store-merge-conflicts.md` for conflict types and resolution framework.
 
 ## Phase 3: Subprocess Compilation
 
@@ -128,16 +128,16 @@ module ConsoleLookup
         val1 as String = trim(get(words, 2))
         val2 as String = trim(get(words, 3))
 
-        db as Database = database("./data")!
-        table as DatabaseTable = loads(db, "tokens")!
-        updated as DatabaseTable = add_entry(table, key, val1, val2)
+        db as Store = store("./data")!
+        table as StoreTable = loads(db, "tokens")!
+        updated as StoreTable = add_entry(table, key, val1, val2)
 
         match saves(db, updated)
             Ok(_) => ok()
             Err(StaleVersion(_, _)) =>
                 // Simple retry — reload and re-apply
-                fresh as DatabaseTable = loads(db, "tokens")!
-                retried as DatabaseTable = add_entry(fresh, key, val1, val2)
+                fresh as StoreTable = loads(db, "tokens")!
+                retried as StoreTable = add_entry(fresh, key, val1, val2)
                 saves(db, retried)!
 
         // Compile new binary
@@ -159,8 +159,8 @@ module ConsoleLookup
 
 ## Key Challenges
 
-1. **Stale version handling**: Database rejects stale writes — caller must retry or merge
-2. **Custom merge**: When retry isn't enough, caller provides a resolver function (see `future/database-merge-conflicts.md`)
+1. **Stale version handling**: Store rejects stale writes — caller must retry or merge
+2. **Custom merge**: When retry isn't enough, caller provides a resolver function (see `future/store-merge-conflicts.md`)
 3. **Version management**: Track which binary version to call
 4. **State persistence**: Runtime state lost on binary swap (by design)
 5. **Error handling**: What if save fails? What if new binary doesn't compile?
@@ -169,11 +169,11 @@ module ConsoleLookup
 ## Exit Criteria
 
 - [x] `outputs file()` writes .prv files (already in InputOutput)
-- [ ] Database stdlib used for all table modifications
+- [ ] Store stdlib used for all table modifications
 - [ ] Stale version rejection works
 - [ ] Custom resolver merge works
 - [ ] Subprocess compilation spawns new binary
 - [ ] Subprocess lookup works
 - [ ] Full self-modifying demo works
 - [ ] Tests pass
-- [ ] Docs updated: `compiler.md` (runtime modification), `stdlib.md` (Database usage patterns)
+- [ ] Docs updated: `compiler.md` (runtime modification), `stdlib.md` (Store usage patterns)

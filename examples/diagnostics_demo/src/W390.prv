@@ -1,0 +1,19 @@
+module DemoW390
+  narrative: """
+  Expected diagnostics: W390
+  """
+  temporal step_a -> step_b
+
+transforms step_a(n Integer) Integer
+from
+    n
+
+transforms step_b(n Integer) Integer
+from
+    n
+
+transforms wrong_order(n Integer) Integer
+from
+    b as Integer = step_b(n)
+    a as Integer = step_a(b)
+    a

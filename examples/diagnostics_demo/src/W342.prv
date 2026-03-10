@@ -1,0 +1,10 @@
+module DemoW342
+  narrative: """
+  Expected diagnostics: W342
+  """
+  domain finance
+
+transforms total(x Decimal) Decimal
+  ensures result == x
+from
+    x

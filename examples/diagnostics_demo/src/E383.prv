@@ -1,0 +1,9 @@
+module DemoE383
+  narrative: """
+  Expected diagnostics: E383
+  """
+
+transforms square(n Integer) Integer
+  near_miss 1 => false
+from
+    n * n

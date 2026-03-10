@@ -1,0 +1,10 @@
+module DemoE372
+  narrative: """
+  Expected diagnostics: E372
+  """
+
+transforms demo(r Result<Integer, Error>) String
+from
+    match r
+        Some(x) => "some"
+        _ => "other"

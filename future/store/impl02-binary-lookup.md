@@ -1,8 +1,8 @@
-# Database Stdlib — Binary Lookup Tables
+# Store Stdlib — Binary Lookup Tables
 
 ## Overview
 
-Binary lookup tables as the foundation for the Prove database. Uses `Kind:[Lookup]` storage modifier for new code, `binary` keyword reserved for stdlib.
+Binary lookup tables as the foundation for the Prove store. Uses `Kind:[Lookup]` storage modifier for new code, `binary` keyword reserved for stdlib.
 
 ## Status
 
