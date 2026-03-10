@@ -50,7 +50,9 @@ Core `comptime` works in all positions. Remaining:
 
 Runtime management of `:[Lookup]` tables. Storage, versioning, diffs,
 three-way merge with user-provided conflict resolution via
-[`Verb<Conflict, Resolution>`](types.md#function-types-verb). Remaining:
+[`Verb<Conflict, Resolution>`](types.md#function-types-verb).
+Store-backed lookup types (`runtime` body) allow `[Lookup]` types with
+dynamic data from a `StoreTable`. Remaining:
 
 - Schema conflict detection (addition and value conflicts implemented)
 - Store spotlight in Language Tour (index.md)
@@ -92,7 +94,9 @@ the resulting binary recompiles itself, and both outputs must match.
 ### Dynamic Self-Modifying Lookup
 
 Programs that modify their own lookup tables at runtime, recompile, and
-call the new binary. Depends on Store stdlib and async verbs.
+call the new binary. Store-backed lookup types (`runtime`) provide the
+runtime data layer; subprocess recompilation provides the binary update.
+Depends on Store stdlib and async verbs.
 
 ### Row Polymorphism
 

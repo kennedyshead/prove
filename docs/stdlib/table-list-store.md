@@ -160,3 +160,26 @@ from
     db as Store = Store.store(path)!
     Store.table(db, name)!
 ```
+
+### Store-Backed Lookup Types
+
+A `[Lookup]` type with `runtime` instead of `where` is backed by a `StoreTable`. The type definition declares the column schema; data is populated at runtime. See [Store-Backed Lookup](../types.md#store-backed-lookup-runtime) for the type system details.
+
+```prove
+type Color:[Lookup] is String | Integer
+  runtime
+
+Store outputs store, inputs table, validates store table
+    types Store StoreTable
+
+main()!
+from
+    db as Store = store("/tmp/demo")!
+    colors as Color = table(db, "colors")!
+    row as Color = Color(Red, "red", 0xFF0000)
+    add(colors, row)
+    color as Integer = colors:"red"
+    console(f"{color}")
+```
+
+The `table()` call returns a `StoreTable` which is transparently typed as `Color`. The column schema (String, Integer) is initialized from the type definition when the table is first loaded. Row construction `Color(Red, "red", 0xFF0000)` takes the variant name as first argument, followed by values matching each column type. The `colors:"red"` lookup resolves column indices at compile time.
