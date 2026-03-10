@@ -547,6 +547,37 @@ class TestRequiresValidRuntimeGuard:
         c_code = _emit(source)
         assert ".value" in c_code
 
+    def test_requires_valid_result_param_narrowing(self):
+        """requires valid toml(data) should narrow Result<String,Error> to String for overload."""
+        source = (
+            "module Main\n"
+            "  Parse creates toml, validates toml\n"
+            "\n"
+            "transforms config(data Result<String, Error>) Table<Value>\n"
+            "    requires valid toml(data)\n"
+            "    from\n"
+            "        toml(data)\n"
+        )
+        c_code = _emit(source)
+        # Should resolve to creates toml (prove_parse_toml) not reads toml (prove_emit_toml)
+        assert "prove_parse_toml" in c_code
+        assert "prove_emit_toml" not in c_code
+
+    def test_requires_valid_result_return_unwrap(self):
+        """requires valid toml(data) should unwrap Result return to inner type."""
+        source = (
+            "module Main\n"
+            "  Parse creates toml, validates toml\n"
+            "\n"
+            "transforms config(data Result<String, Error>) Table<Value>\n"
+            "    requires valid toml(data)\n"
+            "    from\n"
+            "        toml(data)\n"
+        )
+        c_code = _emit(source)
+        # Result should be unwrapped via prove_result_unwrap_*
+        assert "prove_result_unwrap_ptr" in c_code
+
 
 class TestModuleConstants:
     """Test that module constants emit #define macros."""

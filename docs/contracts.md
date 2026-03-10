@@ -57,6 +57,48 @@ from
 
 Here, the [refinement type](types.md#refinement-types) `Clamped` does the heavy lifting.
 
+### requires valid — Validation and Narrowing
+
+`requires valid func(param)` is a special form that does three things at once:
+
+1. **Contract** — asserts the `validates` function returns true for the argument
+2. **Type narrowing** — unwraps `Option<T>` and `Result<T, E>` parameters to `T` inside the function body
+3. **Return narrowing** — if a called function returns `Result<T, E>` or `Option<T>` and its arguments are narrowed by `requires valid`, the return type is narrowed to `T` and automatically unwrapped
+
+This is the idiomatic way to handle validated data in Prove. Rather than manually unwrapping and checking errors, you declare the validation requirement up front and the compiler generates the correct unwrap code.
+
+```prove
+module Main
+  Parse validates toml, creates toml
+
+/// Parse validated TOML data into a Config record
+matches config(data Result<String, Error>) Config
+  requires valid toml(data)
+from
+    Config(toml(data))
+```
+
+Here `data` is `Result<String, Error>`. The `requires valid toml(data)` clause:
+
+- Calls `Parse.validates toml` to check `data` is valid
+- Narrows `data` from `Result<String, Error>` to `String` inside the body
+- Since `toml(data)` now receives `String`, the compiler resolves to `creates toml(source String) Result<Table<Value>, String>` — not `reads toml(value Value) String`
+- The return type `Result<Table<Value>, String>` is also narrowed to `Table<Value>` because the argument was validated
+- The `Table<Value>` is then mapped to the `Config` record fields automatically
+
+Without `requires valid`, you would need to manually unwrap the Result, call the right overload, and handle errors — `requires valid` collapses all of that into a single declaration.
+
+The same pattern works for `Option`:
+
+```prove
+validates ok(id Option<Integer>)
+  requires valid integer(id)
+from
+    id > 0
+```
+
+Here `id` is `Option<Integer>`, but inside the body it is narrowed to `Integer` because `requires valid integer(id)` guarantees the Option contains a value.
+
 ---
 
 ## explain

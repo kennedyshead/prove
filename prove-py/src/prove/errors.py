@@ -73,6 +73,8 @@ def _register_doc_range(prefix: str, start: int, end: int) -> None:
 
 # Lexer E101-E109
 _register_doc_range("E", 101, 109)
+# Parser E151
+DIAGNOSTIC_DOCS["E151"] = f"{_DOCS_BASE}#E151"
 # Parser
 for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
@@ -92,8 +94,8 @@ for _c in ("E350", "E352", "E355", "E356"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367)
 _register_doc_range("E", 361, 367)
-# Pattern matching E370-E371
-_register_doc_range("E", 370, 373)
+# Pattern matching E370-E374
+_register_doc_range("E", 370, 374)
 # Lookup tables E375-E379
 _register_doc_range("E", 375, 379)
 # Contract checking
@@ -119,7 +121,7 @@ _register_doc_range("W", 340, 342)
 # Info
 for _c in (
     "I201", "I300", "I301", "I302", "I303", "I310", "I311",
-    "I314", "I320", "I340", "I360", "I367",
+    "I314", "I320", "I340", "I360", "I367", "I375", "I376",
 ):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 
