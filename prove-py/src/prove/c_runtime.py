@@ -93,6 +93,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "hash": {"prove_hash_crypto", "prove_bytes"},
     "time": {"prove_time"},
     "log": set(),
+    "database": {"prove_database", "prove_hash_crypto", "prove_bytes"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -413,6 +414,23 @@ _RUNTIME_FUNCTIONS = {
     ],
     "prove_par_map": [
         "prove_par_map",
+    ],
+    "prove_database": [
+        "prove_db_create",
+        "prove_db_validates",
+        "prove_db_table_inputs",
+        "prove_db_table_outputs",
+        "prove_db_table_validates",
+        "prove_db_diff",
+        "prove_db_patch",
+        "prove_db_merge",
+        "prove_db_binary_outputs",
+        "prove_db_binary_inputs",
+        "prove_db_integrity",
+        "prove_db_rollback",
+        "prove_db_version_inputs",
+        "prove_db_table_new",
+        "prove_db_table_add_variant",
     ],
 }
 

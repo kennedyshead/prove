@@ -1,0 +1,72 @@
+module Database
+  narrative: """
+  Prove db is more like a key value store where all values are actually keys. For more info read the docs here: https://prove.botwork.se
+
+  Manages lookup tables with storage, versioning, diffs, merges, and binary compilation.
+  """
+
+  type Database is binary
+
+  type DatabaseTable is binary
+
+  type TableDiff is binary
+
+  type Version is binary
+
+  type MergeResult is binary
+
+  type Conflict is binary
+
+  type Resolution is binary
+
+/// Create a new database at the given directory path
+outputs database(path String) Result<Database, Error>!
+binary
+
+/// Validate that a database directory exists
+validates database(path String)
+binary
+
+/// Load a table by name from the database
+inputs table(database Database, name String) Result<DatabaseTable, Error>!
+binary
+
+/// Save a table to the database with optimistic concurrency
+outputs table(database Database, table DatabaseTable) Result<Unit, Error>!
+binary
+
+/// Validate that a table exists in the database
+validates table(database Database, name String)
+binary
+
+/// Compute the structural diff between two tables
+transforms diff(old DatabaseTable, new DatabaseTable) TableDiff
+binary
+
+/// Apply a diff to a table producing a new table
+transforms patch(table DatabaseTable, diff TableDiff) DatabaseTable
+binary
+
+/// Three-way merge using base table and two diffs with conflict resolver
+transforms merge(base DatabaseTable, local TableDiff, remote TableDiff, resolver (Conflict) Resolution) MergeResult
+binary
+
+/// Compile a table to binary lookup format
+outputs binary(database Database, name String) Result<Unit, Error>!
+binary
+
+/// Load a compiled binary lookup
+inputs binary(path String) Result<List<String>, Error>!
+binary
+
+/// Compute the integrity hash of a table
+reads integrity(table DatabaseTable) String
+binary
+
+/// Rollback a table to a previous version
+outputs rollback(database Database, name String, version Integer) Result<DatabaseTable, Error>!
+binary
+
+/// List all versions of a table
+inputs version(database Database, name String) Result<List<Version>, Error>!
+binary

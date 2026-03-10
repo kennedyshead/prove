@@ -454,6 +454,27 @@ _register_module(
     prv_file="pure/log.prv",
 )
 
+_register_module(
+    "database",
+    display="Database",
+    prv_file="database.prv",
+    c_map={
+        ("outputs", "database"): "prove_db_create",
+        ("validates", "database"): "prove_db_validates",
+        ("inputs", "table"): "prove_db_table_inputs",
+        ("outputs", "table"): "prove_db_table_outputs",
+        ("validates", "table"): "prove_db_table_validates",
+        ("transforms", "diff"): "prove_db_diff",
+        ("transforms", "patch"): "prove_db_patch",
+        ("transforms", "merge"): "prove_db_merge",
+        ("outputs", "binary"): "prove_db_binary_outputs",
+        ("inputs", "binary"): "prove_db_binary_inputs",
+        ("reads", "integrity"): "prove_db_integrity",
+        ("outputs", "rollback"): "prove_db_rollback",
+        ("inputs", "version"): "prove_db_version_inputs",
+    },
+)
+
 
 def binary_c_name(
     module: str,
@@ -539,6 +560,13 @@ _KNOWN_TYPES = {
     "ByteArray": PrimitiveType("ByteArray"),
     "Algorithm": PrimitiveType("Algorithm"),
     "Url": PrimitiveType("Url"),
+    "Database": PrimitiveType("Database"),
+    "DatabaseTable": PrimitiveType("DatabaseTable"),
+    "TableDiff": PrimitiveType("TableDiff"),
+    "MergeResult": PrimitiveType("MergeResult"),
+    "Version": PrimitiveType("Version"),
+    "Conflict": PrimitiveType("Conflict"),
+    "Resolution": PrimitiveType("Resolution"),
 }
 
 

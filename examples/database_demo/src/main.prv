@@ -1,0 +1,8 @@
+module Main
+  narrative: """Demonstrates Database module operations. Expected to fail: build."""
+  InputOutput outputs console
+
+main() Result<Unit, Error>!
+from
+    console("Database module available")
+    console("done")
