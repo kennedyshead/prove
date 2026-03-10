@@ -7,6 +7,7 @@ document symbols, signature help, and formatting via stdio transport.
 from __future__ import annotations
 
 import re
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -30,7 +31,7 @@ from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.stdlib_loader import ImportSuggestion, build_import_index
 from prove.symbols import FunctionSignature, SymbolKind, SymbolTable
-from prove.tokens import KEYWORDS, Token
+from prove.tokens import KEYWORDS, Token, TokenKind
 from prove.types import BUILTIN_FUNCTIONS
 
 # ── Conversion helpers ────────────────────────────────────────────
@@ -108,6 +109,232 @@ class DocumentState:
     )
 
 
+# ── Project Indexer (Phase 4) ────────────────────────────────────────────
+
+_INDEXER_SKIP_KINDS = frozenset(
+    {
+        TokenKind.NEWLINE,
+        TokenKind.INDENT,
+        TokenKind.DEDENT,
+        TokenKind.EOF,
+        TokenKind.DOC_COMMENT,
+    }
+)
+
+
+def _tok_text(kind: TokenKind, value: str) -> str:
+    return value if value else f"<{kind.name}>"
+
+
+class _ProjectIndexer:
+    """Incrementally indexes .prv files under a project root for ML completions.
+
+    Maintains per-file ngram and symbol contributions so a single-file save
+    only requires re-parsing that file, not the whole project.
+
+    Cache is written to <project-root>/.prove_cache/ as :[Lookup] .prv files.
+    """
+
+    def __init__(self, project_root: Path) -> None:
+        self.project_root = project_root
+        self.cache_dir = project_root / ".prove_cache"
+        # Per-file contributions (enables incremental patch_file)
+        self._file_ngrams: dict[str, list[tuple[str, str, str]]] = {}
+        self._file_symbols: dict[str, list[dict]] = {}
+        # Aggregated in-memory tables
+        self._bigrams: defaultdict[str, Counter] = defaultdict(Counter)
+        self._completions: defaultdict[tuple[str, str], Counter] = defaultdict(Counter)
+        self._symbols: dict[str, dict] = {}
+
+    # ── Project root detection ───────────────────────────────────────
+
+    @classmethod
+    def for_uri(cls, uri: str) -> "_ProjectIndexer | None":
+        if uri.startswith("file://"):
+            file_path = Path(uri[7:])
+        elif uri.startswith("/"):
+            file_path = Path(uri)
+        else:
+            return None
+        root = cls._find_root(file_path)
+        return cls(root)
+
+    @staticmethod
+    def _find_root(file_path: Path) -> Path:
+        """Walk up from file_path to find prove.toml; fall back to file's dir."""
+        start = file_path.parent if file_path.is_file() else file_path
+        for candidate in [start, *start.parents]:
+            if (candidate / "prove.toml").exists():
+                return candidate
+        return start
+
+    # ── Indexing ─────────────────────────────────────────────────────
+
+    def _extract_file(
+        self, path: Path, source: str | None = None
+    ) -> tuple[list[tuple[str, str, str]], list[dict]]:
+        """Parse a file and return (ngrams, symbols). Never raises."""
+        try:
+            if source is None:
+                source = path.read_text(encoding="utf-8")
+        except OSError:
+            return [], []
+        try:
+            tokens = Lexer(source, str(path)).lex()
+        except Exception:
+            return [], []
+
+        # Token ngrams
+        filtered = [t for t in tokens if t.kind not in _INDEXER_SKIP_KINDS]
+        ngrams: list[tuple[str, str, str]] = []
+        for i, tok in enumerate(filtered):
+            p2 = _tok_text(filtered[i - 2].kind, filtered[i - 2].value) if i >= 2 else "<START>"
+            p1 = _tok_text(filtered[i - 1].kind, filtered[i - 1].value) if i >= 1 else "<START>"
+            ngrams.append((p2, p1, _tok_text(tok.kind, tok.value)))
+
+        # Symbols from AST
+        symbols: list[dict] = []
+        try:
+            module = Parser(tokens, str(path)).parse()
+            try:
+                rel = str(path.relative_to(self.project_root))
+            except ValueError:
+                rel = str(path)
+            for decl in module.declarations:
+                if isinstance(decl, FunctionDef):
+                    symbols.append(
+                        {"name": decl.name, "verb": decl.verb, "kind": "function",
+                         "file": rel, "line": decl.span.start_line}
+                    )
+                elif isinstance(decl, TypeDef):
+                    symbols.append(
+                        {"name": decl.name, "verb": "type", "kind": "type",
+                         "file": rel, "line": decl.span.start_line}
+                    )
+                elif isinstance(decl, ConstantDef):
+                    symbols.append(
+                        {"name": decl.name, "verb": "constant", "kind": "constant",
+                         "file": rel, "line": decl.span.start_line}
+                    )
+        except Exception:
+            pass
+
+        return ngrams, symbols
+
+    def _add_file(self, path_str: str, ngrams: list, symbols: list) -> None:
+        self._file_ngrams[path_str] = ngrams
+        self._file_symbols[path_str] = symbols
+        for p2, p1, nxt in ngrams:
+            self._bigrams[p1][nxt] += 1
+            self._completions[(p2, p1)][nxt] += 1
+        for sym in symbols:
+            self._symbols[sym["name"]] = sym
+
+    def _rebuild_tables(self) -> None:
+        self._bigrams = defaultdict(Counter)
+        self._completions = defaultdict(Counter)
+        self._symbols = {}
+        for ngrams in self._file_ngrams.values():
+            for p2, p1, nxt in ngrams:
+                self._bigrams[p1][nxt] += 1
+                self._completions[(p2, p1)][nxt] += 1
+        for syms in self._file_symbols.values():
+            for sym in syms:
+                self._symbols[sym["name"]] = sym
+
+    def index_file(self, path: Path, source: str | None = None) -> None:
+        """Index a single file (no-op if already indexed)."""
+        path_str = str(path)
+        if path_str in self._file_ngrams:
+            return
+        ngrams, symbols = self._extract_file(path, source)
+        self._add_file(path_str, ngrams, symbols)
+
+    def index_all_files(self) -> None:
+        """Scan and index all .prv files under project_root, then save cache."""
+        for prv_file in sorted(self.project_root.rglob("*.prv")):
+            if ".prove_cache" in prv_file.parts:
+                continue
+            self.index_file(prv_file)
+        self.save()
+
+    def patch_file(self, path: Path, source: str) -> None:
+        """Re-index a changed file (incremental update), then save cache."""
+        path_str = str(path)
+        self._file_ngrams.pop(path_str, None)
+        self._file_symbols.pop(path_str, None)
+        self._rebuild_tables()
+        ngrams, symbols = self._extract_file(path, source)
+        self._add_file(path_str, ngrams, symbols)
+        self.save()
+
+    # ── Cache persistence ─────────────────────────────────────────────
+
+    def save(self) -> None:
+        """Write in-memory tables to .prove_cache/ as :[Lookup] .prv files."""
+        try:
+            self._write_bigrams_cache()
+            self._write_completions_cache()
+        except Exception:
+            pass  # Cache failures are non-fatal
+
+    @staticmethod
+    def _prv_str(value: str) -> str:
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+    def _write_bigrams_cache(self, top_k: int = 5) -> None:
+        out = self.cache_dir / "bigrams" / "current.prv"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        (out.parent / "versions").mkdir(exist_ok=True)
+        lines = [
+            "// Project bigram cache — auto-generated by prove LSP",
+            "type ProjectBigram:[Lookup] is String String Integer where",
+        ]
+        i = 0
+        for prev1, counter in self._bigrams.items():
+            for nxt, count in counter.most_common(top_k):
+                lines.append(
+                    f"    r{i:05d} | {self._prv_str(prev1)} | {self._prv_str(nxt)} | {count}"
+                )
+                i += 1
+        out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def _write_completions_cache(self, top_k: int = 5) -> None:
+        out = self.cache_dir / "completions" / "current.prv"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        (out.parent / "versions").mkdir(exist_ok=True)
+        lines = [
+            "// Project completion cache — auto-generated by prove LSP",
+            "type ProjectCompletion:[Lookup] is String String String where",
+        ]
+        for i, ((p2, p1), counter) in enumerate(self._completions.items()):
+            top = "|".join(tok for tok, _ in counter.most_common(top_k))
+            lines.append(
+                f"    r{i:05d} | {self._prv_str(p2)} | {self._prv_str(p1)} | {self._prv_str(top)}"
+            )
+        out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # ── Completion query ──────────────────────────────────────────────
+
+    def complete(self, prev2: str, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:
+        """Return top completions for (prev2, prev1) context, filtered by prefix."""
+        results = [
+            tok
+            for tok, _ in self._completions.get((prev2, prev1), Counter()).most_common(top_k * 2)
+            if not prefix or tok.startswith(prefix)
+        ]
+        return results[:top_k]
+
+    def complete_unigram(self, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:
+        """Fallback: top tokens following prev1."""
+        results = [
+            tok
+            for tok, _ in self._bigrams.get(prev1, Counter()).most_common(top_k * 2)
+            if not prefix or tok.startswith(prefix)
+        ]
+        return results[:top_k]
+
+
 # ── Server ────────────────────────────────────────────────────────
 
 server = LanguageServer(
@@ -117,6 +344,16 @@ server = LanguageServer(
 )
 _state: dict[str, DocumentState] = {}
 _MAX_CACHED_DOCUMENTS = 50
+_project_indexer: _ProjectIndexer | None = None
+
+
+def _ensure_project_indexed(uri: str) -> None:
+    """Create and populate project indexer for uri's project (once per session)."""
+    global _project_indexer
+    if _project_indexer is None:
+        _project_indexer = _ProjectIndexer.for_uri(uri)
+    if _project_indexer is not None and not _project_indexer._file_ngrams:
+        _project_indexer.index_all_files()
 
 
 def _compile_diag(d: object) -> lsp.Diagnostic:
@@ -310,6 +547,167 @@ def _analyze(uri: str, source: str) -> DocumentState:
     return ds
 
 
+def _extract_context_tokens(source: str, position: lsp.Position, n: int = 2) -> list[str]:
+    """Return the last n non-whitespace tokens before the cursor position.
+
+    Uses the Prove Lexer on the text up to the cursor. Returns tokens as
+    strings (value if non-empty, else <KIND>). Returns '<START>' sentinels
+    when fewer than n tokens precede the cursor.
+    """
+    lines = source.splitlines()
+    line_idx = position.line
+    col = position.character
+    # Truncate source at cursor
+    truncated_lines = lines[:line_idx]
+    if line_idx < len(lines):
+        truncated_lines.append(lines[line_idx][:col])
+    truncated = "\n".join(truncated_lines)
+
+    try:
+        tokens = Lexer(truncated, "<completion>").lex()
+    except Exception:
+        return ["<START>"] * n
+
+    filtered = [t for t in tokens if t.kind not in _INDEXER_SKIP_KINDS]
+    result: list[str] = []
+    for tok in filtered[-n:]:
+        result.append(_tok_text(tok.kind, tok.value))
+    while len(result) < n:
+        result.insert(0, "<START>")
+    return result
+
+
+def _ml_completions(source: str, position: lsp.Position) -> list[lsp.CompletionItem]:
+    """Return ML-ranked completion items from the project indexer + global model.
+
+    Project suggestions are prepended (rank higher). Falls back to unigram
+    if no bigram match. Gracefully returns [] if indexer is unavailable.
+    """
+    if _project_indexer is None:
+        return []
+
+    context = _extract_context_tokens(source, position, n=2)
+    prev2, prev1 = context[0], context[1]
+
+    # Extract current partial word as prefix filter
+    lines = source.splitlines()
+    line_idx = position.line
+    col = position.character
+    prefix = ""
+    if line_idx < len(lines):
+        text = lines[line_idx][:col]
+        m = re.search(r"[\w<>_]+$", text)
+        if m:
+            prefix = m.group()
+
+    project_hits = _project_indexer.complete(prev2, prev1, prefix)
+    if not project_hits:
+        project_hits = _project_indexer.complete_unigram(prev1, prefix)
+
+    global_hits = _global_model_complete(prev2, prev1, prefix)
+
+    # Merge: project first, then global, deduplicated
+    seen_toks: set[str] = set()
+    merged: list[str] = []
+    for tok in project_hits + global_hits:
+        if tok not in seen_toks and not tok.startswith("<"):
+            seen_toks.add(tok)
+            merged.append(tok)
+
+    items: list[lsp.CompletionItem] = []
+    for i, tok in enumerate(merged[:10]):
+        items.append(
+            lsp.CompletionItem(
+                label=tok,
+                kind=lsp.CompletionItemKind.Text,
+                detail="ml",
+                sort_text=f"\x00{i:02d}_{tok}",  # sorts before other items
+                label_details=lsp.CompletionItemLabelDetails(description="ml"),
+            )
+        )
+    return items
+
+
+# ── Global model loader (Phase 5) ────────────────────────────────────────
+
+_GLOBAL_MODEL_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "lsp-ml-store"
+_global_bigrams: dict[str, list[str]] | None = None  # prev1 → ranked list
+_global_completions: dict[tuple[str, str], list[str]] | None = None  # (p2,p1) → ranked list
+
+
+def _load_global_model() -> None:
+    """Load global model from data/lsp-ml-store/ :[Lookup] .prv files (once)."""
+    global _global_bigrams, _global_completions
+    if _global_bigrams is not None:
+        return
+
+    _global_bigrams = {}
+    _global_completions = {}
+
+    def _parse_lookup_rows(path: Path) -> list[list[str]]:
+        """Parse rows from a :[Lookup] .prv file into lists of string values."""
+        rows = []
+        if not path.exists():
+            return rows
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line.startswith("r") or "|" not in line:
+                continue
+            parts = [p.strip() for p in line.split("|")[1:]]  # skip row id
+            decoded = []
+            for p in parts:
+                if p.startswith('"') and p.endswith('"'):
+                    decoded.append(p[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
+                else:
+                    try:
+                        decoded.append(int(p))  # type: ignore[arg-type]
+                    except ValueError:
+                        decoded.append(p)
+            rows.append(decoded)
+        return rows
+
+    # Load unigram (bigrams table): (prev1, next_tok, count)
+    bg_path = _GLOBAL_MODEL_DIR / "bigrams" / "current.prv"
+    for row in _parse_lookup_rows(bg_path):
+        if len(row) >= 2:
+            prev1 = str(row[0])
+            nxt = str(row[1])
+            _global_bigrams.setdefault(prev1, []).append(nxt)
+
+    # Load completions table: (prev2, prev1, pipe-separated list)
+    co_path = _GLOBAL_MODEL_DIR / "completions" / "current.prv"
+    for row in _parse_lookup_rows(co_path):
+        if len(row) >= 3:
+            prev2, prev1 = str(row[0]), str(row[1])
+            toks = [t for t in str(row[2]).split("|") if t]
+            _global_completions[(prev2, prev1)] = toks
+
+
+def _global_model_complete(prev2: str, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:
+    """Query global model; falls back to unigram. Returns [] if model not loaded."""
+    try:
+        _load_global_model()
+    except Exception:
+        return []
+
+    results: list[str] = []
+    if _global_completions is not None:
+        for tok in _global_completions.get((prev2, prev1), []):
+            if not prefix or tok.startswith(prefix):
+                results.append(tok)
+            if len(results) >= top_k:
+                break
+
+    if not results and _global_bigrams is not None:
+        for tok in _global_bigrams.get(prev1, []):
+            if not prefix or tok.startswith(prefix):
+                results.append(tok)
+            if len(results) >= top_k:
+                break
+
+    return results
+
+
 def _get_word_at(source: str, line: int, character: int) -> str:
     """Extract the word at the given 0-indexed position."""
     lines = source.splitlines()
@@ -350,6 +748,10 @@ def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
             diagnostics=ds.diagnostics,
         )
     )
+    try:
+        _ensure_project_indexed(uri)
+    except Exception:
+        pass
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CHANGE)
@@ -369,6 +771,26 @@ def did_change(params: lsp.DidChangeTextDocumentParams) -> None:
 @server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
 def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
     _state.pop(params.text_document.uri, None)
+
+
+@server.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
+def did_save(params: lsp.DidSaveTextDocumentParams) -> None:
+    if _project_indexer is None:
+        return
+    uri = params.text_document.uri
+    if uri.startswith("file://"):
+        path = Path(uri[7:])
+    elif uri.startswith("/"):
+        path = Path(uri)
+    else:
+        return
+    if path.suffix != ".prv" or not path.exists():
+        return
+    try:
+        source = path.read_text(encoding="utf-8")
+        _project_indexer.patch_file(path, source)
+    except Exception:
+        pass
 
 
 @server.feature(lsp.TEXT_DOCUMENT_HOVER)
@@ -637,6 +1059,11 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                         else f"{fname}_{_sig_params_display(sig)}",
                     )
                 )
+
+    # Phase 5 — ML completion suggestions
+    if _project_indexer is not None and ds is not None:
+        ml_items = _ml_completions(ds.source, params.position)
+        items = ml_items + items  # project/global ML suggestions rank first
 
     # Deduplicate by (label, sort_text) — verb variants are distinct.
     # Later items (symbol table) override earlier ones (stdlib index)

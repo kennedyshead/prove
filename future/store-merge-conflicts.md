@@ -42,7 +42,7 @@ This is standard optimistic concurrency control. No locks, no blocking. Stale wr
 
 ## Custom Conflict Resolution
 
-For cases where the caller wants to merge rather than reject, the Store provides a `merges` function that accepts a user-written resolver. The resolver is a function that pattern-matches on `Conflict` — an algebraic type describing what diverged.
+For cases where the caller wants to merge rather than reject, the Store provides a `merge` overload that accepts a user-written resolver via `Verb<Conflict, Resolution>`. The resolver is a function (or lambda) that pattern-matches on `Conflict` — an algebraic type describing what diverged.
 
 ### Conflict Types
 
@@ -92,12 +92,15 @@ from
 ### Merge Call
 
 ```prove
-// Three-way merge with custom resolver
-result as MergeResult = merges(base, local_diff, remote_diff, resolve_http)!
+// Three-way merge with custom resolver (named function)
+result as MergeResult = Store.merge(base, local_diff, remote_diff, resolve_http)
 
-match result
-    Ok(merged_ast) => saves(db, merged_ast)!
-    Err(rejected) => log("Merge rejected: " + rejected.reason)
+// Or with a lambda for simple cases
+result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemote)
+
+match Store.merged(result)
+    true => Store.table(db, Store.merged(result))!
+    false => log("Merge had conflicts")
 ```
 
 ## Conflict Categories
@@ -178,11 +181,12 @@ Binary out of sync with source lookup table:
 - `saves` rejects stale versions with `Err(StaleVersion)`
 - Full recompile after each save
 
-### Phase 2: Three-Way Merge with Custom Resolver
+### Phase 2: Three-Way Merge with Custom Resolver ✓
 
-- `diffs` computes structural diff between two ASTs
-- `merges` accepts a user-provided resolver function
-- Resolver receives `Conflict`, returns `Resolution`
+- `diff` computes structural diff between two tables
+- `merge` accepts a user-provided resolver via `Verb<Conflict, Resolution>`
+- Resolver receives `Conflict*`, returns `Resolution*` (pointer-based C API)
+- Both 3-arg (no resolver) and 4-arg (with resolver) overloads work
 
 ### Phase 3: Integrity and Rollback
 

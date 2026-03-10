@@ -121,8 +121,8 @@ typedef struct {
     } data;
 } Prove_MergeResult;
 
-/* Resolver callback: takes a Prove_Conflict, returns Prove_Resolution */
-typedef Prove_Resolution (*Prove_ResolverFn)(Prove_Conflict);
+/* Resolver callback: takes pointer to Conflict, returns pointer to Resolution */
+typedef Prove_Resolution* (*Prove_ResolverFn)(Prove_Conflict*);
 
 /* ── Store channel ──────────────────────────────────────────── */
 

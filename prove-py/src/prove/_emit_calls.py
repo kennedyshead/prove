@@ -18,6 +18,7 @@ from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
     INTEGER,
+    FunctionType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -574,6 +575,11 @@ class CallEmitterMixin:
                     arity=n_args,
                 )
             if sig and sig.module:
+                # Emit Verb lambda args before coercion
+                for i, pt in enumerate(sig.param_types):
+                    if isinstance(pt, FunctionType) and i < len(expr.args):
+                        if isinstance(expr.args[i], LambdaExpr):
+                            args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
                 c_name = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
@@ -874,6 +880,31 @@ class CallEmitterMixin:
         if accum_ct.is_pointer:
             return f"({accum_ct.decl}){result_tmp}"
         return f"({accum_ct.decl})(intptr_t){result_tmp}"
+
+    def _emit_verb_lambda(self, expr: LambdaExpr, func_type: FunctionType) -> str:
+        """Hoist a lambda for a Verb<...> parameter with correct C signature."""
+        name = f"_lambda_{self._tmp_counter}"
+        self._tmp_counter += 1
+
+        ret_ct = map_type(func_type.return_type)
+        param_cts = [map_type(pt) for pt in func_type.param_types]
+
+        c_params = []
+        saved_locals = dict(self._locals)
+        for i, pname in enumerate(expr.params):
+            if i < len(param_cts):
+                c_params.append(f"{param_cts[i].decl} {pname}")
+                self._locals[pname] = func_type.param_types[i]
+
+        body_code = self._emit_expr(expr.body)
+        self._locals = saved_locals
+
+        param_str = ", ".join(c_params) if c_params else "void"
+        lam = f"static {ret_ct.decl} {name}({param_str}) {{\n"
+        lam += f"    return {body_code};\n"
+        lam += "}\n"
+        self._lambdas.append(lam)
+        return name
 
     def _emit_hof_lambda(
         self,

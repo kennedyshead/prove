@@ -46,6 +46,15 @@ Core `comptime` works in all positions. Remaining:
 
 - I367/I320 thresholds, unused constant detection, module struct return validation
 
+### Store Stdlib
+
+Runtime management of `:[Lookup]` tables. Storage, versioning, diffs,
+three-way merge with user-provided conflict resolution via
+[`Verb<Conflict, Resolution>`](types.md#function-types-verb). Remaining:
+
+- Schema conflict detection (addition and value conflicts implemented)
+- Store spotlight in Language Tour (index.md)
+
 ---
 
 ## Proposed
@@ -65,11 +74,6 @@ exit-via-match-arm semantics. Completes verb family symmetry:
 
 `Network` module for TCP/UDP. IO verbs for blocking, async verbs for
 non-blocking. Depends on `streams` for accept loops.
-
-### Store Stdlib
-
-Runtime management of `:[Lookup]` tables. Storage, versioning, diffs,
-three-way merge with user-provided conflict resolution.
 
 ### Compiler CLI Extensions
 

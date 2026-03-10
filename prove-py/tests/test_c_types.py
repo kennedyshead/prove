@@ -9,6 +9,7 @@ from prove.types import (
     STRING,
     UNIT,
     AlgebraicType,
+    FunctionType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -96,6 +97,24 @@ class TestMapType:
         ct = map_type(ty)
         assert "Prove_Option" in ct.decl
         assert ct.header == "prove_option.h"
+
+    def test_function_type_pointer(self):
+        """FunctionType maps to a C function pointer."""
+        ty = FunctionType(
+            [PrimitiveType("Conflict")],
+            PrimitiveType("Resolution"),
+        )
+        ct = map_type(ty)
+        assert ct.decl == "Prove_Resolution* (*)(Prove_Conflict*)"
+        assert ct.is_pointer is True
+        assert ct.header == "prove_store.h"
+
+    def test_function_type_no_params(self):
+        """Verb<R> → zero-param function pointer."""
+        ty = FunctionType([], INTEGER)
+        ct = map_type(ty)
+        assert ct.decl == "int64_t (*)(void)"
+        assert ct.is_pointer is True
 
 
 class TestMangling:

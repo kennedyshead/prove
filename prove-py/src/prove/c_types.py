@@ -180,8 +180,12 @@ def map_type(ty: Type) -> CType:
         return CType(mangle_type_name(ty.base_name), is_pointer=False, header=None)
 
     if isinstance(ty, FunctionType):
-        # Function pointers are not directly emitted as types in POC
-        return CType("void*", is_pointer=True, header=None)
+        ret_ct = map_type(ty.return_type) if ty.return_type else CType("void", False, None)
+        param_cts = [map_type(pt) for pt in ty.param_types]
+        param_str = ", ".join(ct.decl for ct in param_cts) if param_cts else "void"
+        headers = {ct.header for ct in [ret_ct] + param_cts if ct.header}
+        header = next(iter(headers)) if len(headers) == 1 else None
+        return CType(f"{ret_ct.decl} (*)({param_str})", is_pointer=True, header=header)
 
     if isinstance(ty, TypeVariable):
         if ty.name == "Value":
