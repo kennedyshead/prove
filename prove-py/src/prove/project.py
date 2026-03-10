@@ -28,7 +28,7 @@ line_length = 90
 _MAIN_PRV_TEMPLATE = """\
 module Main
   narrative: \"\"\"A new Prove project.\"\"\"
-  InputOutput outputs console
+  System outputs console
 
 main() Result<Unit, Error>!
 from

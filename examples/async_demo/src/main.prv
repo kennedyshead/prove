@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates async verb family: detached, attached, listens."""
-  InputOutput outputs console
+  System outputs console
 
   type Event is Data(payload String)
     | Exit

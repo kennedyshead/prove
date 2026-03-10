@@ -86,10 +86,10 @@ def _register_module(
 # ── Module registrations ─────────────────────────────────────────
 
 _register_module(
-    "inputoutput",
-    display="InputOutput",
-    prv_file="input_output.prv",
-    aliases=["io"],
+    "system",
+    display="System",
+    prv_file="system.prv",
+    aliases=["io", "inputoutput"],
     c_map={
         ("outputs", "console"): "prove_println",
         ("inputs", "console"): "prove_readln",
@@ -641,7 +641,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 
     Returns an empty list if the module is not found.
     """
-    # Normalize: "InputOutput" -> "inputoutput"
+    # Normalize: "System" -> "system", "InputOutput" -> "inputoutput"
     normalized = module_name.lower()
 
     if normalized in _cache:
@@ -746,7 +746,7 @@ def available_modules() -> list[str]:
 class ImportSuggestion:
     """A suggestion for auto-importing a stdlib function."""
 
-    module: str  # display-cased: "InputOutput", etc.
+    module: str  # display-cased: "System", "Text", etc.
     verb: str | None  # "outputs", "transforms", etc.
     name: str  # "println", "decode", etc.
     signature: str = ""  # "(path: String) String!" display string
@@ -755,7 +755,7 @@ class ImportSuggestion:
 
 
 # Alias keys that should be skipped when building the index
-_ALIAS_KEYS = {"inputoutput"}
+_ALIAS_KEYS = {"io", "inputoutput"}
 
 _import_index: dict[str, list[ImportSuggestion]] | None = None
 

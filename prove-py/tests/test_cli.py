@@ -38,7 +38,7 @@ def tmp_project(tmp_path):
     src.mkdir()
     (src / "main.prv").write_text(
         'module Main\n  narrative: """Test project"""\n'
-        "  InputOutput outputs console\n\n"
+        "  System outputs console\n\n"
         'main() Result<Unit, Error>!\nfrom\n    console("hi")\n'
     )
     return tmp_path
@@ -316,7 +316,7 @@ class TestDiagnosticNotes:
 
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"

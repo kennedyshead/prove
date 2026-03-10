@@ -65,6 +65,7 @@ _CORE_FILES = {
 # Used by RuntimeDeps (in optimizer.py) to track which runtime files to include.
 # Keys are lowercase stdlib module names.
 STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
+    "system": {"prove_input_output"},
     "io": {"prove_input_output"},
     "inputoutput": {"prove_input_output"},
     "character": {"prove_character"},

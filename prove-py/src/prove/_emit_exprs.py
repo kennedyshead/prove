@@ -784,6 +784,13 @@ class ExprEmitterMixin:
                             self._emit_stmt(s)
                     else:
                         self._emit_stmt(s)
+                # streams: Exit arm exits the blocking loop
+                if (
+                    self._in_streams_loop
+                    and isinstance(arm.pattern, VariantPattern)
+                    and arm.pattern.name == "Exit"
+                ):
+                    self._line("goto _streams_exit;")
                 self._line("break;")
                 self._indent -= 1
                 self._line("}")

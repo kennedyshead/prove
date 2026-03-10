@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Parse module URL and Base64 operations."""
-  InputOutput outputs console
+  System outputs console
   Parse reads url
   Parse creates base64
   Parse types Url

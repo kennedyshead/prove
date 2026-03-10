@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Types module operations.
   """
-  InputOutput outputs console
+  System outputs console
   Types reads string code
 
 main() Result<Unit, Error>!

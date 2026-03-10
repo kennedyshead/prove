@@ -2,8 +2,8 @@ module DemoE312
   narrative: """
   Expected diagnostics: E312
   """
-  InputOutput outputs console
+  System outputs console
 
 outputs run() Unit
 from
-    InputOutput.nonexistent("test.txt")
+    System.nonexistent("test.txt")

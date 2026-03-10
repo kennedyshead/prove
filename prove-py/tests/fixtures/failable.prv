@@ -1,7 +1,7 @@
 module Failable
   narrative: """Failable test fixture"""
-  InputOutput inputs console
-  InputOutput outputs console
+  System inputs console
+  System outputs console
 
 inputs read_name() Result<String, Error>!
 from

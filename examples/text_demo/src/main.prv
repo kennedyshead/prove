@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Text module operations."""
-  InputOutput outputs console
+  System outputs console
   Text validates starts ends contains
   Text transforms slice trim lower upper split join replace repeat
   Text reads length

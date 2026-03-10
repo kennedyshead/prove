@@ -1,16 +1,16 @@
 ---
-title: InputOutput & Path - Prove Standard Library
-description: InputOutput channels and Path manipulation in the Prove standard library.
-keywords: Prove InputOutput, Prove Path, file IO, console IO, path manipulation
+title: System & Path - Prove Standard Library
+description: System channels and Path manipulation in the Prove standard library.
+keywords: Prove System, Prove Path, file IO, console IO, path manipulation
 ---
 
-# InputOutput & Path
+# System & Path
 
-## InputOutput
+## System
 
-**Module:** `InputOutput` — handles IO operations.
+**Module:** `System` — handles IO operations across console, file, system, dir, and process channels.
 
-All InputOutput functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions.md#io-and-fallibility) for how IO and fallibility work together.
+All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions.md#io-and-fallibility) for how IO and fallibility work together.
 
 ### Console Channel
 
@@ -23,13 +23,13 @@ Console input, output, and availability check.
 | `validates` | `console()` | Check if stdin is a terminal |
 
 ```prove
-InputOutput outputs console, inputs console
+System outputs console, inputs console
 
 outputs greet()
 from
-    InputOutput.console("What is your name?")
-    name as String = InputOutput.console()
-    InputOutput.console(f"Hello, {name}!")
+    System.console("What is your name?")
+    name as String = System.console()
+    System.console(f"Hello, {name}!")
 ```
 
 ### File Channel
@@ -43,11 +43,11 @@ Read, write, and check files. File operations are failable — use [`!`](../type
 | `validates` | `file(path String)` | Check if file exists |
 
 ```prove
-InputOutput inputs file, outputs file, validates file
+System inputs file, outputs file, validates file
 
 inputs load_config(path String) String!
 from
-    InputOutput.file(path)!
+    System.file(path)!
 ```
 
 ### System Channel

@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Path module operations"""
-  InputOutput outputs console
+  System outputs console
   Path reads parent stem extension name, validates absolute, transforms join
 
 main() Result<Unit, Error>!

@@ -124,7 +124,7 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 _ASYNC_VERBS = frozenset({"detached", "attached", "listens"})
 
 # IO (blocking) verbs — forbidden inside async bodies
-_BLOCKING_VERBS = frozenset({"inputs", "outputs"})
+_BLOCKING_VERBS = frozenset({"inputs", "outputs", "streams"})
 
 # Verbs that need ownership of their parameters (skip borrow inference)
 _VERBS_NEED_OWNERSHIP = frozenset(
@@ -139,6 +139,7 @@ _VERBS_NEED_OWNERSHIP = frozenset(
         "detached",
         "attached",
         "listens",
+        "streams",
     }
 )
 
@@ -1577,8 +1578,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
 
         # I367: suggest extracting match to a matches verb function
-        # listens bodies are inherently match-based, so exempt from this check
-        if verb not in ("matches", "listens"):
+        # listens/streams bodies are inherently match-based, so exempt from this check
+        if verb not in ("matches", "listens", "streams"):
             self._check_match_restriction(fd.body, fd.span)
 
     def _check_async_body(self, fd: FunctionDef) -> None:
@@ -2317,13 +2318,22 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif (
             self._current_function
             and isinstance(self._current_function, FunctionDef)
-            and self._current_function.verb in ("matches", "listens")
+            and self._current_function.verb in ("matches", "listens", "streams")
             and self._current_function.params
         ):
             # Implicit match in a matches/listens verb function: use first parameter type
-            subject_type = self._resolve_type_expr(
-                self._current_function.params[0].type_expr
-            )
+            # For streams: use return type (the element type being streamed)
+            if (
+                self._current_function.verb == "streams"
+                and self._current_function.return_type is not None
+            ):
+                subject_type = self._resolve_type_expr(
+                    self._current_function.return_type
+                )
+            else:
+                subject_type = self._resolve_type_expr(
+                    self._current_function.params[0].type_expr
+                )
 
         # W304: match on condition already guaranteed by requires
         if expr.subject is not None and isinstance(self._current_function, FunctionDef):

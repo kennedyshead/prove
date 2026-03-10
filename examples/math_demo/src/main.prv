@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Math module operations"""
-  InputOutput outputs console
+  System outputs console
   Math reads abs min max sqrt floor power ceil round log
 
 main() Result<Unit, Error>!

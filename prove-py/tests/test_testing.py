@@ -46,7 +46,7 @@ class TestTestGenerator:
     def test_no_tests_for_void_functions(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs greet()\n"
             "    from\n"
             '        console("hi")\n'

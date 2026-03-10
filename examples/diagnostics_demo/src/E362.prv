@@ -2,7 +2,7 @@ module DemoE362
   narrative: """
   Expected diagnostics: E362
   """
-  InputOutput outputs console
+  System outputs console
 
 transforms bad() Integer
 from

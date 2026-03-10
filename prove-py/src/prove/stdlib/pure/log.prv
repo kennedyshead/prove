@@ -1,6 +1,6 @@
 module Log
   narrative: """Console color constants for terminal output."""
-  InputOutput outputs console
+  System outputs console
   Time inputs time, types Time
   Format transforms time
 

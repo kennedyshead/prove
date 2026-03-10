@@ -3,7 +3,7 @@ module Main
 
   Expected to fail: check_strict, build, build_debug, test, test_property_rounds.
   """
-  InputOutput outputs console
+  System outputs console
 
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b

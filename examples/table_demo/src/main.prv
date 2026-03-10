@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates Table module operations"""
-  InputOutput outputs console
+  System outputs console
   Table types Table, validates has, reads length keys get
   Parse creates json, reads object text
   Text transforms join

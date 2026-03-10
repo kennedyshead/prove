@@ -5,7 +5,7 @@ module Main
   """
   domain Finance
   temporal authenticate -> authorize -> access
-  InputOutput outputs console
+  System outputs console
 
   type State is
     authenticated Boolean

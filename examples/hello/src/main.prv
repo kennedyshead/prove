@@ -1,6 +1,6 @@
 module Main
   narrative: """Hello world program"""
-  InputOutput outputs console
+  System outputs console
 
 main() Result<Unit, Error>!
 from

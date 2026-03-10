@@ -28,6 +28,7 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 |------|---------|-------------------|
 | `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
+| `streams` | Blocking loop over an IO source | `from` block must be a single implicit match with an `Exit` arm. Return type is the element type |
 
 ```prove
 matches area(s Shape) Decimal
@@ -157,7 +158,7 @@ The `from` block works like the `matches` verb — arms are matched against the 
 ```prove
 module EventProcessor
   narrative: """Process events using all three async verbs."""
-  InputOutput outputs console
+  System outputs console
 
   type Event is Data(payload String)
     | Exit
@@ -184,13 +185,43 @@ from
 | Code | Trigger | Severity |
 |------|---------|----------|
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
-| [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs` call in `attached` or `listens` body (`detached` is exempt) | Error |
+| [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `attached` or `listens` body (`detached` is exempt) | Error |
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | Async function called without `&` inside an async body | Error |
 | [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async body | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
+
+---
+
+## Streams — Blocking IO Loop
+
+The `streams` verb declares a blocking loop that reads from an IO source and dispatches items via match arms until an `Exit` arm terminates the loop. It is the IO counterpart to `listens` in the async family.
+
+| Pattern | IO | Async |
+|---------|-----|-------|
+| Push, move on | `outputs` | `detached` |
+| Pull, await | `inputs` | `attached` |
+| Loop until exit | `streams` | `listens` |
+
+**Key rules:**
+
+- The return type declares the element type (an algebraic type) being streamed
+- The `from` block must be a single implicit match with an `Exit` arm
+- `streams` is a blocking IO verb — it cannot be called from `attached` or `listens` bodies
+
+```prove
+type Line is
+    Content(text String)
+  | Exit
+
+/// Stream lines from a file until EOF.
+streams file(file FileHandle) Line
+from
+    Exit           => file
+    Content(text)  => handle(text)
+```
 
 ---
 
@@ -270,7 +301,7 @@ validates email(address String)
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs` and `outputs` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) are concurrent — `detached` may call IO freely (runs independently), while `attached` and `listens` must not block.
+IO is inherent in the verb — `inputs`, `outputs`, and `streams` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) are concurrent — `detached` may call IO freely (runs independently), while `attached` and `listens` must not block.
 
 ```prove
 transforms area(s Shape) Decimal

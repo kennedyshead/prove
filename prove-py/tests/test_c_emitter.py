@@ -21,7 +21,7 @@ class TestHelloWorld:
     def test_hello_world_emits(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
             '        console("Hello from Prove!")\n'
@@ -35,7 +35,7 @@ class TestHelloWorld:
     def test_includes_runtime_headers(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "main() Result<Unit, Error>!\n"
             "    from\n"
             '        console("test")\n'
@@ -54,7 +54,7 @@ class TestVarDecl:
     def test_string_var(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs greet()\n"
             "    from\n"
             '        name as String = "world"\n'
@@ -74,7 +74,7 @@ class TestBinaryExpr:
     def test_string_concat(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs greet()\n"
             "    from\n"
             '        s as String = "hello" + " world"\n'
@@ -88,7 +88,7 @@ class TestFunctionDef:
     def test_simple_function(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"
@@ -130,7 +130,7 @@ class TestRetainRelease:
     def test_pointer_released_before_return(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs show()\n"
             "    from\n"
             '        s as String = "test"\n'
@@ -164,7 +164,7 @@ class TestBuiltinDispatch:
     def test_readln_emits(self):
         source = (
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "inputs get_name() String\n"
             "    from\n"
             "        console()\n"
@@ -330,7 +330,7 @@ class TestPipeExpression:
     def test_pipe_to_builtin(self):
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "outputs show()\n"
             "    from\n"
             '        "hello" |> console\n'
@@ -516,7 +516,7 @@ class TestRequiresOptionNarrowing:
             "module Main\n"
             "  Table types Table Value, creates new, validates has,"
             " reads get, transforms add\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "\n"
             "outputs show(key String, table Table<String>)\n"
             "    requires Table.has(key, table)\n"
@@ -626,7 +626,7 @@ class TestFailableNonResultReturn:
         """A failable function with concrete return should use Prove_Result."""
         source = (
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "\n"
             "inputs greeting() String!\n"
             "    from\n"
@@ -639,7 +639,7 @@ class TestFailableNonResultReturn:
         """A failable function with unit return should use Prove_Result."""
         source = (
             "module Main\n"
-            "  InputOutput outputs console\n"
+            "  System outputs console\n"
             "\n"
             "outputs greet()!\n"
             "    from\n"
@@ -707,7 +707,7 @@ class TestRegionCleanup:
     def test_failable_function_region_exit_before_return(self):
         source = (
             "module Main\n"
-            "  InputOutput inputs console\n"
+            "  System inputs console\n"
             "\n"
             "inputs greeting() String!\n"
             "    from\n"
