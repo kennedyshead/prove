@@ -153,6 +153,7 @@ When `optimize = true` in `prove.toml`, the compiler runs optimization passes on
 | **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
+| **Escape analysis** | Tracks which local variables escape their enclosing function (returned, stored in mutable parameters, passed to escaping functions). Non-escaping values are candidates for region allocation instead of arena/malloc, reducing allocation overhead. Conservative by default — unknown variables are assumed to escape. |
 
 ---
 
