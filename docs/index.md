@@ -107,7 +107,7 @@ from
 
 ### No Loops — Functional Iteration
 
-Prove enforces [functional iteration](functions.md#iteration--no-loops) (map, filter, reduce) over traditional loops.
+Prove enforces [functional iteration](functions.md#iteration-no-loops) (map, filter, reduce) over traditional loops.
 
 ```prove
 names as List<String> = map(users, |u| u.name)
