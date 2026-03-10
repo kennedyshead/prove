@@ -20,9 +20,17 @@ module Main
     mutate Boolean
     debug Boolean
 
+  type Test is
+    property_rounds Integer
+
+  type Style is
+    line_length Integer
+
   type Config is
     package Package
     build Build
+    test Test
+    style Style
 
   HELP_TXT as String = comptime
       read("help.txt")

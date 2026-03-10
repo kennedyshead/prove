@@ -219,7 +219,8 @@ Prove_Result prove_store_table_inputs(Prove_Store *store, Prove_String *name) {
 
     Prove_StoreTable *table = _deserialize_table(file_path, name->data);
     if (!table) {
-        return prove_result_err(prove_string_from_cstr("failed to load table"));
+        /* Create-on-first-access: return an empty table with zero columns */
+        table = prove_store_table_new(name, 0, NULL);
     }
     return prove_result_ok_ptr(table);
 }

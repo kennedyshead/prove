@@ -1,8 +1,61 @@
 module Main
-  narrative: """Demonstrates Store module operations. Expected to fail: build."""
-  InputOutput outputs console
+  narrative: """Demonstrates Store module operations: creating stores, saving/loading tables, computing diffs and patches, integrity hashing, merge, and subprocess compilation."""
+  InputOutput outputs console, inputs system, types ProcessResult
+  Store outputs store table
+    inputs table version
+    validates store table merged
+    transforms diff patch merge
+    reads integrity merged
+    types Store StoreTable TableDiff MergeResult Version
+
+    type Color:[Lookup StoreTable] is String | Integer
 
 main() Result<Unit, Error>!
 from
-    console("Store module available")
-    console("done")
+    // 1. Create a store
+    db as Store = store("/tmp/prove_store_demo")!
+    console("Created store at /tmp/prove_store_demo")
+    // 2. Validate the store exists
+    exists as Boolean = valid store("/tmp/prove_store_demo")
+    console(f"Store exists: {exists}")
+    // 3. Load a table (creates it if missing)
+    colors as StoreTable = table(db, "colors")!
+    console("Loaded table: colors")
+    // 4. Compute integrity hash of empty table
+    hash_empty as String = integrity(colors)
+    console(f"Empty table hash: {hash_empty}")
+    // 5. Save the table
+    table(db, colors)!
+    console("Saved colors table")
+    // 6. Validate the table exists
+    table_exists as Boolean = valid table(db, "colors")
+    console(f"Table exists: {table_exists}")
+    // 7. Reload and check integrity
+    colors2 as StoreTable = table(db, "colors")!
+    hash_after as String = integrity(colors2)
+    console(f"Reloaded table hash: {hash_after}")
+    // 8. Compute diff between two snapshots
+    d as TableDiff = diff(colors, colors2)
+    console("Computed diff between snapshots")
+    // 9. Apply patch
+    patched as StoreTable = patch(colors, d)
+    console("Applied patch to table")
+    // 10. Three-way merge (no conflicts on identical tables)
+    d2 as TableDiff = diff(colors, colors2)
+    merge_result as MergeResult = merge(colors, d, d2)
+    is_merged as Boolean = valid merged(merge_result)
+    console(f"Merge succeeded: {is_merged}")
+    // 11. List versions
+    versions as List<Version> = version(db, "colors")!
+    console("Listed table versions")
+    // 12. Subprocess: run prove build --help to verify compilation toolchain
+    build_result as ProcessResult = system("prove", ["build", "--help"])
+    // create a row
+    row as Color = {Red, "red", 0xFF0000}
+    // Add to StoreTable
+    add(colors, row)
+    color as Integer = colors:"red"
+    // Outputs 0xFF0000
+    console(f"{color}")
+    console("Subprocess: prove build --help executed")
+    console("Store demo complete")
