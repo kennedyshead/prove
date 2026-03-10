@@ -456,49 +456,49 @@ type ProjectBigram:[Lookup] is String String Integer where
     r00453 | "get" | "(" | 1
     r00454 | "remove" | "(" | 1
     r00455 | "keys" | "(" | 1
-    r00456 | "Time representation, arithmetic, and calendar operations." | "type" | 1
-    r00457 | "Clock" | "binary" | 2
-    r00458 | "Clock" | "is" | 1
-    r00459 | "Clock" | ")" | 1
-    r00460 | "Weekday" | "is" | 1
-    r00461 | "Weekday" | "binary" | 1
-    r00462 | "hours" | "Integer" | 1
-    r00463 | "minutes" | "Integer" | 1
-    r00464 | "seconds" | "Integer" | 1
-    r00465 | "stop" | "Time" | 1
-    r00466 | "year" | "Integer" | 4
-    r00467 | "month" | "Integer" | 3
-    r00468 | "day" | "Integer" | 2
-    r00469 | "days" | "(" | 2
-    r00470 | "days" | "Integer" | 1
-    r00471 | "clock" | "(" | 3
-    r00472 | "clock" | "Clock" | 1
-    r00473 | "weekday" | "(" | 2
-    r00474 | "hour" | "Integer" | 2
-    r00475 | "minute" | "Integer" | 2
-    r00476 | "Type validation and conversion functions." | "validates" | 1
-    r00477 | "float" | "(" | 3
-    r00478 | "null" | "(" | 1
-    r00479 | "Text" | "narrative" | 1
-    r00480 | "String operations and construction." | "type" | 1
-    r00481 | "StringBuilder" | ":" | 7
-    r00482 | "StringBuilder" | "is" | 1
-    r00483 | "starts" | "(" | 1
-    r00484 | "prefix" | "String" | 1
-    r00485 | "ends" | "(" | 1
-    r00486 | "suffix" | "String" | 1
-    r00487 | "substring" | "String" | 2
-    r00488 | "separator" | "String" | 2
-    r00489 | "parts" | "List" | 1
-    r00490 | "trim" | "(" | 1
-    r00491 | "repeat" | "(" | 1
-    r00492 | "count" | "Integer" | 1
-    r00493 | "builder" | "StringBuilder" | 4
-    r00494 | "builder" | "(" | 1
-    r00495 | "[" | "Mutable" | 7
-    r00496 | "Mutable" | "]" | 7
-    r00497 | "]" | "binary" | 3
-    r00498 | "]" | "," | 2
-    r00499 | "]" | ")" | 2
-    r00500 | "char" | "(" | 1
-    r00501 | "build" | "(" | 1
+    r00456 | "Text" | "narrative" | 1
+    r00457 | "String operations and construction." | "type" | 1
+    r00458 | "StringBuilder" | ":" | 7
+    r00459 | "StringBuilder" | "is" | 1
+    r00460 | "starts" | "(" | 1
+    r00461 | "prefix" | "String" | 1
+    r00462 | "ends" | "(" | 1
+    r00463 | "suffix" | "String" | 1
+    r00464 | "substring" | "String" | 2
+    r00465 | "separator" | "String" | 2
+    r00466 | "parts" | "List" | 1
+    r00467 | "trim" | "(" | 1
+    r00468 | "repeat" | "(" | 1
+    r00469 | "count" | "Integer" | 1
+    r00470 | "builder" | "StringBuilder" | 4
+    r00471 | "builder" | "(" | 1
+    r00472 | "[" | "Mutable" | 7
+    r00473 | "Mutable" | "]" | 7
+    r00474 | "]" | "binary" | 3
+    r00475 | "]" | "," | 2
+    r00476 | "]" | ")" | 2
+    r00477 | "char" | "(" | 1
+    r00478 | "build" | "(" | 1
+    r00479 | "Time representation, arithmetic, and calendar operations." | "type" | 1
+    r00480 | "Clock" | "binary" | 2
+    r00481 | "Clock" | "is" | 1
+    r00482 | "Clock" | ")" | 1
+    r00483 | "Weekday" | "is" | 1
+    r00484 | "Weekday" | "binary" | 1
+    r00485 | "hours" | "Integer" | 1
+    r00486 | "minutes" | "Integer" | 1
+    r00487 | "seconds" | "Integer" | 1
+    r00488 | "stop" | "Time" | 1
+    r00489 | "year" | "Integer" | 4
+    r00490 | "month" | "Integer" | 3
+    r00491 | "day" | "Integer" | 2
+    r00492 | "days" | "(" | 2
+    r00493 | "days" | "Integer" | 1
+    r00494 | "clock" | "(" | 3
+    r00495 | "clock" | "Clock" | 1
+    r00496 | "weekday" | "(" | 2
+    r00497 | "hour" | "Integer" | 2
+    r00498 | "minute" | "Integer" | 2
+    r00499 | "Type validation and conversion functions." | "validates" | 1
+    r00500 | "float" | "(" | 3
+    r00501 | "null" | "(" | 1

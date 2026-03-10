@@ -1,0 +1,10842 @@
+{
+  "<START>": [
+    [
+      "module",
+      144
+    ],
+    [
+      "Expected diagnostics: I201",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "module": [
+    [
+      "Main",
+      33
+    ],
+    [
+      "Bytes",
+      1
+    ],
+    [
+      "Character",
+      1
+    ],
+    [
+      "Error",
+      1
+    ],
+    [
+      "Format",
+      1
+    ],
+    [
+      "Hash",
+      1
+    ],
+    [
+      "InputOutput",
+      1
+    ],
+    [
+      "List",
+      1
+    ],
+    [
+      "Math",
+      1
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "Bytes": [
+    [
+      "types",
+      5
+    ],
+    [
+      "creates",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "narrative": [
+    [
+      ":",
+      143
+    ]
+  ],
+  ":": [
+    [
+      "[",
+      14
+    ],
+    [
+      "a",
+      4
+    ],
+    [
+      "result",
+      4
+    ],
+    [
+      "n",
+      2
+    ],
+    [
+      "bad",
+      2
+    ],
+    [
+      "Byte sequence manipulation.",
+      1
+    ],
+    [
+      "Character classification and access.",
+      1
+    ],
+    [
+      "Result and Option utilities.",
+      1
+    ],
+    [
+      "String formatting and numeric display.",
+      1
+    ],
+    [
+      "Cryptographic hashing and verification.",
+      1
+    ]
+  ],
+  "Byte sequence manipulation.": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "type": [
+    [
+      "Color",
+      6
+    ],
+    [
+      "Point",
+      2
+    ],
+    [
+      "Positive",
+      2
+    ],
+    [
+      "Status",
+      2
+    ],
+    [
+      "ByteArray",
+      1
+    ],
+    [
+      "ProcessResult",
+      1
+    ],
+    [
+      "DirEntry",
+      1
+    ],
+    [
+      "Url",
+      1
+    ],
+    [
+      "Match",
+      1
+    ],
+    [
+      "Store",
+      1
+    ]
+  ],
+  "ByteArray": [
+    [
+      ")",
+      12
+    ],
+    [
+      ",",
+      11
+    ],
+    [
+      "binary",
+      9
+    ],
+    [
+      "=",
+      6
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "creates",
+      1
+    ],
+    [
+      "type",
+      1
+    ],
+    [
+      "Bytes",
+      1
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "is": [
+    [
+      "binary",
+      20
+    ],
+    [
+      "String",
+      8
+    ],
+    [
+      "Red",
+      4
+    ],
+    [
+      "x",
+      3
+    ],
+    [
+      "value",
+      2
+    ],
+    [
+      "Integer",
+      2
+    ],
+    [
+      "Data",
+      1
+    ],
+    [
+      "120",
+      1
+    ],
+    [
+      "42",
+      1
+    ],
+    [
+      "authenticated",
+      1
+    ]
+  ],
+  "binary": [
+    [
+      "reads",
+      71
+    ],
+    [
+      "validates",
+      61
+    ],
+    [
+      "transforms",
+      42
+    ],
+    [
+      "creates",
+      27
+    ],
+    [
+      "inputs",
+      17
+    ],
+    [
+      "type",
+      12
+    ],
+    [
+      "outputs",
+      8
+    ],
+    [
+      "DataTable",
+      1
+    ]
+  ],
+  "creates": [
+    [
+      "json",
+      6
+    ],
+    [
+      "byte",
+      3
+    ],
+    [
+      "date",
+      3
+    ],
+    [
+      "hex",
+      2
+    ],
+    [
+      "datetime",
+      2
+    ],
+    [
+      "duration",
+      2
+    ],
+    [
+      "hmac",
+      2
+    ],
+    [
+      "range",
+      2
+    ],
+    [
+      "value",
+      2
+    ],
+    [
+      "base64",
+      2
+    ]
+  ],
+  "byte": [
+    [
+      "(",
+      4
+    ],
+    [
+      "hex",
+      1
+    ],
+    [
+      "Bytes",
+      1
+    ]
+  ],
+  "(": [
+    [
+      ")",
+      86
+    ],
+    [
+      "value",
+      42
+    ],
+    [
+      "text",
+      32
+    ],
+    [
+      "n",
+      32
+    ],
+    [
+      "source",
+      29
+    ],
+    [
+      "data",
+      22
+    ],
+    [
+      "a",
+      21
+    ],
+    [
+      "items",
+      17
+    ],
+    [
+      "path",
+      15
+    ],
+    [
+      "x",
+      13
+    ]
+  ],
+  "values": [
+    [
+      "List",
+      1
+    ],
+    [
+      "(",
+      1
+    ]
+  ],
+  "List": [
+    [
+      "<",
+      63
+    ],
+    [
+      "reads",
+      5
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "<": [
+    [
+      "Value",
+      43
+    ],
+    [
+      "Unit",
+      30
+    ],
+    [
+      "Integer",
+      28
+    ],
+    [
+      "String",
+      27
+    ],
+    [
+      "List",
+      6
+    ],
+    [
+      "Email",
+      5
+    ],
+    [
+      "Match",
+      4
+    ],
+    [
+      "DirEntry",
+      2
+    ],
+    [
+      "StoreTable",
+      2
+    ],
+    [
+      "Conflict",
+      2
+    ]
+  ],
+  "Integer": [
+    [
+      ")",
+      91
+    ],
+    [
+      ",",
+      40
+    ],
+    [
+      "from",
+      36
+    ],
+    [
+      "=",
+      28
+    ],
+    [
+      ">",
+      24
+    ],
+    [
+      "binary",
+      24
+    ],
+    [
+      "ensures",
+      16
+    ],
+    [
+      "where",
+      5
+    ],
+    [
+      "transforms",
+      4
+    ],
+    [
+      "y",
+      3
+    ]
+  ],
+  ">": [
+    [
+      "!",
+      39
+    ],
+    [
+      ")",
+      34
+    ],
+    [
+      "binary",
+      32
+    ],
+    [
+      "=",
+      32
+    ],
+    [
+      ",",
+      12
+    ],
+    [
+      "0",
+      8
+    ],
+    [
+      ">",
+      3
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "2",
+      1
+    ],
+    [
+      "-",
+      1
+    ]
+  ],
+  ")": [
+    [
+      "console",
+      109
+    ],
+    [
+      "Integer",
+      92
+    ],
+    [
+      "binary",
+      66
+    ],
+    [
+      "String",
+      64
+    ],
+    [
+      "}",
+      59
+    ],
+    [
+      "Result",
+      43
+    ],
+    [
+      "=>",
+      18
+    ],
+    [
+      "List",
+      17
+    ],
+    [
+      "from",
+      16
+    ],
+    [
+      ")",
+      15
+    ]
+  ],
+  "validates": [
+    [
+      "contains",
+      4
+    ],
+    [
+      "test",
+      3
+    ],
+    [
+      "alpha",
+      2
+    ],
+    [
+      "time",
+      2
+    ],
+    [
+      "date",
+      2
+    ],
+    [
+      "datetime",
+      2
+    ],
+    [
+      "file",
+      2
+    ],
+    [
+      "empty",
+      2
+    ],
+    [
+      "object",
+      2
+    ],
+    [
+      "json",
+      2
+    ]
+  ],
+  "data": [
+    [
+      "ByteArray",
+      14
+    ],
+    [
+      "as",
+      4
+    ],
+    [
+      "String",
+      3
+    ],
+    [
+      ")",
+      3
+    ],
+    [
+      ".",
+      3
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "reads": [
+    [
+      "length",
+      10
+    ],
+    [
+      "text",
+      6
+    ],
+    [
+      "string",
+      5
+    ],
+    [
+      "hex",
+      3
+    ],
+    [
+      "at",
+      3
+    ],
+    [
+      "index",
+      3
+    ],
+    [
+      "abs",
+      3
+    ],
+    [
+      "object",
+      3
+    ],
+    [
+      "url",
+      3
+    ],
+    [
+      "unwrap_or",
+      2
+    ]
+  ],
+  "slice": [
+    [
+      "(",
+      6
+    ],
+    [
+      "reverse",
+      1
+    ],
+    [
+      "trim",
+      1
+    ]
+  ],
+  ",": [
+    [
+      "Error",
+      43
+    ],
+    [
+      "pattern",
+      16
+    ],
+    [
+      "String",
+      10
+    ],
+    [
+      "table",
+      9
+    ],
+    [
+      "b",
+      9
+    ],
+    [
+      ", ",
+      9
+    ],
+    [
+      "3",
+      8
+    ],
+    [
+      "second",
+      7
+    ],
+    [
+      "text",
+      7
+    ],
+    [
+      "0",
+      7
+    ]
+  ],
+  "start": [
+    [
+      "Integer",
+      4
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      "Time",
+      1
+    ],
+    [
+      "end",
+      1
+    ]
+  ],
+  "length": [
+    [
+      "(",
+      11
+    ],
+    [
+      "main",
+      2
+    ],
+    [
+      "Integer",
+      1
+    ],
+    [
+      "index",
+      1
+    ],
+    [
+      "Types",
+      1
+    ],
+    [
+      "Text",
+      1
+    ],
+    [
+      "keys",
+      1
+    ],
+    [
+      "List",
+      1
+    ]
+  ],
+  "first": [
+    [
+      "(",
+      2
+    ],
+    [
+      "Integer",
+      2
+    ],
+    [
+      "Float",
+      2
+    ],
+    [
+      "|",
+      2
+    ],
+    [
+      "ByteArray",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      "last",
+      1
+    ]
+  ],
+  "second": [
+    [
+      "Integer",
+      4
+    ],
+    [
+      "Float",
+      2
+    ],
+    [
+      "ByteArray",
+      1
+    ],
+    [
+      "|",
+      1
+    ]
+  ],
+  "hex": [
+    [
+      "(",
+      10
+    ],
+    [
+      "Bytes",
+      1
+    ],
+    [
+      "at",
+      1
+    ],
+    [
+      "pad_left",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "String": [
+    [
+      ")",
+      86
+    ],
+    [
+      "=",
+      53
+    ],
+    [
+      "binary",
+      49
+    ],
+    [
+      ",",
+      39
+    ],
+    [
+      ">",
+      34
+    ],
+    [
+      "from",
+      13
+    ],
+    [
+      "where",
+      5
+    ],
+    [
+      "Integer",
+      3
+    ],
+    [
+      "requires",
+      2
+    ],
+    [
+      "Float",
+      1
+    ]
+  ],
+  "source": [
+    [
+      "String",
+      19
+    ],
+    [
+      ")",
+      6
+    ],
+    [
+      "Source",
+      2
+    ],
+    [
+      "as",
+      2
+    ],
+    [
+      "Url",
+      1
+    ],
+    [
+      "Event",
+      1
+    ]
+  ],
+  "at": [
+    [
+      "(",
+      6
+    ],
+    [
+      "main",
+      2
+    ]
+  ],
+  "index": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Integer",
+      3
+    ],
+    [
+      "validates",
+      1
+    ]
+  ],
+  "Character": [
+    [
+      ")",
+      12
+    ],
+    [
+      "=",
+      7
+    ],
+    [
+      "binary",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "validates",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "Character classification and access.": [
+    [
+      "validates",
+      1
+    ]
+  ],
+  "alpha": [
+    [
+      "(",
+      3
+    ],
+    [
+      "digit",
+      1
+    ]
+  ],
+  "character": [
+    [
+      "Character",
+      8
+    ],
+    [
+      "(",
+      2
+    ]
+  ],
+  "digit": [
+    [
+      "(",
+      3
+    ],
+    [
+      "alnum",
+      1
+    ]
+  ],
+  "alnum": [
+    [
+      "(",
+      3
+    ],
+    [
+      "upper",
+      1
+    ]
+  ],
+  "upper": [
+    [
+      "(",
+      5
+    ],
+    [
+      "lower",
+      1
+    ],
+    [
+      "split",
+      1
+    ]
+  ],
+  "lower": [
+    [
+      "(",
+      5
+    ],
+    [
+      "space",
+      1
+    ],
+    [
+      "upper",
+      1
+    ]
+  ],
+  "space": [
+    [
+      "(",
+      2
+    ],
+    [
+      "Character",
+      1
+    ]
+  ],
+  "string": [
+    [
+      "(",
+      11
+    ],
+    [
+      "String",
+      5
+    ],
+    [
+      "}",
+      4
+    ],
+    [
+      "we",
+      2
+    ],
+    [
+      "code",
+      1
+    ],
+    [
+      "main",
+      1
+    ],
+    [
+      "object",
+      1
+    ],
+    [
+      "and",
+      1
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "Error": [
+    [
+      ">",
+      43
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "Result and Option utilities.": [
+    [
+      "validates",
+      1
+    ]
+  ],
+  "ok": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "result": [
+    [
+      "==",
+      10
+    ],
+    [
+      ">=",
+      9
+    ],
+    [
+      "MergeResult",
+      3
+    ],
+    [
+      "as",
+      3
+    ],
+    [
+      "Result",
+      2
+    ],
+    [
+      "+",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      ">",
+      1
+    ],
+    [
+      "Ok",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Result": [
+    [
+      "<",
+      53
+    ]
+  ],
+  "Value": [
+    [
+      ">",
+      35
+    ],
+    [
+      ")",
+      16
+    ],
+    [
+      ",",
+      10
+    ],
+    [
+      "binary",
+      3
+    ],
+    [
+      "Parse",
+      1
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "Table",
+      1
+    ],
+    [
+      "=",
+      1
+    ]
+  ],
+  "err": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "some": [
+    [
+      "(",
+      1
+    ],
+    [
+      "_",
+      1
+    ]
+  ],
+  "option": [
+    [
+      "Option",
+      5
+    ]
+  ],
+  "Option": [
+    [
+      "<",
+      20
+    ]
+  ],
+  "none": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "unwrap_or": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "default": [
+    [
+      "Integer",
+      1
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "transforms": [
+    [
+      "bad",
+      21
+    ],
+    [
+      "add",
+      10
+    ],
+    [
+      "demo",
+      10
+    ],
+    [
+      "join",
+      9
+    ],
+    [
+      "check",
+      8
+    ],
+    [
+      "slice",
+      4
+    ],
+    [
+      "replace",
+      4
+    ],
+    [
+      "double",
+      4
+    ],
+    [
+      "unwrap",
+      2
+    ],
+    [
+      "hex",
+      2
+    ]
+  ],
+  "unwrap": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "Format": [
+    [
+      "transforms",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "String formatting and numeric display.": [
+    [
+      "Time",
+      1
+    ]
+  ],
+  "Time": [
+    [
+      "=",
+      5
+    ],
+    [
+      ")",
+      5
+    ],
+    [
+      "binary",
+      3
+    ],
+    [
+      "types",
+      2
+    ],
+    [
+      "Date",
+      2
+    ],
+    [
+      ",",
+      2
+    ],
+    [
+      "inputs",
+      2
+    ],
+    [
+      "Format",
+      1
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "types": [
+    [
+      "ByteArray",
+      5
+    ],
+    [
+      "Time",
+      3
+    ],
+    [
+      "Value",
+      3
+    ],
+    [
+      "Table",
+      3
+    ],
+    [
+      "Url",
+      2
+    ],
+    [
+      "DirEntry",
+      1
+    ],
+    [
+      "Match",
+      1
+    ]
+  ],
+  "Date": [
+    [
+      "binary",
+      4
+    ],
+    [
+      ",",
+      3
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "DateTime",
+      1
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "Clock",
+      1
+    ],
+    [
+      "=",
+      1
+    ]
+  ],
+  "DateTime": [
+    [
+      "binary",
+      3
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "Duration",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "Duration": [
+    [
+      "binary",
+      3
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "Time",
+      1
+    ],
+    [
+      "=",
+      1
+    ]
+  ],
+  "pad_left": [
+    [
+      "(",
+      2
+    ],
+    [
+      "pad_right",
+      1
+    ]
+  ],
+  "text": [
+    [
+      "String",
+      22
+    ],
+    [
+      ")",
+      9
+    ],
+    [
+      ",",
+      8
+    ],
+    [
+      "(",
+      7
+    ],
+    [
+      "as",
+      3
+    ],
+    [
+      "Text",
+      3
+    ],
+    [
+      "main",
+      2
+    ],
+    [
+      "}",
+      2
+    ],
+    [
+      "integer",
+      1
+    ],
+    [
+      "start",
+      1
+    ]
+  ],
+  "width": [
+    [
+      "Integer",
+      4
+    ]
+  ],
+  "fill": [
+    [
+      "Character",
+      3
+    ]
+  ],
+  "pad_right": [
+    [
+      "(",
+      2
+    ],
+    [
+      "center",
+      1
+    ]
+  ],
+  "center": [
+    [
+      "(",
+      2
+    ],
+    [
+      "bin",
+      1
+    ]
+  ],
+  "number": [
+    [
+      "Integer",
+      4
+    ],
+    [
+      "(",
+      2
+    ]
+  ],
+  "bin": [
+    [
+      "(",
+      2
+    ],
+    [
+      "octal",
+      1
+    ]
+  ],
+  "octal": [
+    [
+      "(",
+      2
+    ],
+    [
+      "decimal",
+      1
+    ]
+  ],
+  "decimal": [
+    [
+      "(",
+      9
+    ],
+    [
+      "main",
+      1
+    ],
+    [
+      "boolean",
+      1
+    ]
+  ],
+  "value": [
+    [
+      "Value",
+      17
+    ],
+    [
+      "Float",
+      12
+    ],
+    [
+      "Integer",
+      8
+    ],
+    [
+      "(",
+      6
+    ],
+    [
+      "String",
+      5
+    ],
+    [
+      "Boolean",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "Decimal",
+      1
+    ],
+    [
+      "Character",
+      1
+    ],
+    [
+      "type",
+      1
+    ]
+  ],
+  "Decimal": [
+    [
+      "=",
+      2
+    ],
+    [
+      "from",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "ensures",
+      1
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "places": [
+    [
+      "Integer",
+      2
+    ]
+  ],
+  "Float": [
+    [
+      ")",
+      15
+    ],
+    [
+      "binary",
+      11
+    ],
+    [
+      ",",
+      8
+    ],
+    [
+      "=",
+      2
+    ],
+    [
+      "where",
+      1
+    ]
+  ],
+  "time": [
+    [
+      "(",
+      14
+    ],
+    [
+      "Time",
+      6
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "RESET",
+      1
+    ]
+  ],
+  "pattern": [
+    [
+      "String",
+      16
+    ]
+  ],
+  "date": [
+    [
+      "(",
+      8
+    ],
+    [
+      "Date",
+      5
+    ],
+    [
+      "clock",
+      1
+    ]
+  ],
+  "datetime": [
+    [
+      "(",
+      7
+    ],
+    [
+      "DateTime",
+      3
+    ]
+  ],
+  "duration": [
+    [
+      "(",
+      7
+    ],
+    [
+      "Duration",
+      3
+    ],
+    [
+      "Time",
+      1
+    ]
+  ],
+  "Hash": [
+    [
+      "narrative",
+      1
+    ],
+    [
+      "creates",
+      1
+    ]
+  ],
+  "Cryptographic hashing and verification.": [
+    [
+      "Bytes",
+      1
+    ]
+  ],
+  "sha256": [
+    [
+      "(",
+      5
+    ],
+    [
+      "sha512",
+      1
+    ]
+  ],
+  "expected": [
+    [
+      "ByteArray",
+      3
+    ]
+  ],
+  "sha512": [
+    [
+      "(",
+      4
+    ],
+    [
+      "blake3",
+      1
+    ]
+  ],
+  "blake3": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Bytes",
+      1
+    ]
+  ],
+  "hmac": [
+    [
+      "(",
+      3
+    ],
+    [
+      "sha256",
+      1
+    ]
+  ],
+  "key": [
+    [
+      "String",
+      4
+    ],
+    [
+      "ByteArray",
+      2
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "signature": [
+    [
+      "ByteArray",
+      1
+    ]
+  ],
+  "InputOutput": [
+    [
+      "outputs",
+      37
+    ],
+    [
+      "inputs",
+      3
+    ],
+    [
+      ".",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "Handles IO operations across console, file, system, dir, and process channels.": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "ProcessResult": [
+    [
+      "is",
+      1
+    ],
+    [
+      "binary",
+      1
+    ]
+  ],
+  "DirEntry": [
+    [
+      ">",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "List",
+      1
+    ]
+  ],
+  "outputs": [
+    [
+      "console",
+      39
+    ],
+    [
+      "file",
+      2
+    ],
+    [
+      "run",
+      2
+    ],
+    [
+      "system",
+      1
+    ],
+    [
+      "dir",
+      1
+    ],
+    [
+      "store",
+      1
+    ],
+    [
+      "table",
+      1
+    ],
+    [
+      "lookup",
+      1
+    ],
+    [
+      "rollback",
+      1
+    ],
+    [
+      "log_msg",
+      1
+    ]
+  ],
+  "console": [
+    [
+      "(",
+      159
+    ],
+    [
+      "Parse",
+      6
+    ],
+    [
+      "type",
+      3
+    ],
+    [
+      "transforms",
+      3
+    ],
+    [
+      "main",
+      3
+    ],
+    [
+      "Pattern",
+      3
+    ],
+    [
+      "Time",
+      2
+    ],
+    [
+      "outputs",
+      2
+    ],
+    [
+      "Text",
+      2
+    ],
+    [
+      "Bytes",
+      1
+    ]
+  ],
+  "inputs": [
+    [
+      "console",
+      3
+    ],
+    [
+      "time",
+      3
+    ],
+    [
+      "integer",
+      3
+    ],
+    [
+      "file",
+      2
+    ],
+    [
+      "dir",
+      2
+    ],
+    [
+      "decimal",
+      2
+    ],
+    [
+      "choice",
+      2
+    ],
+    [
+      "shuffle",
+      2
+    ],
+    [
+      "system",
+      1
+    ],
+    [
+      "process",
+      1
+    ]
+  ],
+  "file": [
+    [
+      "(",
+      10
+    ],
+    [
+      ",",
+      3
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "path": [
+    [
+      "String",
+      16
+    ]
+  ],
+  "!": [
+    [
+      "from",
+      33
+    ],
+    [
+      "binary",
+      10
+    ],
+    [
+      "console",
+      2
+    ],
+    [
+      "val",
+      1
+    ],
+    [
+      "s",
+      1
+    ],
+    [
+      "doc",
+      1
+    ],
+    [
+      "root",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "ensure_user",
+      1
+    ],
+    [
+      "requires",
+      1
+    ]
+  ],
+  "content": [
+    [
+      "String",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Unit": [
+    [
+      ",",
+      30
+    ],
+    [
+      "from",
+      9
+    ],
+    [
+      "=",
+      1
+    ],
+    [
+      "!",
+      1
+    ]
+  ],
+  "system": [
+    [
+      "(",
+      3
+    ]
+  ],
+  "command": [
+    [
+      "String",
+      2
+    ]
+  ],
+  "arguments": [
+    [
+      "List",
+      1
+    ]
+  ],
+  "code": [
+    [
+      "Integer",
+      2
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "dir": [
+    [
+      "(",
+      4
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "process": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "Operations on lists.": [
+    [
+      "reads",
+      1
+    ]
+  ],
+  "items": [
+    [
+      "List",
+      17
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "last": [
+    [
+      "(",
+      2
+    ],
+    [
+      "length",
+      1
+    ]
+  ],
+  "position": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "empty": [
+    [
+      "(",
+      2
+    ],
+    [
+      "string",
+      2
+    ],
+    [
+      "contains",
+      1
+    ]
+  ],
+  "contains": [
+    [
+      "(",
+      8
+    ],
+    [
+      "creates",
+      1
+    ],
+    [
+      "main",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "Text",
+      1
+    ]
+  ],
+  "end": [
+    [
+      "Integer",
+      3
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "reverse": [
+    [
+      "(",
+      2
+    ],
+    [
+      "sort",
+      1
+    ]
+  ],
+  "sort": [
+    [
+      "(",
+      3
+    ],
+    [
+      "Error",
+      1
+    ]
+  ],
+  "range": [
+    [
+      "(",
+      2
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "Math": [
+    [
+      "reads",
+      3
+    ],
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "Numeric operations.": [
+    [
+      "reads",
+      1
+    ]
+  ],
+  "abs": [
+    [
+      "(",
+      4
+    ],
+    [
+      "min",
+      1
+    ]
+  ],
+  "min": [
+    [
+      "(",
+      3
+    ],
+    [
+      "max",
+      1
+    ]
+  ],
+  "max": [
+    [
+      "(",
+      3
+    ],
+    [
+      "sqrt",
+      1
+    ]
+  ],
+  "clamp": [
+    [
+      "(",
+      3
+    ]
+  ],
+  "minimum": [
+    [
+      "Integer",
+      3
+    ],
+    [
+      "Float",
+      2
+    ]
+  ],
+  "maximum": [
+    [
+      "Integer",
+      3
+    ],
+    [
+      "Float",
+      2
+    ]
+  ],
+  "sqrt": [
+    [
+      "(",
+      3
+    ],
+    [
+      "VALUE",
+      1
+    ],
+    [
+      "floor",
+      1
+    ]
+  ],
+  "power": [
+    [
+      "(",
+      2
+    ],
+    [
+      "ceil",
+      1
+    ]
+  ],
+  "base": [
+    [
+      "StoreTable",
+      2
+    ],
+    [
+      "Float",
+      1
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "exponent": [
+    [
+      "Float",
+      1
+    ]
+  ],
+  "floor": [
+    [
+      "(",
+      2
+    ],
+    [
+      "power",
+      1
+    ]
+  ],
+  "ceil": [
+    [
+      "(",
+      2
+    ],
+    [
+      "round",
+      1
+    ]
+  ],
+  "round": [
+    [
+      "(",
+      2
+    ],
+    [
+      "log",
+      1
+    ]
+  ],
+  "log": [
+    [
+      "(",
+      2
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "Parse": [
+    [
+      "creates",
+      8
+    ],
+    [
+      "reads",
+      6
+    ],
+    [
+      "types",
+      3
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "validates",
+      1
+    ]
+  ],
+  "Encoding and decoding of structured data formats.": [
+    [
+      "Types",
+      1
+    ]
+  ],
+  "Types": [
+    [
+      "validates",
+      2
+    ],
+    [
+      "reads",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "object": [
+    [
+      "(",
+      6
+    ],
+    [
+      "text",
+      2
+    ],
+    [
+      "toml",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "value",
+      1
+    ]
+  ],
+  "integer": [
+    [
+      "(",
+      8
+    ],
+    [
+      "Bytes",
+      1
+    ],
+    [
+      "decimal",
+      1
+    ]
+  ],
+  "Url": [
+    [
+      "binary",
+      3
+    ],
+    [
+      "=",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "Bytes",
+      1
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "Source": [
+    [
+      ")",
+      2
+    ]
+  ],
+  "toml": [
+    [
+      "(",
+      4
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Table": [
+    [
+      "<",
+      16
+    ],
+    [
+      "types",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      ".",
+      1
+    ],
+    [
+      "reads",
+      1
+    ],
+    [
+      "Text",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "type",
+      1
+    ]
+  ],
+  "json": [
+    [
+      "(",
+      12
+    ],
+    [
+      ",",
+      2
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      "outputs",
+      1
+    ],
+    [
+      "value",
+      1
+    ],
+    [
+      "object",
+      1
+    ],
+    [
+      "Types",
+      1
+    ],
+    [
+      "string",
+      1
+    ]
+  ],
+  "tag": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "bool": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "Boolean": [
+    [
+      "=",
+      14
+    ],
+    [
+      ")",
+      3
+    ],
+    [
+      "binary",
+      2
+    ],
+    [
+      "authorized",
+      1
+    ],
+    [
+      "balance",
+      1
+    ]
+  ],
+  "array": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "url": [
+    [
+      "(",
+      6
+    ],
+    [
+      "Parse",
+      2
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "raw": [
+    [
+      ")",
+      4
+    ],
+    [
+      "String",
+      3
+    ],
+    [
+      "argument",
+      1
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "scheme": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "host": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "params": [
+    [
+      "Table",
+      1
+    ]
+  ],
+  "base64": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "encoded": [
+    [
+      "String",
+      2
+    ],
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "csv": [
+    [
+      "(",
+      6
+    ],
+    [
+      ",",
+      2
+    ],
+    [
+      "List",
+      1
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "rows": [
+    [
+      ")",
+      2
+    ],
+    [
+      "List",
+      1
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "Path": [
+    [
+      "narrative",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "File path manipulation.": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "join": [
+    [
+      "(",
+      14
+    ],
+    [
+      "main",
+      6
+    ],
+    [
+      "Parse",
+      1
+    ],
+    [
+      "replace",
+      1
+    ]
+  ],
+  "part": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "parent": [
+    [
+      "(",
+      2
+    ],
+    [
+      "stem",
+      1
+    ]
+  ],
+  "name": [
+    [
+      "String",
+      7
+    ],
+    [
+      "(",
+      5
+    ],
+    [
+      ",",
+      5
+    ],
+    [
+      "from",
+      1
+    ]
+  ],
+  "stem": [
+    [
+      "(",
+      2
+    ],
+    [
+      "extension",
+      1
+    ]
+  ],
+  "extension": [
+    [
+      "(",
+      2
+    ],
+    [
+      "name",
+      1
+    ]
+  ],
+  "absolute": [
+    [
+      "(",
+      2
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "normalize": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "Pattern": [
+    [
+      "validates",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "Regular expression matching.": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Match": [
+    [
+      ">",
+      4
+    ],
+    [
+      ")",
+      3
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "List",
+      1
+    ]
+  ],
+  "test": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Text",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "search": [
+    [
+      "(",
+      2
+    ],
+    [
+      "find_all",
+      1
+    ]
+  ],
+  "find_all": [
+    [
+      "(",
+      2
+    ],
+    [
+      "text",
+      1
+    ]
+  ],
+  "replace": [
+    [
+      "(",
+      5
+    ],
+    [
+      "split",
+      1
+    ],
+    [
+      "main",
+      1
+    ],
+    [
+      "repeat",
+      1
+    ]
+  ],
+  "replacement": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "split": [
+    [
+      "(",
+      4
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "join",
+      1
+    ]
+  ],
+  "matched": [
+    [
+      "Match",
+      3
+    ]
+  ],
+  "Log": [
+    [
+      "narrative",
+      1
+    ],
+    [
+      "detached",
+      1
+    ]
+  ],
+  "Console color constants for terminal output.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "RESET": [
+    [
+      "}",
+      4
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "as": [
+    [
+      "String",
+      53
+    ],
+    [
+      "Integer",
+      28
+    ],
+    [
+      "List",
+      19
+    ],
+    [
+      "Boolean",
+      14
+    ],
+    [
+      "Character",
+      7
+    ],
+    [
+      "ByteArray",
+      6
+    ],
+    [
+      "Time",
+      5
+    ],
+    [
+      "Result",
+      5
+    ],
+    [
+      "Option",
+      5
+    ],
+    [
+      "Table",
+      3
+    ]
+  ],
+  "=": [
+    [
+      "time",
+      5
+    ],
+    [
+      "comptime",
+      5
+    ],
+    [
+      "json",
+      5
+    ],
+    [
+      "valid",
+      4
+    ],
+    [
+      "contains",
+      4
+    ],
+    [
+      "Color",
+      4
+    ],
+    [
+      "hex",
+      3
+    ],
+    [
+      "at",
+      3
+    ],
+    [
+      "n",
+      3
+    ],
+    [
+      "file",
+      3
+    ]
+  ],
+  "\u001b[0m": [
+    [
+      "BOLD",
+      1
+    ]
+  ],
+  "BOLD": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "\u001b[1m": [
+    [
+      "DIM",
+      1
+    ]
+  ],
+  "DIM": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "\u001b[2m": [
+    [
+      "RED",
+      1
+    ]
+  ],
+  "RED": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "\u001b[31m": [
+    [
+      "GREEN",
+      1
+    ]
+  ],
+  "GREEN": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "\u001b[32m": [
+    [
+      "YELLOW",
+      1
+    ]
+  ],
+  "YELLOW": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "\u001b[33m": [
+    [
+      "BLUE",
+      1
+    ]
+  ],
+  "BLUE": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "\u001b[34m": [
+    [
+      "MAGENTA",
+      1
+    ]
+  ],
+  "MAGENTA": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "\u001b[35m": [
+    [
+      "CYAN",
+      1
+    ]
+  ],
+  "CYAN": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "\u001b[36m": [
+    [
+      "WHITE",
+      1
+    ]
+  ],
+  "WHITE": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "\u001b[37m": [
+    [
+      "detached",
+      1
+    ]
+  ],
+  "detached": [
+    [
+      "debug",
+      2
+    ],
+    [
+      "info",
+      1
+    ],
+    [
+      "warning",
+      1
+    ],
+    [
+      "error",
+      1
+    ],
+    [
+      "fire",
+      1
+    ]
+  ],
+  "debug": [
+    [
+      "(",
+      3
+    ],
+    [
+      "info",
+      1
+    ]
+  ],
+  "from": [
+    [
+      "a",
+      17
+    ],
+    [
+      "console",
+      16
+    ],
+    [
+      "n",
+      16
+    ],
+    [
+      "x",
+      12
+    ],
+    [
+      "match",
+      11
+    ],
+    [
+      "1",
+      7
+    ],
+    [
+      "now",
+      5
+    ],
+    [
+      "p",
+      4
+    ],
+    [
+      "0",
+      2
+    ],
+    [
+      "TokenKind",
+      2
+    ]
+  ],
+  "now": [
+    [
+      "as",
+      5
+    ],
+    [
+      ",",
+      4
+    ]
+  ],
+  "{": [
+    [
+      "join",
+      8
+    ],
+    [
+      "string",
+      6
+    ],
+    [
+      "time",
+      4
+    ],
+    [
+      "RESET",
+      4
+    ],
+    [
+      "text",
+      4
+    ],
+    [
+      "hex",
+      3
+    ],
+    [
+      "error",
+      3
+    ],
+    [
+      "length",
+      3
+    ],
+    [
+      "alpha",
+      2
+    ],
+    [
+      "digit",
+      2
+    ]
+  ],
+  "}": [
+    [
+      ")",
+      107
+    ],
+    [
+      "'",
+      8
+    ],
+    [
+      "] ",
+      4
+    ],
+    [
+      "{",
+      4
+    ],
+    [
+      "[DEBUG][",
+      1
+    ],
+    [
+      "[INFO][",
+      1
+    ],
+    [
+      "[WARNING][",
+      1
+    ],
+    [
+      "[ERROR][",
+      1
+    ],
+    [
+      " entries in /tmp",
+      1
+    ],
+    [
+      ", Last: ",
+      1
+    ]
+  ],
+  "[DEBUG][": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "HH:ii": [
+    [
+      ")",
+      4
+    ]
+  ],
+  "] ": [
+    [
+      "{",
+      4
+    ]
+  ],
+  "info": [
+    [
+      "(",
+      2
+    ],
+    [
+      "warning",
+      1
+    ]
+  ],
+  "[INFO][": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "warning": [
+    [
+      "(",
+      2
+    ],
+    [
+      "error",
+      1
+    ]
+  ],
+  "[WARNING][": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "error": [
+    [
+      ")",
+      3
+    ],
+    [
+      "}",
+      3
+    ],
+    [
+      "(",
+      2
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "[ERROR][": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Random": [
+    [
+      "narrative",
+      1
+    ],
+    [
+      "inputs",
+      1
+    ]
+  ],
+  "Random value generation.": [
+    [
+      "inputs",
+      1
+    ]
+  ],
+  "boolean": [
+    [
+      "(",
+      3
+    ],
+    [
+      "choice",
+      1
+    ]
+  ],
+  "choice": [
+    [
+      "(",
+      3
+    ],
+    [
+      "shuffle",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "shuffle": [
+    [
+      "(",
+      3
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "Store": [
+    [
+      ",",
+      7
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "Manages lookup tables with storage, versioning, diffs, and compilation. Prove db is more like a key value store where all values are actually keys. For more info read the docs here: https://prove.botwork.se": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "StoreTable": [
+    [
+      ",",
+      6
+    ],
+    [
+      ")",
+      3
+    ],
+    [
+      "binary",
+      2
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "TableDiff": [
+    [
+      ",",
+      3
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "binary",
+      1
+    ]
+  ],
+  "Version": [
+    [
+      "is",
+      1
+    ],
+    [
+      ">",
+      1
+    ]
+  ],
+  "Conflict": [
+    [
+      ")",
+      4
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      ">",
+      1
+    ]
+  ],
+  "Resolution": [
+    [
+      "is",
+      1
+    ],
+    [
+      ">",
+      1
+    ]
+  ],
+  "MergeResult": [
+    [
+      ")",
+      3
+    ],
+    [
+      "binary",
+      2
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "store": [
+    [
+      "Store",
+      6
+    ],
+    [
+      "(",
+      2
+    ]
+  ],
+  "table": [
+    [
+      "Table",
+      7
+    ],
+    [
+      ")",
+      6
+    ],
+    [
+      "(",
+      3
+    ],
+    [
+      "StoreTable",
+      3
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "diff": [
+    [
+      "(",
+      1
+    ],
+    [
+      "TableDiff",
+      1
+    ]
+  ],
+  "old": [
+    [
+      "StoreTable",
+      1
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "new": [
+    [
+      "(",
+      2
+    ],
+    [
+      "StoreTable",
+      1
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "patch": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "merge": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "local": [
+    [
+      "TableDiff",
+      2
+    ]
+  ],
+  "remote": [
+    [
+      "TableDiff",
+      2
+    ]
+  ],
+  "resolver": [
+    [
+      "Verb",
+      1
+    ]
+  ],
+  "Verb": [
+    [
+      "<",
+      1
+    ]
+  ],
+  "lookup": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "integrity": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "rollback": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "version": [
+    [
+      "Integer",
+      1
+    ],
+    [
+      "(",
+      1
+    ]
+  ],
+  "merged": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "conflicts": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "variant": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "conflict": [
+    [
+      "Conflict",
+      4
+    ]
+  ],
+  "column": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "local_value": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "remote_value": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "Hash table from String keys to values.": [
+    [
+      "creates",
+      1
+    ]
+  ],
+  "has": [
+    [
+      "(",
+      3
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "add": [
+    [
+      "(",
+      11
+    ]
+  ],
+  "get": [
+    [
+      "(",
+      3
+    ],
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "remove": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "keys": [
+    [
+      "(",
+      3
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "get",
+      1
+    ]
+  ],
+  "Text": [
+    [
+      "transforms",
+      6
+    ],
+    [
+      "validates",
+      2
+    ],
+    [
+      "narrative",
+      1
+    ],
+    [
+      "contains",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "String operations and construction.": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "StringBuilder": [
+    [
+      ":",
+      7
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "starts": [
+    [
+      "(",
+      2
+    ],
+    [
+      "ends",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "prefix": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "ends": [
+    [
+      "(",
+      2
+    ],
+    [
+      "contains",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "suffix": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "substring": [
+    [
+      "String",
+      2
+    ]
+  ],
+  "separator": [
+    [
+      "String",
+      2
+    ]
+  ],
+  "parts": [
+    [
+      "as",
+      2
+    ],
+    [
+      "List",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "trim": [
+    [
+      "(",
+      2
+    ],
+    [
+      "lower",
+      1
+    ]
+  ],
+  "repeat": [
+    [
+      "(",
+      2
+    ],
+    [
+      "Text",
+      1
+    ]
+  ],
+  "count": [
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      2
+    ],
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "builder": [
+    [
+      "StringBuilder",
+      4
+    ],
+    [
+      "(",
+      1
+    ]
+  ],
+  "[": [
+    [
+      "Mutable",
+      7
+    ],
+    [
+      "Lookup",
+      7
+    ],
+    [
+      "72",
+      2
+    ],
+    [
+      "1",
+      2
+    ],
+    [
+      "3",
+      1
+    ],
+    [
+      "one",
+      1
+    ]
+  ],
+  "Mutable": [
+    [
+      "]",
+      7
+    ]
+  ],
+  "]": [
+    [
+      "is",
+      7
+    ],
+    [
+      ")",
+      4
+    ],
+    [
+      "binary",
+      3
+    ],
+    [
+      ",",
+      3
+    ],
+    [
+      "Map with lambda - double each number",
+      1
+    ],
+    [
+      "sorted_nums",
+      1
+    ],
+    [
+      "joined",
+      1
+    ]
+  ],
+  "char": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "build": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "Time representation, arithmetic, and calendar operations.": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Clock": [
+    [
+      "binary",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "Duration",
+      1
+    ],
+    [
+      "=",
+      1
+    ]
+  ],
+  "Weekday": [
+    [
+      "is",
+      1
+    ],
+    [
+      "binary",
+      1
+    ]
+  ],
+  "hours": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "minutes": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "seconds": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "stop": [
+    [
+      "Time",
+      1
+    ]
+  ],
+  "year": [
+    [
+      "Integer",
+      4
+    ]
+  ],
+  "month": [
+    [
+      "Integer",
+      3
+    ]
+  ],
+  "day": [
+    [
+      "Integer",
+      2
+    ]
+  ],
+  "days": [
+    [
+      "(",
+      3
+    ],
+    [
+      "Integer",
+      1
+    ],
+    [
+      "main",
+      1
+    ]
+  ],
+  "clock": [
+    [
+      "(",
+      4
+    ],
+    [
+      "Clock",
+      1
+    ],
+    [
+      "duration",
+      1
+    ]
+  ],
+  "weekday": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "hour": [
+    [
+      "Integer",
+      2
+    ]
+  ],
+  "minute": [
+    [
+      "Integer",
+      2
+    ]
+  ],
+  "Type validation and conversion functions.": [
+    [
+      "validates",
+      1
+    ]
+  ],
+  "float": [
+    [
+      "(",
+      3
+    ]
+  ],
+  "null": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "Main": [
+    [
+      "narrative",
+      33
+    ]
+  ],
+  "Demonstrates async verb family: detached, attached, listens.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Event": [
+    [
+      "is",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Data": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "payload": [
+    [
+      ")",
+      2
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "|": [
+    [
+      "n",
+      7
+    ],
+    [
+      "Green",
+      4
+    ],
+    [
+      "acc",
+      4
+    ],
+    [
+      "active",
+      3
+    ],
+    [
+      "x",
+      2
+    ],
+    [
+      "red",
+      2
+    ],
+    [
+      "green",
+      2
+    ],
+    [
+      "1",
+      2
+    ],
+    [
+      "first",
+      2
+    ],
+    [
+      "Exit",
+      1
+    ]
+  ],
+  "Exit": [
+    [
+      "detached",
+      1
+    ],
+    [
+      "=>",
+      1
+    ]
+  ],
+  "fire": [
+    [
+      "(",
+      4
+    ]
+  ],
+  "msg": [
+    [
+      "String",
+      2
+    ],
+    [
+      ")",
+      2
+    ]
+  ],
+  "attached": [
+    [
+      "double",
+      1
+    ]
+  ],
+  "double": [
+    [
+      "(",
+      6
+    ]
+  ],
+  "x": [
+    [
+      "Integer",
+      11
+    ],
+    [
+      "as",
+      5
+    ],
+    [
+      ">",
+      2
+    ],
+    [
+      "transforms",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "Decimal",
+      2
+    ],
+    [
+      "*",
+      1
+    ],
+    [
+      "=>",
+      1
+    ],
+    [
+      "Nonexistent",
+      1
+    ],
+    [
+      "=",
+      1
+    ]
+  ],
+  "*": [
+    [
+      "2",
+      8
+    ],
+    [
+      "50",
+      2
+    ],
+    [
+      "n",
+      2
+    ],
+    [
+      "factorial",
+      1
+    ],
+    [
+      "10",
+      1
+    ]
+  ],
+  "2": [
+    [
+      ")",
+      4
+    ],
+    [
+      ",",
+      4
+    ],
+    [
+      "transforms",
+      2
+    ],
+    [
+      "from",
+      2
+    ],
+    [
+      "listens",
+      1
+    ],
+    [
+      "PLATFORM",
+      1
+    ],
+    [
+      "x",
+      1
+    ],
+    [
+      "+",
+      1
+    ],
+    [
+      "==",
+      1
+    ],
+    [
+      "requires",
+      1
+    ]
+  ],
+  "listens": [
+    [
+      "handler",
+      1
+    ]
+  ],
+  "handler": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "=>": [
+    [
+      "console",
+      11
+    ],
+    [
+      "0",
+      5
+    ],
+    [
+      "1",
+      5
+    ],
+    [
+      "n",
+      3
+    ],
+    [
+      "red",
+      2
+    ],
+    [
+      "green",
+      2
+    ],
+    [
+      "false",
+      2
+    ],
+    [
+      "fire",
+      1
+    ],
+    [
+      "4096",
+      1
+    ],
+    [
+      "2048",
+      1
+    ]
+  ],
+  "0": [
+    [
+      "from",
+      6
+    ],
+    [
+      ")",
+      5
+    ],
+    [
+      "explain",
+      5
+    ],
+    [
+      ",",
+      5
+    ],
+    [
+      "=>",
+      3
+    ],
+    [
+      "true",
+      3
+    ],
+    [
+      "-",
+      3
+    ],
+    [
+      "near_miss",
+      2
+    ],
+    [
+      "transforms",
+      2
+    ],
+    [
+      "requires",
+      2
+    ]
+  ],
+  "&": [
+    [
+      "main",
+      1
+    ]
+  ],
+  "main": [
+    [
+      "(",
+      36
+    ]
+  ],
+  "hello from detached": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "async verbs working": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Bytes module operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "72": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "101": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "108": [
+    [
+      ",",
+      4
+    ]
+  ],
+  "111": [
+    [
+      "]",
+      2
+    ]
+  ],
+  "hex: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "first byte: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "decoded": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "48656c6c6f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "decoded hex: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates Character module operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "a": [
+    [
+      "+",
+      19
+    ],
+    [
+      "Integer",
+      16
+    ],
+    [
+      ")",
+      5
+    ],
+    [
+      "and",
+      5
+    ],
+    [
+      "as",
+      2
+    ],
+    [
+      "explain",
+      2
+    ],
+    [
+      "console",
+      1
+    ],
+    [
+      ">",
+      1
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "==",
+      1
+    ]
+  ],
+  "A": [
+    [
+      "z",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "z": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "Z": [
+    [
+      "num",
+      1
+    ]
+  ],
+  "num": [
+    [
+      ")",
+      3
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "5": [
+    [
+      ")",
+      4
+    ],
+    [
+      "space_char",
+      1
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "]",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "space_char": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  " ": [
+    [
+      ")",
+      3
+    ],
+    [
+      "lower_a",
+      1
+    ]
+  ],
+  "lower_a": [
+    [
+      ")",
+      2
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "'A' alpha: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'A' digit: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'A' alnum: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'A' upper: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'A' lower: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'5' alpha: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'5' digit: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'5' alnum: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "' ' space: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'a' upper: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'a' lower: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Hello": [
+    [
+      "char_at_0",
+      1
+    ]
+  ],
+  "char_at_0": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "char_at_4": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "4": [
+    [
+      ",",
+      3
+    ],
+    [
+      ")",
+      2
+    ]
+  ],
+  "First char of 'Hello': ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Last char of 'Hello': ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "All character operations completed!": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates compile-time computation with comptime blocks.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "BUFFER_SIZE": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "comptime": [
+    [
+      "512",
+      1
+    ],
+    [
+      "platform",
+      1
+    ],
+    [
+      "match",
+      1
+    ],
+    [
+      "read",
+      1
+    ],
+    [
+      "sqrt",
+      1
+    ]
+  ],
+  "512": [
+    [
+      "*",
+      1
+    ]
+  ],
+  "PLATFORM": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "platform": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "MAX_ITEMS": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "match": [
+    [
+      "n",
+      4
+    ],
+    [
+      "c",
+      3
+    ],
+    [
+      "r",
+      2
+    ],
+    [
+      "platform",
+      1
+    ],
+    [
+      "x",
+      1
+    ],
+    [
+      "result",
+      1
+    ],
+    [
+      "bad_result",
+      1
+    ],
+    [
+      "read_result",
+      1
+    ],
+    [
+      "found",
+      1
+    ],
+    [
+      "parsed",
+      1
+    ]
+  ],
+  "linux": [
+    [
+      "=>",
+      1
+    ]
+  ],
+  "4096": [
+    [
+      "macos",
+      1
+    ]
+  ],
+  "macos": [
+    [
+      "=>",
+      1
+    ]
+  ],
+  "2048": [
+    [
+      "_",
+      1
+    ]
+  ],
+  "_": [
+    [
+      "=>",
+      7
+    ]
+  ],
+  "1024": [
+    [
+      "main",
+      1
+    ]
+  ],
+  "Buffer size: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Platform: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Max items: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates compile-time constants (UPPERCASE names)": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "PI": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      "*",
+      1
+    ]
+  ],
+  "3.14159": [
+    [
+      "MAX_SIZE",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "MAX_SIZE": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "1000": [
+    [
+      "GREETING",
+      1
+    ],
+    [
+      "explain",
+      1
+    ]
+  ],
+  "GREETING": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Hello, World!": [
+    [
+      "main",
+      1
+    ]
+  ],
+  "PI is approximately: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Max size: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "area": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "50": [
+    [
+      "*",
+      1
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "Area of radius 50: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates advanced contract features: terminates, explain, near_miss.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "matches": [
+    [
+      "bad",
+      2
+    ],
+    [
+      "name",
+      2
+    ],
+    [
+      "abs_val",
+      2
+    ],
+    [
+      "factorial",
+      1
+    ],
+    [
+      "f",
+      1
+    ],
+    [
+      "ensure_user",
+      1
+    ]
+  ],
+  "factorial": [
+    [
+      "(",
+      3
+    ]
+  ],
+  "n": [
+    [
+      "Integer",
+      28
+    ],
+    [
+      "*",
+      10
+    ],
+    [
+      "|",
+      6
+    ],
+    [
+      ">=",
+      5
+    ],
+    [
+      ">",
+      5
+    ],
+    [
+      "+",
+      4
+    ],
+    [
+      ")",
+      3
+    ],
+    [
+      "==",
+      2
+    ],
+    [
+      "-",
+      2
+    ],
+    [
+      "false",
+      2
+    ]
+  ],
+  "ensures": [
+    [
+      "result",
+      18
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "a",
+      1
+    ],
+    [
+      "false",
+      1
+    ],
+    [
+      "valid",
+      1
+    ]
+  ],
+  ">=": [
+    [
+      "0",
+      12
+    ],
+    [
+      "1",
+      1
+    ],
+    [
+      "1000",
+      1
+    ],
+    [
+      "a",
+      1
+    ]
+  ],
+  "1": [
+    [
+      ",",
+      9
+    ],
+    [
+      "from",
+      8
+    ],
+    [
+      "=>",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "x",
+      2
+    ],
+    [
+      "requires",
+      1
+    ],
+    [
+      "near_miss",
+      1
+    ],
+    [
+      "_",
+      1
+    ],
+    [
+      "n",
+      1
+    ],
+    [
+      "Pending",
+      1
+    ]
+  ],
+  "requires": [
+    [
+      "valid",
+      6
+    ],
+    [
+      "n",
+      5
+    ],
+    [
+      "a",
+      2
+    ],
+    [
+      "s",
+      2
+    ]
+  ],
+  "explain": [
+    [
+      "sum",
+      5
+    ],
+    [
+      "wrong",
+      2
+    ],
+    [
+      "multiply",
+      2
+    ],
+    [
+      "needs",
+      2
+    ],
+    [
+      "will",
+      1
+    ],
+    [
+      "one_entry",
+      1
+    ],
+    [
+      "vague",
+      1
+    ],
+    [
+      "check",
+      1
+    ],
+    [
+      "negate",
+      1
+    ],
+    [
+      "if",
+      1
+    ]
+  ],
+  "will": [
+    [
+      "run",
+      1
+    ]
+  ],
+  "run": [
+    [
+      "(",
+      3
+    ],
+    [
+      "until",
+      1
+    ]
+  ],
+  "until": [
+    [
+      "n",
+      1
+    ]
+  ],
+  "120": [
+    [
+      "terminates",
+      1
+    ]
+  ],
+  "terminates": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "==": [
+    [
+      "a",
+      7
+    ],
+    [
+      "n",
+      3
+    ],
+    [
+      "0",
+      2
+    ],
+    [
+      "true",
+      2
+    ],
+    [
+      "5",
+      1
+    ],
+    [
+      "x",
+      1
+    ],
+    [
+      "State",
+      1
+    ]
+  ],
+  "near_miss": [
+    [
+      "0",
+      2
+    ],
+    [
+      "70",
+      1
+    ],
+    [
+      "60",
+      1
+    ],
+    [
+      "1",
+      1
+    ],
+    [
+      "State",
+      1
+    ],
+    [
+      "false",
+      1
+    ]
+  ],
+  "70": [
+    [
+      "=>",
+      1
+    ]
+  ],
+  "60": [
+    [
+      "=>",
+      1
+    ]
+  ],
+  "-": [
+    [
+      "1",
+      3
+    ],
+    [
+      "n",
+      3
+    ],
+    [
+      "42",
+      2
+    ],
+    [
+      "{",
+      1
+    ],
+    [
+      "1000000",
+      1
+    ]
+  ],
+  "fact5": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "5! = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates Types module operations.\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "string(42) = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "42": [
+    [
+      ")",
+      7
+    ],
+    [
+      "0",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      "n",
+      1
+    ]
+  ],
+  "string(true) = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "true": [
+    [
+      ")",
+      4
+    ],
+    [
+      ",",
+      4
+    ],
+    [
+      "=>",
+      3
+    ],
+    [
+      "explain",
+      2
+    ],
+    [
+      "requires",
+      1
+    ]
+  ],
+  "code('A') = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "DemoE210": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E210\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE211": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E211\n  ": [
+    [
+      "blah",
+      1
+    ]
+  ],
+  "DemoE212": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E212\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Bad": [
+    [
+      "is",
+      1
+    ]
+  ],
+  "DemoE213": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E213\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "check": [
+    [
+      "(",
+      8
+    ],
+    [
+      "a",
+      1
+    ]
+  ],
+  "DemoE214": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E214\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE215": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E215\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE300": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E300\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "bad": [
+    [
+      "(",
+      23
+    ],
+    [
+      "when",
+      2
+    ]
+  ],
+  "Nonexistent": [
+    [
+      ")",
+      1
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "reads",
+      1
+    ]
+  ],
+  "DemoE301": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E301\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "+": [
+    [
+      "b",
+      15
+    ],
+    [
+      "1",
+      9
+    ],
+    [
+      "n",
+      3
+    ],
+    [
+      "string",
+      2
+    ],
+    [
+      "2",
+      1
+    ],
+    [
+      "y",
+      1
+    ],
+    [
+      " rows",
+      1
+    ],
+    [
+      "encoded",
+      1
+    ],
+    [
+      "join",
+      1
+    ]
+  ],
+  "DemoE302": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E302\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE310": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E310\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "wrong": [
+    [
+      ":",
+      2
+    ]
+  ],
+  "when": [
+    [
+      "x",
+      1
+    ],
+    [
+      "n",
+      1
+    ]
+  ],
+  "DemoE311": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E311\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "nonexistent_func": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoE312": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E312\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  ".": [
+    [
+      "authenticated",
+      4
+    ],
+    [
+      "id",
+      2
+    ],
+    [
+      "name",
+      2
+    ],
+    [
+      "email",
+      2
+    ],
+    [
+      "nonexistent",
+      1
+    ],
+    [
+      "new",
+      1
+    ],
+    [
+      "x",
+      1
+    ],
+    [
+      "z",
+      1
+    ],
+    [
+      "authorized",
+      1
+    ],
+    [
+      "balance",
+      1
+    ]
+  ],
+  "nonexistent": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "test.txt": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "DemoE313": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E313\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE315": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E315\n  ": [
+    [
+      "Math",
+      1
+    ]
+  ],
+  "missing_function": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "demo": [
+    [
+      "(",
+      10
+    ]
+  ],
+  "DemoE316": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E316\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "len": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "xs": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "DemoE317": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E317\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "DemoE320": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E320\n  ": [
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "Color": [
+    [
+      ":",
+      7
+    ],
+    [
+      "is",
+      4
+    ],
+    [
+      ")",
+      4
+    ]
+  ],
+  "Red": [
+    [
+      "|",
+      6
+    ],
+    [
+      "=>",
+      2
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "Green": [
+    [
+      "|",
+      3
+    ],
+    [
+      "matches",
+      2
+    ],
+    [
+      "=>",
+      2
+    ],
+    [
+      "creates",
+      1
+    ]
+  ],
+  "wrap": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "c": [
+    [
+      "Color",
+      4
+    ],
+    [
+      "Red",
+      2
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "_",
+      1
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "DemoE321": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E321\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE322": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E322\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE325": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E325\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Point": [
+    [
+      "is",
+      2
+    ],
+    [
+      ")",
+      2
+    ]
+  ],
+  "y": [
+    [
+      "Integer",
+      3
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "show": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "p": [
+    [
+      ")",
+      5
+    ],
+    [
+      "Point",
+      2
+    ],
+    [
+      ".",
+      2
+    ],
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      "Pair",
+      1
+    ]
+  ],
+  "point: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "DemoE326": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E326\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE330": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E330\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "one_arg": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "DemoE331": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E331\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Pair": [
+    [
+      "is",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "from",
+      1
+    ]
+  ],
+  "DemoE340": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E340\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "DemoE350": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E350\n  ": [
+    [
+      "inputs",
+      1
+    ]
+  ],
+  "may_fail": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "DemoE352": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E352\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Positive": [
+    [
+      "is",
+      2
+    ],
+    [
+      "=",
+      1
+    ],
+    [
+      "n",
+      1
+    ],
+    [
+      "from",
+      1
+    ]
+  ],
+  "where": [
+    [
+      "Active",
+      2
+    ],
+    [
+      "Red",
+      2
+    ],
+    [
+      "First",
+      2
+    ],
+    [
+      "abs",
+      1
+    ],
+    [
+      "self",
+      1
+    ],
+    [
+      "High",
+      1
+    ],
+    [
+      "file",
+      1
+    ],
+    [
+      "^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$",
+      1
+    ]
+  ],
+  "self": [
+    [
+      ")",
+      1
+    ],
+    [
+      ">=",
+      1
+    ]
+  ],
+  "DemoE355": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E355\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "use": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoE356": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E356\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "id": [
+    [
+      "(",
+      2
+    ],
+    [
+      ",",
+      2
+    ],
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "know": [
+    [
+      ":",
+      3
+    ]
+  ],
+  "DemoE361": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E361\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE362": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E362\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "side effect": [
+    [
+      ")",
+      2
+    ]
+  ],
+  "DemoE363": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E363\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "log_msg": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "DemoE364": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E364\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "compute": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "10": [
+    [
+      ",",
+      4
+    ],
+    [
+      ")",
+      4
+    ],
+    [
+      "map",
+      1
+    ]
+  ],
+  "map": [
+    [
+      "(",
+      9
+    ]
+  ],
+  "3": [
+    [
+      ",",
+      6
+    ],
+    [
+      ")",
+      4
+    ],
+    [
+      "]",
+      1
+    ]
+  ],
+  "DemoE365": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E365\n  ": [
+    [
+      "matches",
+      1
+    ]
+  ],
+  "flag": [
+    [
+      "Boolean",
+      1
+    ]
+  ],
+  "DemoE366": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E366\n  ": [
+    [
+      "matches",
+      1
+    ]
+  ],
+  "f": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "DemoE370": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E370\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "red": [
+    [
+      "Green",
+      3
+    ],
+    [
+      "|",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "green": [
+    [
+      "Purple",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      "|",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Purple": [
+    [
+      "=>",
+      1
+    ]
+  ],
+  "DemoE371": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E371\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Blue": [
+    [
+      "matches",
+      1
+    ],
+    [
+      "|",
+      1
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "DemoE372": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E372\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "r": [
+    [
+      "Result",
+      2
+    ],
+    [
+      "Some",
+      1
+    ],
+    [
+      "Ok",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Some": [
+    [
+      "(",
+      5
+    ]
+  ],
+  "DemoE373": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E373\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "Ok": [
+    [
+      "(",
+      5
+    ]
+  ],
+  "DemoE375": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E375\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Status": [
+    [
+      ":",
+      2
+    ]
+  ],
+  "Lookup": [
+    [
+      "]",
+      7
+    ]
+  ],
+  "Active": [
+    [
+      "|",
+      2
+    ]
+  ],
+  "active": [
+    [
+      "Enabled",
+      1
+    ],
+    [
+      "|",
+      1
+    ]
+  ],
+  "Enabled": [
+    [
+      "|",
+      1
+    ]
+  ],
+  "DemoE376": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E376\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "resolve": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "s": [
+    [
+      ".",
+      6
+    ],
+    [
+      "State",
+      2
+    ],
+    [
+      "String",
+      1
+    ],
+    [
+      "Shape",
+      1
+    ],
+    [
+      "Circle",
+      1
+    ]
+  ],
+  "DemoE377": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E377\n  ": [
+    [
+      "main",
+      1
+    ]
+  ],
+  "TokenKind": [
+    [
+      ":",
+      3
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "DemoE378": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E378\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Priority": [
+    [
+      ":",
+      2
+    ]
+  ],
+  "High": [
+    [
+      "|",
+      1
+    ]
+  ],
+  "urgent": [
+    [
+      "|",
+      1
+    ]
+  ],
+  "critical": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE379": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E379\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Pending": [
+    [
+      "|",
+      1
+    ]
+  ],
+  "DemoE380": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E380\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE381": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E381\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE382": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E382\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "satisfies": [
+    [
+      "Nonexistent",
+      1
+    ],
+    [
+      "BadCheck",
+      1
+    ],
+    [
+      "Positive",
+      1
+    ],
+    [
+      "ValidState",
+      1
+    ]
+  ],
+  "DemoE383": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E383\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "square": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "false": [
+    [
+      "=>",
+      4
+    ],
+    [
+      ",",
+      3
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "||",
+      1
+    ],
+    [
+      "satisfies",
+      1
+    ]
+  ],
+  "DemoE384": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E384\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE385": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E385\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "assume": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "DemoE386": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E386\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "believe": [
+    [
+      ":",
+      4
+    ]
+  ],
+  "DemoE387": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E387\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "BadTable": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "First": [
+    [
+      "|",
+      2
+    ]
+  ],
+  "DemoE388": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E388\n  ": [
+    [
+      "binary",
+      1
+    ]
+  ],
+  "DataTable": [
+    [
+      "String",
+      1
+    ]
+  ],
+  "missing.csv": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "DemoE389": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E389\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Second": [
+    [
+      "|",
+      1
+    ]
+  ],
+  "lookup_bad": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "kind": [
+    [
+      "TokenKind",
+      1
+    ]
+  ],
+  "DemoE391": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E391\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "b": [
+    [
+      "Integer",
+      9
+    ],
+    [
+      "from",
+      4
+    ],
+    [
+      "explain",
+      3
+    ],
+    [
+      "as",
+      2
+    ],
+    [
+      "transforms",
+      2
+    ],
+    [
+      "are",
+      1
+    ],
+    [
+      "ensures",
+      1
+    ],
+    [
+      "combined",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "requires",
+      1
+    ]
+  ],
+  "sum": [
+    [
+      ":",
+      3
+    ],
+    [
+      "a",
+      3
+    ]
+  ],
+  "and": [
+    [
+      "b",
+      5
+    ],
+    [
+      "return",
+      1
+    ]
+  ],
+  "are": [
+    [
+      "added",
+      1
+    ]
+  ],
+  "added": [
+    [
+      "sum",
+      1
+    ]
+  ],
+  "duplicate": [
+    [
+      "entry",
+      1
+    ]
+  ],
+  "entry": [
+    [
+      "name",
+      1
+    ]
+  ],
+  "DemoE392": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E392\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "one_entry": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "covers": [
+    [
+      "only",
+      1
+    ]
+  ],
+  "only": [
+    [
+      "one",
+      1
+    ]
+  ],
+  "one": [
+    [
+      "ensures",
+      1
+    ],
+    [
+      "(",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "DemoE393": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E393\n  ": [
+    [
+      "matches",
+      1
+    ]
+  ],
+  "abs_val": [
+    [
+      "(",
+      5
+    ]
+  ],
+  "DemoE394": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E394\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoE395": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E395\n  ": [
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "valid": [
+    [
+      "json",
+      2
+    ],
+    [
+      "has",
+      2
+    ],
+    [
+      "string",
+      2
+    ],
+    [
+      "file",
+      1
+    ],
+    [
+      "csv",
+      1
+    ],
+    [
+      "object",
+      1
+    ],
+    [
+      "email",
+      1
+    ],
+    [
+      "value",
+      1
+    ]
+  ],
+  "DemoE396": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E396\n  ": [
+    [
+      "invariant_network",
+      1
+    ]
+  ],
+  "invariant_network": [
+    [
+      "BadCheck",
+      1
+    ],
+    [
+      "Positive",
+      1
+    ],
+    [
+      "ValidState",
+      1
+    ]
+  ],
+  "BadCheck": [
+    [
+      "42",
+      1
+    ],
+    [
+      "from",
+      1
+    ]
+  ],
+  "DemoE397": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E397\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "OpaqueHandle": [
+    [
+      "is",
+      1
+    ]
+  ],
+  "DemoE421": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E421\n  Expected to fail: build, build_debug, build_no_mutate\n  ": [
+    [
+      "CONTENT",
+      1
+    ]
+  ],
+  "CONTENT": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "read": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "missing_file.txt": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "DemoE422": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: E422\n  Expected to fail: build, build_debug, build_no_mutate\n  ": [
+    [
+      "Math",
+      1
+    ]
+  ],
+  "VALUE": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "4.0f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Expected diagnostics: I201": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoI300": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I300\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "unused": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "DemoI301": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I301\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "DemoI302": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I302\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "greet": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoI303": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I303\n  ": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Unused": [
+    [
+      "is",
+      1
+    ]
+  ],
+  "DemoI310": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I310\n  Expected to fail: format_check, format_check_md\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoI311": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I311\n  ": [
+    [
+      "Parse",
+      1
+    ]
+  ],
+  "val": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "DemoI314": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I314\n  ": [
+    [
+      "Nonexistent",
+      1
+    ]
+  ],
+  "something": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "angle": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoI320": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I320\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoI360": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I360\n  ": [
+    [
+      "validates",
+      1
+    ]
+  ],
+  "positive": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoI367": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: I367\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "yes": [
+    [
+      "false",
+      1
+    ]
+  ],
+  "DemoW304": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W304\n  ": [
+    [
+      "matches",
+      1
+    ]
+  ],
+  "DemoW311": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W311\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "intent": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "add two numbers": [
+    [
+      "from",
+      1
+    ]
+  ],
+  "DemoW312": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W312\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "DemoW321": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W321\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "vague": [
+    [
+      ":",
+      1
+    ]
+  ],
+  "xyz": [
+    [
+      "qrs",
+      1
+    ]
+  ],
+  "qrs": [
+    [
+      "tuv",
+      1
+    ]
+  ],
+  "tuv": [
+    [
+      "from",
+      1
+    ]
+  ],
+  "DemoW322": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W322\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW323": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W323\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW324": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W324\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW325": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W325\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "combined": [
+    [
+      "from",
+      1
+    ]
+  ],
+  "DemoW327": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W327\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW328": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W328\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW332": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W332\n  ": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "pure": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "DemoW340": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W340\n  ": [
+    [
+      "domain",
+      1
+    ]
+  ],
+  "domain": [
+    [
+      "finance",
+      2
+    ],
+    [
+      "unknown_domain",
+      1
+    ],
+    [
+      "Finance",
+      1
+    ]
+  ],
+  "unknown_domain": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "DemoW341": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W341\n  ": [
+    [
+      "domain",
+      1
+    ]
+  ],
+  "finance": [
+    [
+      "transforms",
+      2
+    ]
+  ],
+  "total": [
+    [
+      "(",
+      2
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "DemoW342": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W342\n  ": [
+    [
+      "domain",
+      1
+    ]
+  ],
+  "DemoW390": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W390\n  ": [
+    [
+      "temporal",
+      1
+    ]
+  ],
+  "temporal": [
+    [
+      "step_a",
+      1
+    ],
+    [
+      "authenticate",
+      1
+    ]
+  ],
+  "step_a": [
+    [
+      "(",
+      2
+    ],
+    [
+      "->",
+      1
+    ]
+  ],
+  "->": [
+    [
+      "step_b",
+      1
+    ],
+    [
+      "authorize",
+      1
+    ],
+    [
+      "access",
+      1
+    ]
+  ],
+  "step_b": [
+    [
+      "(",
+      2
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "wrong_order": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "DemoW391": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "\n  Expected diagnostics: W391\n  ": [
+    [
+      "invariant_network",
+      1
+    ]
+  ],
+  "Demomain": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "Demonstrates Error module operations.\n\n  Missing runtime dependencies (build fails). Expected to fail: check, check_md, check_strict, build, build_debug, build_mutate, format_check, format_check_md, view.\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Error module demo": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates pattern matching on Result type.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "json_str": [
+    [
+      "as",
+      2
+    ],
+    [
+      ")",
+      2
+    ]
+  ],
+  "{\"name\": \"Alice\"}": [
+    [
+      "result",
+      1
+    ]
+  ],
+  "name_val": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Parsed name: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Err": [
+    [
+      "(",
+      4
+    ]
+  ],
+  "Error: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "bad_json": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "invalid": [
+    [
+      "bad_result",
+      1
+    ]
+  ],
+  "bad_result": [
+    [
+      "as",
+      1
+    ],
+    [
+      "Ok",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Should not happen": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Parse error: ": [
+    [
+      "{",
+      2
+    ]
+  ],
+  "Demonstrates file I/O operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Write to a file": [
+    [
+      "test_file",
+      1
+    ]
+  ],
+  "test_file": [
+    [
+      ")",
+      2
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "/tmp/prove_test.txt": [
+    [
+      "content",
+      1
+    ]
+  ],
+  "Hello from Prove file I/O!": [
+    [
+      "file",
+      1
+    ]
+  ],
+  "Wrote to ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Read from a file": [
+    [
+      "read_result",
+      1
+    ]
+  ],
+  "read_result": [
+    [
+      "as",
+      1
+    ],
+    [
+      "Ok",
+      1
+    ]
+  ],
+  "Read: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Error reading: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Validate a file exists": [
+    [
+      "exists",
+      1
+    ]
+  ],
+  "exists": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "File exists: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "List directory entries": [
+    [
+      "entries",
+      1
+    ]
+  ],
+  "entries": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "/tmp": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Found ": [
+    [
+      "{",
+      2
+    ]
+  ],
+  " entries in /tmp": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Format module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Hex formatting": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "hex(255): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "255": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Pad left": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "pad_left('hi', 10): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "hi": [
+    [
+      ",",
+      3
+    ]
+  ],
+  "Pad right": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "pad_right('hi', 10): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Center": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "center('hi', 10): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Binary": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "bin(42): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Octal": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "octal(42): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "decimal(3.14159): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates Hash module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "String hashing": [
+    [
+      "h256",
+      1
+    ]
+  ],
+  "h256": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "hello": [
+    [
+      ")",
+      4
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "sha256('hello'): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "h512": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "sha512('hello'): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Blake3": [
+    [
+      "b3",
+      1
+    ]
+  ],
+  "b3": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "blake3('hello'): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "HMAC": [
+    [
+      "mac",
+      1
+    ]
+  ],
+  "mac": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "message": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "hmac: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "ByteArray hashing": [
+    [
+      "data",
+      1
+    ]
+  ],
+  "deadbeef": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "bh256": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "sha256 of bytes: done": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Hello world program": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Hello from Prove!": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates lambdas, pipes, and higher-order functions": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "nums": [
+    [
+      ",",
+      3
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "|>",
+      1
+    ]
+  ],
+  "Map with lambda - double each number": [
+    [
+      "doubled",
+      1
+    ]
+  ],
+  "doubled": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Doubled: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  ", ": [
+    [
+      ")",
+      9
+    ]
+  ],
+  "Filter with lambda - keep only even numbers": [
+    [
+      "evens",
+      1
+    ]
+  ],
+  "evens": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "filter": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "%": [
+    [
+      "2",
+      1
+    ]
+  ],
+  "Evens: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Reduce with lambda - sum all numbers": [
+    [
+      "total",
+      1
+    ]
+  ],
+  "reduce": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "acc": [
+    [
+      ",",
+      2
+    ],
+    [
+      "+",
+      2
+    ]
+  ],
+  "Sum: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Pipe operator - chain operations": [
+    [
+      "result",
+      1
+    ]
+  ],
+  "|>": [
+    [
+      "filter",
+      1
+    ],
+    [
+      "map",
+      1
+    ],
+    [
+      "reduce",
+      1
+    ]
+  ],
+  "Piped result: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates List module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "numbers": [
+    [
+      ")",
+      6
+    ],
+    [
+      ",",
+      5
+    ],
+    [
+      "as",
+      3
+    ]
+  ],
+  "6": [
+    [
+      ")",
+      2
+    ],
+    [
+      "]",
+      1
+    ]
+  ],
+  "Length: ": [
+    [
+      "{",
+      3
+    ]
+  ],
+  "Empty: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "First and last": [
+    [
+      "first_num",
+      1
+    ]
+  ],
+  "first_num": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "last_num": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "First: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  ", Last: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Contains": [
+    [
+      "has_three",
+      1
+    ]
+  ],
+  "has_three": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "has_ten": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Contains 3: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  ", Contains 10: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Index": [
+    [
+      "idx",
+      1
+    ]
+  ],
+  "idx": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Index of 4: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Slice": [
+    [
+      "slice_result",
+      1
+    ]
+  ],
+  "slice_result": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Slice [1:3]: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Reverse": [
+    [
+      "rev",
+      1
+    ]
+  ],
+  "rev": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Reversed: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Sort": [
+    [
+      "unsorted",
+      1
+    ]
+  ],
+  "unsorted": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "9": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "sorted_nums": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Sorted: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates special literal types: regex patterns and path literals": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Regex literal for pattern matching": [
+    [
+      "email_pattern",
+      1
+    ]
+  ],
+  "email_pattern": [
+    [
+      ",",
+      2
+    ],
+    [
+      "as",
+      1
+    ]
+  ],
+  "^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$": [
+    [
+      "Using the pattern - check if it compiles (validates the regex)",
+      1
+    ],
+    [
+      "type",
+      1
+    ]
+  ],
+  "Using the pattern - check if it compiles (validates the regex)": [
+    [
+      "is_valid",
+      1
+    ]
+  ],
+  "is_valid": [
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "test@example.com": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "test@example.com matches pattern: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "is_invalid": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "invalid-email": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "invalid-email matches pattern: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Path literal (if supported) - demonstrating that paths can be used": [
+    [
+      "Note: Prove doesn't have direct path literal syntax like /path/",
+      1
+    ]
+  ],
+  "Note: Prove doesn't have direct path literal syntax like /path/": [
+    [
+      "but we can work with string paths",
+      1
+    ]
+  ],
+  "but we can work with string paths": [
+    [
+      "file_path",
+      1
+    ]
+  ],
+  "file_path": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "/tmp/test.txt": [
+    [
+      "has_slash",
+      1
+    ]
+  ],
+  "has_slash": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "/": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Path contains slash: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Decimal literal with f suffix": [
+    [
+      "Note: This syntax may not be fully supported",
+      1
+    ]
+  ],
+  "Note: This syntax may not be fully supported": [
+    [
+      "Demonstrating type modifiers with literals",
+      1
+    ]
+  ],
+  "Demonstrates Log module for colored console output.": [
+    [
+      "Log",
+      1
+    ]
+  ],
+  " application started": [
+    [
+      ")",
+      1
+    ]
+  ],
+  " loading configuration": [
+    [
+      ")",
+      1
+    ]
+  ],
+  " disk usage above 80%": [
+    [
+      ")",
+      1
+    ]
+  ],
+  " connection timed out": [
+    [
+      ")",
+      1
+    ]
+  ],
+  " shutting down": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates multi-column lookup tables with runtime lookups.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "0xFF0000": [
+    [
+      "Green",
+      1
+    ]
+  ],
+  "0x00FF00": [
+    [
+      "Blue",
+      1
+    ]
+  ],
+  "blue": [
+    [
+      "|",
+      1
+    ],
+    [
+      "console",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "0x0000FF": [
+    [
+      "main",
+      1
+    ],
+    [
+      "console",
+      1
+    ]
+  ],
+  "Forward lookup: variant -> string column": [
+    [
+      "color_name",
+      1
+    ]
+  ],
+  "color_name": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Color name: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  ":[Lookup] syntax: variant -> integer column": [
+    [
+      "color_hex",
+      1
+    ]
+  ],
+  "color_hex": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Color hex: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "using string as key": [
+    [
+      "color_from_string",
+      1
+    ]
+  ],
+  "color_from_string": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Color from string ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "using integer as key": [
+    [
+      "color_from_integer",
+      1
+    ]
+  ],
+  "color_from_integer": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Color from integer ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Basic math operations.\n\n  Expected to fail: check_strict, build, build_debug, test, test_property_rounds.\n  ": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "multiply": [
+    [
+      "n",
+      2
+    ]
+  ],
+  "by": [
+    [
+      "2",
+      2
+    ]
+  ],
+  "negate": [
+    [
+      "if",
+      1
+    ],
+    [
+      "n",
+      1
+    ]
+  ],
+  "if": [
+    [
+      "negative",
+      1
+    ],
+    [
+      "raw",
+      1
+    ],
+    [
+      "the",
+      1
+    ]
+  ],
+  "negative": [
+    [
+      "believe",
+      1
+    ]
+  ],
+  "to_string": [
+    [
+      "(",
+      3
+    ]
+  ],
+  "20": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "15": [
+    [
+      ")",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Demonstrates Math module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "abs(-42): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "min(3, 7): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "7": [
+    [
+      ")",
+      2
+    ]
+  ],
+  "max(3, 7): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "sqrt(16.0f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "16.0f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "floor(3.7f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "3.7f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "clamp(15, 0, 10): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "power(2.0f, 8.0f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "2.0f": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "8.0f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "ceil(3.2f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "3.2f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "round(3.5f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "3.5f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "log(2.718f): ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "2.718f": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates advanced module features: narrative, domain, temporal, invariant_network.\n\n  Expected to fail: check, check_md, check_strict, build, build_debug, build_no_mutate, test.\n  ": [
+    [
+      "domain",
+      1
+    ]
+  ],
+  "Finance": [
+    [
+      "temporal",
+      1
+    ]
+  ],
+  "authenticate": [
+    [
+      "->",
+      1
+    ]
+  ],
+  "authorize": [
+    [
+      "->",
+      1
+    ],
+    [
+      "(",
+      1
+    ]
+  ],
+  "access": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "State": [
+    [
+      "(",
+      4
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "ensures",
+      1
+    ]
+  ],
+  "authenticated": [
+    [
+      "==",
+      2
+    ],
+    [
+      "Boolean",
+      1
+    ],
+    [
+      "||",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "authorized": [
+    [
+      "near_miss",
+      2
+    ],
+    [
+      "Boolean",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "balance": [
+    [
+      "Integer",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "ValidState": [
+    [
+      "valid_state",
+      1
+    ],
+    [
+      "from",
+      1
+    ]
+  ],
+  "valid_state": [
+    [
+      "validates",
+      1
+    ],
+    [
+      "(",
+      1
+    ]
+  ],
+  "||": [
+    [
+      "true",
+      1
+    ],
+    [
+      "s",
+      1
+    ]
+  ],
+  "needs": [
+    [
+      "to",
+      2
+    ]
+  ],
+  "to": [
+    [
+      "be",
+      2
+    ]
+  ],
+  "be": [
+    [
+      "authorized",
+      2
+    ]
+  ],
+  "Module features demo": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Domain: Finance": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Temporal: authenticate -> authorize -> access": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Invariant: ValidState": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates CSV parsing and emission via the Parse module.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "name,age,city\nAlice,30,London\nBob,25,Paris\n": [
+    [
+      "rows",
+      1
+    ]
+  ],
+  "Parsed ": [
+    [
+      "+",
+      1
+    ]
+  ],
+  " rows": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "output": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Emitted CSV:": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Valid CSV: ": [
+    [
+      "+",
+      1
+    ]
+  ],
+  "Demonstrates Parse module URL and Base64 operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "parsed": [
+    [
+      "as",
+      3
+    ],
+    [
+      "Ok",
+      1
+    ]
+  ],
+  "https://example.com/path?q=1": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "parsed URL ok": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "base64: ": [
+    [
+      "+",
+      1
+    ]
+  ],
+  "Demonstrates Parse URL and Base64 operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "https://example.com/path": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "parsed url successfully": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Path module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "/home/user/file.txt": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "Parent: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Stem: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Extension: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Name: ": [
+    [
+      "{",
+      2
+    ]
+  ],
+  "Join paths": [
+    [
+      "partial",
+      1
+    ]
+  ],
+  "partial": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "/home/user": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "docs": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "joined": [
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      2
+    ]
+  ],
+  "notes.txt": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Joined: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Validate absolute path": [
+    [
+      "is_abs",
+      1
+    ]
+  ],
+  "is_abs": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Is absolute: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates advanced Pattern module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "The quick brown fox jumps over the lazy dog": [
+    [
+      "Search for first match",
+      1
+    ]
+  ],
+  "Search for first match": [
+    [
+      "found",
+      1
+    ]
+  ],
+  "found": [
+    [
+      "as",
+      1
+    ],
+    [
+      "Some",
+      1
+    ]
+  ],
+  "fox": [
+    [
+      ")",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "m": [
+    [
+      ")",
+      4
+    ]
+  ],
+  "matched_text": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "pos": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "end_pos": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Found '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "' at ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Pattern not found": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Find all matches": [
+    [
+      "numbers",
+      1
+    ]
+  ],
+  "one 1 two 2 three 3 four 4": [
+    [
+      "all_matches",
+      1
+    ]
+  ],
+  "all_matches": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "[0-9]": [
+    [
+      ")",
+      1
+    ]
+  ],
+  " digits": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Replace": [
+    [
+      "replaced",
+      1
+    ]
+  ],
+  "replaced": [
+    [
+      "as",
+      2
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "cat": [
+    [
+      ")",
+      2
+    ]
+  ],
+  "Replaced: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Split": [
+    [
+      "sentence",
+      1
+    ]
+  ],
+  "sentence": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "apple,banana,cherry": [
+    [
+      "parts",
+      2
+    ]
+  ],
+  "Parts: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  " | ": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Pattern module operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "test 'hello' '[a-z]+' = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "[a-z]+": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "replace = ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "hello world": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "world": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "prove": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Random module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Basic random functions": [
+    [
+      "n",
+      1
+    ]
+  ],
+  "Random integer: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Random 1..10: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "d": [
+    [
+      "as",
+      2
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Random decimal: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Random boolean: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Choice from list": [
+    [
+      "colors",
+      1
+    ]
+  ],
+  "colors": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "yellow": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Random choice: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Shuffle list": [
+    [
+      "numbers",
+      1
+    ]
+  ],
+  "shuffled": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Shuffled: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Read a TOML file and print its content.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "config.toml": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "doc": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "root": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "names": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Parsed TOML keys:": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Keys: ": [
+    [
+      "+",
+      1
+    ],
+    [
+      "{",
+      1
+    ]
+  ],
+  "Demonstrates Store module operations. Expected to fail: build.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Store module available": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "done": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Table module operations": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Create a table by parsing JSON": [
+    [
+      "json_str",
+      1
+    ]
+  ],
+  "{\"name\": \"Alice\", \"city\": \"Stockholm\", \"age\": 30}": [
+    [
+      "parsed",
+      1
+    ]
+  ],
+  "Check if key exists": [
+    [
+      "has_name",
+      1
+    ]
+  ],
+  "has_name": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "has_age": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "age": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "Has name: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Has age: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Get values (returns Option<Value>)": [
+    [
+      "name_opt",
+      1
+    ]
+  ],
+  "name_opt": [
+    [
+      "as",
+      1
+    ],
+    [
+      "Some",
+      1
+    ]
+  ],
+  "v": [
+    [
+      ")",
+      4
+    ]
+  ],
+  "None": [
+    [
+      "=>",
+      2
+    ]
+  ],
+  "No name": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "city_opt": [
+    [
+      "as",
+      1
+    ],
+    [
+      "Some",
+      1
+    ]
+  ],
+  "city": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "City: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "No city": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Get all keys": [
+    [
+      "all_keys",
+      1
+    ]
+  ],
+  "all_keys": [
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "Get length": [
+    [
+      "length_value",
+      1
+    ]
+  ],
+  "length_value": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "e": [
+    [
+      ")",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Demonstrates Text module operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "  Hello, World!  ": [
+    [
+      "console",
+      1
+    ]
+  ],
+  "Original: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "'": [
+    [
+      ")",
+      8
+    ]
+  ],
+  "trimmed": [
+    [
+      ")",
+      2
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Trimmed: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "upper_text": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "lower_text": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Upper: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Lower: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "slice_text": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "Slice [0:5]: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "  Hello": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Starts with '  Hello': ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Ends with '!': ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "contains_w": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "World": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Contains 'World': ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Split into ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  " parts": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "two": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "three": [
+    [
+      "]",
+      1
+    ]
+  ],
+  "Joined: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Prove": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Replaced: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "repeated": [
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "ha": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "Repeated: '": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "All text operations completed!": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Demonstrates Time module operations.": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "got current time": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "2026": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "days in march 2026: ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "14": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "30": [
+    [
+      ",",
+      2
+    ]
+  ],
+  "clock created: 14:30:00": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "dur": [
+    [
+      "as",
+      1
+    ]
+  ],
+  "duration: 1h 30m": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Example": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "An example of email update": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "Email": [
+    [
+      ">",
+      5
+    ],
+    [
+      "is",
+      1
+    ]
+  ],
+  "User": [
+    [
+      "(",
+      3
+    ],
+    [
+      "requires",
+      2
+    ],
+    [
+      "=",
+      2
+    ],
+    [
+      "is",
+      1
+    ],
+    [
+      "ensures",
+      1
+    ],
+    [
+      "from",
+      1
+    ],
+    [
+      "!",
+      1
+    ],
+    [
+      ",",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "email": [
+    [
+      "(",
+      4
+    ],
+    [
+      ")",
+      4
+    ],
+    [
+      "Option",
+      2
+    ],
+    [
+      "String",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "}",
+      1
+    ]
+  ],
+  "USER_FILE": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "user.json": [
+    [
+      "inputs",
+      1
+    ]
+  ],
+  "What is your email?": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "The Email type is a String with boundries and console return String, so Option<Email>": [
+    [
+      "user_input",
+      1
+    ]
+  ],
+  "user_input": [
+    [
+      "as",
+      1
+    ],
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "user": [
+    [
+      "(",
+      4
+    ],
+    [
+      "User",
+      2
+    ],
+    [
+      ".",
+      2
+    ],
+    [
+      ")",
+      2
+    ],
+    [
+      "if",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      ",",
+      1
+    ]
+  ],
+  "json_data": [
+    [
+      ")",
+      6
+    ],
+    [
+      "Result",
+      1
+    ],
+    [
+      "as",
+      1
+    ],
+    [
+      "String",
+      1
+    ]
+  ],
+  "as requires already checked and unwrapped we only need to cast to Table": [
+    [
+      "data",
+      1
+    ]
+  ],
+  "ensure_user": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "argument": [
+    [
+      "is",
+      1
+    ]
+  ],
+  "more": [
+    [
+      "than",
+      1
+    ]
+  ],
+  "than": [
+    [
+      "an",
+      1
+    ]
+  ],
+  "an": [
+    [
+      "empty",
+      2
+    ]
+  ],
+  "we": [
+    [
+      "parse",
+      1
+    ],
+    [
+      "return",
+      1
+    ]
+  ],
+  "parse": [
+    [
+      "the",
+      1
+    ]
+  ],
+  "the": [
+    [
+      "json",
+      1
+    ],
+    [
+      "user",
+      1
+    ],
+    [
+      "string",
+      1
+    ]
+  ],
+  "return": [
+    [
+      "the",
+      1
+    ],
+    [
+      "a",
+      1
+    ]
+  ],
+  "set_email": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "dump_user": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "save": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "this is inputs email that reads from stdin, the validation of email is done through the type boundries": [
+    [
+      "email",
+      1
+    ]
+  ],
+  "this is inputs user that reads from user.json": [
+    [
+      "user",
+      1
+    ]
+  ],
+  "Set the new email and get updated user": [
+    [
+      "updated",
+      1
+    ]
+  ],
+  "updated": [
+    [
+      "as",
+      1
+    ],
+    [
+      ")",
+      1
+    ],
+    [
+      "console",
+      1
+    ],
+    [
+      ".",
+      1
+    ]
+  ],
+  "save user.json": [
+    [
+      "save",
+      1
+    ]
+  ],
+  "Saved user email ": [
+    [
+      "{",
+      1
+    ]
+  ],
+  "Shapes": [
+    [
+      "type",
+      1
+    ]
+  ],
+  "Shape": [
+    [
+      "is",
+      1
+    ],
+    [
+      ")",
+      1
+    ]
+  ],
+  "Circle": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "radius": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "Rectangle": [
+    [
+      "(",
+      2
+    ]
+  ],
+  "height": [
+    [
+      "Integer",
+      1
+    ]
+  ],
+  "describe": [
+    [
+      "(",
+      1
+    ]
+  ],
+  "circle": [
+    [
+      "Rectangle",
+      1
+    ]
+  ],
+  "w": [
+    [
+      ",",
+      1
+    ]
+  ],
+  "h": [
+    [
+      ")",
+      1
+    ]
+  ],
+  "Contracts": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "Simple testing fixture for abs_val": [
+    [
+      "transforms",
+      1
+    ]
+  ],
+  "1000000": [
+    [
+      "explain",
+      1
+    ]
+  ],
+  "deducted": [
+    [
+      "negate",
+      1
+    ]
+  ],
+  "Failable": [
+    [
+      "narrative",
+      1
+    ]
+  ],
+  "Failable test fixture": [
+    [
+      "InputOutput",
+      1
+    ]
+  ],
+  "read_name": [
+    [
+      "(",
+      1
+    ]
+  ]
+}

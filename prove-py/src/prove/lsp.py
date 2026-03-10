@@ -122,6 +122,31 @@ _INDEXER_SKIP_KINDS = frozenset(
 )
 
 
+def _ast_type_str(te: object) -> str:
+    """Convert a TypeExpr AST node to a display string (no checker needed)."""
+    from prove.ast_nodes import GenericType, ModifiedType, SimpleType
+
+    if isinstance(te, SimpleType):
+        return te.name
+    if isinstance(te, GenericType):
+        args = ", ".join(_ast_type_str(a) for a in te.args)
+        return f"{te.name}<{args}>"
+    if isinstance(te, ModifiedType):
+        mods = " ".join(m.value for m in te.modifiers)
+        return f"{te.name}:[{mods}]"
+    return str(te)
+
+
+def _ast_sig_str(decl: FunctionDef) -> str:
+    """Format a FunctionDef signature as '(name Type, ...) ReturnType[!]'."""
+    params = ", ".join(
+        f"{p.name} {_ast_type_str(p.type_expr)}" for p in decl.params
+    )
+    ret = f" {_ast_type_str(decl.return_type)}" if decl.return_type is not None else ""
+    fail = "!" if decl.can_fail else ""
+    return f"({params}){ret}{fail}"
+
+
 def _tok_text(kind: TokenKind, value: str) -> str:
     return value if value else f"<{kind.name}>"
 
@@ -200,22 +225,43 @@ class _ProjectIndexer:
                 rel = str(path.relative_to(self.project_root))
             except ValueError:
                 rel = str(path)
+            # Detect module name for auto-import support
+            module_name: str | None = None
             for decl in module.declarations:
+                if isinstance(decl, ModuleDecl):
+                    module_name = decl.name
+                    break
+
+            def _collect(decl: object) -> None:
                 if isinstance(decl, FunctionDef):
                     symbols.append(
                         {"name": decl.name, "verb": decl.verb, "kind": "function",
-                         "file": rel, "line": decl.span.start_line}
+                         "file": rel, "line": decl.span.start_line, "module": module_name,
+                         "signature": _ast_sig_str(decl),
+                         "docstring": decl.doc_comment or ""}
                     )
                 elif isinstance(decl, TypeDef):
                     symbols.append(
                         {"name": decl.name, "verb": "type", "kind": "type",
-                         "file": rel, "line": decl.span.start_line}
+                         "file": rel, "line": decl.span.start_line, "module": module_name,
+                         "signature": "", "docstring": decl.doc_comment or ""}
                     )
                 elif isinstance(decl, ConstantDef):
                     symbols.append(
                         {"name": decl.name, "verb": "constant", "kind": "constant",
-                         "file": rel, "line": decl.span.start_line}
+                         "file": rel, "line": decl.span.start_line, "module": module_name,
+                         "signature": "", "docstring": decl.doc_comment or ""}
                     )
+                elif isinstance(decl, ModuleDecl):
+                    for td in decl.types:
+                        _collect(td)
+                    for cd in decl.constants:
+                        _collect(cd)
+                    for sub in decl.body:
+                        _collect(sub)
+
+            for decl in module.declarations:
+                _collect(decl)
         except Exception:
             pass
 
@@ -577,7 +623,11 @@ def _extract_context_tokens(source: str, position: lsp.Position, n: int = 2) -> 
     return result
 
 
-def _ml_completions(source: str, position: lsp.Position) -> list[lsp.CompletionItem]:
+def _ml_completions(
+    source: str,
+    position: lsp.Position,
+    ds: DocumentState | None = None,
+) -> list[lsp.CompletionItem]:
     """Return ML-ranked completion items from the project indexer + global model.
 
     Project suggestions are prepended (rank higher). Falls back to unigram
@@ -606,16 +656,96 @@ def _ml_completions(source: str, position: lsp.Position) -> list[lsp.CompletionI
 
     global_hits = _global_model_complete(prev2, prev1, prefix)
 
-    # Merge: project first, then global, deduplicated
+    # Project symbols — context-filtered so we don't flood every completion
+    _VERB_KEYWORDS = frozenset(
+        {"transforms", "validates", "inputs", "outputs", "reads", "creates", "matches"}
+    )
+    _TYPE_TRIGGERS = frozenset({"as", "is", "type", "Result", "Option", "List"})
+    want_functions = prev1 in _VERB_KEYWORDS
+    want_types = prev1 in _TYPE_TRIGGERS
+    # With a prefix: show matching symbols of the right kind
+    # Without a prefix: only show when context clearly calls for it
+    symbol_hits: list[tuple[str, str]] = []  # (name, verb)
+    for name, sym in _project_indexer._symbols.items():
+        verb = sym.get("verb", "")
+        kind = sym.get("kind", "")
+        if prefix and not name.startswith(prefix):
+            continue
+        if not prefix and not want_functions and not want_types:
+            continue  # no prefix + no clear context = skip
+        if want_types and kind not in ("type",):
+            continue
+        if want_functions and kind not in ("function",):
+            continue
+        symbol_hits.append((name, verb))
+    symbol_hits.sort(key=lambda x: x[0])
+
+    # Merge: project ngrams first, then global ngrams — deduplicated
     seen_toks: set[str] = set()
     merged: list[str] = []
     for tok in project_hits + global_hits:
-        if tok not in seen_toks and not tok.startswith("<"):
-            seen_toks.add(tok)
-            merged.append(tok)
+        # Skip sentinels and raw string/number literals
+        if tok in seen_toks or tok.startswith("<") or tok.startswith('"'):
+            continue
+        try:
+            float(tok)
+            continue  # skip bare number tokens
+        except ValueError:
+            pass
+        seen_toks.add(tok)
+        merged.append(tok)
 
     items: list[lsp.CompletionItem] = []
+
+    # Project symbols first (highest priority — directly defined in this project)
+    for name, verb in symbol_hits:
+        seen_toks.add(name)
+        sym = _project_indexer._symbols[name]
+        mod_name = sym.get("module")
+        kind = sym.get("kind", "")
+        signature = sym.get("signature", "")
+        docstring = sym.get("docstring", "")
+
+        # Auto-import edit: insert `use ModuleName` if symbol is from another module
+        additional_edits: list[lsp.TextEdit] | None = None
+        if ds is not None and mod_name:
+            suggestion = ImportSuggestion(module=mod_name, verb=verb or None, name=name)
+            edit = _build_import_edit(ds, suggestion)
+            if edit is not None:
+                additional_edits = [edit]
+
+        # Documentation: signature + docstring, same format as stdlib completions
+        sig_line = f"{verb} {name}{signature}" if verb else f"{name}{signature}"
+        if docstring:
+            doc_value = f"```prove\n{sig_line}\n```\n---\n{docstring}"
+        else:
+            doc_value = f"```prove\n{sig_line}\n```"
+
+        items.append(
+            lsp.CompletionItem(
+                label=name,
+                kind=(
+                    lsp.CompletionItemKind.Class if kind == "type"
+                    else lsp.CompletionItemKind.Constant if kind == "constant"
+                    else lsp.CompletionItemKind.Function
+                ),
+                detail=mod_name or "project",
+                documentation=lsp.MarkupContent(
+                    kind=lsp.MarkupKind.Markdown,
+                    value=doc_value,
+                ),
+                sort_text=f"\x00p_{name}",
+                label_details=lsp.CompletionItemLabelDetails(
+                    detail=f" {verb}" if verb else None,
+                    description=mod_name or "project",
+                ),
+                additional_text_edits=additional_edits,
+            )
+        )
+
     for i, tok in enumerate(merged[:10]):
+        if tok in seen_toks:
+            continue
         items.append(
             lsp.CompletionItem(
                 label=tok,
@@ -1062,7 +1192,7 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
 
     # Phase 5 — ML completion suggestions
     if _project_indexer is not None and ds is not None:
-        ml_items = _ml_completions(ds.source, params.position)
+        ml_items = _ml_completions(ds.source, params.position, ds=ds)
         items = ml_items + items  # project/global ML suggestions rank first
 
     # Deduplicate by (label, sort_text) — verb variants are distinct.

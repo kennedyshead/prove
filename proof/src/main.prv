@@ -1,8 +1,5 @@
 module Main
   narrative: """
-  List validates contains
-  List reads length
-  InputOutput outputs console
   The prove language compiler proof! Created as a statement, the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
   """
