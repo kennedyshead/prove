@@ -120,6 +120,28 @@ Prints a human-readable, indented representation of the parsed AST.
 
 ---
 
+## `prove compiler <file>`
+
+Convert between `.prv` lookup types and PDAT binary format.
+
+```bash
+prove compiler --load src/data.prv
+prove compiler --dump Data.dat
+prove compiler --dump Data.dat -o data.prv
+```
+
+| Flag | Description |
+|------|-------------|
+| `--load` | Compile a `.prv` file containing a `:[Lookup]` type to a PDAT binary (`.dat`) |
+| `--dump` | Read a PDAT binary and output `.prv` source |
+| `--output`, `-o` | Override the output path (default: `<TypeName>.dat` for load, stdout for dump) |
+
+When neither `--load` nor `--dump` is given, the mode is auto-detected from the file extension (`.prv` → load, `.dat`/`.bin` → dump).
+
+The PDAT binary format matches the C runtime (`prove_store.c`) exactly — files produced by this command are interchangeable with the Store runtime at execution time.
+
+---
+
 ## `prove lsp`
 
 Start the Prove language server (LSP protocol).
