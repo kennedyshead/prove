@@ -14,7 +14,8 @@ module Main
   type Config is
     package Package
 
-  HELP_TXT as String = "help.txt"
+  HELP_TXT as String = comptime
+      read("help.txt")
 
   PROVE_TOML as String = "prove.toml"
 
