@@ -128,16 +128,11 @@ class ProveFormatter:
         self._unused_import_spans: set[tuple[str, int, int]] = set()
         self._unknown_module_spans: set[tuple[str, int, int]] = set()
         self._strip_async_marker_spans: set[tuple[str, int, int]] = set()
-        self._attached_to_inputs_spans: set[tuple[str, int, int]] = set()
         for d in diagnostics or []:
             if d.code == "I375":
                 for lbl in d.labels:
                     s = lbl.span
                     self._strip_async_marker_spans.add((s.file, s.start_line, s.start_col))
-            elif d.code == "I376":
-                for lbl in d.labels:
-                    s = lbl.span
-                    self._attached_to_inputs_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I300":
                 for lbl in d.labels:
                     s = lbl.span
@@ -199,9 +194,6 @@ class ProveFormatter:
             for p in fd.params
         )
         verb = fd.verb
-        s = fd.span
-        if (s.file, s.start_line, s.start_col) in self._attached_to_inputs_spans:
-            verb = "inputs"
         sig = f"{verb} {fd.name}({params})"
         if fd.return_type and fd.verb != "validates":
             sig += f" {self._format_type_expr(fd.return_type)}"
