@@ -484,6 +484,28 @@ _register_module(
     },
 )
 
+_register_module(
+    "network",
+    display="Network",
+    prv_file="network.prv",
+    c_map={
+        ("inputs", "socket"): "prove_network_socket_inputs",
+        ("outputs", "socket"): "prove_network_socket_outputs",
+        ("validates", "socket"): "prove_network_socket_validates",
+        ("inputs", "server"): "prove_network_server_inputs",
+        ("inputs", "accept"): "prove_network_accept_inputs",
+        ("inputs", "message"): "prove_network_message_inputs",
+        ("outputs", "message"): "prove_network_message_outputs",
+        ("creates", "address"): "prove_network_address_creates",
+        ("validates", "address"): "prove_network_address_validates",
+        ("reads", "host"): "prove_network_host_reads",
+        ("reads", "port"): "prove_network_port_reads",
+    },
+    overloads={
+        ("reads", "address", "Address"): "prove_network_address_reads",
+    },
+)
+
 
 def binary_c_name(
     module: str,
@@ -576,6 +598,8 @@ _KNOWN_TYPES = {
     "Conflict": PrimitiveType("Conflict"),
     "Resolution": PrimitiveType("Resolution"),
     "MergeResult": PrimitiveType("MergeResult"),
+    "Socket": PrimitiveType("Socket"),
+    "Address": PrimitiveType("Address"),
 }
 
 

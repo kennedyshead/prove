@@ -1,0 +1,59 @@
+module Network
+  narrative: """Network communication — TCP and UDP sockets."""
+
+  /// An open network socket
+  type Socket is binary
+
+  /// Network protocol
+  type Protocol is Tcp | Udp
+
+  /// Network address (host and port)
+  type Address is binary
+
+/// Open a connection to a remote address
+inputs socket(address Address, protocol Protocol) Result<Socket, Error>!
+binary
+
+/// Close a connection
+outputs socket(connection Socket)
+binary
+
+/// Check if a connection is open
+validates socket(connection Socket)
+binary
+
+/// Bind and listen on an address
+inputs server(address Address, protocol Protocol) Result<Socket, Error>!
+binary
+
+/// Accept an incoming connection on a listening socket
+inputs accept(listener Socket) Result<Socket, Error>!
+binary
+
+/// Read data from a socket
+inputs message(connection Socket, size Integer) Result<ByteArray, Error>!
+binary
+
+/// Write data to a socket
+outputs message(connection Socket, data ByteArray) Result<Unit, Error>!
+binary
+
+/// Parse an address string ("host:port")
+creates address(source String) Result<Address, Error>!
+binary
+
+/// Format an address as "host:port"
+reads address(location Address) String
+binary
+
+/// Check if an address string is valid
+validates address(source String)
+binary
+
+/// Read the host component of an address
+reads host(location Address) String
+binary
+
+/// Read the port component of an address
+reads port(location Address) Integer
+binary

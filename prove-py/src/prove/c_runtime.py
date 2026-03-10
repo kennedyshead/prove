@@ -95,6 +95,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "time": {"prove_time"},
     "log": set(),
     "store": {"prove_store", "prove_hash_crypto", "prove_bytes", "prove_input_output", "prove_path"},
+    "network": {"prove_network", "prove_bytes"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -442,6 +443,20 @@ _RUNTIME_FUNCTIONS = {
         "prove_store_table_find",
         "prove_store_table_find_int",
         "prove_store_table_add",
+    ],
+    "prove_network": [
+        "prove_network_socket_inputs",
+        "prove_network_socket_outputs",
+        "prove_network_socket_validates",
+        "prove_network_server_inputs",
+        "prove_network_accept_inputs",
+        "prove_network_message_inputs",
+        "prove_network_message_outputs",
+        "prove_network_address_creates",
+        "prove_network_address_reads",
+        "prove_network_address_validates",
+        "prove_network_host_reads",
+        "prove_network_port_reads",
     ],
 }
 
