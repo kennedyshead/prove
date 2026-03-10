@@ -30,11 +30,11 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
   | [AI scrapes your code for training](ai-resistance.md#anti-training-license-for-prove-code) | Binary AST format + anti-training license + semantic normalization |
   | [AI slop PRs waste maintainer time](ai-resistance.md#implementation-explanation-as-code) | Compiler rejects code without explanations and intent |
   | [Tests are separate from code](contracts.md) | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
-  | ["Works on my machine"](design.md#cli-first-toolchain-prove) | Verb system makes IO explicit |
-  | [Null/nil crashes](design.md#error-handling-errors-are-values) | No null — `Option<Value>` enforced by compiler |
-  | ["I forgot an edge case"](ai-resistance.md#adversarial-type-puzzles-refinement-types) | Compiler generates edge cases from types |
+  | ["Works on my machine"](functions.md#io-and-fallibility) | Verb system makes IO explicit |
+  | [Null/nil crashes](types.md#option-and-result) | No null — `Option<Value>` enforced by compiler |
+  | ["I forgot an edge case"](types.md#refinement-types) | Compiler generates edge cases from types |
   | [Runtime type errors](types.md) | Refinement types catch invalid values at compile time |
-  | [Code without reasoning](ai-resistance.md#implementation-explanation-as-code) | `explain` documents each step using controlled natural language — verified against contracts |
+  | [Code without reasoning](contracts.md#explain) | `explain` documents each step using controlled natural language — verified against contracts |
 
 ---
 
@@ -67,60 +67,33 @@ prove test
 
 ### Intent Verbs
 
-Every function declares its purpose with a verb. The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit.
+Every function declares its purpose with a [verb](functions.md#intent-verbs). The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit. [Async verbs](functions.md#async-verbs) (`detached`, `attached`, `listens`) provide structured concurrency.
 
 ```prove
-matches area(s Shape) Decimal
-from
-    Circle(r) => pi * r * r
-    Rect(w, h) => w * h
-
 validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-reads get(key String, table Table<Value>) Option<Value>
-from
-    lookup(table, key)
-
-creates builder() Builder
-from
-    allocate_buffer()
-
 inputs users(db Store) List<User>!
 from
     query(db, "SELECT * FROM users")!
-
-outputs log(message String)
-from
-    write(stdout, message)
 ```
 
-The same name can exist with different verbs — the compiler resolves which to call from context:
-
-```prove
-validates email(address String)           // check if valid
-transforms email(raw String) Email        // convert to Email type
-inputs email(user_id Integer) Email!      // fetch from database
-```
+The same name can exist with different verbs — the compiler [resolves which to call](functions.md#context-aware-call-resolution) from context.
 
 ### Refinement Types
 
-Types carry constraints, not just shapes.
+Types carry constraints, not just shapes. See [Type System — Refinement Types](types.md#refinement-types) for the full reference.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1..65535
 type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 type NonEmpty<Value> is List<Value> where len > 0
-
-transforms head(xs NonEmpty<Value>) Value         // no Option needed — emptiness is impossible
 ```
-
-The compiler rejects `head([])` statically.
 
 ### Contracts
 
-`requires` and `ensures` are hard rules about the function's interface. The compiler enforces them automatically:
+[`requires` and `ensures`](contracts.md#requires-and-ensures) are hard rules about the function's interface. [`explain`](contracts.md#explain) documents the implementation steps using controlled natural language — verified against contracts when `ensures` is present.
 
 ```prove
 matches apply_discount(discount Discount, amount Price) Price
@@ -132,114 +105,19 @@ from
     PercentOff(rate) => amount * (1 - rate)
 ```
 
-`explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and references are verified against contracts. Without `ensures` (loose mode), explain is free-form documentation:
-
-```prove
-module Example
-  narrative: """An example of email update"""
-  InputOutput inputs console file, outputs console
-  Parse creates json value, types Value, reads json object, validates json
-  Types validates string object value
-  Table types Table
-
-  type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
-
-  type User is
-    id Integer
-    name String
-    email String
-
-  USER_FILE as String = "user.json"
-
-inputs email() Option<Email>!
-from
-    console("What is your email?")
-    // The Email type is a String with boundries and console return String, so Option<Email>
-    user_input as Option<Email> = console()
-    user_input
-
-/// test
-transforms user(json_data Result<Value, String>) User
-  requires valid object(json_data)
-from
-    // as requires already checked and unwrapped we only need to cast to Table
-    data as Table<Value> = object(json_data)
-    User(data.id, data.name, data.email)
-
-/// test2
-matches ensure_user(raw String) User
-  ensures valid json(json_data)
-  requires valid string(raw)
-  explain
-      if raw argument is more than an empty string
-      we parse the json string
-      and return the user
-      if the string is an empty string we return a User
-from
-    Some(raw) =>
-        json_data as Result<Value, String> = json(raw)
-        user(json_data)
-    _ => User()
-
-inputs user() User!
-from
-    raw as String = file(USER_FILE)!
-    ensure_user(raw)
-
-validates email(email Option<Email>)
-from
-    email
-
-transforms set_email(user User, email Option<Email>) User
-  requires valid email(email)
-from
-    User(user.id, user.name, email)
-
-transforms dump_user(user User) String
-  requires valid value(user)
-from
-    json(value(user))
-
-outputs save(json_data String)!
-  requires valid string(json_data)
-from
-    file(USER_FILE, json_data)!
-
-main()!
-from
-    // this is inputs email that reads from stdin, the validation of email is done through the type boundries
-    email as Option<Email> = email()
-    // this is inputs user that reads from user.json
-    user as User = user()!
-    // Set the new email and get updated user
-    updated as User = set_email(user, email)
-    // save user.json
-    save(dump_user(updated))
-    updated
-    console(f"Saved user email {updated.email}")
-```
-
-`explain` is LSP-suggested, not compiler-required — but `ensures` without `explain` produces a warning, since promises should be documented.
-
 ### No Loops — Functional Iteration
 
-Prove enforces functional iteration (map, filter, reduce) over traditional loops to ensure pure functions, immutability, easier formal verification, improved testability, and a simpler language design.
+Prove enforces [functional iteration](functions.md#iteration--no-loops) (map, filter, reduce) over traditional loops.
 
 ```prove
 names as List<String> = map(users, |u| u.name)
 active as List<User> = filter(users, |u| u.active)
 total as Decimal = reduce(prices, 0, |acc, p| acc + p)
-
-// Chaining with pipe operator
-result as List<String> = users
-    |> filter(|u| u.active)
-    |> map(|u| u.email)
-    |> filter(valid email)
 ```
 
 ### Error Handling
 
-Errors are values. `!` propagates failures. No exceptions. This explicit approach prevents silent failures, enhances predictability, and simplifies reasoning about program outcomes.
+Errors are values. [`!` propagates failures](types.md#error-propagation). No exceptions.
 
 ```prove
 main()!
@@ -265,21 +143,6 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ---
 
-## Compiler Pipeline
-
-```
-Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Emitter → gcc/clang → Native Binary
-```
-*   **Lexer:** Breaks source code into a stream of tokens.
-*   **Parser:** Transforms the token stream into an Abstract Syntax Tree (AST).
-*   **Checker:** Performs type checking, semantic analysis, and contract verification.
-*   **Prover:** Generates and verifies proofs for intent and contracts.
-*   **Optimizer:** Applies various optimizations to the AST.
-*   **C Emitter:** Translates the optimized AST into C source code.
-*   **gcc/clang:** Compiles the C code into a native binary.
-
-The example above — JSON parsing, console I/O, guarded file writes — compiles to a **37 KB** native binary. The runtime is stripped to only the modules actually used.
-
 ## Ecosystem
 
 - **tree-sitter-prove** — Tree-sitter grammar for editor syntax highlighting
@@ -288,7 +151,7 @@ The example above — JSON parsing, console I/O, guarded file writes — compile
 
 ## Status
 
-v0.9.9 — Full standard library (17 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. The compiler lexes, parses, type-checks, emits C, and produces native binaries. Next up: comptime execution blocks (v0.9.2) and V1.0 (all features complete).
+The compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (17 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. See the [Roadmap](roadmap.md) for what's next.
 
 ## Repository
 
@@ -296,7 +159,7 @@ Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se
 
 ## Contributing
 
-For information on contributing to Prove, see our [Contributing Guide](contributing.md).
+For information on contributing to Prove, see our [Contributing section](design.md#contributing).
 
 ## License
 

@@ -1,0 +1,120 @@
+---
+title: Math & Types - Prove Standard Library
+description: Math numeric operations and Types conversion functions in the Prove standard library.
+keywords: Prove Math, Prove Types, numeric operations, type conversion
+---
+
+# Math & Types
+
+## Math
+
+**Module:** `Math` — numeric operations on `Integer` and `Float`.
+
+Functions with Integer/Float overloads dispatch based on argument type.
+
+### Absolute Value, Min, Max
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `abs(n Integer) Integer` | Absolute value of integer |
+| `reads` | `abs(x Float) Float` | Absolute value of float |
+| `reads` | `min(first Integer, second Integer) Integer` | Smaller of two integers |
+| `reads` | `min(first Float, second Float) Float` | Smaller of two floats |
+| `reads` | `max(first Integer, second Integer) Integer` | Larger of two integers |
+| `reads` | `max(first Float, second Float) Float` | Larger of two floats |
+
+### Clamp
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
+| `transforms` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
+
+### Float Operations
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `sqrt(x Float) Float` | Square root |
+| `reads` | `power(base Float, exponent Float) Float` | Exponentiation |
+| `reads` | `floor(x Float) Integer` | Round down to integer |
+| `reads` | `ceil(x Float) Integer` | Round up to integer |
+| `reads` | `round(x Float) Integer` | Round to nearest integer |
+| `reads` | `log(x Float) Float` | Natural logarithm |
+
+```prove
+Math reads abs min max sqrt floor
+
+reads distance(x Integer, y Integer) Integer
+from
+    Math.abs(Math.min(x, y) - Math.max(x, y))
+```
+
+> **Note:** Math functions like `sqrt` and `floor` require `Float` arguments. Use the `f` suffix on literals: `16.0f` not `16.0` (which is `Decimal`). See [Type System — Type Modifiers](../types.md#type-modifiers) for more on the Float/Decimal distinction.
+
+---
+
+## Types
+
+**Module:** `Types` — type validation and conversion between primitive types.
+
+The function name is the *target type*. Failable conversions from strings return [`Result`](../types.md#option-and-result). Validators check that a value is of the expected type.
+
+### Type Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `string(s String)` | True if value is a string |
+| `validates` | `integer(n Integer)` | True if value is an integer |
+| `validates` | `float(n Float)` | True if value is a float |
+| `validates` | `decimal(n Float)` | True if value is a decimal |
+| `validates` | `boolean(b Boolean)` | True if value is a boolean |
+| `validates` | `character(c Character)` | True if value is a character |
+
+### Integer Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `integer(s String) Result<Integer, String>` | Parse string to integer |
+| `creates` | `integer(x Float) Integer` | Truncate float to integer |
+
+### Float Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `float(s String) Result<Float, String>` | Parse string to float |
+| `creates` | `float(n Integer) Float` | Promote integer to float |
+
+### String Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `string(n Integer) String` | Integer to string |
+| `reads` | `string(x Float) String` | Float to string |
+| `reads` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
+
+### Character Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `code(character Character) Integer` | Character to code point |
+| `creates` | `character(code Integer) Character` | Code point to character |
+
+### Value Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `text(value Value)` | Check if Value is text |
+| `validates` | `number(value Value)` | Check if Value is a number |
+| `validates` | `decimal(value Value)` | Check if Value is a decimal |
+| `validates` | `bool(value Value)` | Check if Value is a boolean |
+| `validates` | `array(value Value)` | Check if Value is an array |
+| `validates` | `object(value Value)` | Check if Value is an object |
+| `validates` | `null(value Value)` | Check if Value is null |
+
+```prove
+Types creates integer float, reads string code, validates integer string
+
+reads format_pair(label String, n Integer) String
+from
+    label + ": " + Types.string(n)
+```

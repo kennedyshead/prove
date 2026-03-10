@@ -16,7 +16,7 @@ These mechanisms are enforced by the current compiler.
 
 ### Implementation Explanation as Code
 
-`explain` documents the chain of operations in the `from` block using controlled natural language. With `ensures` present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers.
+[`explain`](contracts.md#explain) documents the chain of operations in the `from` block using controlled natural language. With [`ensures`](contracts.md#requires-and-ensures) present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers. See [Contracts & Annotations — explain](contracts.md#explain) for full syntax.
 
 ```prove
 transforms merge_sort(xs List<Value>) Sorted<List<Value>>
@@ -35,15 +35,15 @@ from
 
 ### Verb Purity Enforcement
 
-The compiler enforces that pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors E361, E362, E363.
+The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361--pure-function-cannot-be-failable), [E362](diagnostics.md#e362--pure-function-calls-builtin-io), [E363](diagnostics.md#e363--pure-function-calls-io-function).
 
 ### Exhaustive Match
 
-Match expressions on algebraic types must cover all variants or include a wildcard. The compiler rejects non-exhaustive matches (E371) and warns about unreachable arms (I301). AI-generated code that forgets a variant does not compile.
+[Match expressions](types.md#pattern-matching) on algebraic types must cover all variants or include a wildcard. The compiler rejects non-exhaustive matches and warns about unreachable arms ([I301](diagnostics.md#i301--unreachable-match-arm)). AI-generated code that forgets a variant does not compile.
 
 ### Adversarial Type Puzzles (Refinement Types)
 
-Refinement types encode constraints requiring genuine reasoning, not just pattern matching:
+[Refinement types](types.md#refinement-types) encode constraints requiring genuine reasoning, not just pattern matching:
 
 ```prove
 type BalancedTree<Value> is
@@ -58,7 +58,7 @@ transforms insert(tree BalancedTree<Value>, val Value) BalancedTree<Value>
 
 ### Adversarial Near-Miss Examples
 
-`near_miss` declares inputs that *almost* break the code but don't. The compiler verifies each near-miss exercises a distinct branch or boundary condition. Redundant near-misses are rejected (W322). AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.
+[`near_miss`](contracts.md#near-miss) declares inputs that *almost* break the code but don't. The compiler verifies each near-miss exercises a distinct branch or boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322--redundant-near-miss)). AI can memorize correct implementations but cannot identify the *diagnostic* inputs that prove understanding.
 
 ```prove
 validates leap_year(y Year)
@@ -71,7 +71,7 @@ from
 
 ### Epistemic Checking (Basic)
 
-`know`, `assume`, and `believe` are parsed and type-checked — their expressions must be Boolean (E384, E385, E386). `believe` requires `ensures` to be present (E393). Full semantic enforcement (proving `know` claims, inserting runtime checks for `assume`, generating adversarial tests for `believe`) is upcoming.
+[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384--epistemic-expression-must-be-boolean), [E385](diagnostics.md#e385--epistemic-expression-must-be-boolean), [E386](diagnostics.md#e386--epistemic-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393--believe-requires-ensures)). Full semantic enforcement (proving `know` claims, inserting runtime checks for `assume`, generating adversarial tests for `believe`) is upcoming.
 
 ```prove
 transforms process_order(order Order) Receipt
@@ -107,7 +107,7 @@ All module-level keywords (`domain`, `temporal`, `invariant_network`) and functi
 
 ### Counterfactual Annotations: `why_not`, `chosen`
 
-Every non-trivial design choice can explain what would break under alternative approaches.
+Every non-trivial design choice can explain what would break under alternative approaches. See [Contracts & Annotations — Counterfactual Annotations](contracts.md#counterfactual-annotations) for the full reference.
 
 ```prove
 transforms evict(cache Cache:[Mutable]) Option<Entry>
@@ -122,7 +122,7 @@ from
 
 ### Temporal Effect Ordering
 
-Not just *what* effects a function has, but the *required order* — enforced across function boundaries and call graphs.
+Not just *what* effects a function has, but the *required order* — enforced across function boundaries and call graphs. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations) for how `temporal` is declared.
 
 ```prove
 module Auth
@@ -137,7 +137,7 @@ module Auth
 
 ### Intent Annotations
 
-`intent` documents the purpose of a function.
+[`intent`](contracts.md#intent) documents the purpose of a function.
 
 ```prove
 transforms filter_valid(records List<Record>) List<Record>
@@ -150,7 +150,7 @@ It goes in the function **header**, not inside the body.
 
 ### Invariant Networks: `invariant_network`, `satisfies`
 
-Define networks of mutually-dependent invariants. Changing one cascades verification across the entire network.
+Define networks of mutually-dependent invariants. Changing one cascades verification across the entire network. See [Contracts & Annotations — Invariant Networks](contracts.md#invariant-networks) for the full reference.
 
 ```prove
 invariant_network AccountingRules
@@ -168,7 +168,7 @@ from
 
 ### Domain Declarations
 
-`domain` tags a module's problem domain, potentially enabling domain-specific rules.
+[`domain`](contracts.md#module-level-annotations) tags a module's problem domain, potentially enabling domain-specific rules.
 
 ```prove
 module PaymentService
@@ -198,7 +198,7 @@ Address challenges by adding `why_not` annotations to the function.
 
 ## Implemented — Domain Profiles
 
-A module's `domain:` declaration selects a built-in profile that adds domain-specific warnings (W340–W342):
+A module's [`domain:`](contracts.md#module-level-annotations) declaration selects a built-in profile that adds domain-specific warnings ([W340–W342](diagnostics.md)):
 
 - **finance**: prefer `Decimal` over `Float`, require `ensures` contracts and `near_miss` examples
 - **safety**: require `ensures`, `requires`, `explain` blocks
@@ -216,7 +216,7 @@ from
 
 ## Implemented — Coherence Checking
 
-Run `prove check --coherence` to verify vocabulary consistency between the module's `narrative:` and its function/type names (I340). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
+Run [`prove check --coherence`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
 
 ```prove
 module UserAuth

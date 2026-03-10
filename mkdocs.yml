@@ -1,18 +1,38 @@
 site_name: Prove
-nav:
-  - Home: index.md
-  - Language:
-      - Syntax Reference: syntax.md
-      - Type System: types.md
-      - Contracts & Testing: contracts.md
-      - Standard Library: stdlib.md
-  - Compiler:
-      - CLI Reference: cli.md
-      - Diagnostic Codes: diagnostics.md
 site_description: An intent-first programming language designed to mitigate AI slop and code scraping
 site_url: https://prove.botwork.se
 site_author: Magnus Knutas
 copyright: Copyright © 2026 Magnus Knutas
+
+nav:
+  - Home: index.md
+  - Language:
+      - Syntax: syntax.md
+      - Functions & Verbs: functions.md
+      - Type System: types.md
+      - Contracts & Annotations: contracts.md
+  - Standard Library:
+      - Overview: stdlib/index.md
+      - Character & Text: stdlib/character-text.md
+      - Table, List & Store: stdlib/table-list-store.md
+      - InputOutput & Path: stdlib/io-path.md
+      - Parse, Format & Pattern: stdlib/parse-format-pattern.md
+      - Math & Types: stdlib/math-types.md
+      - Error & Log: stdlib/error-log.md
+      - Time & Random: stdlib/time-random.md
+      - Bytes & Hash: stdlib/bytes-hash.md
+  - Compiler:
+      - CLI Reference: cli.md
+      - Compiler Features: compiler.md
+      - Diagnostic Codes: diagnostics.md
+  - AI Resistance: ai-resistance.md
+  - Examples:
+      - Inventory Service: examples/inventory_service.md
+  - Project:
+      - Design Decisions: design.md
+      - Roadmap: roadmap.md
+  - Blog:
+      - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
 
 theme:
   name: material
@@ -48,29 +68,6 @@ theme:
 
 repo_url: https://code.botwork.se/Botwork/prove
 repo_name: Botwork/prove
-
-nav:
-  - Home: index.md
-  - Language:
-      - Syntax Reference: syntax.md
-      - Type System: types.md
-      - Contracts & Testing: contracts.md
-      - Standard Library: stdlib.md
-  - Compiler:
-      - CLI Reference: cli.md
-      - Diagnostic Codes: diagnostics.md
-      - Diagnostic Philosophy: diagnostics-philosophy.md
-      - Compiler Features: compiler.md
-  - AI Resistance: ai-resistance.md
-  - Examples:
-      - Inventory Service: examples/inventory_service.md
-  - Project:
-      - Design Decisions: design.md
-      - Roadmap: roadmap.md
-      - Contributing: contributing.md
-      - Inspirations: inspirations.md
-  - Blog:
-      - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
 
 extra_css:
   - stylesheets/extra.css

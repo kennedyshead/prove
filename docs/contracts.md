@@ -1,23 +1,20 @@
 ---
-title: Contracts & Testing - Prove Programming Language
-description: Learn about Prove's contract system for formal verification, preconditions, postconditions, and automatic test generation.
-keywords: Prove contracts, formal verification, testing, ensures, requires, invariant
+title: Contracts & Annotations - Prove Programming Language
+description: Complete reference for Prove's contract system — requires, ensures, explain, terminates, epistemic annotations, near_miss, trusted, and auto-testing.
+keywords: Prove contracts, formal verification, testing, ensures, requires, explain, near_miss, invariant
 ---
 
-# Contracts & Testing
+# Contracts & Annotations
 
-## Formal Verification of Contracts
+Prove's contract system is not syntactic sugar for assertions. It is a fundamentally different relationship between programmer intent and compiler enforcement. The compiler proves properties when it can, and generates tests when it can't.
 
-The compiler proves properties when it can, and generates tests when it can't:
+---
 
-```prove
-transforms binary_search(xs List<Integer>, target Integer) Option<Integer>
-  ensures len(xs) == 0 || some(result) || !contains(xs, target)
-```
+## requires and ensures
 
-## Contracts by Example — What Makes Prove Different
+`requires` and `ensures` are hard rules about the function's interface. The compiler enforces them automatically.
 
-Prove's contract system is not syntactic sugar for assertions. It is a fundamentally different relationship between programmer intent and compiler enforcement.
+`requires` states what must be true before calling the function — the compiler generates property tests that verify it at runtime. `ensures` states what the function guarantees about its result — the compiler generates property tests to verify it.
 
 ### Compiler-Enforced Preconditions
 
@@ -45,11 +42,32 @@ from
 
 The `ensures` clause is type-checked at compile time. The compiler generates property tests that verify the postcondition across thousands of random inputs at runtime.
 
-These are hard rules — the compiler enforces them automatically.
+### Combined Example
 
-### Implementation Reasoning
+```prove
+type Clamped is Integer where low .. high
 
-When the implementation has multiple steps, `explain` documents the chain of operations using controlled natural language. With `ensures` present (strict mode), the row count must match the `from` block and the compiler verifies references against contracts:
+transforms clamp(value Integer, low Integer, high Integer) Clamped
+  requires low <= high
+  ensures result >= low
+  ensures result <= high
+from
+    max(low, min(value, high))
+```
+
+Here, the [refinement type](types.md#refinement-types) `Clamped` does the heavy lifting.
+
+---
+
+## explain
+
+`explain` documents the chain of operations in the `from` block using controlled natural language. It is **LSP-suggested, not compiler-required** — the LSP recommends adding it when a function has enough complexity to warrant documentation.
+
+**Two strictness modes:**
+
+**Strict mode** (function has `ensures`): Each explain row corresponds to a **top-level statement** in the `from` block — a binding, a final expression, or a match arm. Multi-line expressions (pipe chains, multi-line arms) count as one. The count must match exactly (mismatch is a compiler error). The compiler warns if a single arm grows complex enough to warrant extraction into a named function.
+
+The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
 
 ```prove
 outputs update_email(id Option<Integer>) User:[Mutable]!
@@ -69,13 +87,270 @@ from
     user
 ```
 
-`requires` and `ensures` are about the function's *interface*. `explain` is about the function's *implementation* — it documents *how* each step satisfies the promises.
+Sugar words keep it readable — the compiler sees the same thing:
 
-`explain` is LSP-suggested, not compiler-required. Simple functions with `ensures` don't need it — the LSP suggests it when complexity warrants documentation. However, `ensures` without `explain` produces a warning: if you promise, explain how.
+```prove
+  explain
+    we get an applicable email address from console
+    we fetch the corresponding user from storage
+    then we validate the email format against the regex pattern
+    we set the new email to user
+    save the updated user and return it
+```
 
-### Bidirectional Lookup Types
+The compiler parses each row for operations (`get`, `fetch`, `validate`, `set`, `save`), connectors (`we`, `then`, `the`), and references (`email`, `user`, `format`). Operations are verified against called functions' contracts — if the claimed operation doesn't match the function's behavior, the compiler warns.
 
-Algebraic types can use the `[Lookup]` modifier to create a bidirectional map in a single declaration:
+**Loose mode** (no `ensures`): Row count is flexible. Free-form text. Documentation value only.
+
+```prove
+transforms merge_sort(xs List<Value>) Sorted<List<Value>>
+  explain
+      split the list at the midpoint
+      recursively sort both halves
+      merge the sorted halves back together
+  terminates: len(xs)
+from
+    halves as Pair<List<Value>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<Value>> = merge_sort(halves.first)
+    right as Sorted<List<Value>> = merge_sort(halves.second)
+    merge(left, right)
+```
+
+**Warning pairs:**
+
+- `ensures` without `explain` → warning: add explain to document how ensures are satisfied
+- `explain` without `ensures` → warning: explain is unverifiable without contracts to check against
+
+**Bare functions are fine.** Trivial code needs no annotations:
+
+```prove
+validates email(address String)
+from
+    contains(address, "@") && contains(address, ".")
+```
+
+No explain needed — the implementation is self-evident. The LSP suggests explain only when complexity warrants it.
+
+For [`matches`](functions.md#intent-verbs) functions, each explain row corresponds to one arm. The LSP suggests per-arm explain for complex dispatch:
+
+```prove
+matches apply_discount(discount Discount, amount Price) Price
+  ensures result >= 0
+  ensures result <= amount
+  explain
+      clamp the difference to zero
+      scale amount by complement of rate
+      subtract bulk discount from amount
+from
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
+    BuyNGetFree(buy, free) =>
+        sets as Integer = len(items) / (buy + free)
+        amount - sets * cheapest_price(items)
+```
+
+**Custom vocabulary** for operations and connectors can be declared at module level or in [`prove.toml`](compiler.md#provetoml-configuration):
+
+```toml
+# prove.toml
+[explain]
+operations = ["amortize", "interpolate", "normalize"]
+connectors = ["across", "between", "within"]
+```
+
+`explain` is independent of `requires` and `ensures`. A function can have any combination — though the strictness mode depends on whether `ensures` is present.
+
+### Why explain matters
+
+Unlike AI prompt-pong — where each change requires a fresh conversation to *maybe* get a working result — an `explain` statement is **source code**. You edit it like any other line. One small change propagates consistently across your entire codebase.
+
+**Editable, not conversational.** When you need to refactor, you tweak the explain text and the implementation follows. No prompting, no retry loops, no hoping the AI "understands" this time.
+
+**LSP/compiler suggestions as the ecosystem grows.** As your codebase accumulates well-documented functions, the compiler can suggest operations that already exist and match your intent. The explain text becomes a *query* against your library — "I need to X the Y" auto-completes to functions that actually do that. This gets more powerful with every function you write.
+
+**Foundation-first code generation.** AI can generate correct code from intent, but only if the building blocks exist. Each `explain` + implementation pair you write is a new block the compiler understands. Over time, explain statements generate most of the boilerplate automatically — you provide the high-level intent, the ecosystem provides the implementation.
+
+This is the inverse of typical AI workflows. Instead of fishing for working code through conversation, you're building a vocabulary the compiler uses to help you. The more complete your library, the less you need to write explicitly.
+
+---
+
+## terminates
+
+Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error ([E366](diagnostics.md#e366--recursive-function-without-terminates)).
+
+```prove
+transforms merge_sort(xs List<Value>) Sorted<List<Value>>
+  explain
+      split the list at the midpoint
+      recursively sort the first half
+      recursively sort the second half
+      merge both sorted halves preserving order
+  terminates: len(xs)
+from
+    halves as Pair<List<Value>> = split_at(xs, len(xs) / 2)
+    left as Sorted<List<Value>> = merge_sort(halves.first)
+    right as Sorted<List<Value>> = merge_sort(halves.second)
+    merge(left, right)
+```
+
+The compiler verifies that `len(halves.first) < len(xs)` and `len(halves.second) < len(xs)` at both recursive call sites.
+
+---
+
+## Epistemic Annotations
+
+`know`, `assume`, and `believe` express different levels of confidence about a claim:
+
+```prove
+transforms process_order(order Order) Receipt
+  know: len(order.items) > 0
+  assume: order.total == sum(prices)
+  believe: order.user.is_verified
+from
+    // implementation
+```
+
+- **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, and [refinement types](types.md#refinement-types). Provable claims pass silently; unprovable claims emit a warning (W327) and fall back to a runtime assertion.
+- **`assume`** — the compiler adds a runtime check. If the assumption fails at runtime, the program panics.
+- **`believe`** — the compiler tries to break it with generated tests. Requires `ensures` to be present ([E393](diagnostics.md#e393--believe-requires-ensures)).
+
+All three are type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384--epistemic-expression-must-be-boolean), [E385](diagnostics.md#e385--epistemic-expression-must-be-boolean), [E386](diagnostics.md#e386--epistemic-expression-must-be-boolean)).
+
+---
+
+## Counterfactual Annotations
+
+### why_not and chosen
+
+`why_not` documents rejected alternatives. `chosen` explains the selected approach. These are currently **documentation keywords** — compiler verification of rationale consistency is planned.
+
+```prove
+transforms select_gateway(amount Price, region Region) Gateway
+  why_not: "Round-robin ignores regional latency differences"
+  why_not: "Cheapest-first causes thundering herd on one provider"
+  chosen: "Latency-weighted routing balances cost and speed per region"
+from
+    closest_by_latency(region, available_gateways())
+```
+
+---
+
+## near_miss
+
+`near_miss` declares inputs that *almost* break the code but don't — the compiler verifies each near-miss exercises a distinct boundary condition. Redundant near-misses are rejected ([W322](diagnostics.md#w322--redundant-near-miss)).
+
+```prove
+validates leap_year(y Year)
+  near_miss: 1900  => false
+  near_miss: 2000  => true
+  near_miss: 2100  => false
+from
+    (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
+```
+
+The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
+
+The LSP suggests `near_miss` for [`validates`](functions.md#intent-verbs) functions with compound logic — multiple `&&`/`||`, modular arithmetic, negation. Trivial validators (single field access, simple equality) get no suggestion.
+
+---
+
+## trusted
+
+`trusted` is the explicit opt-out from the verification chain. It acknowledges that a function is unverified and silences the warning:
+
+```prove
+transforms subtotal(items List<OrderItem>) Price
+  trusted: "sum of non-negative prices is non-negative"
+from
+    reduce(items, 0, |acc, item| acc + item.price)
+```
+
+The compiler stops warning. [`prove check`](cli.md) reports trusted functions in its verification coverage summary.
+
+---
+
+## intent
+
+`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it but does not yet verify that the intent matches the code's behavior.
+
+```prove
+transforms filter_valid(records List<Record>) List<Record>
+  intent: "keep only valid records"
+from
+    filter(records, valid record)
+```
+
+---
+
+## Module-Level Annotations
+
+### narrative
+
+`narrative` is required — it describes the module's purpose in plain language.
+
+### domain
+
+`domain` tags the module's problem domain. A module's `domain:` declaration selects a built-in profile that adds domain-specific warnings ([W340–W342](diagnostics.md)):
+
+- **finance**: prefer `Decimal` over `Float`, require `ensures` contracts and `near_miss` examples
+- **safety**: require `ensures`, `requires`, `explain` blocks
+- **general**: no additional requirements
+
+### temporal
+
+`temporal` declares the expected ordering of operations.
+
+```prove
+module PaymentService
+  narrative: """
+  Customers submit payments. Each payment is validated,
+  charged through the gateway, and recorded in the ledger.
+  """
+  domain Finance
+  temporal: validate -> charge -> record
+```
+
+These are currently **documentation keywords** — the compiler requires `narrative` but does not yet verify semantic coherence. Compiler verification (rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering) is planned for a future release.
+
+---
+
+## Invariant Networks
+
+`invariant_network` defines rules that must always hold together. `satisfies` declares that a function obeys those rules.
+
+```prove
+invariant_network AccountingRules
+  total_assets == total_liabilities + equity
+  revenue - expenses == net_income
+  every(transaction) preserves total_assets == total_liabilities + equity
+
+transforms post_transaction(ledger Ledger, tx Transaction) Ledger
+  satisfies AccountingRules
+from
+    // implementation — compiler verifies the rules hold after every change
+```
+
+---
+
+## Annotation Ordering
+
+All annotations appear between the verb line and `from`. The compiler accepts any order. The formatter normalizes to this canonical order:
+
+1. `requires` — preconditions
+2. `ensures` — postconditions
+3. `terminates` — recursion measure
+4. `trusted` — explicit verification opt-out
+5. `know` / `assume` / `believe` — confidence levels
+6. `why_not` / `chosen` — design reasoning
+7. `near_miss` — boundary examples
+8. `satisfies` — invariant networks
+9. `explain` — implementation documentation (adjacent to `from`)
+
+---
+
+## Lookup Types
+
+Algebraic types can use the `[Lookup]` modifier to create a bidirectional map in a single declaration. See [Type System — Lookup Types](types.md#lookup-types-bidirectional-maps) for the full reference.
 
 ```prove
 type Status:[Lookup] is String where
@@ -88,75 +363,6 @@ Access works both ways:
 
 - `Status:Active` → returns `"active"` (forward lookup)
 - `Status:"active"` → returns the `Active` variant (reverse lookup)
-
-This is impossible in most languages without separate maps in both directions. In Python you'd need two dictionaries, maintaining consistency manually. In Rust you'd define the enum, a `HashMap` for each direction, and hope they stay in sync. In Prove, it's a single declaration that the compiler verifies is exhaustive and unique.
-
----
-
-## Auto-Testing
-
-Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.
-
-### Level 1: Contracts Generate Property Tests
-
-No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
-
-```prove
-transforms sort(xs List<Value>) List<Value>
-  ensures len(result) == len(xs)
-from
-    // implementation
-```
-
-### Level 2: Automatic Edge-Case Generation
-
-Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:
-
-```prove
-transforms divide(a Integer, b Integer where != 0) Integer
-// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),
-// (MIN_INT, -1), (7, 3), ...
-// Derived from type bounds + heuristic edge-case generation
-```
-
-For refinement types, boundary testing is automatic:
-
-```prove
-transforms set_port(p Port) Config    // Port = 1..65535
-// Auto-tests: 1, 2, 65534, 65535, and random values between
-// Also verifies that 0 and 65536 are rejected at the call site
-```
-
-### Level 3: `near_miss` — Boundary Witnesses
-
-A `near_miss` declares an input that *should fail* a contract. The compiler verifies that the function's `requires` or `validates` clauses actually reject it. This catches contracts that are too permissive.
-
-```prove
-transforms leap_year(y Integer) Boolean
-  requires y > 0
-  near_miss: 0 => false          // not a valid year
-  near_miss: -1 => false         // negative year
-from
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
-```
-
-The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
-
-### Level 4: Built-in Mutation Testing *(v0.9.6+)*
-
-```
-$ prove build    # mutation testing runs by default
-# or
-$ prove build --no-mutate    # skip mutation testing
-
-Mutation score: 97.2% (347/357 mutants killed)
-Surviving mutants:
-  src/cache.prv:45  — changed `>=` to `>` (boundary condition not covered)
-  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
-
-  Suggested contract to add:
-    ensures len(cache) <= max_size   // would kill both mutants
-```
 
 ---
 
@@ -185,7 +391,7 @@ The compiler warns when `ensures` is missing on:
 
 Functions outside any verification chain — trivial helpers, internal plumbing — are fine without annotations.
 
-### `trusted` — explicit opt-out
+### `trusted` in the chain
 
 When a function is in a verification chain but you don't want to add contracts yet, `trusted` acknowledges the gap:
 
@@ -196,8 +402,83 @@ from
     reduce(items, 0, |acc, item| acc + item.price)
 ```
 
-The compiler stops warning. `prove check` reports trusted functions in its verification coverage summary.
+[`prove check`](cli.md) reports verification coverage:
 
-### `near_miss` — LSP-suggested for validators
+```
+$ prove check
 
-The LSP suggests `near_miss` for `validates` functions with compound logic — multiple `&&`/`||`, modular arithmetic, negation. Trivial validators (single field access, simple equality) get no suggestion. `near_miss` proves the programmer understands the exact boundary between valid and invalid inputs.
+Verification:
+  ✓ 42 functions with ensures (property tests)
+  ✓ 11 validators with near_miss (boundary tests)
+  ⚠ 3 functions trusted
+  ✗ 1 unverified in chain → add ensures or trusted
+
+Coverage: 89%
+```
+
+Functions outside any verification chain and with no callers that have `ensures` are fine without annotations — nobody depends on them contractually.
+
+---
+
+## Auto-Testing
+
+Testing is not a separate activity. It is woven into the language — contracts are mandatory and the compiler enforces them.
+
+### Level 1: Property Tests
+
+No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
+
+```prove
+transforms sort(xs List<Value>) List<Value>
+  ensures len(result) == len(xs)
+from
+    // implementation
+```
+
+### Level 2: Edge-Case Generation
+
+Given the type signature alone, the compiler knows to test boundary values and heuristic edge cases:
+
+```prove
+transforms divide(a Integer, b Integer where != 0) Integer
+// Auto-generated test inputs: (0, 1), (1, 1), (-1, 1), (MAX_INT, 1),
+// (MIN_INT, -1), (7, 3), ...
+// Derived from type bounds + heuristic edge-case generation
+```
+
+For [refinement types](types.md#refinement-types), boundary testing is automatic:
+
+```prove
+transforms set_port(p Port) Config    // Port = 1..65535
+// Auto-tests: 1, 2, 65534, 65535, and random values between
+// Also verifies that 0 and 65536 are rejected at the call site
+```
+
+### Level 3: near_miss
+
+A `near_miss` declares an input that *should fail* a contract. The compiler verifies that the function's `requires` or `validates` clauses actually reject it. This catches contracts that are too permissive.
+
+```prove
+transforms leap_year(y Integer) Boolean
+  requires y > 0
+  near_miss: 0 => false          // not a valid year
+  near_miss: -1 => false         // negative year
+from
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+```
+
+### Level 4: Mutation Testing
+
+```
+$ prove build    # mutation testing runs by default
+# or
+$ prove build --no-mutate    # skip mutation testing
+
+Mutation score: 97.2% (347/357 mutants killed)
+Surviving mutants:
+  src/cache.prv:45  — changed `>=` to `>` (boundary condition not covered)
+  src/cache.prv:82  — removed `+ 1` (off-by-one not detected)
+
+  Suggested contract to add:
+    ensures len(cache) <= max_size   // would kill both mutants
+```

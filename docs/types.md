@@ -148,6 +148,27 @@ Rules:
 - **Native types only** — only primitive types are supported (String, Integer, Boolean, Byte)
 - **Compile-time only** — this is not a runtime type; the lookup type is resolved at compile time based on usage context
 
+## Option and Result
+
+Prove has no null. Instead, two algebraic types handle absence and failure:
+
+- **`Option<Value>`** — a value that might not exist: `Some(value)` or `None`
+- **`Result<Value, Error>`** — a computation that might fail: `Ok(value)` or `Err(error)`
+
+Both are always-available types (no import needed). Use [pattern matching](#pattern-matching) to extract values:
+
+```prove
+match Table.get("key", config)
+    Some(value) => use(value)
+    None => default_value()
+
+match Parse.json(raw)
+    Ok(data) => process(data)
+    Err(msg) => report(msg)
+```
+
+The [Error](stdlib/error-log.md#error) stdlib module provides utilities like `unwrap_or` for common patterns.
+
 ## Algebraic Types with Exhaustive Matching
 
 Compiler errors if you forget a variant.
@@ -163,6 +184,92 @@ from
         Circle(r) => pi * r * r
         Rect(w, h) => w * h
 ```
+
+## Pattern Matching
+
+Prove has no `if`/`else`. All branching is done through `match` — and good Prove code rarely matches on booleans at all.
+
+```prove
+match route
+    Get("/health") => ok("healthy")
+    Get("/users")  => users()!
+    _              => not_found()
+
+match discount
+    FlatOff(off) => max(0, amount - off)
+    PercentOff(rate) => amount * (1 - rate)
+
+MAX_CONNECTIONS as Integer = comptime
+    match cfg.target
+        "embedded" => 16
+        _ => 1024
+```
+
+This is not an omission. It is a deliberate design choice.
+
+### Why No `if`
+
+**1. Types replace booleans.**
+
+When you reach for `if connected then send(data) else retry()`, the real question is: what *kind* of connection state are you in? Model it as a type and the branching becomes meaningful:
+
+```prove
+type Connection is Active(socket Socket) | Disconnected(reason String)
+
+match connection
+    Active(socket) => send(socket, data)
+    Disconnected(reason) => retry(reason)
+```
+
+Each arm names what it handles. No `true`/`false` to mentally decode. The compiler enforces that every variant is covered — add a `Reconnecting` state later and the compiler tells you everywhere you need to handle it.
+
+**2. `if` hides missing cases.**
+
+An `if` without `else` silently does nothing on the false branch. The programmer may have forgotten it. With types, there's no such escape — every variant must be handled.
+
+**3. One construct is simpler than two.**
+
+`if`/`else` adds no expressive power over `match`. It only adds surface area to the language, the parser, the type checker, the emitter, and every tool that processes Prove code. One construct means less to learn and fewer ways to express the same thing.
+
+**4. Contracts replace conditional logic.**
+
+Where other languages use `if` to decide whether to run code, Prove uses validation. Consider:
+
+```prove
+transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
+  ensures result >= 0
+  requires len(items) > 0
+from
+    sub as Price = subtotal(items)
+    discounted as Price = apply_discount(discount, sub)
+    apply_tax(tax, discounted)
+```
+
+There is no `if discount > 0 then apply_discount(...)`. The [`requires`](contracts.md#requires-and-ensures) clause on `apply_discount` ensures the compiler has already proven the discount is valid before the call happens. The "branching" lives in the type system and contracts, not in boolean conditions.
+
+**5. Boolean matching is a code smell.**
+
+`match x > 0 / true => ... / false => ...` is technically valid but signals that you should model your domain better. Instead of branching on `amount > 0`, define `type Positive is Integer where > 0` and let the type system handle it. The branching disappears into the type — where the compiler can prove things about it.
+
+### The Rule
+
+Branch on *what something is*, not on *whether something is true*. Types and contracts handle the rest — [`requires`](contracts.md#requires-and-ensures) guards preconditions, [`ensures`](contracts.md#requires-and-ensures) guarantees postconditions, and [`explain`](contracts.md#explain) documents the reasoning. No boolean branch needed.
+
+## Error Propagation
+
+`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) can use `!`. There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
+
+Pure functions that need to represent expected failure cases use `Result<Value, Error>` and handle them with `match` — these are values, not errors.
+
+```prove
+main()!
+from
+    config as Config = load("app.yaml")!
+    db as Store = connect(config.db_url)!
+    serve(config.port, db)!
+```
+
+See [Functions & Verbs — IO and Fallibility](functions.md#io-and-fallibility) for how `!` relates to verb families.
 
 ## Effect Types
 

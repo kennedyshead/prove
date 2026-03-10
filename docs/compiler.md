@@ -89,6 +89,56 @@ See [Diagnostic Codes](diagnostics.md) for the full list of error and warning co
 
 ---
 
+## Diagnostic Philosophy
+
+Prove is designed to be read and understood by humans. Error messages are not afterthoughts — they are part of the language's user interface. Every diagnostic follows these rules.
+
+### Rule 1: Natural English
+
+Messages are complete sentences. They start with a capital letter, end with a period, and read like something a colleague would say.
+
+```
+Bad:  "undefined type 'Foo'"
+Good: "Type 'Foo' is not defined."
+```
+
+### Rule 2: Show the Fix
+
+Where possible, include a code suggestion or tell the user exactly what to do. Don't just say what's wrong — say how to fix it.
+
+```
+"Cannot use '!' in 'parse' because it is not declared as failable.
+ Add '!' after the return type."
+```
+
+### Rule 3: One Error at a Time
+
+When the parser encounters a catastrophic failure, report only the first error. Cascading errors from a single root cause are noise. Fix the first problem, re-compile, and the cascading errors disappear.
+
+### Rule 4: Three Severity Tiers
+
+| Tier | Meaning | Action |
+|------|---------|--------|
+| **Error** | Won't compile | Must be fixed by hand |
+| **Warning** | Compiles but should be improved | Should be fixed by hand |
+| **Info** | Compiles and `prove format` can fix it | Run `prove format` |
+
+Strict mode (`--strict`) promotes warnings to errors. Info stays info.
+
+### Rule 5: Every Code Has Documentation
+
+Every diagnostic code links to `prove.botwork.se/diagnostics/#CODE` with a full explanation, before/after examples, and fix guidance. Codes are clickable in editors via LSP.
+
+### Rule 6: Errors for Broken, Warnings for Improvable
+
+If the code compiles and runs correctly, it is not an error. Errors are reserved for code that genuinely cannot be compiled. Style issues, missing documentation, and code quality improvements are warnings or info.
+
+### Rule 7: Suggestions Are Concrete
+
+The `Suggestion` system provides machine-applicable fixes. When a diagnostic includes a suggestion, the LSP can offer a one-click fix. Suggestions must be syntactically valid Prove code.
+
+---
+
 ## Optimizer
 
 When `optimize = true` in `prove.toml`, the compiler runs optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
@@ -96,7 +146,7 @@ When `optimize = true` in `prove.toml`, the compiler runs optimization passes on
 | Pass | What it does |
 |------|-------------|
 | **Runtime dependency collection** | Scans stdlib imports to track which C runtime libraries are needed. Feeds the build system's runtime stripping. |
-| **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a `terminates` annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
+| **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a [`terminates`](contracts.md#terminates) annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
 | **Compile-time evaluation** | Evaluates pure functions with constant arguments at compile time. For example, `double(21)` becomes `42` during compilation. Recursive functions are not evaluated to avoid infinite loops. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
@@ -132,7 +182,7 @@ MAX_CONNECTIONS as Integer = comptime
 
 ## Verb Enforcement
 
-The compiler enforces purity rules based on the function's verb. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects:
+The compiler enforces purity rules based on the function's verb. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
 
 - Cannot call built-in IO functions like `println` or `read_file` (E362)
 - Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E363)
