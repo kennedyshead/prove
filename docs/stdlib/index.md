@@ -1,12 +1,12 @@
 ---
 title: Standard Library Overview - Prove Programming Language
-description: Overview of the Prove standard library — 17 modules with consistent design patterns, verb families, and channel dispatch.
+description: Overview of the Prove standard library — 18 modules with consistent design patterns, verb families, and channel dispatch.
 keywords: Prove stdlib, standard library, design pattern, verb families, channel dispatch
 ---
 
 # Standard Library
 
-The Prove standard library is a set of 17 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 18 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -75,3 +75,4 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[Random](time-random.md#random)** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
 | **[Log](error-log.md#log)** | Complete | ANSI color constants and structured logging with `detached` verb |
+| **[Network](network.md)** | Complete | TCP/UDP sockets: connect, listen, accept, send, recv with Address/Socket types |
