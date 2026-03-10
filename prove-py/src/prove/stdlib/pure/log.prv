@@ -36,8 +36,10 @@ from
 
 detached warning(string String)
 from
-    console(f"{YELLOW}[WARNING] {string}{RESET}")
+    now as Time = time()
+    console(f"{YELLOW}[WARNING][{time(now, "HH:ii")}] {string}{RESET}")
 
 detached error(string String)
 from
-    console(f"{RED}[ERROR] {string}{RESET}")
+    now as Time = time()
+    console(f"{RED}[ERROR][{time(now, "HH:ii")}] {string}{RESET}")
