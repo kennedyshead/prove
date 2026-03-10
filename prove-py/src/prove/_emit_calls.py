@@ -191,6 +191,19 @@ class CallEmitterMixin:
                 return sig if isinstance(sig, FunctionSignature) else None
         return None
 
+    def _c_returns_value_ptr(self, expr: Expr) -> bool:
+        """Check if a call expression returns Prove_Value* at the C level.
+
+        This detects cases where type variable resolution specialized the
+        Prove return type (e.g. Value → String) but the C function still
+        returns Prove_Value*.
+        """
+        sig = self._resolve_call_sig(expr)
+        if sig and sig.return_type:
+            ct = map_type(sig.return_type)
+            return ct.decl == "Prove_Value*"
+        return False
+
     def _maybe_unwrap_option_value(
         self,
         expr_str: str,
@@ -289,6 +302,21 @@ class CallEmitterMixin:
                     if param_ct.decl == "bool":
                         result[i] = f"prove_value_as_bool({unwrapped})"
                         continue
+                # Result<T, E> → Value*: unwrap + wrap as Value
+                if param_ct.decl == "Prove_Value*":
+                    if inner_ct.decl == "Prove_Table*":
+                        result[i] = f"prove_value_object(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                    elif inner_ct.decl == "Prove_String*":
+                        result[i] = f"prove_value_text(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                    elif inner_ct.decl == "Prove_List*":
+                        result[i] = f"prove_value_array(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                    elif inner_ct.is_pointer:
+                        result[i] = f"(Prove_Value*)prove_result_unwrap_ptr({arg_str})"
+                    elif inner_ct.decl == "double":
+                        result[i] = f"prove_value_decimal(prove_result_unwrap_double({arg_str}))"
+                    else:
+                        result[i] = f"prove_value_number(prove_result_unwrap_int({arg_str}))"
+                    continue
             # Prove_Value* → concrete type extraction
             if arg_ct.decl == "Prove_Value*" and not param_ct.is_pointer:
                 if param_ct.decl in (
@@ -309,6 +337,24 @@ class CallEmitterMixin:
                 continue
             if arg_ct.decl == "Prove_Value*" and param_ct.decl == "Prove_String*":
                 result[i] = f"prove_value_as_text({arg_str})"
+                continue
+            # concrete → Prove_Value*: wrap as Value
+            if param_ct.decl == "Prove_Value*" and arg_ct.decl != "Prove_Value*":
+                if arg_ct.decl == "Prove_Table*":
+                    result[i] = f"prove_value_object({arg_str})"
+                elif arg_ct.decl == "Prove_String*":
+                    result[i] = f"prove_value_text({arg_str})"
+                elif arg_ct.decl == "Prove_List*":
+                    result[i] = f"prove_value_array({arg_str})"
+                elif arg_ct.decl == "double":
+                    result[i] = f"prove_value_decimal({arg_str})"
+                elif arg_ct.decl == "bool":
+                    result[i] = f"prove_value_bool({arg_str})"
+                elif not arg_ct.is_pointer and arg_ct.decl in (
+                    "int64_t", "int32_t", "int16_t", "int8_t",
+                    "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+                ):
+                    result[i] = f"prove_value_number({arg_str})"
                 continue
         return result
 

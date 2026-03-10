@@ -306,10 +306,16 @@ class TestShadowing:
     """Test E316 and E317 shadowing errors."""
 
     def test_function_shadows_builtin(self):
-        """E316: function name shadows builtin."""
+        """E316: function name shadows builtin with same param types."""
         check_fails(
-            "transforms len(xs Integer) Integer\n    from\n        xs\n",
+            "transforms clamp(a Integer, b Integer, c Integer) Integer\n    from\n        a\n",
             "E316",
+        )
+
+    def test_function_overload_allowed(self):
+        """Overloads with different param types should not trigger E316."""
+        check(
+            "transforms clamp(a Float, b Float, c Float) Float\n    from\n        a\n",
         )
 
     def test_parameter_shadows_builtin(self):
@@ -324,6 +330,17 @@ class TestShadowing:
         check_fails(
             "module M\n  type Integer is\n    value String\n",
             "E317",
+        )
+
+    def test_stdlib_module_exempt_from_e316(self):
+        """Stdlib modules may redefine builtins with same types (they provide them)."""
+        check(
+            "module Math\n"
+            "    narrative: \"math stdlib\"\n"
+            "\n"
+            "transforms clamp(value Integer, minimum Integer, maximum Integer) Integer\n"
+            "    from\n"
+            "        value\n",
         )
 
     def test_no_shadow_for_normal_names(self):

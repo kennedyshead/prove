@@ -206,11 +206,19 @@ class ExprEmitterMixin:
         # String concatenation
         if expr.op == "+":
             if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "String":
+                if self._c_returns_value_ptr(expr.left):
+                    left = f"prove_value_as_text({left})"
+                if self._c_returns_value_ptr(expr.right):
+                    right = f"prove_value_as_text({right})"
                 return f"prove_string_concat({left}, {right})"
 
         # String equality
         if expr.op == "==" or expr.op == "!=":
             if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "String":
+                if self._c_returns_value_ptr(expr.left):
+                    left = f"prove_value_as_text({left})"
+                if self._c_returns_value_ptr(expr.right):
+                    right = f"prove_value_as_text({right})"
                 eq = f"prove_string_eq({left}, {right})"
                 return eq if expr.op == "==" else f"(!{eq})"
             # Algebraic type tag comparison: severity == Error -> .tag == TAG
@@ -538,10 +546,10 @@ class ExprEmitterMixin:
                             else f"({inner_ct.decl})(intptr_t)"
                         )
                         unwrapped = f"{cast}{subj}.value"
-                        inner_cond = self._emit_literal_cond(unwrapped, arm.pattern)
+                        inner_cond = self._emit_literal_cond(unwrapped, arm.pattern, inner_ty)
                         cond = f"{subj}.tag == 1 && {inner_cond}"
                     else:
-                        cond = self._emit_literal_cond(subj, arm.pattern)
+                        cond = self._emit_literal_cond(subj, arm.pattern, subj_type)
                     keyword = "if" if first else "} else if"
                     self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
@@ -1101,12 +1109,20 @@ class ExprEmitterMixin:
             return self._current_return_type()
         return ERROR_TY
 
-    def _emit_literal_cond(self, subj: str, pat: LiteralPattern) -> str:
+    def _emit_literal_cond(
+        self, subj: str, pat: LiteralPattern, subj_type: Type | None = None,
+    ) -> str:
         """Generate a C condition comparing subj to a literal pattern."""
         val = pat.value
         if pat.kind == "boolean" or val in ("true", "false"):
+            if subj_type and self._is_value_type(subj_type):
+                subj = f"prove_value_as_bool({subj})"
             return subj if val == "true" else f"!({subj})"
         if pat.kind == "string":
             escaped = self._escape_c_string(val)
+            if subj_type and self._is_value_type(subj_type):
+                subj = f"prove_value_as_text({subj})"
             return f'prove_string_eq({subj}, prove_string_from_cstr("{escaped}"))'
+        if subj_type and self._is_value_type(subj_type):
+            subj = f"prove_value_as_number({subj})"
         return f"{subj} == {val}L"
