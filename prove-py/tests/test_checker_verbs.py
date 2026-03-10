@@ -246,14 +246,55 @@ class TestAsyncVerbs:
             "        console(msg)\n"
         )
 
-    def test_attached_blocking_io_error(self):
+    def test_attached_can_call_blocking_io(self):
+        check(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  System inputs console\n"
+            "attached reader() String\n"
+            "    from\n"
+            "        console()\n"
+        )
+
+    def test_attached_with_io_from_listens_ok(self):
+        check(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  System inputs console\n"
+            "  type Cmd is Go | Exit\n"
+            "attached reader() String\n"
+            "    from\n"
+            "        console()\n"
+            "listens loop(cmd Cmd)\n"
+            "    from\n"
+            "        Exit  => cmd\n"
+            "        Go    => _ as String = reader()&\n"
+        )
+
+    def test_attached_with_io_outside_async_context_e377(self):
         check_fails(
             "module M\n"
+            '  narrative: """Test"""\n'
             "  System inputs console\n"
-            "attached bad(x Integer) String\n"
+            "attached reader() String\n"
             "    from\n"
-            "        console()\n",
-            "E371",
+            "        console()\n"
+            "detached worker()\n"
+            "    from\n"
+            "        reader()&\n",
+            "E398",
+        )
+
+    def test_attached_without_io_from_detached_ok(self):
+        check(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "attached compute(x Integer) Integer\n"
+            "    from\n"
+            "        x + 1\n"
+            "detached worker()\n"
+            "    from\n"
+            "        _ as Integer = compute(42)&\n"
         )
 
     def test_async_call_outside_async_body_error(self):

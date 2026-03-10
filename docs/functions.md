@@ -83,10 +83,10 @@ See [Contracts & Annotations](contracts.md#requires-and-ensures) for `ensures` a
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
 | `detached` | Spawn and move on — fire-and-forget | No return type. Body runs concurrently; caller does not wait |
-| `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. No blocking IO calls |
+| `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. May call blocking IO (runs in its own coroutine stack) |
 | `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. No return type |
 
-Async verbs form a third family alongside pure and IO. The key difference from IO verbs: `attached` and `listens` bodies must not call blocking `inputs`/`outputs` functions — they run cooperatively and blocking would stall the yield cycle. `detached` is exempt since it runs independently. Concurrency is cooperative — no threads, no data races. Runtime backed by `prove_coro` stackful coroutines (`ucontext_t` on POSIX, sequential fallback on Windows).
+Async verbs form a third family alongside pure and IO. `listens` bodies must not call blocking `inputs`/`outputs` functions directly — they run cooperatively and blocking would stall the yield cycle. Instead, `listens` arms can call `attached` functions via `&` to perform IO safely in a child coroutine. `detached` and `attached` may call blocking IO freely since they have their own coroutine stacks. Concurrency is cooperative — no threads, no data races. Runtime backed by `prove_coro` stackful coroutines (`ucontext_t` on POSIX, sequential fallback on Windows).
 
 ### The `&` Marker
 
@@ -116,13 +116,18 @@ from
 
 ### `attached` — Spawn and Await
 
-Spawns a coroutine and blocks the caller until the result is ready. Must declare a return type ([E370](diagnostics.md#e370-unknown-variant-attached-without-return-type)). Cannot call blocking IO ([E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body)) — use `&` to dispatch to other async functions instead.
+Spawns a coroutine and blocks the caller until the result is ready. Must declare a return type ([E370](diagnostics.md#e370-unknown-variant-attached-without-return-type)). May call blocking IO (`inputs`/`outputs`) since it runs in its own coroutine stack. When an IO-bearing `attached` function is called via `&`, it must be from a `listens` or another `attached` body ([E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context)).
 
 ```prove
+/// Read a file — attached does the IO in its own coroutine.
+attached load(path String) String
+from
+    file(path)!
+
 /// Fetch and parse data — caller waits for the result.
 attached fetch(url String) String
 from
-    request(url)&
+    load(url)&
 ```
 
 ### `listens` — Cooperative Loop
@@ -185,10 +190,11 @@ from
 | Code | Trigger | Severity |
 |------|---------|----------|
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
-| [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `attached` or `listens` body (`detached` is exempt) | Error |
+| [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `listens` body (`detached` and `attached` are exempt) | Error |
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | Async function called without `&` inside an async body | Error |
 | [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async body | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
+| [E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context) | IO-bearing `attached` called outside `listens`/`attached` body | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
@@ -209,7 +215,7 @@ The `streams` verb declares a blocking loop that reads from an IO source and dis
 
 - The return type declares the element type (an algebraic type) being streamed
 - The `from` block must be a single implicit match with an `Exit` arm
-- `streams` is a blocking IO verb — it cannot be called from `attached` or `listens` bodies
+- `streams` is a blocking IO verb — it cannot be called from `listens` bodies
 
 ```prove
 type Line is
@@ -301,7 +307,7 @@ validates email(address String)
 
 ## IO and Fallibility
 
-IO is inherent in the verb — `inputs`, `outputs`, and `streams` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) are concurrent — `detached` may call IO freely (runs independently), while `attached` and `listens` must not block.
+IO is inherent in the verb — `inputs`, `outputs`, and `streams` always interact with the external world. Fallibility is marked with `!` on the return type. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) have neither IO nor `!`. Async verbs (`detached`, `attached`, `listens`) are concurrent — `detached` and `attached` may call IO freely (they have their own coroutine stacks), while `listens` must not block directly (use `attached` via `&` for IO in a `listens` body).
 
 ```prove
 transforms area(s Shape) Decimal
