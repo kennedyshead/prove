@@ -110,10 +110,9 @@ All functions use the `inputs` verb because randomness requires external entropy
 ```prove
 Random inputs integer boolean choice shuffle
 
-inputs roll_dice(count Integer) List<Integer>
+inputs roll_pair() List<Integer>
 from
-    results as List<Integer> = []
-    repeat count
-        results = results + [Random.integer(1, 6)]
-    results
+    first as Integer = Random.integer(1, 6)
+    second as Integer = Random.integer(1, 6)
+    [first, second]
 ```

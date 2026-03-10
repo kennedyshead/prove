@@ -60,6 +60,8 @@ prove check docs/tutorial.md --md
 |------|-------------|
 | `--md` | Also check ` ```prove ` code blocks in Markdown files |
 | `--strict` | Promote warnings to errors (exit 1 on any warning) |
+| `--coherence` | Check vocabulary consistency between narrative and code ([I340](diagnostics.md#i340-vocabulary-drift-from-narrative)) |
+| `--challenges` | Generate refutation challenges from `ensures` contracts |
 
 When `path` is a `.prv` file, checks that single file. When `path` is a directory, finds `prove.toml` and checks all files in `src/`. When `path` is a `.md` file (with `--md`), checks all fenced Prove blocks.
 
@@ -135,4 +137,4 @@ Used by editor integrations (VS Code, Neovim, etc.) for diagnostics, completions
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Error (compilation failed, check failed, tests failed, or formatting mismatch with `--check`) |
+| `1` | Error (compilation failed, check failed, tests failed, or formatting mismatch with `--status`) |

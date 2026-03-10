@@ -117,12 +117,12 @@ store_dir/
 
 ## Exit Criteria
 
-- [ ] Store module in stdlib
-- [ ] Version-based `saves` with stale rejection
-- [ ] `diffs` / `patches` work for variant additions, removals, and value changes
+- [x] Store module in stdlib
+- [x] Version-based `saves` with stale rejection
+- [x] `diffs` / `patches` work for variant additions, removals, and value changes
 - [ ] `merges` accepts user-provided resolver function
-- [ ] `compiles` produces binary from table
-- [ ] `integrity` / `versions` / `rollbacks` work
+- [x] `compiles` produces binary from table
+- [x] `integrity` / `versions` / `rollbacks` work
 - [ ] Tests pass
 - [ ] Docs updated: `stdlib.md` (Store module), `store-merge-conflicts.md` folded in or referenced
 - [ ] Add Store to the Language Tour on the home page (index.md) — spotlight as a unique feature

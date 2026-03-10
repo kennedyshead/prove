@@ -10,7 +10,7 @@ keywords: programming language, intent-first, AI resistance, code scraping prote
 
 **A programming language designed to mitigate AI slop and code scraping.**
 
-Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. This strict enforcement, coupled with features like explicit verbs and verifiable explain blocks, makes it exceptionally difficult for AI to generate semantically correct and compilable code without true understanding. Source is stored as binary AST — unscrapable, unnormalizable, unlicensed for training. If it compiles, the author understood what they wrote. If it's AI-generated, it won't. [Learn more about Prove's AI Resistance](ai-resistance.md)
+Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. This strict enforcement, coupled with features like explicit verbs and verifiable explain blocks, makes it exceptionally difficult for AI to generate semantically correct and compilable code without true understanding. Source code is covered by an anti-training license — unlicensed for AI training. Binary AST storage is [planned](ai-resistance.md#structured-source-format-binary-prv) for post-1.0. If it compiles, the author understood what they wrote. If it's AI-generated, it won't. [Learn more about Prove's AI Resistance](ai-resistance.md)
 
 ```prove
 transforms add(a Integer, b Integer) Integer
