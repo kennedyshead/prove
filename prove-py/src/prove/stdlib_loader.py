@@ -466,6 +466,14 @@ _register_module(
         ("validates", "table"): "prove_store_table_validates",
         ("transforms", "diff"): "prove_store_diff",
         ("transforms", "patch"): "prove_store_patch",
+        ("transforms", "merge"): "prove_store_merge",
+        ("validates", "merged"): "prove_store_merged_validates",
+        ("reads", "merged"): "prove_store_merged",
+        ("reads", "conflicts"): "prove_store_conflicts",
+        ("reads", "variant"): "prove_store_conflict_variant",
+        ("reads", "column"): "prove_store_conflict_column",
+        ("reads", "local_value"): "prove_store_conflict_local_value",
+        ("reads", "remote_value"): "prove_store_conflict_remote_value",
         ("outputs", "lookup"): "prove_store_lookup_outputs",
         ("inputs", "lookup"): "prove_store_lookup_inputs",
         ("reads", "integrity"): "prove_store_integrity",
@@ -563,6 +571,9 @@ _KNOWN_TYPES = {
     "StoreTable": PrimitiveType("StoreTable"),
     "TableDiff": PrimitiveType("TableDiff"),
     "Version": PrimitiveType("Version"),
+    "Conflict": PrimitiveType("Conflict"),
+    "Resolution": PrimitiveType("Resolution"),
+    "MergeResult": PrimitiveType("MergeResult"),
 }
 
 

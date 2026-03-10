@@ -431,6 +431,418 @@ class TestMerge:
         assert "B=20" in lines
 
 
+class TestMergeValueConflict:
+    def test_value_conflict_no_resolver(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: A=1 */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+
+                /* Local: A=10 */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+
+                /* Remote: A=20 */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, NULL);
+                printf("tag=%d\\n", mr->tag);
+                printf("conflicts=%lld\\n", (long long)prove_list_len(mr->data.conflicts));
+                Prove_Conflict *c = (Prove_Conflict *)prove_list_get(mr->data.conflicts, 0);
+                printf("ctype=%d\\n", c->tag);
+                printf("variant=%s\\n", c->data.value.variant->data);
+                printf("local=%s\\n", c->data.value.local_val->data);
+                printf("remote=%s\\n", c->data.value.remote_val->data);
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="val_conflict")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "tag=1"  # PROVE_MERGE_CONFLICTED
+        assert lines[1] == "conflicts=1"
+        assert lines[2] == "ctype=0"  # PROVE_CONFLICT_VALUE
+        assert lines[3] == "variant=A"
+        assert lines[4] == "local=10"
+        assert lines[5] == "remote=20"
+
+
+class TestMergeWithResolver:
+    def test_resolver_keep_remote(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+
+            Prove_Resolution keep_remote(Prove_Conflict c) {
+                Prove_Resolution r;
+                r.tag = PROVE_RESOLUTION_KEEP_REMOTE;
+                return r;
+            }
+
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: A=1 */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+
+                /* Local: A=10 */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+
+                /* Remote: A=20 */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, keep_remote);
+                printf("tag=%d\\n", mr->tag);
+                if (mr->tag == PROVE_MERGE_MERGED) {
+                    Prove_StoreTable *merged = mr->data.table;
+                    printf("A=%s\\n", merged->values[0][0]->data);
+                }
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="resolver_kr")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "tag=0"  # PROVE_MERGE_MERGED
+        assert lines[1] == "A=20"
+
+
+class TestMergeAdditionConflict:
+    def test_addition_conflict_no_resolver(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: empty */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+
+                /* Local adds X=10 */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vl[1]; vl[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("X"), vl);
+
+                /* Remote adds X=20 */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vr[1]; vr[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("X"), vr);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, NULL);
+                printf("tag=%d\\n", mr->tag);
+                printf("conflicts=%lld\\n", (long long)prove_list_len(mr->data.conflicts));
+                Prove_Conflict *c = (Prove_Conflict *)prove_list_get(mr->data.conflicts, 0);
+                printf("ctype=%d\\n", c->tag);
+                printf("variant=%s\\n", c->data.addition.variant->data);
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="add_conflict")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "tag=1"  # PROVE_MERGE_CONFLICTED
+        assert lines[1] == "conflicts=1"
+        assert lines[2] == "ctype=1"  # PROVE_CONFLICT_ADDITION
+        assert lines[3] == "variant=X"
+
+
+class TestMergeResolverReject:
+    def test_resolver_reject(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+
+            Prove_Resolution reject_all(Prove_Conflict c) {
+                Prove_Resolution r;
+                r.tag = PROVE_RESOLUTION_REJECT;
+                r.data.reject_reason = prove_string_from_cstr("nope");
+                return r;
+            }
+
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, reject_all);
+                printf("tag=%d\\n", mr->tag);
+                printf("conflicts=%lld\\n", (long long)prove_list_len(mr->data.conflicts));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="resolver_reject")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "tag=1"  # PROVE_MERGE_CONFLICTED
+        assert lines[1] == "conflicts=1"
+
+
+class TestMergeResolverUseValue:
+    def test_resolver_use_value(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+
+            Prove_Resolution use_custom(Prove_Conflict c) {
+                Prove_Resolution r;
+                r.tag = PROVE_RESOLUTION_USE_VALUE;
+                r.data.use_value = prove_string_from_cstr("42");
+                return r;
+            }
+
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, use_custom);
+                printf("tag=%d\\n", mr->tag);
+                if (mr->tag == PROVE_MERGE_MERGED) {
+                    Prove_StoreTable *merged = mr->data.table;
+                    printf("A=%s\\n", merged->values[0][0]->data);
+                }
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="resolver_uv")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "tag=0"  # PROVE_MERGE_MERGED
+        assert lines[1] == "A=42"
+
+
+class TestMergeResultAccessors:
+    def test_merged_accessors(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: A=1, B=2 */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+                Prove_String *vb[1]; vb[0] = prove_string_from_cstr("2");
+                prove_store_table_add_variant(base, prove_string_from_cstr("B"), vb);
+
+                /* Local: A=10 (non-overlapping with remote) */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+                Prove_String *vlb[1]; vlb[0] = prove_string_from_cstr("2");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("B"), vlb);
+
+                /* Remote: B=20 (non-overlapping with local) */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+                Prove_String *vrb[1]; vrb[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("B"), vrb);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                /* Clean merge */
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, NULL);
+                printf("merged_ok=%d\\n", prove_store_merged_validates(mr) ? 1 : 0);
+                Prove_StoreTable *merged = prove_store_merged(mr);
+                printf("vars=%lld\\n", (long long)merged->variant_count);
+
+                /* Now create a conflict scenario */
+                Prove_StoreTable *local2 = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vl2a[1]; vl2a[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local2, prove_string_from_cstr("A"), vl2a);
+
+                Prove_StoreTable *remote2 = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vr2a[1]; vr2a[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote2, prove_string_from_cstr("A"), vr2a);
+
+                Prove_TableDiff *ld2 = prove_store_diff(base, local2);
+                Prove_TableDiff *rd2 = prove_store_diff(base, remote2);
+
+                Prove_MergeResult *mr2 = prove_store_merge(base, ld2, rd2, NULL);
+                printf("merged_ok2=%d\\n", prove_store_merged_validates(mr2) ? 1 : 0);
+                Prove_List *conflicts = prove_store_conflicts(mr2);
+                printf("conflict_count=%lld\\n", (long long)prove_list_len(conflicts));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="mr_accessors")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "merged_ok=1"
+        assert lines[1] == "vars=2"
+        assert lines[2] == "merged_ok2=0"
+        assert lines[3] == "conflict_count=1"
+
+
+class TestConflictAccessors:
+    def test_value_conflict_accessors(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: A=1 */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *va[1]; va[0] = prove_string_from_cstr("1");
+                prove_store_table_add_variant(base, prove_string_from_cstr("A"), va);
+
+                /* Local: A=10 */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vla[1]; vla[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("A"), vla);
+
+                /* Remote: A=20 */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vra[1]; vra[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("A"), vra);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, NULL);
+                Prove_List *conflicts = prove_store_conflicts(mr);
+                Prove_Conflict *c = (Prove_Conflict *)prove_list_get(conflicts, 0);
+
+                printf("variant=%s\\n", prove_store_conflict_variant(c)->data);
+                printf("column=%s\\n", prove_store_conflict_column(c)->data);
+                printf("local=%s\\n", prove_store_conflict_local_value(c)->data);
+                printf("remote=%s\\n", prove_store_conflict_remote_value(c)->data);
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="c_accessors")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "variant=A"
+        assert lines[1] == "column=value"
+        assert lines[2] == "local=10"
+        assert lines[3] == "remote=20"
+
+    def test_addition_conflict_variant(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_store.h"
+            #include <stdio.h>
+            int main(void) {
+                Prove_String *cols[1];
+                cols[0] = prove_string_from_cstr("value");
+
+                /* Base: empty */
+                Prove_StoreTable *base = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+
+                /* Local adds X=10 */
+                Prove_StoreTable *local_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vl[1]; vl[0] = prove_string_from_cstr("10");
+                prove_store_table_add_variant(local_t, prove_string_from_cstr("X"), vl);
+
+                /* Remote adds X=20 */
+                Prove_StoreTable *remote_t = prove_store_table_new(
+                    prove_string_from_cstr("t"), 1, cols);
+                Prove_String *vr[1]; vr[0] = prove_string_from_cstr("20");
+                prove_store_table_add_variant(remote_t, prove_string_from_cstr("X"), vr);
+
+                Prove_TableDiff *ld = prove_store_diff(base, local_t);
+                Prove_TableDiff *rd = prove_store_diff(base, remote_t);
+
+                Prove_MergeResult *mr = prove_store_merge(base, ld, rd, NULL);
+                Prove_List *conflicts = prove_store_conflicts(mr);
+                Prove_Conflict *c = (Prove_Conflict *)prove_list_get(conflicts, 0);
+
+                printf("variant=%s\\n", prove_store_conflict_variant(c)->data);
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="add_c_acc")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "variant=X"
+
+
 class TestLookupCompile:
     def test_lookup_output_input(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\

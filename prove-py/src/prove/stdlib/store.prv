@@ -9,6 +9,12 @@ module Store
 
   type Version is binary
 
+  type Conflict is binary
+
+  type Resolution is binary
+
+  type MergeResult is binary
+
 /// Create a new store at the given directory path
 outputs store(path String) Result<Store, Error>!
 binary
@@ -37,6 +43,10 @@ binary
 transforms patch(table StoreTable, diff TableDiff) StoreTable
 binary
 
+/// Three-way merge of two diffs against a base table
+transforms merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult
+binary
+
 /// Compile a table to lookup format
 outputs lookup(store Store, name String) Result<Unit, Error>!
 binary
@@ -55,4 +65,32 @@ binary
 
 /// List all versions of a table
 inputs version(store Store, name String) Result<List<Version>, Error>!
+binary
+
+/// Check whether a merge succeeded without conflicts
+validates merged(result MergeResult)
+binary
+
+/// Get the merged table from a successful merge result
+reads merged(result MergeResult) StoreTable
+binary
+
+/// Get the list of conflicts from a conflicted merge result
+reads conflicts(result MergeResult) List<Conflict>
+binary
+
+/// Get the variant name from a conflict
+reads variant(conflict Conflict) String
+binary
+
+/// Get the column name from a value conflict
+reads column(conflict Conflict) String
+binary
+
+/// Get the local value from a value conflict
+reads local_value(conflict Conflict) String
+binary
+
+/// Get the remote value from a value conflict
+reads remote_value(conflict Conflict) String
 binary
