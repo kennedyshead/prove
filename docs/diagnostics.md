@@ -711,6 +711,26 @@ from
 
 A function declares `satisfies` for an invariant network but has no `ensures` clauses. Without postconditions, the compiler cannot verify that the function actually satisfies the invariant's constraints.
 
+### W501 — Verb not described in module narrative
+
+A function's verb keyword is not implied by any action word in the module's `narrative:` block. The narrative should describe every kind of operation the module performs. Emitted only with `prove check --coherence`.
+
+### W502 — Explain entry doesn't match from-body
+
+An `explain` entry's prose text has no overlap with the names of operations or parameters in the function's `from` block. The explain block should document what the code actually does. Emitted only with `prove check --coherence`.
+
+### W503 — Chosen declared without why_not
+
+A function declares `chosen:` to document the approach taken but has no `why_not:` entries for rejected alternatives. Design decisions are more valuable when paired with documented trade-offs. Emitted only with `prove check --coherence`.
+
+### W504 — Chosen text doesn't relate to from-body
+
+A function's `chosen:` text has no overlap with the operations or parameters in the `from` block. The chosen description should relate to what the implementation actually does. Emitted only with `prove check --coherence`.
+
+### W505 — Why-not entry mentions no known name
+
+A `why_not:` entry contains no function name, type name, or other identifier from the current scope. Rejection notes should anchor to something concrete — a function, type, or algorithm — so future readers understand what was considered. Emitted only with `prove check --coherence`.
+
 ### I340 — Vocabulary drift from narrative
 
 A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Emitted only with `prove check --coherence`.

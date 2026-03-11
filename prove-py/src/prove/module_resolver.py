@@ -1,8 +1,12 @@
 """Build a registry of local (sibling) modules for cross-file compilation.
 
-Two-phase approach: parse all .prv files first, extract module names, types,
-and function signatures, then hand the registry to each Checker so it can
-resolve imports from sibling modules.
+Three-phase approach:
+  1. Parse all .prv files, collect locally-defined types
+  2. Resolve sibling type imports (so cross-module type re-exports work)
+  3. Build function signatures using complete type registries
+
+The registry is handed to each Checker so it can resolve imports from
+sibling modules.
 """
 
 from __future__ import annotations
@@ -49,7 +53,11 @@ def build_module_registry(
     """Parse all .prv files and extract module-level type and function info.
 
     Returns a dict mapping module name -> LocalModuleInfo.
-    Each module is checked with builtins only (no cross-module deps).
+
+    Three phases:
+      1. Parse & collect locally-defined types
+      2. Resolve sibling type imports (re-exports)
+      3. Build function signatures using complete type registries
     """
     from prove.ast_nodes import (
         AlgebraicTypeDef,
@@ -58,7 +66,10 @@ def build_module_registry(
     )
 
     registry: dict[str, LocalModuleInfo] = {}
+    # Intermediate data needed across phases: mod_decl, type_registry, parsed module
+    phase_data: dict[str, tuple[ModuleDecl, dict[str, Type], object]] = {}
 
+    # --- Phase 1: Parse & collect local types ---
     for prv_file in prv_files:
         source = prv_file.read_text()
         filename = str(prv_file)
@@ -78,7 +89,7 @@ def build_module_registry(
                 mod_decl = decl
                 break
 
-        if module_name is None:
+        if module_name is None or mod_decl is None:
             continue
 
         info = LocalModuleInfo(name=module_name)
@@ -97,37 +108,66 @@ def build_module_registry(
         type_registry["List"] = ListType(TypeVariable("Value"))
         type_registry["Error"] = PrimitiveType("Error")
 
-        if mod_decl is not None:
-            for td in mod_decl.types:
-                resolved = _resolve_type_def(td, type_registry)
-                if resolved is not None:
-                    type_registry[td.name] = resolved
-                    info.types[td.name] = resolved
+        for td in mod_decl.types:
+            resolved = _resolve_type_def(td, type_registry)
+            if resolved is not None:
+                type_registry[td.name] = resolved
+                info.types[td.name] = resolved
 
-                    # Register variant constructors for algebraic types
-                    if isinstance(td.body, AlgebraicTypeDef) and isinstance(
-                        resolved, AlgebraicType
+                # Register variant constructors for algebraic types
+                if isinstance(td.body, AlgebraicTypeDef) and isinstance(
+                    resolved, AlgebraicType
+                ):
+                    for v in td.body.variants:
+                        vfield_types = [
+                            _resolve_type_expr_simple(f.type_expr, type_registry)
+                            for f in v.fields
+                        ]
+                        vsig = FunctionSignature(
+                            verb=None,
+                            name=v.name,
+                            param_names=[f.name for f in v.fields],
+                            param_types=vfield_types,
+                            return_type=resolved,
+                            can_fail=False,
+                            span=_DUMMY,
+                            module=module_name.lower(),
+                            requires=[],
+                        )
+                        info.functions.append(vsig)
+
+        registry[module_name] = info
+        phase_data[module_name] = (mod_decl, type_registry, module)
+
+    # --- Phase 2: Resolve sibling type imports ---
+    # Fixed-point loop: keep resolving until no new types propagate.
+    # This handles transitive re-exports (A defines T, B imports T from A,
+    # C imports T from B) regardless of iteration order.
+    changed = True
+    while changed:
+        changed = False
+        for module_name, (mod_decl, type_registry, _module) in phase_data.items():
+            info = registry[module_name]
+            for imp in mod_decl.imports:
+                sibling = registry.get(imp.module)
+                if sibling is None:
+                    continue  # stdlib or unknown module — skip
+                for item in imp.items:
+                    # Type imports: explicit "types" verb or bare CamelCase name
+                    if item.verb == "types" or (
+                        item.verb is None and item.name[:1].isupper()
                     ):
-                        for v in td.body.variants:
-                            vfield_types = [
-                                _resolve_type_expr_simple(f.type_expr, type_registry)
-                                for f in v.fields
-                            ]
-                            vsig = FunctionSignature(
-                                verb=None,
-                                name=v.name,
-                                param_names=[f.name for f in v.fields],
-                                param_types=vfield_types,
-                                return_type=resolved,
-                                can_fail=False,
-                                span=_DUMMY,
-                                module=module_name.lower(),
-                                requires=[],
-                            )
-                            info.functions.append(vsig)
+                        if item.name not in info.types:
+                            imported_type = sibling.types.get(item.name)
+                            if imported_type is not None:
+                                type_registry[item.name] = imported_type
+                                info.types[item.name] = imported_type
+                                changed = True
 
-        # Extract function signatures
-        for decl in module.declarations:
+    # --- Phase 3: Build function signatures ---
+    for module_name, (_mod_decl, type_registry, module) in phase_data.items():
+        info = registry[module_name]
+        for decl in module.declarations:  # type: ignore[union-attr]
             if isinstance(decl, FunctionDef):
                 param_types = [
                     _resolve_type_expr_simple(p.type_expr, type_registry) for p in decl.params
@@ -149,8 +189,6 @@ def build_module_registry(
                     requires=decl.requires,
                 )
                 info.functions.append(sig)
-
-        registry[module_name] = info
 
     return registry
 
