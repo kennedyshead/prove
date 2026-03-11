@@ -562,3 +562,86 @@ class TestValidatesToml:
         result = compile_and_run(runtime_dir, tmp_path, code, name="validates_toml_sec")
         assert result.returncode == 0
         assert "OK" in result.stdout
+
+
+# ── URL host/port accessor tests ──────────────────────────────
+
+
+class TestUrlHostReads:
+    def test_host_from_parsed_url(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_Url *u = prove_parse_url(
+                    prove_string_from_cstr("https://example.com:8080/path")
+                );
+                Prove_String *h = prove_parse_url_host_reads(u);
+                printf("host=%.*s\\n", (int)h->length, h->data);
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="url_host")
+        assert result.returncode == 0
+        assert "host=example.com" in result.stdout
+
+    def test_host_no_port(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_Url *u = prove_parse_url(
+                    prove_string_from_cstr("https://example.com/path")
+                );
+                Prove_String *h = prove_parse_url_host_reads(u);
+                printf("host=%.*s\\n", (int)h->length, h->data);
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="url_host_noport")
+        assert result.returncode == 0
+        assert "host=example.com" in result.stdout
+
+
+class TestUrlPortReads:
+    def test_port_from_parsed_url(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_Url *u = prove_parse_url(
+                    prove_string_from_cstr("https://example.com:9090/path")
+                );
+                int64_t p = prove_parse_url_port_reads(u);
+                printf("port=%lld\\n", (long long)p);
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="url_port")
+        assert result.returncode == 0
+        assert "port=9090" in result.stdout
+
+    def test_port_not_set(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_Url *u = prove_parse_url(
+                    prove_string_from_cstr("https://example.com/path")
+                );
+                int64_t p = prove_parse_url_port_reads(u);
+                printf("port=%lld\\n", (long long)p);
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="url_port_unset")
+        assert result.returncode == 0
+        assert "port=-1" in result.stdout

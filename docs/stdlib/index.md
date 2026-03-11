@@ -75,4 +75,4 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[Random](time-random.md#random)** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
 | **[Log](error-log.md#log)** | Complete | ANSI color constants and structured logging with `detached` verb |
-| **[Network](network.md)** | Complete | TCP/UDP sockets: connect, listen, accept, send, recv with Address/Socket types |
+| **[Network](network.md)** | Complete | TCP sockets: connect, listen, accept, send, recv with Socket type |

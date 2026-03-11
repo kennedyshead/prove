@@ -1,12 +1,12 @@
 ---
 title: Network - Prove Standard Library
-description: TCP and UDP socket communication in the Prove standard library.
-keywords: Prove Network, sockets, TCP, UDP, networking
+description: TCP socket communication in the Prove standard library.
+keywords: Prove Network, sockets, TCP, networking
 ---
 
 # Network
 
-**Module:** `Network` — TCP and UDP socket communication.
+**Module:** `Network` — TCP socket communication.
 
 Network uses IO verbs for blocking socket operations. Pairs naturally with
 async verbs (`listens`, `attached`) for non-blocking servers.
@@ -16,8 +16,6 @@ async verbs (`listens`, `attached`) for non-blocking servers.
 | Type | Kind | Description |
 |------|------|-------------|
 | `Socket` | binary | An open network socket (wraps OS file descriptor) |
-| `Protocol` | algebraic | `Tcp` or `Udp` |
-| `Address` | binary | Network address (host and port) |
 
 ### socket
 
@@ -25,17 +23,17 @@ Connect, close, and check sockets.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `socket(address Address, protocol Protocol) Result<Socket, Error>!` | Open a connection to a remote address |
+| `inputs` | `socket(host String, port Integer) Result<Socket, Error>!` | Open a TCP connection to a remote host and port |
 | `outputs` | `socket(connection Socket)` | Close a connection |
 | `validates` | `socket(connection Socket)` | Check if a connection is open |
 
 ### server
 
-Bind and listen on an address.
+Bind and listen on a port.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `server(address Address, protocol Protocol) Result<Socket, Error>!` | Bind and listen on an address |
+| `inputs` | `server(host String, port Integer) Result<Socket, Error>!` | Bind and listen on a TCP port |
 
 ### accept
 
@@ -54,31 +52,17 @@ Read and write data on a socket.
 | `inputs` | `message(connection Socket, size Integer) Result<ByteArray, Error>!` | Read data from a socket |
 | `outputs` | `message(connection Socket, data ByteArray) Result<Unit, Error>!` | Write data to a socket |
 
-### address
-
-Parse, format, and validate network addresses.
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `creates` | `address(source String) Result<Address, Error>!` | Parse an address string (`"host:port"`) |
-| `reads` | `address(location Address) String` | Format address as `"host:port"` |
-| `validates` | `address(source String)` | Check if an address string is valid |
-| `reads` | `host(location Address) String` | Read the host component |
-| `reads` | `port(location Address) Integer` | Read the port component |
-
 ```prove
 Network inputs socket server accept message, outputs socket message,
-  validates socket address, creates address, reads address host port,
-  types Socket Protocol Address
+  validates socket, types Socket
 Bytes types ByteArray
 
 outputs echo_server(port Integer)!
 from
-    addr as Address = Network.address(f"0.0.0.0:{port}")!
-    listener as Socket = Network.server(addr, Tcp)!
-    client as Socket = Network.accept(listener)!
-    data as ByteArray = Network.message(client, 1024)!
-    Network.message(client, data)!
-    Network.socket(client)
-    Network.socket(listener)
+    listener as Socket = server("0.0.0.0", port)!
+    client as Socket = accept(listener)!
+    data as ByteArray = message(client, 1024)!
+    message(client, data)!
+    socket(client)
+    socket(listener)
 ```

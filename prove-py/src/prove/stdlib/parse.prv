@@ -77,6 +77,14 @@ binary
 transforms url(source Url, params Table<Value>) Url
 binary
 
+/// Read the host component of a URL
+reads host(url Url) String
+binary
+
+/// Read the port component of a URL (-1 if not set)
+reads port(url Url) Integer
+binary
+
 /// Decode a Base64 string into a byte array
 reads base64(encoded String) ByteArray
 binary

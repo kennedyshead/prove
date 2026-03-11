@@ -261,6 +261,8 @@ _RUNTIME_FUNCTIONS = {
         "prove_parse_url_create",
         "prove_parse_url_validates",
         "prove_parse_url_transform",
+        "prove_parse_url_host_reads",
+        "prove_parse_url_port_reads",
         "prove_parse_base64_decode",
         "prove_parse_base64_encode",
         "prove_parse_base64_validates",
@@ -452,11 +454,6 @@ _RUNTIME_FUNCTIONS = {
         "prove_network_accept_inputs",
         "prove_network_message_inputs",
         "prove_network_message_outputs",
-        "prove_network_address_creates",
-        "prove_network_address_reads",
-        "prove_network_address_validates",
-        "prove_network_host_reads",
-        "prove_network_port_reads",
     ],
 }
 
