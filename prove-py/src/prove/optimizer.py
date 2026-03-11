@@ -781,7 +781,8 @@ class Optimizer:
         new_decls: list[Declaration] = []
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
-                if decl.name in reachable:
+                # streams functions are blocking IO entry points — never dead
+                if decl.name in reachable or decl.verb == "streams":
                     new_decls.append(decl)
             elif isinstance(decl, MainDef):
                 new_decls.append(decl)

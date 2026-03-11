@@ -128,6 +128,8 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_Url*", is_pointer=True, header="prove_parse.h")
         if name == "Socket":
             return CType("Prove_Socket*", is_pointer=True, header="prove_network.h")
+        if name == "File":
+            return CType("Prove_File*", is_pointer=True, header="prove_input_output.h")
         if name == "Store":
             return CType("Prove_Store*", is_pointer=True, header="prove_store.h")
         if name == "StoreTable":

@@ -128,6 +128,47 @@ the resulting binary recompiles itself, and both outputs must match.
 
 ## Exploring
 
+### Stub Generation from Narrative
+
+Generate function stubs from `narrative:` prose. The verb-prose mapping
+(`_nl_intent.py`) extracts which verbs the narrative implies, noun extraction
+identifies domain objects, and the ML completion model predicts parameter types
+and return types. The output is function signatures with `todo`-marked `from`
+blocks. `todo` becomes a first-class incomplete marker: the checker tracks it,
+the linter reports module completeness, and the C emitter compiles it to a
+clear panic.
+
+Depends on Prose Coherence Analysis (for `_nl_intent.py`) and Cache Indexing
+(for warm ML model access).
+
+### Intent-Driven Body Generation
+
+Fill generated `from` blocks where the system has enough knowledge. A function
+whose verb and noun match a stdlib function gets a complete body with a direct
+stdlib call, plus generated `explain`, `chosen`, and `why_not` blocks.
+Functions with no stdlib match remain as `todo` stubs. As the programmer
+implements unknowns, those become available as building blocks for future
+generation — the project progressively teaches itself.
+
+Depends on Stub Generation and a stdlib knowledge base (docstring-indexed
+lookup from stdlib `///` comments to function identities).
+
+### Project Intent Declaration (`.intent` format)
+
+A human-readable, human-editable file format for project-level intent
+declaration. Not a programming language, not a schema language — a structured
+prose format where every line maps to something generatable. Module blocks
+list verb phrases that become functions. Vocabulary defines domain concepts
+that become types. Flow declarations drive import relationships. Constraints
+map to contracts.
+
+The `.intent` file gets its own LSP mode with completions powered by the
+stdlib knowledge base: after typing a verb, the LSP suggests stdlib-known
+nouns with their docstrings so the programmer sees what's available. A fresh
+project has stdlib suggestions; a mature project adds project-specific ones.
+
+Depends on Intent-Driven Body Generation.
+
 ### Dynamic Self-Modifying Lookup
 
 Programs that modify their own lookup tables at runtime, recompile, and

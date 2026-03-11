@@ -104,7 +104,7 @@ void prove_print(Prove_String *s) {
 Prove_String *prove_readln(void) {
     char buf[4096];
     if (!fgets(buf, sizeof(buf), stdin)) {
-        return prove_string_new("", 0);
+        return NULL;
     }
     /* Strip trailing newline */
     size_t len = strlen(buf);
