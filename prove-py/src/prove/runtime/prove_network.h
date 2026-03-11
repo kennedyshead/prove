@@ -2,6 +2,7 @@
 #define PROVE_NETWORK_H
 
 #include "prove_runtime.h"
+#include "prove_result.h"
 #include "prove_string.h"
 #include "prove_bytes.h"
 
@@ -14,21 +15,21 @@ typedef struct Prove_Socket {
 
 /* ── socket channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_socket_inputs(Prove_String *host, int64_t port);
-void          prove_network_socket_outputs(Prove_Socket *sock);
-bool          prove_network_socket_validates(Prove_Socket *sock);
+Prove_Result prove_network_socket_inputs(Prove_String *host, int64_t port);
+void         prove_network_socket_outputs(Prove_Socket *sock);
+bool         prove_network_socket_validates(Prove_Socket *sock);
 
 /* ── server channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_server_inputs(Prove_String *host, int64_t port);
+Prove_Result prove_network_server_inputs(Prove_String *host, int64_t port);
 
 /* ── accept channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_accept_inputs(Prove_Socket *listener);
+Prove_Result prove_network_accept_inputs(Prove_Socket *listener);
 
 /* ── message channel ─────────────────────────────────────────── */
 
-Prove_Result *prove_network_message_inputs(Prove_Socket *sock, int64_t size);
-Prove_Result *prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *data);
+Prove_Result prove_network_message_inputs(Prove_Socket *sock, int64_t size);
+Prove_Result prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *data);
 
 #endif /* PROVE_NETWORK_H */

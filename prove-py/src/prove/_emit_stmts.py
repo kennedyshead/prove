@@ -941,7 +941,21 @@ class StmtEmitterMixin:
     def _emit_match_stmt(self, m: MatchExpr) -> None:
         """Emit a match expression as a statement (switch)."""
         if m.subject is None:
-            # Implicit match — emit as if-else chain
+            # Implicit subject: matches/streams/listens use first parameter
+            if (
+                self._current_func is not None
+                and self._current_func.verb in ("matches", "streams", "listens")
+                and self._current_func.params
+            ):
+                first_param = self._current_func.params[0].name
+                implicit_subj = MatchExpr(
+                    subject=IdentifierExpr(first_param, m.span),
+                    arms=m.arms,
+                    span=m.span,
+                )
+                self._emit_match_stmt(implicit_subj)
+                return
+            # No subject and not matches/streams/listens — emit arm bodies
             for i, arm in enumerate(m.arms):
                 for s in arm.body:
                     self._emit_stmt(s)

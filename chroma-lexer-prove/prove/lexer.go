@@ -49,7 +49,7 @@ var (
 				{`!`, chroma.KeywordPseudo, nil},
 
 				// PROVE-EXPORT-BEGIN: verbs
-				{`\b(attached|creates|detached|inputs|listens|matches|outputs|reads|streams|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
+				{`\b(creates|inputs|matches|outputs|reads|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
 				// PROVE-EXPORT-END: verbs
 
 				// PROVE-EXPORT-BEGIN: contract-keywords
@@ -57,7 +57,7 @@ var (
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords
-				{`\b(as|binary|comptime|domain|foreign|from|is|main|match|module|runtime|type|types|valid|where)\b`, chroma.Keyword, nil},
+				{`\b(as|binary|comptime|domain|foreign|from|is|main|match|module|type|types|valid|where)\b`, chroma.Keyword, nil},
 				// PROVE-EXPORT-END: keywords
 
 				// PROVE-EXPORT-BEGIN: ai-keywords

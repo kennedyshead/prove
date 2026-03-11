@@ -192,7 +192,7 @@ from
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
 | [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `listens` body (`detached` and `attached` are exempt) | Error |
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | Async function called without `&` inside an async body | Error |
-| [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async body | Error |
+| [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async or `streams` body | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
 | [E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context) | IO-bearing `attached` called outside `listens`/`attached` body | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
@@ -216,6 +216,7 @@ The `streams` verb declares a blocking loop that reads from an IO source and dis
 - The return type declares the element type (an algebraic type) being streamed
 - The `from` block must be a single implicit match with an `Exit` arm
 - `streams` is a blocking IO verb — it cannot be called from `listens` bodies
+- `streams` bodies may use `&` to fire-and-forget `detached` calls (e.g. logging)
 
 ```prove
 type Line is

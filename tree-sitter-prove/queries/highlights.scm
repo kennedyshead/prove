@@ -12,15 +12,11 @@
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
-  "attached"
   "creates"
-  "detached"
   "inputs"
-  "listens"
   "matches"
   "outputs"
   "reads"
-  "streams"
   "transforms"
   "validates"
   "types"

@@ -394,6 +394,9 @@ class ExprEmitterMixin:
             self._line("return 1;")
             self._indent -= 1
             self._line("}")
+        elif self._in_streams_loop:
+            # streams functions are void — break out of the loop on error
+            self._line(f"if (prove_result_is_err({tmp})) goto _streams_exit;")
         else:
             if self._in_region_scope:
                 self._line(f"if (prove_result_is_err({tmp})) {{")
@@ -471,10 +474,10 @@ class ExprEmitterMixin:
 
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
-            # Implicit subject: for `matches` verb, use first parameter
+            # Implicit subject: matches/streams/listens use first parameter
             if (
                 self._current_func is not None
-                and self._current_func.verb == "matches"
+                and self._current_func.verb in ("matches", "streams", "listens")
                 and self._current_func.params
             ):
                 first_param = self._current_func.params[0].name
@@ -484,7 +487,7 @@ class ExprEmitterMixin:
                     span=m.span,
                 )
                 return self._emit_match_expr(implicit_subj)
-            # No subject and not matches verb -- just emit arm bodies
+            # No subject and not matches/streams/listens -- just emit arm bodies
             for arm in m.arms:
                 for s in arm.body:
                     self._emit_stmt(s)

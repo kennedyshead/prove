@@ -36,7 +36,7 @@ static Prove_Socket *_alloc_socket(int fd) {
     return s;
 }
 
-static Prove_Result *_socket_error(const char *context) {
+static Prove_Result _socket_error(const char *context) {
     const char *msg = strerror(errno);
     int ctx_len = (int)strlen(context);
     int msg_len = (int)strlen(msg);
@@ -80,7 +80,7 @@ static int _resolve_and_fill(Prove_String *host, int64_t port,
 
 /* ── socket channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_socket_inputs(Prove_String *host, int64_t port) {
+Prove_Result prove_network_socket_inputs(Prove_String *host, int64_t port) {
     _ensure_wsa();
     if (!host) return _socket_error("connect");
 
@@ -98,7 +98,7 @@ Prove_Result *prove_network_socket_inputs(Prove_String *host, int64_t port) {
         return _socket_error("connect");
     }
 
-    return prove_result_ok(_alloc_socket(fd));
+    return prove_result_ok_ptr(_alloc_socket(fd));
 }
 
 void prove_network_socket_outputs(Prove_Socket *sock) {
@@ -114,7 +114,7 @@ bool prove_network_socket_validates(Prove_Socket *sock) {
 
 /* ── server channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_server_inputs(Prove_String *host, int64_t port) {
+Prove_Result prove_network_server_inputs(Prove_String *host, int64_t port) {
     _ensure_wsa();
     if (!host) return _socket_error("bind");
 
@@ -141,12 +141,12 @@ Prove_Result *prove_network_server_inputs(Prove_String *host, int64_t port) {
         return _socket_error("listen");
     }
 
-    return prove_result_ok(_alloc_socket(fd));
+    return prove_result_ok_ptr(_alloc_socket(fd));
 }
 
 /* ── accept channel ──────────────────────────────────────────── */
 
-Prove_Result *prove_network_accept_inputs(Prove_Socket *listener) {
+Prove_Result prove_network_accept_inputs(Prove_Socket *listener) {
     if (!listener || listener->fd < 0) return _socket_error("accept");
 
     struct sockaddr_in sa;
@@ -154,12 +154,12 @@ Prove_Result *prove_network_accept_inputs(Prove_Socket *listener) {
     int fd = accept(listener->fd, (struct sockaddr *)&sa, &sa_len);
     if (fd < 0) return _socket_error("accept");
 
-    return prove_result_ok(_alloc_socket(fd));
+    return prove_result_ok_ptr(_alloc_socket(fd));
 }
 
 /* ── message channel ─────────────────────────────────────────── */
 
-Prove_Result *prove_network_message_inputs(Prove_Socket *sock, int64_t size) {
+Prove_Result prove_network_message_inputs(Prove_Socket *sock, int64_t size) {
     if (!sock || sock->fd < 0) return _socket_error("recv");
     if (size <= 0) size = 4096;
 
@@ -171,15 +171,15 @@ Prove_Result *prove_network_message_inputs(Prove_Socket *sock, int64_t size) {
     ba->length = n;
     if (n > 0) memcpy(ba->data, buf, n);
 
-    return prove_result_ok(ba);
+    return prove_result_ok_ptr(ba);
 }
 
-Prove_Result *prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *data) {
+Prove_Result prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *data) {
     if (!sock || sock->fd < 0) return _socket_error("send");
-    if (!data || data->length == 0) return prove_result_ok(NULL);
+    if (!data || data->length == 0) return prove_result_ok();
 
     ssize_t sent = send(sock->fd, (const char *)data->data, (size_t)data->length, 0);
     if (sent < 0) return _socket_error("send");
 
-    return prove_result_ok(NULL);
+    return prove_result_ok();
 }

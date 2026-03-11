@@ -197,15 +197,11 @@ module.exports = grammar({
 
     // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
-      'attached',
       'creates',
-      'detached',
       'inputs',
-      'listens',
       'matches',
       'outputs',
       'reads',
-      'streams',
       'transforms',
       'validates',
     ),
@@ -458,11 +454,11 @@ module.exports = grammar({
       repeat1($.match_arm),
     )),
 
-    match_arm: $ => seq(
+    match_arm: $ => prec.left(seq(
       $.pattern,
       '=>',
-      $.expression,
-    ),
+      repeat1($._statement),
+    )),
 
     // ─── Patterns ──────────────────────────────────────────────
 
