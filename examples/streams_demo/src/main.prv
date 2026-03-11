@@ -1,17 +1,22 @@
 module Main
-  narrative: """Demonstrates the streams verb — blocking system IO loop."""
+  narrative: """Demonstrates the streams verb — blocking stdin echo loop."""
   System outputs console, inputs console
 
-  type Command is Run(input String)
+  type Command is Active(prompt String)
     | Exit
 
-/// Process commands in a blocking loop until Exit.
+/// Read stdin lines and echo them back, one chunk at a time.
+/// Each iteration: print prompt, read a line, echo it.
+/// Exits when called with Exit or on process termination.
 streams repl(cmd Command)
 from
     Exit => cmd
-    Run(input) => console(f"echo: {input}")
+    Active(prompt) =>
+        console(prompt)
+        line as String = console()
+        console(f"< {line}")
 
-main() Unit
+main()
 from
-    console("streams verb demo")
-    console("(streams loops until Exit arm)")
+    console("streams echo demo — type lines (Ctrl+C to quit):")
+    repl(Active("> "))
