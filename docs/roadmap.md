@@ -128,6 +128,8 @@ the resulting binary recompiles itself, and both outputs must match.
 
 ## Exploring
 
+The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
+
 ### Stub Generation from Narrative
 
 Generate function stubs from `narrative:` prose. The verb-prose mapping

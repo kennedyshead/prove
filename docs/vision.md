@@ -125,12 +125,21 @@ intent and the actual code stay in sync.
 
 ---
 
-## What This Is Not
+## What This Means in Practice
 
-This is **not** a claim about faster development. Writing intent declarations
-takes thought. Reviewing generated stubs takes attention. Filling in function
-bodies requires domain knowledge. The total effort may be comparable to writing
-code from scratch.
+This **is** a claim about faster development. Writing intent declarations takes
+thought — but that thought happens once, up front, where it belongs. The result
+is code that does exactly what it was specified to do, with far less debugging,
+far fewer rewrites, and far less back-and-forth correcting misunderstood
+requirements.
+
+The speed gain compounds at two levels:
+
+- **Writing**: generated stubs, progress tracking, and coherence checking mean
+  less time spent on boilerplate and more time on domain logic
+- **Correctness**: because intent is declared and verified, misunderstandings
+  between human and AI are caught before they become bugs — not discovered
+  after three rounds of "that's not quite what I meant"
 
 What changes is the **shape** of the work:
 
@@ -140,11 +149,11 @@ What changes is the **shape** of the work:
 - Every piece of generated code has a traceable origin
 - No external service has seen your code or influenced it
 
-The goal is development that is **self-contained**: the project's own
-declarations are sufficient to generate its structure, and the project's own
-code is sufficient to verify its correctness. The programmer remains the
-author — the toolchain is a deterministic assistant that works from what the
-programmer has explicitly declared.
+The goal is development that is **self-contained and verifiably correct**: the
+project's own declarations are sufficient to generate its structure, and the
+project's own code is sufficient to verify its correctness. The programmer
+remains the author — the toolchain is a deterministic assistant that works from
+what the programmer has explicitly declared.
 
 ---
 

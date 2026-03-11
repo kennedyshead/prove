@@ -54,46 +54,96 @@ class TypeEmitterMixin:
         self._emit_imported_type_defs()
 
     def _imported_local_types(self) -> list[tuple[str, Type]]:
-        """Collect types imported from local modules (not defined in this module)."""
+        """Collect types imported from local modules (not defined in this module).
+
+        Returns them in topological order (field dependencies before the types
+        that use them), so that C struct definitions compile correctly.
+        """
+        _BUILTIN_NAMES = frozenset(
+            (
+                "Integer",
+                "Decimal",
+                "Float",
+                "Boolean",
+                "String",
+                "Character",
+                "Byte",
+                "Unit",
+                "Error",
+                "Result",
+                "Option",
+                "List",
+                "Table",
+            )
+        )
         local_type_names = {td.name for td in self._all_type_defs()}
-        result: list[tuple[str, Type]] = []
+
+        ordered: list[tuple[str, Type]] = []
         seen: set[str] = set()
+
+        def _visit(ty: Type) -> None:
+            if not isinstance(ty, (RecordType, AlgebraicType)):
+                return
+            name = ty.name
+            if name in seen or name in local_type_names or name in _BUILTIN_NAMES:
+                return
+            seen.add(name)
+            # Emit field-type dependencies first (traverse embedded types directly)
+            if isinstance(ty, RecordType):
+                for ftype in ty.fields.values():
+                    _visit(ftype)
+            ordered.append((name, ty))
+
+        for ty in self._symbols.all_types().values():
+            _visit(ty)
+
+        return ordered
+
+    def _direct_imported_local_type_names(self) -> set[str]:
+        """Names of types directly imported (not just transitively needed as field deps)."""
+        _BUILTIN_NAMES = frozenset(
+            (
+                "Integer",
+                "Decimal",
+                "Float",
+                "Boolean",
+                "String",
+                "Character",
+                "Byte",
+                "Unit",
+                "Error",
+                "Result",
+                "Option",
+                "List",
+                "Table",
+            )
+        )
+        local_type_names = {td.name for td in self._all_type_defs()}
+        result: set[str] = set()
         for name, ty in self._symbols.all_types().items():
-            if name in local_type_names:
-                continue
-            if name in seen:
-                continue
-            if isinstance(ty, (RecordType, AlgebraicType)):
-                # Only include types that aren't builtins
-                if name not in (
-                    "Integer",
-                    "Decimal",
-                    "Float",
-                    "Boolean",
-                    "String",
-                    "Character",
-                    "Byte",
-                    "Unit",
-                    "Error",
-                    "Result",
-                    "Option",
-                    "List",
-                    "Table",
-                ):
-                    result.append((name, ty))
-                    seen.add(name)
+            if name not in local_type_names and name not in _BUILTIN_NAMES:
+                if isinstance(ty, (RecordType, AlgebraicType)):
+                    result.add(name)
         return result
 
     def _emit_imported_type_defs(self) -> None:
-        """Emit full struct definitions for imported local types."""
+        """Emit full struct definitions for imported local types.
+
+        Constructors are only emitted for directly imported types — transitive
+        field dependencies only need the struct definition (no constructor), to
+        avoid name collisions with locally-defined constructors.
+        """
+        direct_names = self._direct_imported_local_type_names()
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
             if isinstance(ty, RecordType):
                 self._emit_record_struct(cname, ty.fields)
-                self._emit_record_constructor(cname, name, ty.fields)
+                if name in direct_names:
+                    self._emit_record_constructor(cname, name, ty.fields)
             elif isinstance(ty, AlgebraicType):
                 self._emit_algebraic_struct(cname, ty.variants)
-                self._emit_variant_constructors(cname, ty.variants)
+                if name in direct_names:
+                    self._emit_variant_constructors(cname, ty.variants)
 
     def _emit_record_to_value_converters(self) -> None:
         """Emit static functions that convert record structs to Prove_Value*.
