@@ -32,6 +32,7 @@ nav:
       - Design Decisions: design.md
       - Roadmap: roadmap.md
   - Blog:
+      - What Happens When AI Can't Generate Your Code: blog/2026-03-11-what-happens-when-ai-cant-generate-your-code.md
       - Why I Built My Own Programming Language: blog/2026-03-04-why-i-built-my-own-programming-language.md
 
 theme:
