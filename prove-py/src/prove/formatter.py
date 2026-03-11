@@ -398,6 +398,9 @@ class ProveFormatter:
         self, name: str, body: LookupTypeDef, mods: str = "", params: str = ""
     ) -> str:
         """Format a binary lookup type definition."""
+        if body.is_pipe_entry_format:
+            return self._format_pipe_entry_lookup(name, body, mods, params)
+
         col_types = " ".join(self._format_type_expr(vt) for vt in body.value_types)
         if mods:
             # Parsed via type Name:[Lookup] is Type1 Type2 where
@@ -416,6 +419,26 @@ class ProveFormatter:
             else:
                 val = self._format_lookup_value(entry)
                 lines.append(f"  {entry.variant} | {val}")
+
+        return "\n".join(lines)
+
+    def _format_pipe_entry_lookup(
+        self, name: str, body: LookupTypeDef, mods: str = "", params: str = ""
+    ) -> str:
+        """Format a pipe-separated lookup: type X:[Lookup] is T1 | T2 with entries."""
+        col_types = " | ".join(self._format_type_expr(vt) for vt in body.value_types)
+        lines = [f"type {name}{mods}{params} is {col_types}"]
+
+        for entry in body.entries:
+            if entry.values:
+                vals = " | ".join(
+                    f'"{_escape_string(v)}"' if k == "string" else v
+                    for v, k in zip(entry.values, entry.value_kinds)
+                )
+                lines.append(f"  {vals}")
+            else:
+                val = self._format_lookup_value(entry)
+                lines.append(f"  {val}")
 
         return "\n".join(lines)
 

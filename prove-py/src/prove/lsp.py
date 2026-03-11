@@ -557,6 +557,7 @@ def _analyze(uri: str, source: str) -> DocumentState:
         local_modules = _resolve_local_modules(uri)
         project_dir = _find_project_dir(uri)
         checker = Checker(local_modules=local_modules, project_dir=project_dir)
+        checker._coherence = True  # always run coherence in editor (shown as warnings)
         symbols = checker.check(module)
         ds.symbols = symbols
         ds.local_import_index = _build_local_import_index(local_modules)
@@ -613,6 +614,194 @@ def _extract_context_tokens(source: str, position: lsp.Position, n: int = 2) -> 
     while len(result) < n:
         result.insert(0, "<START>")
     return result
+
+
+# ── Prose context detection (Phase 5a) ───────────────────────────────────
+
+_PROSE_BLOCK_KEYWORDS = frozenset({"intent", "chosen", "why_not"})
+
+# English synonyms shown in prose blocks, mapped to the Prove verb they imply.
+_VERB_PROSE_HINTS: dict[str, list[str]] = {
+    "transforms": ["transforms", "converts", "computes", "calculates", "processes"],
+    "validates":  ["validates", "checks", "verifies", "ensures", "guards"],
+    "reads":      ["reads", "fetches", "loads", "retrieves", "queries"],
+    "creates":    ["creates", "builds", "constructs", "generates", "makes"],
+    "matches":    ["matches", "compares", "classifies", "selects"],
+    "outputs":    ["outputs", "writes", "prints", "sends", "emits", "logs"],
+    "inputs":     ["inputs", "receives", "accepts", "parses"],
+    "listens":    ["listens", "monitors", "watches", "waits"],
+}
+_ALL_PROSE_VERB_WORDS: list[str] = [w for words in _VERB_PROSE_HINTS.values() for w in words]
+
+
+def _cursor_in_triple_quote_block(lines: list[str], line_idx: int, keyword: str) -> bool:
+    """True if line_idx is between a `keyword: \"\"\"` and its closing `\"\"\"`."""
+    open_line: int | None = None
+    for i in range(line_idx, -1, -1):
+        stripped = lines[i].lstrip()
+        if stripped.startswith(keyword) and '"""' in lines[i]:
+            open_line = i
+            break
+        if '"""' in lines[i] and i < line_idx:
+            return False
+    if open_line is None or open_line == line_idx:
+        return False
+    for i in range(open_line + 1, line_idx):
+        if '"""' in lines[i]:
+            return False
+    return True
+
+
+def _cursor_in_explain_block(lines: list[str], line_idx: int) -> bool:
+    """True if line_idx is an indented content line inside an explain block."""
+    current_indent = len(lines[line_idx]) - len(lines[line_idx].lstrip())
+    for i in range(line_idx - 1, -1, -1):
+        line = lines[i]
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent < current_indent and line.lstrip().startswith("explain"):
+            return True
+        if indent < current_indent:
+            break
+    return False
+
+
+def _find_enclosing_fd(module: Module | None, line_idx: int) -> FunctionDef | None:
+    """Return the FunctionDef whose span contains the given 0-indexed line."""
+    if module is None:
+        return None
+    target = line_idx + 1  # spans are 1-indexed
+    for decl in module.declarations:
+        if isinstance(decl, FunctionDef):
+            if decl.span.start_line <= target <= decl.span.end_line:
+                return decl
+    return None
+
+
+def _prose_context(
+    source: str,
+    position: lsp.Position,
+    module: Module | None,
+) -> tuple[str | None, FunctionDef | None]:
+    """Return (context_kind, enclosing_fd) when cursor is inside a prose block.
+
+    context_kind is one of: "narrative", "explain", "intent", "chosen", "why_not".
+    Returns (None, None) when cursor is in normal code.
+    """
+    lines = source.splitlines()
+    line_idx = position.line
+    if line_idx >= len(lines):
+        return None, None
+    current = lines[line_idx]
+    stripped = current.lstrip()
+
+    for kw in _PROSE_BLOCK_KEYWORDS:
+        if stripped.startswith(f"{kw}:") or stripped == kw:
+            fd = _find_enclosing_fd(module, line_idx)
+            return kw, fd
+
+    if _cursor_in_triple_quote_block(lines, line_idx, "narrative:"):
+        return "narrative", None
+
+    if _cursor_in_explain_block(lines, line_idx):
+        fd = _find_enclosing_fd(module, line_idx)
+        return "explain", fd
+
+    return None, None
+
+
+def _prose_completions(
+    context_kind: str,
+    fd: FunctionDef | None,
+    module: Module | None,
+) -> list[lsp.CompletionItem]:
+    """Return context-sensitive completions for prose blocks."""
+    items: list[lsp.CompletionItem] = []
+
+    def _text(word: str, detail: str, sort_prefix: str = "0") -> lsp.CompletionItem:
+        return lsp.CompletionItem(
+            label=word,
+            kind=lsp.CompletionItemKind.Text,
+            detail=detail,
+            sort_text=f"\x00{sort_prefix}_{word}",
+            label_details=lsp.CompletionItemLabelDetails(description=detail),
+        )
+
+    if context_kind == "narrative":
+        existing_narrative = ""
+        if module is not None:
+            for decl in module.declarations:
+                if isinstance(decl, ModuleDecl) and decl.narrative:
+                    existing_narrative = decl.narrative
+                    break
+        from prove._nl_intent import implied_verbs
+        already_implied = implied_verbs(existing_narrative)
+        for word in _ALL_PROSE_VERB_WORDS:
+            prove_verb = next(
+                (v for v, words in _VERB_PROSE_HINTS.items() if word in words), ""
+            )
+            sort = "0" if prove_verb in already_implied else "1"
+            items.append(_text(word, f"→ {prove_verb}", sort))
+        if module is not None:
+            for decl in module.declarations:
+                if isinstance(decl, FunctionDef):
+                    items.append(_text(decl.name.replace("_", " "), "function", "2"))
+
+    elif context_kind == "explain":
+        if fd is not None:
+            from prove._nl_intent import body_tokens
+            for tok in sorted(body_tokens(fd)):
+                items.append(_text(tok, "body", "0"))
+            for word in _VERB_PROSE_HINTS.get(fd.verb, []):
+                items.append(_text(word, fd.verb, "1"))
+
+    elif context_kind == "intent":
+        if fd is not None:
+            for p in fd.params:
+                items.append(_text(p.name, "param", "0"))
+            starters = {
+                "transforms": [f"Transforms {p.name} into" for p in fd.params[:1]],
+                "validates":  [f"Validates {p.name}" for p in fd.params[:1]],
+                "reads":      [f"Reads {p.name} from" for p in fd.params[:1]],
+                "creates":    ["Creates a new"],
+                "outputs":    ["Outputs"],
+            }
+            for phrase in starters.get(fd.verb, []):
+                items.append(_text(phrase, "phrase", "1"))
+
+    elif context_kind == "chosen":
+        if fd is not None:
+            from prove._nl_intent import body_tokens
+            for tok in sorted(body_tokens(fd)):
+                items.append(_text(tok, "body", "0"))
+            for word in _VERB_PROSE_HINTS.get(fd.verb, []):
+                items.append(_text(word, fd.verb, "0"))
+            starters = {
+                "transforms": ["linear scan because", "recursive because", "iterative because"],
+                "validates":  ["early-exit because", "regex because", "range check because"],
+                "reads":      ["lazy load because", "cached read because"],
+                "creates":    ["builder pattern because", "factory because"],
+                "matches":    ["pattern match because", "lookup table because"],
+            }
+            for phrase in starters.get(fd.verb, []):
+                items.append(_text(phrase, "approach", "1"))
+
+    elif context_kind == "why_not":
+        if fd is not None and module is not None:
+            for decl in module.declarations:
+                if isinstance(decl, FunctionDef) and decl.name != fd.name:
+                    items.append(_text(decl.name, "function", "0"))
+            alt_phrases = [
+                "hash map because", "binary search because", "linear scan because",
+                "recursive approach because", "lookup table because",
+                "regex because", "manual parse because",
+                "eager evaluation because", "lazy evaluation because",
+            ]
+            for phrase in alt_phrases:
+                items.append(_text(phrase, "alternative", "1"))
+
+    return items
 
 
 def _ml_completions(
@@ -1181,6 +1370,19 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                         else f"{fname}_{_sig_params_display(sig)}",
                     )
                 )
+
+    # Phase 5a — prose-mode completions (suppress ML n-gram items in prose context)
+    if ds is not None and ds.module is not None:
+        prose_kind, prose_fd = _prose_context(ds.source, params.position, ds.module)
+        if prose_kind is not None:
+            prose_items = _prose_completions(prose_kind, prose_fd, ds.module)
+            items = prose_items + items
+            seen_prose: dict[tuple[str, str], lsp.CompletionItem] = {}
+            for item in items:
+                key = (item.label, item.sort_text or item.label)
+                if key not in seen_prose or item.detail:
+                    seen_prose[key] = item
+            return lsp.CompletionList(is_incomplete=False, items=list(seen_prose.values()))
 
     # Phase 5 — ML completion suggestions
     if _project_indexer is not None and ds is not None:

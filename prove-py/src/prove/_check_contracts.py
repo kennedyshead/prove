@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
@@ -17,6 +19,7 @@ from prove.ast_nodes import (
     LambdaExpr,
     ListLiteral,
     MatchExpr,
+    ModuleDecl,
     NearMiss,
     Param,
     PipeExpr,
@@ -781,3 +784,109 @@ class ContractCheckMixin:
                 return  # Report first violation only
             prev_pos = step_pos
             prev_name = name
+
+    # ── Prose coherence checks (W501-W505) ─────────────────────────────────
+
+    def _check_narrative_verb_coherence(
+        self, mod_decl: ModuleDecl, fns: list[FunctionDef]
+    ) -> None:
+        """W501: function verb not described in module narrative."""
+        if mod_decl.narrative is None:
+            return
+        from prove._nl_intent import implied_verbs
+
+        verbs = implied_verbs(mod_decl.narrative)
+        if not verbs:
+            return
+        for fd in fns:
+            if fd.verb not in verbs:
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.WARNING,
+                        "W501",
+                        f"verb '{fd.verb}' not described in module narrative",
+                        labels=[DiagnosticLabel(span=fd.span, message="")],
+                        notes=[f"narrative implies: {', '.join(sorted(verbs))}"],
+                    )
+                )
+
+    def _check_explain_body_coherence(self, fd: FunctionDef) -> None:
+        """W502: explain entry text has no overlap with from-body operations."""
+        if fd.explain is None:
+            return
+        from prove._nl_intent import body_tokens, prose_overlaps
+
+        tokens = body_tokens(fd)
+        if not tokens:
+            return
+        for entry in fd.explain.entries:
+            if entry.condition is not None:
+                continue  # `when` entries are structural — skip
+            if entry.text.strip() and not prose_overlaps(entry.text, tokens):
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.WARNING,
+                        "W502",
+                        "explain entry doesn't correspond to any operation in from-block",
+                        labels=[DiagnosticLabel(span=fd.span, message="")],
+                        notes=[
+                            f"entry: '{entry.text.strip()}'",
+                            f"body references: {', '.join(sorted(tokens))}",
+                        ],
+                    )
+                )
+
+    def _check_chosen_has_why_not(self, fd: FunctionDef) -> None:
+        """W503: chosen declared without any why_not alternatives."""
+        if fd.chosen and not fd.why_not:
+            self.diagnostics.append(
+                make_diagnostic(
+                    Severity.WARNING,
+                    "W503",
+                    "chosen declared without any why_not alternatives",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=["Add at least one `why_not` entry to document rejected approaches."],
+                )
+            )
+
+    def _check_chosen_body_coherence(self, fd: FunctionDef) -> None:
+        """W504: chosen text has no overlap with from-body operations or params."""
+        if not fd.chosen:
+            return
+        from prove._nl_intent import body_tokens, prose_overlaps
+
+        tokens = body_tokens(fd)
+        if tokens and not prose_overlaps(fd.chosen, tokens):
+            self.diagnostics.append(
+                make_diagnostic(
+                    Severity.WARNING,
+                    "W504",
+                    "chosen text doesn't correspond to any operation in from-block",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        f"chosen: '{fd.chosen}'",
+                        f"body references: {', '.join(sorted(tokens))}",
+                    ],
+                )
+            )
+
+    def _check_why_not_names(
+        self, fd: FunctionDef, known_names: set[str]
+    ) -> None:
+        """W505: why_not entry mentions no function/type name from current scope."""
+        lower_known = {n.lower() for n in known_names}
+        for entry in fd.why_not:
+            words = {w.lower() for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", entry)}
+            if not words & lower_known:
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.WARNING,
+                        "W505",
+                        "why_not entry mentions no known function or type",
+                        labels=[DiagnosticLabel(span=fd.span, message="")],
+                        notes=[
+                            f"entry: '{entry}'",
+                            "Reference a function name, type, or algorithm to anchor the rejection.",
+                        ],
+                    )
+                )
