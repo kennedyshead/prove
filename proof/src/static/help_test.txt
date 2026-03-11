@@ -1,0 +1,8 @@
+Usage: proof test --help
+Usage: python -m prove test [OPTIONS] [PATH]
+
+  Run tests for a Prove project.
+
+Options:
+  --property-rounds INTEGER  Override property test rounds.
+  --help                     Show this message and exit.

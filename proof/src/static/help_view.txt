@@ -1,0 +1,6 @@
+Usage: proof view [OPTIONS] FILE
+
+  View the AST of a Prove source file.
+
+Options:
+  --help  Show this message and exit.

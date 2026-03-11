@@ -756,6 +756,22 @@ class TypeCheckMixin:
             self._used_types.add(type_name_str_)
             return ret_type
 
+        # Unwrap RefinementType → ListType → element for HOF lambda context
+        # (e.g. Plan = List<Verb> where true, lookup inside map lambda)
+        from prove.types import ListType, RefinementType
+
+        unwrapped: Type | None = ret_type
+        if isinstance(unwrapped, RefinementType):
+            unwrapped = unwrapped.base
+        if isinstance(unwrapped, ListType):
+            unwrapped = unwrapped.element
+        if unwrapped is not ret_type:
+            for vt in lookup.value_types:
+                col_type = self._resolve_type_expr(vt)
+                if type_name(col_type) == type_name(unwrapped):
+                    self._used_types.add(type_name_str_)
+                    return col_type
+
         self._error(
             "E389",
             f"return type '{type_name(ret_type)}' does not match any column "

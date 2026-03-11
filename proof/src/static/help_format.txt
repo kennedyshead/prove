@@ -1,0 +1,10 @@
+Usage: proof format --help
+Usage: python -m prove format [OPTIONS] [PATH]
+
+  Format Prove source files.
+
+Options:
+  --status  Show formatting status without modifying files.
+  --stdin   Read from stdin, write to stdout.
+  --md      Also format ```prove blocks in .md files.
+  --help    Show this message and exit.

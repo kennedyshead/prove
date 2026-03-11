@@ -156,6 +156,8 @@ def map_type(ty: Type) -> CType:
             return CType(
                 "Prove_MergeResult*", is_pointer=True, header="prove_store.h"
             )
+        if name == "Verb":
+            return CType("void*", is_pointer=True, header=None)
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 
