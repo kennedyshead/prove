@@ -1,0 +1,7 @@
+Usage: proof new --help
+Usage: python -m prove new [OPTIONS] NAME
+
+  Create a new Prove project.
+
+Options:
+  --help  Show this message and exit.
