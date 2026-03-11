@@ -1,0 +1,12 @@
+module Main
+  narrative: """Demonstrates Network module: address parsing and formatting."""
+  System outputs console
+  Network creates address, reads address host port
+  Network types Address
+
+main() Result<Unit, Error>!
+from
+    addr as Address = address("localhost:8080")!
+    console(f"address: {address(addr)}")
+    console(f"host: {host(addr)}")
+    console(f"port: {port(addr)}")

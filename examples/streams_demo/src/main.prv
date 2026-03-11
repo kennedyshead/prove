@@ -1,0 +1,17 @@
+module Main
+  narrative: """Demonstrates the streams verb — blocking IO loop."""
+  System outputs console, inputs console
+
+  type Command is Run(input String)
+    | Exit
+
+/// Process commands in a blocking loop until Exit.
+streams repl(cmd Command)
+from
+    Exit => cmd
+    Run(input) => console(f"echo: {input}")
+
+main() Unit
+from
+    console("streams verb demo")
+    console("(streams loops until Exit arm)")

@@ -1,11 +1,13 @@
 module Network
   narrative: """Network communication — TCP and UDP sockets."""
+  Bytes types ByteArray
 
   /// An open network socket
   type Socket is binary
 
   /// Network protocol
-  type Protocol is Tcp | Udp
+  type Protocol is Tcp
+    | Udp
 
   /// Network address (host and port)
   type Address is binary
