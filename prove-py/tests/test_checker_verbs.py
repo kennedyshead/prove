@@ -297,15 +297,16 @@ class TestAsyncVerbs:
             "        _ as Integer = compute(42)&\n"
         )
 
-    def test_async_call_outside_async_body_error(self):
-        check_fails(
+    def test_attached_with_ampersand_outside_listens_info(self):
+        """attached& in a non-listens body gives I377 info."""
+        check_info(
             "attached helper(x Integer) Integer\n"
             "    from\n"
             "        x\n"
             "transforms bad(x Integer) Integer\n"
             "    from\n"
             "        helper(x)&\n",
-            "E373",
+            "I377",
         )
 
     def test_detached_with_return_type_error(self):
@@ -341,4 +342,78 @@ class TestAsyncVerbs:
             "    from\n"
             "        x + 1\n",
             "I376",
+        )
+
+    def test_detached_with_ampersand_anywhere_ok(self):
+        """detached& in a non-async body produces no error."""
+        check(
+            "detached fire()\n"
+            "    from\n"
+            "        _ as Integer = 1\n"
+            "transforms caller() Integer\n"
+            "    from\n"
+            "        fire()&\n"
+            "        42\n",
+        )
+
+    def test_detached_without_ampersand_info(self):
+        """detached call without & anywhere gives I378 info."""
+        check_info(
+            "detached fire()\n"
+            "    from\n"
+            "        _ as Integer = 1\n"
+            "transforms caller() Integer\n"
+            "    from\n"
+            "        fire()\n"
+            "        42\n",
+            "I378",
+        )
+
+    def test_attached_without_ampersand_error(self):
+        """attached call without & in pure verb gives E372 error."""
+        check_fails(
+            "attached helper(x Integer) Integer\n"
+            "    from\n"
+            "        x\n"
+            "transforms bad(x Integer) Integer\n"
+            "    from\n"
+            "        helper(x)\n",
+            "E372",
+        )
+
+    def test_attached_with_ampersand_in_listens_ok(self):
+        """attached& in listens body gives no I377 (standard await pattern)."""
+        from tests.helpers import check_all
+        diags = check_all(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Event is Work(n Integer) | Exit\n"
+            "attached compute(x Integer) Integer\n"
+            "    from\n"
+            "        x + 1\n"
+            "listens handler(ev Event)\n"
+            "    from\n"
+            "        Exit => ev\n"
+            "        Work(n) => _ as Integer = compute(n)&\n",
+        )
+        i377 = [d for d in diags if d.code == "I377"]
+        assert not i377, f"Expected no I377 but got: {[d.message for d in i377]}"
+
+    def test_attached_with_ampersand_in_streams_info(self):
+        """attached& in streams body gives I377 info (not listens)."""
+        check_info(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  System outputs console\n"
+            "  type Line is Data(n Integer) | Exit\n"
+            "attached compute(x Integer) Integer\n"
+            "    from\n"
+            "        x + 1\n"
+            "streams process(line Line)!\n"
+            "    from\n"
+            "        Exit => line\n"
+            "        Data(n) =>\n"
+            "            _ as Integer = compute(n)&\n"
+            "            console(n)\n",
+            "I377",
         )

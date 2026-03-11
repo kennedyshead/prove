@@ -245,6 +245,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._coherence: bool = False
         # Set when checking a stdlib module itself (skip E316 for builtins it provides)
         self._is_stdlib: bool = False
+        # Flag: current expression is the direct callee of an AsyncCallExpr (&)
+        self._inside_async_call: bool = False
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -978,6 +980,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Check a function body."""
         self._current_function = fd
         self._is_recursive = False
+        self._inside_async_call = False
         self.symbols.push_scope(fd.name)
         # Reset ownership tracking for this function
         self._moved_vars.clear()
@@ -1626,13 +1629,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             f"use an async verb instead",
                             expr.span,
                         )
-                    elif sig.verb in _ASYNC_VERBS and sig.verb != "detached":
-                        # attached/listens calls must use & at call site
-                        self._error(
-                            "E372",
-                            f"async function '{fname}' must be called with `&`",
-                            expr.span,
-                        )
             for arg in expr.args:
                 self._check_async_expr(arg, fd)
         elif isinstance(expr, AsyncCallExpr):
@@ -2276,44 +2272,56 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self, expr: AsyncCallExpr, expected_type: Type | None = None
     ) -> Type:
         """Type-check async call (&). Same type as the inner expression."""
-        # Verify we're inside an async body
-        if self._current_function is not None and isinstance(
-            self._current_function, FunctionDef
-        ):
-            if self._current_function.verb not in _ASYNC_VERBS and self._current_function.verb != "streams":
-                self._error(
-                    "E373",
-                    "`&` async call outside an async verb body",
-                    expr.span,
-                )
-
-        # I375: & on a non-async callee is a no-op — format can strip it
-        if isinstance(expr.expr, CallExpr) and isinstance(expr.expr.func, IdentifierExpr):
-            callee_name = expr.expr.func.name
+        # Resolve callee from inner expression (may be CallExpr or FailPropExpr)
+        inner = expr.expr
+        if isinstance(inner, FailPropExpr):
+            inner = inner.expr
+        if isinstance(inner, CallExpr) and isinstance(inner.func, IdentifierExpr):
+            callee_name = inner.func.name
             callee_sig = self.symbols.resolve_function_any(callee_name)
-            if callee_sig and callee_sig.verb not in _ASYNC_VERBS:
-                self._info(
-                    "I375",
-                    f"`&` has no effect on non-async function '{callee_name}'; "
-                    f"`prove format` will remove it",
-                    expr.span,
-                )
-            # E377: IO-bearing attached called outside async context
-            elif callee_sig and callee_sig.verb == "attached":
-                if callee_name in self._attached_with_io:
+            if callee_sig:
+                if callee_sig.verb not in _ASYNC_VERBS:
+                    # I375: & on non-async callee is a no-op
+                    self._info(
+                        "I375",
+                        f"`&` has no effect on non-async function '{callee_name}'; "
+                        f"`prove format` will remove it",
+                        expr.span,
+                    )
+                elif callee_sig.verb == "attached":
+                    # E398: IO-bearing attached outside async context
+                    if callee_name in self._attached_with_io:
+                        if (
+                            self._current_function
+                            and isinstance(self._current_function, FunctionDef)
+                            and self._current_function.verb not in ("listens", "attached")
+                        ):
+                            self._error(
+                                "E398",
+                                f"IO-bearing `attached` function '{callee_name}' "
+                                f"can only be called from a `listens` or `attached` body",
+                                expr.span,
+                            )
+                    # I377: attached& outside listens runs synchronously
                     if (
                         self._current_function
                         and isinstance(self._current_function, FunctionDef)
-                        and self._current_function.verb not in ("listens", "attached")
+                        and self._current_function.verb != "listens"
                     ):
-                        self._error(
-                            "E398",
-                            f"IO-bearing `attached` function '{callee_name}' "
-                            f"can only be called from a `listens` or `attached` body",
+                        self._info(
+                            "I377",
+                            f"`attached` call '{callee_name}' runs synchronously "
+                            f"outside a `listens` body",
                             expr.span,
                         )
+                # detached with &: no diagnostic (fire-and-forget anywhere)
 
-        return self._infer_expr(expr.expr, expected_type=expected_type)
+        # Set flag so _infer_call knows this CallExpr is wrapped in &
+        self._inside_async_call = True
+        try:
+            return self._infer_expr(expr.expr, expected_type=expected_type)
+        finally:
+            self._inside_async_call = False
 
     def _has_async_call_in_body(self, body: list) -> bool:
         """Return True if any AsyncCallExpr appears anywhere in body."""

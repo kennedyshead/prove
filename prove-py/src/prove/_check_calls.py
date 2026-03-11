@@ -97,6 +97,26 @@ class CallCheckMixin:
             if sig.module:
                 self._used_imports.add((sig.module, name))
 
+            # Check calls to async functions without &
+            if sig.verb in ("detached", "attached", "listens"):
+                if self._inside_async_call:
+                    # Consumed: only applies to the direct callee, not args
+                    self._inside_async_call = False
+                else:
+                    if sig.verb == "detached":
+                        self._info(
+                            "I378",
+                            f"`detached` function '{name}' called without `&`; "
+                            f"`prove format` will add it",
+                            expr.span,
+                        )
+                    else:
+                        self._error(
+                            "E372",
+                            f"async function '{name}' must be called with `&`",
+                            expr.span,
+                        )
+
             # Track verb-aware recursion
             if (
                 self._current_function

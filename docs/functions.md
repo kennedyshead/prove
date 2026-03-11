@@ -28,7 +28,7 @@ Verbs are divided into two families: **pure** (no side effects) and **IO** (inte
 |------|---------|-------------------|
 | `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
-| `streams` | Blocking loop over an IO source | `from` block must be a single implicit match with an `Exit` arm. Return type is the element type |
+| `streams` | Blocking loop over an IO source | `from` block must be a single implicit match with an `Exit` arm. Match subject is the first parameter type, or the explicit return type if declared |
 
 ```prove
 matches area(s Shape) Decimal
@@ -191,13 +191,14 @@ from
 |------|---------|----------|
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
 | [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `listens` body (`detached` and `attached` are exempt) | Error |
-| [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | Async function called without `&` inside an async body | Error |
-| [E373](diagnostics.md#e373-non-exhaustive-match-on-generic-type-used-outside-async-body) | `&` used outside an async or `streams` body | Error |
+| [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | `attached` or `listens` called without `&` | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
 | [E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context) | IO-bearing `attached` called outside `listens`/`attached` body | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
+| [I377](diagnostics.md#i377-attached-call-runs-synchronously-outside-listens) | `attached&` outside `listens` — runs synchronously | Info |
+| [I378](diagnostics.md#i378-detached-function-called-without) | `detached` called without `&` — `prove format` will add it | Info |
 
 ---
 
@@ -213,20 +214,22 @@ The `streams` verb declares a blocking loop that reads from an IO source and dis
 
 **Key rules:**
 
-- The return type declares the element type (an algebraic type) being streamed
 - The `from` block must be a single implicit match with an `Exit` arm
+- The match subject is the first parameter type; if an explicit return type is declared, that type is used as the match subject instead
 - `streams` is a blocking IO verb — it cannot be called from `listens` bodies
 - `streams` bodies may use `&` to fire-and-forget `detached` calls (e.g. logging)
 
 ```prove
-type Line is
-    Content(text String)
-  | Exit
-
-/// Stream lines from a file until EOF.
-streams file(file FileHandle) Line
+// No explicit return type — match runs on the first parameter type (Command)
+streams repl(cmd Command)
 from
-    Exit           => file
+    Exit           => cmd
+    Run(input)     => console(f"echo: {input}")
+
+// With explicit return type — match runs on Line, not FileHandle
+streams file(source FileHandle) Line
+from
+    Exit           => source
     Content(text)  => handle(text)
 ```
 

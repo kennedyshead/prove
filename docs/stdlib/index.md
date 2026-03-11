@@ -37,8 +37,19 @@ Verbs fall into two families. **Pure verbs** have no side effects — the compil
 |------|--------|---------|
 | `inputs` | Read from an external source | `inputs file(path String) String!` |
 | `outputs` | Write to an external destination | `outputs file(path String, content String)!` |
+| `streams` | Blocking loop over an IO source until `Exit` | `streams serve(conn Connection)!` |
 
 The distinction matters: pure verbs cannot call IO functions, cannot use `!`, and are safe to memoize, inline, or reorder. IO verbs make side effects explicit in the function signature.
+
+**Async verbs** express structured concurrency:
+
+| Verb | Intent | Example |
+|------|--------|---------|
+| `detached` | Fire and forget — spawn a coroutine, move on immediately | `detached info(msg String)` |
+| `attached` | Spawn and await — caller blocks until result is ready | `attached fetch(url String) String` |
+| `listens` | Cooperative loop — process items until `Exit` (no blocking IO) | `listens dispatcher(cmd Command)` |
+
+See [Functions & Verbs — Async Verbs](../functions.md#async-verbs) for the full reference including compiler-enforced rules, the `&` call marker, and examples.
 
 ### Channel Dispatch
 
@@ -75,4 +86,4 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[Random](time-random.md#random)** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
 | **[Log](error-log.md#log)** | Complete | ANSI color constants and structured logging with `detached` verb |
-| **[Network](network.md)** | Complete | TCP sockets: connect, listen, accept, send, recv with Socket type |
+| **[Network](network.md)** | Complete | TCP sockets: `socket`, `server`, `accept`, `message` channels with `Socket` type; pairs with `streams` for accept loops |
