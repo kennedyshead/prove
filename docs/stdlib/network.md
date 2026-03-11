@@ -57,12 +57,16 @@ Network inputs socket server accept message, outputs socket message,
   validates socket, types Socket
 Bytes types ByteArray
 
-outputs echo_server(port Integer)!
+type Connection is Accept(listener Socket)
+  | Exit
+
+/// Accept and echo connections in a blocking loop.
+streams echo_server(conn Connection)!
 from
-    listener as Socket = server("0.0.0.0", port)!
-    client as Socket = accept(listener)!
-    data as ByteArray = message(client, 1024)!
-    message(client, data)!
-    socket(client)
-    socket(listener)
+    Exit => conn
+    Accept(listener) =>
+        client as Socket = accept(listener)!
+        data as ByteArray = message(client, 1024)!
+        message(client, data)!
+        socket(client)
 ```
