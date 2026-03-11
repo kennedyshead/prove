@@ -5,6 +5,8 @@ module System
 
   type DirEntry is binary
 
+  type File is binary
+
 /// Print text to the console
 outputs console(text String)
 binary
@@ -59,4 +61,24 @@ binary
 
 /// Validate a process name
 validates process(value String)
+binary
+
+/// Open a file for reading (returns a file handle, or fails if not found)
+creates reader(path String) File!
+binary
+
+/// Read the next line from an open file handle (returns empty string at EOF)
+inputs line(handle File) String
+binary
+
+/// Close an open file handle
+outputs close(handle File)
+binary
+
+/// Open a file for appending (returns a file handle for writing)
+creates writer(path String) File!
+binary
+
+/// Write a line to an open file handle
+outputs line(handle File, data String)
 binary

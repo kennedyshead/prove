@@ -1,7 +1,16 @@
 # Narrative & Explain Prose Analysis
 
-Parse `narrative` and `explain` blocks with NL techniques to map prose to actual verbs,
-then use that mapping for LSP autocomplete and lint inside those blocks.
+Prove functions declare a **verb** keyword (`transforms`, `validates`, `reads`, `creates`,
+`matches`, `inputs`, `outputs`, etc.) that names their purpose. Modules can have a
+**`narrative:`** block — free-form prose describing what the module does. Functions can have
+**`explain`** blocks (step-by-step documentation of the `from` body), **`intent:`** (why the
+function exists), **`chosen:`** (which approach was taken), and **`why_not:`** (rejected
+alternatives). Today these prose blocks are parsed by the compiler but mostly inert — no
+semantic analysis connects the prose to the code it describes.
+
+This document describes how to parse `narrative` and `explain` blocks with NL techniques
+to map prose to actual Prove verbs, then use that mapping for LSP autocomplete and
+compiler lint inside those blocks. Pure Python, no external dependencies.
 
 ---
 
@@ -39,7 +48,7 @@ class ExplainEntry:
 | `intent` | Checker warns W311 when set but no `ensures`/`requires` |
 | `chosen` / `why_not` | Inert (parsed, stored, formatted — never analysed) |
 
-### Coherence flag wiring (checker.py lines 244-348)
+### Coherence flag wiring (checker.py `Checker.__init__` / `check()`)
 
 ```python
 self._coherence: bool = False   # set by CLI --coherence
@@ -49,18 +58,18 @@ if self._coherence:
     self._check_coherence(module)   # → I340 today; new checks go here
 ```
 
-`_check_coherence` (lines 3044-3080) currently only checks function name vocab.
+`_check_coherence` (method on `Checker`) currently only checks function name vocab.
 
-### LSP completion pipeline (lsp.py)
+### LSP completion pipeline (lsp.py `completion()`)
 
 ```
 completion()
   Phase 1-4: keyword / builtin / stdlib / symbol-table items
-  Phase 5 (line 1185-1188): ML n-gram completions prepended
+  Phase 5: ML n-gram completions prepended
   Dedup + return
 ```
 
-The LSP runs `Checker` in `_analyze()` (line 559) but **never sets `_coherence = True`**.
+The LSP runs `Checker` in `_analyze()` but **never sets `_coherence = True`**.
 Prose blocks are therefore invisible to the checker in the editor.
 
 ---
@@ -268,7 +277,7 @@ for fd in fns:
     self._check_why_not_names(fd, known_names)
 ```
 
-#### Wire into `_check_coherence` (checker.py line ~3080)
+#### Wire into `_check_coherence` (checker.py `Checker._check_coherence`)
 
 ```python
 def _check_coherence(self, module: Module) -> None:
@@ -289,7 +298,7 @@ def _check_coherence(self, module: Module) -> None:
         self._check_why_not_names(fd, known_names)
 ```
 
-#### Enable coherence in the LSP (lsp.py `_analyze`, line 559)
+#### Enable coherence in the LSP (lsp.py `_analyze`)
 
 ```python
 checker = Checker(local_modules=local_modules, project_dir=project_dir)
@@ -531,7 +540,7 @@ def _prose_completions(
     return items
 ```
 
-#### Wire into `completion()` — insert before Phase 5 (line 1185)
+#### Wire into `completion()` — insert before Phase 5 (ML n-gram section)
 
 ```python
     # Phase 5a — prose-mode completions (suppress ML n-gram items in prose context)
@@ -559,7 +568,7 @@ Extract the existing dedup loop into `_dedup(items)` for reuse.
 |---|---|
 | `prove-py/src/prove/_nl_intent.py` | **New** — `implied_verbs()`, `body_tokens()`, `prose_overlaps()` |
 | `prove-py/src/prove/_check_contracts.py` | Add `_check_narrative_verb_coherence`, `_check_explain_body_coherence`, `_check_chosen_has_why_not`, `_check_chosen_body_coherence`, `_check_why_not_names`; call from `_check_coherence` |
-| `prove-py/src/prove/checker.py` | In `_check_coherence()` (~line 3080): call three new methods |
+| `prove-py/src/prove/checker.py` | In `_check_coherence()`: call three new methods |
 | `prove-py/src/prove/lsp.py` | Enable `_coherence=True` in `_analyze()`; add `_prose_context()`, `_find_enclosing_fd()`, `_cursor_in_*` helpers, `_prose_completions()`; wire Phase 5a in `completion()` |
 | `prove-py/tests/test_checker_contracts.py` | Unit tests for W501, W502, W503 |
 | `prove-py/tests/test_nl_intent.py` | **New** — unit tests for `implied_verbs`, `body_tokens`, `prose_overlaps` |

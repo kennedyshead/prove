@@ -281,3 +281,43 @@ bool prove_io_process_validates(Prove_String *value) {
     }
     return false;
 }
+
+/* ── File handle streaming ───────────────────────────────────── */
+
+Prove_Result prove_file_open_read(Prove_String *path) {
+    FILE *fp = fopen(path->data, "r");
+    if (!fp) return prove_result_err(prove_string_from_cstr(strerror(errno)));
+    Prove_File *f = (Prove_File *)prove_alloc(sizeof(Prove_File));
+    f->fp = fp;
+    return prove_result_ok_ptr(f);
+}
+
+Prove_String *prove_file_readline_handle(Prove_File *handle) {
+    if (!handle || !handle->fp || feof(handle->fp)) return NULL;
+    char buf[4096];
+    if (!fgets(buf, sizeof(buf), handle->fp)) return NULL;
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') buf[--len] = '\0';
+    if (len > 0 && buf[len - 1] == '\r') buf[--len] = '\0';
+    return prove_string_new(buf, (int64_t)len);
+}
+
+void prove_file_close_handle(Prove_File *handle) {
+    if (!handle) return;
+    if (handle->fp) { fclose(handle->fp); handle->fp = NULL; }
+}
+
+Prove_Result prove_file_open_append(Prove_String *path) {
+    FILE *fp = fopen(path->data, "a");
+    if (!fp) return prove_result_err(prove_string_from_cstr(strerror(errno)));
+    Prove_File *f = (Prove_File *)prove_alloc(sizeof(Prove_File));
+    f->fp = fp;
+    return prove_result_ok_ptr(f);
+}
+
+void prove_file_writeln_handle(Prove_File *handle, Prove_String *line) {
+    if (!handle || !handle->fp) return;
+    fwrite(line->data, 1, (size_t)line->length, handle->fp);
+    fputc('\n', handle->fp);
+    fflush(handle->fp);
+}

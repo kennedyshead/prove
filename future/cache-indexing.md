@@ -4,6 +4,13 @@ Reliable `.prove_cache` lifecycle across LSP, `check`, `build`, and `format` com
 Today the cache is written but never read back, staleness is never detected, and CLI
 commands know nothing about it.
 
+**Context:** The Prove LSP includes an ML-based code completion system. A per-project
+indexer (`_ProjectIndexer` in `lsp.py`) parses all `.prv` files, extracts token n-grams
+(sequences of consecutive tokens) and symbol metadata (function names, verbs, types,
+signatures), and uses them to rank completion suggestions. The indexer also writes its
+data to disk as `.prove_cache/` binary files (PDAT format) — but currently never reads
+them back. This document describes how to make that cache reliable and useful.
+
 ---
 
 ## Background: what exists today
@@ -32,14 +39,14 @@ using `store_binary.write_pdat` (PDAT magic `0x50444154`, format version `1`).
 ### LSP session flow (`lsp.py`)
 
 ```python
-# did_open (line 862):
+# did_open:
 _analyze(uri, source)            # lex → parse → check
 _ensure_project_indexed(uri)     # create indexer + index_all_files() if empty
 
-# did_change (line 879):
+# did_change:
 _analyze(uri, source)            # re-check; does NOT patch indexer
 
-# did_save (line 898):
+# did_save:
 _project_indexer.patch_file(...)  # incremental re-index on save
 ```
 
@@ -53,7 +60,7 @@ _project_indexer.patch_file(...)  # incremental re-index on save
 | `build` | No | No |
 | `format` | No | No |
 
-`_compile_project` in `cli.py` (line 97) walks `.prv` files, runs lex→parse→check per file,
+`_compile_project` in `cli.py` walks `.prv` files, runs lex→parse→check per file,
 and has no connection to `_ProjectIndexer`.
 
 ---

@@ -105,6 +105,11 @@ _register_module(
         ("validates", "dir"): "prove_io_dir_validates",
         ("inputs", "process"): "prove_io_process_inputs",
         ("validates", "process"): "prove_io_process_validates",
+        ("creates", "reader"): "prove_file_open_read",
+        ("inputs", "line"): "prove_file_readline_handle",
+        ("outputs", "close"): "prove_file_close_handle",
+        ("creates", "writer"): "prove_file_open_append",
+        ("outputs", "line"): "prove_file_writeln_handle",
     },
 )
 
@@ -594,6 +599,7 @@ _KNOWN_TYPES = {
     "Resolution": PrimitiveType("Resolution"),
     "MergeResult": PrimitiveType("MergeResult"),
     "Socket": PrimitiveType("Socket"),
+    "File": PrimitiveType("File"),
 }
 
 

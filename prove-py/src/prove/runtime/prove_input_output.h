@@ -57,4 +57,17 @@ void         prove_io_init_args(int argc, char **argv);
 Prove_List  *prove_io_process_inputs(void);
 bool         prove_io_process_validates(Prove_String *value);
 
+/* ── File handle streaming ───────────────────────────────────── */
+
+typedef struct {
+    Prove_Header header;
+    FILE *fp;
+} Prove_File;
+
+Prove_Result  prove_file_open_read(Prove_String *path);
+Prove_String *prove_file_readline_handle(Prove_File *handle);
+void          prove_file_close_handle(Prove_File *handle);
+Prove_Result  prove_file_open_append(Prove_String *path);
+void          prove_file_writeln_handle(Prove_File *handle, Prove_String *line);
+
 #endif /* PROVE_INPUT_OUTPUT_H */

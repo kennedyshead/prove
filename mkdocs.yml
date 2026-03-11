@@ -25,6 +25,7 @@ nav:
       - CLI Reference: cli.md
       - Compiler Features: compiler.md
       - Diagnostic Codes: diagnostics.md
+  - Vision: vision.md
   - AI Resistance: ai-resistance.md
   - Examples:
       - Inventory Service: examples/inventory_service.md

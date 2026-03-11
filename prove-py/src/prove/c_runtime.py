@@ -219,6 +219,11 @@ _RUNTIME_FUNCTIONS = {
         "prove_io_init_args",
         "prove_io_process_inputs",
         "prove_io_process_validates",
+        "prove_file_open_read",
+        "prove_file_readline_handle",
+        "prove_file_close_handle",
+        "prove_file_open_append",
+        "prove_file_writeln_handle",
     ],
     "prove_parse": [
         "prove_value_null",

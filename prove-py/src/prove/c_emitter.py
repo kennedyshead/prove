@@ -137,6 +137,18 @@ class CEmitter(
                         if td.body.is_store_backed:
                             self._store_lookup_types.add(td.name)
 
+    def _module_reads_console(self) -> bool:
+        """Return True if the module declares 'System inputs console'."""
+        from prove.ast_nodes import ImportDecl, ModuleDecl
+        for decl in self._module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    if imp.module.lower() in ("system", "io", "inputoutput"):
+                        for item in imp.items:
+                            if item.verb == "inputs" and item.name == "console":
+                                return True
+        return False
+
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
         result: list[TypeDef] = []

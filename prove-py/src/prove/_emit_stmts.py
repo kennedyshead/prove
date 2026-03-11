@@ -657,6 +657,14 @@ class StmtEmitterMixin:
 
         # Update locals with target type
         self._locals[vd.name] = target_ty
+        # In a streams loop, guard nullable reads (e.g. prove_readln on EOF)
+        if self._in_streams_loop and ct.is_pointer and isinstance(vd.value, CallExpr):
+            if isinstance(vd.value.func, IdentifierExpr):
+                call_sig = self._symbols.resolve_function_any(
+                    vd.value.func.name, arity=len(vd.value.args)
+                )
+                if call_sig and call_sig.verb == "inputs":
+                    self._line(f"if (!{vd.name}) goto _streams_exit;")
         # Retain pointer types
         if ct.is_pointer:
             self._line(f"prove_retain({vd.name});")
@@ -995,6 +1003,9 @@ class StmtEmitterMixin:
                                         f"{tmp}.{arm.pattern.name}.{fname};"
                                     )
                     self._emit_match_arm_body(arm.body)
+                    # streams Exit arm must break out of the while(1) loop
+                    if self._in_streams_loop and arm.pattern.name == "Exit":
+                        self._line("goto _streams_exit;")
                     self._line("break;")
                     self._indent -= 1
                     self._line("}")
