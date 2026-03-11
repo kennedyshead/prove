@@ -10,7 +10,7 @@ keywords: Prove design, language design, intent-first, design decisions
 
 Prove is an **intent-first** language. Every function declares its intent — a verb names the purpose, contracts state the guarantees, and explain documents the reasoning — before a single line of implementation is written. The compiler then enforces that the implementation matches the declared intent.
 
-The compiler is your co-author, not your gatekeeper. Every feature exists to move correctness checks from runtime to compile time, and to generate tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
+The programmer remains the author — the compiler is a [deterministic assistant](vision.md#what-this-is-not) that enforces what you declared. Intent comes first: the verb names the purpose, contracts state the guarantees, explain documents the reasoning. The type system serves this intent enforcement, moving correctness checks from runtime to compile time and generating tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
 
 ---
 

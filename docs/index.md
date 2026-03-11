@@ -1,6 +1,6 @@
 ---
 title: Prove - Intent-First Programming Language
-description: Prove is an intent-first programming language designed to mitigate AI slop and code scraping. Every function declares its purpose, guarantees, and reasoning before implementation.
+description: Prove is an intent-first programming language where every function declares its purpose, guarantees, and reasoning before implementation — enabling local, self-contained development that resists AI by design.
 keywords: programming language, intent-first, AI resistance, code scraping protection, contracts, refinement types
 ---
 
@@ -8,9 +8,9 @@ keywords: programming language, intent-first, AI resistance, code scraping prote
 
 <img src="assets/icon.png" alt="Prove" width="100" height="100">
 
-**A programming language designed to mitigate AI slop and code scraping.**
+**An intent-first programming language.**
 
-Prove is an intent-first programming language — every function declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins, and the compiler enforces that intent matches reality. This strict enforcement, coupled with features like explicit verbs and verifiable explain blocks, makes it exceptionally difficult for AI to generate semantically correct and compilable code without true understanding. Source code is covered by an anti-training license — unlicensed for AI training. Binary AST storage is [planned](ai-resistance.md#structured-source-format-binary-prv) for post-1.0. If it compiles, the author understood what they wrote. If it's AI-generated, it won't. [Learn more about Prove's AI Resistance](ai-resistance.md)
+Every function in Prove declares its purpose (verb), guarantees (contracts), and reasoning (explain) before the implementation begins. The compiler enforces that intent matches reality. The [vision](vision.md) extends this to the entire development workflow: local, self-contained development where your project's own declarations drive code generation — no external AI services, no black box. The programmer remains the author; the toolchain is a deterministic assistant that works from what you've explicitly declared. This strict intent enforcement also makes Prove naturally [resistant to AI](ai-resistance.md) — generating semantically correct Prove code requires genuine understanding, not pattern matching. Source code is covered by an [anti-training license](ai-resistance.md#anti-training-license-for-prove-code).
 
 ```prove
 transforms add(a Integer, b Integer) Integer
@@ -59,6 +59,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
   | ["I forgot an edge case"](types.md#refinement-types) | Compiler generates edge cases from types |
   | [Runtime type errors](types.md) | Refinement types catch invalid values at compile time |
   | [Code without reasoning](contracts.md#explain) | `explain` documents each step using controlled natural language — verified against contracts |
+  | [External AI dependency](vision.md#local-self-contained-development) | Local, self-contained generation from your project's own declarations |
 
 ---
 
@@ -188,7 +189,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-The compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (17 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. See the [Roadmap](roadmap.md) for what's next.
+The compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (18 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. See the [Roadmap](roadmap.md) for what's next.
 
 ## Repository
 

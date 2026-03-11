@@ -8,6 +8,8 @@ keywords: AI resistance, AI slop, code scraping, anti-training, binary AST
 
 Prove's AI-resistance features fall into four categories based on implementation status. The design goal is twofold: resist AI *generating* correct Prove code, and resist AI *training on* Prove source code.
 
+These same features serve a broader purpose. The intent declarations, verifiable explanations, and coherence checks that make AI generation difficult are also the foundation for Prove's [vision](vision.md) of local, self-contained development — where your project's own declarations drive code generation without external services. AI resistance is a consequence of intent-first design, not the other way around.
+
 ---
 
 ## Implemented
@@ -317,4 +319,6 @@ The uncomfortable truth is that the things AI is bad at are the things lazy huma
 
 The anti-training features (binary format, semantic normalization, fragmented source) add friction to sharing and collaboration. The mitigation is a first-class toolchain: the `prove` CLI and LSP make the experience seamless for developers working inside the ecosystem, while making the code opaque to anything outside it.
 
-**The design answers both questions:** Prove resists AI *writing* the code (generation resistance) and resists AI *training on* the code (anti-training).
+These same features — intent declarations, verifiable explanations, coherence checking — are also the building blocks for Prove's [local generation model](vision.md#local-self-contained-development). The things that make code hard for external AI to generate are exactly what make it possible for the *project's own toolchain* to generate structure from declared intent. The friction is selective: it blocks opaque external generation while enabling transparent local generation.
+
+**The design answers both questions:** Prove resists AI *writing* the code (generation resistance) and resists AI *training on* the code (anti-training). And the same mechanisms enable [self-contained development](vision.md) where the programmer remains the author.

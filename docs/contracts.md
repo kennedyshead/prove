@@ -212,7 +212,7 @@ Unlike AI prompt-pong — where each change requires a fresh conversation to *ma
 
 **Foundation-first code generation.** AI can generate correct code from intent, but only if the building blocks exist. Each `explain` + implementation pair you write is a new block the compiler understands. Over time, explain statements generate most of the boilerplate automatically — you provide the high-level intent, the ecosystem provides the implementation.
 
-This is the inverse of typical AI workflows. Instead of fishing for working code through conversation, you're building a vocabulary the compiler uses to help you. The more complete your library, the less you need to write explicitly.
+This is the inverse of typical AI workflows. Instead of fishing for working code through conversation, you're building a vocabulary the compiler uses to help you. The more complete your library, the less you need to write explicitly. This is the foundation of Prove's [vision for self-contained development](vision.md) — local, deterministic generation from your own declarations.
 
 ---
 
