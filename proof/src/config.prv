@@ -1,0 +1,33 @@
+module Config
+  narrative: """Handles config parsing and transforms it to a Config type"""
+  Parse creates toml, validates toml
+
+  type Package is
+    name String
+    version String
+    authors List<String>
+    license String
+
+  type Build is
+    target String
+    optimize Boolean
+    mutate Boolean
+    debug Boolean
+
+  type Test is
+    property_rounds Integer
+
+  type Style is
+    line_length Integer
+
+  type Config is
+    package Package
+    build Build
+    test Test
+    style Style
+
+/// Parse the toml data to Config struct
+transforms config(data Result<String, Error>) Config
+  requires valid toml(data)
+from
+    Config(toml(data))

@@ -5,49 +5,16 @@ module Main
   """
   System inputs process file, outputs console
   List reads value
-  Parse validates toml, creates toml
-  Log detached info
+  Commands outputs build
+  Config transforms config, types Config
 
-  type Package is
-    name String
-    version String
-    authors List<String>
-    license String
-
-  type Build is
-    target String
-    optimize Boolean
-    mutate Boolean
-    debug Boolean
-
-  type Test is
-    property_rounds Integer
-
-  type Style is
-    line_length Integer
-
-  type Config is
-    package Package
-    build Build
-    test Test
-    style Style
+  type Plan:[Lookup] is String Verb where
+    Build | "build" | build
 
   HELP_TXT as String = comptime
       read("help.txt")
 
   PROVE_TOML as String = "prove.toml"
-
-/// Parse the toml data to Config struct
-matches config(data Result<String, Error>) Config
-  requires valid toml(data)
-from
-    Config(toml(data))
-
-/// Run the build command
-inputs build_command(arguments List<String>, config Config)!
-  requires value(1, arguments) == "build"
-from
-    info(f"{config.package.name} {config.package.version} now available in build folder")
 
 main() Result<Unit, Error>!
 from
@@ -57,5 +24,5 @@ from
     load as Result<String, Error> = file(PROVE_TOML)
     config as Config = config(load)
     match value(1, arguments)
-        "build" => build_command(arguments, config)!
+        "build" => build(arguments, config)!
         _ => console(HELP_TXT)
