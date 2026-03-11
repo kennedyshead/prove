@@ -122,7 +122,7 @@ class TestAnalyze:
     def test_analyze_valid_source(self):
         source = (
             "module Main\n"
-            '  narrative: """Test module"""\n'
+            '  narrative: """Transforms numbers via add operations"""\n'
             "\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "from\n"
@@ -131,7 +131,8 @@ class TestAnalyze:
         ds = _analyze("file:///test.prv", source)
         assert ds.module is not None
         assert ds.symbols is not None
-        assert len(ds.diagnostics) == 0
+        # No errors (info/warning coherence hints are acceptable)
+        assert not any(d.severity == lsp.DiagnosticSeverity.Error for d in ds.diagnostics)
 
     def test_analyze_with_errors(self):
         source = "transforms add(a Integer, b Integer) Integer\nfrom\n    unknown_var\n"
@@ -527,12 +528,8 @@ class TestCompletion:
             "    a + b\n",
         )
         result = _complete("<test://userfn>")
-        # Find local add (not from Table module)
-        add_items = [
-            i
-            for i in result.items
-            if "add" in i.label and "Main" not in i.label and "Table" not in i.label
-        ]
+        # Find local add — label is "transforms add" (no module prefix, unlike stdlib)
+        add_items = [i for i in result.items if i.label == "transforms add"]
         assert len(add_items) >= 1
         item = add_items[0]
         # Detail should be verb only
