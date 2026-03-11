@@ -5,15 +5,8 @@ module Network
   /// An open network socket
   type Socket is binary
 
-  /// Network protocol
-  type Protocol is Tcp
-    | Udp
-
-  /// Network address (host and port)
-  type Address is binary
-
-/// Open a connection to a remote address
-inputs socket(address Address, protocol Protocol) Result<Socket, Error>!
+/// Open a TCP connection to a remote host and port
+inputs socket(host String, port Integer) Result<Socket, Error>!
 binary
 
 /// Close a connection
@@ -24,8 +17,8 @@ binary
 validates socket(connection Socket)
 binary
 
-/// Bind and listen on an address
-inputs server(address Address, protocol Protocol) Result<Socket, Error>!
+/// Bind and listen on a TCP port
+inputs server(host String, port Integer) Result<Socket, Error>!
 binary
 
 /// Accept an incoming connection on a listening socket
@@ -38,24 +31,4 @@ binary
 
 /// Write data to a socket
 outputs message(connection Socket, data ByteArray) Result<Unit, Error>!
-binary
-
-/// Parse an address string ("host:port")
-creates address(source String) Result<Address, Error>!
-binary
-
-/// Format an address as "host:port"
-reads address(location Address) String
-binary
-
-/// Check if an address string is valid
-validates address(source String)
-binary
-
-/// Read the host component of an address
-reads host(location Address) String
-binary
-
-/// Read the port component of an address
-reads port(location Address) Integer
 binary

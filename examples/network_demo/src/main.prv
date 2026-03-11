@@ -1,12 +1,20 @@
 module Main
-  narrative: """Demonstrates Network module: address parsing and formatting."""
+  narrative: """Demonstrates Network module: TCP echo server."""
   System outputs console
-  Network creates address, reads address host port
-  Network types Address
+  Network inputs socket server accept message, outputs socket message
+  Network validates socket
+  Network types Socket
+  Bytes types ByteArray
 
 main() Result<Unit, Error>!
 from
-    addr as Address = address("localhost:8080")!
-    console(f"address: {address(addr)}")
-    console(f"host: {host(addr)}")
-    console(f"port: {port(addr)}")
+    listener as Socket = server("0.0.0.0", 9000)!
+    console("listening on :9000")
+    client as Socket = accept(listener)!
+    console("client connected")
+    data as ByteArray = message(client, 1024)!
+    message(client, data)!
+    console("echoed data back")
+    socket(client)
+    socket(listener)
+    console("done")

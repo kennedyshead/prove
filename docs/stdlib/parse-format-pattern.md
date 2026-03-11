@@ -53,6 +53,8 @@ Defines a binary `Url` type for parsed URL components.
 | `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
 | `validates` | `url(raw String)` | True if string is a valid URL |
 | `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
+| `reads` | `host(url Url) String` | Read the host component of a URL |
+| `reads` | `port(url Url) Integer` | Read the port component (-1 if not set) |
 
 ### Base64
 

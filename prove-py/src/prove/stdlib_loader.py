@@ -446,6 +446,8 @@ _register_module(
         ("creates", "csv"): "prove_parse_csv",
         ("reads", "csv"): "prove_emit_csv",
         ("validates", "csv"): "prove_validates_csv",
+        ("reads", "host"): "prove_parse_url_host_reads",
+        ("reads", "port"): "prove_parse_url_port_reads",
     },
 )
 
@@ -496,13 +498,6 @@ _register_module(
         ("inputs", "accept"): "prove_network_accept_inputs",
         ("inputs", "message"): "prove_network_message_inputs",
         ("outputs", "message"): "prove_network_message_outputs",
-        ("creates", "address"): "prove_network_address_creates",
-        ("validates", "address"): "prove_network_address_validates",
-        ("reads", "host"): "prove_network_host_reads",
-        ("reads", "port"): "prove_network_port_reads",
-    },
-    overloads={
-        ("reads", "address", "Address"): "prove_network_address_reads",
     },
 )
 
@@ -599,7 +594,6 @@ _KNOWN_TYPES = {
     "Resolution": PrimitiveType("Resolution"),
     "MergeResult": PrimitiveType("MergeResult"),
     "Socket": PrimitiveType("Socket"),
-    "Address": PrimitiveType("Address"),
 }
 
 

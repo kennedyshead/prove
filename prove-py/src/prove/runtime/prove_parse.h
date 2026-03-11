@@ -107,6 +107,8 @@ Prove_Url    *prove_parse_url_create(Prove_String *scheme, Prove_String *host,
                                       Prove_String *path);
 bool          prove_parse_url_validates(Prove_String *raw);
 Prove_Url    *prove_parse_url_transform(Prove_Url *source, Prove_Table *params);
+Prove_String *prove_parse_url_host_reads(Prove_Url *url);
+int64_t       prove_parse_url_port_reads(Prove_Url *url);
 
 /* ── Base64 ─────────────────────────────────────────────────── */
 

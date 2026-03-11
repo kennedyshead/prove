@@ -169,6 +169,18 @@ Prove_Url *prove_parse_url_transform(Prove_Url *source, Prove_Table *params) {
     return u;
 }
 
+/* ── URL field accessors ────────────────────────────────────── */
+
+Prove_String *prove_parse_url_host_reads(Prove_Url *url) {
+    if (!url || !url->host) return prove_string_from_cstr("");
+    return url->host;
+}
+
+int64_t prove_parse_url_port_reads(Prove_Url *url) {
+    if (!url) return -1;
+    return url->port;
+}
+
 /* ── Base64 ─────────────────────────────────────────────────── */
 
 static const char _b64_enc[] =
