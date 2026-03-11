@@ -79,6 +79,39 @@ Access command-line arguments.
 | `inputs` | `process() List<String>` | Get command-line arguments |
 | `validates` | `process(value String)` | Check if argument is present |
 
+### File Streaming Channel
+
+Open file handles for line-by-line streaming — for use with the [`streams` verb](../functions.md#streams--blocking-io-loop). Type: `File` (binary handle).
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `reader(path String) File!` | Open a file for reading (line by line) |
+| `inputs` | `line(handle File) String` | Read the next line from an open file; loop exits on EOF |
+| `creates` | `writer(path String) File!` | Open a file for appending |
+| `outputs` | `line(handle File, data String)` | Write a line to an open file |
+| `outputs` | `close(handle File)` | Close an open file handle |
+
+```prove
+System outputs console close line, inputs line, creates reader writer, types File
+
+type ChunkIO is Streaming(handle File)
+  | Exit
+
+/// Read a file line by line.
+streams read_file(state ChunkIO)
+from
+    Exit              => state
+    Streaming(handle) =>
+        data as String = line(handle)
+        console(f"line: {data}")
+
+main() Result<Unit, Error>!
+from
+    rh as File = reader("/tmp/data.txt")!
+    read_file(Streaming(rh))
+    close(rh)
+```
+
 ---
 
 ## Path

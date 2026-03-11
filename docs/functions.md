@@ -204,7 +204,7 @@ from
 
 ## Streams — Blocking IO Loop
 
-The `streams` verb declares a blocking loop that reads from an IO source and dispatches items via match arms until an `Exit` arm terminates the loop. It is the IO counterpart to `listens` in the async family.
+The `streams` verb declares a **blocking loop** over an IO context. It runs until an `Exit` arm is matched, an error propagates via `!`, or the IO source is exhausted (e.g. stdin EOF). It is the synchronous counterpart to `listens` in the async family.
 
 | Pattern | IO | Async |
 |---------|-----|-------|
@@ -212,25 +212,98 @@ The `streams` verb declares a blocking loop that reads from an IO source and dis
 | Pull, await | `inputs` | `attached` |
 | Loop until exit | `streams` | `listens` |
 
+**How it works:**
+
+The parameter carries the **loop context** — a value that holds whatever the loop needs each iteration (a file handle, a socket, a prompt string). The match arms execute IO using the context on every iteration. The `Exit` arm terminates the loop; all other arms loop back.
+
+```
+streams f(ctx Context)
+from
+    Exit     => ctx                   // terminates loop
+    Active(…) =>                      // IO arm — runs each iteration
+        data = read_from(ctx.source)  // blocking read using context
+        write_to(ctx.dest, data)      // blocking write
+```
+
 **Key rules:**
 
 - The `from` block must be a single implicit match with an `Exit` arm
-- The match subject is the first parameter type; if an explicit return type is declared, that type is used as the match subject instead
+- The match subject is the first parameter type
 - `streams` is a blocking IO verb — it cannot be called from `listens` bodies
 - `streams` bodies may use `&` to fire-and-forget `detached` calls (e.g. logging)
+- On EOF from an `inputs` read, the loop exits automatically
+
+**REPL example — read stdin line by line:**
 
 ```prove
-// No explicit return type — match runs on the first parameter type (Command)
-streams repl(cmd Command)
-from
-    Exit           => cmd
-    Run(input)     => console(f"echo: {input}")
+System outputs console, inputs console
 
-// With explicit return type — match runs on Line, not FileHandle
-streams file(source FileHandle) Line
+type Session is Active(prompt String)
+  | Exit
+
+/// Echo stdin lines with a prompt. Exits on EOF.
+streams repl(session Session)
 from
-    Exit           => source
-    Content(text)  => handle(text)
+    Exit           => session
+    Active(prompt) =>
+        console(prompt)               // write: print prompt
+        line as String = console()    // read: next stdin chunk
+        console(f"< {line}")          // write: echo it
+
+main()
+from
+    repl(Active("> "))
+```
+
+Each iteration the `Active(prompt)` arm performs a blocking `console()` read. When stdin is exhausted the loop exits cleanly.
+
+**File streaming example — write stdin to file, then read back:**
+
+```prove
+System outputs console close line, inputs console line, creates reader writer, types File
+
+type ChunkIO is Streaming(handle File)
+  | Exit
+
+/// Capture stdin lines into a file, one chunk at a time.
+streams write_chunks(state ChunkIO)
+from
+    Exit           => state
+    Streaming(handle) =>
+        data as String = console()   // read chunk from stdin
+        line(handle, data)           // write chunk to file
+
+/// Replay a file line by line to console.
+streams read_chunks(state ChunkIO)
+from
+    Exit           => state
+    Streaming(handle) =>
+        data as String = line(handle) // read chunk from file
+        console(f"chunk: {data}")     // write chunk to console
+
+main() Result<Unit, Error>!
+from
+    path as String = "/tmp/chunks.txt"
+    wh as File = writer(path)!
+    write_chunks(Streaming(wh))
+    close(wh)
+    rh as File = reader(path)!
+    read_chunks(Streaming(rh))
+    close(rh)
+```
+
+**Network server example — accept connections in a loop:**
+
+```prove
+// conn is the loop context; Accept(listener) arm calls accept() each iteration
+streams serve(conn Connection)!
+from
+    Exit              => conn
+    Accept(listener)  =>
+        client as Socket = accept(listener)!
+        data as ByteArray = message(client, 1024)!
+        message(client, data)!
+        socket(client)
 ```
 
 ---
