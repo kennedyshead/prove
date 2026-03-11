@@ -68,6 +68,21 @@
     }
   },
   {
+    "type": "async_marker",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "believe_annotation",
     "named": true,
     "fields": {},
@@ -275,6 +290,10 @@
       "multiple": false,
       "required": true,
       "types": [
+        {
+          "type": "async_marker",
+          "named": true
+        },
         {
           "type": "binary_expression",
           "named": true
@@ -1566,6 +1585,10 @@
     "named": false
   },
   {
+    "type": "&",
+    "named": false
+  },
+  {
     "type": "&&",
     "named": false
   },
@@ -1658,6 +1681,10 @@
     "named": false
   },
   {
+    "type": "attached",
+    "named": false
+  },
+  {
     "type": "believe",
     "named": false
   },
@@ -1684,6 +1711,10 @@
   {
     "type": "decimal_literal",
     "named": true
+  },
+  {
+    "type": "detached",
+    "named": false
   },
   {
     "type": "doc_comment",
@@ -1756,6 +1787,10 @@
   {
     "type": "line_comment",
     "named": true
+  },
+  {
+    "type": "listens",
+    "named": false
   },
   {
     "type": "main",
@@ -1839,6 +1874,10 @@
   },
   {
     "type": "satisfies",
+    "named": false
+  },
+  {
+    "type": "streams",
     "named": false
   },
   {

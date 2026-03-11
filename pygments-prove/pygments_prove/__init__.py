@@ -52,7 +52,8 @@ class ProveLexer(RegexLexer):
             (
                 words(
                     (
-                        "creates", "inputs", "matches", "outputs", "reads", "transforms", "validates",
+                        "attached", "creates", "detached", "inputs", "listens",
+                        "matches", "outputs", "reads", "streams", "transforms", "validates",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
