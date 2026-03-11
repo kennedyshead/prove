@@ -2280,7 +2280,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if self._current_function is not None and isinstance(
             self._current_function, FunctionDef
         ):
-            if self._current_function.verb not in _ASYNC_VERBS:
+            if self._current_function.verb not in _ASYNC_VERBS and self._current_function.verb != "streams":
                 self._error(
                     "E373",
                     "`&` async call outside an async verb body",

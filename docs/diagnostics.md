@@ -336,7 +336,7 @@ This code is used in two contexts:
 This code is used in two contexts:
 
 1. **Pattern matching:** A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
-2. **Async verbs:** The `&` async dispatch marker is used at a call site outside of an async function body.
+2. **Async verbs:** The `&` async dispatch marker is used at a call site outside of an async or `streams` function body.
 
 ### E374 — `detached` or `listens` declared with a return type
 

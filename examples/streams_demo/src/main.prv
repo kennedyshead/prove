@@ -1,5 +1,5 @@
 module Main
-  narrative: """Demonstrates the streams verb — blocking IO loop."""
+  narrative: """Demonstrates the streams verb — blocking system IO loop."""
   System outputs console, inputs console
 
   type Command is Run(input String)

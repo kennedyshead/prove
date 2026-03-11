@@ -1,9 +1,11 @@
 module Main
-  narrative: """Demonstrates Network module: TCP echo server with streams loop."""
+  narrative: """Demonstrates Network module: TCP echo server using streams."""
   System outputs console
   Network inputs server accept message, outputs socket message
   Network types Socket
+  Bytes reads hex
   Bytes types ByteArray
+  Log detached info
 
   type Connection is Accept(listener Socket)
     | Exit
@@ -15,7 +17,9 @@ from
     Accept(listener) =>
         client as Socket = accept(listener)!
         data as ByteArray = message(client, 1024)!
+        info(f"received: {hex(data)}")
         message(client, data)!
+        info("echoed response")
         socket(client)
 
 main() Result<Unit, Error>!

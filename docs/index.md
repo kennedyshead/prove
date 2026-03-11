@@ -23,6 +23,30 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
 ---
 
+## Latest from the Blog
+
+<div class="grid cards" markdown>
+
+-   **What Happens When AI Can't Generate Your Code**
+
+    *2026-03-11*
+
+    I gave an AI a real task in Prove. It failed six times. Here's exactly why — and why every failure is by design.
+
+    [:octicons-arrow-right-24: Read post](blog/2026-03-11-what-happens-when-ai-cant-generate-your-code.md)
+
+-   **Why I Built My Own Programming Language**
+
+    *2026-03-04*
+
+    How a frustrating "sorry my bad" from an AI became the seed of Prove — the intent-first programming language.
+
+    [:octicons-arrow-right-24: Read post](blog/2026-03-04-why-i-built-my-own-programming-language.md)
+
+</div>
+
+---
+
 ## Why Prove?
 
 | Problem | How Prove solves it |

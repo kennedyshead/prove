@@ -1,0 +1,18 @@
+module Main
+  narrative: """Demonstrates Network module: TCP client connecting to a server."""
+  System outputs console
+  Network inputs socket message, outputs socket message
+  Network types Socket
+  Bytes creates hex, reads hex
+  Bytes types ByteArray
+
+main() Result<Unit, Error>!
+from
+    connection as Socket = socket("127.0.0.1", 9000)!
+    console("connected to 127.0.0.1:9000")
+    data as ByteArray = hex("68656c6c6f")
+    message(connection, data)!
+    response as ByteArray = message(connection, 1024)!
+    reply as String = hex(response)
+    console(f"server replied: {reply}")
+    socket(connection)

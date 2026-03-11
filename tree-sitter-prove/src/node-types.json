@@ -821,11 +821,23 @@
       "required": true,
       "types": [
         {
+          "type": "assignment",
+          "named": true
+        },
+        {
           "type": "expression",
           "named": true
         },
         {
+          "type": "match_expression",
+          "named": true
+        },
+        {
           "type": "pattern",
+          "named": true
+        },
+        {
+          "type": "variable_declaration",
           "named": true
         }
       ]
