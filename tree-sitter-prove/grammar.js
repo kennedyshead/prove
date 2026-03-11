@@ -197,8 +197,11 @@ module.exports = grammar({
 
     // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
+      'attached',
       'creates',
+      'detached',
       'inputs',
+      'listens',
       'matches',
       'outputs',
       'reads',
@@ -378,6 +381,7 @@ module.exports = grammar({
       $.binary_expression,
       $.unary_expression,
       $.fail_propagation,
+      $.async_marker,
       $.call_expression,
       $.field_expression,
       $.valid_expression,
@@ -426,6 +430,11 @@ module.exports = grammar({
     fail_propagation: $ => prec.left(PREC.POSTFIX, seq(
       $.expression,
       token.immediate('!'),
+    )),
+
+    async_marker: $ => prec.left(PREC.POSTFIX, seq(
+      $.expression,
+      token.immediate('&'),
     )),
 
     valid_expression: $ => prec.left(PREC.CALL, seq(

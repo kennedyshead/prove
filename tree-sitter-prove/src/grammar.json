@@ -747,11 +747,23 @@
       "members": [
         {
           "type": "STRING",
+          "value": "attached"
+        },
+        {
+          "type": "STRING",
           "value": "creates"
         },
         {
           "type": "STRING",
+          "value": "detached"
+        },
+        {
+          "type": "STRING",
           "value": "inputs"
+        },
+        {
+          "type": "STRING",
+          "value": "listens"
         },
         {
           "type": "STRING",
@@ -764,6 +776,10 @@
         {
           "type": "STRING",
           "value": "reads"
+        },
+        {
+          "type": "STRING",
+          "value": "streams"
         },
         {
           "type": "STRING",
@@ -1647,6 +1663,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "async_marker"
+        },
+        {
+          "type": "SYMBOL",
           "name": "call_expression"
         },
         {
@@ -2015,6 +2035,26 @@
             "content": {
               "type": "STRING",
               "value": "!"
+            }
+          }
+        ]
+      }
+    },
+    "async_marker": {
+      "type": "PREC_LEFT",
+      "value": 9,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "expression"
+          },
+          {
+            "type": "IMMEDIATE_TOKEN",
+            "content": {
+              "type": "STRING",
+              "value": "&"
             }
           }
         ]

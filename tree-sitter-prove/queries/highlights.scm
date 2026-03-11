@@ -12,11 +12,15 @@
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
+  "attached"
   "creates"
+  "detached"
   "inputs"
+  "listens"
   "matches"
   "outputs"
   "reads"
+  "streams"
   "transforms"
   "validates"
   "types"
@@ -211,6 +215,7 @@
 
 (fail_marker) @keyword.exception
 (fail_propagation "!" @keyword.exception)
+(async_marker "&" @keyword.coroutine)
 
 ; ─── Punctuation ────────────────────────────────────────────
 
