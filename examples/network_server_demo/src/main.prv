@@ -17,9 +17,9 @@ from
     Accept(listener) =>
         client as Socket = accept(listener)!
         data as ByteArray = message(client, 1024)!
-        info(f"received: {hex(data)}")
+        info(f"received: {hex(data)}")&
         message(client, data)!
-        info("echoed response")
+        info("echoed response")&
         socket(client)
 
 main() Result<Unit, Error>!

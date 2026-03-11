@@ -329,14 +329,11 @@ This code is used in two contexts:
 This code is used in two contexts:
 
 1. **Pattern matching:** A match arm on a `Result` or `Option` uses a variant name that does not belong to that type (e.g. `Some(x)` on a `Result`, or `Ok(x)` on an `Option`).
-2. **Async verbs:** An async function is called without the `&` marker inside an async body.
+2. **Async verbs:** An `attached` or `listens` function is called without the `&` marker. These verbs always require `&`.
 
-### E373 — Non-exhaustive match on generic type / `&` used outside async body
+### E373 — Non-exhaustive match on generic type
 
-This code is used in two contexts:
-
-1. **Pattern matching:** A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
-2. **Async verbs:** The `&` async dispatch marker is used at a call site outside of an async or `streams` function body.
+A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
 
 ### E374 — `detached` or `listens` declared with a return type
 
@@ -814,3 +811,11 @@ The `&` async dispatch marker is used on a call to a function that is not an asy
 ### I376 — `attached` body has no `&` calls
 
 An `attached` function body contains no `&` async dispatch calls. This likely means the function should use `inputs` instead. `prove format` changes the verb.
+
+### I377 — `attached` call runs synchronously outside `listens`
+
+An `attached` function is called with `&` outside a `listens` body. The call works but runs synchronously — there is no event loop to schedule it on. Inside a `listens` body, `attached&` is the standard await pattern and produces no diagnostic.
+
+### I378 — `detached` function called without `&`
+
+A `detached` function is called without the `&` marker. `detached` is fire-and-forget and should always use `&`. `prove format` will add it.
