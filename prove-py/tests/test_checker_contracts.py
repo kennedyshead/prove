@@ -5,7 +5,7 @@ from __future__ import annotations
 from prove.ast_nodes import BinaryExpr, BooleanLit, IntegerLit, IdentifierExpr, UnaryExpr
 from prove.prover import ClaimProver
 from prove.source import Span
-from tests.helpers import check, check_fails, check_warns
+from tests.helpers import check, check_coherence_ok, check_coherence_warns, check_fails, check_warns
 
 
 class TestContractChecking:
@@ -554,4 +554,66 @@ class TestKnowClaimProving:
             "    from\n"
             "        n\n",
             "W327",
+        )
+
+
+class TestProseCoherence:
+    """Tests for W501-W505 prose coherence checks."""
+
+    def test_w501_verb_not_in_narrative(self) -> None:
+        check_coherence_warns(
+            'module Calc\n'
+            '  narrative: """Reads numbers from input."""\n'
+            'transforms add(a Integer, b Integer) Integer\n'
+            'from\n'
+            '    a + b\n',
+            "W501",
+        )
+
+    def test_w501_verb_matches_narrative(self) -> None:
+        # "validates" is in narrative — no W501
+        check_coherence_ok(
+            'module Auth\n'
+            '  narrative: """Validates user credentials."""\n'
+            'validates credential(user String) Boolean\n'
+            'from\n'
+            '    true\n',
+        )
+
+    def test_w503_chosen_without_why_not(self) -> None:
+        check_coherence_warns(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort for stability"\n'
+            'from\n'
+            '    items\n',
+            "W503",
+        )
+
+    def test_w503_chosen_with_why_not_ok(self) -> None:
+        check_coherence_ok(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort for stability"\n'
+            '    why_not: "quick_sort is unstable"\n'
+            'from\n'
+            '    items\n',
+        )
+
+    def test_w505_why_not_vague(self) -> None:
+        check_coherence_warns(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort"\n'
+            '    why_not: "it was too slow"\n'
+            'from\n'
+            '    items\n',
+            "W505",
+        )
+
+    def test_w505_why_not_with_known_name(self) -> None:
+        # "sort" is the function name itself — anchor present, no W505
+        check_coherence_ok(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort"\n'
+            '    why_not: "quick_sort is unstable for equal elements"\n'
+            'from\n'
+            '    items\n',
         )

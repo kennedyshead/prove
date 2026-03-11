@@ -82,6 +82,32 @@ def check_all(source: str) -> list[Diagnostic]:
     return list(checker.diagnostics)
 
 
+def check_coherence_warns(source: str, warning_code: str) -> list[Diagnostic]:
+    """Parse and check source with coherence enabled, asserting the given warning appears."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker._coherence = True
+    checker.check(module)
+    matching = [d for d in checker.diagnostics if d.code == warning_code]
+    assert matching, (
+        f"Expected coherence warning {warning_code} but got: "
+        f"{[f'{d.code}: {d.message}' for d in checker.diagnostics] or 'no diagnostics'}"
+    )
+    return matching
+
+
+def check_coherence_ok(source: str) -> None:
+    """Parse and check source with coherence enabled, asserting no errors."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    checker = Checker()
+    checker._coherence = True
+    checker.check(module)
+    errors = [d for d in checker.diagnostics if d.severity.value == "error"]
+    assert not errors, f"Unexpected errors: {[f'{d.code}: {d.message}' for d in errors]}"
+
+
 def check_and_format(source: str) -> str:
     """Parse, check, and format with diagnostics for auto-fixes."""
     from prove.formatter import ProveFormatter

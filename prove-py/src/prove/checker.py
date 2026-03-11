@@ -1247,7 +1247,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
         """Validate a binary lookup table (E379, E387)."""
         num_columns = len(body.value_types)
-        _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Boolean"}
+        _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Boolean", "Verb"}
         for vt in body.value_types:
             tname = vt.name if hasattr(vt, "name") else str(vt)
             if tname not in _ALLOWED_BINARY_TYPES:
@@ -3056,33 +3056,41 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if isinstance(decl, ModuleDecl):
                 mod_decl = decl
                 break
-        if mod_decl is None or mod_decl.narrative is None:
-            return
 
         # Extract vocabulary from narrative (words >= 3 chars, lowercased)
-        narrative_words = set()
-        for word in mod_decl.narrative.split():
-            clean = word.strip(".,;:!?()[]{}\"'").lower()
-            if len(clean) >= 3:
-                narrative_words.add(clean)
+        if mod_decl is not None and mod_decl.narrative is not None:
+            narrative_words = set()
+            for word in mod_decl.narrative.split():
+                clean = word.strip(".,;:!?()[]{}\"'").lower()
+                if len(clean) >= 3:
+                    narrative_words.add(clean)
 
-        if not narrative_words:
-            return
+            if narrative_words:
+                # I340: function names against narrative vocabulary
+                for decl in module.declarations:
+                    if not isinstance(decl, FunctionDef):
+                        continue
+                    name_parts = set(decl.name.lower().split("_"))
+                    name_parts.discard("")
+                    if not name_parts or all(len(p) < 3 for p in name_parts):
+                        continue
+                    if not name_parts & narrative_words:
+                        self._info(
+                            "I340",
+                            f"function '{decl.name}' uses vocabulary not found in module narrative",
+                            decl.span,
+                        )
 
-        # Check function names against narrative vocabulary
-        for decl in module.declarations:
-            if not isinstance(decl, FunctionDef):
-                continue
-            # Split snake_case function name into words
-            name_parts = set(decl.name.lower().split("_"))
-            name_parts.discard("")
-            # Skip short/trivial names
-            if not name_parts or all(len(p) < 3 for p in name_parts):
-                continue
-            # Check if any word overlaps with narrative
-            if not name_parts & narrative_words:
-                self._info(
-                    "I340",
-                    f"function '{decl.name}' uses vocabulary not found in module narrative",
-                    decl.span,
-                )
+        # W501-W505: prose coherence checks
+        fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
+        known_names = (
+            {name for (_, name) in self.symbols._functions.keys()}
+            | set(self.symbols._types.keys())
+        )
+        if mod_decl is not None:
+            self._check_narrative_verb_coherence(mod_decl, fns)
+        for fd in fns:
+            self._check_explain_body_coherence(fd)
+            self._check_chosen_has_why_not(fd)
+            self._check_chosen_body_coherence(fd)
+            self._check_why_not_names(fd, known_names)

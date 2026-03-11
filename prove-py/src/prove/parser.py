@@ -1397,37 +1397,43 @@ class Parser:
         value_types: list[TypeExpr] = []
         value_types.append(self._parse_type_expr())
 
-        # Check for pipe-separated column types: String | Integer (store-backed)
+        # Check for pipe-separated column types: String | Integer
         if self._at(TokenKind.PIPE):
             while self._at(TokenKind.PIPE):
                 self._advance()  # consume |
                 value_types.append(self._parse_type_expr())
-            # Expect indented 'runtime' block
             self._skip_newlines()
             self._expect(TokenKind.INDENT)
             self._skip_newlines()
             tok = self._current()
             if tok.kind == TokenKind.IDENTIFIER and tok.value == "runtime":
+                # Store-backed lookup: pipe-separated types + runtime block
                 self._advance()
-            else:
-                self._error(
-                    "expected 'runtime' after store-backed lookup column types",
-                    tok.span,
-                    code="E213",
+                self._skip_newlines()
+                if self._at(TokenKind.DEDENT):
+                    self._advance()
+                end = self._current().span
+                return LookupTypeDef(
+                    value_type=value_types[0],
+                    entries=[],
+                    span=self._span(start, end),
+                    value_types=tuple(value_types),
+                    is_binary=True,
+                    is_store_backed=True,
                 )
-                raise _ParseError
-            self._skip_newlines()
-            if self._at(TokenKind.DEDENT):
-                self._advance()
-            end = self._current().span
-            return LookupTypeDef(
-                value_type=value_types[0],
-                entries=[],
-                span=self._span(start, end),
-                value_types=tuple(value_types),
-                is_binary=True,
-                is_store_backed=True,
-            )
+            else:
+                # Regular multi-column lookup: pipe-separated types + entries
+                # INDENT already consumed, parse entry rows directly
+                entries = self._parse_pipe_lookup_entries(len(value_types))
+                end = self._current().span
+                return LookupTypeDef(
+                    value_type=value_types[0],
+                    entries=entries,
+                    span=self._span(start, end),
+                    value_types=tuple(value_types),
+                    is_binary=True,
+                    is_pipe_entry_format=True,
+                )
 
         # Existing: space-separated column types until 'where'
         while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
@@ -1669,19 +1675,21 @@ class Parser:
             TokenKind.DECIMAL_LIT: "decimal",
             TokenKind.BOOLEAN_LIT: "boolean",
         }
+        _VALUE_KINDS = {**_LIT_KINDS, TokenKind.IDENTIFIER: "identifier",
+                        TokenKind.TYPE_IDENTIFIER: "identifier"}
         values: list[str] = []
         value_kinds: list[str] = []
         # Parse pipe-separated values until end of line
         while self._at(TokenKind.PIPE):
             self._advance()  # consume |
             tok = self._current()
-            if tok.kind in _LIT_KINDS:
+            if tok.kind in _VALUE_KINDS:
                 values.append(tok.value)
-                value_kinds.append(_LIT_KINDS[tok.kind])
+                value_kinds.append(_VALUE_KINDS[tok.kind])
                 self._advance()
             else:
                 self._error(
-                    f"expected literal in binary lookup entry, "
+                    f"expected literal or identifier in binary lookup entry, "
                     f"got {_token_display(tok.kind, tok.value)}",
                     tok.span,
                     code="E210",
@@ -1701,6 +1709,73 @@ class Parser:
             values=tuple(values),
             value_kinds=tuple(value_kinds),
         )
+
+    def _parse_pipe_lookup_entries(self, num_columns: int) -> list[LookupEntry]:
+        """Parse entry rows when INDENT is already consumed.
+
+        Handles flexible entries: val | val | ... where each value can be a
+        literal (string, integer, decimal, boolean) or an identifier.
+        """
+        _LIT_KINDS = {
+            TokenKind.STRING_LIT: "string",
+            TokenKind.INTEGER_LIT: "integer",
+            TokenKind.DECIMAL_LIT: "decimal",
+            TokenKind.BOOLEAN_LIT: "boolean",
+        }
+        _VALUE_KINDS = {**_LIT_KINDS, TokenKind.IDENTIFIER: "identifier",
+                        TokenKind.TYPE_IDENTIFIER: "identifier"}
+
+        entries: list[LookupEntry] = []
+        while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+            self._skip_newlines()
+            if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                break
+            start = self._current().span
+
+            # Parse first value (the key)
+            tok = self._current()
+            if tok.kind not in _VALUE_KINDS:
+                break
+            variant_val = tok.value
+            variant_kind = _VALUE_KINDS[tok.kind]
+            self._advance()
+
+            # Parse remaining pipe-separated values
+            values: list[str] = [variant_val]
+            value_kinds: list[str] = [variant_kind]
+            while self._at(TokenKind.PIPE):
+                self._advance()  # consume |
+                tok = self._current()
+                if tok.kind in _VALUE_KINDS:
+                    values.append(tok.value)
+                    value_kinds.append(_VALUE_KINDS[tok.kind])
+                    self._advance()
+                else:
+                    self._error(
+                        f"expected literal or identifier in lookup entry, "
+                        f"got {_token_display(tok.kind, tok.value)}",
+                        tok.span,
+                        code="E210",
+                    )
+                    values.append("")
+                    value_kinds.append("string")
+                    if tok.kind != TokenKind.EOF:
+                        self._advance()
+                    break
+
+            end = self._current().span
+            entries.append(LookupEntry(
+                variant=variant_val,
+                value=values[1] if len(values) > 1 else "",
+                value_kind=value_kinds[1] if len(value_kinds) > 1 else "string",
+                span=self._span(start, end),
+                values=tuple(values),
+                value_kinds=tuple(value_kinds),
+            ))
+            self._skip_newlines()
+        if self._at(TokenKind.DEDENT):
+            self._advance()
+        return entries
 
     @staticmethod
     def _infer_literal_kind(value: str) -> str:
