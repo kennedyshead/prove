@@ -1,0 +1,15 @@
+module Commands
+  narrative: """
+  Handles cli commands. 
+
+  The build command will compile the prove source to a binary then it outputs to build directory.
+  """
+  Main types Config
+  List reads value
+  Log detached info
+
+/// Run the build command
+outputs build(arguments List<String>, config Config)!
+  requires value(1, arguments) == "build"
+from
+    info(f"{config.package.name} {config.package.version} now available in build folder")&
