@@ -12,7 +12,7 @@ module Main
     Build | "build" | build
 
   HELP_TXT as String = comptime
-      read("help.txt")
+      read("static/help.txt")
 
   PROVE_TOML as String = "prove.toml"
 
