@@ -17,12 +17,25 @@ The vision extends this principle to the entire development workflow.
 
 ## The Problem with Modern Code Generation
 
-The current trajectory of software development pushes programmers toward
-external AI services for code generation. This creates a dependency loop:
-prompt an AI, receive code you didn't write, review it (or don't), paste it
-in, discover it's wrong, prompt again. The code has no declared intent, no
-verifiable contracts, and no traceable origin. The programmer becomes an
-intermediary between a black box and a codebase.
+The current trajectory of software development ties programmers to external
+AI services for code generation. Even with the latest "agentic" tools that
+edit code directly, three fundamental problems remain:
+
+1. **Dependency on third-party LLM providers.** Your development workflow
+   relies on a company's API staying available, affordable, and uncensored.
+   If the service changes terms, raises prices, or disappears, your
+   toolchain breaks with it.
+
+2. **Unsafe local execution.** Agentic tools run with broad access to your
+   filesystem, shell, and network. Giving a model you don't control the
+   ability to execute arbitrary commands on your machine is a security
+   liability that no amount of sandboxing fully eliminates.
+
+3. **Unpredictable and opaque output.** The model may confidently generate
+   code that is subtly wrong, silently introduce dependencies, or outright
+   fabricate APIs that don't exist. There is no declared intent, no
+   verifiable contract, and no traceable origin for what ends up in your
+   codebase. What is actually "under the hood" is unknowable.
 
 Prove takes a different path.
 
@@ -30,20 +43,12 @@ Prove takes a different path.
 
 ## Local, Self-Contained Development
 
-Prove's generation model is **local and deterministic**. It uses only two
-sources of knowledge:
+Prove's generation model is **local and deterministic**. It trains on your
+own project code and the Prove standard library — nothing else. Nothing
+ever leaves your environment unless you choose to send it.
 
-1. **The standard library** — every stdlib function has a documented purpose
-   (its `///` doc comment), a declared verb, a known signature. This is a
-   fixed, auditable, version-pinned knowledge base.
-
-2. **The project itself** — functions the programmer has already written,
-   types they have defined, narratives they have declared. The project's own
-   code becomes the knowledge base for generating more of itself.
-
-No network calls. No external model. No training data from other people's code.
-No black box. Every generated line traces back to either a stdlib docstring or
-a function the programmer wrote and reviewed.
+No network calls. No external model. No training data from other people's
+code. No black box.
 
 ---
 
