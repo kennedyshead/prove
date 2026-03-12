@@ -160,6 +160,8 @@ class _ProjectIndexer:
     Cache is written to <project-root>/.prove_cache/ as PDAT binary files.
     """
 
+    _CACHE_VERSION = 2  # bump when extraction logic or PDAT schema changes
+
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
         self.cache_dir = project_root / ".prove_cache"
@@ -316,11 +318,106 @@ class _ProjectIndexer:
 
     # ── Cache persistence ─────────────────────────────────────────────
 
+    def _manifest_path(self) -> Path:
+        return self.cache_dir / "manifest.json"
+
+    def _write_manifest(self) -> None:
+        import json
+        import time
+
+        files: dict[str, dict] = {}
+        for path_str in self._file_ngrams:
+            p = Path(path_str)
+            try:
+                st = p.stat()
+                files[str(p.relative_to(self.project_root))] = {
+                    "mtime": int(st.st_mtime),
+                    "size": st.st_size,
+                }
+            except OSError:
+                pass
+        manifest = {
+            "cache_version": self._CACHE_VERSION,
+            "indexed_at": int(time.time()),
+            "files": files,
+        }
+        self._manifest_path().write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    def _read_manifest(self) -> dict | None:
+        import json
+
+        try:
+            data = json.loads(self._manifest_path().read_text(encoding="utf-8"))
+            if data.get("cache_version") != self._CACHE_VERSION:
+                return None  # incompatible version → treat as missing
+            return data
+        except Exception:
+            return None
+
+    def is_cache_valid(self) -> bool:
+        """True if manifest exists, version matches, and all tracked files are unchanged."""
+        manifest = self._read_manifest()
+        if manifest is None:
+            return False
+        files = manifest.get("files", {})
+        if not files:
+            return False
+        for rel, info in files.items():
+            p = self.project_root / rel
+            try:
+                st = p.stat()
+                if int(st.st_mtime) != info["mtime"] or st.st_size != info["size"]:
+                    return False
+            except OSError:
+                return False  # file deleted → stale
+        # Also check for new .prv files not in manifest
+        for prv in self.project_root.rglob("*.prv"):
+            if ".prove_cache" in prv.parts:
+                continue
+            rel = str(prv.relative_to(self.project_root))
+            if rel not in files:
+                return False  # new file → stale
+        return True
+
+    def load(self) -> bool:
+        """Restore in-memory tables from cache. Returns True on success."""
+        try:
+            from prove.store_binary import read_pdat
+
+            bigrams_path = self.cache_dir / "bigrams" / "current.bin"
+            completions_path = self.cache_dir / "completions" / "current.bin"
+            if not bigrams_path.exists() or not completions_path.exists():
+                return False
+            bigrams_data = read_pdat(bigrams_path)
+            for _, row in bigrams_data["variants"]:
+                prev1, nxt, count = row[0], row[1], int(row[2])
+                self._bigrams[prev1][nxt] = count
+            completions_data = read_pdat(completions_path)
+            for _, row in completions_data["variants"]:
+                p2, p1, top = row[0], row[1], row[2]
+                for tok in top.split("|"):
+                    if tok:
+                        self._completions[(p2, p1)][tok] += 1
+            # Rebuild symbol table from manifest file list (re-parse symbols — cheap)
+            manifest = self._read_manifest()
+            if manifest:
+                for rel in manifest["files"]:
+                    p = self.project_root / rel
+                    _, symbols = self._extract_file(p)
+                    for sym in symbols:
+                        self._symbols[sym["name"]] = sym
+                    self._file_ngrams[str(p)] = []  # mark as indexed
+                    self._file_symbols[str(p)] = symbols
+            return True
+        except Exception:
+            return False
+
     def save(self) -> None:
         """Write in-memory tables to .prove_cache/ as PDAT binary files."""
         try:
             self._write_bigrams_cache()
             self._write_completions_cache()
+            self._write_manifest()
         except Exception:
             pass  # Cache failures are non-fatal
 
@@ -390,8 +487,18 @@ def _ensure_project_indexed(uri: str) -> None:
     global _project_indexer
     if _project_indexer is None:
         _project_indexer = _ProjectIndexer.for_uri(uri)
-    if _project_indexer is not None and not _project_indexer._file_ngrams:
-        _project_indexer.index_all_files()
+    if _project_indexer is None:
+        return
+    if _project_indexer._file_ngrams:
+        return  # already populated this session
+
+    # Try warm load first
+    if _project_indexer.is_cache_valid():
+        if _project_indexer.load():
+            return  # warm start — no file parsing needed
+
+    # Cache missing, stale, or corrupt → full reindex
+    _project_indexer.index_all_files()
 
 
 def _compile_diag(d: object) -> lsp.Diagnostic:
@@ -1077,6 +1184,14 @@ def did_change(params: lsp.DidChangeTextDocumentParams) -> None:
             diagnostics=ds.diagnostics,
         )
     )
+    # Patch indexer with unsaved content so completions reflect current edits
+    if _project_indexer is not None and uri.startswith("file://"):
+        path = Path(uri[7:])
+        if path.suffix == ".prv":
+            try:
+                _project_indexer.patch_file(path, source)
+            except Exception:
+                pass
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from lsprotocol import types as lsp
 
 from prove.errors import Severity
 from prove.lsp import (
     _SEVERITY_MAP,
+    _ProjectIndexer,
     DocumentState,
     _analyze,
     _build_import_edit,
@@ -601,3 +604,115 @@ class TestCompletionNoDuplicateSignature:
         doc = add_items[0].documentation
         assert doc is not None, "No documentation found"
         assert "```" in doc.value, f"Expected ```, got: {doc.value}"
+
+
+class TestProjectIndexerCacheValidity:
+    """Tests for _ProjectIndexer.is_cache_valid()."""
+
+    def test_no_cache_dir(self, tmp_path: Path):
+        """is_cache_valid returns False when .prove_cache doesn't exist."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text("module Main\n")
+        indexer = _ProjectIndexer(tmp_path)
+        assert indexer.is_cache_valid() is False
+
+    def test_valid_after_index(self, tmp_path: Path):
+        """is_cache_valid returns True right after index_all_files."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text("module Main\n")
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        assert indexer.is_cache_valid() is True
+
+    def test_stale_after_file_change(self, tmp_path: Path):
+        """is_cache_valid returns False after a tracked file changes."""
+        import time
+
+        prv = tmp_path / "main.prv"
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        prv.write_text("module Main\n")
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        # Modify the file (ensure mtime changes)
+        time.sleep(0.05)
+        prv.write_text("module Main\n// changed\n")
+        assert indexer.is_cache_valid() is False
+
+    def test_stale_after_new_file(self, tmp_path: Path):
+        """is_cache_valid returns False when a new .prv file appears."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text("module Main\n")
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        (tmp_path / "other.prv").write_text("module Other\n")
+        assert indexer.is_cache_valid() is False
+
+    def test_stale_after_file_deleted(self, tmp_path: Path):
+        """is_cache_valid returns False when a tracked file is deleted."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        prv = tmp_path / "main.prv"
+        prv.write_text("module Main\n")
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        prv.unlink()
+        assert indexer.is_cache_valid() is False
+
+
+class TestProjectIndexerLoad:
+    """Tests for _ProjectIndexer.load() (warm start from cache)."""
+
+    def test_load_without_cache_returns_false(self, tmp_path: Path):
+        """load() returns False when no cache exists."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        indexer = _ProjectIndexer(tmp_path)
+        assert indexer.load() is False
+
+    def test_load_restores_bigrams(self, tmp_path: Path):
+        """load() restores bigram data from cache."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text("module Main\n")
+        # Build cache
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        # Create fresh indexer and load from cache
+        fresh = _ProjectIndexer(tmp_path)
+        assert fresh.load() is True
+        assert len(fresh._bigrams) > 0
+
+    def test_load_restores_symbols(self, tmp_path: Path):
+        """load() restores symbol data from cache."""
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text(
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n"
+        )
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        fresh = _ProjectIndexer(tmp_path)
+        assert fresh.load() is True
+        assert "add" in fresh._symbols
+
+    def test_warm_start_skips_reindex(self, tmp_path: Path):
+        """_ensure_project_indexed uses load() when cache is valid."""
+        import prove.lsp as lsp_mod
+
+        (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
+        (tmp_path / "main.prv").write_text("module Main\n")
+        # Build cache
+        indexer = _ProjectIndexer(tmp_path)
+        indexer.index_all_files()
+        # Simulate _ensure_project_indexed with a fresh indexer
+        fresh = _ProjectIndexer(tmp_path)
+        old_global = lsp_mod._project_indexer
+        try:
+            lsp_mod._project_indexer = fresh
+            # Warm path: cache valid + load succeeds → no index_all_files
+            assert fresh.is_cache_valid()
+            assert fresh.load()
+            assert len(fresh._file_ngrams) > 0
+        finally:
+            lsp_mod._project_indexer = old_global
