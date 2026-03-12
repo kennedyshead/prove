@@ -7,12 +7,18 @@ module System
 
   type File is binary
 
+  type ByteArray is binary
+
 /// Print text to the console
 outputs console(text String)
 binary
 
 /// Read a line from the console
 inputs console() String
+binary
+
+/// Read exactly count bytes from the console
+inputs console(count Integer) ByteArray
 binary
 
 /// Validate console input
