@@ -1877,34 +1877,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     for body_stmt in arm.body[:-1]:
                         self._check_unused_pure_result(body_stmt)
 
-    def _check_expr_unused_pure_result(self, expr: Expr) -> None:
-        """Check if expression contains unused pure function calls."""
-        if isinstance(expr, CallExpr):
-            if isinstance(expr.func, IdentifierExpr):
-                arg_count = len(expr.args)
-                sig = self.symbols.resolve_function(None, expr.func.name, arg_count)
-                if sig is None:
-                    sig = self.symbols.resolve_function_any(expr.func.name, arity=arg_count)
-                if sig is not None and sig.verb in _PURE_VERBS:
-                    if (
-                        not isinstance(sig.return_type, PrimitiveType)
-                        or sig.return_type.name != "Unit"
-                    ):
-                        self.diagnostics.append(
-                            Diagnostic(
-                                severity=Severity.WARNING,
-                                code="W332",
-                                message=f"unused result of pure function '{expr.func.name}'. "
-                                f"Pure functions have no side effects - result is discarded.",
-                                labels=[DiagnosticLabel(span=expr.span, message="")],
-                            )
-                        )
-        elif isinstance(expr, MatchExpr):
-            for arm in expr.arms:
-                if arm.body:
-                    for body_stmt in arm.body[:-1]:
-                        self._check_unused_pure_result(body_stmt)
-
     # ── Statement checking ──────────────────────────────────────
 
     def _check_stmt(self, stmt: Stmt | MatchExpr) -> Type:
