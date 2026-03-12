@@ -166,6 +166,17 @@ def _compile_project(
     return errors == 0, checked, errors, warnings, format_issues, total_stats
 
 
+def _update_project_cache(project_dir: Path) -> None:
+    """Rebuild .prove_cache after a check or build run."""
+    try:
+        from prove.lsp import _ProjectIndexer
+
+        indexer = _ProjectIndexer(project_dir)
+        indexer.index_all_files()
+    except Exception:
+        pass  # cache update is always non-fatal
+
+
 @click.group()
 @click.version_option(__version__, prog_name="prove")
 def main() -> None:
@@ -256,6 +267,7 @@ def build(path: str, no_mutate: bool, debug: bool | None) -> None:
                         click.echo("    suggestion: add contract to kill this mutant")
 
         click.echo(f"built {config.package.name} -> {result.binary}")
+        _update_project_cache(project_dir)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
@@ -454,6 +466,7 @@ def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool) 
             )
         )
         _print_verification_stats(stats)
+        _update_project_cache(project_dir)
         if errors:
             raise SystemExit(1)
     except FileNotFoundError:
@@ -713,6 +726,7 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     changed = 0
     checked = 0
     skipped = 0
+    changed_files: list[tuple[Path, str]] = []  # (path, formatted_source)
     for prv_file in prv_files:
         source = prv_file.read_text()
         filename = str(prv_file)
@@ -736,6 +750,7 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
                 click.echo(f"would reformat {filename}")
             else:
                 prv_file.write_text(formatted)
+                changed_files.append((prv_file, formatted))
                 click.echo(f"formatted {filename}")
 
     # --- .md files (only with --md) ---
@@ -763,6 +778,17 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     else:
         click.echo(f"{', '.join(parts)}, all already formatted.")
 
+    # Update cache for changed .prv files
+    if changed_files and not status:
+        try:
+            from prove.lsp import _ProjectIndexer
+
+            root = _ProjectIndexer._find_root(target)
+            indexer = _ProjectIndexer(root)
+            indexer.index_all_files()
+        except Exception:
+            pass
+
     if status and changed:
         raise SystemExit(1)
 
@@ -773,6 +799,20 @@ def lsp() -> None:
     from prove.lsp import main as lsp_main
 
     lsp_main()
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+def index(path: str) -> None:
+    """Rebuild the .prove_cache ML completion index."""
+    from prove.lsp import _ProjectIndexer
+
+    config_path = find_config(Path(path))
+    project_dir = config_path.parent
+    click.echo("indexing...")
+    indexer = _ProjectIndexer(project_dir)
+    indexer.index_all_files()
+    click.echo(f"indexed {len(indexer._file_ngrams)} files -> {project_dir / '.prove_cache'}")
 
 
 @main.command("export")
