@@ -1,0 +1,23 @@
+module Main
+  narrative: """JSON benchmark from kostya/benchmarks — parse JSON, sum coordinates."""
+  System inputs file, outputs console
+  Parse creates json, reads object array decimal
+  Table reads get
+  Sequence reads length
+  Error transforms unwrap
+  Types reads string, creates float
+
+main() Result<Unit, Error>!
+from
+    content as String = file("/tmp/1.json")!
+    root as Value = json(content)!
+    root_obj as Table<Value> = object(root)
+    coords as List<Value> = array(unwrap(get("coordinates", root_obj)))
+    len as Integer = length(coords)
+    x_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("x", object(c)))))
+    y_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("y", object(c)))))
+    z_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("z", object(c)))))
+    len_f as Float = float(len)
+    console(string(x_sum / len_f))
+    console(string(y_sum / len_f))
+    console(string(z_sum / len_f))

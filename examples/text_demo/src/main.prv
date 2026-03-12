@@ -4,7 +4,7 @@ module Main
   Text validates starts ends contains
   Text transforms slice trim lower upper split join replace repeat
   Text reads length
-  List reads length
+  Sequence reads length
 
 main() Result<Unit, Error>!
 from

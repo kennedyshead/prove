@@ -955,6 +955,10 @@
           "named": true
         },
         {
+          "type": "type_expression",
+          "named": true
+        },
+        {
           "type": "type_identifier",
           "named": true
         }
@@ -1323,7 +1327,6 @@
   {
     "type": "source_file",
     "named": true,
-    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
@@ -1792,8 +1795,7 @@
   },
   {
     "type": "doc_comment",
-    "named": true,
-    "extra": true
+    "named": true
   },
   {
     "type": "domain",
@@ -1861,8 +1863,7 @@
   },
   {
     "type": "line_comment",
-    "named": true,
-    "extra": true
+    "named": true
   },
   {
     "type": "main",

@@ -71,6 +71,29 @@ class TestFormatterBasic:
         )
         assert _roundtrip(source) == source
 
+    def test_long_signature_groups_params(self):
+        """Signatures >90 cols get params grouped one-per-line."""
+        source = (
+            "transforms composites(\n"
+            "    arr Array<Boolean>:[Mutable],\n"
+            "    p Integer,\n"
+            "    multiple Integer,\n"
+            "    limit Integer\n"
+            ") Array<Boolean>:[Mutable]\n"
+            "from\n"
+            "    arr\n"
+        )
+        assert _roundtrip(source) == source
+
+    def test_short_signature_stays_inline(self):
+        """Signatures <=90 cols remain on a single line."""
+        source = (
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n"
+        )
+        assert _roundtrip(source) == source
+
 
 class TestFormatterTypes:
     def test_record_type(self):

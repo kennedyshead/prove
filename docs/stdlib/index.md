@@ -6,7 +6,7 @@ keywords: Prove stdlib, standard library, design pattern, verb families, channel
 
 # Standard Library
 
-The Prove standard library is a set of 18 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 19 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -73,6 +73,7 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[Text](character-text.md#text)** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
 | **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
+| **[Array](table-list-store.md#array)** | Complete | Fixed-size contiguous arrays `Array<T>` with typed elements; supports copy-on-write and `:[Mutable]` in-place variants |
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, and CSV codecs with `Value` and `Url` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |

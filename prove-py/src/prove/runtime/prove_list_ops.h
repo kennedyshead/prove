@@ -52,4 +52,6 @@ Prove_List *prove_list_ops_sort_str(Prove_List *list);
 
 Prove_List *prove_list_ops_range(int64_t start, int64_t end);
 
+Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step);
+
 #endif /* PROVE_LIST_OPS_H */

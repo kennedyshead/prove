@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from prove.types import (
     AlgebraicType,
+    ArrayType,
     ErrorType,
     FunctionType,
     GenericInstance,
@@ -176,6 +177,9 @@ def map_type(ty: Type) -> CType:
     if isinstance(ty, ListType):
         return CType("Prove_List*", is_pointer=True, header="prove_list.h")
 
+    if isinstance(ty, ArrayType):
+        return CType("Prove_Array*", is_pointer=True, header="prove_array.h")
+
     if isinstance(ty, GenericInstance):
         if ty.base_name == "Result":
             return CType("Prove_Result", is_pointer=False, header="prove_result.h")
@@ -241,6 +245,8 @@ def _type_tag(ty: Type) -> str:
         return ty.name
     if isinstance(ty, ListType):
         return "List"
+    if isinstance(ty, ArrayType):
+        return "Array"
     if isinstance(ty, GenericInstance):
         return ty.base_name
     if isinstance(ty, UnitType):

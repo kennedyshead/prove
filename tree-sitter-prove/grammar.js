@@ -182,6 +182,7 @@ module.exports = grammar({
 
     modified_type: $ => seq(
       $.type_identifier,
+      optional(seq('<', sep1($.type_expression, ','), '>')),
       ':',
       '[',
       repeat1($._type_modifier),

@@ -2,6 +2,21 @@
 #define PROVE_HOF_H
 
 #include "prove_list.h"
+#include <string.h>
+
+/* ── Float boxing for void* HOF callbacks ────────────────────── */
+
+static inline void *_prove_f64_box(double d) {
+    void *p;
+    memcpy(&p, &d, sizeof(p));
+    return p;
+}
+
+static inline double _prove_f64_unbox(void *p) {
+    double d;
+    memcpy(&d, &p, sizeof(d));
+    return d;
+}
 
 /* ── Higher-order list functions (Value-based) ───────────────── */
 

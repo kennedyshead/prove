@@ -1,0 +1,122 @@
+module Sequence
+  narrative: """Operations on sequences (ordered collections)."""
+
+/// Get the length of a sequence
+reads length(items List<Value>) Integer
+binary
+
+/// Get the length of an array
+reads length(items Array<Value>) Integer
+binary
+
+/// Get the first element of a sequence
+reads first(items List<Value>) Option<Value>
+binary
+
+/// Get the last element of a sequence
+reads last(items List<Value>) Option<Value>
+binary
+
+/// Get the element at a position in a sequence, or None if out of bounds
+reads value(position Integer, items List<Value>) Option<Value>
+binary
+
+/// Check if a sequence is empty
+validates empty(items List<Value>)
+binary
+
+/// Check if an integer is in a sequence
+validates contains(items List<Integer>, value Integer)
+binary
+
+/// Check if a string is in a sequence
+validates contains(items List<String>, value String)
+binary
+
+/// Find the index of an integer in a sequence
+reads index(items List<Integer>, value Integer) Option<Integer>
+binary
+
+/// Find the index of a string in a sequence
+reads index(items List<String>, value String) Option<Integer>
+binary
+
+/// Get a slice of a sequence from start to end (exclusive)
+transforms slice(items List<Value>, start Integer, end Integer) List<Value>
+binary
+
+/// Reverse a sequence
+transforms reverse(items List<Value>) List<Value>
+binary
+
+/// Sort a sequence of integers
+transforms sort(items List<Integer>) List<Integer>
+binary
+
+/// Sort a sequence of strings
+transforms sort(items List<String>) List<String>
+binary
+
+/// Create a sequence of integers from start to end (exclusive)
+creates range(start Integer, end Integer) List<Integer>
+binary
+
+/// Create a sequence of integers from start to end (exclusive) with given step
+creates range(start Integer, end Integer, step Integer) List<Integer>
+binary
+
+/// Create an array of given size with every element set to the default value
+creates array(size Integer, default Boolean) Array<Boolean>
+binary
+
+/// Create an array of given size with every element set to the default value
+creates array(size Integer, default Integer) Array<Integer>
+binary
+
+/// Create a mutable array of given size with every element set to the default value
+creates array(size Integer, default Boolean) Array<Boolean>
+binary
+
+/// Create a mutable array of given size with every element set to the default value
+creates array(size Integer, default Integer) Array<Integer>
+binary
+
+/// Get element at index (unchecked)
+reads get(arr Array<Boolean>, idx Integer) Boolean
+binary
+
+/// Get element at index (unchecked)
+reads get(arr Array<Integer>, idx Integer) Integer
+binary
+
+/// Get element at index (unchecked) - mutable variant
+reads get(arr Array<Boolean>, idx Integer) Boolean
+binary
+
+/// Get element at index (unchecked) - mutable variant
+reads get(arr Array<Integer>, idx Integer) Integer
+binary
+
+/// Return a new array with element at idx replaced by val
+transforms set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
+binary
+
+/// Return a new array with element at idx replaced by val
+transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
+binary
+
+/// In-place mutation - returns the same array (for Array<T>:[Mutable])
+transforms set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
+binary
+
+/// In-place mutation - returns the same array (for Array<T>:[Mutable])
+transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
+binary
+
+/// Copy array contents into a new List
+creates to_sequence(arr Array<Boolean>) List<Boolean>
+binary
+
+/// Copy array contents into a new List
+creates to_sequence(arr Array<Integer>) List<Integer>
+binary

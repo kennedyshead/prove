@@ -161,6 +161,9 @@ class CallCheckMixin:
                 return sig.return_type
 
             # Check argument types
+            sig_str = ", ".join(
+                f"{n} {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
+            )
             for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
                 if not types_compatible(expected, actual):
                     extra = self._builtin_extra_types.get((name, i))
@@ -181,13 +184,26 @@ class CallCheckMixin:
                         and is_json_serializable(actual)
                     ):
                         continue
-                    self._error(
-                        "E331",
-                        f"argument type mismatch: expected "
-                        f"'{type_name(expected)}', "
-                        f"got '{type_name(actual)}'",
-                        expr.span,
+                    param_name = sig.param_names[i] if i < len(sig.param_names) else str(i + 1)
+                    ordinal = {1: "1st", 2: "2nd", 3: "3rd"}.get(i + 1, f"{i + 1}th")
+                    arg_span = expr.args[i].span if i < len(expr.args) else expr.span
+                    diag = Diagnostic(
+                        severity=Severity.ERROR,
+                        code="E331",
+                        message=(
+                            f"{ordinal} argument '{param_name}': "
+                            f"expected '{type_name(expected)}', "
+                            f"got '{type_name(actual)}'"
+                        ),
+                        labels=[
+                            DiagnosticLabel(
+                                span=arg_span,
+                                message=f"expected '{type_name(expected)}'",
+                            )
+                        ],
+                        notes=[f"function signature: {name}({sig_str})"],
                     )
+                    self.diagnostics.append(diag)
 
             # Ownership tracking: mark variables as moved if passed to Own parameters
             self._track_moved_args(expr.args, sig.param_types)

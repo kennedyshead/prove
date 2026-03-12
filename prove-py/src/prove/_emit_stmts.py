@@ -24,6 +24,7 @@ from prove.ast_nodes import (
     TailContinue,
     TailLoop,
     UnaryExpr,
+    WhileLoop,
     ValidExpr,
     VarDecl,
     VariantPattern,
@@ -35,6 +36,7 @@ from prove.types import (
     STRING,
     UNIT,
     AlgebraicType,
+    ArrayType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -353,6 +355,8 @@ class StmtEmitterMixin:
             self._emit_tail_loop(stmt)
         elif isinstance(stmt, TailContinue):
             self._emit_tail_continue(stmt)
+        elif isinstance(stmt, WhileLoop):
+            self._emit_while_loop(stmt)
         elif isinstance(stmt, MatchExpr):
             self._emit_match_stmt(stmt)
         elif isinstance(stmt, CommentStmt):
@@ -429,6 +433,13 @@ class StmtEmitterMixin:
                     if ta_name:
                         resolved_arg = self._symbols.resolve_type(ta_name)
                         target_ty = ListType(resolved_arg if resolved_arg else INTEGER)
+                elif type_args and type_name == "Array":
+                    # Array<T> → ArrayType(element=T)
+                    ta = type_args[0]
+                    ta_name = getattr(ta, "name", None)
+                    if ta_name:
+                        resolved_arg = self._symbols.resolve_type(ta_name)
+                        target_ty = ArrayType(resolved_arg if resolved_arg else INTEGER)
                 elif type_args and type_name in ("Table", "Option", "Result"):
                     arg_types: list[Type] = []
                     for ta in type_args:
@@ -1257,9 +1268,11 @@ class StmtEmitterMixin:
             if isinstance(s, TailContinue):
                 self._emit_tail_continue(s)
             elif is_last and self._in_tail_loop and not isinstance(s, TailContinue):
-                # Base case in tail loop — emit as return
+                # Base case in tail loop — emit as return, unless it's a nested
+                # match (which may itself contain TailContinue nodes and should
+                # be emitted as a statement rather than a return expression).
                 expr = self._stmt_expr(s)
-                if expr is not None:
+                if expr is not None and not isinstance(expr, MatchExpr):
                     self._emit_region_exit()
                     self._line(f"return {self._emit_expr(expr)};")
                 else:
@@ -1414,3 +1427,13 @@ class StmtEmitterMixin:
         for param_name, tmp in tmps:
             self._line(f"{param_name} = {tmp};")
         self._line("continue;")
+
+    def _emit_while_loop(self, wl: WhileLoop) -> None:
+        """Emit a finite while loop inlined from a TCO'd function."""
+        cond = self._emit_expr(wl.break_cond)
+        self._line(f"while (!({cond})) {{")
+        self._indent += 1
+        for s in wl.body:
+            self._emit_stmt(s)
+        self._indent -= 1
+        self._line("}")

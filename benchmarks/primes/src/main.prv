@@ -1,0 +1,62 @@
+module Main
+  narrative: """
+  Primes benchmark - Sieve of Eratosthenes
+
+  Optimized implementation using mutable array and in-place marking. 
+  reads primes and transforms multiples in composites recursivly
+  """
+  System outputs console
+  Array creates array
+  Array reads get
+  Array transforms set
+
+  UPPER_BOUND as Integer = 5000000
+
+/// Mark all multiples of p starting from `multiple` as composite
+transforms composites(
+    arr Array<Boolean>:[Mutable],
+    p Integer,
+    multiple Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - multiple
+from
+    match multiple > limit
+        true => arr
+        _ => composites(set(arr, multiple, true), p, multiple + p, limit)
+
+/// Run one pass of the sieve: for each prime p up to sqrt(limit), mark its multiples
+transforms sieve_pass(
+    arr Array<Boolean>:[Mutable],
+    p Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - p
+from
+    match p * p > limit
+        true => arr
+        _ => match get(arr, p)
+            true => sieve_pass(arr, p + 1, limit)
+            _ => sieve_pass(composites(arr, p, p * p, limit), p + 1, limit)
+
+/// Count indices where arr[i] is false (prime = not composite)
+reads primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer) Integer
+  terminates: limit - i
+from
+    match i > limit
+        true => acc
+        _ => match get(arr, i)
+            true => primes(arr, i + 1, limit, acc)
+            _ => primes(arr, i + 1, limit, acc + 1)
+
+main() Result<Unit, Error>!
+from
+    limit as Integer = UPPER_BOUND
+    // is_composite[i] = true means i is NOT prime
+    is_composite as Array<Boolean>:[Mutable] = array(limit + 1, false)
+    // 0 and 1 are not prime
+    marked0 as Array<Boolean>:[Mutable] = set(is_composite, 0, true)
+    marked1 as Array<Boolean>:[Mutable] = set(marked0, 1, true)
+    sieved as Array<Boolean>:[Mutable] = sieve_pass(marked1, 2, limit)
+    count as Integer = primes(sieved, 2, limit, 0)
+    console(f"Primes found: {count}")

@@ -66,6 +66,7 @@ from prove.types import (
     ErrorType,
     FunctionType,
     GenericInstance,
+    ArrayType,
     ListType,
     PrimitiveType,
     RecordType,
@@ -623,8 +624,7 @@ class TypeCheckMixin:
             if not matches:
                 self._error(
                     "E377",
-                    f"variant '{operand.name}' not found "
-                    f"in lookup table '{type_name}'",
+                    f"variant '{operand.name}' not found in lookup table '{type_name}'",
                     expr.span,
                 )
                 return ERROR_TY
@@ -635,6 +635,7 @@ class TypeCheckMixin:
                 expected = self._expected_type
                 if expected is not None:
                     from prove.types import type_name as tn
+
                     for vt in lookup.value_types:
                         col_type = self._resolve_type_expr(vt)
                         if tn(col_type) == tn(expected):
@@ -721,9 +722,7 @@ class TypeCheckMixin:
 
         return ERROR_TY
 
-    def _check_binary_lookup_access(
-        self, expr: LookupAccessExpr, lookup: object
-    ) -> Type:
+    def _check_binary_lookup_access(self, expr: LookupAccessExpr, lookup: object) -> Type:
         """Resolve a binary lookup with a variable operand (runtime)."""
         from prove.ast_nodes import LookupTypeDef
         from prove.types import type_name
@@ -817,6 +816,12 @@ class TypeCheckMixin:
             # Special-case List<Value> → ListType
             if type_expr.name == "List" and len(args) == 1:
                 return ListType(args[0])
+            # Special-case Array<T> → ArrayType
+            if type_expr.name == "Array" and len(args) == 1:
+                mods = tuple(m.value for m in type_expr.modifiers)
+                if mods:
+                    return ArrayType(args[0], modifiers=mods)
+                return ArrayType(args[0])
             # Special-case Verb<P1, ..., Pn, R> → FunctionType
             if type_expr.name == "Verb" and len(args) >= 1:
                 return FunctionType(list(args[:-1]), args[-1])

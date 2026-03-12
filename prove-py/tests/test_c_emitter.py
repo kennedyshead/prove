@@ -423,8 +423,10 @@ class TestHigherOrderFunctions:
             "transforms total() Integer\n    from\n        reduce([1, 2, 3], 0, |acc, x| acc + x)\n"
         )
         c_code = _emit(source)
-        assert "prove_list_reduce" in c_code
-        assert "_lambda_" in c_code
+        # Lambda reduce is inlined as a for-loop with direct array access
+        assert "for (int64_t" in c_code
+        assert "->data[" in c_code
+        assert "acc" in c_code
 
 
 class TestExplainBranching:

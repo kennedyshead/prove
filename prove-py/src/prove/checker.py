@@ -95,6 +95,7 @@ from prove.types import (
     STRING,
     UNIT,
     AlgebraicType,
+    ArrayType,
     BorrowType,
     ErrorType,
     FunctionType,
@@ -650,8 +651,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if fd.name in _BUILTIN_FUNCTIONS and not self._is_stdlib:
             builtin_sig = self.symbols.resolve_function(None, fd.name, len(param_types))
             if builtin_sig is not None and all(
-                types_compatible(a, b)
-                for a, b in zip(builtin_sig.param_types, param_types)
+                types_compatible(a, b) for a, b in zip(builtin_sig.param_types, param_types)
             ):
                 self._error(
                     "E316",
@@ -659,6 +659,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     fd.span,
                 )
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
+        # validates always returns Boolean — override implicit Unit
+        if fd.verb == "validates" and not fd.return_type:
+            return_type = BOOLEAN
         sig = FunctionSignature(
             verb=fd.verb,
             name=fd.name,
@@ -789,9 +792,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         for item in imp.items:
             # Constant imports (ALL_CAPS names like RED, BOLD, RESET)
-            is_const_name = (
-                len(item.name) >= 2
-                and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
+            is_const_name = len(item.name) >= 2 and all(
+                c.isupper() or c.isdigit() or c == "_" for c in item.name
             )
             if is_const_name:
                 const = stdlib_consts_by_name.get(item.name)
@@ -946,7 +948,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     @staticmethod
     def _has_implicit_value_coercion(
-        expected: Type, actual: Type,
+        expected: Type,
+        actual: Type,
     ) -> bool:
         """Detect when Value (TypeVariable) silently satisfies a concrete type.
 
@@ -1418,7 +1421,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if isinstance(value, str):
                 import re
 
-                pattern = constraint.pattern if isinstance(constraint, RegexLit) else constraint.value
+                pattern = (
+                    constraint.pattern if isinstance(constraint, RegexLit) else constraint.value
+                )
                 try:
                     return bool(re.fullmatch(pattern, value))
                 except re.error:
@@ -1552,12 +1557,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if verb == "matches":
             if fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
-                is_matchable = isinstance(first_type, (AlgebraicType, ErrorType)) or (
-                    isinstance(first_type, PrimitiveType)
-                    and first_type.name in ("String", "Integer")
-                ) or (
-                    isinstance(first_type, GenericInstance)
-                    and first_type.base_name in ("Result", "Option")
+                is_matchable = (
+                    isinstance(first_type, (AlgebraicType, ErrorType))
+                    or (
+                        isinstance(first_type, PrimitiveType)
+                        and first_type.name in ("String", "Integer")
+                    )
+                    or (
+                        isinstance(first_type, GenericInstance)
+                        and first_type.base_name in ("Result", "Option")
+                    )
                 )
                 if not is_matchable:
                     self._error(
@@ -1589,8 +1598,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if verb == "attached" and not self._has_async_call_in_body(fd.body):
                 self._info(
                     "I376",
-                    "`attached` body has no `&` calls; "
-                    "consider using `inputs` instead",
+                    "`attached` body has no `&` calls; consider using `inputs` instead",
                     fd.span,
                 )
 
@@ -1659,9 +1667,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 return True
             if isinstance(stmt, ExprStmt) and self._expr_has_blocking_call(stmt.expr):
                 return True
-            if isinstance(stmt, Assignment) and self._expr_has_blocking_call(
-                stmt.value
-            ):
+            if isinstance(stmt, Assignment) and self._expr_has_blocking_call(stmt.value):
                 return True
             if isinstance(stmt, MatchExpr):
                 for arm in stmt.arms:
@@ -1682,13 +1688,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(expr, AsyncCallExpr):
             return self._expr_has_blocking_call(expr.expr)
         if isinstance(expr, BinaryExpr):
-            return self._expr_has_blocking_call(
-                expr.left
-            ) or self._expr_has_blocking_call(expr.right)
+            return self._expr_has_blocking_call(expr.left) or self._expr_has_blocking_call(
+                expr.right
+            )
         if isinstance(expr, PipeExpr):
-            return self._expr_has_blocking_call(
-                expr.left
-            ) or self._expr_has_blocking_call(expr.right)
+            return self._expr_has_blocking_call(expr.left) or self._expr_has_blocking_call(
+                expr.right
+            )
         if isinstance(expr, UnaryExpr):
             return self._expr_has_blocking_call(expr.operand)
         return False
@@ -1943,10 +1949,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 # Allow StoreTable → store-backed lookup type assignment
                 expected_name = getattr(expected, "name", "")
                 actual_name = getattr(inferred, "name", "")
-                if not (
-                    expected_name in self._store_lookup_types
-                    and actual_name == "StoreTable"
-                ):
+                if not (expected_name in self._store_lookup_types and actual_name == "StoreTable"):
                     self._error(
                         "E321",
                         f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
@@ -2105,9 +2108,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     return FunctionType(list(sig.param_types), BOOLEAN)
             # Check argument types against the validator's parameter types
             if sig is not None and expr.args is not None:
-                for i, (param_ty, arg_expr) in enumerate(
-                    zip(sig.param_types, expr.args)
-                ):
+                for i, (param_ty, arg_expr) in enumerate(zip(sig.param_types, expr.args)):
                     # Snapshot diagnostics: _infer_expr may emit E310 for args
                     # that are not yet in scope (e.g. local vars in ensures clauses).
                     # Roll back those side-effect diagnostics if the arg is unresolved.
@@ -2130,9 +2131,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             "E331",
                             f"argument type mismatch: expected "
                             f"'{type_name(param_ty)}', got '{type_name(arg_ty)}'",
-                            arg_expr.span
-                            if hasattr(arg_expr, "span")
-                            else expr.span,
+                            arg_expr.span if hasattr(arg_expr, "span") else expr.span,
                         )
             return BOOLEAN
         if isinstance(expr, ComptimeExpr):
@@ -2270,9 +2269,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 return inner.args[0]
         return ERROR_TY
 
-    def _infer_async_call(
-        self, expr: AsyncCallExpr, expected_type: Type | None = None
-    ) -> Type:
+    def _infer_async_call(self, expr: AsyncCallExpr, expected_type: Type | None = None) -> Type:
         """Type-check async call (&). Same type as the inner expression."""
         # Resolve callee from inner expression (may be CallExpr or FailPropExpr)
         inner = expr.expr
@@ -2342,11 +2339,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(stmt, MatchExpr):
             if stmt.subject and self._expr_has_async_call(stmt.subject):
                 return True
-            return any(
-                self._stmt_has_async_call(s)
-                for arm in stmt.arms
-                for s in arm.body
-            )
+            return any(self._stmt_has_async_call(s) for arm in stmt.arms for s in arm.body)
         return False
 
     def _expr_has_async_call(self, expr: Expr) -> bool:
@@ -2411,13 +2404,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._current_function.verb == "streams"
                 and self._current_function.return_type is not None
             ):
-                subject_type = self._resolve_type_expr(
-                    self._current_function.return_type
-                )
+                subject_type = self._resolve_type_expr(self._current_function.return_type)
             else:
-                subject_type = self._resolve_type_expr(
-                    self._current_function.params[0].type_expr
-                )
+                subject_type = self._resolve_type_expr(self._current_function.params[0].type_expr)
 
         # W304: match on condition already guaranteed by requires
         if expr.subject is not None and isinstance(self._current_function, FunctionDef):
@@ -2445,7 +2434,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Check exhaustiveness for algebraic types
         if isinstance(subject_type, AlgebraicType):
             self._check_exhaustiveness(expr, subject_type)
-        elif isinstance(subject_type, GenericInstance) and subject_type.base_name in ("Result", "Option"):
+        elif isinstance(subject_type, GenericInstance) and subject_type.base_name in (
+            "Result",
+            "Option",
+        ):
             self._check_generic_exhaustiveness(expr, subject_type)
 
         # I301: detect unreachable arms after always-matching record pattern
@@ -2662,13 +2654,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 inner_type = args[1]
                 valid = True
             else:
-                self.diagnostics.append(make_diagnostic(
-                    Severity.ERROR, "E372",
-                    f"unknown variant '{name}' for Result type",
-                    labels=[DiagnosticLabel(span=pattern.span, message="")],
-                    notes=["Result has variants Ok and Err, "
-                           "e.g. Ok(value) => ... | Err(e) => ..."],
-                ))
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.ERROR,
+                        "E372",
+                        f"unknown variant '{name}' for Result type",
+                        labels=[DiagnosticLabel(span=pattern.span, message="")],
+                        notes=[
+                            "Result has variants Ok and Err, e.g. Ok(value) => ... | Err(e) => ..."
+                        ],
+                    )
+                )
         elif base == "Option" and len(args) >= 1:
             if name == "Some":
                 inner_type = args[0]
@@ -2677,13 +2673,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 inner_type = None  # No binding for None
                 valid = True
             else:
-                self.diagnostics.append(make_diagnostic(
-                    Severity.ERROR, "E372",
-                    f"unknown variant '{name}' for Option type",
-                    labels=[DiagnosticLabel(span=pattern.span, message="")],
-                    notes=["Option has variants Some and None, "
-                           "e.g. Some(value) => ... | None => ..."],
-                ))
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.ERROR,
+                        "E372",
+                        f"unknown variant '{name}' for Option type",
+                        labels=[DiagnosticLabel(span=pattern.span, message="")],
+                        notes=[
+                            "Option has variants Some and None, "
+                            "e.g. Some(value) => ... | None => ..."
+                        ],
+                    )
+                )
 
         if valid and inner_type is not None:
             for sub in pattern.fields:
@@ -2734,9 +2735,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     )
                 )
 
-    def _check_generic_exhaustiveness(
-        self, expr: MatchExpr, subject_type: GenericInstance
-    ) -> None:
+    def _check_generic_exhaustiveness(self, expr: MatchExpr, subject_type: GenericInstance) -> None:
         """Check match exhaustiveness for Result/Option generic types."""
         base = subject_type.base_name
         if base == "Result":
@@ -2766,7 +2765,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
                 self.diagnostics.append(
                     make_diagnostic(
-                        Severity.ERROR, "E373",
+                        Severity.ERROR,
+                        "E373",
                         f"non-exhaustive match on {base}: missing {names}",
                         labels=[DiagnosticLabel(span=expr.span, message="")],
                         notes=[f"add the missing arms: {arms_str}"],
@@ -2801,6 +2801,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Special-case List<Value> → ListType
             if type_expr.name == "List" and len(args) == 1:
                 return ListType(args[0])
+            # Special-case Array<T> → ArrayType
+            if type_expr.name == "Array" and len(args) == 1:
+                mods = tuple(m.value for m in type_expr.modifiers)
+                if mods:
+                    return ArrayType(args[0], modifiers=mods)
+                return ArrayType(args[0])
             # Special-case Verb<P1, ..., Pn, R> → FunctionType
             if type_expr.name == "Verb" and len(args) >= 1:
                 return FunctionType(list(args[:-1]), args[-1])
@@ -3085,9 +3091,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # W501-W505: prose coherence checks
         fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
-        known_names = (
-            {name for (_, name) in self.symbols._functions.keys()}
-            | set(self.symbols._types.keys())
+        known_names = {name for (_, name) in self.symbols._functions.keys()} | set(
+            self.symbols._types.keys()
         )
         if mod_decl is not None:
             self._check_narrative_verb_coherence(mod_decl, fns)

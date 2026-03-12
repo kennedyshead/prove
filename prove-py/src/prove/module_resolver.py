@@ -25,6 +25,7 @@ from prove.types import (
     ERROR_TY,
     UNIT,
     AlgebraicType,
+    ArrayType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -254,6 +255,8 @@ def _resolve_type_expr_simple(
         args = [_resolve_type_expr_simple(a, type_registry) for a in type_expr.args]
         if type_expr.name == "List" and len(args) == 1:
             return ListType(args[0])
+        if type_expr.name == "Array" and len(args) == 1:
+            return ArrayType(args[0])
         return GenericInstance(type_expr.name, args)
 
     if isinstance(type_expr, ModifiedType):

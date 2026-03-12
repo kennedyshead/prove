@@ -1092,7 +1092,7 @@ class Parser:
     # ── Type expressions ─────────────────────────────────────────
 
     def _parse_type_expr(self) -> TypeExpr:
-        """Parse a type expression: SimpleType, GenericType<A, B>, or ModifiedType:[mods]."""
+        """Parse a type expression: SimpleType, GenericType<A, B>, GenericType<A, B>:[mods], or ModifiedType:[mods]."""
         start = self._current().span
         name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
         name = name_tok.value
@@ -1119,7 +1119,19 @@ class Parser:
                 args.append(self._parse_type_expr())
             self._expect(TokenKind.GREATER)
             end = self._current().span
-            return GenericType(name, args, self._span(start, end))
+
+            # Check for modifiers after generic: Type<A, B>:[mods]
+            modifiers = []
+            if self._at(TokenKind.COLON) and self._peek(1).kind == TokenKind.LBRACKET:
+                self._advance()  # :
+                self._advance()  # [
+                while not self._at(TokenKind.RBRACKET) and not self._at(TokenKind.EOF):
+                    mod = self._parse_type_modifier()
+                    modifiers.append(mod)
+                self._expect(TokenKind.RBRACKET)
+                end = self._current().span
+
+            return GenericType(name, args, self._span(start, end), modifiers)
 
         return SimpleType(name, name_tok.span)
 
@@ -1194,7 +1206,11 @@ class Parser:
 
         items: list[ImportItem] = []
         # Consume one or more names (identifiers or type identifiers).
-        while self._at(TokenKind.IDENTIFIER) or self._at(TokenKind.TYPE_IDENTIFIER) or self._at(TokenKind.CONSTANT_IDENTIFIER):
+        while (
+            self._at(TokenKind.IDENTIFIER)
+            or self._at(TokenKind.TYPE_IDENTIFIER)
+            or self._at(TokenKind.CONSTANT_IDENTIFIER)
+        ):
             name_tok = self._advance()
             # Skip optional generic parameters (e.g. Table<Value>)
             if self._at(TokenKind.LESS):
@@ -1426,11 +1442,7 @@ class Parser:
                 # INDENT already consumed, parse entry rows directly
                 entries = self._parse_pipe_lookup_entries(len(value_types))
                 # Dispatch lookup: any entry with an identifier value → verb dispatch
-                is_dispatch = any(
-                    "identifier" in e.value_kinds
-                    for e in entries
-                    if e.value_kinds
-                )
+                is_dispatch = any("identifier" in e.value_kinds for e in entries if e.value_kinds)
                 end = self._current().span
                 return LookupTypeDef(
                     value_type=value_types[0],
@@ -1682,8 +1694,11 @@ class Parser:
             TokenKind.DECIMAL_LIT: "decimal",
             TokenKind.BOOLEAN_LIT: "boolean",
         }
-        _VALUE_KINDS = {**_LIT_KINDS, TokenKind.IDENTIFIER: "identifier",
-                        TokenKind.TYPE_IDENTIFIER: "identifier"}
+        _VALUE_KINDS = {
+            **_LIT_KINDS,
+            TokenKind.IDENTIFIER: "identifier",
+            TokenKind.TYPE_IDENTIFIER: "identifier",
+        }
         values: list[str] = []
         value_kinds: list[str] = []
         # Parse pipe-separated values until end of line
@@ -1729,8 +1744,11 @@ class Parser:
             TokenKind.DECIMAL_LIT: "decimal",
             TokenKind.BOOLEAN_LIT: "boolean",
         }
-        _VALUE_KINDS = {**_LIT_KINDS, TokenKind.IDENTIFIER: "identifier",
-                        TokenKind.TYPE_IDENTIFIER: "identifier"}
+        _VALUE_KINDS = {
+            **_LIT_KINDS,
+            TokenKind.IDENTIFIER: "identifier",
+            TokenKind.TYPE_IDENTIFIER: "identifier",
+        }
 
         entries: list[LookupEntry] = []
         while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
@@ -1771,14 +1789,16 @@ class Parser:
                     break
 
             end = self._current().span
-            entries.append(LookupEntry(
-                variant=variant_val,
-                value=values[1] if len(values) > 1 else "",
-                value_kind=value_kinds[1] if len(value_kinds) > 1 else "string",
-                span=self._span(start, end),
-                values=tuple(values),
-                value_kinds=tuple(value_kinds),
-            ))
+            entries.append(
+                LookupEntry(
+                    variant=variant_val,
+                    value=values[1] if len(values) > 1 else "",
+                    value_kind=value_kinds[1] if len(value_kinds) > 1 else "string",
+                    span=self._span(start, end),
+                    values=tuple(values),
+                    value_kinds=tuple(value_kinds),
+                )
+            )
             self._skip_newlines()
         if self._at(TokenKind.DEDENT):
             self._advance()
@@ -1861,7 +1881,9 @@ class Parser:
             value = self._parse_expression(0)
 
         end = self._current().span
-        return ConstantDef(name_tok.value, type_expr, value, self._span(start, end), doc_comment=doc)
+        return ConstantDef(
+            name_tok.value, type_expr, value, self._span(start, end), doc_comment=doc
+        )
 
     def _parse_comptime_expr(self) -> ComptimeExpr:
         start = self._current().span

@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates advanced Pattern module operations"""
   System outputs console
   Pattern reads search find_all text start end, transforms replace split, types Match
-  List reads length
+  Sequence reads length
   Text validates contains, transforms join
 
 main() Result<Unit, Error>!
