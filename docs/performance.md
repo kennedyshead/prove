@@ -98,32 +98,8 @@ from
 
 ---
 
-## Language Ecosystem Context
-
-The [kostya/benchmarks](https://github.com/kostya/benchmarks) project measures a harder primes variant — Sieve of Atkin combined with Trie-based prefix search. That benchmark exercises both numeric computation and data-structure traversal. For reference:
-
-| Language | kostya primes (Sieve of Atkin + Trie) |
-|----------|--------------------------------------:|
-| C++/g++ | 0.064 s |
-| Zig | 0.071 s |
-| Rust | 0.102 s |
-| Crystal | 0.144 s |
-| Scala (JVM) | 0.184 s |
-| Julia | 0.419 s |
-| Racket | 0.757 s |
-| Python | 2.096 s |
-
-These figures are not directly comparable to the Sieve of Eratosthenes numbers above (different algorithm and problem size), but they illustrate where the systems languages cluster relative to dynamic and functional languages.
-
----
-
 ## Binary Size
 
-Runtime stripping means only the C runtime modules actually used by a program are compiled and linked. A program that uses only `console` output and `Array` operations links a small subset of the runtime:
-
-```
-prove build benchmarks/
-ls -lh benchmarks/build/primes
-```
+Runtime stripping means only the C runtime modules actually used by a program are compiled and linked. A program that uses only `console` output and `Array` operations links a small subset of the runtime.
 
 The resulting binary is **35 KB**, including the array runtime, region allocator, and string formatting — no unused modules.
