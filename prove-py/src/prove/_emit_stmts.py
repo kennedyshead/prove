@@ -163,6 +163,7 @@ class StmtEmitterMixin:
                 if isinstance(ret_type, UnitType) and not is_failable:
                     self._emit_stmt(stmt)
                     self._emit_releases(None)
+                    self._emit_region_exit()
                 elif is_failable:
                     # For failable functions, wrap last expression in result_ok
                     if isinstance(ret_type, GenericInstance) and ret_type.base_name == "Result":
@@ -320,6 +321,7 @@ class StmtEmitterMixin:
                     else:
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
+                        self._emit_region_exit()
             else:
                 self._emit_stmt(stmt)
 

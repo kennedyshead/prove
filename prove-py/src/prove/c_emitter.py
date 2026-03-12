@@ -54,6 +54,7 @@ from prove.types import (
     BOOLEAN,
     DECIMAL,
     ERROR_TY,
+    FLOAT,
     HOF_BUILTINS,
     INTEGER,
     STRING,
@@ -1017,6 +1018,8 @@ class CEmitter(
             return INTEGER
         if isinstance(expr, DecimalLit):
             return DECIMAL
+        if isinstance(expr, FloatLit):
+            return FLOAT
         if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit)):
             return STRING
         if isinstance(expr, RawStringLit):
@@ -1164,7 +1167,12 @@ class CEmitter(
                     arity=n,
                 )
             if sig:
-                return sig.return_type
+                ret = sig.return_type
+                if expr.args and sig.param_types:
+                    actual_types = [self._infer_expr_type(a) for a in expr.args]
+                    bindings = resolve_type_vars(sig.param_types, actual_types)
+                    ret = substitute_type_vars(ret, bindings)
+                return ret
             resolved = self._symbols.resolve_type(name)
             if resolved:
                 return resolved
@@ -1179,6 +1187,13 @@ class CEmitter(
                 )
             if sig:
                 ret = sig.return_type
+                if expr.args and sig.param_types:
+                    actual_types = [self._infer_expr_type(a) for a in expr.args]
+                    bindings = resolve_type_vars(
+                        sig.param_types,
+                        actual_types,
+                    )
+                    ret = substitute_type_vars(ret, bindings)
                 if (
                     isinstance(ret, GenericInstance)
                     and ret.base_name in ("Option", "Result")
@@ -1189,12 +1204,7 @@ class CEmitter(
                         module_name,
                     )
                 ):
-                    actual_types = [self._infer_expr_type(a) for a in expr.args]
-                    bindings = resolve_type_vars(
-                        sig.param_types,
-                        actual_types,
-                    )
-                    return substitute_type_vars(ret.args[0], bindings)
+                    return ret.args[0]
                 return ret
         return ERROR_TY
 

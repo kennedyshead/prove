@@ -64,6 +64,40 @@ def _map_float(modifiers: tuple[str, ...]) -> CType:
     return CType("double", is_pointer=False, header=None)
 
 
+# ── Primitive name → CType lookup ──────────────────────────────────
+
+_PRIMITIVE_MAP: dict[str, CType] = {
+    "Boolean": CType("bool", is_pointer=False, header=None),
+    "Character": CType("char", is_pointer=False, header=None),
+    "Byte": CType("uint8_t", is_pointer=False, header=None),
+    "String": CType("Prove_String*", is_pointer=True, header="prove_string.h"),
+    "Error": CType("Prove_String*", is_pointer=True, header="prove_string.h"),
+    "StringBuilder": CType("Prove_Builder*", is_pointer=True, header="prove_text.h"),
+    "ProcessResult": CType("Prove_ProcessResult", is_pointer=False, header="prove_input_output.h"),
+    "DirEntry": CType("Prove_DirEntry", is_pointer=False, header="prove_input_output.h"),
+    "ExitCode": CType("int64_t", is_pointer=False, header=None),
+    "Value": CType("Prove_Value*", is_pointer=True, header="prove_parse.h"),
+    "Match": CType("Prove_Match*", is_pointer=True, header="prove_pattern.h"),
+    "Time": CType("Prove_Time*", is_pointer=True, header="prove_time.h"),
+    "Duration": CType("Prove_Duration*", is_pointer=True, header="prove_time.h"),
+    "Date": CType("Prove_Date*", is_pointer=True, header="prove_time.h"),
+    "Clock": CType("Prove_Clock*", is_pointer=True, header="prove_time.h"),
+    "DateTime": CType("Prove_DateTime*", is_pointer=True, header="prove_time.h"),
+    "Weekday": CType("int64_t", is_pointer=False, header="prove_time.h"),
+    "ByteArray": CType("Prove_ByteArray*", is_pointer=True, header="prove_bytes.h"),
+    "Url": CType("Prove_Url*", is_pointer=True, header="prove_parse.h"),
+    "Socket": CType("Prove_Socket*", is_pointer=True, header="prove_network.h"),
+    "File": CType("Prove_File*", is_pointer=True, header="prove_input_output.h"),
+    "Store": CType("Prove_Store*", is_pointer=True, header="prove_store.h"),
+    "StoreTable": CType("Prove_StoreTable*", is_pointer=True, header="prove_store.h"),
+    "TableDiff": CType("Prove_TableDiff*", is_pointer=True, header="prove_store.h"),
+    "Version": CType("Prove_Version*", is_pointer=True, header="prove_store.h"),
+    "Conflict": CType("Prove_Conflict*", is_pointer=True, header="prove_store.h"),
+    "Resolution": CType("Prove_Resolution*", is_pointer=True, header="prove_store.h"),
+    "MergeResult": CType("Prove_MergeResult*", is_pointer=True, header="prove_store.h"),
+    "Verb": CType("void*", is_pointer=True, header=None),
+}
+
 # ── Public API ─────────────────────────────────────────────────────
 
 
@@ -81,84 +115,9 @@ def map_type(ty: Type) -> CType:
             return _map_integer(ty.modifiers)
         if name in ("Decimal", "Float"):
             return _map_float(ty.modifiers)
-        if name == "Boolean":
-            return CType("bool", is_pointer=False, header=None)
-        if name == "Character":
-            return CType("char", is_pointer=False, header=None)
-        if name == "Byte":
-            return CType("uint8_t", is_pointer=False, header=None)
-        if name == "String":
-            return CType("Prove_String*", is_pointer=True, header="prove_string.h")
-        if name == "Error":
-            return CType("Prove_String*", is_pointer=True, header="prove_string.h")
-        if name == "StringBuilder":
-            return CType("Prove_Builder*", is_pointer=True, header="prove_text.h")
-        if name == "ProcessResult":
-            return CType(
-                "Prove_ProcessResult",
-                is_pointer=False,
-                header="prove_input_output.h",
-            )
-        if name == "DirEntry":
-            return CType(
-                "Prove_DirEntry",
-                is_pointer=False,
-                header="prove_input_output.h",
-            )
-        if name == "ExitCode":
-            return CType("int64_t", is_pointer=False, header=None)
-        if name == "Value":
-            return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
-        if name == "Match":
-            return CType("Prove_Match*", is_pointer=True, header="prove_pattern.h")
-        if name == "Time":
-            return CType("Prove_Time*", is_pointer=True, header="prove_time.h")
-        if name == "Duration":
-            return CType("Prove_Duration*", is_pointer=True, header="prove_time.h")
-        if name == "Date":
-            return CType("Prove_Date*", is_pointer=True, header="prove_time.h")
-        if name == "Clock":
-            return CType("Prove_Clock*", is_pointer=True, header="prove_time.h")
-        if name == "DateTime":
-            return CType("Prove_DateTime*", is_pointer=True, header="prove_time.h")
-        if name == "Weekday":
-            return CType("int64_t", is_pointer=False, header="prove_time.h")
-        if name == "ByteArray":
-            return CType("Prove_ByteArray*", is_pointer=True, header="prove_bytes.h")
-        if name == "Url":
-            return CType("Prove_Url*", is_pointer=True, header="prove_parse.h")
-        if name == "Socket":
-            return CType("Prove_Socket*", is_pointer=True, header="prove_network.h")
-        if name == "File":
-            return CType("Prove_File*", is_pointer=True, header="prove_input_output.h")
-        if name == "Store":
-            return CType("Prove_Store*", is_pointer=True, header="prove_store.h")
-        if name == "StoreTable":
-            return CType(
-                "Prove_StoreTable*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "TableDiff":
-            return CType(
-                "Prove_TableDiff*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "Version":
-            return CType(
-                "Prove_Version*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "Conflict":
-            return CType(
-                "Prove_Conflict*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "Resolution":
-            return CType(
-                "Prove_Resolution*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "MergeResult":
-            return CType(
-                "Prove_MergeResult*", is_pointer=True, header="prove_store.h"
-            )
-        if name == "Verb":
-            return CType("void*", is_pointer=True, header=None)
+        mapped = _PRIMITIVE_MAP.get(name)
+        if mapped is not None:
+            return mapped
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

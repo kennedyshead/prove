@@ -333,6 +333,9 @@ class ExprEmitterMixin:
                     name,
                     arity=1,
                 )
+            if sig:
+                coerced = self._coerce_call_args([left], [expr.left], sig)
+                left = coerced[0]
             if sig and sig.module:
                 c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
@@ -369,6 +372,9 @@ class ExprEmitterMixin:
                     name,
                     arity=total,
                 )
+            if sig:
+                all_arg_exprs = [expr.left] + list(expr.right.args)
+                all_args = self._coerce_call_args(all_args, all_arg_exprs, sig)
             if sig and sig.module:
                 c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
