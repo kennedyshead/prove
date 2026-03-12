@@ -6,8 +6,17 @@ module Main
   """
   System inputs process file, outputs console
   List reads value length, transforms slice
-  Commands outputs build check format lsp new test view
   Config transforms config, types Config
+  Commands outputs build check format lsp new test view
+
+  type CliMap:[Lookup] is String | Verb
+    "build" | build
+    "check" | check
+    "format" | format
+    "lsp" | lsp
+    "new" | new
+    "test" | test
+    "view" | view
 
   HELP_TXT as String = comptime
       read("static/help.txt")
@@ -22,12 +31,9 @@ from
     load as Result<String, Error> = file(PROVE_TOML)
     config as Config = config(load)
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
-    match value(1, arguments)
-        "build" => build(sub_arguments, config)!
-        "check" => check(sub_arguments, config)!
-        "format" => format(sub_arguments, config)!
-        "lsp" => lsp(sub_arguments, config)!
-        "new" => new(sub_arguments, config)!
-        "test" => test(sub_arguments, config)!
-        "view" => view(sub_arguments, config)!
+    command as Option<String> = value(1, arguments)
+    match command
+        Some(command) =>
+            verb as Verb = CliMap:command
+            verb(sub_arguments, config)
         _ => console(HELP_TXT)

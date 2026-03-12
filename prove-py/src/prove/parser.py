@@ -1425,14 +1425,21 @@ class Parser:
                 # Regular multi-column lookup: pipe-separated types + entries
                 # INDENT already consumed, parse entry rows directly
                 entries = self._parse_pipe_lookup_entries(len(value_types))
+                # Dispatch lookup: any entry with an identifier value → verb dispatch
+                is_dispatch = any(
+                    "identifier" in e.value_kinds
+                    for e in entries
+                    if e.value_kinds
+                )
                 end = self._current().span
                 return LookupTypeDef(
                     value_type=value_types[0],
                     entries=entries,
                     span=self._span(start, end),
                     value_types=tuple(value_types),
-                    is_binary=True,
-                    is_pipe_entry_format=True,
+                    is_binary=not is_dispatch,
+                    is_pipe_entry_format=not is_dispatch,
+                    is_dispatch=is_dispatch,
                 )
 
         # Existing: space-separated column types until 'where'
@@ -2398,9 +2405,23 @@ class Parser:
             self._advance()
             operand = TypeIdentifierExpr(tok.value, tok.span)
         elif tok.kind == TokenKind.IDENTIFIER:
-            # Accept identifiers so the checker can report E376
             self._advance()
-            operand = IdentifierExpr(tok.value, tok.span)
+            # If followed by `(`, parse as a call expression (e.g. CliMap:text(command))
+            if self._current().kind == TokenKind.LPAREN:
+                self._advance()  # consume (
+                call_args: list[Expr] = []
+                while self._current().kind != TokenKind.RPAREN:
+                    call_args.append(self._parse_expression(0))
+                    if self._current().kind == TokenKind.COMMA:
+                        self._advance()
+                self._expect(TokenKind.RPAREN)
+                operand = CallExpr(
+                    IdentifierExpr(tok.value, tok.span),
+                    call_args,
+                    tok.span,
+                )
+            else:
+                operand = IdentifierExpr(tok.value, tok.span)
         else:
             self._error(
                 f"expected a literal or variant name after `{type_name}:`, "

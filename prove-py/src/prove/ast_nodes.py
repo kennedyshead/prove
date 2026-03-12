@@ -467,6 +467,7 @@ class LookupTypeDef:
     csv_path: str | None = None
     is_store_backed: bool = False
     is_pipe_entry_format: bool = False
+    is_dispatch: bool = False
 
 
 TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef, LookupTypeDef]

@@ -5,7 +5,7 @@ module Commands
   The given arguments transforms a Plan for the given command
   Finally the code outputs the result.
   """
-  Main types Config
+  Config types Config
   Log detached info
   List validates contains
   System outputs console

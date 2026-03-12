@@ -314,6 +314,8 @@ class ProveFormatter:
                     self._format_type_expr(vt) for vt in body.value_types
                 )
                 return f"type {td.name}{mods}{params} is {col_types}\n  runtime"
+            if body.is_dispatch:
+                return self._format_pipe_entry_lookup(td.name, body, mods, params)
             if body.is_binary:
                 return self._format_binary_lookup_type_def(
                     td.name, body, mods, params
