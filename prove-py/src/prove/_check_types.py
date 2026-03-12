@@ -659,6 +659,17 @@ class TypeCheckMixin:
             value_type = self._resolve_type_expr(lookup.value_type)
             return value_type
 
+        # Dispatch lookup: any expression operand → verb dispatch
+        if lookup.is_dispatch:
+            self._infer_expr(operand)
+            self._used_types.add(type_name)
+            # Mark all entry verb functions as used so imports aren't pruned
+            for entry in lookup.entries:
+                sig = self.symbols.resolve_function_any(entry.variant)
+                if sig is not None and sig.module:
+                    self._used_imports.add((sig.module, entry.variant))
+            return PrimitiveType("Verb")
+
         # Binary lookup: allow variable operands for runtime lookup
         if isinstance(operand, IdentifierExpr) and lookup.is_binary:
             return self._check_binary_lookup_access(expr, lookup)

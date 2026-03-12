@@ -454,6 +454,9 @@ class TypeEmitterMixin:
                 self._line(f"/* Store-backed lookup type: {td.name} */")
                 self._line("")
                 return
+            # Dispatch lookup: no enum — function references dispatched inline
+            if body.is_dispatch:
+                return
             # Lookup type: generate C enum from entries
             # Build unique variant names (skip duplicates with same variant name)
             seen_variants: set[str] = set()

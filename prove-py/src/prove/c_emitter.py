@@ -116,6 +116,7 @@ class CEmitter(
         self._current_requires: list[Expr] = []
         self._lookup_tables: dict[str, LookupTypeDef] = {}
         self._store_lookup_types: set[str] = set()
+        self._dispatch_vars: dict[str, tuple[str, object]] = {}  # var -> (table_name, key_expr)
         self._store_var_types: dict[str, str] = {}  # var_name → lookup type name
         self._record_to_value: set[str] = set()  # record names needing Value converters
         self._expected_emit_type: Type | None = None

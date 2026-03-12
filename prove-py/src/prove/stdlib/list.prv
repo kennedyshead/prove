@@ -13,8 +13,8 @@ binary
 reads last(items List<Value>) Option<Value>
 binary
 
-/// Get the element at a position in a list
-reads value(position Integer, items List<Value>) Value
+/// Get the element at a position in a list, or None if out of bounds
+reads value(position Integer, items List<Value>) Option<Value>
 binary
 
 /// Check if a list is empty

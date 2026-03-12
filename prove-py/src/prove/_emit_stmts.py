@@ -359,6 +359,16 @@ class StmtEmitterMixin:
             pass  # comments don't emit C code
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
+        # Dispatch lookup assignment: skip C var, record for lazy dispatch at call site
+        from prove.ast_nodes import LookupAccessExpr
+        from prove.types import PrimitiveType
+        if isinstance(vd.value, LookupAccessExpr):
+            lookup = self._lookup_tables.get(vd.value.type_name)
+            if lookup is not None and lookup.is_dispatch:
+                self._dispatch_vars[vd.name] = (vd.value.type_name, vd.value.operand)
+                self._locals[vd.name] = PrimitiveType("Verb")
+                return
+
         # Store-backed lookup type annotations: Color at C level is either
         # a StoreTable* (for table loads) or a row construction (variant+vals).
         if vd.type_expr:
@@ -868,6 +878,12 @@ class StmtEmitterMixin:
         if isinstance(es.expr, MatchExpr):
             self._emit_match_stmt(es.expr)
             return
+        # Dispatch var call: verb(args...) where verb was assigned from a dispatch lookup
+        if isinstance(es.expr, CallExpr) and isinstance(es.expr.func, IdentifierExpr):
+            var_name = es.expr.func.name
+            if var_name in self._dispatch_vars:
+                self._emit_dispatch_call(var_name, es.expr.args)
+                return
         val = self._emit_expr(es.expr)
         # Suppress bare tmp variable statements from FailPropExpr
         # (the error check is already emitted as a side effect)
@@ -945,6 +961,35 @@ class StmtEmitterMixin:
                 self._line(f"{first_arg} = {val};")
                 return
         self._line(f"{val};")
+
+    def _emit_dispatch_call(self, var_name: str, call_args: list) -> None:  # type: ignore[type-arg]
+        """Emit if-else dispatch chain for a verb variable assigned from a dispatch lookup."""
+        from prove.ast_nodes import LookupEntry
+        from prove.c_types import mangle_name
+
+        table_name, key_expr = self._dispatch_vars[var_name]
+        lookup = self._lookup_tables[table_name]
+        key_c = self._emit_expr(key_expr)
+        args_c = [self._emit_expr(a) for a in call_args]
+
+        first = True
+        for entry in lookup.entries:
+            key_val = entry.value        # the string key, e.g. "build"
+            func_id = entry.variant      # the function identifier, e.g. "build"
+            n_args = len(call_args)
+            sig = self._symbols.resolve_function_any(func_id, arity=n_args)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(func_id)
+            c_func = mangle_name(sig.verb, sig.name, sig.param_types) if sig and sig.verb else func_id
+            escaped = key_val.replace("\\", "\\\\").replace('"', '\\"')
+            kw = "if" if first else "} else if"
+            self._line(f'{kw} (prove_string_eq({key_c}, prove_string_from_cstr("{escaped}"))) {{')
+            self._indent += 1
+            self._line(f"{c_func}({', '.join(args_c)});")
+            self._indent -= 1
+            first = False
+        if not first:
+            self._line("}")
 
     def _emit_match_stmt(self, m: MatchExpr) -> None:
         """Emit a match expression as a statement (switch)."""
