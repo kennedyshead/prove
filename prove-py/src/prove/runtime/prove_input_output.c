@@ -61,10 +61,17 @@ Prove_Result prove_file_write(Prove_String *path, Prove_String *content) {
     return prove_result_ok();
 }
 
-/* ── Console validates ───────────────────────────────────────── */
+/* ── Console channel ─────────────────────────────────────────── */
 
 bool prove_io_console_validates(void) {
     return !feof(stdin);
+}
+
+Prove_ByteArray *prove_readexactly(int64_t n) {
+    int64_t len = n > 0 ? n : 0;
+    Prove_ByteArray *ba = (Prove_ByteArray *)prove_alloc(sizeof(Prove_ByteArray) + (size_t)len);
+    ba->length = len > 0 ? (int64_t)fread(ba->data, 1, (size_t)len, stdin) : 0;
+    return ba;
 }
 
 /* ── File validates ──────────────────────────────────────────── */
