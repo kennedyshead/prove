@@ -95,3 +95,78 @@ class TestLookupFind:
         result = compile_and_run(runtime_dir, tmp_path, code, name="empty_table")
         assert result.returncode == 0
         assert result.stdout.strip() == "-1"
+
+
+class TestLookupFindInt:
+    def test_find_existing_int_key(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_lookup.h"
+            #include <stdint.h>
+            #include <stdio.h>
+            static const Prove_IntLookupEntry entries[] = {
+                {10, 0},
+                {20, 1},
+                {30, 2},
+            };
+            static const Prove_IntLookupTable table = {entries, 3};
+            int main(void) {
+                printf("%d\\n", prove_lookup_find_int(&table, 20));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="find_int_existing")
+        assert result.returncode == 0
+        assert result.stdout.strip() == "1"
+
+    def test_find_first_int_key(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_lookup.h"
+            #include <stdint.h>
+            #include <stdio.h>
+            static const Prove_IntLookupEntry entries[] = {
+                {0, 0},
+                {1, 1},
+            };
+            static const Prove_IntLookupTable table = {entries, 2};
+            int main(void) {
+                printf("%d\\n", prove_lookup_find_int(&table, 0));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="find_int_first")
+        assert result.returncode == 0
+        assert result.stdout.strip() == "0"
+
+    def test_find_missing_int_key(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_lookup.h"
+            #include <stdint.h>
+            #include <stdio.h>
+            static const Prove_IntLookupEntry entries[] = {
+                {1, 0},
+                {2, 1},
+            };
+            static const Prove_IntLookupTable table = {entries, 2};
+            int main(void) {
+                printf("%d\\n", prove_lookup_find_int(&table, 99));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="find_int_missing")
+        assert result.returncode == 0
+        assert result.stdout.strip() == "-1"
+
+    def test_empty_int_table(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_lookup.h"
+            #include <stdint.h>
+            #include <stdio.h>
+            static const Prove_IntLookupTable table = {NULL, 0};
+            int main(void) {
+                printf("%d\\n", prove_lookup_find_int(&table, 42));
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="find_int_empty")
+        assert result.returncode == 0
+        assert result.stdout.strip() == "-1"

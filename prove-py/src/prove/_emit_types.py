@@ -504,6 +504,7 @@ class TypeEmitterMixin:
             "String": "const char*",
             "Integer": "int64_t",
             "Decimal": "double",
+            "Float": "float",
             "Boolean": "bool",
         }
 
@@ -559,6 +560,31 @@ class TypeEmitterMixin:
             self._line(f"static const Prove_LookupTable {cname}_reverse = {{")
             self._indent += 1
             self._line(f"{cname}_reverse_entries, {len(variant_names)}")
+            self._indent -= 1
+            self._line("};")
+            self._line("")
+
+        # Emit reverse lookup table (integer key → variant index)
+        # Uses the first Integer column for reverse lookup keys
+        int_col_idx = None
+        for idx, vt in enumerate(body.value_types):
+            if hasattr(vt, "name") and vt.name == "Integer":
+                int_col_idx = idx
+                break
+
+        if int_col_idx is not None:
+            self._line(f"static const Prove_IntLookupEntry {cname}_int_reverse_entries[] = {{")
+            self._indent += 1
+            for i, vname in enumerate(variant_names):
+                entry = variant_to_entry.get(vname)
+                if entry and int_col_idx < len(entry.values):
+                    key = entry.values[int_col_idx]
+                    self._line(f"{{{key}, {i}}},")
+            self._indent -= 1
+            self._line("};")
+            self._line(f"static const Prove_IntLookupTable {cname}_int_reverse = {{")
+            self._indent += 1
+            self._line(f"{cname}_int_reverse_entries, {len(variant_names)}")
             self._indent -= 1
             self._line("};")
             self._line("")
