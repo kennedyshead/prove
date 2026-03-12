@@ -83,6 +83,8 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "types": {"prove_convert", "prove_parse", "prove_table", "prove_hash"},
     "convert": {"prove_convert"},
     "list": {"prove_list", "prove_list_ops"},
+    "sequence": {"prove_list", "prove_list_ops"},
+    "array": {"prove_array"},
     "format": {"prove_format", "prove_time"},
     "path": {"prove_path"},
     "error": {"prove_error"},
@@ -94,7 +96,13 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "hash": {"prove_hash_crypto", "prove_bytes"},
     "time": {"prove_time"},
     "log": set(),
-    "store": {"prove_store", "prove_hash_crypto", "prove_bytes", "prove_input_output", "prove_path"},
+    "store": {
+        "prove_store",
+        "prove_hash_crypto",
+        "prove_bytes",
+        "prove_input_output",
+        "prove_path",
+    },
     "network": {"prove_network", "prove_bytes"},
 }
 
@@ -317,6 +325,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_list_ops_sort_int",
         "prove_list_ops_sort_str",
         "prove_list_ops_range",
+        "prove_list_ops_range_step",
     ],
     "prove_format": [
         "prove_format_pad_left",
@@ -411,6 +420,7 @@ _RUNTIME_FUNCTIONS = {
     ],
     "prove_lookup": [
         "prove_lookup_find",
+        "prove_lookup_find_int",
     ],
     "prove_pattern": [
         "prove_pattern_match",
@@ -451,6 +461,23 @@ _RUNTIME_FUNCTIONS = {
         "prove_store_table_find",
         "prove_store_table_find_int",
         "prove_store_table_add",
+    ],
+    "prove_array": [
+        "prove_array_new",
+        "prove_array_new_bool",
+        "prove_array_new_int",
+        "prove_array_get",
+        "prove_array_get_bool",
+        "prove_array_get_int",
+        "prove_array_set",
+        "prove_array_set_bool",
+        "prove_array_set_int",
+        "prove_array_set_mut",
+        "prove_array_set_mut_bool",
+        "prove_array_set_mut_int",
+        "prove_array_length",
+        "prove_array_to_list",
+        "prove_array_from_list",
     ],
     "prove_network": [
         "prove_network_socket_inputs",

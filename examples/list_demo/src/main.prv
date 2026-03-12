@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates List module operations"""
   System outputs console
-  List reads first last length index
+  Sequence reads first last length index
     validates empty contains
     creates range
     transforms slice reverse sort

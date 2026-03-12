@@ -14,7 +14,7 @@ nav:
   - Standard Library:
       - Overview: stdlib/index.md
       - Character & Text: stdlib/character-text.md
-      - Table, List & Store: stdlib/table-list-store.md
+      - Table, List, Array & Store: stdlib/table-list-store.md
       - InputOutput & Path: stdlib/io-path.md
       - Parse, Format & Pattern: stdlib/parse-format-pattern.md
       - Math & Types: stdlib/math-types.md
@@ -24,6 +24,7 @@ nav:
   - Compiler:
       - CLI Reference: cli.md
       - Compiler Features: compiler.md
+      - Performance: performance.md
       - Diagnostic Codes: diagnostics.md
   - Vision: vision.md
   - AI Resistance: ai-resistance.md

@@ -1,10 +1,10 @@
 ---
-title: Table, List & Store - Prove Standard Library
-description: Table hash maps, List operations, and Store persistent storage in the Prove standard library.
-keywords: Prove Table, Prove List, Prove Store, hash map, list operations
+title: Table, List, Array & Store - Prove Standard Library
+description: Table hash maps, List operations, Array fixed-size buffers, and Store persistent storage in the Prove standard library.
+keywords: Prove Table, Prove List, Prove Array, Prove Store, hash map, list operations, array
 ---
 
-# Table, List & Store
+# Table, List, Array & Store
 
 ## Table
 
@@ -29,6 +29,99 @@ Table creates new, validates has, transforms add, reads get keys
 reads lookup(name String, db Table<String>) String
 from
     Error.unwrap_or(Table.get(name, db), "unknown")
+```
+
+---
+
+## Array
+
+**Module:** `Array` — fixed-size contiguous arrays with typed elements. Also accessible via the `Sequence` module alias.
+
+`Array<T>` is a flat, unboxed buffer with a fixed length set at creation time. Elements are stored directly (no boxing), making it cache-friendly and suitable for numeric computation, sieves, bitfields, and working buffers.
+
+Unlike `List<Value>`, an `Array<T>` has a concrete element type and a fixed size. The two modifiers that matter most:
+
+- `Array<T>` (default) — **copy-on-write**: `set` returns a new array, leaving the original unchanged.
+- `Array<T>:[Mutable]` — **in-place mutation**: `set` modifies the array directly and returns the same pointer. Use this for large working buffers updated in a tight loop.
+
+### Construction
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `array(size Integer, default Boolean) Array<Boolean>` | Allocate a boolean array filled with `default` |
+| `creates` | `array(size Integer, default Integer) Array<Integer>` | Allocate an integer array filled with `default` |
+| `creates` | `array(size Integer, default Boolean) Array<Boolean>:[Mutable]` | Allocate a mutable boolean array |
+| `creates` | `array(size Integer, default Integer) Array<Integer>:[Mutable]` | Allocate a mutable integer array |
+
+The element type and mutability are inferred from context (the declared type of the receiving variable).
+
+### Access
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `get(arr Array<Boolean>, idx Integer) Boolean` | Read element at index |
+| `reads` | `get(arr Array<Integer>, idx Integer) Integer` | Read element at index |
+| `reads` | `length(arr Array<T>) Integer` | Number of elements |
+
+Both overloads work identically on mutable (`:[Mutable]`) and immutable arrays.
+
+### Mutation
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `transforms` | `set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>` | Copy-on-write: return new array with element replaced |
+| `transforms` | `set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>` | Copy-on-write: return new array with element replaced |
+| `transforms` | `set(arr Array<Boolean>:[Mutable], idx Integer, val Boolean) Array<Boolean>:[Mutable]` | In-place: modify array and return same pointer |
+| `transforms` | `set(arr Array<Integer>:[Mutable], idx Integer, val Integer) Array<Integer>:[Mutable]` | In-place: modify array and return same pointer |
+
+The dispatch between copy-on-write and in-place is resolved by the array's type — no separate function name needed.
+
+### Example — immutable (copy-on-write)
+
+```prove
+Array creates array
+Array reads get length
+Array transforms set
+
+main() Result<Unit, Error>!
+from
+    flags as Array<Boolean> = array(5, false)
+    flags2 as Array<Boolean> = set(flags, 2, true)   // flags unchanged
+    size as Integer = length(flags2)
+    val as Boolean = get(flags2, 2)
+    console(f"size={size} element[2]={val}")
+```
+
+### Example — mutable (in-place)
+
+```prove
+Array creates array
+Array reads get
+Array transforms set
+
+// Sieve of Eratosthenes: count primes up to limit
+reads count_primes(limit Integer) Integer
+from
+    is_composite as Array<Boolean>:[Mutable] = array(limit + 1, false)
+    marked0 as Array<Boolean>:[Mutable] = set(is_composite, 0, true)
+    marked1 as Array<Boolean>:[Mutable] = set(marked0, 1, true)
+    sieved as Array<Boolean>:[Mutable] = sieve_pass(marked1, 2, limit)
+    count_true_false(sieved, 2, limit, 0)
+```
+
+The `:[Mutable]` annotation tells the compiler to use in-place mutation — no intermediate copies are allocated during the sieve loop.
+
+### Import aliases
+
+`Array`, `Sequence`, and `List` all refer to the same module. The preferred alias depends on context:
+
+- `Array` — when working with `Array<T>` (fixed-size buffers)
+- `List` or `Sequence` — when working with `List<Value>` (dynamic lists)
+
+```prove
+// These are equivalent:
+Array creates array
+Sequence creates array
 ```
 
 ---

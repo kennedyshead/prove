@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Union
 
 from prove.source import Span
@@ -21,6 +21,7 @@ class GenericType:
     name: str
     args: list[TypeExpr]
     span: Span
+    modifiers: list[TypeModifier] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -366,12 +367,21 @@ class TailContinue:
 
 
 @dataclass(frozen=True)
+class WhileLoop:
+    """Finite while loop inlined from a TCO'd function call. Exits when break_cond is True."""
+
+    break_cond: Any  # Expr
+    body: list[Any]  # list[Stmt]
+    span: Span
+
+
+@dataclass(frozen=True)
 class CommentStmt:
     text: str
     span: Span
 
 
-Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, CommentStmt]
+Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, WhileLoop, CommentStmt]
 
 
 # ── Function parts ───────────────────────────────────────────────

@@ -42,6 +42,7 @@ from prove.ast_nodes import (
     TailLoop,
     UnaryExpr,
     VarDecl,
+    WhileLoop,
     WildcardPattern,
 )
 from prove.c_runtime import STDLIB_RUNTIME_LIBS
@@ -151,6 +152,7 @@ class Optimizer:
         module = self._dead_branch_elimination(module)
         module = self._ct_eval_pure_calls(module)
         module = self._inline_small_functions(module)
+        module = self._inline_tco_calls(module)
         module = self._iterator_fusion(module)
         module = self._copy_elision(module)
         module = self._dead_code_elimination(module)
@@ -249,7 +251,18 @@ class Optimizer:
             return False
         last = arm.body[-1]
         if isinstance(last, ExprStmt):
-            return self._is_tail_call(name, last.expr)
+            if self._is_tail_call(name, last.expr):
+                return True
+            if isinstance(last.expr, MatchExpr):
+                return any(
+                    inner.body and self._is_tail_call_in_arm(name, inner)
+                    for inner in last.expr.arms
+                )
+        if isinstance(last, MatchExpr):
+            return any(
+                inner.body and self._is_tail_call_in_arm(name, inner)
+                for inner in last.arms
+            )
         return False
 
     def _is_tail_call(self, name: str, expr: Expr) -> bool:
@@ -527,6 +540,7 @@ class Optimizer:
                 new_decls.append(self._fuse_iterators_in_func(decl))
             elif isinstance(decl, MainDef):
                 new_body = [self._fuse_iterators_in_stmt(s) for s in decl.body]
+                new_body = self._fuse_multi_reduce(new_body)
                 new_decls.append(replace(decl, body=new_body))
             elif isinstance(decl, ModuleDecl):
                 new_body = [
@@ -541,7 +555,81 @@ class Optimizer:
     def _fuse_iterators_in_func(self, fd: FunctionDef) -> FunctionDef:
         """Apply iterator fusion within a function body."""
         new_body = [self._fuse_iterators_in_stmt(s) for s in fd.body]
+        new_body = self._fuse_multi_reduce(new_body)
         return replace(fd, body=new_body)
+
+    @staticmethod
+    def _is_reduce_on(stmt: Any) -> str | None:
+        """If stmt is VarDecl with reduce(ident, init, lambda), return the list ident name."""
+        if not isinstance(stmt, VarDecl):
+            return None
+        val = stmt.value
+        if not isinstance(val, CallExpr):
+            return None
+        if not isinstance(val.func, IdentifierExpr):
+            return None
+        if val.func.name != "reduce" or len(val.args) != 3:
+            return None
+        # The lambda must be a LambdaExpr with 2 params for safe fusion
+        if not isinstance(val.args[2], LambdaExpr) or len(val.args[2].params) != 2:
+            return None
+        # List arg must be a simple identifier (same variable reference)
+        if isinstance(val.args[0], IdentifierExpr):
+            return val.args[0].name
+        return None
+
+    def _fuse_multi_reduce(self, stmts: list[Any]) -> list[Any]:
+        """Fuse consecutive reduce() calls on the same list into one loop."""
+        result: list[Any] = []
+        i = 0
+        while i < len(stmts):
+            list_name = self._is_reduce_on(stmts[i])
+            if list_name is None:
+                result.append(stmts[i])
+                i += 1
+                continue
+
+            # Collect consecutive reduces on the same list
+            group = [stmts[i]]
+            j = i + 1
+            while j < len(stmts) and self._is_reduce_on(stmts[j]) == list_name:
+                group.append(stmts[j])
+                j += 1
+
+            if len(group) < 2:
+                # Only one reduce — no fusion benefit
+                result.append(stmts[i])
+                i += 1
+                continue
+
+            # Build fused call: __fused_multi_reduce(list, name1, init1, lam1, name2, ...)
+            first = group[0]
+            call = first.value  # the reduce CallExpr
+            span = call.span
+            fused_args: list[Expr] = [call.args[0]]  # shared list arg
+            for stmt in group:
+                rcall = stmt.value
+                fused_args.append(StringLit(value=stmt.name, span=span))
+                fused_args.append(rcall.args[1])  # init
+                fused_args.append(rcall.args[2])  # lambda
+
+            fused_call = CallExpr(
+                func=IdentifierExpr(name="__fused_multi_reduce", span=span),
+                args=fused_args,
+                span=span,
+            )
+            # First VarDecl carries the fused call; rest become no-op refs
+            result.append(replace(first, value=fused_call))
+            for k, stmt in enumerate(group[1:], 1):
+                ref_call = CallExpr(
+                    func=IdentifierExpr(name="__fused_multi_reduce_ref", span=span),
+                    args=[IntegerLit(value=k, span=span)],
+                    span=span,
+                )
+                result.append(replace(stmt, value=ref_call))
+            i = j
+
+        return result
 
     def _fuse_iterators_in_stmt(self, stmt: Any) -> Any:
         """Apply iterator fusion within a statement."""
@@ -557,6 +645,7 @@ class Optimizer:
             new_arms = []
             for arm in stmt.arms:
                 new_arm_body = [self._fuse_iterators_in_stmt(s) for s in arm.body]
+                new_arm_body = self._fuse_multi_reduce(new_arm_body)
                 new_arms.append(replace(arm, body=new_arm_body))
             new_subj = self._fuse_iterators_in_expr(stmt.subject) if stmt.subject else None
             return replace(stmt, arms=new_arms, subject=new_subj)
@@ -671,6 +760,86 @@ class Optimizer:
                 return CallExpr(
                     func=IdentifierExpr(name="__fused_filter_map", span=expr.span),
                     args=[list_arg, func_arg, pred],
+                    span=expr.span,
+                )
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "filter"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                p1 = inner.args[1]
+                p2 = args[1]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_filter_filter", span=expr.span),
+                    args=[list_arg, p1, p2],
+                    span=expr.span,
+                )
+
+        # reduce(map(list, f), init, g) → fused single pass
+        if outer_name == "reduce" and len(args) == 3:
+            inner = args[0]
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "map"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                func_arg = inner.args[1]
+                init = args[1]
+                reducer = args[2]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_reduce_map", span=expr.span),
+                    args=[list_arg, func_arg, init, reducer],
+                    span=expr.span,
+                )
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "filter"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                pred = inner.args[1]
+                init = args[1]
+                reducer = args[2]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_reduce_filter", span=expr.span),
+                    args=[list_arg, pred, init, reducer],
+                    span=expr.span,
+                )
+
+        # each(map(list, f), g) → fused single pass
+        if outer_name == "each" and len(args) == 2:
+            inner = args[0]
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "map"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                func_arg = inner.args[1]
+                consumer = args[1]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_each_map", span=expr.span),
+                    args=[list_arg, func_arg, consumer],
+                    span=expr.span,
+                )
+            if (
+                isinstance(inner, CallExpr)
+                and isinstance(inner.func, IdentifierExpr)
+                and inner.func.name == "filter"
+                and len(inner.args) == 2
+            ):
+                list_arg = inner.args[0]
+                pred = inner.args[1]
+                consumer = args[1]
+                return CallExpr(
+                    func=IdentifierExpr(name="__fused_each_filter", span=expr.span),
+                    args=[list_arg, pred, consumer],
                     span=expr.span,
                 )
 
@@ -837,6 +1006,12 @@ class Optimizer:
                     for body_stmt in arm.body:
                         self._find_called_in_stmt(body_stmt, called)
         elif isinstance(stmt, TailLoop):
+            self._find_called_in_stmts(stmt.body, called)
+        elif isinstance(stmt, TailContinue):
+            for _, expr in stmt.assignments:
+                self._find_called_in_expr(expr, called)
+        elif isinstance(stmt, WhileLoop):
+            self._find_called_in_expr(stmt.break_cond, called)
             self._find_called_in_stmts(stmt.body, called)
         elif isinstance(stmt, VarDecl):
             self._find_called_in_expr(stmt.value, called)
@@ -1012,6 +1187,12 @@ class Optimizer:
             return replace(stmt, subject=subj, arms=new_arms)
         if isinstance(stmt, TailLoop):
             return replace(stmt, body=self._inline_stmts(stmt.body, candidates))
+        if isinstance(stmt, WhileLoop):
+            return replace(
+                stmt,
+                break_cond=self._inline_in_expr(stmt.break_cond, candidates),
+                body=self._inline_stmts(stmt.body, candidates),
+            )
         return stmt
 
     def _inline_in_expr(self, expr: Expr, candidates: dict[str, FunctionDef]) -> Expr:
@@ -1154,7 +1335,241 @@ class Optimizer:
 
         return expr
 
-    # ── Pass 3b: Memoization Candidate Identification ─────────────
+    # ── Pass 3b: TCO Loop Inlining ────────────────────────────────
+
+    def _inline_tco_calls(self, module: Module) -> Module:
+        """Inline calls to simple TCO'd loop functions within TailContinue nodes.
+
+        Detects tail-recursive functions whose body is a single TailLoop over a
+        two-arm match (base-case return + recursive TailContinue). When such a
+        function is called inside another function's TailContinue assignment,
+        replace it with inline VarDecl(s) + WhileLoop, eliminating the call
+        overhead from inside the hot loop.
+        """
+        candidates: dict[str, FunctionDef] = {}
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef) and self._is_tco_loop_candidate(decl):
+                candidates[decl.name] = decl
+        if not candidates:
+            return module
+
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                new_body = self._tco_inline_stmts(decl.body, candidates)
+                new_decls.append(replace(decl, body=new_body))
+            elif isinstance(decl, MainDef):
+                new_body = self._tco_inline_stmts(decl.body, candidates)
+                new_decls.append(replace(decl, body=new_body))
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    @staticmethod
+    def _is_tco_loop_candidate(fd: FunctionDef) -> bool:
+        """Return True if fd is a simple TCO'd loop: body=[TailLoop([MatchExpr(2 arms)])]."""
+        if len(fd.body) != 1 or not isinstance(fd.body[0], TailLoop):
+            return False
+        tl = fd.body[0]
+        if len(tl.body) != 1 or not isinstance(tl.body[0], MatchExpr):
+            return False
+        m = tl.body[0]
+        if not m.subject or len(m.arms) != 2:
+            return False
+        # One arm must return an identifier (base), other must TailContinue (recursive)
+        has_base = any(
+            arm.body
+            and isinstance(arm.body[-1], ExprStmt)
+            and isinstance(arm.body[-1].expr, IdentifierExpr)
+            for arm in m.arms
+        )
+        has_rec = any(arm.body and isinstance(arm.body[-1], TailContinue) for arm in m.arms)
+        return has_base and has_rec
+
+    def _tco_inline_stmts(self, stmts: list[Any], candidates: dict[str, FunctionDef]) -> list[Any]:
+        """Recursively apply TCO call inlining to a statement list."""
+        result: list[Any] = []
+        for stmt in stmts:
+            result.extend(self._tco_inline_stmt(stmt, candidates))
+        return result
+
+    def _tco_inline_stmt(self, stmt: Any, candidates: dict[str, FunctionDef]) -> list[Any]:
+        """Try to inline TCO calls in a statement; return list of replacement stmts."""
+        if isinstance(stmt, TailContinue):
+            return self._tco_inline_tail_continue(stmt, candidates)
+        if isinstance(stmt, TailLoop):
+            return [replace(stmt, body=self._tco_inline_stmts(stmt.body, candidates))]
+        if isinstance(stmt, MatchExpr):
+            new_arms = []
+            for arm in stmt.arms:
+                new_body = self._tco_inline_stmts(arm.body, candidates)
+                new_arms.append(replace(arm, body=new_body))
+            return [replace(stmt, arms=new_arms)]
+        if isinstance(stmt, ExprStmt) and isinstance(stmt.expr, MatchExpr):
+            new_arms = []
+            for arm in stmt.expr.arms:
+                new_body = self._tco_inline_stmts(arm.body, candidates)
+                new_arms.append(replace(arm, body=new_body))
+            return [replace(stmt, expr=replace(stmt.expr, arms=new_arms))]
+        return [stmt]
+
+    def _tco_inline_tail_continue(
+        self, tc: TailContinue, candidates: dict[str, FunctionDef]
+    ) -> list[Any]:
+        """If any TailContinue assignment calls a TCO candidate, inline its loop."""
+        # Find one inlineable call (take only the first to keep things simple)
+        inline_idx = -1
+        for i, (_, expr) in enumerate(tc.assignments):
+            if (
+                isinstance(expr, CallExpr)
+                and isinstance(expr.func, IdentifierExpr)
+                and expr.func.name in candidates
+            ):
+                inline_idx = i
+                break
+        if inline_idx == -1:
+            return [tc]
+
+        param_name, call_expr = tc.assignments[inline_idx]
+        assert isinstance(call_expr, CallExpr) and isinstance(call_expr.func, IdentifierExpr)
+        fname = call_expr.func.name
+        fd = candidates[fname]
+        tl = fd.body[0]
+        assert isinstance(tl, TailLoop)
+        m = tl.body[0]
+        assert isinstance(m, MatchExpr)
+
+        # Identify base arm and recursive arm
+        base_arm = next(
+            arm
+            for arm in m.arms
+            if arm.body
+            and isinstance(arm.body[-1], ExprStmt)
+            and isinstance(arm.body[-1].expr, IdentifierExpr)
+        )
+        rec_arm = next(
+            arm for arm in m.arms if arm.body and isinstance(arm.body[-1], TailContinue)
+        )
+        rec_tc: TailContinue = rec_arm.body[-1]  # type: ignore[assignment]
+
+        # Map formal params to actual args
+        actual_args = call_expr.args
+        if len(actual_args) != len(tl.params):
+            return [tc]  # mismatch — bail
+        param_to_arg: dict[str, Any] = dict(zip(tl.params, actual_args))
+
+        # Classify params from the recursive TailContinue:
+        #   constant    — new value is IdentExpr(self): pass actual arg through unchanged
+        #   effect      — new value is CallExpr(_, [IdentExpr(self), ...]): in-place side effect;
+        #                  emit as ExprStmt, no fresh var needed, pass actual arg through
+        #   induction   — everything else: genuine value change, needs a fresh loop var
+        constant_params: set[str] = set()
+        effect_params: set[str] = set()   # inner_p → CallExpr whose first arg == IdentExpr(inner_p)
+        induction_params: list[str] = []
+        for inner_p, new_val in rec_tc.assignments:
+            if isinstance(new_val, IdentifierExpr) and new_val.name == inner_p:
+                constant_params.add(inner_p)
+            elif (
+                isinstance(new_val, CallExpr)
+                and new_val.args
+                and isinstance(new_val.args[0], IdentifierExpr)
+                and new_val.args[0].name == inner_p
+            ):
+                effect_params.add(inner_p)
+            else:
+                induction_params.append(inner_p)
+
+        # Create fresh variable names for pure induction params only
+        fresh: dict[str, str] = {}
+        for p in induction_params:
+            fresh[p] = f"_il_{p}"
+
+        # Build substitution: fresh var for induction, actual arg for constant/effect
+        def subst_expr(expr: Any) -> Any:
+            if isinstance(expr, IdentifierExpr):
+                if expr.name in fresh:
+                    return replace(expr, name=fresh[expr.name])
+                if expr.name in param_to_arg:
+                    return param_to_arg[expr.name]
+                return expr
+            if isinstance(expr, CallExpr):
+                return replace(
+                    expr,
+                    func=subst_expr(expr.func),
+                    args=[subst_expr(a) for a in expr.args],
+                )
+            if isinstance(expr, BinaryExpr):
+                return replace(
+                    expr,
+                    left=subst_expr(expr.left),
+                    right=subst_expr(expr.right),
+                )
+            if isinstance(expr, UnaryExpr):
+                return replace(expr, operand=subst_expr(expr.operand))
+            return expr
+
+        # Determine break condition from base arm pattern + match subject
+        base_pattern = base_arm.pattern
+        raw_cond = subst_expr(m.subject)
+        if isinstance(base_pattern, LiteralPattern) and base_pattern.value == "false":
+            # Base arm fires when subject is False → break when False
+            break_cond = UnaryExpr(op="!", operand=raw_cond, span=m.span)
+        else:
+            # Base arm fires when subject is True (or wildcard) → break when True
+            break_cond = raw_cond
+
+        # Build while-loop body
+        loop_body: list[Any] = []
+        # Any non-TailContinue stmts in the recursive arm first (rare)
+        for s in rec_arm.body[:-1]:
+            if isinstance(s, ExprStmt):
+                loop_body.append(replace(s, expr=subst_expr(s.expr)))
+            else:
+                loop_body.append(s)
+        # Effect params: emit their call as a bare ExprStmt (mutation; result discarded)
+        for inner_p, new_val in rec_tc.assignments:
+            if inner_p in effect_params:
+                loop_body.append(ExprStmt(expr=subst_expr(new_val), span=rec_tc.span))
+        # Induction params: update the fresh loop var
+        for inner_p, new_val in rec_tc.assignments:
+            if inner_p in induction_params:
+                loop_body.append(
+                    Assignment(
+                        target=fresh[inner_p],
+                        value=subst_expr(new_val),
+                        span=rec_tc.span,
+                    )
+                )
+
+        span = m.span
+
+        # VarDecl for each induction param (initialized to the actual arg)
+        prepend: list[Any] = []
+        for p in induction_params:
+            prepend.append(
+                VarDecl(name=fresh[p], type_expr=None, value=param_to_arg[p], span=span)
+            )
+
+        while_loop = WhileLoop(break_cond=break_cond, body=loop_body, span=span)
+
+        # Result of the inlined call is the "result param" named in the base arm's ExprStmt
+        result_param_name: str = base_arm.body[-1].expr.name  # type: ignore[union-attr]
+        if result_param_name in fresh:
+            result_expr: Any = IdentifierExpr(name=fresh[result_param_name], span=span)
+        else:
+            # constant or effect param — use the actual arg directly
+            result_expr = param_to_arg.get(
+                result_param_name, IdentifierExpr(name=result_param_name, span=span)
+            )
+
+        # Rebuild TailContinue with inlined result replacing the call
+        new_assignments = list(tc.assignments)
+        new_assignments[inline_idx] = (param_name, result_expr)
+        new_tc = replace(tc, assignments=new_assignments)
+
+        return [*prepend, while_loop, new_tc]
+
+    # ── Pass 3c: Memoization Candidate Identification ─────────────
 
     def _identify_memoization_candidates(self, module: Module) -> Module:
         """Identify pure functions eligible for memoization.

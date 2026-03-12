@@ -5,13 +5,17 @@ from __future__ import annotations
 import itertools
 
 from prove.ast_nodes import (
+    BinaryExpr,
     CallExpr,
     Expr,
     FieldExpr,
     IdentifierExpr,
     IntegerLit,
     LambdaExpr,
+    PathLit,
+    RawStringLit,
     StringLit,
+    TripleStringLit,
     TypeIdentifierExpr,
     ValidExpr,
 )
@@ -33,7 +37,6 @@ from prove.types import (
 
 
 class CallEmitterMixin:
-
     def _resolve_stdlib_c_name(
         self,
         sig: FunctionSignature,
@@ -46,6 +49,28 @@ class CallEmitterMixin:
         from prove.stdlib_loader import binary_c_name
 
         verb = verb_override or sig.verb
+
+        # Check if signature has multiple params - use param count + types as key
+        num_params = len(sig.param_types) if sig.param_types else 0
+        if num_params >= 3 and call_args and len(call_args) >= 3:
+            # For 3+ arg functions, build key from all param types
+            if num_params >= 3:
+                tpt = get_type_key(sig.param_types[2]) if sig.param_types[2] else None
+            else:
+                tpt = None
+            spt = (
+                get_type_key(sig.param_types[1]) if num_params >= 2 and sig.param_types[1] else None
+            )
+            fpt = (
+                get_type_key(sig.param_types[0]) if num_params >= 1 and sig.param_types[0] else None
+            )
+
+            if fpt and spt and tpt:
+                combined = f"{fpt}_{spt}_{tpt}"
+                result = binary_c_name(sig.module, verb, sig.name, combined)
+                if result:
+                    return result
+
         fpt = None
         if call_args:
             actual_fpt = self._infer_expr_type(call_args[0])
@@ -53,7 +78,20 @@ class CallEmitterMixin:
         if fpt is None:
             pts = sig.param_types
             fpt = get_type_key(pts[0]) if pts else None
-        return binary_c_name(sig.module, verb, sig.name, fpt)
+        result = binary_c_name(sig.module, verb, sig.name, fpt)
+        # When first-param lookup is ambiguous (e.g. array(Integer, Boolean/Integer)),
+        # fall back to a combined key using the second argument/param type.
+        if result is None and (call_args or sig.param_types):
+            spt = None
+            if call_args and len(call_args) >= 2:
+                actual_spt = self._infer_expr_type(call_args[1])
+                spt = get_type_key(actual_spt)
+            if spt is None and len(sig.param_types) >= 2:
+                spt = get_type_key(sig.param_types[1])
+            if spt is not None:
+                combined = f"{fpt}_{spt}" if fpt else spt
+                result = binary_c_name(sig.module, verb, sig.name, combined)
+        return result
 
     def _is_requires_narrowed(
         self,
@@ -144,7 +182,11 @@ class CallEmitterMixin:
             return inferred
         if not isinstance(expr, IdentifierExpr):
             return inferred
-        if not (isinstance(inferred, GenericInstance) and inferred.base_name in ("Option", "Result") and inferred.args):
+        if not (
+            isinstance(inferred, GenericInstance)
+            and inferred.base_name in ("Option", "Result")
+            and inferred.args
+        ):
             return inferred
         param_name = expr.name
         for req_expr in self._current_requires:
@@ -318,9 +360,7 @@ class CallEmitterMixin:
                     else:
                         default_val = "0"
                         cast = f"({param_ct.decl})(intptr_t)"
-                    result[i] = (
-                        f"({arg_str}.tag == 1 ? {cast}{arg_str}.value : {default_val})"
-                    )
+                    result[i] = f"({arg_str}.tag == 1 ? {cast}{arg_str}.value : {default_val})"
                     continue
             # Result<Value, Error> → Value: unwrap
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result" and arg_ty.args:
@@ -341,8 +381,14 @@ class CallEmitterMixin:
                         result[i] = f"prove_value_as_text({unwrapped})"
                         continue
                     if not param_ct.is_pointer and param_ct.decl in (
-                        "int64_t", "int32_t", "int16_t", "int8_t",
-                        "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+                        "int64_t",
+                        "int32_t",
+                        "int16_t",
+                        "int8_t",
+                        "uint64_t",
+                        "uint32_t",
+                        "uint16_t",
+                        "uint8_t",
                     ):
                         result[i] = f"prove_value_as_number({unwrapped})"
                         continue
@@ -355,11 +401,17 @@ class CallEmitterMixin:
                 # Result<T, E> → Value*: unwrap + wrap as Value
                 if param_ct.decl == "Prove_Value*":
                     if inner_ct.decl == "Prove_Table*":
-                        result[i] = f"prove_value_object(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        result[i] = (
+                            f"prove_value_object(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        )
                     elif inner_ct.decl == "Prove_String*":
-                        result[i] = f"prove_value_text(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        result[i] = (
+                            f"prove_value_text(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        )
                     elif inner_ct.decl == "Prove_List*":
-                        result[i] = f"prove_value_array(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        result[i] = (
+                            f"prove_value_array(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
+                        )
                     elif inner_ct.is_pointer:
                         result[i] = f"(Prove_Value*)prove_result_unwrap_ptr({arg_str})"
                     elif inner_ct.decl == "double":
@@ -401,15 +453,23 @@ class CallEmitterMixin:
                 elif arg_ct.decl == "bool":
                     result[i] = f"prove_value_bool({arg_str})"
                 elif not arg_ct.is_pointer and arg_ct.decl in (
-                    "int64_t", "int32_t", "int16_t", "int8_t",
-                    "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+                    "int64_t",
+                    "int32_t",
+                    "int16_t",
+                    "int8_t",
+                    "uint64_t",
+                    "uint32_t",
+                    "uint16_t",
+                    "uint8_t",
                 ):
                     result[i] = f"prove_value_number({arg_str})"
                 continue
         return result
 
     def _emit_table_to_record(
-        self, table_expr: str, record_type: RecordType,
+        self,
+        table_expr: str,
+        record_type: RecordType,
     ) -> str:
         """Emit code that maps a Prove_Table* to a record struct.
 
@@ -422,46 +482,42 @@ class CallEmitterMixin:
             opt_tmp = self._tmp()
             self._line(
                 f"Prove_Option {opt_tmp} = prove_table_get("
-                f"prove_string_from_cstr(\"{fname}\"), "
+                f'prove_string_from_cstr("{fname}"), '
                 f"{table_expr});"
             )
             self._line(
                 f"if ({opt_tmp}.tag == 0) prove_panic("
-                f"\"Tried to map non existent value "
+                f'"Tried to map non existent value '
                 f"'{fname}' to type '{record_type.name}'\");"
             )
             val_tmp = self._tmp()
-            self._line(
-                f"Prove_Value* {val_tmp} = "
-                f"(Prove_Value*){opt_tmp}.value;"
-            )
+            self._line(f"Prove_Value* {val_tmp} = (Prove_Value*){opt_tmp}.value;")
             # Resolve field to concrete C value
-            resolved = self._symbols.resolve_type(ftype.name) \
-                if isinstance(ftype, PrimitiveType) else ftype
+            resolved = (
+                self._symbols.resolve_type(ftype.name)
+                if isinstance(ftype, PrimitiveType)
+                else ftype
+            )
             if isinstance(resolved, RecordType):
                 # Nested record: extract inner table and recurse
                 tbl_tmp = self._tmp()
-                self._line(
-                    f"Prove_Table* {tbl_tmp} = "
-                    f"prove_value_as_object({val_tmp});"
-                )
+                self._line(f"Prove_Table* {tbl_tmp} = prove_value_as_object({val_tmp});")
                 inner = self._emit_table_to_record(
-                    tbl_tmp, resolved,
+                    tbl_tmp,
+                    resolved,
                 )
                 field_args.append(inner)
             else:
                 coerced = self._value_coercion_expr(
-                    val_tmp, ftype,
+                    val_tmp,
+                    ftype,
                 )
                 field_args.append(
                     coerced if coerced else val_tmp,
                 )
         result_tmp = self._tmp()
         ct = map_type(record_type)
-        self._line(
-            f"{ct.decl} {result_tmp} = "
-            f"{record_type.name}({', '.join(field_args)});"
-        )
+        self._line(f"{ct.decl} {result_tmp} = {record_type.name}({', '.join(field_args)});")
         return result_tmp
 
     def _emit_call(self, expr: CallExpr) -> str:
@@ -486,6 +542,20 @@ class CallEmitterMixin:
                 return self._emit_fused_filter_map(expr)
             if name == "__fused_map_map" and len(expr.args) == 3:
                 return self._emit_fused_map_map(expr)
+            if name == "__fused_filter_filter" and len(expr.args) == 3:
+                return self._emit_fused_filter_filter(expr)
+            if name == "__fused_reduce_map" and len(expr.args) == 4:
+                return self._emit_fused_reduce_map(expr)
+            if name == "__fused_reduce_filter" and len(expr.args) == 4:
+                return self._emit_fused_reduce_filter(expr)
+            if name == "__fused_each_map" and len(expr.args) == 3:
+                return self._emit_fused_each_map(expr)
+            if name == "__fused_each_filter" and len(expr.args) == 3:
+                return self._emit_fused_each_filter(expr)
+            if name == "__fused_multi_reduce":
+                return self._emit_fused_multi_reduce(expr)
+            if name == "__fused_multi_reduce_ref":
+                return self._emit_fused_multi_reduce_ref(expr)
 
         args = [self._emit_expr(a) for a in expr.args]
 
@@ -555,8 +625,7 @@ class CallEmitterMixin:
 
                 actual_types = [self._infer_expr_type(a) for a in expr.args]
                 narrowed_types = [
-                    self._narrow_for_requires(a, t)
-                    for a, t in zip(expr.args, actual_types)
+                    self._narrow_for_requires(a, t) for a, t in zip(expr.args, actual_types)
                 ]
                 if sig is None or (
                     sig.param_types
@@ -601,6 +670,11 @@ class CallEmitterMixin:
                                 variant_name, vals_name = self._store_rows[rn]
                                 return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
                     call_str = f"{c_name}({', '.join(args)})"
+                    # In-place mutating functions return void; wrap as comma
+                    # expression so the array pointer stays as the result value.
+                    if "set_mut" in c_name and args:
+                        call_str = f"({call_str}, {args[0]})"
+                        return call_str
                     call_str = self._maybe_unwrap_option(
                         call_str,
                         sig,
@@ -619,8 +693,7 @@ class CallEmitterMixin:
             if sig is None:
                 if expr.args:
                     actual = [
-                        self._narrow_for_requires(a, self._infer_expr_type(a))
-                        for a in expr.args
+                        self._narrow_for_requires(a, self._infer_expr_type(a)) for a in expr.args
                     ]
                     sig = self._symbols.resolve_function_by_types(None, name, actual)
                 if sig is None:
@@ -698,19 +771,26 @@ class CallEmitterMixin:
                     )
                     if is_table_value:
                         return self._emit_table_to_record(
-                            args[0], resolved,
+                            args[0],
+                            resolved,
                         )
                 # Coerce args to match record field types
                 field_types = list(resolved.fields.values())
                 fake_sig = type(
-                    "Sig", (), {"param_types": field_types},
+                    "Sig",
+                    (),
+                    {"param_types": field_types},
                 )()
                 args = self._coerce_call_args(
-                    args, expr.args, fake_sig,
+                    args,
+                    expr.args,
+                    fake_sig,
                 )
                 if len(args) < len(resolved.fields):
                     for fname, ftype in itertools.islice(
-                        resolved.fields.items(), len(args), None,
+                        resolved.fields.items(),
+                        len(args),
+                        None,
                     ):
                         args.append(self._default_for_type(ftype))
             elif len(args) < len(getattr(resolved, "fields", {})):
@@ -730,10 +810,7 @@ class CallEmitterMixin:
             # Type-aware resolution for overloaded functions
             sig = None
             if expr.args:
-                actual = [
-                    self._narrow_for_requires(a, self._infer_expr_type(a))
-                    for a in expr.args
-                ]
+                actual = [self._narrow_for_requires(a, self._infer_expr_type(a)) for a in expr.args]
                 sig = self._symbols.resolve_function_by_types(None, name, actual)
             if sig is None:
                 sig = self._symbols.resolve_function(None, name, n_args)
@@ -783,6 +860,24 @@ class CallEmitterMixin:
 
     # ── Higher-order function emission ─────────────────────────
 
+    @staticmethod
+    def _hof_box(expr: str, ct: CType) -> str:
+        """Box a typed value into void* for HOF callbacks."""
+        if ct.is_pointer:
+            return f"(void*){expr}"
+        if ct.decl in ("double", "float"):
+            return f"_prove_f64_box({expr})"
+        return f"(void*)(intptr_t){expr}"
+
+    @staticmethod
+    def _hof_unbox(expr: str, ct: CType) -> str:
+        """Unbox a void* into a typed value for HOF callbacks."""
+        if ct.is_pointer:
+            return f"({ct.decl}){expr}"
+        if ct.decl in ("double", "float"):
+            return f"_prove_f64_unbox({expr})"
+        return f"({ct.decl})(intptr_t){expr}"
+
     def _emit_hof_map(self, expr: CallExpr) -> str:
         """Emit prove_list_map(list, fn, result_elem_size)."""
         self._needed_headers.add("prove_hof.h")
@@ -816,8 +911,7 @@ class CallEmitterMixin:
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
         self._needed_headers.add("prove_list.h")
-        list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
@@ -830,14 +924,8 @@ class CallEmitterMixin:
             idx = self._tmp()
             self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
             self._indent += 1
-            if elem_ct.is_pointer:
-                self._line(
-                    f"{elem_ct.decl} {param} = ({elem_ct.decl})prove_list_get({list_arg}, {idx});"
-                )
-            else:
-                self._line(
-                    f"{elem_ct.decl} {param} = ({elem_ct.decl})(intptr_t)prove_list_get({list_arg}, {idx});"
-                )
+            elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
             # Retain captured pointer vars before the call — the callee
@@ -867,8 +955,84 @@ class CallEmitterMixin:
         fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_list_filter({list_arg}, {fn_name})"
 
+    @staticmethod
+    def _collect_string_literals(expr: Expr) -> set[str]:
+        """Collect all string literal values from an expression AST."""
+        result: set[str] = set()
+        stack: list[Expr] = [expr]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, (StringLit, TripleStringLit, RawStringLit, PathLit)):
+                result.add(node.value)
+            elif isinstance(node, CallExpr):
+                stack.extend(node.args)
+                stack.append(node.func)
+            elif isinstance(node, BinaryExpr):
+                stack.append(node.left)
+                stack.append(node.right)
+            elif isinstance(node, FieldExpr):
+                stack.append(node.obj)
+            elif isinstance(node, LambdaExpr):
+                stack.append(node.body)
+        return result
+
+    def _hoist_string_literals(self, literals: set[str]) -> None:
+        """Emit hoisted Prove_String* variables for string literals before a loop."""
+        for lit in sorted(literals):
+            if lit not in self._string_literal_cache:
+                escaped = self._escape_c_string(lit)
+                tmp = self._tmp()
+                self._line(f'Prove_String *{tmp} = prove_string_from_cstr("{escaped}");')
+                self._string_literal_cache[escaped] = tmp
+
     def _emit_hof_reduce(self, expr: CallExpr) -> str:
-        """Emit prove_list_reduce(list, &accum, fn)."""
+        """Emit reduce as inline for-loop when callback is a lambda."""
+        callback = expr.args[2]
+
+        # Inline path: lambda callback → direct for-loop (no boxing/indirection)
+        if isinstance(callback, LambdaExpr) and len(callback.params) == 2:
+            self._needed_headers.add("prove_list.h")
+            list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+            elem_type = INTEGER
+            if isinstance(list_type, ListType):
+                elem_type = list_type.element
+            elem_ct = map_type(elem_type)
+
+            accum_type = self._infer_expr_type(expr.args[1])
+            accum_ct = map_type(accum_type)
+
+            accum_tmp = self._tmp()
+            accum_val = self._emit_expr(expr.args[1])
+            self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+            # Hoist string literals before the loop
+            self._hoist_string_literals(self._collect_string_literals(callback.body))
+
+            idx = self._tmp()
+            self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+            self._indent += 1
+
+            # Direct array access — compiler verified bounds
+            elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+
+            saved = dict(self._locals)
+            saved_hof = self._in_hof_inline
+            self._locals[callback.params[0]] = accum_type
+            self._locals[callback.params[1]] = elem_type
+            self._in_hof_inline = True
+            self._line(f"{accum_ct.decl} {callback.params[0]} = {accum_tmp};")
+            self._line(f"{elem_ct.decl} {callback.params[1]} = {elem_get};")
+            body_code = self._emit_expr(callback.body)
+            self._in_hof_inline = saved_hof
+            self._locals = saved
+            self._line(f"{accum_tmp} = {body_code};")
+
+            self._indent -= 1
+            self._line("}")
+            return accum_tmp
+
+        # Fallback: function reference → use prove_list_reduce with callback
         self._needed_headers.add("prove_hof.h")
         list_arg = self._emit_expr(expr.args[0])
         list_type = self._infer_expr_type(expr.args[0])
@@ -880,23 +1044,20 @@ class CallEmitterMixin:
         accum_type = self._infer_expr_type(expr.args[1])
         accum_ct = map_type(accum_type)
 
-        # Emit initial accumulator into a temp
         accum_tmp = self._tmp()
         accum_val = self._emit_expr(expr.args[1])
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
         fn_name = self._emit_hof_lambda(
-            expr.args[2],
+            callback,
             elem_type,
             "reduce",
             accum_type=accum_type,
         )
-        init_cast = f"(void*){accum_tmp}" if accum_ct.is_pointer else f"(void*)(intptr_t){accum_tmp}"
+        init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()
         self._line(f"void *{result_tmp} = prove_list_reduce({list_arg}, {init_cast}, {fn_name});")
-        if accum_ct.is_pointer:
-            return f"({accum_ct.decl}){result_tmp}"
-        return f"({accum_ct.decl})(intptr_t){result_tmp}"
+        return self._hof_unbox(result_tmp, accum_ct)
 
     def _emit_verb_lambda(self, expr: LambdaExpr, func_type: FunctionType) -> str:
         """Hoist a lambda for a Verb<...> parameter with correct C signature."""
@@ -940,10 +1101,9 @@ class CallEmitterMixin:
             wrapper = f"_lambda_{self._tmp_counter}"
             self._tmp_counter += 1
             elem_ct = map_type(elem_type)
-            unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
             lam = (
                 f"static bool {wrapper}(void *_arg) {{\n"
-                f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
+                f"    {elem_ct.decl} _x = {self._hof_unbox('_arg', elem_ct)};\n"
                 f"    return {fn}(_x);\n"
                 f"}}\n"
             )
@@ -976,19 +1136,19 @@ class CallEmitterMixin:
                     wrapper = f"_lambda_{self._tmp_counter}"
                     self._tmp_counter += 1
                     ret_ct = map_type(ret_type) if ret_type else elem_ct
-                    unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+                    elem_unbox = self._hof_unbox("_arg", elem_ct)
                     if kind == "map":
-                        wrap = "(void*)" if ret_ct.is_pointer else "(void*)(intptr_t)"
+                        ret_box = self._hof_box(f"{c_fn}(_x)", ret_ct)
                         lam = (
                             f"static void *{wrapper}(void *_arg) {{\n"
-                            f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
-                            f"    return {wrap}{c_fn}(_x);\n"
+                            f"    {elem_ct.decl} _x = {elem_unbox};\n"
+                            f"    return {ret_box};\n"
                             f"}}\n"
                         )
                     elif kind == "filter":
                         lam = (
                             f"static bool {wrapper}(void *_arg) {{\n"
-                            f"    {elem_ct.decl} _x = {unwrap}_arg;\n"
+                            f"    {elem_ct.decl} _x = {elem_unbox};\n"
                             f"    return {c_fn}(_x);\n"
                             f"}}\n"
                         )
@@ -1002,7 +1162,8 @@ class CallEmitterMixin:
         self._tmp_counter += 1
         elem_ct = map_type(elem_type)
 
-        elem_unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        elem_unbox_arg = self._hof_unbox("_arg", elem_ct)
+        elem_unbox_elem = self._hof_unbox("_elem", elem_ct)
 
         if kind == "map":
             # void *fn(void *_arg)
@@ -1014,11 +1175,11 @@ class CallEmitterMixin:
             body_type = self._infer_expr_type(expr.body)
             self._locals = saved_locals
             body_ct = map_type(body_type)
-            wrap = "(void*)" if body_ct.is_pointer else "(void*)(intptr_t)"
+            body_box = self._hof_box(body_code, body_ct)
             lam = (
                 f"static void *{name}(void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
-                f"    return {wrap}({body_code});\n"
+                f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                f"    return {body_box};\n"
                 f"}}\n"
             )
         elif kind == "filter":
@@ -1030,7 +1191,7 @@ class CallEmitterMixin:
             self._locals = saved_locals
             lam = (
                 f"static bool {name}(void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
+                f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"    return {body_code};\n"
                 f"}}\n"
             )
@@ -1039,18 +1200,18 @@ class CallEmitterMixin:
             accum_param = expr.params[0] if len(expr.params) > 0 else "_acc"
             elem_param = expr.params[1] if len(expr.params) > 1 else "_el"
             accum_ct = map_type(accum_type) if accum_type else elem_ct
-            accum_unwrap = f"({accum_ct.decl})" if accum_ct.is_pointer else f"({accum_ct.decl})(intptr_t)"
-            accum_wrap = "(void*)" if accum_ct.is_pointer else "(void*)(intptr_t)"
+            accum_unbox = self._hof_unbox("_accum", accum_ct)
             saved_locals = dict(self._locals)
             self._locals[accum_param] = accum_type if accum_type else elem_type
             self._locals[elem_param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
+            ret_box = self._hof_box(body_code, accum_ct)
             lam = (
                 f"static void *{name}(void *_accum, void *_elem) {{\n"
-                f"    {accum_ct.decl} {accum_param} = {accum_unwrap}_accum;\n"
-                f"    {elem_ct.decl} {elem_param} = {elem_unwrap}_elem;\n"
-                f"    return {accum_wrap}({body_code});\n"
+                f"    {accum_ct.decl} {accum_param} = {accum_unbox};\n"
+                f"    {elem_ct.decl} {elem_param} = {elem_unbox_elem};\n"
+                f"    return {ret_box};\n"
                 f"}}\n"
             )
         elif kind == "each":
@@ -1062,7 +1223,7 @@ class CallEmitterMixin:
             self._locals = saved_locals
             lam = (
                 f"static void {name}(void *_arg) {{\n"
-                f"    {elem_ct.decl} {param} = {elem_unwrap}_arg;\n"
+                f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"    {body_code};\n"
                 f"}}\n"
             )
@@ -1081,8 +1242,7 @@ class CallEmitterMixin:
         Fuses filter+map into one loop: iterate, test predicate, if passes apply func.
         """
         self._needed_headers.add("prove_list.h")
-        list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
@@ -1093,12 +1253,12 @@ class CallEmitterMixin:
         idx = self._tmp()
         elem_var = self._tmp()
 
-        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
         unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
 
         # Emit predicate test
         pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
@@ -1123,8 +1283,7 @@ class CallEmitterMixin:
         Fuses map+filter into one loop: iterate, apply func, test predicate on result.
         """
         self._needed_headers.add("prove_list.h")
-        list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
@@ -1136,12 +1295,12 @@ class CallEmitterMixin:
         elem_var = self._tmp()
         mapped_var = self._tmp()
 
-        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
         unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
 
         # Apply map function then test predicate
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
@@ -1168,8 +1327,7 @@ class CallEmitterMixin:
         Fuses two maps into one loop: iterate, apply f then g.
         """
         self._needed_headers.add("prove_list.h")
-        list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
@@ -1180,12 +1338,12 @@ class CallEmitterMixin:
         idx = self._tmp()
         elem_var = self._tmp()
 
-        self._line(f"ProveList *{result_tmp} = prove_list_new();")
+        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
         unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}prove_list_get({list_arg}, {idx});")
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
 
         # Apply f then g
         f_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
@@ -1201,37 +1359,395 @@ class CallEmitterMixin:
         self._line("}")
         return result_tmp
 
+    def _emit_fused_filter_filter(self, expr: CallExpr) -> str:
+        """Emit filter(filter(list, p1), p2) as a single-pass loop.
+
+        Args: [list, p1, p2]
+        Fuses two filters into one loop: keep elements passing both predicates.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        result_tmp = self._tmp()
+        idx = self._tmp()
+        elem_var = self._tmp()
+
+        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+
+        p1_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        p2_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
+        self._line(f"if (({p1_code}) && ({p2_code})) {{")
+        self._indent += 1
+
+        wrap = f"(void*){elem_var}" if elem_ct.is_pointer else f"(void*)(intptr_t){elem_var}"
+        self._line(f"prove_list_push({result_tmp}, {wrap});")
+
+        self._indent -= 1
+        self._line("}")
+        self._indent -= 1
+        self._line("}")
+        return result_tmp
+
+    def _emit_fused_reduce_map(self, expr: CallExpr) -> str:
+        """Emit reduce(map(list, f), init, g) as a single-pass loop.
+
+        Args: [list, f, init, g]
+        Fuses map+reduce into one loop: apply f to each element, accumulate with g.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        accum_type = self._infer_expr_type(expr.args[2])
+        accum_ct = map_type(accum_type)
+
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[2])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        # Hoist string literals from both lambdas before the loop
+        lits: set[str] = set()
+        for arg in (expr.args[1], expr.args[3]):
+            if isinstance(arg, LambdaExpr):
+                lits |= self._collect_string_literals(arg.body)
+        self._hoist_string_literals(lits)
+
+        idx = self._tmp()
+        elem_var = self._tmp()
+        mapped_var = self._tmp()
+
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        saved_hof = self._in_hof_inline
+        self._in_hof_inline = True
+
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+
+        map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+
+        # Accumulate: accum = g(accum, mapped)
+        g_expr = expr.args[3]
+        if isinstance(g_expr, LambdaExpr) and len(g_expr.params) == 2:
+            saved = dict(self._locals)
+            self._locals[g_expr.params[0]] = accum_type
+            self._locals[g_expr.params[1]] = elem_type
+            self._line(f"{accum_ct.decl} {g_expr.params[0]} = {accum_tmp};")
+            mapped_cast = self._hof_unbox(mapped_var, elem_ct)
+            self._line(f"{elem_ct.decl} {g_expr.params[1]} = {mapped_cast};")
+            body_code = self._emit_expr(g_expr.body)
+            self._locals = saved
+            self._line(f"{accum_tmp} = {body_code};")
+        else:
+            g_code = self._emit_expr(g_expr)
+            acc_cast = self._hof_box(accum_tmp, accum_ct)
+            result_void = self._tmp()
+            self._line(
+                f"void *{result_void} = prove_list_reduce_step({g_code}, {acc_cast}, {mapped_var});"
+            )
+            self._line(f"{accum_tmp} = {self._hof_unbox(result_void, accum_ct)};")
+
+        self._in_hof_inline = saved_hof
+        self._indent -= 1
+        self._line("}")
+        return accum_tmp
+
+    def _emit_fused_reduce_filter(self, expr: CallExpr) -> str:
+        """Emit reduce(filter(list, p), init, g) as a single-pass loop.
+
+        Args: [list, p, init, g]
+        Fuses filter+reduce into one loop: test predicate, if passes accumulate with g.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        accum_type = self._infer_expr_type(expr.args[2])
+        accum_ct = map_type(accum_type)
+
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[2])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        # Hoist string literals from both lambdas before the loop
+        lits: set[str] = set()
+        for arg in (expr.args[1], expr.args[3]):
+            if isinstance(arg, LambdaExpr):
+                lits |= self._collect_string_literals(arg.body)
+        self._hoist_string_literals(lits)
+
+        idx = self._tmp()
+        elem_var = self._tmp()
+
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        saved_hof = self._in_hof_inline
+        self._in_hof_inline = True
+
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+
+        pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"if ({pred_code}) {{")
+        self._indent += 1
+
+        g_expr = expr.args[3]
+        if isinstance(g_expr, LambdaExpr) and len(g_expr.params) == 2:
+            saved = dict(self._locals)
+            self._locals[g_expr.params[0]] = accum_type
+            self._locals[g_expr.params[1]] = elem_type
+            self._line(f"{accum_ct.decl} {g_expr.params[0]} = {accum_tmp};")
+            self._line(f"{elem_ct.decl} {g_expr.params[1]} = {elem_var};")
+            body_code = self._emit_expr(g_expr.body)
+            self._locals = saved
+            self._line(f"{accum_tmp} = {body_code};")
+        else:
+            g_code = self._emit_expr(g_expr)
+            acc_cast = self._hof_box(accum_tmp, accum_ct)
+            elem_cast = self._hof_box(elem_var, elem_ct)
+            result_void = self._tmp()
+            self._line(
+                f"void *{result_void} = prove_list_reduce_step({g_code}, {acc_cast}, {elem_cast});"
+            )
+            self._line(f"{accum_tmp} = {self._hof_unbox(result_void, accum_ct)};")
+
+        self._in_hof_inline = saved_hof
+        self._indent -= 1
+        self._line("}")
+        self._indent -= 1
+        self._line("}")
+        return accum_tmp
+
+    def _emit_fused_multi_reduce(self, expr: CallExpr) -> str:
+        """Emit multiple reduce() calls on the same list as one fused loop.
+
+        Args layout: [list, StringLit(name1), init1, lambda1, StringLit(name2), init2, lambda2, ...]
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        # Parse triples: (name, init, lambda)
+        triples: list[tuple[str, Expr, LambdaExpr]] = []
+        i = 1
+        while i + 2 < len(expr.args):
+            name_lit = expr.args[i]
+            init_expr = expr.args[i + 1]
+            lam_expr = expr.args[i + 2]
+            name = name_lit.value if isinstance(name_lit, StringLit) else f"_fused_{i}"
+            if isinstance(lam_expr, LambdaExpr):
+                triples.append((name, init_expr, lam_expr))
+            i += 3
+
+        # Emit typed accumulators
+        accum_tmps: list[str] = []
+        accum_cts = []
+        for _name, init_expr, _lam in triples:
+            accum_type = self._infer_expr_type(init_expr)
+            accum_ct = map_type(accum_type)
+            accum_cts.append(accum_ct)
+            accum_tmp = self._tmp()
+            accum_tmps.append(accum_tmp)
+            accum_val = self._emit_expr(init_expr)
+            self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        # Hoist string literals from all lambda bodies
+        all_lits: set[str] = set()
+        for _name, _init, lam in triples:
+            all_lits |= self._collect_string_literals(lam.body)
+        self._hoist_string_literals(all_lits)
+
+        # Single fused loop
+        idx = self._tmp()
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        saved_hof = self._in_hof_inline
+        self._in_hof_inline = True
+
+        # Shared element variable
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        elem_var = self._tmp()
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+
+        # Inline each lambda body in its own block to isolate param names
+        for k, (_name, _init, lam) in enumerate(triples):
+            accum_type = self._infer_expr_type(_init)
+            self._line("{")
+            self._indent += 1
+            saved = dict(self._locals)
+            self._locals[lam.params[0]] = accum_type
+            self._locals[lam.params[1]] = elem_type
+            self._line(f"{accum_cts[k].decl} {lam.params[0]} = {accum_tmps[k]};")
+            self._line(f"{elem_ct.decl} {lam.params[1]} = {elem_var};")
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved
+            self._line(f"{accum_tmps[k]} = {body_code};")
+            self._indent -= 1
+            self._line("}")
+
+        self._in_hof_inline = saved_hof
+        self._indent -= 1
+        self._line("}")
+
+        # Store results for __fused_multi_reduce_ref lookups
+        self._fused_reduce_results = accum_tmps
+
+        # Return the first accumulator (for the first VarDecl)
+        return accum_tmps[0]
+
+    def _emit_fused_multi_reduce_ref(self, expr: CallExpr) -> str:
+        """Return a previously-computed accumulator from a fused multi-reduce."""
+        if expr.args and isinstance(expr.args[0], IntegerLit):
+            idx = expr.args[0].value
+            if idx < len(self._fused_reduce_results):
+                return self._fused_reduce_results[idx]
+        return "0 /* fused reduce ref error */"
+
+    def _emit_fused_each_map(self, expr: CallExpr) -> str:
+        """Emit each(map(list, f), g) as a single-pass loop.
+
+        Args: [list, f, g]
+        Fuses map+each into one loop: apply f then pass result to side-effect g.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        idx = self._tmp()
+        elem_var = self._tmp()
+        mapped_var = self._tmp()
+
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+
+        map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+
+        consumer_code = self._emit_fused_lambda_inline(expr.args[2], mapped_var, elem_type)
+        self._line(f"(void){consumer_code};")
+
+        self._indent -= 1
+        self._line("}")
+        return "((void*)0)"
+
+    def _emit_fused_each_filter(self, expr: CallExpr) -> str:
+        """Emit each(filter(list, p), g) as a single-pass loop.
+
+        Args: [list, p, g]
+        Fuses filter+each into one loop: test predicate, if passes run side-effect g.
+        """
+        self._needed_headers.add("prove_list.h")
+        list_arg, list_type = self._cache_list_arg(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(list_type, ListType):
+            elem_type = list_type.element
+        elem_ct = map_type(elem_type)
+
+        idx = self._tmp()
+        elem_var = self._tmp()
+
+        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+        self._indent += 1
+
+        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
+        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+
+        pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        self._line(f"if ({pred_code}) {{")
+        self._indent += 1
+
+        consumer_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
+        self._line(f"(void){consumer_code};")
+
+        self._indent -= 1
+        self._line("}")
+        self._indent -= 1
+        self._line("}")
+        return "((void*)0)"
+
+    def _cache_list_arg(self, expr: Expr) -> tuple[str, "Type"]:
+        """Emit a list expression into a temp variable before loop use.
+
+        Prevents re-evaluation of function calls (e.g. range()) on every loop
+        iteration when list_arg is referenced in both the loop condition and body.
+        """
+        list_type = self._infer_expr_type(expr)
+        list_code = self._emit_expr(expr)
+        tmp = self._tmp()
+        self._line(f"Prove_List *{tmp} = {list_code};")
+        return tmp, list_type
+
     def _emit_fused_lambda_inline(self, expr: Expr, arg_var: str, elem_type: Type) -> str:
         """Inline a lambda or function reference for fused iteration."""
         if isinstance(expr, LambdaExpr) and expr.params:
-            # Inline the lambda body with the parameter bound to arg_var
-            saved = dict(self._locals)
-            self._locals[expr.params[0]] = elem_type
-            # Temporarily alias the parameter name
             old_param = expr.params[0]
-            # Emit body with parameter replaced by arg_var
             body = expr.body
+            # Identity: lambda just returns its param — return the arg directly
             if isinstance(body, IdentifierExpr) and body.name == old_param:
-                self._locals = saved
                 return arg_var
-            # For other bodies, declare the param as a local alias
+            # General case: wrap in a C block to isolate the param declaration.
+            # This prevents redefinition errors when multiple lambdas share the
+            # same param name (e.g. both use |n|) in the same enclosing scope.
+            saved = dict(self._locals)
+            self._locals[old_param] = elem_type
             elem_ct = map_type(elem_type)
+            result_tmp = self._tmp()
+            self._line(f"int64_t {result_tmp} = 0;")
+            self._line("{")
+            self._indent += 1
             self._line(f"{elem_ct.decl} {old_param} = {arg_var};")
-            result = self._emit_expr(body)
+            body_code = self._emit_expr(body)
+            self._line(f"{result_tmp} = (int64_t)(intptr_t)({body_code});")
+            self._indent -= 1
+            self._line("}")
             self._locals = saved
-            return result
+            return result_tmp
         if isinstance(expr, IdentifierExpr):
             # Named function reference
             fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
             if fn_sig:
-                c_name = mangle_name(fn_sig.verb, expr.name, list(fn_sig.param_types) if fn_sig.param_types else None)
+                c_name = mangle_name(
+                    fn_sig.verb, expr.name, list(fn_sig.param_types) if fn_sig.param_types else None
+                )
                 return f"{c_name}({arg_var})"
         # Fallback: emit as regular call
         return f"(({self._emit_expr(expr)})((void*)(intptr_t){arg_var}))"
 
-    def _emit_store_row_construction(
-        self, type_name: str, expr: CallExpr, args: list[str]
-    ) -> str:
+    def _emit_store_row_construction(self, type_name: str, expr: CallExpr, args: list[str]) -> str:
         """Emit store-backed row construction: Color(Red, "red", 0xFF0000).
 
         Emits variant name + column values array as C locals.
@@ -1271,9 +1787,7 @@ class CallEmitterMixin:
                 self._line(f'{row_tmp}_vals[{i}] = prove_string_from_cstr("{escaped}");')
             elif isinstance(arg_expr, IntegerLit):
                 # Convert integer to string for storage
-                self._line(
-                    f"{row_tmp}_vals[{i}] = prove_string_from_int({arg_expr.value}L);"
-                )
+                self._line(f"{row_tmp}_vals[{i}] = prove_string_from_int({arg_expr.value}L);")
             else:
                 # Generic: emit as-is, convert to string if needed
                 c_val = args[i + 1]

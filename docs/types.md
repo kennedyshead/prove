@@ -14,6 +14,7 @@ Certain types are built into the language and available without explicit import:
 |----------|-------|-------------|
 | **Primitives** | `Integer`, `Decimal`, `Float`, `Boolean`, `String`, `Character`, `Byte`, `Unit` | Core types with optional modifiers |
 | **Containers** | `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>` | Generic collection types |
+| **Arrays** | `Array<T>` | Fixed-size contiguous array; requires import from `Array` module |
 | **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
 
 These are implicitly available in every module. No import statement needed.
@@ -77,6 +78,18 @@ Beyond representation, modifiers also express storage concerns like mutability a
 ```prove
 counter as Integer:[Mutable] = 0
 counter = counter + 1
+```
+
+On `Array<T>`, `Mutable` switches from copy-on-write to in-place mutation. This is the primary use case — allocating a fixed-size working buffer that is modified in a loop without heap allocation per update:
+
+```prove
+Array creates array
+Array reads get
+Array transforms set
+
+sieve as Array<Boolean>:[Mutable] = array(1000001, false)
+sieve = set(sieve, 0, true)   // in-place, no copy
+sieve = set(sieve, 1, true)
 ```
 
 **`Own`** — linear ownership. The value is consumed on use. See [Ownership Lite](#ownership-lite-linear-types-with-compiler-inferred-borrows) below.

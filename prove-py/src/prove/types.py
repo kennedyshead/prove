@@ -76,6 +76,12 @@ class ListType:
 
 
 @dataclass(frozen=True)
+class ArrayType:
+    element: Type = None  # type: ignore[assignment]
+    modifiers: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ErrorType:
     """Poison type that suppresses cascading errors."""
 
@@ -111,6 +117,7 @@ Type = (
     | TypeVariable
     | FunctionType
     | ListType
+    | ArrayType
     | ErrorType
     | VariantInfo
     | BorrowType
@@ -212,6 +219,11 @@ def type_name(ty: Type) -> str:
         return f"({params}) -> {ret}"
     if isinstance(ty, ListType):
         return f"List<{type_name(ty.element)}>"
+    if isinstance(ty, ArrayType):
+        name = f"Array<{type_name(ty.element)}>"
+        if ty.modifiers:
+            return f"{name}:[{', '.join(ty.modifiers)}]"
+        return name
     if isinstance(ty, ErrorType):
         return "<error>"
     if isinstance(ty, VariantInfo):
@@ -268,6 +280,8 @@ def is_json_serializable(ty: Type) -> bool:
         return False
     if isinstance(ty, ListType):
         return is_json_serializable(ty.element)
+    if isinstance(ty, ArrayType):
+        return False
     if isinstance(ty, RefinementType):
         return ty.base is not None and is_json_serializable(ty.base)
     return False
@@ -326,9 +340,8 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if STORE_BACKED_TYPES:
         exp_name = getattr(expected, "name", "")
         act_name = getattr(actual, "name", "")
-        if (
-            (exp_name == "StoreTable" and act_name in STORE_BACKED_TYPES)
-            or (act_name == "StoreTable" and exp_name in STORE_BACKED_TYPES)
+        if (exp_name == "StoreTable" and act_name in STORE_BACKED_TYPES) or (
+            act_name == "StoreTable" and exp_name in STORE_BACKED_TYPES
         ):
             return True
     if type(expected) is not type(actual):
@@ -358,6 +371,8 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return False
         return types_compatible(expected.return_type, actual.return_type)
     if isinstance(expected, ListType) and isinstance(actual, ListType):
+        return types_compatible(expected.element, actual.element)
+    if isinstance(expected, ArrayType) and isinstance(actual, ArrayType):
         return types_compatible(expected.element, actual.element)
     return expected == actual
 
@@ -390,6 +405,9 @@ def resolve_type_vars(
         if isinstance(sig, ListType) and isinstance(actual, ListType):
             _unify(sig.element, actual.element)
             return
+        if isinstance(sig, ArrayType) and isinstance(actual, ArrayType):
+            _unify(sig.element, actual.element)
+            return
 
     for sp, aa in zip(sig_params, actual_args):
         _unify(sp, aa)
@@ -405,6 +423,8 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
         return GenericInstance(ty.base_name, new_args)
     if isinstance(ty, ListType):
         return ListType(substitute_type_vars(ty.element, bindings))
+    if isinstance(ty, ArrayType):
+        return ArrayType(substitute_type_vars(ty.element, bindings))
     return ty
 
 
@@ -415,6 +435,8 @@ def has_own_modifier(ty: Type) -> bool:
     """Check if a type has the Own (linear) ownership modifier."""
     if isinstance(ty, PrimitiveType):
         return "Own" in ty.modifiers
+    if isinstance(ty, ArrayType):
+        return "Own" in ty.modifiers
     return False
 
 
@@ -422,12 +444,19 @@ def has_mutable_modifier(ty: Type) -> bool:
     """Check if a type has the Mutable modifier."""
     if isinstance(ty, PrimitiveType):
         return "Mutable" in ty.modifiers
+    if isinstance(ty, ArrayType):
+        return "Mutable" in ty.modifiers
     return False
 
 
 def get_ownership_kind(ty: Type) -> str:
     """Return the ownership kind: 'owned', 'mutable', or 'shared'."""
     if isinstance(ty, PrimitiveType):
+        if "Own" in ty.modifiers:
+            return "owned"
+        if "Mutable" in ty.modifiers:
+            return "mutable"
+    if isinstance(ty, ArrayType):
         if "Own" in ty.modifiers:
             return "owned"
         if "Mutable" in ty.modifiers:

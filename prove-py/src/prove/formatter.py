@@ -189,17 +189,28 @@ class ProveFormatter:
                 lines.append(f"/// {doc_line}" if doc_line else "///")
 
         # Signature: verb name(params) ReturnType[!]
-        params = ", ".join(
+        param_strs = [
             f"{p.name} {self._format_type_expr(p.type_expr)}"
             + (f" where {self._format_expr(p.constraint)}" if p.constraint else "")
             for p in fd.params
-        )
+        ]
         verb = fd.verb
-        sig = f"{verb} {fd.name}({params})"
+        params_inline = ", ".join(param_strs)
+        sig = f"{verb} {fd.name}({params_inline})"
         if fd.return_type and fd.verb != "validates":
             sig += f" {self._format_type_expr(fd.return_type)}"
         if fd.can_fail:
             sig += "!"
+
+        if len(sig) > self.MAX_LINE_LENGTH and len(param_strs) > 1:
+            # Group params: one per line, 4-space indent
+            grouped = ",\n    ".join(param_strs)
+            sig = f"{verb} {fd.name}(\n    {grouped}\n)"
+            if fd.return_type and fd.verb != "validates":
+                sig += f" {self._format_type_expr(fd.return_type)}"
+            if fd.can_fail:
+                sig += "!"
+
         lines.append(sig)
 
         # Annotations (2-space indent relative to signature)
@@ -798,7 +809,11 @@ class ProveFormatter:
             return te.name
         if isinstance(te, GenericType):
             args = ", ".join(self._format_type_expr(a) for a in te.args)
-            return f"{te.name}<{args}>"
+            base = f"{te.name}<{args}>"
+            if te.modifiers:
+                mods = " ".join((f"{m.name}:{m.value}" if m.name else m.value) for m in te.modifiers)
+                return f"{base}:[{mods}]"
+            return base
         if isinstance(te, ModifiedType):
             mods = " ".join((f"{m.name}:{m.value}" if m.name else m.value) for m in te.modifiers)
             return f"{te.name}:[{mods}]"

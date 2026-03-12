@@ -122,6 +122,9 @@ class CEmitter(
         self._expected_emit_type: Type | None = None
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
         self.comptime_dependencies: set["Path"] = set()  # files read by comptime
+        self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
+        self._in_hof_inline = False  # True when emitting inline HOF loop body
+        self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -210,11 +213,16 @@ class CEmitter(
         for fd in self._all_function_defs():
             self._emit_function(fd)
 
-        # Main
+        # Main (may be top-level or inside a ModuleDecl)
         for decl in self._module.declarations:
             if isinstance(decl, MainDef):
                 self._emit_main(decl)
                 break
+            elif isinstance(decl, ModuleDecl):
+                for item in decl.body:
+                    if isinstance(item, MainDef):
+                        self._emit_main(item)
+                        break
 
         # Insert hoisted lambdas before functions
         if self._lambdas:
@@ -241,6 +249,8 @@ class CEmitter(
         "Convert": "prove_convert.h",
         "Types": "prove_convert.h",
         "List": "prove_list_ops.h",
+        "Sequence": "prove_list_ops.h",
+        "Array": "prove_array.h",
         "Format": "prove_format.h",
         "Path": "prove_path.h",
         "Error": "prove_error.h",
@@ -746,6 +756,7 @@ class CEmitter(
 
         # Reset locals
         self._locals.clear()
+        self._string_literal_cache.clear()
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
@@ -964,6 +975,7 @@ class CEmitter(
         self._current_func_return = UNIT
         self._in_main = True
         self._locals.clear()
+        self._string_literal_cache.clear()
         self._current_requires = []
 
         self._line("int main(int argc, char **argv) {")

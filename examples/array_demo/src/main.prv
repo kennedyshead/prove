@@ -1,0 +1,22 @@
+module Main
+  narrative: """Demonstrates Array<T> - fixed-size unboxed arrays."""
+  System outputs console
+  Array creates array
+  Array reads get
+  Array transforms set
+  Array reads length
+
+main() Result<Unit, Error>!
+from
+    // Create a boolean array of 5 elements, all false
+    flags as Array<Boolean> = array(5, false)
+    flags2 as Array<Boolean> = set(flags, 2, true)
+    size as Integer = length(flags2)
+    val as Boolean = get(flags2, 2)
+    console(f"Array size: {size}, element 2: {val}")
+    // Create an integer array
+    nums as Array<Integer> = array(3, 0)
+    nums1 as Array<Integer> = set(nums, 0, 10)
+    nums2 as Array<Integer> = set(nums1, 1, 20)
+    nums3 as Array<Integer> = set(nums2, 2, 30)
+    console(f"nums[1] = {get(nums3, 1)}")

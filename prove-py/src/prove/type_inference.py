@@ -6,7 +6,7 @@ to avoid duplication of binary operator mappings and utility functions.
 
 from __future__ import annotations
 
-from prove.types import GenericInstance, ListType, Type
+from prove.types import ArrayType, GenericInstance, ListType, Type
 
 # Binary operator → C operator identity mapping.
 # Used by c_emitter._emit_binary and testing._expr_to_c_inner.
@@ -44,6 +44,12 @@ def get_type_key(ty: Type | None) -> str | None:
     if isinstance(ty, ListType):
         inner = getattr(ty.element, "name", "T")
         return f"List<{inner}>"
+    if isinstance(ty, ArrayType):
+        inner = getattr(ty.element, "name", "T")
+        key = f"Array<{inner}>"
+        if ty.modifiers:
+            return f"{key}:{','.join(ty.modifiers)}"
+        return key
     if isinstance(ty, GenericInstance):
         args = ",".join(getattr(a, "name", "T") for a in ty.args)
         return f"{ty.base_name}<{args}>"

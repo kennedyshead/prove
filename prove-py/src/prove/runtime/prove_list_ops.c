@@ -189,3 +189,14 @@ Prove_List *prove_list_ops_range(int64_t start, int64_t end) {
     }
     return result;
 }
+
+Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) {
+    if (step == 0 || start >= end) return prove_list_new(4);
+
+    int64_t count = (end - start + step - 1) / step;
+    Prove_List *result = prove_list_new(count);
+    for (int64_t i = start; i < end; i += step) {
+        prove_list_push(result, (void *)(intptr_t)i);
+    }
+    return result;
+}

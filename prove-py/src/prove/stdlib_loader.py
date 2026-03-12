@@ -22,6 +22,7 @@ from prove.types import (
     INTEGER,
     STRING,
     UNIT,
+    ArrayType,
     FunctionType,
     GenericInstance,
     ListType,
@@ -256,9 +257,9 @@ _register_module(
 )
 
 _register_module(
-    "list",
-    display="List",
-    prv_file="list.prv",
+    "sequence",
+    display="Sequence",
+    prv_file="sequence.prv",
     c_map={
         ("reads", "length"): "prove_list_ops_length",
         ("reads", "value"): "prove_list_ops_value",
@@ -278,7 +279,28 @@ _register_module(
         ("reads", "index", "List<String>"): "prove_list_ops_index_str",
         ("transforms", "sort", "List<Integer>"): "prove_list_ops_sort_int",
         ("transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
+        ("creates", "range", "Integer_Integer_Integer"): "prove_list_ops_range_step",
+        # Array functions
+        ("creates", "array", "Integer_Boolean"): "prove_array_new_bool",
+        ("creates", "array", "Integer_Integer"): "prove_array_new_int",
+        ("creates", "array", "Integer_Boolean:Mutable"): "prove_array_new_bool",
+        ("creates", "array", "Integer_Integer:Mutable"): "prove_array_new_int",
+        ("reads", "get", "Array<Boolean>"): "prove_array_get_bool",
+        ("reads", "get", "Array<Integer>"): "prove_array_get_int",
+        ("reads", "get", "Array<Boolean>:Mutable"): "prove_array_get_bool",
+        ("reads", "get", "Array<Integer>:Mutable"): "prove_array_get_int",
+        ("transforms", "set", "Array<Boolean>"): "prove_array_set_bool",
+        ("transforms", "set", "Array<Integer>"): "prove_array_set_int",
+        ("transforms", "set", "Array<Boolean>:Mutable"): "prove_array_set_mut_bool",
+        ("transforms", "set", "Array<Integer>:Mutable"): "prove_array_set_mut_int",
+        ("reads", "length", "Array<Boolean>"): "prove_array_length",
+        ("reads", "length", "Array<Integer>"): "prove_array_length",
+        ("reads", "length", "Array<Boolean>:Mutable"): "prove_array_length",
+        ("reads", "length", "Array<Integer>:Mutable"): "prove_array_length",
+        ("creates", "to_sequence", "Array<Boolean>"): "prove_array_to_list",
+        ("creates", "to_sequence", "Array<Integer>"): "prove_array_to_list",
     },
+    aliases=["list", "array"],
 )
 
 _register_module(
@@ -646,6 +668,11 @@ def _resolve_type_expr(
                 args.append(TypeVariable("Value"))
         if type_expr.name == "List" and len(args) == 1:
             return ListType(args[0])
+        if type_expr.name == "Array" and len(args) == 1:
+            mods = tuple(m.value for m in type_expr.modifiers)
+            if mods:
+                return ArrayType(args[0], modifiers=mods)
+            return ArrayType(args[0])
         if type_expr.name == "Verb" and len(args) >= 1:
             return FunctionType(list(args[:-1]), args[-1])
         return GenericInstance(type_expr.name, args)
@@ -749,7 +776,7 @@ def stdlib_pure_prv_path(module_name: str) -> Path | None:
     if prv_rel is None:
         return None
     # Check if any functions have binary C mappings
-    for (mod, _verb, _func) in _BINARY_C_MAP:
+    for mod, _verb, _func in _BINARY_C_MAP:
         if mod == key:
             return None  # has binary implementations
     stdlib_dir = Path(__file__).parent / "stdlib"
@@ -782,7 +809,7 @@ class ImportSuggestion:
 
 
 # Alias keys that should be skipped when building the index
-_ALIAS_KEYS = {"io", "inputoutput"}
+_ALIAS_KEYS = {"io", "inputoutput", "list"}
 
 _import_index: dict[str, list[ImportSuggestion]] | None = None
 

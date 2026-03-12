@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates CSV parsing and emission via the Parse module."""
   System outputs console
   Parse creates csv, validates csv
-  List reads length
+  Sequence reads length
   Types reads string
 
 main() Result<Unit, Error>!
