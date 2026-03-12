@@ -146,6 +146,7 @@ class ProveLexer(RegexLexer):
                         "Table",
                         "Unit",
                         "Value",
+                        "Verb",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
   "name": "prove",
   "rules": {
     "source_file": {
@@ -293,6 +294,10 @@
         {
           "type": "SYMBOL",
           "name": "runtime_lookup_type_body"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "dispatch_lookup_type_body"
         }
       ]
     },
@@ -518,6 +523,59 @@
           }
         ]
       }
+    },
+    "dispatch_lookup_type_body": {
+      "type": "PREC_RIGHT",
+      "value": 2,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "type_expression"
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "|"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "type_expression"
+                }
+              ]
+            }
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "SYMBOL",
+              "name": "dispatch_lookup_variant"
+            }
+          }
+        ]
+      }
+    },
+    "dispatch_lookup_variant": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "string_literal"
+        },
+        {
+          "type": "STRING",
+          "value": "|"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        }
+      ]
     },
     "type_expression": {
       "type": "CHOICE",
@@ -747,23 +805,11 @@
       "members": [
         {
           "type": "STRING",
-          "value": "attached"
-        },
-        {
-          "type": "STRING",
           "value": "creates"
         },
         {
           "type": "STRING",
-          "value": "detached"
-        },
-        {
-          "type": "STRING",
           "value": "inputs"
-        },
-        {
-          "type": "STRING",
-          "value": "listens"
         },
         {
           "type": "STRING",
@@ -776,10 +822,6 @@
         {
           "type": "STRING",
           "value": "reads"
-        },
-        {
-          "type": "STRING",
-          "value": "streams"
         },
         {
           "type": "STRING",
@@ -1671,6 +1713,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "lookup_access_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "field_expression"
         },
         {
@@ -1995,6 +2041,40 @@
           {
             "type": "STRING",
             "value": ")"
+          }
+        ]
+      }
+    },
+    "lookup_access_expression": {
+      "type": "PREC",
+      "value": 10,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "type_identifier"
+          },
+          {
+            "type": "STRING",
+            "value": ":"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "string_literal"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "type_identifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "identifier"
+              }
+            ]
           }
         ]
       }
@@ -2850,5 +2930,6 @@
   "precedences": [],
   "externals": [],
   "inline": [],
-  "supertypes": []
+  "supertypes": [],
+  "reserved": {}
 }

@@ -219,6 +219,44 @@
     }
   },
   {
+    "type": "dispatch_lookup_type_body",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "dispatch_lookup_variant",
+          "named": true
+        },
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "dispatch_lookup_variant",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "string_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "doc_comment_block",
     "named": true,
     "fields": {},
@@ -336,6 +374,10 @@
         },
         {
           "type": "list_literal",
+          "named": true
+        },
+        {
+          "type": "lookup_access_expression",
           "named": true
         },
         {
@@ -726,6 +768,29 @@
       "types": [
         {
           "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "lookup_access_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "string_literal",
+          "named": true
+        },
+        {
+          "type": "type_identifier",
           "named": true
         }
       ]
@@ -1258,6 +1323,7 @@
   {
     "type": "source_file",
     "named": true,
+    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
@@ -1364,6 +1430,10 @@
         },
         {
           "type": "binary_type_body",
+          "named": true
+        },
+        {
+          "type": "dispatch_lookup_type_body",
           "named": true
         },
         {
@@ -1693,10 +1763,6 @@
     "named": false
   },
   {
-    "type": "attached",
-    "named": false
-  },
-  {
     "type": "believe",
     "named": false
   },
@@ -1725,12 +1791,9 @@
     "named": true
   },
   {
-    "type": "detached",
-    "named": false
-  },
-  {
     "type": "doc_comment",
-    "named": true
+    "named": true,
+    "extra": true
   },
   {
     "type": "domain",
@@ -1798,11 +1861,8 @@
   },
   {
     "type": "line_comment",
-    "named": true
-  },
-  {
-    "type": "listens",
-    "named": false
+    "named": true,
+    "extra": true
   },
   {
     "type": "main",
@@ -1886,10 +1946,6 @@
   },
   {
     "type": "satisfies",
-    "named": false
-  },
-  {
-    "type": "streams",
     "named": false
   },
   {

@@ -98,6 +98,7 @@ module.exports = grammar({
       $.binary_type_body,
       $.lookup_type_body,
       $.runtime_lookup_type_body,
+      $.dispatch_lookup_type_body,
     ),
 
     binary_type_body: $ => 'binary',
@@ -149,6 +150,18 @@ module.exports = grammar({
       repeat(seq('|', $.type_expression)),
       'runtime',
     )),
+
+    dispatch_lookup_type_body: $ => prec.right(2, seq(
+      $.type_expression,
+      repeat1(seq('|', $.type_expression)),
+      repeat1($.dispatch_lookup_variant),
+    )),
+
+    dispatch_lookup_variant: $ => seq(
+      $.string_literal,
+      '|',
+      $.identifier,
+    ),
 
     // ─── Type Expressions ──────────────────────────────────────
 
@@ -379,6 +392,7 @@ module.exports = grammar({
       $.fail_propagation,
       $.async_marker,
       $.call_expression,
+      $.lookup_access_expression,
       $.field_expression,
       $.valid_expression,
       $.lambda_expression,
@@ -415,6 +429,16 @@ module.exports = grammar({
       '(',
       optional(sep1($.expression, ',')),
       ')',
+    )),
+
+    lookup_access_expression: $ => prec(PREC.CALL, seq(
+      $.type_identifier,
+      ':',
+      choice(
+        $.string_literal,
+        $.type_identifier,
+        $.identifier,
+      ),
     )),
 
     field_expression: $ => prec.left(PREC.FIELD, seq(
