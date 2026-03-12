@@ -19,7 +19,8 @@ Console input, output, and availability check.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `outputs` | `console(text String)` | Print text to stdout |
-| `inputs` | `console() String` | Read a line from stdin |
+| `inputs` | `console() String` | Read a line from stdin (strips `\r\n`) |
+| `inputs` | `console(count Integer) Bytes` | Read exactly `count` bytes from stdin |
 | `validates` | `console()` | Check if stdin is a terminal |
 
 ```prove
@@ -30,6 +31,18 @@ from
     System.console("What is your name?")
     name as String = System.console()
     System.console(f"Hello, {name}!")
+```
+
+The two-verb pair mirrors the LSP stdio transport pattern: use `console() String` for reading header lines and `console(count Integer) Bytes` for reading the raw body.
+
+```prove
+System inputs console
+
+inputs read_lsp_message() Bytes
+from
+    header as String = System.console()          // "Content-Length: 512"
+    length as Integer = Parse.integer(header[16..])
+    System.console(length)                       // exactly 512 raw bytes
 ```
 
 ### File Channel

@@ -209,6 +209,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_file_read",
         "prove_file_write",
         "prove_io_console_validates",
+        "prove_readexactly",
         "prove_io_file_validates",
         "prove_io_system_inputs",
         "prove_io_system_outputs",

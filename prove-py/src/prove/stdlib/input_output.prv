@@ -13,6 +13,10 @@ binary
 inputs console() String
 binary
 
+/// Read exactly count bytes from the console
+inputs console(count Integer) Bytes
+binary
+
 /// Validate console input
 validates console()
 binary

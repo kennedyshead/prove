@@ -3,6 +3,7 @@
 
 #include "prove_runtime.h"
 #include "prove_string.h"
+#include "prove_bytes.h"
 #include "prove_list.h"
 #include "prove_result.h"
 
@@ -31,9 +32,10 @@ typedef int64_t Prove_ExitCode;
 Prove_Result prove_file_read(Prove_String *path);
 Prove_Result prove_file_write(Prove_String *path, Prove_String *content);
 
-/* ── Console validates ───────────────────────────────────────── */
+/* ── Console channel ─────────────────────────────────────────── */
 
-bool prove_io_console_validates(void);
+bool             prove_io_console_validates(void);
+Prove_ByteArray *prove_readexactly(int64_t n);
 
 /* ── File validates ──────────────────────────────────────────── */
 

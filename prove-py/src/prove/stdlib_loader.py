@@ -111,6 +111,9 @@ _register_module(
         ("creates", "writer"): "prove_file_open_append",
         ("outputs", "line"): "prove_file_writeln_handle",
     },
+    overloads={
+        ("inputs", "console", "Integer"): "prove_readexactly",
+    },
 )
 
 _register_module(
