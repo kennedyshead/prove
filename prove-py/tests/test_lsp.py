@@ -414,7 +414,7 @@ class TestCompletion:
             i for i in result.items if "console" in i.label and "System" in i.label
         ]
         # outputs is imported (shows with verb detail), others show "Auto-import"
-        assert len(console_items) == 3
+        assert len(console_items) == 4
         # Check that outputs has verb detail (not Auto-import)
         outputs_item = next(i for i in console_items if "outputs" in i.label)
         assert outputs_item.detail == "outputs"

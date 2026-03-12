@@ -1,0 +1,39 @@
+module Main
+  narrative: """Demonstrates style stdio transport.
+
+  Reads one message from stdin using the two console input verbs:
+    inputs console() String              — readline (headers)
+    inputs console(count Integer) Bytes  — readexactly (body)
+
+  Expected stdin format:
+    Content-Length: <n>\r\n
+    \r\n
+    <n bytes of JSON body>
+
+  Run with piped input:
+    printf "Content-Length: 15\r\n\r\n{\"method\":\"init\"}" | ./build/stdio_demo
+  """
+  System outputs console, inputs console, validates console, types ByteArray
+  Text transforms slice trim
+  Text reads length
+  Types creates integer
+  Parse reads text
+
+/// Read one framed message from stdin.
+/// Parses the Content-Length header, skips the blank separator line,
+/// then reads exactly that many bytes from stdin.
+inputs read_message() ByteArray!
+from
+    header as String = console()
+    sep as String = console()
+    n as Integer = integer(trim(slice(header, 16, length(header))))!
+    console(n)
+
+main() Result<Unit, Error>!
+from
+    has_input as Boolean = valid console()
+    match has_input
+        false => console("stdio_demo: no input on stdin")
+        true =>
+            body as ByteArray = read_message()!
+            console(f"stdio_demo: received message {text(body)}")
