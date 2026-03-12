@@ -971,6 +971,8 @@ class ExprEmitterMixin:
                             return f'prove_string_from_cstr("{escaped}")'
                         if kind == "integer":
                             return f"{val}L"
+                        if kind == "decimal":
+                            return val
                         if kind == "boolean":
                             return val
                         return f'prove_string_from_cstr("{val}")'
@@ -995,6 +997,8 @@ class ExprEmitterMixin:
                             return f'prove_string_from_cstr("{escaped}")'
                         if kind == "integer":
                             return f"{val}L"
+                        if kind == "decimal":
+                            return val
                         if kind == "boolean":
                             return val
                         return f'prove_string_from_cstr("{val}")'
@@ -1004,6 +1008,8 @@ class ExprEmitterMixin:
                         return f'prove_string_from_cstr("{escaped}")'
                     if entry.value_kind == "integer":
                         return f"{entry.value}L"
+                    if entry.value_kind == "decimal":
+                        return entry.value
                     if entry.value_kind == "boolean":
                         return entry.value
                     return f'prove_string_from_cstr("{entry.value}")'
@@ -1041,6 +1047,8 @@ class ExprEmitterMixin:
             var_name = self._type_name_str(var_type)
             if var_name == "String":
                 return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
+            if var_name == "Integer":
+                return f"prove_lookup_find_int(&{cname}_int_reverse, {var_c})"
 
         return "/* unsupported binary lookup */ 0"
 
