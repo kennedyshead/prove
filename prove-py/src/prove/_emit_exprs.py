@@ -309,6 +309,34 @@ class ExprEmitterMixin:
     # -- Field expressions ------------------------------------------
 
     def _emit_field(self, expr: FieldExpr) -> str:
+        # Named column access on binary lookup: Prediction:Cat.probability
+        from prove.ast_nodes import LookupAccessExpr, LookupTypeDef
+        from prove.c_types import mangle_type_name
+
+        if isinstance(expr.obj, LookupAccessExpr):
+            lookup = self._lookup_tables.get(expr.obj.type_name)
+            if (
+                lookup is not None
+                and isinstance(lookup, LookupTypeDef)
+                and lookup.is_binary
+                and lookup.column_names
+            ):
+                field = expr.field
+                for i, cn in enumerate(lookup.column_names):
+                    if cn == field and i < len(lookup.value_types):
+                        lcname = mangle_type_name(expr.obj.type_name)
+                        array_name = f"{lcname}_col_{cn}"
+                        # Get the variant index from the operand
+                        inner = self._emit_expr(expr.obj)
+                        col_type = (
+                            lookup.value_types[i].name
+                            if hasattr(lookup.value_types[i], "name")
+                            else "String"
+                        )
+                        if col_type == "String":
+                            return f"prove_string_from_cstr({array_name}[{inner}])"
+                        return f"{array_name}[{inner}]"
+
         obj = self._emit_expr(expr.obj)
         obj_type = self._infer_expr_type(expr.obj)
         if isinstance(obj_type, (RecordType, AlgebraicType)):
@@ -1075,10 +1103,13 @@ class ExprEmitterMixin:
             # Reverse: column value → variant index
             var_type = self._infer_expr_type(operand)
             var_name = self._type_name_str(var_type)
+            use_sorted = len(lookup.entries) > 16
             if var_name == "String":
-                return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
+                fn = "prove_lookup_find_sorted" if use_sorted else "prove_lookup_find"
+                return f"{fn}(&{cname}_reverse, {var_c}.data)"
             if var_name == "Integer":
-                return f"prove_lookup_find_int(&{cname}_int_reverse, {var_c})"
+                fn = "prove_lookup_find_int_sorted" if use_sorted else "prove_lookup_find_int"
+                return f"{fn}(&{cname}_int_reverse, {var_c})"
 
         return "/* unsupported binary lookup */ 0"
 
@@ -1096,14 +1127,29 @@ class ExprEmitterMixin:
         return 0
 
     def _find_binary_column_name(self, lookup: object, type_name: str) -> str | None:
-        """Find the column name matching the given type name."""
+        """Find the C array suffix for the column matching the given type name."""
         from prove.ast_nodes import LookupTypeDef
 
         assert isinstance(lookup, LookupTypeDef)
-        for vt in lookup.value_types:
-            col_name = vt.name if hasattr(vt, "name") else ""
-            if col_name == type_name:
-                return col_name
+        type_names = [
+            vt.name if hasattr(vt, "name") else "" for vt in lookup.value_types
+        ]
+        has_dups = type_names.count(type_name) > 1
+        for col_idx, vt in enumerate(lookup.value_types):
+            col_type = vt.name if hasattr(vt, "name") else ""
+            if col_type == type_name:
+                # Use named column if available
+                named = (
+                    lookup.column_names[col_idx]
+                    if lookup.column_names and col_idx < len(lookup.column_names)
+                       and lookup.column_names[col_idx] is not None
+                    else None
+                )
+                if named:
+                    return named
+                if has_dups:
+                    return f"{col_type}_{col_idx}"
+                return col_type
         return None
 
     def _type_name_str(self, ty: Type) -> str:
@@ -1126,6 +1172,7 @@ class ExprEmitterMixin:
 
     def _emit_binary_lookup_expr(self, expr: BinaryLookupExpr) -> str:
         """Emit a BinaryLookupExpr node (runtime binary lookup)."""
+        from prove.ast_nodes import LookupTypeDef
         from prove.c_types import mangle_type_name
 
         cname = mangle_type_name(expr.type_name)
@@ -1133,12 +1180,35 @@ class ExprEmitterMixin:
 
         if expr.key_type == "variant":
             # Forward: variant index → column value
+            # Resolve the C array name using named columns if available
+            lookup = self._lookup_tables.get(expr.type_name)
+            col_array = expr.column_type
+            if lookup and isinstance(lookup, LookupTypeDef) and lookup.column_names:
+                for i, vt in enumerate(lookup.value_types):
+                    col_name = vt.name if hasattr(vt, "name") else ""
+                    if col_name == expr.column_type:
+                        named = (
+                            lookup.column_names[i]
+                            if i < len(lookup.column_names)
+                               and lookup.column_names[i] is not None
+                            else None
+                        )
+                        if named:
+                            col_array = named
+                        break
             if expr.column_type == "String":
-                return f"prove_string_from_cstr({cname}_col_{expr.column_type}[{var_c}])"
-            return f"{cname}_col_{expr.column_type}[{var_c}]"
+                return f"prove_string_from_cstr({cname}_col_{col_array}[{var_c}])"
+            return f"{cname}_col_{col_array}[{var_c}]"
         if expr.key_type == "String":
             # Reverse: string → variant index
-            return f"prove_lookup_find(&{cname}_reverse, {var_c}.data)"
+            lookup = self._lookup_tables.get(expr.type_name)
+            use_sorted = (
+                lookup is not None
+                and isinstance(lookup, LookupTypeDef)
+                and len(lookup.entries) > 16
+            )
+            fn = "prove_lookup_find_sorted" if use_sorted else "prove_lookup_find"
+            return f"{fn}(&{cname}_reverse, {var_c}.data)"
         return "/* unsupported binary lookup */ 0"
 
     def _emit_store_lookup_expr(self, expr: StoreLookupExpr) -> str:

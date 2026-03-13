@@ -440,6 +440,30 @@ class CallCheckMixin:
                 return inner
             return ERROR_TY
 
+        # Named column access on binary lookup: Prediction:Cat.probability
+        from prove.ast_nodes import LookupAccessExpr, LookupTypeDef
+
+        if isinstance(expr.obj, LookupAccessExpr):
+            lookup = self._lookup_tables.get(expr.obj.type_name)
+            if (
+                lookup is not None
+                and isinstance(lookup, LookupTypeDef)
+                and lookup.is_binary
+                and lookup.column_names
+            ):
+                field = expr.field
+                for i, cname in enumerate(lookup.column_names):
+                    if cname == field and i < len(lookup.value_types):
+                        self._used_types.add(expr.obj.type_name)
+                        return self._resolve_type_expr(lookup.value_types[i])
+                self._error(
+                    "E340",
+                    f"no named column '{field}' on binary lookup "
+                    f"'{expr.obj.type_name}'",
+                    expr.span,
+                )
+                return ERROR_TY
+
         # Allow field access on GenericInstance, AlgebraicType, etc. without error
         # (duck typing / deferred check for generics)
         if isinstance(obj_type, (GenericInstance, TypeVariable)):

@@ -1250,9 +1250,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._static_check_refinement(expected, cd.value, cd.span)
 
     def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
-        """Validate a binary lookup table (E379, E387)."""
+        """Validate a binary lookup table (E379, E387, W350)."""
         num_columns = len(body.value_types)
-        _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Boolean", "Verb"}
+        _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Float", "Boolean", "Verb"}
         for vt in body.value_types:
             tname = vt.name if hasattr(vt, "name") else str(vt)
             if tname not in _ALLOWED_BINARY_TYPES:
@@ -1270,6 +1270,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"but binary table has {num_columns} columns",
                     entry.span,
                 )
+        # W350: warn when duplicate column types exist without named columns
+        type_names = [vt.name if hasattr(vt, "name") else str(vt) for vt in body.value_types]
+        seen: dict[str, int] = {}
+        for tn in type_names:
+            seen[tn] = seen.get(tn, 0) + 1
+        all_unnamed = not body.column_names or all(n is None for n in body.column_names)
+        if all_unnamed:
+            for tn, count in seen.items():
+                if count > 1:
+                    self._warning(
+                        "W350",
+                        f"binary lookup has duplicate column type '{tn}'; "
+                        f"use named columns to disambiguate (e.g. name:{tn})",
+                        span,
+                    )
 
     def _check_type_def(self, td: TypeDef) -> None:
         """Validate field types and where constraints."""

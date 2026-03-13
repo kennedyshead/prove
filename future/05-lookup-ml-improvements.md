@@ -4,41 +4,56 @@ Two deferred improvements for `[Lookup]` / `binary` types, prioritised for ML us
 
 ---
 
-## Gap 4: Named Columns
+## Gap 4: Named Columns (for Duplicate-Type Columns)
 
-**Problem**: When a binary lookup has two columns of the same type (e.g. two `Float` columns for
-probability and confidence), the column is selected by matching type name alone. Both columns match
-the same type, so the wrong one may be silently selected. There is no way to request a specific
-column by name.
+**Default behaviour** (unchanged): Column access is matched by type, and each column type must be
+unique. A single-`Float` column is accessed directly via `Prediction:Cat` — no names needed.
 
-**Motivating example**:
+**Problem**: When a binary lookup genuinely needs two columns of the same type (e.g. two `Float`
+columns for probability and confidence), type-based access is ambiguous. Today the emitter silently
+picks the first matching column.
 
-```prove
-binary Prediction Float Float where
-    Cat     | 0.92 | 0.88
-    Dog     | 0.07 | 0.91
-    Other   | 0.01 | 0.73
-```
-
-`Prediction:Cat` is ambiguous — the emitter picks the first `Float` column regardless of intent.
-
-**Proposed syntax**:
+**Linter rule**: The linter must detect duplicate column types and flag them. For example:
 
 ```prove
-binary Prediction probability:Float confidence:Float where
-    Cat     | 0.92 | 0.88
-    Dog     | 0.07 | 0.91
-    Other   | 0.01 | 0.73
+// FLAGGED — duplicate Float columns, access is ambiguous
+binary Prediction Float String Float where
+    Cat     | 0.92 | "feline" | 0.88
+    Dog     | 0.07 | "canine" | 0.91
+    Other   | 0.01 | "other"  | 0.73
 ```
 
-Access: `Prediction:Cat.probability`, `Prediction:Cat.confidence`
+The diagnostic should suggest using named columns to disambiguate:
+
+```
+W___: binary 'Prediction' has duplicate column type 'Float'.
+      Use named columns to disambiguate: probability:Float | String | confidence:Float
+```
+
+**Named column syntax** (escape hatch for duplicate types):
+
+```prove
+binary Prediction probability:Float String confidence:Float where
+    Cat     | 0.92 | "feline" | 0.88
+    Dog     | 0.07 | "canine" | 0.91
+    Other   | 0.01 | "other"  | 0.73
+```
+
+Access: `Prediction:Cat.probability`, `Prediction:Cat.confidence`.
+The `String` column (unique type) is still accessed by type as usual — naming is only required
+for the duplicate types.
 
 **Scope of change**:
-- Parser: `_parse_binary_lookup_def` — accept `name:Type` column headers
-- AST: `LookupTypeDef.column_names: tuple[str, ...]` (parallel to `value_types`)
-- Checker: `_check_lookup_access_expr` — use `.name` on `LookupAccessExpr` for column selection
+- Parser: `_parse_binary_lookup_def` — accept `name:Type` column headers alongside bare `Type`
+- AST: `LookupTypeDef.column_names: tuple[str | None, ...]` (parallel to `value_types`;
+  `None` for unnamed columns)
+- Linter: detect duplicate column types when all columns are unnamed — emit warning with
+  suggestion to use `name:Type` syntax
+- Checker: `_check_lookup_access_expr` — use `.name` on `LookupAccessExpr` for named column
+  selection; reject bare type access when the type is duplicated
 - Emitter: `_emit_binary_lookup_tables` — use column names in array identifiers;
-  `_emit_lookup_access` / `_emit_binary_lookup` — resolve by name instead of type match
+  `_emit_lookup_access` / `_emit_binary_lookup` — resolve by name when names are present,
+  by type otherwise
 - Formatter: `format_lookup_type` — preserve column names
 
 ---

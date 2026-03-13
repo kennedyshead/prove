@@ -826,6 +826,63 @@ class TestBinaryLookup:
             "E397",
         )
 
+    def test_w350_duplicate_column_type(self):
+        """W350: duplicate column type without named columns."""
+        check_warns(
+            "module M\n"
+            "\n"
+            "  binary Score Decimal String Decimal where\n"
+            '      High | 0.9 | "high" | 0.95\n'
+            '      Low | 0.1 | "low" | 0.05\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n",
+            "W350",
+        )
+
+    def test_w350_no_warning_with_named_columns(self):
+        """No W350 when duplicate types have names."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary Score prob:Decimal String conf:Decimal where\n"
+            '      High | 0.9 | "high" | 0.95\n'
+            '      Low | 0.1 | "low" | 0.05\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_named_column_field_access(self):
+        """Named column field access: Prediction:Cat.probability."""
+        check(
+            "module M\n"
+            "\n"
+            "  binary Score prob:Decimal String conf:Decimal where\n"
+            '      High | 0.9 | "high" | 0.95\n'
+            '      Low | 0.1 | "low" | 0.05\n'
+            "\n"
+            "transforms get_prob() Decimal\n"
+            "    from\n"
+            "        Score:High.prob\n"
+        )
+
+    def test_e340_bad_named_column(self):
+        """E340: unknown named column on lookup."""
+        check_fails(
+            "module M\n"
+            "\n"
+            "  binary Score prob:Decimal String conf:Decimal where\n"
+            '      High | 0.9 | "high" | 0.95\n'
+            "\n"
+            "transforms get_bad() Decimal\n"
+            "    from\n"
+            "        Score:High.unknown\n",
+            "E340",
+        )
+
 
 class TestImplicitValueReturn:
     """Test E395 implicit Value → concrete return type coercion."""

@@ -51,6 +51,7 @@ module.exports = grammar({
       $.type_identifier,
       repeat(choice(
         $.type_definition,
+        $.binary_lookup_definition,
         prec(-1, $.import_declaration),
         $.constant_definition,
         $.invariant_network,
@@ -102,6 +103,41 @@ module.exports = grammar({
     ),
 
     binary_type_body: $ => 'binary',
+
+    // ─── Binary Lookup Definitions ────────────────────────────
+
+    binary_lookup_definition: $ => prec.right(seq(
+      'binary',
+      $.type_identifier,
+      repeat1($._binary_lookup_column),
+      'where',
+      repeat1($.binary_lookup_variant),
+    )),
+
+    _binary_lookup_column: $ => choice(
+      $.named_lookup_column,
+      $.type_expression,
+    ),
+
+    named_lookup_column: $ => seq(
+      $.identifier,
+      ':',
+      $.type_expression,
+    ),
+
+    binary_lookup_variant: $ => prec.left(seq(
+      $.type_identifier,
+      '|',
+      $._lookup_value,
+      repeat(seq('|', $._lookup_value)),
+    )),
+
+    _lookup_value: $ => choice(
+      $.string_literal,
+      $.integer_literal,
+      $.decimal_literal,
+      $.boolean_literal,
+    ),
 
     algebraic_type_body: $ => prec.left(seq(
       $.algebraic_variant,

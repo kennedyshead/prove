@@ -28,10 +28,16 @@ typedef struct {
     int count;
 } Prove_IntLookupTable;
 
-/* Find variant index for string key, or -1 if not found. */
+/* Find variant index for string key, or -1 if not found (linear scan). */
 int prove_lookup_find(const Prove_LookupTable *table, const char *key);
 
-/* Find variant index for integer key, or -1 if not found. */
+/* Find variant index for integer key, or -1 if not found (linear scan). */
 int prove_lookup_find_int(const Prove_IntLookupTable *table, int64_t key);
+
+/* Find variant index for string key, or -1 if not found (binary search, entries must be sorted). */
+int prove_lookup_find_sorted(const Prove_LookupTable *table, const char *key);
+
+/* Find variant index for integer key, or -1 if not found (binary search, entries must be sorted). */
+int prove_lookup_find_int_sorted(const Prove_IntLookupTable *table, int64_t key);
 
 #endif /* PROVE_LOOKUP_H */

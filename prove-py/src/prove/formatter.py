@@ -414,7 +414,20 @@ class ProveFormatter:
         if body.is_pipe_entry_format:
             return self._format_pipe_entry_lookup(name, body, mods, params)
 
-        col_types = " ".join(self._format_type_expr(vt) for vt in body.value_types)
+        # Format columns with optional name: prefix
+        col_parts: list[str] = []
+        for i, vt in enumerate(body.value_types):
+            formatted_type = self._format_type_expr(vt)
+            col_name = (
+                body.column_names[i]
+                if body.column_names and i < len(body.column_names)
+                else None
+            )
+            if col_name:
+                col_parts.append(f"{col_name}:{formatted_type}")
+            else:
+                col_parts.append(formatted_type)
+        col_types = " ".join(col_parts)
         if mods:
             # Parsed via type Name:[Lookup] is Type1 Type2 where
             lines = [f"type {name}{mods}{params} is {col_types} where"]

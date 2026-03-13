@@ -421,6 +421,8 @@ _RUNTIME_FUNCTIONS = {
     "prove_lookup": [
         "prove_lookup_find",
         "prove_lookup_find_int",
+        "prove_lookup_find_sorted",
+        "prove_lookup_find_int_sorted",
     ],
     "prove_pattern": [
         "prove_pattern_match",

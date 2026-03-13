@@ -115,6 +115,31 @@ class TestFormatterTypes:
         source = "module M\n\n  type Table<Value> is binary\n"
         assert _roundtrip(source) == source
 
+    def test_binary_lookup_named_columns(self):
+        source = (
+            "module M\n"
+            "\n"
+            "  binary Score prob:Decimal String conf:Decimal where\n"
+            '    High | 0.9 | "high" | 0.95\n'
+            '    Low | 0.1 | "low" | 0.05\n'
+        )
+        result = _roundtrip(source)
+        assert "prob:Decimal" in result
+        assert "conf:Decimal" in result
+        # Unnamed column stays bare
+        assert " String " in result
+
+    def test_binary_lookup_unnamed_columns_roundtrip(self):
+        source = (
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '    First | "first" | 1\n'
+        )
+        result = _roundtrip(source)
+        # No name: prefix for unnamed columns
+        assert "binary TokenKind String Integer where" in result
+
     def test_generic_type(self):
         source = "transforms identity(x List<Integer>) List<Integer>\nfrom\n    x\n"
         assert _roundtrip(source) == source

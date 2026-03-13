@@ -473,6 +473,7 @@ class LookupTypeDef:
     entries: list[LookupEntry]  # variant | value rows
     span: Span
     value_types: tuple[TypeExpr, ...] = ()  # Multi-column types (binary)
+    column_names: tuple[str | None, ...] = ()  # Parallel to value_types; None = unnamed
     is_binary: bool = False
     csv_path: str | None = None
     is_store_backed: bool = False
