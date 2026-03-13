@@ -532,19 +532,25 @@ class ExprEmitterMixin:
 
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
-            # Implicit subject: matches/streams/listens use first parameter
+            # Implicit subject: matches/streams use first parameter,
+            # listens uses _ev (received event from queue)
             if (
                 self._current_func is not None
                 and self._current_func.verb in ("matches", "streams", "listens")
-                and self._current_func.params
             ):
-                first_param = self._current_func.params[0].name
-                implicit_subj = MatchExpr(
-                    subject=IdentifierExpr(first_param, m.span),
-                    arms=m.arms,
-                    span=m.span,
-                )
-                return self._emit_match_expr(implicit_subj)
+                if self._current_func.verb == "listens":
+                    subj_name = "_ev"
+                elif self._current_func.params:
+                    subj_name = self._current_func.params[0].name
+                else:
+                    subj_name = None
+                if subj_name is not None:
+                    implicit_subj = MatchExpr(
+                        subject=IdentifierExpr(subj_name, m.span),
+                        arms=m.arms,
+                        span=m.span,
+                    )
+                    return self._emit_match_expr(implicit_subj)
             # No subject and not matches/streams/listens -- just emit arm bodies
             for arm in m.arms:
                 for s in arm.body:

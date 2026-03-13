@@ -1014,20 +1014,26 @@ class StmtEmitterMixin:
     def _emit_match_stmt(self, m: MatchExpr) -> None:
         """Emit a match expression as a statement (switch)."""
         if m.subject is None:
-            # Implicit subject: matches/streams/listens use first parameter
+            # Implicit subject: matches/streams use first parameter,
+            # listens uses _ev (received event from queue)
             if (
                 self._current_func is not None
                 and self._current_func.verb in ("matches", "streams", "listens")
-                and self._current_func.params
             ):
-                first_param = self._current_func.params[0].name
-                implicit_subj = MatchExpr(
-                    subject=IdentifierExpr(first_param, m.span),
-                    arms=m.arms,
-                    span=m.span,
-                )
-                self._emit_match_stmt(implicit_subj)
-                return
+                if self._current_func.verb == "listens":
+                    subj_name = "_ev"
+                elif self._current_func.params:
+                    subj_name = self._current_func.params[0].name
+                else:
+                    subj_name = None
+                if subj_name is not None:
+                    implicit_subj = MatchExpr(
+                        subject=IdentifierExpr(subj_name, m.span),
+                        arms=m.arms,
+                        span=m.span,
+                    )
+                    self._emit_match_stmt(implicit_subj)
+                    return
             # No subject and not matches/streams/listens — emit arm bodies
             for i, arm in enumerate(m.arms):
                 for s in arm.body:
@@ -1068,9 +1074,11 @@ class StmtEmitterMixin:
                                         f"{tmp}.{arm.pattern.name}.{fname};"
                                     )
                     self._emit_match_arm_body(arm.body)
-                    # streams Exit arm must break out of the while(1) loop
+                    # streams/listens Exit arm must break out of the while(1) loop
                     if self._in_streams_loop and arm.pattern.name == "Exit":
                         self._line("goto _streams_exit;")
+                    if self._in_listens_loop and arm.pattern.name == "Exit":
+                        self._line("goto _listens_exit;")
                     self._line("break;")
                     self._indent -= 1
                     self._line("}")
