@@ -143,7 +143,7 @@ class Optimizer:
         self._symbols = symbols
         self._memo_info = MemoizationInfo()
         self._runtime_deps = RuntimeDeps()
-        self._elision_candidates: set[str] = set()
+        self._elision_candidates: set[tuple[str, str]] = set()  # (func, var)
         self._escape_info = EscapeInfo()
 
     def optimize(self) -> Module:
@@ -171,7 +171,11 @@ class Optimizer:
 
     def get_elision_candidates(self) -> set[str]:
         """Return variable names eligible for move-instead-of-copy."""
-        return self._elision_candidates
+        return {var for _, var in self._elision_candidates}
+
+    def is_elision_candidate(self, func_name: str, var_name: str) -> bool:
+        """Check if a variable is an elision candidate in a specific function."""
+        return (func_name, var_name) in self._elision_candidates
 
     def get_escape_info(self) -> EscapeInfo:
         """Return escape analysis information."""
@@ -406,6 +410,10 @@ class Optimizer:
                 result.append(self._dbe_match(stmt))
             elif isinstance(stmt, TailLoop):
                 result.append(replace(stmt, body=self._dbe_stmts(stmt.body)))
+            elif isinstance(stmt, VarDecl) and isinstance(stmt.value, MatchExpr):
+                result.append(replace(stmt, value=self._dbe_match(stmt.value)))
+            elif isinstance(stmt, Assignment) and isinstance(stmt.value, MatchExpr):
+                result.append(replace(stmt, value=self._dbe_match(stmt.value)))
             else:
                 result.append(stmt)
         return result
@@ -468,6 +476,12 @@ class Optimizer:
             if isinstance(stmt, ExprStmt):
                 new_expr = self._ct_eval_expr(stmt.expr, func_defs)
                 result.append(replace(stmt, expr=new_expr))
+            elif isinstance(stmt, VarDecl):
+                new_val = self._ct_eval_expr(stmt.value, func_defs)
+                result.append(replace(stmt, value=new_val))
+            elif isinstance(stmt, Assignment):
+                new_val = self._ct_eval_expr(stmt.value, func_defs)
+                result.append(replace(stmt, value=new_val))
             elif isinstance(stmt, MatchExpr):
                 result.append(self._ct_eval_match(stmt, func_defs))
             elif isinstance(stmt, TailLoop):
@@ -859,7 +873,7 @@ class Optimizer:
             if isinstance(decl, FunctionDef):
                 new_decls.append(self._elide_copies_in_func(decl))
             elif isinstance(decl, MainDef):
-                new_body = self._mark_last_uses(decl.body)
+                new_body = self._mark_last_uses(decl.body, "main")
                 new_decls.append(replace(decl, body=new_body))
             elif isinstance(decl, ModuleDecl):
                 new_body = [
@@ -873,10 +887,10 @@ class Optimizer:
 
     def _elide_copies_in_func(self, fd: FunctionDef) -> FunctionDef:
         """Mark last-use identifiers in a function body."""
-        new_body = self._mark_last_uses(fd.body)
+        new_body = self._mark_last_uses(fd.body, fd.name)
         return replace(fd, body=new_body)
 
-    def _mark_last_uses(self, stmts: list[Any]) -> list[Any]:
+    def _mark_last_uses(self, stmts: list[Any], func_name: str = "") -> list[Any]:
         """Analyze variable usage and mark last uses for move semantics.
 
         Walk the statement list backwards to find last uses of locally-defined
@@ -898,11 +912,10 @@ class Optimizer:
             self._count_uses_in_stmt(stmt, use_counts)
 
         # For variables used exactly once: the single use is the last use,
-        # which can be a move instead of a copy. We record this in the
-        # module's elision set for the emitter to use.
+        # which can be a move instead of a copy. Scoped by function name.
         for name, count in use_counts.items():
             if count == 1:
-                self._elision_candidates.add(name)
+                self._elision_candidates.add((func_name, name))
 
         return stmts
 
@@ -1631,6 +1644,10 @@ class Optimizer:
                         return True
         return False
 
+    _PURE_VERBS: frozenset[str] = frozenset(
+        {"transforms", "validates", "reads", "creates", "matches"}
+    )
+
     def _expr_has_side_effects(self, expr: Expr) -> bool:
         """Check if an expression has side effects (returns True if it does)."""
         from prove.ast_nodes import (
@@ -1642,7 +1659,13 @@ class Optimizer:
         )
 
         if isinstance(expr, CallExpr):
-            return False
+            # Check if call target resolves to a pure-verb function
+            if isinstance(expr.func, IdentifierExpr):
+                sig = self._symbols.resolve_function_any(expr.func.name)
+                if sig is not None and sig.verb not in self._PURE_VERBS:
+                    return True
+            # Recursively check arguments
+            return any(self._expr_has_side_effects(a) for a in expr.args)
         if isinstance(expr, BinaryExpr):
             return self._expr_has_side_effects(expr.left) or self._expr_has_side_effects(expr.right)
         if isinstance(expr, UnaryExpr):
@@ -1688,7 +1711,12 @@ class Optimizer:
         return replace(module, declarations=new_decls)
 
     def _merge_matches(self, stmts: list[Any]) -> list[Any]:
-        """Merge consecutive match statements on the same subject."""
+        """Merge consecutive match statements on the same subject.
+
+        Only safe when the accumulated arms have no wildcard/catch-all pattern,
+        since a wildcard makes the match exhaustive and subsequent matches on
+        the same subject are independent dispatches that must execute separately.
+        """
         if len(stmts) < 2:
             return stmts
 
@@ -1701,6 +1729,16 @@ class Optimizer:
                 and stmt.subject is not None
                 and isinstance(stmt.subject, IdentifierExpr)
             ):
+                # Don't merge if current match already has a wildcard arm —
+                # it's exhaustive, so subsequent matches are independent.
+                has_wildcard = any(
+                    isinstance(arm.pattern, WildcardPattern) for arm in stmt.arms
+                )
+                if has_wildcard:
+                    result.append(stmt)
+                    i += 1
+                    continue
+
                 # Look ahead for more matches on the same subject
                 merged_arms = list(stmt.arms)
                 subject_name = stmt.subject.name
@@ -1713,6 +1751,14 @@ class Optimizer:
                         and isinstance(next_stmt.subject, IdentifierExpr)
                         and next_stmt.subject.name == subject_name
                     ):
+                        # Stop merging if the next match has a wildcard —
+                        # it must run as a separate dispatch.
+                        next_has_wildcard = any(
+                            isinstance(arm.pattern, WildcardPattern)
+                            for arm in next_stmt.arms
+                        )
+                        if next_has_wildcard:
+                            break
                         merged_arms.extend(next_stmt.arms)
                         j += 1
                     else:
@@ -1828,12 +1874,10 @@ class Optimizer:
         local_vars: set[str],
         param_names: set[str],
     ) -> None:
-        target = assignment.target
-        if isinstance(target, IdentifierExpr):
-            target_name = target.name
-            if target_name in param_names:
-                if assignment.value:
-                    self._check_expr_escape(func_name, assignment.value, local_vars, param_names)
+        # Assignment.target is str, not an AST node
+        target_name = assignment.target
+        if target_name in param_names:
+            self._check_expr_escape(func_name, assignment.value, local_vars, param_names)
 
     def _check_expr_escape(
         self,

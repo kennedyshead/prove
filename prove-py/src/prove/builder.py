@@ -282,9 +282,9 @@ def _build_c(
         debug=debug,
         include_dirs=[runtime_dir],
         extra_flags=extra_flags + link_flags,
-        strip=config.optimize.strip and not debug,
+        strip=config.optimize.strip,
         tune_host=config.optimize.tune_host,
-        gc_sections=config.optimize.gc_sections and not debug,
+        gc_sections=config.optimize.gc_sections,
         use_ccache=config.build.ccache and find_ccache() is not None,
     )
 
@@ -318,12 +318,16 @@ def _build_c(
             print("pgo: building instrumented binary...")
             compile_c(**compile_kwargs, pgo_phase="generate", pgo_dir=pgo_dir)
 
-            # Step 2: Run the binary to collect profile data
+            # Step 2: Run the binary to collect profile data.
+            # Feed empty stdin so programs that read input exit promptly.
+            # The training run exercises startup, init, and teardown paths
+            # which is enough for PGO branch-prediction and layout hints.
             print("pgo: running training pass...")
             env = {**os.environ, "LLVM_PROFILE_FILE": str(pgo_dir / "default_%m.profraw")}
             try:
                 subprocess.run(
-                    [str(binary_path)], timeout=30, capture_output=True,
+                    [str(binary_path)], timeout=10,
+                    stdin=subprocess.DEVNULL, capture_output=True,
                     env=env,
                 )
             except (subprocess.TimeoutExpired, OSError):

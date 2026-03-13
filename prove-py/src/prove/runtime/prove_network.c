@@ -128,10 +128,10 @@ Prove_Result prove_network_server_inputs(Prove_String *host, int64_t port) {
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt));
 
     struct sockaddr_in sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons((uint16_t)port);
-    sa.sin_addr.s_addr = INADDR_ANY;
+    if (_resolve_and_fill(host, port, &sa) < 0) {
+        CLOSE_SOCKET(fd);
+        return _gai_error("bind");
+    }
 
     if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
         CLOSE_SOCKET(fd);

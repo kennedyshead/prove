@@ -312,8 +312,10 @@ class StmtEmitterMixin:
                                     isinstance(expr_type, GenericInstance)
                                     and expr_type.base_name == "Option"
                                 ):
-                                    if isinstance(expr, IdentifierExpr):
-                                        emit_val = f"{expr.name}.tag == 1"
+                                    opt_tmp = self._tmp()
+                                    opt_ct = map_type(expr_type)
+                                    self._line(f"{opt_ct.decl} {opt_tmp} = {emit_val};")
+                                    emit_val = f"({opt_tmp}.tag == 1)"
                             self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
                         self._emit_releases(ret_tmp)
                         self._emit_region_exit()
