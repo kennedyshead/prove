@@ -163,7 +163,10 @@ static Prove_StoreTable *_deserialize_table(Prove_String *path, const char *name
 
     for (int64_t i = 0; i < col_count; i++) {
         col_names[i] = _read_str(f);
-        if (!col_names[i]) { fclose(f); free(col_names); return NULL; }
+        if (!col_names[i]) {
+            for (int64_t j = 0; j < i; j++) prove_release(col_names[j]);
+            fclose(f); free(col_names); return NULL;
+        }
     }
 
     Prove_String *tname = prove_string_from_cstr(name);
@@ -477,8 +480,12 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                             prove_list_push(conflicts, c);
                         } else {
                             if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
+                                prove_retain(remote->changed[r].new_value);
+                                prove_release(local->changed[l].new_value);
                                 local->changed[l].new_value = remote->changed[r].new_value;
                             } else if (res->tag == PROVE_RESOLUTION_USE_VALUE) {
+                                prove_retain(res->data.use_value);
+                                prove_release(local->changed[l].new_value);
                                 local->changed[l].new_value = res->data.use_value;
                             }
                             free(c);
@@ -501,10 +508,10 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                 c->data.addition.local_vals = prove_list_new(base->column_count);
                 c->data.addition.remote_vals = prove_list_new(base->column_count);
                 for (int64_t col = 0; col < base->column_count; col++) {
-                    if (col < local->added_count && local->added[l].values) {
+                    if (local->added[l].values) {
                         prove_list_push(c->data.addition.local_vals, local->added[l].values[col]);
                     }
-                    if (col < remote->added_count && remote->added[r].values) {
+                    if (remote->added[r].values) {
                         prove_list_push(c->data.addition.remote_vals, remote->added[r].values[col]);
                     }
                 }
@@ -517,6 +524,8 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                     } else {
                         if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
                             for (int64_t col = 0; col < base->column_count; col++) {
+                                prove_retain(remote->added[r].values[col]);
+                                prove_release(local->added[l].values[col]);
                                 local->added[l].values[col] = remote->added[r].values[col];
                             }
                         }

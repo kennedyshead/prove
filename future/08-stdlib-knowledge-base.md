@@ -433,3 +433,17 @@ Stdlib Knowledge Base  ← this document
     │
     └──▶ Phase 3 .intent LSP (suggest from stdlib capabilities)
 ```
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **No public-facing docs changes** — this is an internal ML training improvement.
+  The user-visible effect is better stub and body generation quality, which is
+  documented in the stub generation and intent-driven generation plans.
+- **`AGENTS.md`** — Under key files, note that `ml_extract.py` now includes `///`
+  docstrings in training data: "Docstrings are indexed as natural-language descriptions
+  of stdlib functions; `implied_functions(text)` in `_nl_intent.py` returns ranked
+  stdlib matches by docstring overlap."

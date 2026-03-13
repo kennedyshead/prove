@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <poll.h>
 
 /* ── File I/O ────────────────────────────────────────────────── */
 
@@ -132,23 +133,50 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
     close(out_pipe[1]);
     close(err_pipe[1]);
 
-    /* Read stdout using Builder — write raw buffer directly */
-    char buf[4097];
+    /* Read stdout and stderr concurrently using poll() to avoid deadlock
+       when the child fills one pipe buffer while we block reading the other.
+       Also use prove_string_new + prove_text_write to handle embedded NUL bytes. */
+    char buf[4096];
     ssize_t n;
     Prove_Builder *ob = prove_text_builder();
-    while ((n = read(out_pipe[0], buf, 4096)) > 0) {
-        buf[n] = '\0';
-        ob = prove_text_write_cstr(ob, buf);
-    }
-    close(out_pipe[0]);
-
-    /* Read stderr using Builder */
     Prove_Builder *eb = prove_text_builder();
-    while ((n = read(err_pipe[0], buf, 4096)) > 0) {
-        buf[n] = '\0';
-        eb = prove_text_write_cstr(eb, buf);
+
+    struct pollfd fds[2];
+    fds[0].fd = out_pipe[0];
+    fds[0].events = POLLIN;
+    fds[1].fd = err_pipe[0];
+    fds[1].events = POLLIN;
+    int open_fds = 2;
+
+    while (open_fds > 0) {
+        int ret = poll(fds, 2, -1);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (fds[0].revents & (POLLIN | POLLHUP)) {
+            n = read(out_pipe[0], buf, sizeof(buf));
+            if (n > 0) {
+                Prove_String *chunk = prove_string_new(buf, (int64_t)n);
+                ob = prove_text_write(ob, chunk);
+            } else {
+                fds[0].fd = -1;
+                close(out_pipe[0]);
+                open_fds--;
+            }
+        }
+        if (fds[1].revents & (POLLIN | POLLHUP)) {
+            n = read(err_pipe[0], buf, sizeof(buf));
+            if (n > 0) {
+                Prove_String *chunk = prove_string_new(buf, (int64_t)n);
+                eb = prove_text_write(eb, chunk);
+            } else {
+                fds[1].fd = -1;
+                close(err_pipe[0]);
+                open_fds--;
+            }
+        }
     }
-    close(err_pipe[0]);
 
     /* Wait for child */
     int status;

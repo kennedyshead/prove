@@ -52,3 +52,17 @@ Add when a concrete user program needs safe array access with dynamic indices. U
 then the unchecked variants + programmer discipline (loop bounds) are sufficient.
 Good trigger: the first e2e test that uses `get` with a runtime-computed index that
 could be out of range.
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/stdlib/table-list-store.md`** — Add `get_safe` and `set_safe` rows to the
+  Array Access and Mutation tables. Add an example showing the `match` pattern for
+  safe index access and when to prefer it over the unchecked `get`/`set`.
+- **`AGENTS.md`** — Update the Stdlib section: `Array` module now has 6 access/mutation
+  functions (`get`, `set`, `get_safe`, `set_safe`, plus mutable variants). Note that
+  `get_safe` returns `Option<T>`, requiring `match` at call sites.
+- Run `mkdocs build --strict` after editing the stdlib page.

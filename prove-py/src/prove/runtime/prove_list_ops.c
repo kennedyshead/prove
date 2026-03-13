@@ -18,44 +18,43 @@ int64_t prove_list_ops_length(Prove_List *list) {
 /* ── First / Last (int) ─────────────────────────────────────── */
 
 Prove_Option prove_list_ops_first_int(Prove_List *list) {
-    if (!list || list->length == 0) return prove_option_none();
+    if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[0]);
 }
 
 Prove_Option prove_list_ops_last_int(Prove_List *list) {
-    if (!list || list->length == 0) return prove_option_none();
+    if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[list->length - 1]);
 }
 
 /* ── First / Last (str) ─────────────────────────────────────── */
 
 Prove_Option prove_list_ops_first_str(Prove_List *list) {
-    if (!list || list->length == 0) return prove_option_none();
+    if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[0]);
 }
 
 Prove_Option prove_list_ops_last_str(Prove_List *list) {
-    if (!list || list->length == 0) return prove_option_none();
+    if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[list->length - 1]);
 }
 
 /* ── Value (get element at position) ───────────────────────── */
 
 Prove_Option prove_list_ops_value(int64_t position, Prove_List *list) {
-    if (!list || position < 0 || position >= list->length) return prove_option_none();
+    if (position < 0 || position >= list->length) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[position]);
 }
 
 /* ── Empty ───────────────────────────────────────────────────── */
 
 bool prove_list_ops_empty(Prove_List *list) {
-    return !list || list->length == 0;
+    return list->length == 0;
 }
 
 /* ── Contains (int) ─────────────────────────────────────────── */
 
 bool prove_list_ops_contains_int(Prove_List *list, int64_t value) {
-    if (!list) return false;
     for (int64_t i = 0; i < list->length; i++) {
         if ((int64_t)(intptr_t)list->data[i] == value) return true;
     }
@@ -65,7 +64,6 @@ bool prove_list_ops_contains_int(Prove_List *list, int64_t value) {
 /* ── Contains (str) ─────────────────────────────────────────── */
 
 bool prove_list_ops_contains_str(Prove_List *list, Prove_String *value) {
-    if (!list) return false;
     for (int64_t i = 0; i < list->length; i++) {
         if (prove_string_eq((Prove_String *)list->data[i], value)) return true;
     }
@@ -75,7 +73,6 @@ bool prove_list_ops_contains_str(Prove_List *list, Prove_String *value) {
 /* ── Index (int) ────────────────────────────────────────────── */
 
 Prove_Option prove_list_ops_index_int(Prove_List *list, int64_t value) {
-    if (!list) return prove_option_none();
     for (int64_t i = 0; i < list->length; i++) {
         if ((int64_t)(intptr_t)list->data[i] == value) {
             return prove_option_some((Prove_Value *)(intptr_t)i);
@@ -87,7 +84,6 @@ Prove_Option prove_list_ops_index_int(Prove_List *list, int64_t value) {
 /* ── Index (str) ────────────────────────────────────────────── */
 
 Prove_Option prove_list_ops_index_str(Prove_List *list, Prove_String *value) {
-    if (!list) return prove_option_none();
     for (int64_t i = 0; i < list->length; i++) {
         if (prove_string_eq((Prove_String *)list->data[i], value)) {
             return prove_option_some((Prove_Value *)(intptr_t)i);
@@ -99,8 +95,6 @@ Prove_Option prove_list_ops_index_str(Prove_List *list, Prove_String *value) {
 /* ── Slice ───────────────────────────────────────────────────── */
 
 Prove_List *prove_list_ops_slice(Prove_List *list, int64_t start, int64_t end) {
-    if (!list) return prove_list_new(4);
-
     /* Clamp bounds */
     if (start < 0) start = 0;
     if (end > list->length) end = list->length;
@@ -117,7 +111,7 @@ Prove_List *prove_list_ops_slice(Prove_List *list, int64_t start, int64_t end) {
 /* ── Reverse ─────────────────────────────────────────────────── */
 
 Prove_List *prove_list_ops_reverse(Prove_List *list) {
-    if (!list || list->length == 0) {
+    if (list->length == 0) {
         return prove_list_new(4);
     }
 
@@ -138,7 +132,6 @@ static int _cmp_int(const void *a, const void *b) {
 }
 
 Prove_List *prove_list_ops_sort_int(Prove_List *list) {
-    if (!list) return prove_list_new(4);
     Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
     if (list->length > 0) {
         memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
@@ -165,7 +158,6 @@ static int _cmp_str(const void *a, const void *b) {
 }
 
 Prove_List *prove_list_ops_sort_str(Prove_List *list) {
-    if (!list) return prove_list_new(4);
     Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
     if (list->length > 0) {
         memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
@@ -184,9 +176,10 @@ Prove_List *prove_list_ops_range(int64_t start, int64_t end) {
 
     int64_t count = end - start;
     Prove_List *result = prove_list_new(count);
-    for (int64_t i = start; i < end; i++) {
-        prove_list_push(result, (void *)(intptr_t)i);
+    for (int64_t i = 0; i < count; i++) {
+        result->data[i] = (void *)(intptr_t)(start + i);
     }
+    result->length = count;
     return result;
 }
 
@@ -199,14 +192,16 @@ Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) 
     int64_t count = (diff + step - (diff > 0 ? 1 : -1)) / step;
     if (count < 0) count = 0;
     Prove_List *result = prove_list_new(count > 0 ? count : 4);
+    int64_t idx = 0;
     if (step > 0) {
         for (int64_t i = start; i < end; i += step) {
-            prove_list_push(result, (void *)(intptr_t)i);
+            result->data[idx++] = (void *)(intptr_t)i;
         }
     } else {
         for (int64_t i = start; i > end; i += step) {
-            prove_list_push(result, (void *)(intptr_t)i);
+            result->data[idx++] = (void *)(intptr_t)i;
         }
     }
+    result->length = idx;
     return result;
 }

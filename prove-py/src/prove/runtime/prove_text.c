@@ -6,11 +6,10 @@
 /* ── String queries ──────────────────────────────────────────── */
 
 int64_t prove_text_length(Prove_String *s) {
-    return s ? s->length : 0;
+    return s->length;
 }
 
 Prove_String *prove_text_slice(Prove_String *s, int64_t start, int64_t end) {
-    if (!s) return prove_string_new("", 0);
     if (start < 0) start = 0;
     if (end > s->length) end = s->length;
     if (start >= end) return prove_string_new("", 0);
@@ -18,20 +17,17 @@ Prove_String *prove_text_slice(Prove_String *s, int64_t start, int64_t end) {
 }
 
 bool prove_text_starts_with(Prove_String *s, Prove_String *prefix) {
-    if (!s || !prefix) return false;
     if (prefix->length > s->length) return false;
     return memcmp(s->data, prefix->data, (size_t)prefix->length) == 0;
 }
 
 bool prove_text_ends_with(Prove_String *s, Prove_String *suffix) {
-    if (!s || !suffix) return false;
     if (suffix->length > s->length) return false;
     int64_t offset = s->length - suffix->length;
     return memcmp(s->data + offset, suffix->data, (size_t)suffix->length) == 0;
 }
 
 bool prove_text_contains(Prove_String *s, Prove_String *sub) {
-    if (!s || !sub) return false;
     if (sub->length == 0) return true;
     if (sub->length > s->length) return false;
     return memmem(s->data, (size_t)s->length,
@@ -39,7 +35,6 @@ bool prove_text_contains(Prove_String *s, Prove_String *sub) {
 }
 
 Prove_Option prove_text_index_of(Prove_String *s, Prove_String *sub) {
-    if (!s || !sub) return prove_option_none();
     if (sub->length == 0) return prove_option_some((Prove_Value*)(intptr_t)0);
     if (sub->length > s->length) return prove_option_none();
     const char *found = (const char *)memmem(s->data, (size_t)s->length,
@@ -52,10 +47,10 @@ Prove_Option prove_text_index_of(Prove_String *s, Prove_String *sub) {
 
 Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
     Prove_List *list = prove_list_new(8);
-    if (!s || s->length == 0) {
+    if (s->length == 0) {
         return list;
     }
-    if (!sep || sep->length == 0) {
+    if (sep->length == 0) {
         /* Empty separator: return list with the original string */
         Prove_String *copy = prove_string_new(s->data, s->length);
         prove_list_push(list, copy);
@@ -66,20 +61,35 @@ Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
     const char *end = s->data + s->length;
     size_t sep_len = (size_t)sep->length;
 
-    while (start <= end) {
-        const char *found = NULL;
-        if (start < end) {
-            found = (const char *)memmem(start, (size_t)(end - start),
-                                         sep->data, sep_len);
+    if (sep_len == 1) {
+        /* Fast path: single-char separator uses memchr */
+        char sc = sep->data[0];
+        while (start <= end) {
+            const char *found = (start < end)
+                ? (const char *)memchr(start, sc, (size_t)(end - start))
+                : NULL;
+            if (found) {
+                prove_list_push(list, prove_string_new(start, (int64_t)(found - start)));
+                start = found + 1;
+            } else {
+                prove_list_push(list, prove_string_new(start, (int64_t)(end - start)));
+                break;
+            }
         }
-        if (found) {
-            Prove_String *part = prove_string_new(start, (int64_t)(found - start));
-            prove_list_push(list, part);
-            start = found + sep_len;
-        } else {
-            Prove_String *part = prove_string_new(start, (int64_t)(end - start));
-            prove_list_push(list, part);
-            break;
+    } else {
+        while (start <= end) {
+            const char *found = NULL;
+            if (start < end) {
+                found = (const char *)memmem(start, (size_t)(end - start),
+                                             sep->data, sep_len);
+            }
+            if (found) {
+                prove_list_push(list, prove_string_new(start, (int64_t)(found - start)));
+                start = found + sep_len;
+            } else {
+                prove_list_push(list, prove_string_new(start, (int64_t)(end - start)));
+                break;
+            }
         }
     }
 
@@ -87,14 +97,14 @@ Prove_List *prove_text_split(Prove_String *s, Prove_String *sep) {
 }
 
 Prove_String *prove_text_join(Prove_List *parts, Prove_String *sep) {
-    if (!parts || parts->length == 0) return prove_string_new("", 0);
+    if (parts->length == 0) return prove_string_new("", 0);
 
     /* Calculate total length */
     int64_t total = 0;
     for (int64_t i = 0; i < parts->length; i++) {
         Prove_String *sp = (Prove_String *)prove_list_get(parts, i);
         if (sp) total += sp->length;
-        if (i > 0 && sep) total += sep->length;
+        if (i > 0) total += sep->length;
     }
 
     Prove_String *result = (Prove_String *)prove_alloc(
@@ -104,7 +114,7 @@ Prove_String *prove_text_join(Prove_List *parts, Prove_String *sep) {
 
     char *dst = result->data;
     for (int64_t i = 0; i < parts->length; i++) {
-        if (i > 0 && sep && sep->length > 0) {
+        if (i > 0 && sep->length > 0) {
             memcpy(dst, sep->data, (size_t)sep->length);
             dst += sep->length;
         }
@@ -120,7 +130,7 @@ Prove_String *prove_text_join(Prove_List *parts, Prove_String *sep) {
 }
 
 Prove_String *prove_text_trim(Prove_String *s) {
-    if (!s || s->length == 0) return prove_string_new("", 0);
+    if (s->length == 0) return prove_string_new("", 0);
 
     int64_t start = 0;
     int64_t end = s->length;
@@ -131,7 +141,6 @@ Prove_String *prove_text_trim(Prove_String *s) {
 }
 
 Prove_String *prove_text_to_lower(Prove_String *s) {
-    if (!s) return prove_string_new("", 0);
     Prove_String *result = (Prove_String *)prove_alloc(
         sizeof(Prove_String) + (size_t)s->length + 1
     );
@@ -144,7 +153,6 @@ Prove_String *prove_text_to_lower(Prove_String *s) {
 }
 
 Prove_String *prove_text_to_upper(Prove_String *s) {
-    if (!s) return prove_string_new("", 0);
     Prove_String *result = (Prove_String *)prove_alloc(
         sizeof(Prove_String) + (size_t)s->length + 1
     );
@@ -157,10 +165,9 @@ Prove_String *prove_text_to_upper(Prove_String *s) {
 }
 
 Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_String *new_s) {
-    if (!s || !old_s || old_s->length == 0) {
-        return s ? prove_string_new(s->data, s->length) : prove_string_new("", 0);
+    if (old_s->length == 0) {
+        return prove_string_new(s->data, s->length);
     }
-    if (!new_s) new_s = prove_string_new("", 0);
 
     /* Count occurrences */
     int64_t count = 0;
@@ -206,7 +213,7 @@ Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_Str
 }
 
 Prove_String *prove_text_repeat(Prove_String *s, int64_t n) {
-    if (!s || n <= 0) return prove_string_new("", 0);
+    if (n <= 0) return prove_string_new("", 0);
     if (s->length > 0 && n > INT64_MAX / s->length) {
         prove_panic("Text.repeat: length overflow");
     }
@@ -249,8 +256,7 @@ static Prove_Builder *_builder_grow(Prove_Builder *b, int64_t needed) {
 }
 
 Prove_Builder *prove_text_write(Prove_Builder *b, Prove_String *s) {
-    if (!b) prove_panic("Builder.write: null builder");
-    if (!s || s->length == 0) return b;
+    if (s->length == 0) return b;
     if (b->length + s->length > b->capacity) {
         b = _builder_grow(b, s->length);
     }
@@ -260,7 +266,6 @@ Prove_Builder *prove_text_write(Prove_Builder *b, Prove_String *s) {
 }
 
 Prove_Builder *prove_text_write_char(Prove_Builder *b, char c) {
-    if (!b) prove_panic("Builder.write_char: null builder");
     if (b->length + 1 > b->capacity) {
         b = _builder_grow(b, 1);
     }
@@ -270,7 +275,6 @@ Prove_Builder *prove_text_write_char(Prove_Builder *b, char c) {
 }
 
 Prove_Builder *prove_text_write_cstr(Prove_Builder *b, const char *cstr) {
-    if (!b) prove_panic("Builder.write_cstr: null builder");
     if (!cstr) return b;
     int64_t len = (int64_t)strlen(cstr);
     if (len == 0) return b;
@@ -283,10 +287,9 @@ Prove_Builder *prove_text_write_cstr(Prove_Builder *b, const char *cstr) {
 }
 
 Prove_String *prove_text_build(Prove_Builder *b) {
-    if (!b) return prove_string_new("", 0);
     return prove_string_new(b->data, b->length);
 }
 
 int64_t prove_text_builder_length(Prove_Builder *b) {
-    return b ? b->length : 0;
+    return b->length;
 }

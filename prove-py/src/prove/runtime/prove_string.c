@@ -76,13 +76,15 @@ Prove_String *prove_string_from_double(double val) {
 static Prove_String *_str_true = NULL;
 static Prove_String *_str_false = NULL;
 
+static void prove_string_init_statics(void) {
+    _str_true = prove_string_from_cstr("true");
+    _str_true->header.refcount = INT32_MAX;
+    _str_false = prove_string_from_cstr("false");
+    _str_false->header.refcount = INT32_MAX;
+}
+
 Prove_String *prove_string_from_bool(bool val) {
-    if (!_str_true) {
-        _str_true = prove_string_from_cstr("true");
-        _str_true->header.refcount = INT32_MAX;
-        _str_false = prove_string_from_cstr("false");
-        _str_false->header.refcount = INT32_MAX;
-    }
+    if (!_str_true) prove_string_init_statics();
     return val ? _str_true : _str_false;
 }
 

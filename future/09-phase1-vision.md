@@ -222,3 +222,18 @@ The `.intent` file sits at the top of the generation pyramid. It generates
 (which Phase 2 fills). `prove check --intent` verifies the whole chain.
 
 Each phase depends on the previous being solid.
+
+---
+
+## Documentation & AGENTS Updates
+
+When Phase 1 is complete (all four deliverables shipped):
+
+- **`docs/roadmap.md`** — Move "Prose Coherence Analysis" and "Cache Indexing" from
+  Proposed to Preview/Stable. Move "Stub Generation" from Exploring to Proposed.
+- **`AGENTS.md`** — Add a "Generation Pipeline" section listing the four Phase 1
+  components in dependency order: `_nl_intent.py` → Coherence Checks → Cache Warmup
+  → Stub Generation. Include the `prove generate` and `prove index` commands.
+- Each sub-deliverable has its own docs/AGENTS requirements — see the individual plans
+  (06, 07, 08) for specifics.
+- Run `mkdocs build --strict` after updating the roadmap.

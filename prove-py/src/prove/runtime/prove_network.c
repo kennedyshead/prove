@@ -44,6 +44,15 @@ static Prove_Result _socket_error(const char *context) {
     return prove_result_err(prove_string_from_cstr(buf));
 }
 
+static int _last_gai_error = 0;
+
+static Prove_Result _gai_error(const char *context) {
+    const char *msg = gai_strerror(_last_gai_error);
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%s: %s", context, msg);
+    return prove_result_err(prove_string_from_cstr(buf));
+}
+
 static int _resolve_and_fill(Prove_String *host, int64_t port,
                              struct sockaddr_in *sa) {
     memset(sa, 0, sizeof(*sa));
@@ -62,7 +71,7 @@ static int _resolve_and_fill(Prove_String *host, int64_t port,
     hints.ai_socktype = SOCK_STREAM;
 
     int gai = getaddrinfo(host_buf, NULL, &hints, &res);
-    if (gai != 0) return -1;
+    if (gai != 0) { _last_gai_error = gai; return -1; }
 
     memcpy(&sa->sin_addr,
            &((struct sockaddr_in *)res->ai_addr)->sin_addr,
@@ -83,7 +92,7 @@ Prove_Result prove_network_socket_inputs(Prove_String *host, int64_t port) {
     struct sockaddr_in sa;
     if (_resolve_and_fill(host, port, &sa) < 0) {
         CLOSE_SOCKET(fd);
-        return _socket_error("resolve");
+        return _gai_error("resolve");
     }
 
     if (connect(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {

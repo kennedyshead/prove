@@ -508,3 +508,20 @@ making `prove generate` fast enough for interactive use.
 - **Declaration regeneration** — updating the declaration text when code changes
 - **Contract inference** — predicting `ensures`/`requires` from verb + types
 - **Temporal ordering** — using `ModuleDecl.temporal` to sequence function generation
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/cli.md`** — Add the `prove generate [path]` subcommand: what it reads
+  (`narrative:` block), what it produces (function stubs with `todo`-marked `from`
+  blocks), and the flags (e.g. `--dry-run` to preview without writing).
+- **`docs/syntax.md`** — Add a `todo` section: how `todo` marks incomplete `from`
+  blocks, that the checker tracks it as an incompleteness diagnostic, and that the
+  emitter compiles it to a clear panic.
+- **`AGENTS.md`** — Add `prove generate` to the Commands section. Add a note under
+  the checker: "`todo` in a `from` block emits an incompleteness warning; the emitter
+  compiles it to `prove_panic(\"not implemented: <function name>\")`."
+- Run `mkdocs build --strict` after editing docs pages.

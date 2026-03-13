@@ -247,3 +247,22 @@ This makes the guarantee visible at the type level rather than buried in C.
 | 2 — Region scope elision | Medium (new emitter analysis pass) | **High** (eliminates malloc per pure function call) | High priority for numeric perf |
 | 3 — Division by zero | Low (3 tiers, each small) | Medium (closes silent UB) | With next checker diagnostic pass |
 | 4 — Refinement IO guards | Medium (emitter + constraint codegen) | High (makes refinement types actually safe) | After type system stabilizes |
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/compiler.md`** — Add a "Build Modes" section documenting the `--release` flag
+  (`-DPROVE_RELEASE`): what checks it disables (array bounds, division-by-zero guards),
+  when to use it, and how it compares to a debug build. Document region scope elision as
+  a transparent compiler optimization (no user action needed).
+- **`docs/types.md`** — Expand the Refinement Types section to describe IO boundary
+  enforcement: that refinement constraints are also checked at runtime when the source
+  is not a compile-time literal (IO, parse, external input).
+- **`AGENTS.md`** — Under the C Emitter section, add `_needs_region_scope()` as a key
+  method: "Returns True if the function body contains allocating calls; controls whether
+  `prove_region_enter/exit` is emitted." Add `--release` to the `prove build` command
+  line entry.
+- Run `mkdocs build --strict` after editing docs pages.

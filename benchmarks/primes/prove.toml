@@ -6,12 +6,16 @@ license = ""
 
 [build]
 target = "native"
-optimize = true
 mutate = false
 debug = false
+
+[optimize]
+enabled = true
+pgo = true
 
 [test]
 property_rounds = 1000
 
 [style]
 line_length = 90
+

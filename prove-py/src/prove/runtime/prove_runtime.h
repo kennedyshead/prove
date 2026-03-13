@@ -17,14 +17,17 @@ typedef struct {
 } Prove_Header;
 
 static inline void prove_retain(void *obj) {
-    if (obj) {
-        ((Prove_Header *)obj)->refcount++;
+    if (__builtin_expect(obj != NULL, 1)) {
+        Prove_Header *h = (Prove_Header *)obj;
+        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return;
+        h->refcount++;
     }
 }
 
 static inline void prove_release(void *obj) {
-    if (obj) {
+    if (__builtin_expect(obj != NULL, 1)) {
         Prove_Header *h = (Prove_Header *)obj;
+        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return;
         if (--h->refcount <= 0) {
             free(obj);
         }

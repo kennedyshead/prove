@@ -224,16 +224,13 @@ Prove_List *prove_pattern_split(Prove_String *text, Prove_String *pattern) {
 /* ── Match accessors ─────────────────────────────────────────── */
 
 Prove_String *prove_pattern_text(Prove_Match *m) {
-    if (!m) prove_panic("Pattern.text: null match");
     return m->text;
 }
 
 int64_t prove_pattern_start(Prove_Match *m) {
-    if (!m) prove_panic("Pattern.start: null match");
     return m->start;
 }
 
 int64_t prove_pattern_end(Prove_Match *m) {
-    if (!m) prove_panic("Pattern.end: null match");
     return m->end;
 }

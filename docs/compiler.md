@@ -41,9 +41,12 @@ license = ""
 
 [build]
 target = "native"
-optimize = true
 c_flags = []
 link_flags = []
+
+[optimize]
+enabled = true
+pgo = false
 
 [test]
 property_rounds = 1000
@@ -59,9 +62,10 @@ line_length = 90
 | | `authors` | `[]` | Author names |
 | | `license` | `""` | License identifier |
 | `[build]` | `target` | `"native"` | Build target |
-| | `optimize` | `false` | Enable compiler optimizations |
 | | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`) |
 | | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`) |
+| `[optimize]` | `enabled` | `true` | Enable compiler optimizations (`-O2 -flto`) |
+| | `pgo` | `false` | Enable [profile-guided optimization](performance.md#profile-guided-optimization-pgo) (requires `enabled = true`) |
 | `[test]` | `property_rounds` | `1000` | Number of random inputs per property test (overridable with `--property-rounds`) |
 | `[style]` | `line_length` | `90` | Maximum line length for the formatter |
 
@@ -141,7 +145,7 @@ The `Suggestion` system provides machine-applicable fixes. When a diagnostic inc
 
 ## Optimizer
 
-When `optimize = true` in `prove.toml`, the compiler runs optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
+When `enabled = true` under `[optimize]` in `prove.toml`, the compiler runs optimization passes on the AST before C emission. All passes are structure-preserving — they transform the AST without changing program semantics.
 
 | Pass | What it does |
 |------|-------------|
@@ -150,6 +154,7 @@ When `optimize = true` in `prove.toml`, the compiler runs optimization passes on
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
 | **Compile-time evaluation** | Evaluates pure functions with constant arguments at compile time. For example, `double(21)` becomes `42` during compilation. Recursive functions are not evaluated to avoid infinite loops. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
+| **TCO loop inlining** | When a TCO-converted function calls another TCO-converted function in tail position, inlines the callee as a nested `while` loop inside the caller's loop body. Eliminates the function call overhead entirely and enables the C compiler to see the combined loop as a single unit. The inlined function is then removed by dead code elimination. |
 | **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |

@@ -251,6 +251,15 @@ class ExprEmitterMixin:
         from prove.type_inference import BINARY_OP_TO_C
 
         c_op = BINARY_OP_TO_C.get(expr.op, expr.op)
+
+        # Runtime division-by-zero guard for integer / and %
+        if expr.op in ("/", "%") and not isinstance(expr.right, IntegerLit):
+            if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "Integer":
+                tmp = self._tmp()
+                self._line(f"int64_t {tmp} = {right};")
+                self._line(f'if ({tmp} == 0) prove_panic("division by zero");')
+                return f"({left} {c_op} {tmp})"
+
         return f"({left} {c_op} {right})"
 
     # -- Unary expressions ------------------------------------------

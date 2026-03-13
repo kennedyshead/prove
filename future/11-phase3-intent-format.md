@@ -625,3 +625,23 @@ module narrative: blocks           (Phase 1: module-level intent)
 ```
 
 Each phase adds a layer. The `.intent` file is the top of the pyramid.
+
+---
+
+## Documentation & AGENTS Updates
+
+When the `.intent` format is implemented:
+
+- **New `docs/intent.md`** — Full reference for the `.intent` file format: vocabulary
+  blocks, module blocks, flow declarations, constraint syntax, and the LSP mode for
+  `.intent` files. Include a worked example from blank `.intent` to generated module.
+- **`mkdocs.yml`** — Add `Intent Format: intent.md` under the Language section in the
+  nav.
+- **`docs/cli.md`** — Add `prove check --intent` subcommand: verifies the entire
+  narrative → stub → body chain against the `.intent` declaration.
+- **`docs/roadmap.md`** — Move "Project Intent Declaration" from Exploring to the
+  appropriate status as it ships.
+- **`AGENTS.md`** — Add `.intent` to the Layout section: "`.intent` files declare
+  project-level intent; `prove check --intent` verifies the chain. Parsed by the
+  intent parser in `intent_parser.py`; generates `narrative:` blocks for each module."
+- Run `mkdocs build --strict` after adding the new page and nav entry.

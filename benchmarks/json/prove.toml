@@ -1,3 +1,21 @@
 [package]
 name = "json-benchmark"
 version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+mutate = false
+debug = false
+
+[optimize]
+enabled = true
+pgo = true
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90
+

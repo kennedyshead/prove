@@ -15,7 +15,9 @@ Prove_List *prove_list_new(int64_t initial_cap) {
 Prove_List *prove_list_new_region(ProveRegion *r, int64_t initial_cap) {
     if (initial_cap < 4) initial_cap = 4;
     Prove_List *l = (Prove_List *)prove_region_alloc(r, sizeof(Prove_List));
+    if (!l) prove_panic("list region alloc failed");
     l->data = (void **)prove_region_alloc(r, sizeof(void *) * (size_t)initial_cap);
+    if (!l->data) prove_panic("list data region alloc failed");
     l->length = 0;
     l->capacity = initial_cap;
     l->is_region = true;
