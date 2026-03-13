@@ -18,11 +18,16 @@ class PackageConfig:
 @dataclass
 class BuildConfig:
     target: str = "native"
-    optimize: bool = True
     mutate: bool = True
     debug: bool = False
     c_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OptimizeConfig:
+    enabled: bool = True
+    pgo: bool = False
 
 
 @dataclass
@@ -39,6 +44,7 @@ class StyleConfig:
 class ProveConfig:
     package: PackageConfig = field(default_factory=PackageConfig)
     build: BuildConfig = field(default_factory=BuildConfig)
+    optimize: OptimizeConfig = field(default_factory=OptimizeConfig)
     test: TestConfig = field(default_factory=TestConfig)
     style: StyleConfig = field(default_factory=StyleConfig)
 
@@ -78,11 +84,22 @@ def load_config(path: Path) -> ProveConfig:
         bld = data["build"]
         config.build = BuildConfig(
             target=bld.get("target", "native"),
-            optimize=bld.get("optimize", True),
             mutate=bld.get("mutate", True),
             debug=bld.get("debug", False),
             c_flags=bld.get("c_flags", []),
             link_flags=bld.get("link_flags", []),
+        )
+
+    if "optimize" in data:
+        opt = data["optimize"]
+        config.optimize = OptimizeConfig(
+            enabled=opt.get("enabled", True),
+            pgo=opt.get("pgo", False),
+        )
+    elif "build" in data and "optimize" in data["build"]:
+        # Backward compat: [build] optimize = true/false
+        config.optimize = OptimizeConfig(
+            enabled=data["build"]["optimize"],
         )
 
     if "test" in data:

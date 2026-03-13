@@ -65,7 +65,8 @@ void *prove_random_choice_raw(Prove_List *list) {
     if (!list || list->length == 0) {
         prove_panic("choice: empty list");
     }
-    int64_t idx = (int64_t)(rand() % (int)list->length);
+    uint64_t r = ((uint64_t)rand() << 16) ^ (uint64_t)rand();
+    int64_t idx = (int64_t)(r % (uint64_t)list->length);
     return prove_list_get(list, idx);
 }
 
@@ -82,7 +83,8 @@ Prove_List *prove_random_shuffle_raw(Prove_List *list) {
 
     /* Fisher-Yates shuffle */
     for (int64_t i = result->length - 1; i > 0; i--) {
-        int64_t j = (int64_t)(rand() % (int)(i + 1));
+        uint64_t r = ((uint64_t)rand() << 16) ^ (uint64_t)rand();
+        int64_t j = (int64_t)(r % (uint64_t)(i + 1));
         /* Swap pointers */
         void *tmp = result->data[i];
         result->data[i] = result->data[j];

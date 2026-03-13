@@ -694,53 +694,52 @@ class TestOptionUnwrap:
 class TestRegionCleanup:
     """Test that prove_region_exit is emitted before return statements."""
 
-    def test_pure_function_region_exit_before_return(self):
+    def test_pure_function_region_elided(self):
         source = (
             "transforms double(x Integer) Integer\n"
             "    from\n"
             "        x * 2\n"
         )
         c_code = _emit(source)
-        # region_exit must appear before the return
-        exit_idx = c_code.index("prove_region_exit")
-        return_idx = c_code.index("return", exit_idx)
-        assert exit_idx < return_idx
+        # Pure numeric function should not emit region enter/exit
+        fn_start = c_code.index("prv_transforms_double")
+        fn_end = c_code.index("}", fn_start)
+        fn_code = c_code[fn_start:fn_end]
+        assert "prove_region_enter" not in fn_code
+        assert "prove_region_exit" not in fn_code
 
-    def test_failable_function_region_exit_before_return(self):
+    def test_allocating_function_region_exit_before_return(self):
         source = (
-            "module Main\n"
-            "  System inputs console\n"
-            "\n"
-            "inputs greeting() String!\n"
-            "    from\n"
-            "        console()\n"
+            'transforms greet(name String) String\n'
+            '    from\n'
+            '        "hello " + name\n'
         )
         c_code = _emit(source)
-        # Find the function body (skip main)
-        fn_start = c_code.index("prv_inputs_greeting")
+        fn_start = c_code.index("prv_transforms_greet")
         fn_code = c_code[fn_start:]
-        # region_exit should appear before result_ok return
+        # Function with string literal should have region enter/exit
+        assert "prove_region_enter" in fn_code
         exit_idx = fn_code.index("prove_region_exit")
         return_idx = fn_code.index("return", exit_idx)
         assert exit_idx < return_idx
 
     def test_failable_error_prop_region_exit(self):
-        """Error propagation should exit region before returning error."""
+        """Error propagation should exit region before returning error when region is active."""
         source = (
-            "inputs risky() Integer!\n"
-            "    from\n"
-            "        42\n"
-            "\n"
-            "inputs caller() Integer!\n"
-            "    from\n"
-            "        x as Integer = risky()!\n"
-            "        x\n"
+            'inputs risky() String!\n'
+            '    from\n'
+            '        "hello"\n'
+            '\n'
+            'inputs caller() String!\n'
+            '    from\n'
+            '        x as String = risky()!\n'
+            '        "got: " + x\n'
         )
         c_code = _emit(source)
         # Find the caller function
         fn_start = c_code.index("prv_inputs_caller")
         fn_code = c_code[fn_start:]
-        # Should have region_exit inside error check block
+        # Should have region_exit inside error check block (string literals trigger region)
         assert "prove_region_exit" in fn_code
         err_check = fn_code.index("prove_result_is_err")
         exit_after_err = fn_code.index("prove_region_exit", err_check)

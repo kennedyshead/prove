@@ -646,3 +646,19 @@ check_ok(source)   # quick_sort is a known name in scope
   narrative only talks about reading; W502 flags an explain entry that no longer matches
   what the from-block does; W503 flags undocumented design choices
 - LSP always runs coherence (as warnings), CLI requires `--coherence` to surface them
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/contracts.md`** — Add a "Prose Coherence" section documenting W501–W505:
+  what each warning catches, how to resolve it, and how to enable `--coherence` on the
+  CLI. Include an example showing a module narrative, a mismatched function verb, and
+  the W501 output.
+- **`docs/cli.md`** — Add `--coherence` flag to the `prove check` command reference.
+- **`AGENTS.md`** — Add `_nl_intent.py` to the key files list: "Pure Python module;
+  `implied_verbs(text)` extracts Prove verb set from English prose; shared by the checker
+  (`--coherence`) and LSP (prose completions)." Note W501–W505 in the checker mixin list.
+- Run `mkdocs build --strict` after editing docs pages.

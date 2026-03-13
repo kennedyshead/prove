@@ -37,6 +37,7 @@ from
 
 _GITIGNORE = """\
 build/
+dist/
 __pycache__/
 .prove/
 """

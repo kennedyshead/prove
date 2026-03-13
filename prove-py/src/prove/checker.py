@@ -2175,6 +2175,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Arithmetic operators
         if expr.op in ("+", "-", "*", "/", "%"):
+            # Division by zero check (E370)
+            if expr.op in ("/", "%") and isinstance(expr.right, IntegerLit):
+                if expr.right.value == 0:
+                    self._error("E370", "division by zero", expr.span)
+                    return ERROR_TY
             if not types_compatible(left, right):
                 # Try numeric widening (Integer → Decimal → Float)
                 widened = numeric_widen(left, right)

@@ -55,7 +55,7 @@ static void _sha256(const uint8_t *data, size_t len, uint8_t out[32]) {
     for (i = 0; i + 64 <= len; i += 64)
         _sha256_transform(state, data + i);
     size_t rem = len - i;
-    memcpy(block, data + i, rem);
+    if (rem > 0) memcpy(block, data + i, rem);
     block[rem] = 0x80;
     if (rem >= 56) {
         memset(block + rem + 1, 0, 64 - rem - 1);
@@ -147,7 +147,7 @@ static void _sha512(const uint8_t *data, size_t len, uint8_t out[64]) {
     for (i = 0; i + 128 <= len; i += 128)
         _sha512_transform(state, data + i);
     size_t rem = len - i;
-    memcpy(block, data + i, rem);
+    if (rem > 0) memcpy(block, data + i, rem);
     block[rem] = 0x80;
     if (rem >= 112) {
         memset(block + rem + 1, 0, 128 - rem - 1);
@@ -255,7 +255,7 @@ static void _blake3(const uint8_t *data, size_t len, uint8_t out[32]) {
         if (take > 64) take = 64;
         uint8_t buf[64];
         memset(buf, 0, 64);
-        memcpy(buf, data + pos, take);
+        if (take > 0) memcpy(buf, data + pos, take);
         for (int i = 0; i < 16; i++) {
             block_words[i] = (uint32_t)buf[i*4] | ((uint32_t)buf[i*4+1] << 8) |
                              ((uint32_t)buf[i*4+2] << 16) | ((uint32_t)buf[i*4+3] << 24);

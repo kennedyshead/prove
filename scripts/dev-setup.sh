@@ -93,6 +93,7 @@ echo "==> Installing MkDocs and extensions..."
 pip3 install "${PIP_FLAGS[@]}" \
     mkdocs \
     mkdocs-material \
+    mkdocs-minify-plugin \
     pymdown-extensions
 
 # --- Tree-sitter grammar (optional, needs node) ---
@@ -115,6 +116,7 @@ python3 -c "import prove" 2>/dev/null && echo "  prove-py ........... OK" || { e
 command -v prove &>/dev/null && echo "  prove CLI .......... OK" || { echo "  prove CLI .......... FAIL"; ERRORS=$((ERRORS+1)); }
 python3 -c "import pygments_prove" 2>/dev/null && echo "  pygments-prove ..... OK" || { echo "  pygments-prove ..... FAIL"; ERRORS=$((ERRORS+1)); }
 command -v mkdocs &>/dev/null && echo "  mkdocs ............. OK" || { echo "  mkdocs ............. FAIL"; ERRORS=$((ERRORS+1)); }
+python3 -c "import mkdocs_minify_plugin" 2>/dev/null && echo "  mkdocs-minify ...... OK" || { echo "  mkdocs-minify ...... FAIL"; ERRORS=$((ERRORS+1)); }
 command -v ruff &>/dev/null && echo "  ruff ............... OK" || { echo "  ruff ............... FAIL"; ERRORS=$((ERRORS+1)); }
 command -v mypy &>/dev/null && echo "  mypy ............... OK" || { echo "  mypy ............... FAIL"; ERRORS=$((ERRORS+1)); }
 command -v pytest &>/dev/null && echo "  pytest ............. OK" || { echo "  pytest ............. FAIL"; ERRORS=$((ERRORS+1)); }

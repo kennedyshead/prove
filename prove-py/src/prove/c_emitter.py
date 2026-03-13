@@ -389,6 +389,85 @@ class CEmitter(
         """Get the region pointer to use for allocations."""
         return "prove_global_region()"
 
+    def _needs_region_scope(self, fd: FunctionDef) -> bool:
+        """Check if function body contains nodes that trigger region allocation.
+
+        Region allocation (prove_string_*_region, prove_list_new_region) is only
+        emitted for string/list literals when _use_region_allocation() returns True.
+        If the body has none, the prove_region_enter/exit pair is pure overhead
+        (a 4096-byte malloc + free per call).
+        """
+        from prove.ast_nodes import (
+            Assignment,
+            AsyncCallExpr,
+            CommentStmt,
+            FieldAssignment,
+            TailContinue,
+            TailLoop,
+            ValidExpr,
+            WhileLoop,
+        )
+
+        _REGION_NODES = (
+            StringLit, TripleStringLit, RawStringLit, PathLit,
+            RegexLit, StringInterp, ListLiteral,
+        )
+
+        def _expr_alloc(expr: Any) -> bool:
+            if isinstance(expr, _REGION_NODES):
+                return True
+            if isinstance(expr, BinaryExpr):
+                return _expr_alloc(expr.left) or _expr_alloc(expr.right)
+            if isinstance(expr, UnaryExpr):
+                return _expr_alloc(expr.operand)
+            if isinstance(expr, CallExpr):
+                return _expr_alloc(expr.func) or any(_expr_alloc(a) for a in expr.args)
+            if isinstance(expr, PipeExpr):
+                return _expr_alloc(expr.left) or _expr_alloc(expr.right)
+            if isinstance(expr, FieldExpr):
+                return _expr_alloc(expr.obj)
+            if isinstance(expr, IndexExpr):
+                return _expr_alloc(expr.obj) or _expr_alloc(expr.index)
+            if isinstance(expr, MatchExpr):
+                if _expr_alloc(expr.subject):
+                    return True
+                return any(_expr_alloc(arm.body) for arm in expr.arms)
+            if isinstance(expr, FailPropExpr):
+                return _expr_alloc(expr.expr)
+            if isinstance(expr, (ValidExpr, ComptimeExpr)):
+                return _expr_alloc(expr.expr)
+            if isinstance(expr, LambdaExpr):
+                return any(_stmt_alloc(s) for s in expr.body)
+            if isinstance(expr, AsyncCallExpr):
+                return any(_expr_alloc(a) for a in expr.args)
+            return False
+
+        def _stmt_alloc(stmt: Any) -> bool:
+            if isinstance(stmt, VarDecl):
+                return _expr_alloc(stmt.value)
+            if isinstance(stmt, Assignment):
+                return _expr_alloc(stmt.value)
+            if isinstance(stmt, FieldAssignment):
+                return _expr_alloc(stmt.value)
+            if isinstance(stmt, ExprStmt):
+                return _expr_alloc(stmt.expr)
+            if isinstance(stmt, TailLoop):
+                return any(_stmt_alloc(s) for s in stmt.body)
+            if isinstance(stmt, TailContinue):
+                return any(_expr_alloc(e) for _, e in stmt.assignments)
+            if isinstance(stmt, WhileLoop):
+                return _expr_alloc(stmt.break_cond) or any(
+                    _stmt_alloc(s) for s in stmt.body
+                )
+            if isinstance(stmt, CommentStmt):
+                return False
+            if isinstance(stmt, MatchExpr):
+                return _expr_alloc(stmt)
+            # Conservative default
+            return True
+
+        return any(_stmt_alloc(s) for s in fd.body)
+
     # ── Includes ───────────────────────────────────────────────
 
     def _emit_includes(self) -> None:
@@ -749,9 +828,12 @@ class CEmitter(
         self._line(f"{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 
-        # Enter region for short-lived allocations
-        self._line("prove_region_enter(prove_global_region());")
-        self._in_region_scope = True
+        # Enter region for short-lived allocations (skip for pure numeric functions)
+        if self._needs_region_scope(fd):
+            self._line("prove_region_enter(prove_global_region());")
+            self._in_region_scope = True
+        else:
+            self._in_region_scope = False
 
         # Reset locals
         self._locals.clear()
@@ -775,9 +857,10 @@ class CEmitter(
             # Emit body
             self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
 
-        # Exit region
-        self._line("prove_region_exit(prove_global_region());")
-        self._in_region_scope = False
+        # Exit region (only if we entered one)
+        if self._in_region_scope:
+            self._line("prove_region_exit(prove_global_region());")
+            self._in_region_scope = False
         self._indent -= 1
         self._line("}")
         self._line("")

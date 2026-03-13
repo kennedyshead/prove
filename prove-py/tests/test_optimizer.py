@@ -182,7 +182,7 @@ class TestTCOIntegration:
     def test_tco_deep_recursion(self, tmp_path, needs_cc):
         """Compile a tail-recursive factorial, run factorial(100000) without segfault."""
         from prove.builder import build_project
-        from prove.config import BuildConfig, PackageConfig, ProveConfig
+        from prove.config import BuildConfig, OptimizeConfig, PackageConfig, ProveConfig
 
         # Create a project with a tail-recursive function
         src_dir = tmp_path / "src"
@@ -213,7 +213,7 @@ class TestTCOIntegration:
 
         config = ProveConfig(
             package=PackageConfig(name="tco_test"),
-            build=BuildConfig(optimize=True),
+            optimize=OptimizeConfig(enabled=True),
         )
         result = build_project(tmp_path, config)
         assert result.ok, f"Build failed: {result.c_error or result.diagnostics}"

@@ -61,6 +61,65 @@ dynamic data from a `StoreTable`. Remaining:
 
 ## Proposed
 
+### Runtime Check Optimization
+
+Compiler-first coordination of safety checks between the compile step and the C runtime.
+Four independent items, each eliminating work the wrong layer is currently doing:
+
+- **Dead null guards** — Remove defensive `!ptr` checks from runtime functions for types
+  (`String`, `List<T>`, `StringBuilder`, `Table<T>`) that Prove's type system guarantees
+  are never null. These run in hot loops and are pure waste.
+- **Region scope elision** — `prove_region_enter/exit` currently wraps every compiled
+  function, allocating a 4096-byte frame via `malloc` even for pure numeric functions
+  with no allocations. A `_needs_region_scope()` analysis pass in the emitter will skip
+  emission for functions whose call graph contains no allocating calls.
+- **Division by zero** — Constant zero divisors become compile errors (new diagnostic).
+  Variable divisors without a `requires` contract get a runtime guard, suppressible
+  with `--release`.
+- **Refinement type IO enforcement** — `type Port is Integer where 1..65535` is already
+  enforced for literals. Values from IO sources will also get a compiler-generated
+  runtime guard at the assignment site.
+
+
+### C Runtime Bug Fixes
+
+Seventeen confirmed bugs in the C runtime across three severity levels, plus three
+runtime optimizations. Critical items include an immortal refcount overflow
+(`prove_retain`/`prove_release` on `INT32_MAX` objects), a pipe deadlock in process
+execution, and binary data truncation. High items include array OOM checks, random
+integer truncation UB, DNS error reporting via wrong API (`strerror` instead of
+`gai_strerror`), INT64_MIN formatting UB, and a NULL/memcpy UB in hash functions.
+
+
+### Array Safe Access
+
+Opt-in `get_safe`/`set_safe` variants that return `Option<T>` instead of producing
+undefined behaviour on out-of-bounds indices. The existing unchecked `get`/`set` remain
+as the fast path. Safe variants are explicitly named — the choice is visible at the
+call site.
+
+
+### Array HOF Operations
+
+`map`, `reduce`, `each`, and `filter` on `Array<T>` without the boxing round-trip
+through `List<Value>`. The optimizer fuses `map(map(...))`, `reduce(map(...))`, and
+`filter(map(...))` into single-pass C loops via the same `_fuse_iterators_in_expr`
+mechanism used for existing Sequence fusions. `filter` returns `List<Value>` because
+output length is unknown at compile time — the type makes the escape explicit.
+
+
+### Lookup Improvements
+
+Two independent improvements for `[Lookup]` types:
+
+- **Named columns** — When a lookup has two columns of the same type (e.g. two `Float`
+  columns), column selection is currently ambiguous. Named column syntax
+  (`probability:Float confidence:Float`) disambiguates and enables `.name` field access.
+- **Binary search for large tables** — The reverse lookup currently uses a linear scan
+  O(n). For tables over a threshold (~16 entries), the emitter will sort the reverse
+  table at compile time and use binary search O(log n) automatically.
+
+
 ### Compiler CLI Extensions
 
 `prove compiler --load` and `--dump` for converting between `.prv` lookup

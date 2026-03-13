@@ -261,3 +261,20 @@ only guard against things the compiler cannot enforce.
 - **Skipped:** #5 (array bounds checking) — compiler already verifies this
 - **Deferred:** O4, O5, O6 — need profiling data or represent larger design decisions
 - **Covered:** O7 — subsumed by bug #2 fix
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **No public-facing docs changes** — these are internal C runtime fixes with no visible
+  language or API surface changes.
+- **`AGENTS.md`** — Add two conventions to the C Runtime section:
+  - "Immortal objects (refcount `INT32_MAX`) must guard `prove_retain`/`prove_release`
+    with `if (h->refcount >= INT32_MAX) return;`"
+  - "Static singleton strings must be initialized in `prove_runtime_init()`, not lazily
+    on first call, to avoid races with `prove_par_map`."
+  - "`getaddrinfo()` errors must be reported with `gai_strerror()`, not `strerror(errno)`."
+- Run e2e tests and the C runtime test suite (`python -m pytest tests/test_*_runtime_c.py`)
+  after each phase.

@@ -61,7 +61,9 @@ Prove_String *prove_format_hex(int64_t n) {
     char buf[32];
     int len;
     if (n < 0) {
-        len = snprintf(buf, sizeof(buf), "-%" PRIx64, (uint64_t)(-n));
+        /* Avoid UB: -(INT64_MIN) overflows in signed; cast to unsigned first */
+        uint64_t abs_val = (uint64_t)0 - (uint64_t)n;
+        len = snprintf(buf, sizeof(buf), "-%" PRIx64, abs_val);
     } else {
         len = snprintf(buf, sizeof(buf), "%" PRIx64, (uint64_t)n);
     }
@@ -75,7 +77,7 @@ Prove_String *prove_format_binary(int64_t n) {
 
     if (n < 0) {
         buf[pos++] = '-';
-        val = (uint64_t)(-n);
+        val = (uint64_t)0 - (uint64_t)n;
     } else if (n == 0) {
         return prove_string_from_cstr("0");
     } else {
@@ -102,7 +104,8 @@ Prove_String *prove_format_octal(int64_t n) {
     char buf[32];
     int len;
     if (n < 0) {
-        len = snprintf(buf, sizeof(buf), "-%" PRIo64, (uint64_t)(-n));
+        uint64_t abs_val = (uint64_t)0 - (uint64_t)n;
+        len = snprintf(buf, sizeof(buf), "-%" PRIo64, abs_val);
     } else {
         len = snprintf(buf, sizeof(buf), "%" PRIo64, (uint64_t)n);
     }

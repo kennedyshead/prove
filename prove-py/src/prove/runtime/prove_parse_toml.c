@@ -70,8 +70,7 @@ static Prove_String *_tag_bool = NULL;
 static Prove_String *_tag_array = NULL;
 static Prove_String *_tag_object = NULL;
 
-static void _init_tag_strings(void) {
-    if (_tag_null) return;
+static void prove_value_init_statics(void) {
     _tag_null = prove_string_from_cstr("null");
     _tag_null->header.refcount = INT32_MAX;
     _tag_text = prove_string_from_cstr("text");
@@ -89,7 +88,7 @@ static void _init_tag_strings(void) {
 }
 
 Prove_String *prove_value_tag(Prove_Value *v) {
-    _init_tag_strings();
+    if (!_tag_null) prove_value_init_statics();
     if (!v) return _tag_null;
     switch (v->tag) {
         case PROVE_VALUE_TEXT:    return _tag_text;

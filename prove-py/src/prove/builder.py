@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from prove.ast_nodes import Module, ModuleDecl
-from prove.c_compiler import CompileCError, compile_c, find_c_compiler
+from prove.c_compiler import CompileCError, _compiler_family, compile_c, find_c_compiler
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
 from prove.checker import Checker
@@ -15,6 +15,31 @@ from prove.errors import CompileError, Diagnostic, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.symbols import SymbolTable
+
+
+def _find_llvm_profdata() -> str | None:
+    """Find llvm-profdata: plain name, versioned, or via xcrun (macOS)."""
+    import shutil
+    import subprocess
+
+    if shutil.which("llvm-profdata"):
+        return "llvm-profdata"
+    # Versioned names (llvm-profdata-18, etc.)
+    for v in range(20, 13, -1):
+        name = f"llvm-profdata-{v}"
+        if shutil.which(name):
+            return name
+    # macOS: Xcode bundles LLVM tools behind xcrun
+    try:
+        result = subprocess.run(
+            ["xcrun", "--find", "llvm-profdata"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
 
 
 @dataclass
@@ -160,7 +185,7 @@ def _build_c(
         memo_info = None
         runtime_deps = None
         escape_info = None
-        if config.build.optimize:
+        if config.optimize.enabled:
             from prove.optimizer import Optimizer
 
             optimizer = Optimizer(module, symbols)
@@ -247,17 +272,86 @@ def _build_c(
     runtime_dir = build_dir / "runtime"
     binary_name = config.package.name or "a.out"
     binary_path = build_dir / binary_name
+    optimize = config.optimize.enabled and not debug
+    all_c_files = runtime_c_files + gen_c_files
+    compile_kwargs: dict = dict(
+        c_files=all_c_files,
+        output=binary_path,
+        compiler=cc,
+        optimize=optimize,
+        debug=debug,
+        include_dirs=[runtime_dir],
+        extra_flags=extra_flags + link_flags,
+    )
+
+    use_pgo = config.optimize.pgo and optimize
+    if use_pgo:
+        family = _compiler_family(cc)
+        if family == "msvc":
+            import warnings
+            warnings.warn("PGO not supported with MSVC; building without PGO")
+            use_pgo = False
 
     try:
-        compile_c(
-            c_files=runtime_c_files + gen_c_files,
-            output=binary_path,
-            compiler=cc,
-            optimize=config.build.optimize and not debug,
-            debug=debug,
-            include_dirs=[runtime_dir],
-            extra_flags=extra_flags + link_flags,
-        )
+        if use_pgo:
+            import os
+            import shutil
+            import subprocess
+
+            pgo_dir = build_dir / "pgo_data"
+            pgo_dir.mkdir(exist_ok=True)
+
+            # Clean stale profile data
+            for f in pgo_dir.glob("*.gcda"):
+                f.unlink()
+            for f in pgo_dir.glob("*.profraw"):
+                f.unlink()
+            profdata = pgo_dir / "default.profdata"
+            if profdata.exists():
+                profdata.unlink()
+
+            # Step 1: Build with profile-generate
+            print("pgo: building instrumented binary...")
+            compile_c(**compile_kwargs, pgo_phase="generate", pgo_dir=pgo_dir)
+
+            # Step 2: Run the binary to collect profile data
+            print("pgo: running training pass...")
+            env = {**os.environ, "LLVM_PROFILE_FILE": str(pgo_dir / "default_%m.profraw")}
+            try:
+                subprocess.run(
+                    [str(binary_path)], timeout=30, capture_output=True,
+                    env=env,
+                )
+            except (subprocess.TimeoutExpired, OSError):
+                pass  # best-effort profiling
+
+            # Step 2b: Clang needs profraw → profdata merge
+            if family == "clang":
+                profraw_files = list(pgo_dir.glob("*.profraw"))
+                if profraw_files:
+                    llvm_profdata = _find_llvm_profdata()
+                    if llvm_profdata:
+                        subprocess.run(
+                            [llvm_profdata, "merge", "-output", str(profdata)]
+                            + [str(f) for f in profraw_files],
+                            capture_output=True, timeout=30,
+                        )
+                    else:
+                        print("pgo: llvm-profdata not found; cannot merge profiles")
+
+            # Step 3: Rebuild with profile-use (fall back to normal if no data)
+            has_profile = (
+                any(pgo_dir.glob("*.gcda"))
+                or profdata.exists()
+            )
+            if has_profile:
+                print("pgo: rebuilding with profile data...")
+                compile_c(**compile_kwargs, pgo_phase="use", pgo_dir=pgo_dir)
+            else:
+                print("pgo: no profile data collected; building without PGO")
+                compile_c(**compile_kwargs)
+        else:
+            compile_c(**compile_kwargs)
     except CompileCError as e:
         return BuildResult(
             ok=False,
@@ -265,9 +359,17 @@ def _build_c(
             c_error=f"{e}\n{e.stderr}" if e.stderr else str(e),
         )
 
+    # Copy final binary to dist/
+    import shutil as _shutil
+
+    dist_dir = project_dir / "dist"
+    dist_dir.mkdir(exist_ok=True)
+    dist_path = dist_dir / binary_name
+    _shutil.copy2(binary_path, dist_path)
+
     return BuildResult(
         ok=True,
-        binary=binary_path,
+        binary=dist_path,
         diagnostics=all_diags,
         comptime_dependencies=comptime_deps,
     )

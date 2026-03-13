@@ -441,3 +441,20 @@ distinguishing generated vs human-written vs todo.
 - **Declaration regeneration** — updating the declaration text when code changes
 - **Contract inference** — predicting `ensures`/`requires` beyond verb defaults
 - **Temporal ordering** — using `ModuleDecl.temporal` to sequence operations
+
+---
+
+## Documentation & AGENTS Updates
+
+When Phase 2 is implemented:
+
+- **`docs/roadmap.md`** — Move "Intent-Driven Body Generation" from Exploring to
+  Proposed/Preview as the feature ships.
+- **`docs/cli.md`** — Extend the `prove generate` command documentation to describe
+  body generation: when a full body is produced vs. a `todo` stub, and how to trigger
+  regeneration after filling unknowns.
+- **`AGENTS.md`** — Document the generation loop: "The body generator resolves verb +
+  noun against the stdlib knowledge base; matches produce full bodies with `explain`,
+  `chosen`, `why_not`; unresolved functions produce `todo` stubs. Each filled stub
+  expands the building block set for subsequent generation passes."
+- Run `mkdocs build --strict` after updating docs.

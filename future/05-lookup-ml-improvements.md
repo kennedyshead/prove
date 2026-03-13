@@ -74,3 +74,19 @@ a threshold number of entries (e.g. > 16).
 
 **Threshold**: linear scan is faster for very small tables (cache effects); a threshold around
 16–32 entries is a reasonable crossover.
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/types.md`** — Under Lookup Types, add a "Named Columns" subsection showing
+  the `name:Type` column header syntax and `.name` field access. Add a note that the
+  binary search variant is selected automatically by the emitter for tables with more
+  than 16 entries (no user action needed).
+- **`AGENTS.md`** — Under AST nodes, add `LookupTypeDef.column_names: tuple[str, ...]`
+  as a parallel field to `value_types`. Under the emitter, note: "Lookup reverse tables
+  with >16 entries are emitted pre-sorted and use `prove_lookup_find_sorted` /
+  `prove_lookup_find_int_sorted` (binary search, O(log n))."
+- Run `mkdocs build --strict` after editing the types page.

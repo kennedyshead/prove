@@ -873,6 +873,10 @@ class StmtEmitterMixin:
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)
         self._line(f"{assign.target} = {val};")
+        # Validate refinement constraints on reassignment
+        target_ty = self._locals.get(assign.target)
+        if isinstance(target_ty, RefinementType) and target_ty.constraint:
+            self._emit_refinement_validation(assign.target, target_ty)
 
     def _emit_field_assignment(self, fa: FieldAssignment) -> None:
         target = self._emit_expr(fa.target)

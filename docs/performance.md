@@ -98,6 +98,41 @@ from
 
 ---
 
+## Profile-Guided Optimization (PGO)
+
+PGO uses runtime profiling data to guide compiler optimizations — branch prediction hints, code layout, and inlining decisions. It is most effective on branchy code (parsing, table lookups, pattern matching).
+
+Enable PGO in `prove.toml`:
+
+```toml
+[optimize]
+enabled = true
+pgo = true
+```
+
+When PGO is enabled, `prove build` runs a three-step build:
+
+1. **Instrument** — compile with profiling instrumentation (`-fprofile-generate`)
+2. **Train** — run the binary to collect execution profile data
+3. **Rebuild** — recompile using the collected profile (`-fprofile-use`)
+
+PGO requires GCC or Clang. On Clang, `llvm-profdata` must be available (included with Xcode on macOS). MSVC is not supported — the build will print a warning and fall back to a normal optimized build.
+
+PGO is silently skipped when `enabled = false` or when building with `--debug`.
+
+### Benchmark: JSON Parser
+
+Parsing and validating a 1 MB JSON file with table lookups:
+
+| Build | Time | Improvement |
+|-------|-----:|-------------|
+| `optimize.enabled = true` | ~185 ms | baseline |
+| `optimize.pgo = true` | ~165 ms | ~11% faster |
+
+The improvement comes from better branch prediction in the parser's `match` dispatch and hot-path inlining of table lookup functions.
+
+---
+
 ## Binary Size
 
 Runtime stripping means only the C runtime modules actually used by a program are compiled and linked. A program that uses only `console` output and `Array` operations links a small subset of the runtime.

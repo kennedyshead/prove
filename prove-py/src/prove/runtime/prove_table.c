@@ -58,15 +58,13 @@ Prove_Table *prove_table_new(void) {
 }
 
 bool prove_table_has(Prove_String *key, Prove_Table *table) {
-    if (!table || !key || table->count == 0) return false;
+    if (table->count == 0) return false;
     uint32_t hash = _hash_key(key);
     int64_t slot = _find_slot(table->entries, table->capacity, key, hash);
     return table->entries[slot].key != NULL;
 }
 
 Prove_Table *prove_table_add(Prove_String *key, void *value, Prove_Table *table) {
-    if (!table) prove_panic("Table.add: null table");
-    if (!key) prove_panic("Table.add: null key");
 
     /* Resize if load factor exceeded */
     if ((table->count + 1) * 100 > table->capacity * TABLE_LOAD_FACTOR) {
@@ -93,7 +91,7 @@ Prove_Table *prove_table_add(Prove_String *key, void *value, Prove_Table *table)
 }
 
 Prove_Option prove_table_get(Prove_String *key, Prove_Table *table) {
-    if (!table || !key || table->count == 0) {
+    if (table->count == 0) {
         return prove_option_none();
     }
     uint32_t hash = _hash_key(key);
@@ -106,7 +104,7 @@ Prove_Option prove_table_get(Prove_String *key, Prove_Table *table) {
 }
 
 Prove_Table *prove_table_remove(Prove_String *key, Prove_Table *table) {
-    if (!table || !key || table->count == 0) return table;
+    if (table->count == 0) return table;
 
     uint32_t hash = _hash_key(key);
     int64_t slot = _find_slot(table->entries, table->capacity, key, hash);
@@ -146,8 +144,7 @@ Prove_Table *prove_table_remove(Prove_String *key, Prove_Table *table) {
 }
 
 Prove_List *prove_table_keys(Prove_Table *table) {
-    Prove_List *list = prove_list_new(table ? table->count + 1 : 4);
-    if (!table) return list;
+    Prove_List *list = prove_list_new(table->count + 1);
 
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
@@ -159,8 +156,7 @@ Prove_List *prove_table_keys(Prove_Table *table) {
 }
 
 Prove_List *prove_table_values(Prove_Table *table) {
-    Prove_List *list = prove_list_new(table ? table->count + 1 : 4);
-    if (!table) return list;
+    Prove_List *list = prove_list_new(table->count + 1);
 
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
@@ -172,5 +168,5 @@ Prove_List *prove_table_values(Prove_Table *table) {
 }
 
 int64_t prove_table_length(Prove_Table *table) {
-    return table ? table->count : 0;
+    return table->count;
 }

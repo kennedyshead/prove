@@ -4,10 +4,17 @@
 
 Prove_Array *prove_array_new(int64_t length, int64_t elem_size, const void *default_val) {
     Prove_Array *arr = (Prove_Array *)malloc(sizeof(Prove_Array));
+    if (!arr) prove_panic("array: out of memory");
     arr->header.refcount = 1;
     arr->length = length;
     arr->elem_size = elem_size;
+    /* Overflow guard: check that length * elem_size doesn't overflow */
+    if (length > 0 && elem_size > 0 &&
+        (size_t)length > SIZE_MAX / (size_t)elem_size) {
+        prove_panic("array: allocation size overflow");
+    }
     arr->data = malloc((size_t)(length * elem_size));
+    if (!arr->data) prove_panic("array: out of memory");
     for (int64_t i = 0; i < length; i++) {
         memcpy((char *)arr->data + i * elem_size, default_val, (size_t)elem_size);
     }
@@ -39,11 +46,17 @@ int64_t prove_array_get_int(Prove_Array *arr, int64_t idx) {
 }
 
 Prove_Array *prove_array_set(Prove_Array *arr, int64_t idx, const void *val) {
+    /* Copy-on-write optimization: mutate in-place when sole owner */
+    if (arr->header.refcount == 1) {
+        return prove_array_set_mut(arr, idx, val);
+    }
     Prove_Array *copy = (Prove_Array *)malloc(sizeof(Prove_Array));
+    if (!copy) prove_panic("array: out of memory");
     copy->header.refcount = 1;
     copy->length = arr->length;
     copy->elem_size = arr->elem_size;
     copy->data = malloc((size_t)(arr->length * arr->elem_size));
+    if (!copy->data) prove_panic("array: out of memory");
     memcpy(copy->data, arr->data, (size_t)(arr->length * arr->elem_size));
     memcpy((char *)copy->data + idx * arr->elem_size, val, (size_t)arr->elem_size);
     return copy;

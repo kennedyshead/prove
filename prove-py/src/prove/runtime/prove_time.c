@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "prove_time.h"
 #include <time.h>
 #include <stdio.h>
@@ -55,8 +58,8 @@ static int64_t _date_clock_to_epoch(int32_t year, int32_t month, int32_t day,
     tm_val.tm_min = minute;
     tm_val.tm_sec = second;
     tm_val.tm_isdst = 0;
-    /* Use timegm for UTC, fall back to mktime if unavailable */
-#if defined(_GNU_SOURCE) || defined(__linux__) || defined(__APPLE__)
+    /* Use timegm for UTC (_GNU_SOURCE defined at top) */
+#if defined(__linux__) || defined(__APPLE__) || defined(_GNU_SOURCE)
     return (int64_t)timegm(&tm_val);
 #else
     return (int64_t)mktime(&tm_val);

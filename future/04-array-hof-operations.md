@@ -92,3 +92,18 @@ methods. If `ListType`, use existing `_emit_hof_*` methods. Type-inference via
 4. Emitter dispatch (type-check first arg in `_emit_hof_*` or add a pre-check)
 5. Optimizer fusions
 6. Tests: unit tests for each operation + e2e test showing `reduce(map(array(...), f), init, g)` runs in one pass
+
+---
+
+## Documentation & AGENTS Updates
+
+When this work is implemented:
+
+- **`docs/stdlib/table-list-store.md`** — Add a "Higher-Order Operations" section under
+  Array with a table of `map`, `reduce`, `each`, `filter`, their signatures, and return
+  types. Emphasize that `filter` returns `List<Value>` (not `Array<T>`) because output
+  length is unknown, and explain the optimizer fusions available.
+- **`AGENTS.md`** — Under `optimizer.py`, note: "Array HOF fusions — `map(map(...))`,
+  `reduce(map(...))`, `filter(map(...))` — are fused by `_fuse_iterators_in_expr` using
+  `__fused_array_*` runtime calls, analogous to existing Sequence fusions."
+- Run `mkdocs build --strict` after editing the stdlib page.

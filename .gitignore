@@ -12,7 +12,8 @@ __pycache__/
 tmp
 local
 .DS_Store
-build
+**/build
+**/dist
 .prove
 .opencode
 conversations
