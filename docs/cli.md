@@ -42,7 +42,7 @@ Runs the full pipeline: lex, parse, check, prove, emit C, compile with gcc/clang
 | `--debug` | Compile with debug symbols (`-g`) and no optimization (`-O0`) |
 | `--no-mutate` | Skip mutation testing |
 
-The project directory must contain a `prove.toml`. The output binary is placed in `dist/`. Intermediate build artifacts (generated C, runtime files, PGO data) live in `build/`.
+The project directory must contain a `prove.toml`. The output binary and intermediate build artifacts (generated C, runtime files, PGO data) are placed in `build/`.
 
 ---
 

@@ -192,7 +192,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-The compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (18 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. See the [Roadmap](roadmap.md) for what's next.
+The compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (19 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, and comprehensive diagnostics. See the [Roadmap](roadmap.md) for what's next.
 
 ## Repository
 

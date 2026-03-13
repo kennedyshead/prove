@@ -10,7 +10,7 @@ keywords: Prove design, language design, intent-first, design decisions
 
 Prove is an **intent-first** language. Every function declares its intent — a verb names the purpose, contracts state the guarantees, and explain documents the reasoning — before a single line of implementation is written. The compiler then enforces that the implementation matches the declared intent.
 
-The programmer remains the author — the compiler is a [deterministic assistant](vision.md#what-this-is-not) that enforces what you declared. Intent comes first: the verb names the purpose, contracts state the guarantees, explain documents the reasoning. The type system serves this intent enforcement, moving correctness checks from runtime to compile time and generating tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
+The programmer remains the author — the compiler is a [deterministic assistant](vision.md#what-this-means-in-practice) that enforces what you declared. Intent comes first: the verb names the purpose, contracts state the guarantees, explain documents the reasoning. The type system serves this intent enforcement, moving correctness checks from runtime to compile time and generating tests from the code you already write. Most bugs are type errors in disguise — give the type system enough power and they become almost impossible.
 
 ---
 
@@ -69,23 +69,18 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ### Secondary Priorities (Deferred)
 
-- **C FFI** — important but not day-one. Will be addressed after the core language is stable.
-- **Calling Prove from other languages** — deferred until the FFI story is established.
+- **Calling Prove from other languages** — deferred until the FFI story is more mature.
 - **Method syntax** — deferred. All function calls use `function(args)` form. No `object.method()` dot-call syntax. Keeps the language simple and avoids dispatch complexity. Field access (`user.name`) is unaffected.
 
 ---
 
-## Concurrency — Parallel Map and Effect Types
+## Concurrency — Structured Concurrency and Effect Types
 
-Prove provides `par_map` as a safe concurrency primitive. Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, thread-based parallelism is safe by construction:
+Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
-```prove
-inputs fetch_all(urls List<Url>) List<Response>!
-from
-    par_map(urls, fetch)
-```
+Thread-based `par_map` is [planned](roadmap.md) as a future primitive — runtime scaffolding exists but is not yet callable from user code.
 
-The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries. The [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) provides structured concurrency backed by stackful coroutines (`prove_coro`).
+The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries.
 
 ---
 
@@ -120,7 +115,7 @@ from
 | Tests are separate from code | Testing is part of the definition — [`ensures`, `requires`, `near_miss`](contracts.md) |
 | "Works on my machine" | [Verb system](functions.md#intent-verbs) makes IO explicit (`inputs`/`outputs`) |
 | Null/nil crashes | No null — use [`Option<Value>`](types.md#option-and-result), enforced by compiler |
-| Race conditions | Ownership + verb purity guarantee safe `par_map`; structured concurrency planned |
+| Race conditions | Ownership + verb purity; [structured concurrency](functions.md#async-verbs) via `detached`/`attached`/`listens` |
 | "I forgot an edge case" | Compiler generates edge cases from [refinement types](types.md#refinement-types) |
 | Slow test suites | Property tests generated from [contracts](contracts.md#auto-testing) |
 | Runtime type errors | [Refinement types](types.md#refinement-types) catch invalid values at compile time |

@@ -1,6 +1,6 @@
 ---
 title: Standard Library Overview - Prove Programming Language
-description: Overview of the Prove standard library — 18 modules with consistent design patterns, verb families, and channel dispatch.
+description: Overview of the Prove standard library — 19 modules with consistent design patterns, verb families, and channel dispatch.
 keywords: Prove stdlib, standard library, design pattern, verb families, channel dispatch
 ---
 

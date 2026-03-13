@@ -15,12 +15,13 @@ nav:
       - Overview: stdlib/index.md
       - Character & Text: stdlib/character-text.md
       - Table, List, Array & Store: stdlib/table-list-store.md
-      - InputOutput & Path: stdlib/io-path.md
+      - System & Path: stdlib/io-path.md
       - Parse, Format & Pattern: stdlib/parse-format-pattern.md
       - Math & Types: stdlib/math-types.md
       - Error & Log: stdlib/error-log.md
       - Time & Random: stdlib/time-random.md
       - Bytes & Hash: stdlib/bytes-hash.md
+      - Network: stdlib/network.md
   - Compiler:
       - CLI Reference: cli.md
       - Compiler Features: compiler.md

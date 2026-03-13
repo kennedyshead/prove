@@ -94,7 +94,7 @@ Access command-line arguments.
 
 ### File Streaming Channel
 
-Open file handles for line-by-line streaming — for use with the [`streams` verb](../functions.md#streams--blocking-io-loop). Type: `File` (binary handle).
+Open file handles for line-by-line streaming — for use with the [`streams` verb](../functions.md#streams-blocking-io-loop). Type: `File` (binary handle).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|

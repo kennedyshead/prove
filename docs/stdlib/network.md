@@ -9,7 +9,7 @@ keywords: Prove Network, sockets, TCP, networking, streams, accept loop
 **Module:** `Network` — TCP socket communication.
 
 `Network` provides blocking IO verbs for TCP connections. Servers pair naturally with the
-[`streams`](../functions.md#streams--blocking-io-loop) verb for accept loops.
+[`streams`](../functions.md#streams-blocking-io-loop) verb for accept loops.
 
 ---
 
@@ -120,7 +120,7 @@ a printable hex string.
 
 ## Server with `streams`
 
-A TCP server uses the [`streams`](../functions.md#streams--blocking-io-loop) verb for a
+A TCP server uses the [`streams`](../functions.md#streams-blocking-io-loop) verb for a
 blocking accept loop. The first parameter is an algebraic type; each iteration dispatches
 on its variant. The loop continues until the `Exit` arm is matched.
 
