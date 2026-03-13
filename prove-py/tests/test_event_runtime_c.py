@@ -14,7 +14,7 @@ class TestEventQueue:
             #include <stdio.h>
 
             int main(void) {
-                Prove_EventQueue *q = prove_event_queue_new();
+                Prove_EventNodeQueue *q = prove_event_queue_new();
                 if (!q) return 1;
                 if (q->count != 0) return 2;
                 if (q->closed) return 3;
@@ -33,7 +33,7 @@ class TestEventQueue:
             #include <stdio.h>
 
             int main(void) {
-                Prove_EventQueue *q = prove_event_queue_new();
+                Prove_EventNodeQueue *q = prove_event_queue_new();
                 prove_event_queue_send(q, 0, NULL);
                 if (q->count != 1) return 1;
                 prove_event_queue_send(q, 1, NULL);
@@ -54,23 +54,23 @@ class TestEventQueue:
             #include <stdio.h>
 
             int main(void) {
-                Prove_EventQueue *q = prove_event_queue_new();
+                Prove_EventNodeQueue *q = prove_event_queue_new();
                 prove_event_queue_send(q, 10, NULL);
                 prove_event_queue_send(q, 20, NULL);
                 prove_event_queue_send(q, 30, NULL);
 
                 /* Recv without coro — queue is non-empty so no yield needed */
-                Prove_Event *e1 = q->head;
+                Prove_EventNode *e1 = q->head;
                 q->head = e1->next;
                 if (!q->head) q->tail = NULL;
                 q->count--;
 
-                Prove_Event *e2 = q->head;
+                Prove_EventNode *e2 = q->head;
                 q->head = e2->next;
                 if (!q->head) q->tail = NULL;
                 q->count--;
 
-                Prove_Event *e3 = q->head;
+                Prove_EventNode *e3 = q->head;
                 q->head = e3->next;
                 if (!q->head) q->tail = NULL;
                 q->count--;
@@ -96,7 +96,7 @@ class TestEventQueue:
             #include <stdio.h>
 
             int main(void) {
-                Prove_EventQueue *q = prove_event_queue_new();
+                Prove_EventNodeQueue *q = prove_event_queue_new();
                 if (q->closed) return 1;
                 prove_event_queue_close(q);
                 if (!q->closed) return 2;
@@ -117,12 +117,12 @@ class TestEventQueue:
             #include <stdlib.h>
 
             int main(void) {
-                Prove_EventQueue *q = prove_event_queue_new();
+                Prove_EventNodeQueue *q = prove_event_queue_new();
                 int *val = malloc(sizeof(int));
                 *val = 42;
                 prove_event_queue_send(q, 1, val);
 
-                Prove_Event *ev = q->head;
+                Prove_EventNode *ev = q->head;
                 q->head = ev->next;
                 if (!q->head) q->tail = NULL;
                 q->count--;
