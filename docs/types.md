@@ -144,7 +144,7 @@ Lookup tables must be exhaustive — every variant needs at least one value, and
 A lookup can map to multiple primitive types simultaneously:
 
 ```prove
-type TokenKind:[Lookup] is String Integer where
+type TokenKind:[Lookup] is String | Integer where
     One | "one" | 1
     Two | "two" | 2
 ```
@@ -166,7 +166,7 @@ Rules:
 When a lookup needs two or more columns of the same type, use named columns to disambiguate:
 
 ```prove
-binary Prediction probability:Float String confidence:Float where
+type Prediction:[Lookup] is probability:Float | String | confidence:Float where
     Cat | 0.9 | "cat" | 0.95
     Dog | 0.8 | "dog" | 0.85
 ```

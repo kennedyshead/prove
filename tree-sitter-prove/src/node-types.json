@@ -113,64 +113,6 @@
     }
   },
   {
-    "type": "binary_lookup_definition",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "binary_lookup_variant",
-          "named": true
-        },
-        {
-          "type": "named_lookup_column",
-          "named": true
-        },
-        {
-          "type": "type_expression",
-          "named": true
-        },
-        {
-          "type": "type_identifier",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "binary_lookup_variant",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "boolean_literal",
-          "named": true
-        },
-        {
-          "type": "decimal_literal",
-          "named": true
-        },
-        {
-          "type": "integer_literal",
-          "named": true
-        },
-        {
-          "type": "string_literal",
-          "named": true
-        },
-        {
-          "type": "type_identifier",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "binary_type_body",
     "named": true,
     "fields": {}
@@ -286,6 +228,10 @@
       "types": [
         {
           "type": "dispatch_lookup_variant",
+          "named": true
+        },
+        {
+          "type": "named_lookup_column",
           "named": true
         },
         {
@@ -882,6 +828,18 @@
       "required": true,
       "types": [
         {
+          "type": "boolean_literal",
+          "named": true
+        },
+        {
+          "type": "decimal_literal",
+          "named": true
+        },
+        {
+          "type": "integer_literal",
+          "named": true
+        },
+        {
           "type": "string_literal",
           "named": true
         },
@@ -1032,10 +990,6 @@
       "required": true,
       "types": [
         {
-          "type": "binary_lookup_definition",
-          "named": true
-        },
-        {
           "type": "constant_definition",
           "named": true
         },
@@ -1084,6 +1038,29 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "named_lookup_type_body",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "lookup_variant",
+          "named": true
+        },
+        {
+          "type": "named_lookup_column",
           "named": true
         },
         {
@@ -1522,6 +1499,10 @@
         },
         {
           "type": "lookup_type_body",
+          "named": true
+        },
+        {
+          "type": "named_lookup_type_body",
           "named": true
         },
         {

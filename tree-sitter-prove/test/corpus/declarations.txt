@@ -336,11 +336,11 @@ validates code(input String)
             (regex_anchor))))))))
 
 ===
-Binary lookup definition
+Multi-column lookup with where
 ===
 
 module Test
-  binary TokenKind String Integer where
+  type TokenKind:[Lookup] is String | Integer where
     One | "one" | 1
     Two | "two" | 2
 
@@ -349,25 +349,28 @@ module Test
 (source_file
   (module_declaration
     (type_identifier)
-    (binary_lookup_definition
+    (type_definition
       (type_identifier)
-      (type_expression (simple_type (type_identifier)))
-      (type_expression (simple_type (type_identifier)))
-      (binary_lookup_variant
-        (type_identifier)
-        (string_literal)
-        (integer_literal))
-      (binary_lookup_variant
-        (type_identifier)
-        (string_literal)
-        (integer_literal)))))
+      (type_modifier_bracket
+        (type_identifier))
+      (lookup_type_body
+        (type_expression (simple_type (type_identifier)))
+        (type_expression (simple_type (type_identifier)))
+        (lookup_variant
+          (type_identifier)
+          (string_literal)
+          (integer_literal))
+        (lookup_variant
+          (type_identifier)
+          (string_literal)
+          (integer_literal))))))
 
 ===
-Binary lookup with named columns
+Lookup with named columns
 ===
 
 module Test
-  binary Prediction probability:Float String confidence:Float where
+  type Prediction:[Lookup] is probability:Float | String | confidence:Float where
     Cat | 0.9 | "cat" | 0.95
     Dog | 0.8 | "dog" | 0.85
 
@@ -376,18 +379,49 @@ module Test
 (source_file
   (module_declaration
     (type_identifier)
-    (binary_lookup_definition
+    (type_definition
       (type_identifier)
-      (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
-      (type_expression (simple_type (type_identifier)))
-      (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
-      (binary_lookup_variant
-        (type_identifier)
-        (decimal_literal)
-        (string_literal)
-        (decimal_literal))
-      (binary_lookup_variant
-        (type_identifier)
-        (decimal_literal)
-        (string_literal)
-        (decimal_literal)))))
+      (type_modifier_bracket
+        (type_identifier))
+      (named_lookup_type_body
+        (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
+        (type_expression (simple_type (type_identifier)))
+        (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
+        (lookup_variant
+          (type_identifier)
+          (decimal_literal)
+          (string_literal)
+          (decimal_literal))
+        (lookup_variant
+          (type_identifier)
+          (decimal_literal)
+          (string_literal)
+          (decimal_literal))))))
+
+===
+Dispatch lookup with named columns
+===
+
+module Test
+  type CliMap:[Lookup] is name:String | handler:String
+    "build" | build
+    "check" | check
+
+---
+
+(source_file
+  (module_declaration
+    (type_identifier)
+    (type_definition
+      (type_identifier)
+      (type_modifier_bracket
+        (type_identifier))
+      (dispatch_lookup_type_body
+        (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
+        (named_lookup_column (identifier) (type_expression (simple_type (type_identifier))))
+        (dispatch_lookup_variant
+          (string_literal)
+          (identifier))
+        (dispatch_lookup_variant
+          (string_literal)
+          (identifier))))))

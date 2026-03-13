@@ -1258,7 +1258,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if tname not in _ALLOWED_BINARY_TYPES:
                 self._error(
                     "E387",
-                    f"unsupported type '{tname}' in binary lookup column "
+                    f"unsupported type '{tname}' in lookup column "
                     f"(allowed: {', '.join(sorted(_ALLOWED_BINARY_TYPES))})",
                     span,
                 )
@@ -1281,7 +1281,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if count > 1:
                     self._warning(
                         "W350",
-                        f"binary lookup has duplicate column type '{tn}'; "
+                        f"lookup has duplicate column type '{tn}'; "
                         f"use named columns to disambiguate (e.g. name:{tn})",
                         span,
                     )
