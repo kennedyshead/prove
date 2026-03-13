@@ -313,8 +313,7 @@ class CEmitter(
                 if not found_coro and decl.verb in ("detached", "attached", "listens"):
                     self._needed_headers.add("prove_coro.h")
                     found_coro = True
-                if decl.verb == "listens":
-                    self._needed_headers.add("prove_event.h")
+                # prove_event.h reserved for future event queue use
 
     @staticmethod
     def _expr_uses_hof(expr: Expr) -> bool:
@@ -742,7 +741,7 @@ class CEmitter(
                     param_str = ", ".join(["Prove_Coro *_caller"] + params) if params else "Prove_Coro *_caller"
                     self._line(f"{ret_decl} {mangled}({param_str});")
                 elif decl.verb == "listens":
-                    param_str = ", ".join(["Prove_Coro *_coro"] + params) if params else "Prove_Coro *_coro"
+                    param_str = ", ".join(params) if params else "void"
                     self._line(f"void {mangled}({param_str});")
                 else:
                     param_str = ", ".join(params) if params else "void"
@@ -897,8 +896,6 @@ class CEmitter(
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
             self._line(f"{ct.decl} {p.name};")
-        if fd.verb == "listens":
-            self._line("Prove_EventQueue *_queue;")
         self._indent -= 1
         self._line(f"}} {args_struct};")
         self._line("")
@@ -922,11 +919,29 @@ class CEmitter(
             self._emit_listens_body(fd, param_types)
         else:
             # detached / attached: emit body into coro
-            for stmt in fd.body:
-                self._emit_stmt(stmt)
-            if fd.verb == "attached" and sig and sig.return_type is not UNIT:
-                # result stored in last emitted expression — already assigned via body
-                pass
+            ret_type = sig.return_type if sig else UNIT
+            is_struct_return = (
+                fd.verb == "attached"
+                and ret_type is not UNIT
+                and isinstance(ret_type, AlgebraicType)
+            )
+            for i, stmt in enumerate(fd.body):
+                if is_struct_return and i == len(fd.body) - 1:
+                    # Last statement: capture result and heap-allocate
+                    e = self._stmt_expr(stmt)
+                    if e is not None:
+                        result_val = self._emit_expr(e)
+                        ret_ct = map_type(ret_type)
+                        self._line(f"{ret_ct.decl} _result_val = {result_val};")
+                        self._line(
+                            f"{ret_ct.decl} *_result_ptr = malloc(sizeof({ret_ct.decl}));"
+                        )
+                        self._line("*_result_ptr = _result_val;")
+                        self._line("_coro->result = _result_ptr;")
+                    else:
+                        self._emit_stmt(stmt)
+                else:
+                    self._emit_stmt(stmt)
         self._line("prove_coro_yield(_coro);")
         self._indent -= 1
         self._line("}")
@@ -950,6 +965,8 @@ class CEmitter(
 
         elif fd.verb == "attached":
             ret_ct = map_type(sig.return_type) if sig else map_type(UNIT)
+            ret_type = sig.return_type if sig else UNIT
+            is_struct_return = isinstance(ret_type, AlgebraicType)
             caller_params = ["Prove_Coro *_caller"] + [
                 f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
             ]
@@ -967,7 +984,11 @@ class CEmitter(
             self._line(f"prove_coro_resume(_c);")
             self._indent -= 1
             self._line("}")
-            self._line(f"{ret_ct.decl} _result = ({ret_ct.decl})_c->result;")
+            if is_struct_return:
+                self._line(f"{ret_ct.decl} _result = *({ret_ct.decl}*)_c->result;")
+                self._line(f"free(({ret_ct.decl}*)_c->result);")
+            else:
+                self._line(f"{ret_ct.decl} _result = ({ret_ct.decl})(intptr_t)_c->result;")
             self._line(f"prove_coro_free(_c);")
             self._line(f"return _result;")
             self._indent -= 1
@@ -975,19 +996,19 @@ class CEmitter(
             self._line("")
 
         elif fd.verb == "listens":
-            params_list = [f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)]
-            params_str = ", ".join(["Prove_Coro *_coro"] + params_list) if params_list else "Prove_Coro *_coro"
+            # Listens manages its own coroutine — no _coro param needed
+            params_list = [
+                f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
+            ]
+            params_str = ", ".join(params_list) if params_list else "void"
             self._line(f"void {mangled}({params_str}) {{")
             self._indent += 1
-            self._line("Prove_EventQueue *_queue = prove_event_queue_new();")
             self._line(f"{args_struct} *_a = malloc(sizeof({args_struct}));")
             for p in fd.params:
                 self._line(f"_a->{p.name} = {p.name};")
-            self._line("_a->_queue = _queue;")
             self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
             self._line(f"prove_coro_start(_c, _a);")
             self._line(f"while (!prove_coro_done(_c)) prove_coro_resume(_c);")
-            self._line("prove_event_queue_free(_queue);")
             self._line(f"prove_coro_free(_c);")
             self._indent -= 1
             self._line("}")
@@ -1051,34 +1072,40 @@ class CEmitter(
         self._line("")
 
     def _emit_listens_body(self, fd: FunctionDef, param_types: list) -> None:
-        """Emit the event dispatcher loop for a listens verb."""
-        self._line("Prove_EventQueue *_queue = _a->_queue;")
+        """Emit the listens dispatcher: iterate pre-started workers, match on results."""
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        event_type = sig.event_type if sig else None
 
-        # Spawn registered attached workers as child coroutines
         if fd.params:
             workers_param = fd.params[0].name
+            # Iterate workers (pre-started coroutines in the list)
             self._line(f"for (int _i = 0; _i < {workers_param}->length; _i++) {{")
             self._indent += 1
-            self._line(f"Prove_CoroFn _fn = (Prove_CoroFn)prove_list_get({workers_param}, _i);")
-            self._line("Prove_Coro *_child = prove_coro_new(_fn, PROVE_CORO_STACK_DEFAULT);")
-            self._line("prove_coro_start(_child, _queue);")
+            self._line(
+                f"Prove_Coro *_child = (Prove_Coro*)prove_list_get({workers_param}, _i);"
+            )
+            # Resume worker until done
+            self._line("while (!prove_coro_done(_child)) {")
+            self._indent += 1
+            self._line("prove_coro_resume(_child);")
+            self._line("prove_coro_yield(_coro);")
+            self._indent -= 1
+            self._line("}")
+            # Extract result as the event type
+            if event_type:
+                ct = map_type(event_type)
+                self._line(f"{ct.decl} _ev = *({ct.decl}*)_child->result;")
+                self._line(f"free(({ct.decl}*)_child->result);")
+                self._locals["_ev"] = event_type
+            self._line("prove_coro_free(_child);")
+            # Match dispatch on _ev
+            self._in_listens_loop = True
+            for stmt in fd.body:
+                self._emit_stmt(stmt)
+            self._in_listens_loop = False
             self._indent -= 1
             self._line("}")
 
-        # Dispatcher loop — receive events and match-dispatch
-        self._line("while (1) {")
-        self._indent += 1
-        self._line("if (prove_coro_cancelled(_coro)) break;")
-        self._line("Prove_Event *_ev = prove_event_queue_recv(_queue, _coro);")
-        self._line("if (!_ev) break;")
-        # The match expression is the body — uses _ev as implicit subject
-        self._in_listens_loop = True
-        for stmt in fd.body:
-            self._emit_stmt(stmt)
-        self._in_listens_loop = False
-        self._line("prove_coro_yield(_coro);")
-        self._indent -= 1
-        self._line("}")
         self._line("_listens_exit:;")
 
     def _emit_main(self, md: MainDef) -> None:

@@ -488,12 +488,12 @@ class ExprEmitterMixin:
         """Emit an async call (expr&).
 
         For attached calls: pass _coro as first arg so the caller can yield.
+        For listens calls: build worker coro list and call entry directly.
         For detached calls: bare call, no _coro threading.
         """
         inner = expr.expr
         if isinstance(inner, CallExpr) and isinstance(inner.func, IdentifierExpr):
             fname = inner.func.name
-            # Look up the callee's verb
             sig = self._symbols.resolve_function_any(fname)
             if sig and sig.verb == "attached":
                 # Pass _coro as implicit first argument
@@ -505,8 +505,63 @@ class ExprEmitterMixin:
                 else:
                     mangled = fname
                 return f"{mangled}({args_str})"
+            if sig and sig.verb == "listens":
+                return self._emit_listens_call(inner, sig)
         # Detached or bare: emit the inner expression directly
         return self._emit_expr(inner)
+
+    def _emit_listens_call(self, call: CallExpr, sig) -> str:
+        """Emit a listens call with worker coro creation for List<Attached> args."""
+        from prove.ast_nodes import CallExpr as _CE, IdentifierExpr as _IE, ListLiteral
+        from prove.c_types import mangle_name
+
+        fname = call.func.name  # type: ignore[attr-defined]
+        mangled = mangle_name(sig.verb, fname, sig.param_types)
+
+        # Build worker list: each attached call becomes a pre-started coro
+        if call.args and isinstance(call.args[0], ListLiteral):
+            workers = call.args[0]
+            list_tmp = self._tmp()
+            self._line(
+                f"Prove_List *{list_tmp} = prove_list_new({len(workers.elements)});"
+            )
+            for elem in workers.elements:
+                if isinstance(elem, _CE) and isinstance(elem.func, _IE):
+                    worker_sig = self._symbols.resolve_function_any(elem.func.name)
+                    if worker_sig and worker_sig.verb == "attached":
+                        w_mangled = mangle_name(
+                            worker_sig.verb, elem.func.name, worker_sig.param_types
+                        )
+                        args_struct = f"_{w_mangled}_args"
+                        body_fn = f"_{w_mangled}_body"
+                        a_tmp = self._tmp()
+                        c_tmp = self._tmp()
+                        self._line(
+                            f"{args_struct} *{a_tmp} = malloc(sizeof({args_struct}));"
+                        )
+                        for j, arg in enumerate(elem.args):
+                            pname = worker_sig.param_names[j]
+                            val = self._emit_expr(arg)
+                            self._line(f"{a_tmp}->{pname} = {val};")
+                        self._line(
+                            f"Prove_Coro *{c_tmp} = prove_coro_new("
+                            f"{body_fn}, PROVE_CORO_STACK_DEFAULT);"
+                        )
+                        self._line(f"prove_coro_start({c_tmp}, {a_tmp});")
+                        self._line(f"prove_list_push({list_tmp}, (void*){c_tmp});")
+                    else:
+                        # Non-attached in worker list — emit as value
+                        val = self._emit_expr(elem)
+                        self._line(f"prove_list_push({list_tmp}, (void*)(intptr_t){val});")
+                else:
+                    val = self._emit_expr(elem)
+                    self._line(f"prove_list_push({list_tmp}, (void*)(intptr_t){val});")
+            return f"{mangled}({list_tmp})"
+
+        # Fallback: emit args normally
+        args = [self._emit_expr(a) for a in call.args]
+        args_str = ", ".join(args) if args else ""
+        return f"{mangled}({args_str})"
 
     def _unwrap_result_value(self, tmp: str, success_type: Type) -> str:
         """Emit the correct prove_result_unwrap_* call for a success type."""
