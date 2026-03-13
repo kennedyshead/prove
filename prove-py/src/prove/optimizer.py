@@ -12,6 +12,7 @@ from typing import Any
 
 from prove.ast_nodes import (
     Assignment,
+    AsyncCallExpr,
     BinaryExpr,
     BooleanLit,
     CallExpr,
@@ -361,6 +362,8 @@ class Optimizer:
         elif isinstance(expr, PipeExpr):
             return self._expr_calls(name, expr.left) or self._expr_calls(name, expr.right)
         elif isinstance(expr, FailPropExpr):
+            return self._expr_calls(name, expr.expr)
+        elif isinstance(expr, AsyncCallExpr):
             return self._expr_calls(name, expr.expr)
         elif isinstance(expr, LambdaExpr):
             return self._expr_calls(name, expr.body)
@@ -952,6 +955,8 @@ class Optimizer:
             self._count_uses_in_expr(expr.right, counts)
         elif isinstance(expr, FailPropExpr):
             self._count_uses_in_expr(expr.expr, counts)
+        elif isinstance(expr, AsyncCallExpr):
+            self._count_uses_in_expr(expr.expr, counts)
 
     # ── Pass 2b: Dead Code Elimination ─────────────────────────────
 
@@ -1075,6 +1080,8 @@ class Optimizer:
         elif isinstance(expr, VarDecl):
             self._find_called_in_expr(expr.value, called)
         elif isinstance(expr, FailPropExpr):
+            self._find_called_in_expr(expr.expr, called)
+        elif isinstance(expr, AsyncCallExpr):
             self._find_called_in_expr(expr.expr, called)
 
     # ── Pass 3: Small Function Inlining ───────────────────────────
@@ -1221,6 +1228,8 @@ class Optimizer:
                 right=self._inline_in_expr(expr.right, candidates),
             )
         if isinstance(expr, FailPropExpr):
+            return replace(expr, expr=self._inline_in_expr(expr.expr, candidates))
+        if isinstance(expr, AsyncCallExpr):
             return replace(expr, expr=self._inline_in_expr(expr.expr, candidates))
         if isinstance(expr, IndexExpr):
             return replace(
@@ -1674,6 +1683,8 @@ class Optimizer:
             return self._expr_has_side_effects(expr.left) or self._expr_has_side_effects(expr.right)
         if isinstance(expr, FailPropExpr):
             return self._expr_has_side_effects(expr.expr)
+        if isinstance(expr, AsyncCallExpr):
+            return True  # async calls are always side-effectful
         if isinstance(expr, LambdaExpr):
             return False
         if isinstance(expr, MatchExpr):
