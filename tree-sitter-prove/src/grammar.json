@@ -1320,6 +1320,10 @@
         {
           "type": "SYMBOL",
           "name": "when_annotation"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "event_type_annotation"
         }
       ]
     },
@@ -1372,6 +1376,19 @@
         {
           "type": "SYMBOL",
           "name": "type_identifier"
+        }
+      ]
+    },
+    "event_type_annotation": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "event_type"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "type_expression"
         }
       ]
     },

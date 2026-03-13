@@ -53,6 +53,7 @@
 ; PROVE-EXPORT-BEGIN: contract-keywords
 [
   "ensures"
+  "event_type"
   "explain"
   "requires"
   "terminates"
@@ -102,7 +103,7 @@
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
-  "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Table" "Unit" "Value" "Verb"))
+  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Table" "Unit" "Value" "Verb"))
 ; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────

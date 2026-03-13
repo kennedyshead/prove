@@ -316,6 +316,7 @@ module.exports = grammar({
       $.intent_annotation,
       $.satisfies_clause,
       $.when_annotation,
+      $.event_type_annotation,
     ),
 
     ensures_clause: $ => seq('ensures', $.expression),
@@ -325,6 +326,8 @@ module.exports = grammar({
     when_annotation: $ => seq('when', $.expression),
 
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
+
+    event_type_annotation: $ => seq('event_type', $.type_expression),
 
     explain_annotation: $ => seq('explain', repeat1($.explain_line)),
 

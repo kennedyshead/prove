@@ -310,6 +310,21 @@
     }
   },
   {
+    "type": "event_type_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "explain_annotation",
     "named": true,
     "fields": {},
@@ -537,6 +552,10 @@
         },
         {
           "type": "ensures_clause",
+          "named": true
+        },
+        {
+          "type": "event_type_annotation",
           "named": true
         },
         {
@@ -1878,6 +1897,10 @@
   {
     "type": "escape_sequence",
     "named": true
+  },
+  {
+    "type": "event_type",
+    "named": false
   },
   {
     "type": "explain",
