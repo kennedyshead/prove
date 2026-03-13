@@ -113,6 +113,70 @@ binary
 transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
 binary
 
+/// Get element at index, or None if out of bounds
+reads get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
+binary
+
+/// Get element at index, or None if out of bounds - mutable variant
+reads get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
+binary
+
+/// Get element at index, or None if out of bounds - mutable variant
+reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
+binary
+
+/// Set element at index; returns None if out of bounds
+transforms set_safe(arr Array<Boolean>, idx Integer, val Boolean) Option<Array<Boolean>>
+binary
+
+/// Set element at index; returns None if out of bounds
+transforms set_safe(arr Array<Integer>, idx Integer, val Integer) Option<Array<Integer>>
+binary
+
+/// Set element at index; returns None if out of bounds - mutable variant
+transforms set_safe(arr Array<Boolean>, idx Integer, val Boolean) Option<Array<Boolean>>
+binary
+
+/// Set element at index; returns None if out of bounds - mutable variant
+transforms set_safe(arr Array<Integer>, idx Integer, val Integer) Option<Array<Integer>>
+binary
+
+/// Apply function to every element, returning a new array of the same length
+transforms map(arr Array<Boolean>, f Function<Boolean, Boolean>) Array<Boolean>
+binary
+
+/// Apply function to every element, returning a new array of the same length
+transforms map(arr Array<Integer>, f Function<Integer, Integer>) Array<Integer>
+binary
+
+/// Accumulate elements with function, starting from initial value
+reads reduce(arr Array<Boolean>, init Boolean, f Function<Boolean, Boolean, Boolean>) Boolean
+binary
+
+/// Accumulate elements with function, starting from initial value
+reads reduce(arr Array<Integer>, init Integer, f Function<Integer, Integer, Integer>) Integer
+binary
+
+/// Run function for each element; returns Unit
+outputs each(arr Array<Boolean>, f Function<Boolean, Unit>)
+binary
+
+/// Run function for each element; returns Unit
+outputs each(arr Array<Integer>, f Function<Integer, Unit>)
+binary
+
+/// Keep elements matching predicate; returns List because length is unknown
+creates filter(arr Array<Boolean>, p Function<Boolean, Boolean>) List<Boolean>
+binary
+
+/// Keep elements matching predicate; returns List because length is unknown
+creates filter(arr Array<Integer>, p Function<Integer, Boolean>) List<Integer>
+binary
+
 /// Copy array contents into a new List
 creates to_sequence(arr Array<Boolean>) List<Boolean>
 binary
