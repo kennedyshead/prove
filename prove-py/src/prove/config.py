@@ -22,12 +22,16 @@ class BuildConfig:
     debug: bool = False
     c_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
+    ccache: bool = True
 
 
 @dataclass
 class OptimizeConfig:
     enabled: bool = True
     pgo: bool = False
+    strip: bool = True
+    tune_host: bool = False
+    gc_sections: bool = True
 
 
 @dataclass
@@ -88,6 +92,7 @@ def load_config(path: Path) -> ProveConfig:
             debug=bld.get("debug", False),
             c_flags=bld.get("c_flags", []),
             link_flags=bld.get("link_flags", []),
+            ccache=bld.get("ccache", True),
         )
 
     if "optimize" in data:
@@ -95,6 +100,9 @@ def load_config(path: Path) -> ProveConfig:
         config.optimize = OptimizeConfig(
             enabled=opt.get("enabled", True),
             pgo=opt.get("pgo", False),
+            strip=opt.get("strip", True),
+            tune_host=opt.get("tune_host", False),
+            gc_sections=opt.get("gc_sections", True),
         )
     elif "build" in data and "optimize" in data["build"]:
         # Backward compat: [build] optimize = true/false

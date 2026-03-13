@@ -133,6 +133,38 @@ The improvement comes from better branch prediction in the parser's `match` disp
 
 ---
 
+## Build Optimizations
+
+Beyond the AST optimizer and PGO, `prove.toml` exposes several C-level build optimizations. All are configured under `[optimize]` (except `ccache` which lives in `[build]`).
+
+```toml
+[build]
+ccache = true         # use ccache if installed
+
+[optimize]
+strip = true          # strip symbols (default: on)
+tune_host = false     # -march=native (default: off)
+gc_sections = true    # dead code elimination (default: on)
+```
+
+### Strip (`strip`)
+
+Passes `-s` to the linker, removing symbol tables and debug information from the output binary. Enabled by default; automatically disabled in debug builds (`--debug`). Reduces binary size significantly with no runtime cost.
+
+### Host CPU tuning (`tune_host`)
+
+Passes `-march=native` to the C compiler, enabling instruction set extensions available on the build machine (AVX2, NEON, etc.). Disabled by default because the resulting binary may not run on older CPUs or different architectures. Enable this when building for the same machine that will run the binary.
+
+### Dead-code elimination (`gc_sections`)
+
+Compiles with `-ffunction-sections -fdata-sections` and links with `--gc-sections` (Linux) or `-dead_strip` (macOS). This allows the linker to discard unreferenced functions and data, complementing Prove's runtime stripping at a finer granularity. Enabled by default; automatically disabled in debug builds.
+
+### Compiler cache (`ccache`)
+
+When `ccache = true` (the default) and [ccache](https://ccache.dev) is installed, the build system prepends `ccache` to the compiler command. This caches object files by input hash, making incremental rebuilds near-instant. If ccache is not installed, the setting is silently ignored.
+
+---
+
 ## Binary Size
 
 Runtime stripping means only the C runtime modules actually used by a program are compiled and linked. A program that uses only `console` output and `Array` operations links a small subset of the runtime.

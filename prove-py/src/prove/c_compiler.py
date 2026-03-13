@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -41,6 +42,11 @@ def find_c_compiler() -> str | None:
     return None
 
 
+def find_ccache() -> str | None:
+    """Return the path to ccache if installed, else None."""
+    return shutil.which("ccache")
+
+
 def compile_c(
     c_files: list[Path],
     output: Path,
@@ -52,11 +58,19 @@ def compile_c(
     include_dirs: list[Path] | None = None,
     pgo_phase: str | None = None,
     pgo_dir: Path | None = None,
+    strip: bool = False,
+    tune_host: bool = False,
+    gc_sections: bool = False,
+    use_ccache: bool = False,
 ) -> Path:
     """Compile a list of .c files into a native binary.
 
     pgo_phase: None (normal), "generate" (instrument), or "use" (optimize).
     pgo_dir: directory for profile data (required when pgo_phase is set).
+    strip: pass -s to strip symbols (ignored in debug builds).
+    tune_host: pass -march=native for host-specific tuning.
+    gc_sections: enable linker dead-code elimination (ignored in debug builds).
+    use_ccache: prepend ccache to the compiler command.
 
     Returns the output path on success; raises CompileCError on failure.
     """
@@ -64,13 +78,17 @@ def compile_c(
     if cc is None:
         raise CompileCError("no C compiler found (install gcc or clang)")
 
-    cmd: list[str] = [cc]
+    cmd: list[str] = ["ccache", cc] if use_ccache else [cc]
 
     # Optimization
     if optimize:
         cmd.extend(["-O2", "-flto"])
     else:
         cmd.append("-O0")
+
+    # Host-specific tuning
+    if tune_host:
+        cmd.append("-march=native")
 
     # PGO flags
     if pgo_phase and pgo_dir:
@@ -86,6 +104,18 @@ def compile_c(
     if debug:
         cmd.append("-g")
         cmd.append("-rdynamic")  # Export symbols for backtrace
+
+    # Strip symbols (release only)
+    if strip and not debug:
+        cmd.append("-s")
+
+    # Dead code elimination at link time (release only)
+    if gc_sections and not debug:
+        cmd.extend(["-ffunction-sections", "-fdata-sections"])
+        if sys.platform == "darwin":
+            cmd.append("-Wl,-dead_strip")
+        else:
+            cmd.append("-Wl,--gc-sections")
 
     # Warnings
     cmd.extend(["-Wall", "-Wextra", "-Wno-unused-parameter"])

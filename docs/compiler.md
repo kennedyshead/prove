@@ -43,10 +43,14 @@ license = ""
 target = "native"
 c_flags = []
 link_flags = []
+ccache = true
 
 [optimize]
 enabled = true
 pgo = false
+strip = true
+tune_host = false
+gc_sections = true
 
 [test]
 property_rounds = 1000
@@ -64,8 +68,12 @@ line_length = 90
 | `[build]` | `target` | `"native"` | Build target |
 | | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`) |
 | | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`) |
+| | `ccache` | `true` | Use [ccache](https://ccache.dev) if installed (no-op otherwise) |
 | `[optimize]` | `enabled` | `true` | Enable compiler optimizations (`-O2 -flto`) |
 | | `pgo` | `false` | Enable [profile-guided optimization](performance.md#profile-guided-optimization-pgo) (requires `enabled = true`) |
+| | `strip` | `true` | Strip symbols from release binary (`-s`); ignored in debug builds |
+| | `tune_host` | `false` | Tune for the host CPU (`-march=native`); breaks cross-compilation |
+| | `gc_sections` | `true` | Dead-code elimination at link time; ignored in debug builds |
 | `[test]` | `property_rounds` | `1000` | Number of random inputs per property test (overridable with `--property-rounds`) |
 | `[style]` | `line_length` | `90` | Maximum line length for the formatter |
 
