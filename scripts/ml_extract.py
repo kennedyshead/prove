@@ -18,7 +18,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "prove-py" / "src"))
 
-from prove.ast_nodes import FunctionDef, GenericType, ModifiedType, SimpleType, TypeExpr
+from prove.ast_nodes import FunctionDef, GenericType, ModifiedType, ModuleDecl, SimpleType, TypeExpr
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.tokens import TokenKind
@@ -61,19 +61,19 @@ def _type_expr_to_str(te: TypeExpr) -> str:
     return str(te)
 
 
-def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict]]:
-    """Return (ngram_records, triple_records) for one .prv file."""
+def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict], list[dict]]:
+    """Return (ngram_records, triple_records, docstring_records) for one .prv file."""
     try:
         source = path.read_text(encoding="utf-8")
     except OSError as exc:
         print(f"  skip {rel_path}: {exc}", file=sys.stderr)
-        return [], []
+        return [], [], []
 
     try:
         tokens = Lexer(source, str(path)).lex()
     except Exception as exc:
         print(f"  lex error {rel_path}: {exc}", file=sys.stderr)
-        return [], []
+        return [], [], []
 
     # Filter tokens to meaningful ones
     filtered = [
@@ -96,39 +96,72 @@ def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict]]:
             }
         )
 
-    # Build FunctionDef triples via Parser
+    # Build FunctionDef triples and docstring mappings via Parser
     triples: list[dict] = []
+    docstrings: list[dict] = []
     try:
         module = Parser(tokens, str(path)).parse()
+
+        # Derive module name from ModuleDecl or file stem
+        module_name: str | None = None
         for decl in module.declarations:
-            if not isinstance(decl, FunctionDef):
-                continue
+            if isinstance(decl, ModuleDecl):
+                module_name = decl.name
+                break
+        if module_name is None:
+            module_name = path.stem.capitalize()
+
+        # Collect functions from top-level and inside ModuleDecl
+        all_funcs: list[FunctionDef] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                all_funcs.append(decl)
+            elif isinstance(decl, ModuleDecl):
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        all_funcs.append(inner)
+
+        for fd in all_funcs:
             first_param_type = (
-                _type_expr_to_str(decl.params[0].type_expr)
-                if decl.params
+                _type_expr_to_str(fd.params[0].type_expr)
+                if fd.params
                 else None
             )
             return_type = (
-                _type_expr_to_str(decl.return_type)
-                if decl.return_type is not None
+                _type_expr_to_str(fd.return_type)
+                if fd.return_type is not None
                 else None
             )
             triples.append(
                 {
                     "kind": "function_triple",
-                    "verb": decl.verb,
-                    "name": decl.name,
+                    "verb": fd.verb,
+                    "name": fd.name,
                     "first_param_type": first_param_type,
                     "return_type": return_type,
-                    "can_fail": decl.can_fail,
+                    "can_fail": fd.can_fail,
                     "file": rel_path,
-                    "line": decl.span.start_line,
+                    "line": fd.span.start_line,
                 }
             )
+            if fd.doc_comment:
+                doc_text = fd.doc_comment.strip()
+                docstrings.append(
+                    {
+                        "kind": "docstring_mapping",
+                        "verb": fd.verb,
+                        "name": fd.name,
+                        "doc": doc_text,
+                        "module": module_name,
+                        "first_param_type": first_param_type,
+                        "return_type": return_type,
+                        "file": rel_path,
+                    }
+                )
     except Exception as exc:
         print(f"  parse error {rel_path}: {exc}", file=sys.stderr)
 
-    return ngrams, triples
+    return ngrams, triples, docstrings
 
 
 def collect_prv_files(repo_root: Path) -> list[tuple[Path, str]]:
@@ -163,14 +196,17 @@ def main() -> None:
     all_records: list[dict] = []
     total_ngrams = 0
     total_triples = 0
+    total_docstrings = 0
 
     for abs_path, rel_path in files:
-        ngrams, triples = extract_file(abs_path, rel_path)
+        ngrams, triples, docstrings = extract_file(abs_path, rel_path)
         all_records.extend(ngrams)
         all_records.extend(triples)
+        all_records.extend(docstrings)
         total_ngrams += len(ngrams)
         total_triples += len(triples)
-        print(f"  {rel_path}: {len(ngrams)} ngrams, {len(triples)} triples")
+        total_docstrings += len(docstrings)
+        print(f"  {rel_path}: {len(ngrams)} ngrams, {len(triples)} triples, {len(docstrings)} docstrings")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -178,7 +214,7 @@ def main() -> None:
 
     print(
         f"\nWrote {len(all_records)} records "
-        f"({total_ngrams} ngrams + {total_triples} triples) "
+        f"({total_ngrams} ngrams + {total_triples} triples + {total_docstrings} docstrings) "
         f"→ {output_path}"
     )
 

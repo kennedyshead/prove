@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -21,7 +22,13 @@ from pathlib import Path
 def load_ngrams(input_path: Path) -> list[dict]:
     with open(input_path, encoding="utf-8") as f:
         records = json.load(f)
-    return [r for r in records if r.get("kind") != "function_triple"]
+    return [r for r in records if r.get("kind") not in ("function_triple", "docstring_mapping")]
+
+
+def load_docstring_records(input_path: Path) -> list[dict]:
+    with open(input_path, encoding="utf-8") as f:
+        records = json.load(f)
+    return [r for r in records if r.get("kind") == "docstring_mapping"]
 
 
 def build_bigram_model(ngrams: list[dict], top_k: int) -> dict[str, list[list]]:
@@ -52,6 +59,27 @@ def build_unigram_model(ngrams: list[dict], top_k: int) -> dict[str, list[list]]
     return model
 
 
+def build_docstring_index(records: list[dict]) -> dict[str, list[dict]]:
+    """Build word -> function mapping from docstring_mapping records.
+
+    Returns: {"hash": [{"module": "Hash", "name": "sha256", ...}, ...], ...}
+    """
+    index: dict[str, list[dict]] = defaultdict(list)
+    for rec in records:
+        words = set(re.findall(r"[a-zA-Z]{3,}", rec["doc"].lower()))
+        entry = {
+            "module": rec["module"],
+            "name": rec["name"],
+            "verb": rec["verb"],
+            "doc": rec["doc"],
+            "first_param_type": rec.get("first_param_type"),
+            "return_type": rec.get("return_type"),
+        }
+        for word in words:
+            index[word].append(entry)
+    return dict(index)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", default="data/completions_raw.json")
@@ -68,6 +96,9 @@ def main() -> None:
     ngrams = load_ngrams(input_path)
     print(f"  {len(ngrams)} ngram records")
 
+    docstring_recs = load_docstring_records(input_path)
+    print(f"  {len(docstring_recs)} docstring records")
+
     print("Building bigram model ...")
     bigram_model = build_bigram_model(ngrams, args.top_k)
     print(f"  {len(bigram_model)} contexts")
@@ -76,8 +107,13 @@ def main() -> None:
     unigram_model = build_unigram_model(ngrams, args.top_k)
     print(f"  {len(unigram_model)} contexts")
 
+    print("Building docstring index ...")
+    docstring_index = build_docstring_index(docstring_recs)
+    print(f"  {len(docstring_index)} keywords")
+
     completions_out = output_dir / "completions_model.json"
     bigrams_out = output_dir / "bigrams_model.json"
+    docstrings_out = output_dir / "docstring_index.json"
 
     with open(completions_out, "w", encoding="utf-8") as f:
         json.dump(bigram_model, f, indent=2)
@@ -86,6 +122,10 @@ def main() -> None:
     with open(bigrams_out, "w", encoding="utf-8") as f:
         json.dump(unigram_model, f, indent=2)
     print(f"Wrote {bigrams_out}")
+
+    with open(docstrings_out, "w", encoding="utf-8") as f:
+        json.dump(docstring_index, f, indent=2)
+    print(f"Wrote {docstrings_out}")
 
     # Spot-check: show top completions for a few common contexts
     print("\nSpot-check (bigram):")
