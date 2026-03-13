@@ -406,6 +406,17 @@ Store.merge(base, local, remote, my_resolver)
 
 Convention: `Verb` mirrors the language's verb-based function declarations. The type resolves internally to a C function pointer with the correct parameter and return types.
 
+### `Attached` — Worker Reference
+
+`Attached` is a reference to an `attached` verb function. It is used in `List<Attached>` as the worker parameter for `listens` event dispatchers. The type resolves to a coroutine function pointer (`Prove_CoroFn`) in the C runtime.
+
+```prove
+listens handler(workers List<Attached>)
+    event_type Event
+from
+    ...
+```
+
 ## Ownership Lite (Linear Types with Compiler-Inferred Borrows)
 
 Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.

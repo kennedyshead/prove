@@ -196,7 +196,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `streams` | Declares a blocking IO loop over a source. See [Functions & Verbs](functions.md#streams-blocking-io-loop) |
 | `detached` | Declares a fire-and-forget async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
-| `listens` | Declares a cooperative loop. See [Functions & Verbs](functions.md#async-verbs) |
+| `listens` | Declares an event dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
 | `matches` | Declares a pure match dispatch on algebraic type. See [Functions & Verbs](functions.md#intent-verbs) |
 | `main` | The program's entry point — can freely mix reading and writing |
 | `from` | Marks where the function body starts. See [Functions & Verbs](functions.md#body-marker-from) |
@@ -211,4 +211,5 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `trusted` | Marks a function as unverified. See [Contracts](contracts.md#trusted) |
 | `valid` | References a `validates` function as a predicate |
 | `comptime` | Marks code for compile-time evaluation. See [Compiler](compiler.md#comptime-compile-time-computation) |
+| `event_type` | Declares the algebraic type for a `listens` dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
 | `foreign` | Declares a C FFI block inside a module |

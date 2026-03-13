@@ -1641,14 +1641,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # event_type annotation rules (listens event dispatcher)
         if fd.event_type is not None and verb != "listens":
             self._error(
-                "E399",
+                "E405",
                 "`event_type` annotation is only valid on `listens` verb",
                 fd.span,
             )
         if verb == "listens":
             if fd.event_type is None:
                 self._error(
-                    "E400",
+                    "E406",
                     "`listens` verb requires an `event_type` annotation",
                     fd.span,
                 )

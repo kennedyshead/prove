@@ -435,7 +435,7 @@ class TestAsyncVerbs:
             "    event_type Ev\n"
             "    from\n"
             "        x\n",
-            "E399",
+            "E405",
         )
 
     def test_listens_without_event_type_error(self):
@@ -448,7 +448,7 @@ class TestAsyncVerbs:
             "    from\n"
             "        Done => loop\n"
             "        Exit => loop\n",
-            "E400",
+            "E406",
         )
 
     def test_event_type_must_be_algebraic(self):
