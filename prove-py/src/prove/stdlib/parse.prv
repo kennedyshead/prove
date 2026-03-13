@@ -1,6 +1,5 @@
 module Parse
   narrative: """Encoding and decoding of structured data formats."""
-  Types validates object text integer
   Bytes types ByteArray
 
   type Url is binary

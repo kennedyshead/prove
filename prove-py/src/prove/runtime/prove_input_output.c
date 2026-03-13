@@ -246,11 +246,13 @@ Prove_List *prove_io_dir_inputs(Prove_String *path) {
         /* Build full path */
         size_t plen = (size_t)path->length;
         size_t nlen = strlen(ent->d_name);
-        char *full = (char *)malloc(plen + 1 + nlen + 1);
+        int has_sep = (plen > 0 && path->data[plen - 1] == '/');
+        size_t sep = has_sep ? 0 : 1;
+        char *full = (char *)malloc(plen + sep + nlen + 1);
         if (full) {
             memcpy(full, path->data, plen);
-            full[plen] = '/';
-            memcpy(full + plen + 1, ent->d_name, nlen + 1);
+            if (!has_sep) full[plen] = '/';
+            memcpy(full + plen + sep, ent->d_name, nlen + 1);
             entry.path = prove_string_from_cstr(full);
             free(full);
         } else {

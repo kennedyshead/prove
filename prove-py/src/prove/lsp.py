@@ -1829,20 +1829,38 @@ def _build_import_edit_text(
     header_end: int = 0
     last_import_line: int | None = None
 
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.strip()
 
         if stripped.startswith("module ") and module_line is None:
             module_line = i
             header_end = i + 1
+            i += 1
             continue
 
         if module_line is None:
+            i += 1
             continue
 
         # Still in the header (narrative/temporal)
         if stripped.startswith("narrative:") or stripped.startswith("temporal:"):
             header_end = i + 1
+            # Handle multiline triple-quote block: skip to closing """
+            rest = stripped[stripped.index(":") + 1:].strip()
+            if rest.startswith('"""'):
+                inner = rest[3:]
+                if '"""' not in inner:  # closing """ not on the same line
+                    i += 1
+                    while i < len(lines):
+                        if '"""' in lines[i]:
+                            header_end = i + 1
+                            i += 1
+                            break
+                        i += 1
+                    continue
+            i += 1
             continue
 
         # Import lines: indented "ModuleName verb name, name"
@@ -1851,6 +1869,7 @@ def _build_import_edit_text(
             parts = stripped.split()
             if len(parts) >= 3 and parts[0][0].isupper() and parts[1] in _IMPORT_VERBS:
                 last_import_line = i
+                i += 1
                 continue
 
         # Past the header/import region — stop scanning

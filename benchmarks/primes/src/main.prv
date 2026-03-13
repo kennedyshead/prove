@@ -35,9 +35,10 @@ transforms sieve_pass(
 from
     match p * p > limit
         true => arr
-        _ => match get(arr, p)
-            true => sieve_pass(arr, p + 1, limit)
-            _ => sieve_pass(composites(arr, p, p * p, limit), p + 1, limit)
+        _ =>
+            match get(arr, p)
+                true => sieve_pass(arr, p + 1, limit)
+                _ => sieve_pass(composites(arr, p, p * p, limit), p + 1, limit)
 
 /// Count indices where arr[i] is false (prime = not composite)
 reads primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer) Integer
@@ -45,9 +46,10 @@ reads primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer
 from
     match i > limit
         true => acc
-        _ => match get(arr, i)
-            true => primes(arr, i + 1, limit, acc)
-            _ => primes(arr, i + 1, limit, acc + 1)
+        _ =>
+            match get(arr, i)
+                true => primes(arr, i + 1, limit, acc)
+                _ => primes(arr, i + 1, limit, acc + 1)
 
 main() Result<Unit, Error>!
 from

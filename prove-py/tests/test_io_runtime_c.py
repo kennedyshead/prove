@@ -207,6 +207,36 @@ class TestDirChannel:
         assert result.returncode == 0
         assert "OK" in result.stdout
 
+    def test_dir_inputs_trailing_slash_no_double(self, tmp_path, runtime_dir):
+        """Path with trailing slash should not produce // in entry paths."""
+        (tmp_path / "x.txt").write_text("x")
+        path_with_slash = str(tmp_path) + "/"
+        code = textwrap.dedent(f"""\
+            #include "prove_input_output.h"
+            #include <stdio.h>
+            #include <string.h>
+            int main(void) {{
+                prove_runtime_init();
+                Prove_String *path = prove_string_from_cstr("{path_with_slash}");
+                Prove_List *entries = prove_io_dir_inputs(path);
+                int64_t n = prove_list_len(entries);
+                if (n < 1) return 1;
+                for (int64_t i = 0; i < n; i++) {{
+                    Prove_DirEntry *e = (Prove_DirEntry *)prove_list_get(entries, i);
+                    if (strstr(e->path->data, "//")) {{
+                        printf("DOUBLE_SLASH in %s\\n", e->path->data);
+                        return 2;
+                    }}
+                }}
+                printf("OK\\n");
+                prove_runtime_cleanup();
+                return 0;
+            }}
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="dir_noslash")
+        assert result.returncode == 0
+        assert "OK" in result.stdout
+
     def test_dir_validates(self, tmp_path, runtime_dir):
         code = textwrap.dedent(f"""\
             #include "prove_input_output.h"

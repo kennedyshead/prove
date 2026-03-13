@@ -154,11 +154,19 @@ transforms map(arr Array<Integer>, f Function<Integer, Integer>) Array<Integer>
 binary
 
 /// Accumulate elements with function, starting from initial value
-reads reduce(arr Array<Boolean>, init Boolean, f Function<Boolean, Boolean, Boolean>) Boolean
+reads reduce(
+    arr Array<Boolean>,
+    init Boolean,
+    f Function<Boolean, Boolean, Boolean>
+) Boolean
 binary
 
 /// Accumulate elements with function, starting from initial value
-reads reduce(arr Array<Integer>, init Integer, f Function<Integer, Integer, Integer>) Integer
+reads reduce(
+    arr Array<Integer>,
+    init Integer,
+    f Function<Integer, Integer, Integer>
+) Integer
 binary
 
 /// Run function for each element; returns Unit

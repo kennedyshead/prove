@@ -306,7 +306,18 @@ class ContractCheckMixin:
         narrow Option<Value> → Value and Result<Value, Error> → Value in the function body.
         """
         narrowings: list[tuple[str, list[Expr]]] = []
+        # Flatten &&-conjunctions so each ValidExpr/CallExpr is processed individually
+        exprs_to_check: list[Expr] = []
         for req_expr in fd.requires:
+            stack = [req_expr]
+            while stack:
+                e = stack.pop()
+                if isinstance(e, BinaryExpr) and e.op == "&&":
+                    stack.append(e.left)
+                    stack.append(e.right)
+                else:
+                    exprs_to_check.append(e)
+        for req_expr in exprs_to_check:
             # valid file(path) → ValidExpr
             if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
                 func_name = req_expr.name

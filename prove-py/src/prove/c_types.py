@@ -74,7 +74,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Error": CType("Prove_String*", is_pointer=True, header="prove_string.h"),
     "StringBuilder": CType("Prove_Builder*", is_pointer=True, header="prove_text.h"),
     "ProcessResult": CType("Prove_ProcessResult", is_pointer=False, header="prove_input_output.h"),
-    "DirEntry": CType("Prove_DirEntry", is_pointer=False, header="prove_input_output.h"),
+    "DirEntry": CType("Prove_DirEntry*", is_pointer=True, header="prove_input_output.h"),
     "ExitCode": CType("int64_t", is_pointer=False, header=None),
     "Value": CType("Prove_Value*", is_pointer=True, header="prove_parse.h"),
     "Match": CType("Prove_Match*", is_pointer=True, header="prove_pattern.h"),

@@ -31,35 +31,17 @@
 [
   "ensures"
   "requires"
-  "proof"
   "explain"
   "terminates"
   "trusted"
   "when"
 ] @keyword.control
 
-(ensures_clause) @keyword.control
-(requires_clause) @keyword.control
-(trusted_annotation) @keyword.control
-(terminates_annotation) @keyword.control
-
 ; ─── Explain Lines ─────────────────────────────────────────
 
 (explain_line) @string.documentation
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
-
-; Only highlight AI keywords in annotation contexts
-(why_not_annotation) @keyword.directive
-(chosen_annotation) @keyword.directive
-(near_miss_annotation) @keyword.directive
-(know_annotation) @keyword.directive
-(assume_annotation) @keyword.directive
-(believe_annotation) @keyword.directive
-(intent_annotation) @keyword.directive
-(narrative_annotation) @keyword.directive
-(temporal_annotation) @keyword.directive
-(satisfies_clause) @keyword.directive
 
 ; These are only keywords in annotation positions
 [

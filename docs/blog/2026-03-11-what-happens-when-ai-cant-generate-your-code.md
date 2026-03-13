@@ -152,8 +152,8 @@ After six rounds and some manual fixes, we had a working function. Let's count t
 
 ```prove
 transforms calculate_total(items List<OrderItem>, discount Discount, tax TaxRule) Price
-  requires len(items) > 0
   ensures result >= 0
+  requires len(items) > 0
   explain
       calculate subtotal from items
       apply the discount to the total

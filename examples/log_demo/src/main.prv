@@ -4,8 +4,8 @@ module Main
 
 main() Unit
 from
-    debug(" application started")
-    info(" loading configuration")
-    warning(" disk usage above 80%")
-    error(" connection timed out")
-    debug(" shutting down")
+    debug(" application started")&
+    info(" loading configuration")&
+    warning(" disk usage above 80%")&
+    error(" connection timed out")&
+    debug(" shutting down")&

@@ -363,3 +363,46 @@ class TestMatchRestriction:
             "            true => 0\n"
             "            false => 1\n"
         )
+
+
+class TestMatchArmTypeMismatch:
+    """Test E400 — match arm returns Unit while others return value."""
+
+    def test_e400_unit_arm_with_value_arms(self):
+        check_fails(
+            "module M\n"
+            "  Log detached info\n"
+            "  type Choice is A | B\n"
+            "matches pick(c Choice) String\n"
+            "    from\n"
+            "        match c\n"
+            '            A => "hello"\n'
+            '            B =>\n'
+            '                info("log")&\n',
+            "E400",
+        )
+
+    def test_e400_all_unit_arms_ok(self):
+        """All arms returning Unit is fine — no E400."""
+        check(
+            "module M\n"
+            "  Log detached info\n"
+            "  type Choice is A | B\n"
+            "matches pick(c Choice) Unit\n"
+            "    from\n"
+            "        match c\n"
+            '            A => info("a")&\n'
+            '            B => info("b")&\n'
+        )
+
+    def test_e400_all_value_arms_ok(self):
+        """All arms returning same value type — no E400."""
+        check(
+            "module M\n"
+            "  type Choice is A | B\n"
+            "matches pick(c Choice) String\n"
+            "    from\n"
+            "        match c\n"
+            '            A => "hello"\n'
+            '            B => "world"\n'
+        )

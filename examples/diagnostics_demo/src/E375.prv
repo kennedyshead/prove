@@ -2,7 +2,3 @@ module DemoE375
   narrative: """
   Expected diagnostics: E375
   """
-
-  type Status:[Lookup] is String where
-    Active | "active"
-    Enabled | "active"

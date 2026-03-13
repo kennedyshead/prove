@@ -1,0 +1,20 @@
+module Source
+  narrative: """
+  Reads all source content through dir inputs,
+  """
+  Config types Config
+  System inputs dir file, validates file
+  Text validates ends
+
+  type SourceFile is
+    path String
+    content String
+
+inputs content(path String) String
+  requires valid ends(path, ".prv") && valid file(path)
+from
+    file(path)
+
+inputs source(config Config) List<SourceFile>
+from
+    map(dir("src/"), |value| SourceFile(value.path, content(value.path)))

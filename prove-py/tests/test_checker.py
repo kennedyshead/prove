@@ -989,3 +989,84 @@ class TestValueCoercion:
             "        val\n",
         )
         assert not any(d.code == "I311" for d in diags)
+
+
+class TestOwnBorrowOverlap:
+    """Test W360 own/borrow overlap detection."""
+
+    def test_field_owned_and_borrowed_in_constructor(self):
+        """W360: same field passed to function call and also used directly."""
+        check_warns(
+            "module M\n"
+            "  type Item is\n"
+            "    path String\n"
+            "    size Integer\n"
+            "  type Loaded is\n"
+            "    path String\n"
+            "    body String\n"
+            "transforms content(s String) String\n"
+            "    from\n"
+            "        s\n"
+            "transforms load(item Item) Loaded\n"
+            "    from\n"
+            "        Loaded(item.path, content(item.path))\n",
+            "W360",
+        )
+
+    def test_field_used_once_no_warning(self):
+        """No W360 when field is only used once."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  type Item is\n"
+            "    path String\n"
+            "    size Integer\n"
+            "transforms content(s String) String\n"
+            "    from\n"
+            "        s\n"
+            "transforms load(item Item) String\n"
+            "    from\n"
+            "        content(item.path)\n",
+        )
+        assert not any(d.code == "W360" for d in diags)
+
+    def test_lambda_body_suppressed(self):
+        """No W360 inside lambda body — emitter adds retains automatically."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  System inputs dir\n"
+            "  type Item is\n"
+            "    path String\n"
+            "    body String\n"
+            "transforms content(s String) String\n"
+            "    from\n"
+            "        s\n"
+            "transforms load(items List<Value>) List<Value>\n"
+            "    from\n"
+            "        map(items, |v| Item(v.path, content(v.path)))\n",
+        )
+        assert not any(d.code == "W360" for d in diags)
+
+    def test_different_fields_no_warning(self):
+        """No W360 when different fields are used."""
+        from tests.helpers import check_all
+
+        diags = check_all(
+            "module M\n"
+            "  type Item is\n"
+            "    path String\n"
+            "    name String\n"
+            "  type Loaded is\n"
+            "    path String\n"
+            "    body String\n"
+            "transforms content(s String) String\n"
+            "    from\n"
+            "        s\n"
+            "transforms load(item Item) Loaded\n"
+            "    from\n"
+            "        Loaded(item.name, content(item.path))\n",
+        )
+        assert not any(d.code == "W360" for d in diags)

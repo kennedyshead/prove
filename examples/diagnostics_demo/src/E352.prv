@@ -2,5 +2,3 @@ module DemoE352
   narrative: """
   Expected diagnostics: E352
   """
-
-  type Positive is Integer where abs(self) > 0

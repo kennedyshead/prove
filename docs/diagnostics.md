@@ -523,6 +523,10 @@ An `attached` function whose body contains blocking IO calls (`inputs`/`outputs`
 
 A lookup table has duplicate column types (e.g. two `Decimal` columns), and the access expression does not disambiguate which column is intended. Use named columns (`name:Type`) to resolve the ambiguity.
 
+### E400 — Match arm returns Unit while others return value
+
+A `match` expression has arms with inconsistent return types — some arms return a value while others return `Unit`. Every arm of a match expression used as an expression must return the same type. This check is skipped for `listens` and `streams` verbs where match arms are loop-body statements.
+
 ### E410 — Tail recursion not supported in comptime
 
 A `comptime` block contains a tail-recursive construct. Comptime evaluation does not support tail recursion.
@@ -698,6 +702,25 @@ A function is missing an annotation required by the domain profile. For example,
 ### W350 — Duplicate column type in lookup
 
 A lookup table has two or more columns with the same type but no named columns to tell them apart. Use `name:Type` syntax to disambiguate (e.g. `probability:Decimal`).
+
+### W360 — Own/borrow overlap in expression
+
+A pointer field access (e.g., `value.path`) is passed to a function call that will release it **and** also used elsewhere in the same expression. Because C argument evaluation order is unspecified, the release can happen before the borrow, causing use-after-free.
+
+Split the expression into separate statements so the owned call completes before the borrow.
+
+```prove
+// Warning — content() releases value.path, but SourceFile also reads it
+transforms load(value DirEntry) SourceFile
+from
+    SourceFile(value.path, content(value.path))
+
+// Correct — separate statements ensure ordering
+transforms load(value DirEntry) SourceFile
+from
+    body as String = content(value.path)
+    SourceFile(value.path, body)
+```
 
 ### W390 — Temporal operation out of declared order
 

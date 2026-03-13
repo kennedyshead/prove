@@ -2,7 +2,6 @@ module DemoW312
   narrative: """
   Expected diagnostics: W312
   """
-  System transforms file
 
 transforms check() Integer
 from
