@@ -527,6 +527,30 @@ A lookup table has duplicate column types (e.g. two `Decimal` columns), and the 
 
 A `match` expression has arms with inconsistent return types — some arms return a value while others return `Unit`. Every arm of a match expression used as an expression must return the same type. This check is skipped for `listens` and `streams` verbs where match arms are loop-body statements.
 
+### E401 — `event_type` must reference an algebraic type
+
+The `event_type` annotation on a `listens` verb references a type that is not an algebraic type. The event type must be an algebraic type so that match arms can dispatch on its variants.
+
+### E402 — `listens` first parameter must be `List<Attached>`
+
+A `listens` verb's first parameter is not `List<Attached>`. The first parameter must be a list of registered attached worker functions that produce events for the dispatcher.
+
+### E403 — Registered function is not an `attached` verb
+
+A function in the `listens` worker list (the `List<Attached>` first argument) is not declared with the `attached` verb. Only `attached` functions can be registered as event-producing workers.
+
+### E404 — Attached return type doesn't match event variant
+
+A registered worker function's return type is not a variant of the `listens` dispatcher's `event_type`. Each worker must return a variant of the event type so the dispatcher can match on it.
+
+### E405 — `event_type` on non-`listens` verb
+
+The `event_type` annotation was used on a function that is not a `listens` verb. This annotation is only valid on `listens` dispatchers.
+
+### E406 — `listens` missing `event_type` annotation
+
+A `listens` verb was declared without an `event_type` annotation. The `event_type` annotation is required to declare the algebraic type that the dispatcher matches on.
+
 ### E410 — Tail recursion not supported in comptime
 
 A `comptime` block contains a tail-recursive construct. Comptime evaluation does not support tail recursion.

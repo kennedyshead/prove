@@ -130,42 +130,43 @@ from
     load(url)&
 ```
 
-### `listens` — Cooperative Loop
+### `listens` — Event Dispatcher
 
-The `listens` verb declares a cooperative loop that processes items from an algebraic type source until an `Exit` arm terminates the loop. This is the async equivalent of iterating over a stream.
+The `listens` verb declares an event dispatcher that receives typed events from registered `attached` worker coroutines and dispatches them to match arms.
+
+**Signature pattern:**
+
+```prove
+listens name(workers List<Attached>)
+    event_type AlgebraicType
+from
+    VariantA        => ...
+    VariantB(data)  => ...
+    Exit            => Unit
+```
 
 **Key rules:**
 
-- The first parameter must be an algebraic type — the loop dispatches on its variants
-- The `from` block must be a single implicit match (bare arms, no `match` keyword)
-- One arm must match the `Exit` variant — this terminates the loop
-- Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type)) — `listens` never produces a value
-- Cannot call blocking IO ([E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body)) — use `&` to dispatch to async functions
+- First parameter must be `List<Attached>` — the registered worker functions
+- `event_type` annotation declares the algebraic type for dispatch (required)
+- Each registered attached function's return type must be a variant of the `event_type`
+- Match arms exhaust the `event_type` variants
+- One arm must match `Exit` (terminates the dispatcher)
+- Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type))
+- Cannot call blocking IO directly ([E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body)) — use `&` in match arms
+- Attached functions in the worker list can have arguments: `[worker(arg)]`
 
-```prove
-type Command is
-    Process(data String)
-  | Tick
-  | Exit
+The `from` block uses implicit match — bare arms dispatch on events received from the internal event queue. Workers are spawned as coroutines and send events back to the dispatcher. When the `Exit` variant is matched, the loop terminates.
 
-/// Handle commands until Exit — cooperative loop.
-listens dispatcher(source Command)
-from
-    Exit           => source
-    Process(data)  => handle(data)&
-    Tick           => heartbeat()&
-```
-
-The `from` block works like the `matches` verb — arms are matched against the first parameter without an explicit `match` keyword. Each iteration of the loop yields cooperatively, then dispatches the next item to the matching arm. When the `Exit` variant is matched, the loop terminates.
-
-**Full example — async event processor:**
+**Full example — event processor:**
 
 ```prove
 module EventProcessor
   narrative: """Process events using all three async verbs."""
   System outputs console
+  Log detached debug
 
-  type Event is Data(payload String)
+  type Event is Data(payload Integer)
     | Exit
 
 /// Fire and forget — log without blocking.
@@ -173,16 +174,24 @@ detached fire(msg String)
 from
     console(msg)
 
-/// Cooperative loop — process events until Exit.
-listens handler(source Event)
+/// Produce data events for the dispatcher.
+attached double(x Integer) Data<Integer>
 from
-    Exit        => source
-    Data(text)  => fire(text)&
+    Data(x * 2)
 
-main() Unit
+/// Event dispatcher — receives events from workers.
+listens handler(workers List<Attached>)
+    event_type Event
 from
-    fire("system started")
-    fire("processing complete")
+    Data(payload) =>
+        debug(f"got: {string(payload)}")&
+        Exit()
+    Exit => Unit
+
+main()
+from
+    fire("hello from detached")&
+    handler([double(2)])&
 ```
 
 **Safety rules the compiler enforces:**
@@ -194,6 +203,12 @@ from
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | `attached` or `listens` called without `&` | Error |
 | [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type (caller never waits) | Error |
 | [E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context) | IO-bearing `attached` called outside `listens`/`attached` body | Error |
+| E401 | `event_type` must reference an algebraic type | Error |
+| E402 | `listens` first parameter must be `List<Attached>` | Error |
+| E403 | Registered function is not an `attached` verb | Error |
+| E404 | Attached return type doesn't match event variant | Error |
+| E405 | `event_type` on non-`listens` verb | Error |
+| E406 | `listens` missing `event_type` annotation | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
@@ -210,7 +225,7 @@ The `streams` verb declares a **blocking loop** over an IO context. It runs unti
 |---------|-----|-------|
 | Push, move on | `outputs` | `detached` |
 | Pull, await | `inputs` | `attached` |
-| Loop until exit | `streams` | `listens` |
+| Loop until exit | `streams` (blocking, parameter-based) | `listens` (event dispatcher, queue-based) |
 
 **How it works:**
 

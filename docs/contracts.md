@@ -386,7 +386,8 @@ All annotations appear between the verb line and `from`. The compiler accepts an
 6. `why_not` / `chosen` — design reasoning
 7. `near_miss` — boundary examples
 8. `satisfies` — invariant networks
-9. `explain` — implementation documentation (adjacent to `from`)
+9. `event_type` — algebraic type for `listens` event dispatch
+10. `explain` — implementation documentation (adjacent to `from`)
 
 ---
 
