@@ -406,7 +406,8 @@ def _check_summary(
 @click.option("--coherence", is_flag=True, help="Check vocabulary consistency between narrative and code.")
 @click.option("--challenges", is_flag=True, help="Generate refutation challenges from ensures contracts.")
 @click.option("--status", is_flag=True, help="Show module completeness (todo count).")
-def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, status: bool) -> None:
+@click.option("--intent", "check_intent", is_flag=True, help="Verify code matches project.intent declarations.")
+def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, status: bool, check_intent: bool) -> None:
     """Type-check and lint a Prove project or a single .prv file."""
     target = Path(path)
 
@@ -471,12 +472,40 @@ def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, 
         if status:
             _print_completeness_status(project_dir)
 
+        if check_intent:
+            _check_intent_coverage(project_dir)
+
         _update_project_cache(project_dir)
         if errors:
             raise SystemExit(1)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
+
+
+def _check_intent_coverage(project_dir: Path) -> None:
+    """Check project.intent declarations against implemented code."""
+    from prove.intent_generator import check_intent_coverage
+    from prove.intent_parser import parse_intent
+
+    intent_path = project_dir / "project.intent"
+    if not intent_path.exists():
+        click.echo("  no project.intent found — skipping intent check")
+        return
+
+    source = intent_path.read_text(encoding="utf-8")
+    result = parse_intent(source, str(intent_path))
+    if result.project is None:
+        click.echo("  error parsing project.intent", err=True)
+        return
+
+    statuses = check_intent_coverage(result.project, project_dir)
+    click.echo("\nIntent coverage:")
+    for s in statuses:
+        icon = {"implemented": "+", "todo": "~", "missing": "-"}.get(s["status"], "?")
+        click.echo(f"  [{icon}] {s['module']}.{s['noun']} — {s['status']}")
+    impl = sum(1 for s in statuses if s["status"] == "implemented")
+    click.echo(f"  {impl}/{len(statuses)} declarations implemented")
 
 
 def _print_completeness_status(project_dir: Path) -> None:
@@ -989,6 +1018,64 @@ def generate(path: str, update: bool, dry_run: bool) -> None:
     complete = len(existing_fns) - todo_count
     total = len(existing_fns) + len(new_stubs)
     click.echo(f"  {complete}/{total} functions complete ({100 * complete // total if total else 0}%)")
+
+
+@main.command()
+@click.argument("path", default="project.intent", type=click.Path(exists=True))
+@click.option("--status", is_flag=True, help="Show completeness report.")
+@click.option("--drift", is_flag=True, help="Show only mismatches between intent and code.")
+@click.option("--generate", "gen", is_flag=True, help="Generate .prv files from intent.")
+@click.option("--dry-run", is_flag=True, help="Preview generated files without writing.")
+def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool) -> None:
+    """Work with .intent project declaration files."""
+    from prove.intent_generator import check_intent_coverage, generate_project
+    from prove.intent_parser import parse_intent
+
+    target = Path(path)
+    source = target.read_text(encoding="utf-8")
+    result = parse_intent(source, str(target))
+
+    # Print parse diagnostics
+    for diag in result.diagnostics:
+        severity = diag.severity.upper()
+        code = f" {diag.code}" if diag.code else ""
+        click.echo(f"{target}:{diag.line}: {severity}{code}: {diag.message}", err=True)
+
+    if result.project is None:
+        click.echo("error: failed to parse intent file", err=True)
+        raise SystemExit(1)
+
+    project = result.project
+    project_dir = target.parent
+
+    if gen:
+        generated = generate_project(project, project_dir, dry_run=dry_run)
+        for filename, src in generated:
+            if dry_run:
+                click.echo(f"--- {filename} ---")
+                click.echo(src)
+            else:
+                click.echo(f"generated {filename}")
+        return
+
+    # Default: show status/drift
+    statuses = check_intent_coverage(project, project_dir)
+
+    if drift:
+        statuses = [s for s in statuses if s["status"] != "implemented"]
+
+    if not statuses:
+        click.echo("all intent declarations have matching implementations")
+        return
+
+    for s in statuses:
+        icon = {"implemented": "+", "todo": "~", "missing": "-"}.get(s["status"], "?")
+        click.echo(f"  [{icon}] {s['module']}.{s['noun']} ({s['verb']}) — {s['status']}")
+
+    # Summary
+    impl = sum(1 for s in statuses if s["status"] == "implemented")
+    total = len(statuses)
+    click.echo(f"\n  {impl}/{total} declarations implemented")
 
 
 @main.command("export")
