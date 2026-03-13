@@ -27,6 +27,7 @@ module.exports = grammar({
   conflicts: $ => [
     [$.expression, $.pattern],
     [$.algebraic_variant, $.simple_type],
+    [$.refinement_type_body, $.lookup_type_body, $._lookup_column],
   ],
 
   rules: {
@@ -51,7 +52,6 @@ module.exports = grammar({
       $.type_identifier,
       repeat(choice(
         $.type_definition,
-        $.binary_lookup_definition,
         prec(-1, $.import_declaration),
         $.constant_definition,
         $.invariant_network,
@@ -98,46 +98,12 @@ module.exports = grammar({
       $.refinement_type_body,
       $.binary_type_body,
       $.lookup_type_body,
+      $.named_lookup_type_body,
       $.runtime_lookup_type_body,
       $.dispatch_lookup_type_body,
     ),
 
     binary_type_body: $ => 'binary',
-
-    // ─── Binary Lookup Definitions ────────────────────────────
-
-    binary_lookup_definition: $ => prec.right(seq(
-      'binary',
-      $.type_identifier,
-      repeat1($._binary_lookup_column),
-      'where',
-      repeat1($.binary_lookup_variant),
-    )),
-
-    _binary_lookup_column: $ => choice(
-      $.named_lookup_column,
-      $.type_expression,
-    ),
-
-    named_lookup_column: $ => seq(
-      $.identifier,
-      ':',
-      $.type_expression,
-    ),
-
-    binary_lookup_variant: $ => prec.left(seq(
-      $.type_identifier,
-      '|',
-      $._lookup_value,
-      repeat(seq('|', $._lookup_value)),
-    )),
-
-    _lookup_value: $ => choice(
-      $.string_literal,
-      $.integer_literal,
-      $.decimal_literal,
-      $.boolean_literal,
-    ),
 
     algebraic_type_body: $ => prec.left(seq(
       $.algebraic_variant,
@@ -168,8 +134,16 @@ module.exports = grammar({
       $.expression,
     ),
 
-    lookup_type_body: $ => prec.right(seq(
+    lookup_type_body: $ => prec.dynamic(2, prec.right(seq(
       $.type_expression,
+      repeat(seq('|', $.type_expression)),
+      'where',
+      repeat1($.lookup_variant),
+    ))),
+
+    named_lookup_type_body: $ => prec.right(seq(
+      $._lookup_column,
+      repeat(seq('|', $._lookup_column)),
       'where',
       repeat1($.lookup_variant),
     )),
@@ -177,8 +151,8 @@ module.exports = grammar({
     lookup_variant: $ => prec.left(seq(
       $.type_identifier,
       '|',
-      $.string_literal,
-      repeat(seq('|', $.string_literal)),
+      $._lookup_value,
+      repeat(seq('|', $._lookup_value)),
     )),
 
     runtime_lookup_type_body: $ => prec(1, seq(
@@ -188,8 +162,8 @@ module.exports = grammar({
     )),
 
     dispatch_lookup_type_body: $ => prec.right(2, seq(
-      $.type_expression,
-      repeat1(seq('|', $.type_expression)),
+      $._lookup_column,
+      repeat1(seq('|', $._lookup_column)),
       repeat1($.dispatch_lookup_variant),
     )),
 
@@ -197,6 +171,24 @@ module.exports = grammar({
       $.string_literal,
       '|',
       $.identifier,
+    ),
+
+    _lookup_column: $ => choice(
+      $.named_lookup_column,
+      $.type_expression,
+    ),
+
+    named_lookup_column: $ => seq(
+      $.identifier,
+      ':',
+      $.type_expression,
+    ),
+
+    _lookup_value: $ => choice(
+      $.string_literal,
+      $.integer_literal,
+      $.decimal_literal,
+      $.boolean_literal,
     ),
 
     // ─── Type Expressions ──────────────────────────────────────

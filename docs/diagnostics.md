@@ -519,9 +519,9 @@ An `attached` function whose body contains blocking IO calls (`inputs`/`outputs`
 
 `attached` functions that contain only pure computation (no IO) can be called from any async body.
 
-### E399 — Ambiguous column type in binary lookup
+### E399 — Ambiguous column type in lookup
 
-A binary lookup table has duplicate column types (e.g. two `Decimal` columns), and the access expression does not disambiguate which column is intended. Use named columns (`name:Type`) to resolve the ambiguity.
+A lookup table has duplicate column types (e.g. two `Decimal` columns), and the access expression does not disambiguate which column is intended. Use named columns (`name:Type`) to resolve the ambiguity.
 
 ### E410 — Tail recursion not supported in comptime
 
@@ -695,9 +695,9 @@ A function in a domain-tagged module is missing a contract required by the domai
 
 A function is missing an annotation required by the domain profile. For example, the `safety` domain requires `explain` blocks and `terminates` on recursive functions.
 
-### W350 — Duplicate column type in binary lookup
+### W350 — Duplicate column type in lookup
 
-A binary lookup table has two or more columns with the same type but no named columns to tell them apart. Use `name:Type` syntax to disambiguate (e.g. `probability:Decimal`).
+A lookup table has two or more columns with the same type but no named columns to tell them apart. Use `name:Type` syntax to disambiguate (e.g. `probability:Decimal`).
 
 ### W390 — Temporal operation out of declared order
 

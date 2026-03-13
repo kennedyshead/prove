@@ -1725,7 +1725,7 @@ class Parser:
                 self._advance()
             else:
                 self._error(
-                    f"expected literal or identifier in binary lookup entry, "
+                    f"expected literal or identifier in lookup entry, "
                     f"got {_token_display(tok.kind, tok.value)}",
                     tok.span,
                     code="E210",

@@ -650,7 +650,7 @@ class TypeCheckMixin:
                             self._error(
                                 "E399",
                                 f"ambiguous column type '{exp_name}' in "
-                                f"binary lookup '{type_name}'; "
+                                f"lookup '{type_name}'; "
                                 f"use named columns to disambiguate",
                                 expr.span,
                             )
@@ -768,7 +768,7 @@ class TypeCheckMixin:
         if ret_type is None:
             self._error(
                 "E389",
-                f"cannot determine return column for binary lookup '{type_name_str_}'",
+                f"cannot determine return column for lookup '{type_name_str_}'",
                 expr.span,
             )
             return ERROR_TY
@@ -805,7 +805,7 @@ class TypeCheckMixin:
         self._error(
             "E389",
             f"return type '{type_name(ret_type)}' does not match any column "
-            f"in binary lookup '{type_name_str_}'",
+            f"in lookup '{type_name_str_}'",
             expr.span,
         )
         return ERROR_TY
