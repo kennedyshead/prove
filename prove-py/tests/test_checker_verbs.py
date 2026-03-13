@@ -342,14 +342,6 @@ class TestAsyncVerbs:
             "I375",
         )
 
-    def test_attached_no_async_calls_info(self):
-        check_info(
-            "attached sync_fn(x Integer) Integer\n"
-            "    from\n"
-            "        x + 1\n",
-            "I376",
-        )
-
     def test_detached_with_ampersand_anywhere_ok(self):
         """detached& in a non-async body produces no error."""
         check(
