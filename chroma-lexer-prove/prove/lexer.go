@@ -53,7 +53,7 @@ var (
 				// PROVE-EXPORT-END: verbs
 
 				// PROVE-EXPORT-BEGIN: contract-keywords
-				{`\b(ensures|explain|requires|terminates|trusted|when)\b`, chroma.KeywordNamespace, nil},
+				{`\b(ensures|event_type|explain|requires|terminates|trusted|when)\b`, chroma.KeywordNamespace, nil},
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords
@@ -69,7 +69,7 @@ var (
 				// PROVE-EXPORT-END: literals
 
 				// PROVE-EXPORT-BEGIN: builtin-types
-				{`\b(Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|Source|String|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
+				{`\b(Attached|Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|Source|String|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
 				// PROVE-EXPORT-END: builtin-types
 
 				// Operators (order matters — multi-char before single-char)
