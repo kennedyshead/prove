@@ -34,15 +34,16 @@ bool prove_text_contains(Prove_String *s, Prove_String *sub) {
     if (!s || !sub) return false;
     if (sub->length == 0) return true;
     if (sub->length > s->length) return false;
-    /* Use strstr on null-terminated data */
-    return strstr(s->data, sub->data) != NULL;
+    return memmem(s->data, (size_t)s->length,
+                  sub->data, (size_t)sub->length) != NULL;
 }
 
 Prove_Option prove_text_index_of(Prove_String *s, Prove_String *sub) {
     if (!s || !sub) return prove_option_none();
     if (sub->length == 0) return prove_option_some((Prove_Value*)(intptr_t)0);
     if (sub->length > s->length) return prove_option_none();
-    char *found = strstr(s->data, sub->data);
+    const char *found = (const char *)memmem(s->data, (size_t)s->length,
+                                              sub->data, (size_t)sub->length);
     if (!found) return prove_option_none();
     return prove_option_some((Prove_Value*)(intptr_t)(found - s->data));
 }
@@ -206,6 +207,9 @@ Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_Str
 
 Prove_String *prove_text_repeat(Prove_String *s, int64_t n) {
     if (!s || n <= 0) return prove_string_new("", 0);
+    if (s->length > 0 && n > INT64_MAX / s->length) {
+        prove_panic("Text.repeat: length overflow");
+    }
     int64_t new_len = s->length * n;
     Prove_String *result = (Prove_String *)prove_alloc(
         sizeof(Prove_String) + (size_t)new_len + 1
@@ -222,7 +226,7 @@ Prove_String *prove_text_repeat(Prove_String *s, int64_t n) {
 
 /* ── Builder ─────────────────────────────────────────────────── */
 
-#define BUILDER_INITIAL_CAP 64
+#define BUILDER_INITIAL_CAP 256
 
 Prove_Builder *prove_text_builder(void) {
     Prove_Builder *b = (Prove_Builder *)prove_alloc(

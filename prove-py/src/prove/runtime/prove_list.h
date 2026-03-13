@@ -8,6 +8,7 @@
 
 typedef struct {
     Prove_Header  header;
+    bool          is_region; /* true if data was region-allocated (no realloc) */
     int64_t       length;
     int64_t       capacity;
     void        **data;

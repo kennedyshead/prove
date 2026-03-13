@@ -503,16 +503,23 @@ static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder
         Prove_Value *val = (Prove_Value *)opt.value;
         if (!val || val->tag != PROVE_VALUE_OBJECT) continue;
 
-        Prove_String *section;
-        if (prove_string_len(prefix) > 0) {
-            section = prove_string_concat(prefix, prove_string_from_cstr("."));
-            section = prove_string_concat(section, key);
-        } else {
-            section = key;
-        }
         *b = prove_text_write_cstr(*b, "\n[");
-        *b = prove_text_write(*b, section);
+        if (prove_string_len(prefix) > 0) {
+            *b = prove_text_write(*b, prefix);
+            *b = prove_text_write_char(*b, '.');
+        }
+        *b = prove_text_write(*b, key);
         *b = prove_text_write_cstr(*b, "]\n");
+
+        /* Build section name for recursive prefix */
+        Prove_Builder *sb = prove_text_builder();
+        if (prove_string_len(prefix) > 0) {
+            sb = prove_text_write(sb, prefix);
+            sb = prove_text_write_char(sb, '.');
+        }
+        sb = prove_text_write(sb, key);
+        Prove_String *section = prove_text_build(sb);
+        free(sb);
         _toml_emit_table(val->object, section, b);
     }
 }

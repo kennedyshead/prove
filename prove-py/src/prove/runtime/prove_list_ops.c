@@ -191,12 +191,22 @@ Prove_List *prove_list_ops_range(int64_t start, int64_t end) {
 }
 
 Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) {
-    if (step == 0 || start >= end) return prove_list_new(4);
+    if (step == 0) return prove_list_new(4);
+    if (step > 0 && start >= end) return prove_list_new(4);
+    if (step < 0 && start <= end) return prove_list_new(4);
 
-    int64_t count = (end - start + step - 1) / step;
-    Prove_List *result = prove_list_new(count);
-    for (int64_t i = start; i < end; i += step) {
-        prove_list_push(result, (void *)(intptr_t)i);
+    int64_t diff = end - start;
+    int64_t count = (diff + step - (diff > 0 ? 1 : -1)) / step;
+    if (count < 0) count = 0;
+    Prove_List *result = prove_list_new(count > 0 ? count : 4);
+    if (step > 0) {
+        for (int64_t i = start; i < end; i += step) {
+            prove_list_push(result, (void *)(intptr_t)i);
+        }
+    } else {
+        for (int64_t i = start; i > end; i += step) {
+            prove_list_push(result, (void *)(intptr_t)i);
+        }
     }
     return result;
 }

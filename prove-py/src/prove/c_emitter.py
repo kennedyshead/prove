@@ -37,6 +37,7 @@ from prove.ast_nodes import (
     PathLit,
     PipeExpr,
     RawStringLit,
+    RegexLit,
     StoreLookupExpr,
     StringInterp,
     StringLit,
@@ -272,14 +273,6 @@ class CEmitter(
         # IO init_args is always called in main
         self._needed_headers.add("prove_input_output.h")
 
-        # Include headers for imported stdlib modules
-        for decl in self._module.declarations:
-            if isinstance(decl, ModuleDecl):
-                for imp in decl.imports:
-                    header = self._STDLIB_HEADERS.get(imp.module)
-                    if header:
-                        self._needed_headers.add(header)
-
         # Scan function signatures and types for what we need
         for (_verb, _name), sigs in self._symbols.all_functions().items():
             for sig in sigs:
@@ -291,52 +284,57 @@ class CEmitter(
                 if ct.header:
                     self._needed_headers.add(ct.header)
 
-        # Check if binary lookup tables are used
+        # Single pass over declarations for imports, lookup tables, async verbs, and HOF
+        found_hof = False
+        found_coro = False
         for decl in self._module.declarations:
             if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    header = self._STDLIB_HEADERS.get(imp.module)
+                    if header:
+                        self._needed_headers.add(header)
                 for td in decl.types:
                     if isinstance(td.body, LookupTypeDef) and td.body.is_binary:
                         self._needed_headers.add("prove_lookup.h")
-                        break
-
-        # Check if any async verbs are used
-        for fd in self._all_function_defs():
-            if fd.verb in ("detached", "attached", "listens"):
-                self._needed_headers.add("prove_coro.h")
-                break
-
-        # Check if HOF functions are used (map/filter/reduce)
-        self._scan_for_hof(self._module)
-
-    def _scan_for_hof(self, module: Module) -> None:
-        """Pre-scan AST for map/filter/reduce calls to include prove_hof.h."""
-
-        def _scan_expr(expr: Expr) -> bool:
-            if isinstance(expr, CallExpr):
-                if isinstance(expr.func, IdentifierExpr) and expr.func.name in HOF_BUILTINS:
-                    return True
-                for a in expr.args:
-                    if _scan_expr(a):
-                        return True
-            elif isinstance(expr, BinaryExpr):
-                return _scan_expr(expr.left) or _scan_expr(expr.right)
-            elif isinstance(expr, PipeExpr):
-                return _scan_expr(expr.left) or _scan_expr(expr.right)
-            return False
-
-        def _scan_stmts(stmts: list) -> bool:
-            for s in stmts:
-                if isinstance(s, ExprStmt) and _scan_expr(s.expr):
-                    return True
-                if isinstance(s, VarDecl) and _scan_expr(s.value):
-                    return True
-            return False
-
-        for decl in module.declarations:
+                if not found_coro:
+                    for inner in decl.body:
+                        if isinstance(inner, FunctionDef) and inner.verb in (
+                            "detached", "attached", "listens",
+                        ):
+                            self._needed_headers.add("prove_coro.h")
+                            found_coro = True
+                            break
             if isinstance(decl, (FunctionDef, MainDef)):
-                if _scan_stmts(decl.body):
+                if not found_hof and self._stmts_use_hof(decl.body):
                     self._needed_headers.add("prove_hof.h")
-                    return
+                    found_hof = True
+            if isinstance(decl, FunctionDef):
+                if not found_coro and decl.verb in ("detached", "attached", "listens"):
+                    self._needed_headers.add("prove_coro.h")
+                    found_coro = True
+
+    @staticmethod
+    def _expr_uses_hof(expr: Expr) -> bool:
+        """Check if an expression contains HOF builtin calls."""
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr) and expr.func.name in HOF_BUILTINS:
+                return True
+            return any(CEmitter._expr_uses_hof(a) for a in expr.args)
+        if isinstance(expr, BinaryExpr):
+            return CEmitter._expr_uses_hof(expr.left) or CEmitter._expr_uses_hof(expr.right)
+        if isinstance(expr, PipeExpr):
+            return CEmitter._expr_uses_hof(expr.left) or CEmitter._expr_uses_hof(expr.right)
+        return False
+
+    @staticmethod
+    def _stmts_use_hof(stmts: list) -> bool:
+        """Check if any statement in a list uses HOF builtins."""
+        for s in stmts:
+            if isinstance(s, ExprStmt) and CEmitter._expr_uses_hof(s.expr):
+                return True
+            if isinstance(s, VarDecl) and CEmitter._expr_uses_hof(s.value):
+                return True
+        return False
 
     # ── Output helpers ─────────────────────────────────────────
 
@@ -1020,7 +1018,7 @@ class CEmitter(
             return DECIMAL
         if isinstance(expr, FloatLit):
             return FLOAT
-        if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit)):
+        if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit, RegexLit)):
             return STRING
         if isinstance(expr, RawStringLit):
             return PrimitiveType("String", ("Reg",))

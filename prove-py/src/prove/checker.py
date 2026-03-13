@@ -2434,7 +2434,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ):
                     record_seen = True
 
-        # Infer arm types
+        # Infer arm types — skip ErrorType arms to avoid poison propagation
         result_type: Type = UNIT
         for arm in expr.arms:
             self.symbols.push_scope("match_arm")
@@ -2442,7 +2442,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             arm_type = UNIT
             for stmt in arm.body:
                 arm_type = self._check_stmt(stmt)
-            result_type = arm_type
+            if not isinstance(arm_type, ErrorType):
+                result_type = arm_type
             self.symbols.pop_scope()
 
         return result_type
@@ -2677,6 +2678,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name in variant_names:
+                    if arm.pattern.name in covered:
+                        self._warn(
+                            "W305",
+                            f"duplicate match arm for variant '{arm.pattern.name}'",
+                            arm.pattern.span,
+                        )
                     covered.add(arm.pattern.name)
                 else:
                     self._error("E370", f"unknown variant '{arm.pattern.name}'", arm.pattern.span)
@@ -2723,6 +2730,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         for arm in expr.arms:
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name in required:
+                    if arm.pattern.name in covered:
+                        self._warn(
+                            "W305",
+                            f"duplicate match arm for variant '{arm.pattern.name}'",
+                            arm.pattern.span,
+                        )
                     covered.add(arm.pattern.name)
             elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                 has_wildcard = True

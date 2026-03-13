@@ -820,6 +820,12 @@ class CallEmitterMixin:
                     arity=n_args,
                 )
             if sig and sig.module:
+                # Emit Verb lambda args before coercion
+                for i, pt in enumerate(sig.param_types):
+                    if isinstance(pt, FunctionType) and i < len(expr.args):
+                        if isinstance(expr.args[i], LambdaExpr):
+                            args[i] = self._emit_verb_lambda(expr.args[i], pt)
+                args = self._coerce_call_args(args, expr.args, sig)
                 c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
@@ -837,6 +843,12 @@ class CallEmitterMixin:
                     )
                     return call_str
             if sig and sig.verb is not None:
+                # Emit Verb lambda args before coercion
+                for i, pt in enumerate(sig.param_types):
+                    if isinstance(pt, FunctionType) and i < len(expr.args):
+                        if isinstance(expr.args[i], LambdaExpr):
+                            args[i] = self._emit_verb_lambda(expr.args[i], pt)
+                args = self._coerce_call_args(args, expr.args, sig)
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 call_str = f"{mangled}({', '.join(args)})"
                 call_str = self._maybe_unwrap_option(

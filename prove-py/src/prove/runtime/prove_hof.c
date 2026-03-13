@@ -30,7 +30,9 @@ Prove_List *prove_list_filter(
     bool (*pred)(void *)
 ) {
     if (!list) return prove_list_new(4);
-    Prove_List *out = prove_list_new(list->length);
+    int64_t hint = list->length < 8 ? list->length : list->length / 2;
+    if (hint < 4) hint = 4;
+    Prove_List *out = prove_list_new(hint);
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
         if (pred(elem)) {

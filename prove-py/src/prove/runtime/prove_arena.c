@@ -40,9 +40,11 @@ void *prove_arena_alloc(ProveArena *a, size_t size, size_t align) {
     c->next = NULL;
     a->head->next = c;
     a->head = c;
-    /* Fresh chunk starts at offset 0 — already aligned for any power-of-2 */
-    c->used = size;
-    return c->data;
+    /* Align within fresh chunk — data[] may not be aligned to requested boundary */
+    uintptr_t base = (uintptr_t)c->data;
+    size_t pad = ((base + align - 1) & ~(align - 1)) - base;
+    c->used = pad + size;
+    return c->data + pad;
 }
 
 void prove_arena_reset(ProveArena *a) {

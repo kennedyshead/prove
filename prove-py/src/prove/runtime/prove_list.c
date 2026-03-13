@@ -1,4 +1,5 @@
 #include "prove_list.h"
+#include <string.h>
 
 Prove_List *prove_list_new(int64_t initial_cap) {
     if (initial_cap < 4) initial_cap = 4;
@@ -7,6 +8,7 @@ Prove_List *prove_list_new(int64_t initial_cap) {
     if (!l->data) prove_panic("list data alloc failed");
     l->length = 0;
     l->capacity = initial_cap;
+    l->is_region = false;
     return l;
 }
 
@@ -16,15 +18,26 @@ Prove_List *prove_list_new_region(ProveRegion *r, int64_t initial_cap) {
     l->data = (void **)prove_region_alloc(r, sizeof(void *) * (size_t)initial_cap);
     l->length = 0;
     l->capacity = initial_cap;
+    l->is_region = true;
     return l;
 }
 
 void prove_list_push(Prove_List *list, void *elem) {
     if (list->length >= list->capacity) {
         int64_t new_cap = list->capacity * 2;
-        void **new_data = (void **)realloc(list->data, sizeof(void *) * (size_t)new_cap);
-        if (!new_data) prove_panic("list realloc failed");
-        list->data = new_data;
+        if (list->is_region) {
+            /* Region data cannot be realloc'd — switch to heap */
+            void **new_data = (void **)malloc(sizeof(void *) * (size_t)new_cap);
+            if (!new_data) prove_panic("list realloc failed");
+            memcpy(new_data, list->data, sizeof(void *) * (size_t)list->length);
+            /* Old region buffer freed when region is freed */
+            list->data = new_data;
+            list->is_region = false;
+        } else {
+            void **new_data = (void **)realloc(list->data, sizeof(void *) * (size_t)new_cap);
+            if (!new_data) prove_panic("list realloc failed");
+            list->data = new_data;
+        }
         list->capacity = new_cap;
     }
     list->data[list->length++] = elem;

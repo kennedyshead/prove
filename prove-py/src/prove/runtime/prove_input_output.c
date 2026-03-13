@@ -132,23 +132,21 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
     close(out_pipe[1]);
     close(err_pipe[1]);
 
-    /* Read stdout using Builder (O(n) instead of O(n²) concat) */
-    char buf[4096];
+    /* Read stdout using Builder — write raw buffer directly */
+    char buf[4097];
     ssize_t n;
     Prove_Builder *ob = prove_text_builder();
-    while ((n = read(out_pipe[0], buf, sizeof(buf))) > 0) {
-        Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-        ob = prove_text_write(ob, chunk);
-        prove_release(chunk);
+    while ((n = read(out_pipe[0], buf, 4096)) > 0) {
+        buf[n] = '\0';
+        ob = prove_text_write_cstr(ob, buf);
     }
     close(out_pipe[0]);
 
     /* Read stderr using Builder */
     Prove_Builder *eb = prove_text_builder();
-    while ((n = read(err_pipe[0], buf, sizeof(buf))) > 0) {
-        Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-        eb = prove_text_write(eb, chunk);
-        prove_release(chunk);
+    while ((n = read(err_pipe[0], buf, 4096)) > 0) {
+        buf[n] = '\0';
+        eb = prove_text_write_cstr(eb, buf);
     }
     close(err_pipe[0]);
 

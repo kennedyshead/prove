@@ -2,9 +2,9 @@
 #include "prove_text.h"
 #include <regex.h>
 
-/* ── Regex cache (4 slots, direct-mapped by hash) ────────────── */
+/* ── Regex cache (16 slots, direct-mapped by hash) ───────────── */
 
-#define REGEX_CACHE_SIZE 4
+#define REGEX_CACHE_SIZE 16
 
 typedef struct {
     char    *pattern;  /* malloc'd copy of pattern string */

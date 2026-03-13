@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <execinfo.h>
+#include <unistd.h>
+
+#ifdef __GLIBC__
+  #include <execinfo.h>
+#endif
 
 #include "prove_runtime.h"
 #include "prove_arena.h"
@@ -15,26 +19,38 @@ static ProveRegion *_global_region = NULL;
 
 #define MAX_BACKTRACE 64
 
+/* Async-signal-safe helper: write a string literal to stderr */
+static void _safe_write(const char *s) {
+    size_t len = 0;
+    while (s[len]) len++;
+    (void)write(STDERR_FILENO, s, len);
+}
+
 static void prove_backtrace_handler(int sig) {
+    _safe_write("\n========================================\n");
+    _safe_write("Prove runtime error (signal ");
+    /* Write signal number — async-signal-safe int-to-string */
+    char numbuf[16];
+    int idx = 0;
+    int s = sig < 0 ? -sig : sig;
+    if (sig < 0) numbuf[idx++] = '-';
+    char tmp[16];
+    int tlen = 0;
+    do { tmp[tlen++] = '0' + (s % 10); s /= 10; } while (s > 0);
+    for (int i = tlen - 1; i >= 0; i--) numbuf[idx++] = tmp[i];
+    (void)write(STDERR_FILENO, numbuf, (size_t)idx);
+    _safe_write("):\n");
+    _safe_write("========================================\n");
+
+#ifdef __GLIBC__
     void *buffer[MAX_BACKTRACE];
     int n = backtrace(buffer, MAX_BACKTRACE);
-    char **symbols = backtrace_symbols(buffer, n);
-    
-    fprintf(stderr, "\n========================================\n");
-    fprintf(stderr, "Prove runtime error (signal %d):\n", sig);
-    fprintf(stderr, "========================================\n");
-    fprintf(stderr, "Stack trace (%d frames):\n", n);
-    
-    for (int i = 1; i < n && symbols != NULL; i++) {
-        fprintf(stderr, "  [%d] %s\n", i, symbols[i]);
-    }
-    
-    if (symbols) {
-        free(symbols);
-    }
-    
-    fprintf(stderr, "========================================\n");
-    exit(1);
+    /* backtrace_symbols_fd is async-signal-safe (writes directly, no malloc) */
+    backtrace_symbols_fd(buffer, n, STDERR_FILENO);
+#endif
+
+    _safe_write("========================================\n");
+    _exit(1);
 }
 
 void prove_runtime_init(void) {
