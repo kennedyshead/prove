@@ -23,6 +23,9 @@ _PROSE_STEMS: list[tuple[str, str]] = [
     (r"output|write|print|send|emit|log|display", "outputs"),
     (r"input|receiv|accept|pars|tak", "inputs"),
     (r"listen|watch|monitor|wait", "listens"),
+    (r"detach|fire|spawn|fork|background", "detached"),
+    (r"attach|await|join|child|worker", "attached"),
+    (r"stream|block|poll|loop", "streams"),
 ]
 
 
