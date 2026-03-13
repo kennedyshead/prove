@@ -62,6 +62,8 @@ prove check docs/tutorial.md --md
 | `--strict` | Promote warnings to errors (exit 1 on any warning) |
 | `--coherence` | Check vocabulary consistency between narrative and code ([I340](diagnostics.md#i340-vocabulary-drift-from-narrative)) |
 | `--challenges` | Generate refutation challenges from `ensures` contracts |
+| `--status` | Show per-module completeness (todo count vs implemented) |
+| `--intent` | Verify code matches `project.intent` declarations |
 
 When `path` is a `.prv` file, checks that single file. When `path` is a directory, finds `prove.toml` and checks all files in `src/`. When `path` is a `.md` file (with `--md`), checks all fenced Prove blocks.
 
@@ -139,6 +141,42 @@ prove compiler --dump Data.dat -o data.prv
 When neither `--load` nor `--dump` is given, the mode is auto-detected from the file extension (`.prv` → load, `.dat`/`.bin` → dump).
 
 The PDAT binary format matches the C runtime (`prove_store.c`) exactly — files produced by this command are interchangeable with the Store runtime at execution time.
+
+---
+
+## `prove generate <file.prv>`
+
+Generate function stubs and bodies from module narrative prose.
+
+```bash
+prove generate src/auth.prv              # generate new stubs
+prove generate src/auth.prv --update     # re-generate @generated functions with todos
+prove generate src/auth.prv --dry-run    # preview without writing
+```
+
+The generator extracts verbs and nouns from the module's `narrative:` block, matches them against the stdlib knowledge base, and produces:
+
+- **Full bodies** when a stdlib function matches with high confidence (includes `explain`, `chosen`, `why_not` prose annotations)
+- **Todo stubs** when no stdlib match is found (the programmer fills these in)
+
+Functions already present in the file are skipped. With `--update`, previously generated functions (marked `@generated`) that still contain `todo` are regenerated.
+
+---
+
+## `prove intent [file.intent]`
+
+Work with `.intent` project declaration files.
+
+```bash
+prove intent                             # show status of all declarations
+prove intent --drift                     # show only mismatches
+prove intent --generate                  # generate .prv files from intent
+prove intent --generate --dry-run        # preview without writing
+```
+
+The `.intent` file is a human-readable project declaration that describes modules, vocabulary, data flow, and constraints. The toolchain generates `.prv` source files from it and verifies the code stays aligned.
+
+See also: `prove check --intent` to verify intent coverage during type-checking.
 
 ---
 
