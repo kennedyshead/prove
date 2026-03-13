@@ -249,6 +249,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._is_stdlib: bool = False
         # Flag: current expression is the direct callee of an AsyncCallExpr (&)
         self._inside_async_call: bool = False
+        # Flag: inside a HOF lambda body (emitter adds retains, suppress W360)
+        self._inside_lambda: bool = False
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -1491,7 +1493,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         narrow Option<Value> → Value and Result<Value, Error> → Value in the function body.
         """
         narrowings: list[tuple[str, list[Expr]]] = []
+        # Flatten &&-conjunctions so each ValidExpr/CallExpr is processed individually
+        exprs_to_check: list[Expr] = []
         for req_expr in fd.requires:
+            stack = [req_expr]
+            while stack:
+                e = stack.pop()
+                if isinstance(e, BinaryExpr) and e.op == "&&":
+                    stack.append(e.left)
+                    stack.append(e.right)
+                else:
+                    exprs_to_check.append(e)
+        for req_expr in exprs_to_check:
             # valid file(path) → ValidExpr
             if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
                 func_name = req_expr.name
@@ -2456,6 +2469,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Infer arm types — skip ErrorType arms to avoid poison propagation
         result_type: Type = UNIT
+        arm_types: list[tuple[Type, MatchArm]] = []
         for arm in expr.arms:
             self.symbols.push_scope("match_arm")
             self._check_pattern(arm.pattern, subject_type)
@@ -2464,7 +2478,35 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 arm_type = self._check_stmt(stmt)
             if not isinstance(arm_type, ErrorType):
                 result_type = arm_type
+            arm_types.append((arm_type, arm))
             self.symbols.pop_scope()
+
+        # E400: check for arms returning Unit when other arms return a value
+        # Skip for listens/streams where match arms are loop-body statements
+        cur_verb = (
+            self._current_function.verb
+            if self._current_function
+            and isinstance(self._current_function, FunctionDef)
+            else None
+        )
+        # Find the dominant value type (first non-Unit, non-Error arm type)
+        value_type: Type | None = None
+        for t, _ in arm_types:
+            if not isinstance(t, (UnitType, ErrorType)):
+                value_type = t
+                break
+        if value_type is not None:
+            if cur_verb not in ("listens", "streams"):
+                # Use the value type as result_type (not the last arm)
+                result_type = value_type
+                for arm_type, arm in arm_types:
+                    if isinstance(arm_type, UnitType):
+                        self._error(
+                            "E400",
+                            f"match arm returns Unit but other arms return "
+                            f"'{type_name(value_type)}'",
+                            arm.span,
+                        )
 
         return result_type
 
@@ -2487,7 +2529,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Check for closure captures (not supported in v0.1)
         self._check_lambda_captures(expr.body, param_names, expr.span)
 
-        body_type = self._infer_expr(expr.body)
+        prev = self._inside_lambda
+        self._inside_lambda = True
+        try:
+            body_type = self._infer_expr(expr.body)
+        finally:
+            self._inside_lambda = prev
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
 

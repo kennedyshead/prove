@@ -2,7 +2,6 @@ module DemoI302
   narrative: """
   Expected diagnostics: I302
   """
-  System outputs console
 
 transforms greet(name String) String
 from

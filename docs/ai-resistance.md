@@ -64,9 +64,9 @@ transforms insert(tree BalancedTree<Value>, val Value) BalancedTree<Value>
 
 ```prove
 validates leap_year(y Year)
-  near_miss: 1900  => false
-  near_miss: 2000  => true
-  near_miss: 2100  => false
+  near_miss 1900 => false
+  near_miss 2000 => true
+  near_miss 2100 => false
 from
     (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
 ```
@@ -208,9 +208,10 @@ A module's [`domain:`](contracts.md#module-level-annotations) declaration select
 
 ```prove
 module Accounting
-  domain: "finance"
+  domain finance
 
 // W340: domain 'finance' prefers Decimal over Float
+
 transforms total(amounts List<Float>) Float
 from
     reduce(amounts, 0.0, add)

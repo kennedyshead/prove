@@ -439,7 +439,7 @@ class CEmitter(
             if isinstance(expr, LambdaExpr):
                 return any(_stmt_alloc(s) for s in expr.body)
             if isinstance(expr, AsyncCallExpr):
-                return any(_expr_alloc(a) for a in expr.args)
+                return _expr_alloc(expr.expr)
             return False
 
         def _stmt_alloc(stmt: Any) -> bool:

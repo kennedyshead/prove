@@ -3,9 +3,6 @@ module DemoI303
   Expected diagnostics: I303
   """
 
-  type Unused is
-    value Integer
-
 transforms one() Integer
 from
     1

@@ -129,11 +129,18 @@ class ProveFormatter:
         self._unused_import_spans: set[tuple[str, int, int]] = set()
         self._unknown_module_spans: set[tuple[str, int, int]] = set()
         self._strip_async_marker_spans: set[tuple[str, int, int]] = set()
+        self._add_async_marker_spans: set[tuple[str, int, int]] = set()
+        self._indent_level = 0  # current nesting depth (in 4-space units)
+        self._extra_col = 0  # extra prefix width (e.g. match arm pattern)
         for d in diagnostics or []:
             if d.code == "I375":
                 for lbl in d.labels:
                     s = lbl.span
                     self._strip_async_marker_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I378":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._add_async_marker_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I300":
                 for lbl in d.labels:
                     s = lbl.span
@@ -225,8 +232,10 @@ class ProveFormatter:
             for p in fd.params:
                 self._local_types[p.name] = self._format_type_expr(p.type_expr)
             lines.append("from")
+            self._indent_level += 1
             for stmt in fd.body:
                 lines.append(self._indent(self._format_stmt(stmt), 1))
+            self._indent_level -= 1
             self._local_types.clear()
 
         return "\n".join(lines)
@@ -246,8 +255,10 @@ class ProveFormatter:
         lines.append(sig)
 
         lines.append("from")
+        self._indent_level += 1
         for stmt in md.body:
             lines.append(self._indent(self._format_stmt(stmt), 1))
+        self._indent_level -= 1
 
         return "\n".join(lines)
 
@@ -477,8 +488,10 @@ class ProveFormatter:
 
         if isinstance(cd.value, ComptimeExpr):
             lines = [f"{cd.name} as{type_ann} = comptime"]
+            self._indent_level += 1
             for stmt in cd.value.body:
                 lines.append(self._indent(self._format_stmt(stmt), 1))
+            self._indent_level -= 1
             return "\n".join(lines)
 
         return f"{cd.name} as{type_ann} = {self._format_expr(cd.value)}"
@@ -747,31 +760,79 @@ class ProveFormatter:
 
     def _format_call(self, expr: CallExpr) -> str:
         func = self._format_expr(expr.func, 99)
-        args = ", ".join(self._format_expr(a) for a in expr.args)
-        return f"{func}({args})"
+        arg_strs = [self._format_expr(a) for a in expr.args]
+        args = ", ".join(arg_strs)
+        s = expr.span
+        key = (s.file, s.start_line, s.start_col)
+        suffix = "&" if key in self._add_async_marker_spans else ""
+        result = f"{func}({args}){suffix}"
+
+        if self._indent_level * 4 + len(result) > self.MAX_LINE_LENGTH:
+            # Try multiline string interp wrapping
+            col = len(func) + 1  # column of f in f"
+            for i, a in enumerate(expr.args):
+                if isinstance(a, StringInterp):
+                    wrapped = self._format_string_interp(a, col=col, force=True)
+                    if "\n" in wrapped:
+                        arg_strs[i] = wrapped
+                        args = ", ".join(arg_strs)
+                        return f"{func}({args}){suffix}"
+                    break
+                col += len(arg_strs[i]) + 2  # skip past this arg + ", "
+
+        return result
 
     def _format_lambda(self, expr: LambdaExpr) -> str:
         params = ", ".join(expr.params)
         body = self._format_expr(expr.body)
         return f"|{params}| {body}"
 
-    def _format_string_interp(self, expr: StringInterp) -> str:
+    def _format_string_interp(
+        self, expr: StringInterp, col: int = 0, force: bool = False,
+    ) -> str:
         parts: list[str] = []
         for part in expr.parts:
             if isinstance(part, StringLit):
                 parts.append(_escape_string(part.value))
             else:
                 parts.append("{" + self._format_expr(part) + "}")
-        return 'f"' + "".join(parts) + '"'
+        single = 'f"' + "".join(parts) + '"'
+
+        if not force and self._indent_level * 4 + col + len(single) <= self.MAX_LINE_LENGTH:
+            return single
+
+        # Check there are expression parts worth breaking
+        has_exprs = any(not isinstance(p, StringLit) for p in expr.parts)
+        if not has_exprs:
+            return single
+
+        # Multi-line: each interpolation on its own lines
+        # Expressions align after f", closing } aligns with f
+        expr_indent = " " * (col + 2)
+        brace_indent = " " * col
+
+        result_parts: list[str] = ['f"']
+        for part in expr.parts:
+            if isinstance(part, StringLit):
+                result_parts.append(_escape_string(part.value))
+            else:
+                formatted = self._format_expr(part)
+                result_parts.append(
+                    "{\n" + expr_indent + formatted + "\n" + brace_indent + "}"
+                )
+        result_parts.append('"')
+        return "".join(result_parts)
 
     def _format_match_expr(self, expr: MatchExpr) -> str:
         lines: list[str] = []
         if expr.subject is not None:
             lines.append(f"match {self._format_expr(expr.subject)}")
+            self._indent_level += 1
             for arm in expr.arms:
                 lines.append(self._indent(self._format_arm(arm), 1))
                 if isinstance(arm.pattern, WildcardPattern):
                     break  # W301: drop unreachable arms after wildcard
+            self._indent_level -= 1
         else:
             # Implicit match — arms at current level (no extra indent)
             for arm in expr.arms:
@@ -784,17 +845,23 @@ class ProveFormatter:
         pat = self._format_pattern(arm.pattern)
         if len(arm.body) == 1:
             body = self._format_stmt(arm.body[0])
-            return f"{pat} => {body}"
-        # Multi-statement arm
+            line = f"{pat} => {body}"
+            if self._indent_level * 4 + len(line) <= self.MAX_LINE_LENGTH:
+                return line
+        # Multi-statement arm (or single-stmt that doesn't fit)
         lines = [f"{pat} =>"]
+        self._indent_level += 1
         for stmt in arm.body:
             lines.append(self._indent(self._format_stmt(stmt), 1))
+        self._indent_level -= 1
         return "\n".join(lines)
 
     def _format_comptime(self, expr: ComptimeExpr) -> str:
         lines = ["comptime"]
+        self._indent_level += 1
         for stmt in expr.body:
             lines.append(self._indent(self._format_stmt(stmt), 1))
+        self._indent_level -= 1
         return "\n".join(lines)
 
     # ── Pattern formatting ─────────────────────────────────────

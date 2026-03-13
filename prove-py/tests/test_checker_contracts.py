@@ -608,6 +608,46 @@ class TestProseCoherence:
             "W505",
         )
 
+    def test_w502_explain_no_body_overlap(self) -> None:
+        check_coherence_warns(
+            'transforms compute(numbers List<Integer>) Integer\n'
+            '    explain\n'
+            '        perform the quick sort algorithm\n'
+            'from\n'
+            '    numbers\n',
+            "W502",
+        )
+
+    def test_w502_explain_matches_body(self) -> None:
+        # "sum the numbers" overlaps with param name "numbers" — no W502
+        check_coherence_ok(
+            'transforms compute(numbers List<Integer>) List<Integer>\n'
+            '    explain\n'
+            '        sum the numbers\n'
+            'from\n'
+            '    numbers\n',
+        )
+
+    def test_w504_chosen_no_body_overlap(self) -> None:
+        check_coherence_warns(
+            'transforms compute(numbers List<Integer>) Integer\n'
+            '    chosen: "recursive approach"\n'
+            '    why_not: "compute iteratively"\n'
+            'from\n'
+            '    numbers\n',
+            "W504",
+        )
+
+    def test_w504_chosen_matches_body(self) -> None:
+        # "numbers" in chosen text overlaps with param — no W504
+        check_coherence_ok(
+            'transforms compute(numbers List<Integer>) List<Integer>\n'
+            '    chosen: "iterate over numbers"\n'
+            '    why_not: "compute recursively"\n'
+            'from\n'
+            '    numbers\n',
+        )
+
     def test_w505_why_not_with_known_name(self) -> None:
         # "sort" is the function name itself — anchor present, no W505
         check_coherence_ok(

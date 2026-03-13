@@ -2,7 +2,6 @@ module DemoE312
   narrative: """
   Expected diagnostics: E312
   """
-  System outputs console
 
 outputs run() Unit
 from

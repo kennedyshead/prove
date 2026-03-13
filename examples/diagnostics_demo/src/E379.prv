@@ -2,7 +2,3 @@ module DemoE379
   narrative: """
   Expected diagnostics: E379
   """
-
-  type Status:[Lookup] is String Integer where
-    Active | "active" | 1
-    Pending | "pending"

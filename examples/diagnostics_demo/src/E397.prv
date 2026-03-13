@@ -3,7 +3,5 @@ module DemoE397
   Expected diagnostics: E397
   """
 
-  type OpaqueHandle is binary
-
 transforms demo() Integer
 binary

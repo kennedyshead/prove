@@ -23,5 +23,5 @@ from
 
 main() Unit
 from
-    fire("hello from detached")
-    fire("async verbs working")
+    fire("hello from detached")&
+    fire("async verbs working")&

@@ -183,6 +183,57 @@ class TestFormatterExpressions:
         assert _roundtrip(source) == source
 
 
+class TestFormatterStringInterpWrapping:
+    def test_short_fstring_stays_single_line(self):
+        source = 'outputs greet(name String) Unit\nfrom\n    info(f"Hello {name}")\n'
+        assert _roundtrip(source) == source
+
+    def test_long_fstring_wraps_interpolations(self):
+        source = (
+            "outputs build_report(config_package_name String, config_package_version String) Unit\n"
+            "from\n"
+            '    info(f"{config_package_name} {config_package_version} is now available in the build folder")\n'
+        )
+        result = _parse_format(source)
+        # The call exceeds 90 chars with indent, so the f-string should be wrapped
+        assert "\n" in result.split("from\n")[1]
+        # Expressions should appear on their own lines
+        assert "config_package_name" in result
+        assert "config_package_version" in result
+
+    def test_fstring_wrap_alignment(self):
+        """Expressions align after f\", closing } aligns with f."""
+        source = (
+            "outputs report(package_name String, package_version String) Unit\n"
+            "from\n"
+            '    info(f"{package_name} version {package_version} is now available in the build output folder area")\n'
+        )
+        result = _parse_format(source)
+        body = result.split("from\n")[1]
+        lines = body.split("\n")
+        # Find the info(f" line
+        call_line = next(l for l in lines if "info(f" in l)
+        col_f = call_line.index("f\"")
+        # Find expression lines in the body only
+        expr_lines = [l for l in lines if "package_name" in l or "package_version" in l]
+        for el in expr_lines:
+            indent = len(el) - len(el.lstrip())
+            # Expression should align after f" (col_f + 2)
+            assert indent == col_f + 2
+        # Find closing } lines
+        brace_lines = [l for l in lines if l.lstrip().startswith("}")]
+        for bl in brace_lines:
+            indent = len(bl) - len(bl.lstrip())
+            # } should align with f
+            assert indent == col_f
+
+    def test_fstring_no_wrap_under_limit(self):
+        source = 'main()\nfrom\n    info(f"short {x}")\n'
+        result = _parse_format(source)
+        # Should stay single line
+        assert 'info(f"short {x}")' in result
+
+
 class TestFormatterAnnotations:
     def test_ensures(self):
         source = (

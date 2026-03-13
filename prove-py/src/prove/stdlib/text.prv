@@ -64,7 +64,10 @@ transforms string(builder StringBuilder:[Mutable], text String) StringBuilder:[M
 binary
 
 /// Append a character to a builder
-transforms char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]
+transforms char(
+    builder StringBuilder:[Mutable],
+    character Character
+) StringBuilder:[Mutable]
 binary
 
 /// Build the final string from a builder

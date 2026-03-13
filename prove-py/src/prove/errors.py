@@ -110,6 +110,8 @@ _register_doc_range("E", 391, 396)
 DIAGNOSTIC_DOCS["E397"] = f"{_DOCS_BASE}#E397"
 # Attached IO context E398
 DIAGNOSTIC_DOCS["E398"] = f"{_DOCS_BASE}#E398"
+# Match arm type mismatch E400
+DIAGNOSTIC_DOCS["E400"] = f"{_DOCS_BASE}#E400"
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
 # Warnings
@@ -125,6 +127,8 @@ DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
 _register_doc_range("W", 340, 342)
 # Warning — duplicate binary column type W350
 DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
+# Warning — own/borrow overlap W360
+DIAGNOSTIC_DOCS["W360"] = f"{_DOCS_BASE}#W360"
 # Warning — temporal/satisfies W390-W391
 _register_doc_range("W", 390, 391)
 # Warning — prose coherence W501-W505

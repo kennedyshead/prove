@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
-from prove._nl_intent import implied_verbs, prose_overlaps
+from prove._nl_intent import body_tokens, implied_verbs, prose_overlaps
+from prove.ast_nodes import FunctionDef
+from prove.lexer import Lexer
+from prove.parser import Parser
+
+
+def _parse_fd(source: str) -> FunctionDef:
+    """Parse a single-function source and return the FunctionDef."""
+    tokens = Lexer(source, "<test>").lex()
+    module = Parser(tokens, "<test>").parse()
+    for decl in module.declarations:
+        if isinstance(decl, FunctionDef):
+            return decl
+    raise AssertionError("no FunctionDef in source")
 
 
 class TestImpliedVerbs:
@@ -66,3 +79,45 @@ class TestProseOverlaps:
     def test_short_words_no_stem(self) -> None:
         # Words under 4 chars don't trigger stem matching
         assert not prose_overlaps("do it", {"does"})
+
+
+class TestBodyTokens:
+    def test_extracts_param_names(self) -> None:
+        fd = _parse_fd(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n"
+        )
+        tokens = body_tokens(fd)
+        assert "a" in tokens
+        assert "b" in tokens
+
+    def test_extracts_called_functions(self) -> None:
+        fd = _parse_fd(
+            "transforms double(n Integer) Integer\n"
+            "from\n"
+            "    add(n, n)\n"
+        )
+        tokens = body_tokens(fd)
+        assert "n" in tokens
+        assert "add" in tokens
+
+    def test_empty_body(self) -> None:
+        fd = _parse_fd(
+            "transforms identity(x Integer) Integer\n"
+            "from\n"
+            "    x\n"
+        )
+        tokens = body_tokens(fd)
+        # At minimum, param name is present
+        assert "x" in tokens
+
+    def test_no_params(self) -> None:
+        fd = _parse_fd(
+            "creates zero() Integer\n"
+            "from\n"
+            "    0\n"
+        )
+        tokens = body_tokens(fd)
+        # No params, no calls — may be empty or contain literal-related names
+        assert isinstance(tokens, set)

@@ -13,6 +13,7 @@ from prove.lsp import (
     DocumentState,
     _analyze,
     _build_import_edit,
+    _build_import_edit_text,
     _extract_undefined_name,
     _get_word_at,
     _is_e310,
@@ -276,6 +277,35 @@ class TestBuildImportEdit:
         suggestion = ImportSuggestion(module="System", verb="outputs", name="console")
         edit = _build_import_edit(ds, suggestion)
         assert edit is None
+
+    def test_new_import_after_multiline_narrative(self):
+        # Regression: import was inserted inside the narrative block
+        source = (
+            "module Source\n"
+            '  narrative: """\n'
+            "  Reads all source files through dir inputs,\n"
+            '  """\n'
+        )
+        suggestion = ImportSuggestion(module="Config", verb="types", name="Config")
+        edit = _build_import_edit_text(source, suggestion)
+        assert edit is not None
+        assert "Config types Config" in edit.new_text
+        # Must insert AFTER the closing """ (line index 4)
+        assert edit.range.start.line == 4
+
+    def test_new_stdlib_import_after_multiline_narrative(self):
+        # Regression: stdlib import (e.g. Pattern reads text) inserted inside narrative
+        source = (
+            "module Source\n"
+            '  narrative: """\n'
+            "  Reads all source files through dir inputs,\n"
+            '  """\n'
+        )
+        suggestion = ImportSuggestion(module="Pattern", verb="reads", name="text")
+        edit = _build_import_edit_text(source, suggestion)
+        assert edit is not None
+        assert "Pattern reads text" in edit.new_text
+        assert edit.range.start.line == 4
 
     def test_extend_existing_import_different_verb(self):
         source = (

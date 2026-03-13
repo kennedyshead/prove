@@ -880,6 +880,12 @@ class CallEmitterMixin:
             return f"(void*){expr}"
         if ct.decl in ("double", "float"):
             return f"_prove_f64_box({expr})"
+        # Struct types (non-pointer Prove_* types) must be heap-allocated
+        if ct.decl.startswith("Prove_"):
+            return (
+                f"({{" f"{ct.decl} *_bx = malloc(sizeof({ct.decl})); "
+                f"*_bx = {expr}; (void*)_bx;" f"}})"
+            )
         return f"(void*)(intptr_t){expr}"
 
     @staticmethod
@@ -889,6 +895,9 @@ class CallEmitterMixin:
             return f"({ct.decl}){expr}"
         if ct.decl in ("double", "float"):
             return f"_prove_f64_unbox({expr})"
+        # Struct types: dereference the heap-allocated pointer
+        if ct.decl.startswith("Prove_"):
+            return f"(*({ct.decl}*){expr})"
         return f"({ct.decl})(intptr_t){expr}"
 
     def _emit_hof_map(self, expr: CallExpr) -> str:
@@ -953,6 +962,26 @@ class CallEmitterMixin:
             # releases its params, but we reuse captured vars each iteration.
             self._emit_loop_body_retains(lam.body, param)
             body_code = self._emit_expr(lam.body)
+            # If lambda body is a bare function reference (not a local var),
+            # resolve it to a proper C function call with the lambda param.
+            if (
+                isinstance(lam.body, IdentifierExpr)
+                and lam.body.name != param
+                and lam.body.name not in saved_locals
+            ):
+                fn_ref = lam.body.name
+                n_params = len(lam.params) if lam.params else 0
+                fn_sig = self._symbols.resolve_function_any(fn_ref, arity=n_params)
+                if fn_sig is None:
+                    fn_sig = self._symbols.resolve_function(None, fn_ref, n_params)
+                if fn_sig:
+                    if fn_sig.module:
+                        c_name = self._resolve_stdlib_c_name(fn_sig)
+                        if c_name:
+                            body_code = f"{c_name}({param})"
+                    elif fn_sig.verb is not None:
+                        mangled = mangle_name(fn_sig.verb, fn_sig.name, fn_sig.param_types)
+                        body_code = f"{mangled}({param})"
             self._locals = saved_locals
             self._line(f"{body_code};")
             self._indent -= 1
@@ -1113,6 +1142,67 @@ class CallEmitterMixin:
         self._lambdas.append(lam)
         return name
 
+    def _lambda_owned_field_retains(
+        self,
+        body: Expr,
+        param: str,
+        elem_type: Type,
+    ) -> list[str]:
+        """Find pointer fields on *param* that need a retain in a hoisted lambda.
+
+        When a field access like ``value.path`` appears as an argument to a
+        function call (own position — the callee will release it), we must
+        retain it so that any other (borrow) usage of the same pointer in the
+        same expression survives the release.
+
+        Returns a list of C expressions (e.g. ``"value->path"``) to retain.
+        """
+        from prove.ast_nodes import CallExpr, FieldExpr, IdentifierExpr
+
+        owned: set[str] = set()
+
+        def _walk(node: Expr) -> None:
+            if isinstance(node, CallExpr):
+                # Only real function calls release args; record constructors
+                # (TypeIdentifierExpr) do not.
+                is_func = isinstance(node.func, IdentifierExpr)
+                for arg in node.args:
+                    if (
+                        is_func
+                        and isinstance(arg, FieldExpr)
+                        and isinstance(arg.obj, IdentifierExpr)
+                        and arg.obj.name == param
+                    ):
+                        owned.add(arg.field)
+                    _walk(arg)
+            elif hasattr(node, "left"):
+                _walk(node.left)  # type: ignore[attr-defined]
+                _walk(node.right)  # type: ignore[attr-defined]
+            elif isinstance(node, FieldExpr):
+                _walk(node.obj)
+
+        _walk(body)
+
+        if not owned:
+            return []
+
+        # Keep only pointer-typed fields
+        result: list[str] = []
+        if isinstance(elem_type, RecordType):
+            for fname in owned:
+                ftype = elem_type.fields.get(fname)
+                if ftype and map_type(ftype).is_pointer:
+                    result.append(f"{param}->{fname}")
+        else:
+            # Binary/opaque struct — we don't have field type info,
+            # so retain each owned field access directly (the field
+            # is a pointer inside the struct, e.g. value->path).
+            elem_ct = map_type(elem_type)
+            accessor = "->" if elem_ct.is_pointer else "."
+            for fname in owned:
+                result.append(f"{param}{accessor}{fname}")
+        return result
+
     def _emit_hof_lambda(
         self,
         expr: Expr,
@@ -1205,9 +1295,15 @@ class CallEmitterMixin:
             self._locals = saved_locals
             body_ct = map_type(body_type)
             body_box = self._hof_box(body_code, body_ct)
+            # Own/borrow: retain pointer fields passed to function calls
+            retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
+            retain_lines = "".join(
+                f"    prove_retain({r});\n" for r in retains
+            )
             lam = (
                 f"static void *{name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                f"{retain_lines}"
                 f"    return {body_box};\n"
                 f"}}\n"
             )
@@ -1218,9 +1314,14 @@ class CallEmitterMixin:
             self._locals[param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
+            retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
+            retain_lines = "".join(
+                f"    prove_retain({r});\n" for r in retains
+            )
             lam = (
                 f"static bool {name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                f"{retain_lines}"
                 f"    return {body_code};\n"
                 f"}}\n"
             )
@@ -1250,9 +1351,14 @@ class CallEmitterMixin:
             self._locals[param] = elem_type
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
+            retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
+            retain_lines = "".join(
+                f"    prove_retain({r});\n" for r in retains
+            )
             lam = (
                 f"static void {name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                f"{retain_lines}"
                 f"    {body_code};\n"
                 f"}}\n"
             )

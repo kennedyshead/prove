@@ -1,14 +1,16 @@
 module Commands
   narrative: """
-  Commands module handles cli commands build, check, compiler, format, lsp, new, test and view.
-
-  The given arguments transforms a Plan for the given command
-  Finally the code outputs the result.
+  Commands module handles cli commands build, check, compiler, format, 
+  lsp, new, test and view.
+  
+  Transforms source into binary in handle function
+  Outputs the binary to dist
   """
   Config types Config
   Log detached info
   List validates contains
   System outputs console
+  Source inputs source, types SourceFile
 
   HELP_BUILD_TEXT as String = comptime
       read("static/help_build.txt")
@@ -34,33 +36,59 @@ module Commands
   HELP_VIEW_TEXT as String = comptime
       read("static/help_view.txt")
 
+transforms handle(source_file SourceFile) Unit
+from
+    info(f"{source_file.path}\n{source_file.content}")&
+
 /// Run the build command
 outputs build(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
-        _ => info(f"{config.package.name} {config.package.version} now available in build folder")&
+        _ =>
+            source as List<SourceFile> = source(config)
+            each(source, |source_file| handle)
+            info(f"{
+                   config.package.name
+                 } {
+                   config.package.version
+                 } now available in build folder")&
 
 /// Run the check command
 outputs check(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_CHECK_TEXT)
-        _ => info(f"{config.package.name} {config.package.version} has X file(s) with Y error(s)")&
+        _ =>
+            info(f"{
+                   config.package.name
+                 } {
+                   config.package.version
+                 } has X file(s) with Y error(s)")&
 
 /// Run the compiler command
 outputs compiler(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_COMPILER_TEXT)
-        _ => info(f"{config.package.name} {config.package.version} has X file(s) with Y error(s)")&
+        _ =>
+            info(f"{
+                   config.package.name
+                 } {
+                   config.package.version
+                 } has X file(s) with Y error(s)")&
 
 /// Run the format command
 outputs format(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_FORMAT_TEXT)
-        _ => info(f"{config.package.name} {config.package.version} X files checked, Y formatted")&
+        _ =>
+            info(f"{
+                   config.package.name
+                 } {
+                   config.package.version
+                 } X files checked, Y formatted")&
 
 /// Run the lsp command
 outputs lsp(arguments List<String>, config Config)!
@@ -81,7 +109,12 @@ outputs test(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_TEST_TEXT)
-        _ => info(f"{config.package.name} {config.package.version}has X tests and Y failed")&
+        _ =>
+            info(f"{
+                   config.package.name
+                 } {
+                   config.package.version
+                 }has X tests and Y failed")&
 
 /// Run the view command
 outputs view(arguments List<String>, config Config)!

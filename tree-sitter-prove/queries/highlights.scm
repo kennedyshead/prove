@@ -12,11 +12,15 @@
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
+  "attached"
   "creates"
+  "detached"
   "inputs"
+  "listens"
   "matches"
   "outputs"
   "reads"
+  "streams"
   "transforms"
   "validates"
   "types"
@@ -52,33 +56,16 @@
   "explain"
   "requires"
   "terminates"
+  "trusted"
   "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords
-
-(trusted_annotation) @keyword.control
 
 ; ─── Explain Lines ─────────────────────────────────────────
 
 (explain_line) @string.documentation
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
-
-; Only highlight AI keywords in annotation contexts
-(ensures_clause) @keyword.control
-(requires_clause) @keyword.control
-(trusted_annotation) @keyword.control
-(terminates_annotation) @keyword.control
-(why_not_annotation) @keyword.control
-(chosen_annotation) @keyword.control
-(near_miss_annotation) @keyword.control
-(know_annotation) @keyword.control
-(assume_annotation) @keyword.control
-(believe_annotation) @keyword.control
-(intent_annotation) @keyword.directive
-(satisfies_clause) @keyword.directive
-(narrative_annotation) @keyword.directive
-(temporal_annotation) @keyword.directive
 
 ; PROVE-EXPORT-BEGIN: ai-keywords
 [

@@ -2,6 +2,3 @@ module DemoE387
   narrative: """
   Expected diagnostics: E387
   """
-
-  type BadTable:[Lookup] is String Float where
-    First | "first" | 1.5

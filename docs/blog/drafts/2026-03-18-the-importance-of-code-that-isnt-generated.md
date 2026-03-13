@@ -48,8 +48,8 @@ Not by detecting AI output — that's a cat-and-mouse game. It requires that eve
 
 ```prove
 transforms calculate_discount(price Price, rate Rate) Price
-  requires rate >= 0.0 && rate <= 1.0
   ensures result <= price
+  requires rate >= 0.0 && rate <= 1.0
   explain
       apply the discount rate to the price
       return the discounted amount

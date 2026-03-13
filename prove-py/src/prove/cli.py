@@ -305,7 +305,7 @@ def _check_file(filepath: Path) -> tuple[int, int, int]:
         elif diag.severity == Severity.WARNING:
             warnings += 1
 
-    formatter = ProveFormatter(symbols=symbols)
+    formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
     formatted = formatter.format(module)
     format_issues = 0
     if formatted != source:

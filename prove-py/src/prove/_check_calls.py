@@ -47,6 +47,9 @@ class CallCheckMixin:
             if func_name in self._store_lookup_types:
                 return self._infer_store_row_construction(expr, func_name)
 
+        # Check for own/borrow overlap in arguments (W360)
+        self._check_own_borrow_overlap(expr)
+
         # Determine function name and resolve
         arg_types = [self._infer_expr(a) for a in expr.args]
         arg_count = len(expr.args)
@@ -577,6 +580,65 @@ class CallCheckMixin:
             if base:
                 return f"{base}.{expr.field}"
         return None
+
+    def _check_own_borrow_overlap(self, expr: CallExpr) -> None:
+        """W360: pointer field released by nested function call but also used elsewhere.
+
+        Detects patterns like ``Constructor(x.field, func(x.field))`` where
+        ``func`` owns (releases) ``x.field`` but the constructor also borrows
+        it.  Because C evaluation order of arguments is unspecified, the
+        release can happen before the borrow, causing use-after-free.
+        """
+        # Suppress inside lambda bodies — emitter adds retains automatically.
+        if self._inside_lambda:
+            return
+
+        # Step 1: collect field paths that are args to IdentifierExpr calls
+        # (these are "owned" — the callee will prove_release them).
+        owned: set[str] = set()
+
+        def _collect_owned(node: Expr) -> None:
+            if isinstance(node, CallExpr) and isinstance(node.func, IdentifierExpr):
+                for a in node.args:
+                    p = self._expr_to_field_path(a)
+                    if p and "." in p:
+                        owned.add(p)
+            if isinstance(node, CallExpr):
+                for a in node.args:
+                    _collect_owned(a)
+
+        for arg in expr.args:
+            _collect_owned(arg)
+
+        if not owned:
+            return
+
+        # Step 2: count how many times each owned path appears in the
+        # full argument list (including inside nested calls).
+        counts: dict[str, int] = {p: 0 for p in owned}
+
+        def _count(node: Expr) -> None:
+            if isinstance(node, FieldExpr):
+                p = self._expr_to_field_path(node)
+                if p in counts:
+                    counts[p] += 1
+                return  # full path counted — don't recurse into sub-parts
+            if isinstance(node, CallExpr):
+                for a in node.args:
+                    _count(a)
+
+        for arg in expr.args:
+            _count(arg)
+
+        for path, n in counts.items():
+            if n > 1:
+                self._warning(
+                    "W360",
+                    f"'{path}' is released by function call but also used "
+                    f"elsewhere in this expression; "
+                    f"bind the function call to a variable first",
+                    expr.span,
+                )
 
     def _check_moved_var(self, name: str, span: Span) -> None:
         """Check if a variable has been moved and report error if so.
