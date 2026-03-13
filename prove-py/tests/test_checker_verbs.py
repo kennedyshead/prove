@@ -424,3 +424,115 @@ class TestAsyncVerbs:
             "            console(n)\n",
             "I377",
         )
+
+    def test_event_type_on_non_listens_error(self):
+        """event_type annotation on non-listens verb gives E399."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "transforms bad(x Integer) Integer\n"
+            "    event_type Ev\n"
+            "    from\n"
+            "        x\n",
+            "E399",
+        )
+
+    def test_listens_without_event_type_error(self):
+        """listens without event_type gives E400."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "listens loop(workers List<Attached>)\n"
+            "    from\n"
+            "        Done => loop\n"
+            "        Exit => loop\n",
+            "E400",
+        )
+
+    def test_event_type_must_be_algebraic(self):
+        """event_type referencing non-algebraic type gives E401."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "listens loop(workers List<Attached>)\n"
+            "    event_type Integer\n"
+            "    from\n"
+            "        Exit => loop\n",
+            "E401",
+        )
+
+    def test_listens_first_param_must_be_list_attached(self):
+        """listens first param not List<Attached> gives E402."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "listens loop(x Integer)\n"
+            "    event_type Ev\n"
+            "    from\n"
+            "        Done => loop\n"
+            "        Exit => loop\n",
+            "E402",
+        )
+
+    def test_listens_worker_not_attached_error(self):
+        """Non-attached function in listens worker list gives E403."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "transforms bad(x Integer) Integer\n"
+            "    from\n"
+            "        x\n"
+            "listens loop(workers List<Attached>)\n"
+            "    event_type Ev\n"
+            "    from\n"
+            "        Done => loop\n"
+            "        Exit => loop\n"
+            "inputs caller()\n"
+            "    from\n"
+            "        loop([bad])&\n",
+            "E403",
+        )
+
+    def test_listens_worker_return_type_mismatch(self):
+        """Attached worker with wrong return type gives E404."""
+        check_fails(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "  type Other is Foo | Bar\n"
+            "attached bad_worker(x Integer) Other\n"
+            "    from\n"
+            "        Foo\n"
+            "listens loop(workers List<Attached>)\n"
+            "    event_type Ev\n"
+            "    from\n"
+            "        Done => loop\n"
+            "        Exit => loop\n"
+            "inputs caller()\n"
+            "    from\n"
+            "        loop([bad_worker(1)])&\n",
+            "E404",
+        )
+
+    def test_listens_attached_call_in_worker_list_ok(self):
+        """Attached calls with args in listens worker list don't trigger E372."""
+        check(
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done(n Integer) | Exit\n"
+            "attached worker(x Integer) Done<Integer>\n"
+            "    from\n"
+            "        Done(x * 2)\n"
+            "listens loop(workers List<Attached>)\n"
+            "    event_type Ev\n"
+            "    from\n"
+            "        Done(n) => Unit\n"
+            "        Exit => Unit\n"
+            "inputs caller()\n"
+            "    from\n"
+            "        loop([worker(5)])&\n",
+        )
