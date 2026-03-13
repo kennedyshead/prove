@@ -173,7 +173,9 @@ static Prove_StoreTable *_deserialize_table(Prove_String *path, const char *name
     Prove_StoreTable *table = prove_store_table_new(tname, col_count, col_names);
     table->version = data_version;
 
-    /* Free temporary col_names array (table_new retained them) */
+    /* Release local references — table_new retained them */
+    prove_release(tname);
+    for (int64_t i = 0; i < col_count; i++) prove_release(col_names[i]);
     free(col_names);
 
     int64_t var_count;
@@ -188,9 +190,16 @@ static Prove_StoreTable *_deserialize_table(Prove_String *path, const char *name
         if (!vname) { fclose(f); free(row); prove_release(table); return NULL; }
         for (int64_t c = 0; c < col_count; c++) {
             row[c] = _read_str(f);
-            if (!row[c]) { fclose(f); free(row); prove_release(table); return NULL; }
+            if (!row[c]) {
+                for (int64_t j = 0; j < c; j++) prove_release(row[j]);
+                prove_release(vname);
+                fclose(f); free(row); prove_release(table); return NULL;
+            }
         }
         prove_store_table_add_variant(table, vname, row);
+        /* Release local references — add_variant retained them */
+        prove_release(vname);
+        for (int64_t c = 0; c < col_count; c++) prove_release(row[c]);
     }
 
     free(row);
@@ -300,12 +309,21 @@ Prove_TableDiff *prove_store_diff(Prove_StoreTable *old_t, Prove_StoreTable *new
     /* Pre-allocate max possible sizes */
     int64_t max_add = new_t->variant_count;
     int64_t max_rem = old_t->variant_count;
+
+    /* Guard against multiplication overflow */
+    if (old_t->column_count > 0 &&
+        old_t->variant_count > INT64_MAX / old_t->column_count) {
+        prove_panic("store diff: table too large");
+    }
     int64_t max_chg = old_t->variant_count * old_t->column_count;
 
     Prove_DiffVariant *added = (Prove_DiffVariant *)calloc((size_t)max_add, sizeof(Prove_DiffVariant));
+    if (!added) prove_panic("store diff: out of memory");
     Prove_DiffVariant *removed = (Prove_DiffVariant *)calloc((size_t)max_rem, sizeof(Prove_DiffVariant));
+    if (!removed) prove_panic("store diff: out of memory");
     Prove_DiffChange *changed = (Prove_DiffChange *)calloc((size_t)(max_chg > 0 ? max_chg : 1),
                                                              sizeof(Prove_DiffChange));
+    if (!changed) prove_panic("store diff: out of memory");
     int64_t nadd = 0, nrem = 0, nchg = 0;
 
     /* Find removed and changed variants */
@@ -316,6 +334,7 @@ Prove_TableDiff *prove_store_diff(Prove_StoreTable *old_t, Prove_StoreTable *new
             prove_retain(old_t->variant_names[i]);
             int64_t cc = old_t->column_count;
             removed[nrem].values = (Prove_String **)calloc((size_t)cc, sizeof(Prove_String *));
+            removed[nrem].value_count = cc;
             for (int64_t c = 0; c < cc; c++) {
                 removed[nrem].values[c] = old_t->values[i][c];
                 prove_retain(old_t->values[i][c]);
@@ -348,6 +367,7 @@ Prove_TableDiff *prove_store_diff(Prove_StoreTable *old_t, Prove_StoreTable *new
             prove_retain(new_t->variant_names[j]);
             int64_t cc = new_t->column_count;
             added[nadd].values = (Prove_String **)calloc((size_t)cc, sizeof(Prove_String *));
+            added[nadd].value_count = cc;
             for (int64_t c = 0; c < cc; c++) {
                 added[nadd].values[c] = new_t->values[j][c];
                 prove_retain(new_t->values[j][c]);
@@ -505,12 +525,16 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                 Prove_Conflict *c = (Prove_Conflict *)calloc(1, sizeof(Prove_Conflict));
                 c->tag = PROVE_CONFLICT_ADDITION;
                 c->data.addition.variant = local->added[l].variant;
-                c->data.addition.local_vals = prove_list_new(base->column_count);
-                c->data.addition.remote_vals = prove_list_new(base->column_count);
-                for (int64_t col = 0; col < base->column_count; col++) {
+                int64_t local_vc = local->added[l].value_count;
+                int64_t remote_vc = remote->added[r].value_count;
+                c->data.addition.local_vals = prove_list_new(local_vc);
+                c->data.addition.remote_vals = prove_list_new(remote_vc);
+                for (int64_t col = 0; col < local_vc; col++) {
                     if (local->added[l].values) {
                         prove_list_push(c->data.addition.local_vals, local->added[l].values[col]);
                     }
+                }
+                for (int64_t col = 0; col < remote_vc; col++) {
                     if (remote->added[r].values) {
                         prove_list_push(c->data.addition.remote_vals, remote->added[r].values[col]);
                     }
@@ -523,7 +547,8 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                         prove_list_push(conflicts, c);
                     } else {
                         if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
-                            for (int64_t col = 0; col < base->column_count; col++) {
+                            int64_t ncols = local_vc < remote_vc ? local_vc : remote_vc;
+                            for (int64_t col = 0; col < ncols; col++) {
                                 prove_retain(remote->added[r].values[col]);
                                 prove_release(local->added[l].values[col]);
                                 local->added[l].values[col] = remote->added[r].values[col];

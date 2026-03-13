@@ -113,8 +113,10 @@ pgo = true
 When PGO is enabled, `prove build` runs a three-step build:
 
 1. **Instrument** — compile with profiling instrumentation (`-fprofile-generate`)
-2. **Train** — run the binary to collect execution profile data
+2. **Train** — run the binary to collect execution profile data (stdin is closed so programs exit promptly)
 3. **Rebuild** — recompile using the collected profile (`-fprofile-use`)
+
+The training run exercises startup, initialization, and teardown paths — enough for PGO branch-prediction and code-layout hints.
 
 PGO requires GCC or Clang. On Clang, `llvm-profdata` must be available (included with Xcode on macOS). MSVC is not supported — the build will print a warning and fall back to a normal optimized build.
 

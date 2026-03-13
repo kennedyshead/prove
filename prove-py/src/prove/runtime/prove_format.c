@@ -4,7 +4,6 @@
 /* ── Padding ─────────────────────────────────────────────────── */
 
 Prove_String *prove_format_pad_left(Prove_String *s, int64_t width, char fill) {
-    if (!s) s = prove_string_from_cstr("");
     if (s->length >= width) {
         /* Return a copy */
         return prove_string_new(s->data, s->length);
@@ -21,7 +20,6 @@ Prove_String *prove_format_pad_left(Prove_String *s, int64_t width, char fill) {
 }
 
 Prove_String *prove_format_pad_right(Prove_String *s, int64_t width, char fill) {
-    if (!s) s = prove_string_from_cstr("");
     if (s->length >= width) {
         return prove_string_new(s->data, s->length);
     }
@@ -37,7 +35,6 @@ Prove_String *prove_format_pad_right(Prove_String *s, int64_t width, char fill) 
 }
 
 Prove_String *prove_format_center(Prove_String *s, int64_t width, char fill) {
-    if (!s) s = prove_string_from_cstr("");
     if (s->length >= width) {
         return prove_string_new(s->data, s->length);
     }

@@ -48,7 +48,8 @@ typedef struct {
 
 typedef struct {
     Prove_String  *variant;
-    Prove_String **values;     /* column_count values */
+    Prove_String **values;     /* value_count values */
+    int64_t       value_count;
 } Prove_DiffVariant;
 
 typedef struct {
