@@ -195,3 +195,47 @@ def pair_verbs_nouns(
                 confidence=conf,
             ))
     return sorted(stubs, key=lambda s: -s.confidence)
+
+
+# ── Docstring-based function lookup ─────────────────────────────
+
+
+def implied_functions(
+    text: str,
+    docstring_index: dict[str, list[dict]] | None = None,
+) -> list[dict]:
+    """Return stdlib functions implied by words in prose text.
+
+    Each result: {"module": "Hash", "name": "sha256", "verb": "creates",
+                  "doc": "Hash a byte array to SHA-256 digest", "score": 0.8}
+
+    Score is based on word overlap between text and function docstring.
+    """
+    if docstring_index is None:
+        return []
+    words = set(re.findall(r"[a-z]{3,}", text.lower()))
+    if not words:
+        return []
+    candidates: dict[tuple[str, str], dict] = {}  # (module, name) → best entry
+
+    for word in words:
+        for entry in docstring_index.get(word, []):
+            key = (entry["module"], entry["name"])
+            if key not in candidates:
+                candidates[key] = {**entry, "matched_words": set()}
+            candidates[key]["matched_words"].add(word)
+
+    results = []
+    for _key, entry in candidates.items():
+        doc_words = set(re.findall(r"[a-z]{3,}", entry["doc"].lower()))
+        overlap = entry["matched_words"] & doc_words
+        score = len(overlap) / max(len(words), 1)
+        results.append({
+            "module": entry["module"],
+            "name": entry["name"],
+            "verb": entry["verb"],
+            "doc": entry["doc"],
+            "score": round(score, 3),
+        })
+
+    return sorted(results, key=lambda r: -r["score"])

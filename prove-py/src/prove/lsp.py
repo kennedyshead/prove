@@ -1051,6 +1051,7 @@ def _ml_completions(
 _GLOBAL_MODEL_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "lsp-ml-store"
 _global_bigrams: dict[str, list[str]] | None = None  # prev1 → ranked list
 _global_completions: dict[tuple[str, str], list[str]] | None = None  # (p2,p1) → ranked list
+_docstring_index: dict[str, list[dict]] | None = None  # keyword → function entries
 
 
 def _load_global_model() -> None:
@@ -1099,6 +1100,51 @@ def _load_global_model() -> None:
             prev2, prev1 = str(row[0]), str(row[1])
             toks = [t for t in str(row[2]).split("|") if t]
             _global_completions[(prev2, prev1)] = toks
+
+
+def _load_docstring_model() -> None:
+    """Load docstring knowledge base from data/lsp-ml-store/docstrings/ (once)."""
+    global _docstring_index
+    if _docstring_index is not None:
+        return
+
+    _docstring_index = {}
+    doc_path = _GLOBAL_MODEL_DIR / "docstrings" / "current.prv"
+    if not doc_path.exists():
+        return
+
+    from collections import defaultdict
+
+    index: dict[str, list[dict]] = defaultdict(list)
+    for line in doc_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line.startswith("r") or "|" not in line:
+            continue
+        parts = [p.strip() for p in line.split("|")[1:]]  # skip row id
+        decoded = []
+        for p in parts:
+            if p.startswith('"') and p.endswith('"'):
+                decoded.append(p[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
+            else:
+                decoded.append(p)
+        if len(decoded) >= 5:
+            keyword, module, name, verb, doc = decoded[0], decoded[1], decoded[2], decoded[3], decoded[4]
+            index[keyword].append({
+                "module": module,
+                "name": name,
+                "verb": verb,
+                "doc": doc,
+            })
+    _docstring_index = dict(index)
+
+
+def get_docstring_index() -> dict[str, list[dict]]:
+    """Return the loaded docstring index (loading it on first call)."""
+    try:
+        _load_docstring_model()
+    except Exception:
+        return {}
+    return _docstring_index or {}
 
 
 def _global_model_complete(prev2: str, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:

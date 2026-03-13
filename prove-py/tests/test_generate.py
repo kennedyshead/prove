@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from prove._generate import generate_module, generate_stub_function
-from prove._nl_intent import FunctionStub, extract_nouns, pair_verbs_nouns
+from prove._nl_intent import FunctionStub, extract_nouns, implied_functions, pair_verbs_nouns
 
 
 class TestExtractNouns:
@@ -114,3 +114,46 @@ class TestGenerateStubFunction:
         assert "transforms password(plaintext String) String" in result
         assert "from" in result
         assert "  todo" in result
+
+
+class TestImpliedFunctions:
+    def test_no_index_returns_empty(self) -> None:
+        assert implied_functions("hash a byte array") == []
+
+    def test_basic_lookup(self) -> None:
+        index = {
+            "hash": [
+                {"module": "Hash", "name": "sha256", "verb": "creates",
+                 "doc": "Hash a byte array to SHA-256 digest"},
+            ],
+            "byte": [
+                {"module": "Hash", "name": "sha256", "verb": "creates",
+                 "doc": "Hash a byte array to SHA-256 digest"},
+            ],
+        }
+        results = implied_functions("hash a byte array", index)
+        assert len(results) == 1
+        assert results[0]["module"] == "Hash"
+        assert results[0]["name"] == "sha256"
+        assert results[0]["score"] > 0
+
+    def test_multiple_matches_sorted_by_score(self) -> None:
+        index = {
+            "hash": [
+                {"module": "Hash", "name": "sha256", "verb": "creates",
+                 "doc": "Hash a byte array to SHA-256 digest"},
+                {"module": "Hash", "name": "sha512", "verb": "creates",
+                 "doc": "Hash a byte array to SHA-512 digest"},
+            ],
+            "split": [
+                {"module": "Text", "name": "split", "verb": "transforms",
+                 "doc": "Split a string by a separator"},
+            ],
+        }
+        results = implied_functions("hash data", index)
+        scores = [r["score"] for r in results]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_empty_text(self) -> None:
+        index = {"hash": [{"module": "H", "name": "x", "verb": "creates", "doc": "hash"}]}
+        assert implied_functions("", index) == []
