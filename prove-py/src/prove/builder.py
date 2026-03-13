@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from prove.ast_nodes import Module, ModuleDecl
-from prove.c_compiler import CompileCError, _compiler_family, compile_c, find_c_compiler
+from prove.c_compiler import CompileCError, _compiler_family, compile_c, find_c_compiler, find_ccache
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
 from prove.checker import Checker
@@ -282,6 +282,10 @@ def _build_c(
         debug=debug,
         include_dirs=[runtime_dir],
         extra_flags=extra_flags + link_flags,
+        strip=config.optimize.strip and not debug,
+        tune_host=config.optimize.tune_host,
+        gc_sections=config.optimize.gc_sections and not debug,
+        use_ccache=config.build.ccache and find_ccache() is not None,
     )
 
     use_pgo = config.optimize.pgo and optimize

@@ -10,9 +10,12 @@ module Config
 
   type Build is
     target String
-    optimize Boolean
     mutate Boolean
     debug Boolean
+
+  type Optimize is
+    enabled Boolean
+    pgo Boolean
 
   type Test is
     property_rounds Integer
@@ -23,6 +26,7 @@ module Config
   type Config is
     package Package
     build Build
+    optimize Optimize
     test Test
     style Style
 
