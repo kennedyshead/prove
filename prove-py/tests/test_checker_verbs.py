@@ -262,13 +262,14 @@ class TestAsyncVerbs:
             '  narrative: """Test"""\n'
             "  System inputs console\n"
             "  type Cmd is Go | Exit\n"
-            "attached reader() String\n"
+            "attached reader() Cmd\n"
             "    from\n"
-            "        console()\n"
-            "listens loop(cmd Cmd)\n"
+            "        Go()\n"
+            "listens loop(workers List<Attached>)\n"
+            "    event_type Cmd\n"
             "    from\n"
-            "        Exit  => cmd\n"
-            "        Go    => _ as String = reader()&\n"
+            "        Exit  => loop\n"
+            "        Go    => _ as Cmd = reader()&\n"
         )
 
     def test_attached_with_io_outside_async_context_e377(self):
@@ -319,9 +320,14 @@ class TestAsyncVerbs:
 
     def test_listens_with_return_type_error(self):
         check_fails(
-            "listens loop(src Integer) Integer\n"
+            "module M\n"
+            '  narrative: """Test"""\n'
+            "  type Ev is Done | Exit\n"
+            "listens loop(workers List<Attached>) Integer\n"
+            "    event_type Ev\n"
             "    from\n"
-            "        Exit() => _\n",
+            "        Exit => loop\n"
+            "        Done => loop\n",
             "E374",
         )
 
@@ -388,12 +394,13 @@ class TestAsyncVerbs:
             "module M\n"
             '  narrative: """Test"""\n'
             "  type Event is Work(n Integer) | Exit\n"
-            "attached compute(x Integer) Integer\n"
+            "attached compute(x Integer) Event\n"
             "    from\n"
-            "        x + 1\n"
-            "listens handler(ev Event)\n"
+            "        Work(x + 1)\n"
+            "listens handler(workers List<Attached>)\n"
+            "    event_type Event\n"
             "    from\n"
-            "        Exit => ev\n"
+            "        Exit => handler\n"
             "        Work(n) => _ as Integer = compute(n)&\n",
         )
         i377 = [d for d in diags if d.code == "I377"]

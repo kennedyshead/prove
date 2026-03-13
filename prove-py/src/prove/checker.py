@@ -666,6 +666,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # validates always returns Boolean — override implicit Unit
         if fd.verb == "validates" and not fd.return_type:
             return_type = BOOLEAN
+        resolved_event_type = (
+            self._resolve_type_expr(fd.event_type) if fd.event_type else None
+        )
         sig = FunctionSignature(
             verb=fd.verb,
             name=fd.name,
@@ -676,6 +679,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             span=fd.span,
             requires=fd.requires,
             doc_comment=fd.doc_comment,
+            event_type=resolved_event_type,
         )
         # E301: duplicate function definition (exact same verb + name + param types)
         existing = self.symbols.find_exact_duplicate(sig)
@@ -1632,6 +1636,48 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     fd.span,
                 )
 
+        # event_type annotation rules (listens event dispatcher)
+        if fd.event_type is not None and verb != "listens":
+            self._error(
+                "E399",
+                "`event_type` annotation is only valid on `listens` verb",
+                fd.span,
+            )
+        if verb == "listens":
+            if fd.event_type is None:
+                self._error(
+                    "E400",
+                    "`listens` verb requires an `event_type` annotation",
+                    fd.span,
+                )
+            else:
+                resolved_et = self._resolve_type_expr(fd.event_type)
+                if resolved_et is not None and not isinstance(resolved_et, AlgebraicType):
+                    self._error(
+                        "E401",
+                        "`event_type` must reference an algebraic type",
+                        fd.event_type.span,
+                    )
+            # E402: first parameter must be List<Attached>
+            if not fd.params:
+                self._error(
+                    "E402",
+                    "`listens` first parameter must be `List<Attached>`",
+                    fd.span,
+                )
+            else:
+                first_type = self._resolve_type_expr(fd.params[0].type_expr)
+                if not (
+                    isinstance(first_type, ListType)
+                    and isinstance(first_type.element, PrimitiveType)
+                    and first_type.element.name == "Attached"
+                ):
+                    self._error(
+                        "E402",
+                        "`listens` first parameter must be `List<Attached>`",
+                        fd.params[0].span,
+                    )
+
         # I367: suggest extracting match to a matches verb function
         # listens/streams bodies are inherently match-based, so exempt from this check
         if verb not in ("matches", "listens", "streams"):
@@ -2403,16 +2449,22 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._current_function
             and isinstance(self._current_function, FunctionDef)
             and self._current_function.verb in ("matches", "listens", "streams")
-            and self._current_function.params
         ):
-            # Implicit match in a matches/listens verb function: use first parameter type
-            # For streams: use return type (the element type being streamed)
+            # Implicit match subject resolution per verb:
+            # - matches: first parameter type
+            # - listens: event_type annotation (the algebraic dispatch protocol)
+            # - streams: return type (the element type being streamed)
             if (
                 self._current_function.verb == "streams"
                 and self._current_function.return_type is not None
             ):
                 subject_type = self._resolve_type_expr(self._current_function.return_type)
-            else:
+            elif (
+                self._current_function.verb == "listens"
+                and self._current_function.event_type is not None
+            ):
+                subject_type = self._resolve_type_expr(self._current_function.event_type)
+            elif self._current_function.params:
                 subject_type = self._resolve_type_expr(self._current_function.params[0].type_expr)
 
         # W304: match on condition already guaranteed by requires
