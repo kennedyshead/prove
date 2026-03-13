@@ -24,6 +24,7 @@ from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
     INTEGER,
+    ArrayType,
     FunctionType,
     GenericInstance,
     ListType,
@@ -891,15 +892,19 @@ class CallEmitterMixin:
         return f"({ct.decl})(intptr_t){expr}"
 
     def _emit_hof_map(self, expr: CallExpr) -> str:
-        """Emit prove_list_map(list, fn, result_elem_size)."""
+        """Emit prove_list_map or prove_array_map depending on collection type."""
+        coll_type = self._infer_expr_type(expr.args[0])
+
+        if isinstance(coll_type, ArrayType):
+            return self._emit_array_hof_map(expr, coll_type)
+
         self._needed_headers.add("prove_hof.h")
         list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
 
         # Infer element type from the list
         elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
 
         # Determine result element type (may differ from input, e.g. Integer → String)
         result_elem_type = elem_type
@@ -922,6 +927,10 @@ class CallEmitterMixin:
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
+        coll_type = self._infer_expr_type(expr.args[0])
+        if isinstance(coll_type, ArrayType):
+            return self._emit_array_hof_each(expr, coll_type)
+
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
@@ -955,14 +964,18 @@ class CallEmitterMixin:
         return f"prove_list_each({list_arg}, {fn_name})"
 
     def _emit_hof_filter(self, expr: CallExpr) -> str:
-        """Emit prove_list_filter(list, pred)."""
+        """Emit prove_list_filter or prove_array_filter depending on collection type."""
+        coll_type = self._infer_expr_type(expr.args[0])
+
+        if isinstance(coll_type, ArrayType):
+            return self._emit_array_hof_filter(expr, coll_type)
+
         self._needed_headers.add("prove_hof.h")
         list_arg = self._emit_expr(expr.args[0])
-        list_type = self._infer_expr_type(expr.args[0])
 
         elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
 
         fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_list_filter({list_arg}, {fn_name})"
@@ -999,6 +1012,10 @@ class CallEmitterMixin:
 
     def _emit_hof_reduce(self, expr: CallExpr) -> str:
         """Emit reduce as inline for-loop when callback is a lambda."""
+        coll_type = self._infer_expr_type(expr.args[0])
+        if isinstance(coll_type, ArrayType):
+            return self._emit_array_hof_reduce(expr, coll_type)
+
         callback = expr.args[2]
 
         # Inline path: lambda callback → direct for-loop (no boxing/indirection)
@@ -1244,6 +1261,184 @@ class CallEmitterMixin:
 
         self._lambdas.append(lam)
         return name
+
+    # ── Array HOF emission ──────────────────────────────────────
+
+    def _cache_array_arg(self, expr: Expr) -> tuple[str, "Type"]:
+        """Emit an array expression into a temp variable before loop use."""
+        arr_type = self._infer_expr_type(expr)
+        arr_code = self._emit_expr(expr)
+        tmp = self._tmp()
+        self._line(f"Prove_Array *{tmp} = {arr_code};")
+        return tmp, arr_type
+
+    def _array_elem_get(self, arr_var: str, idx_var: str, elem_ct) -> str:
+        """Generate C code to get a typed element from an array at index."""
+        if elem_ct.decl == "bool":
+            return f"prove_array_get_bool({arr_var}, {idx_var})"
+        elif elem_ct.decl == "int64_t":
+            return f"prove_array_get_int({arr_var}, {idx_var})"
+        return f"({elem_ct.decl})prove_array_get({arr_var}, {idx_var})"
+
+    def _emit_array_hof_map(self, expr: CallExpr, arr_type: ArrayType) -> str:
+        """Emit map over Array<T> as inline loop producing a new array."""
+        self._needed_headers.add("prove_array.h")
+        arr_arg, _ = self._cache_array_arg(expr.args[0])
+        elem_type = arr_type.element if arr_type.element else INTEGER
+        elem_ct = map_type(elem_type)
+
+        fn_expr = expr.args[1]
+
+        # Infer result element type
+        result_elem_type = elem_type
+        if isinstance(fn_expr, IdentifierExpr):
+            fn_sig = self._symbols.resolve_function_any(fn_expr.name, arity=1)
+            if fn_sig:
+                result_elem_type = fn_sig.return_type
+        elif isinstance(fn_expr, LambdaExpr):
+            saved = dict(self._locals)
+            if fn_expr.params:
+                self._locals[fn_expr.params[0]] = elem_type
+            result_elem_type = self._infer_expr_type(fn_expr.body)
+            self._locals = saved
+        result_ct = map_type(result_elem_type)
+
+        # Allocate result array
+        result_tmp = self._tmp()
+        zero_tmp = self._tmp()
+        self._line(f"{result_ct.decl} {zero_tmp} = 0;")
+        self._line(
+            f"Prove_Array *{result_tmp} = prove_array_new("
+            f"{arr_arg}->length, sizeof({result_ct.decl}), &{zero_tmp});"
+        )
+
+        if isinstance(fn_expr, LambdaExpr) and fn_expr.params:
+            param = fn_expr.params[0]
+            idx = self._tmp()
+            self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
+            self._indent += 1
+            elem_get = self._array_elem_get(arr_arg, idx, elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(fn_expr.body)
+            self._locals = saved_locals
+            # Store result
+            mapped_tmp = self._tmp()
+            self._line(f"{result_ct.decl} {mapped_tmp} = {body_code};")
+            self._line(
+                f"memcpy((char *){result_tmp}->data + {idx} * sizeof({result_ct.decl}), "
+                f"&{mapped_tmp}, sizeof({result_ct.decl}));"
+            )
+            self._indent -= 1
+            self._line("}")
+            return result_tmp
+
+        # Non-lambda: use runtime function
+        fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
+        return f"prove_array_map({arr_arg}, {fn_name}, sizeof({result_ct.decl}))"
+
+    def _emit_array_hof_each(self, expr: CallExpr, arr_type: ArrayType) -> str:
+        """Emit each over Array<T> as inline loop."""
+        self._needed_headers.add("prove_array.h")
+        arr_arg, _ = self._cache_array_arg(expr.args[0])
+        elem_type = arr_type.element if arr_type.element else INTEGER
+        elem_ct = map_type(elem_type)
+
+        lam = expr.args[1]
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_x"
+            idx = self._tmp()
+            self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
+            self._indent += 1
+            elem_get = self._array_elem_get(arr_arg, idx, elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            self._emit_loop_body_retains(lam.body, param)
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"{body_code};")
+            self._indent -= 1
+            self._line("}")
+            return "(void)0"
+
+        # Non-lambda: use runtime function
+        self._needed_headers.add("prove_hof.h")
+        fn_name = self._emit_hof_lambda(lam, elem_type, "each")
+        return f"prove_array_each({arr_arg}, {fn_name})"
+
+    def _emit_array_hof_filter(self, expr: CallExpr, arr_type: ArrayType) -> str:
+        """Emit filter over Array<T> — returns Prove_List* (unknown output length)."""
+        self._needed_headers.add("prove_array.h")
+        arr_arg = self._emit_expr(expr.args[0])
+        elem_type = arr_type.element if arr_type.element else INTEGER
+
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_array_filter({arr_arg}, {fn_name})"
+
+    def _emit_array_hof_reduce(self, expr: CallExpr, arr_type: ArrayType) -> str:
+        """Emit reduce over Array<T> as inline for-loop when callback is a lambda."""
+        callback = expr.args[2]
+        elem_type = arr_type.element if arr_type.element else INTEGER
+        elem_ct = map_type(elem_type)
+
+        # Inline path: lambda callback → direct for-loop
+        if isinstance(callback, LambdaExpr) and len(callback.params) == 2:
+            self._needed_headers.add("prove_array.h")
+            arr_arg, _ = self._cache_array_arg(expr.args[0])
+
+            accum_type = self._infer_expr_type(expr.args[1])
+            accum_ct = map_type(accum_type)
+
+            accum_tmp = self._tmp()
+            accum_val = self._emit_expr(expr.args[1])
+            self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+            self._hoist_string_literals(self._collect_string_literals(callback.body))
+
+            idx = self._tmp()
+            self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
+            self._indent += 1
+
+            elem_get = self._array_elem_get(arr_arg, idx, elem_ct)
+
+            saved = dict(self._locals)
+            saved_hof = self._in_hof_inline
+            self._locals[callback.params[0]] = accum_type
+            self._locals[callback.params[1]] = elem_type
+            self._in_hof_inline = True
+            self._line(f"{accum_ct.decl} {callback.params[0]} = {accum_tmp};")
+            self._line(f"{elem_ct.decl} {callback.params[1]} = {elem_get};")
+            body_code = self._emit_expr(callback.body)
+            self._in_hof_inline = saved_hof
+            self._locals = saved
+            self._line(f"{accum_tmp} = {body_code};")
+
+            self._indent -= 1
+            self._line("}")
+            return accum_tmp
+
+        # Fallback: function reference → use runtime
+        self._needed_headers.add("prove_array.h")
+        arr_arg = self._emit_expr(expr.args[0])
+
+        accum_type = self._infer_expr_type(expr.args[1])
+        accum_ct = map_type(accum_type)
+
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[1])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        fn_name = self._emit_hof_lambda(
+            callback, elem_type, "reduce", accum_type=accum_type
+        )
+        init_cast = self._hof_box(accum_tmp, accum_ct)
+        result_tmp = self._tmp()
+        self._line(
+            f"void *{result_tmp} = prove_array_reduce({arr_arg}, {init_cast}, {fn_name});"
+        )
+        return self._hof_unbox(result_tmp, accum_ct)
 
     # ── Fused iterator emission ─────────────────────────────────
 
@@ -1716,10 +1911,18 @@ class CallEmitterMixin:
 
         Prevents re-evaluation of function calls (e.g. range()) on every loop
         iteration when list_arg is referenced in both the loop condition and body.
+        If the expression is an ArrayType, convert to list for compatibility
+        with list-based iteration (used by fused emitters).
         """
         list_type = self._infer_expr_type(expr)
         list_code = self._emit_expr(expr)
         tmp = self._tmp()
+        if isinstance(list_type, ArrayType):
+            self._needed_headers.add("prove_array.h")
+            arr_tmp = self._tmp()
+            self._line(f"Prove_Array *{arr_tmp} = {list_code};")
+            self._line(f"Prove_List *{tmp} = prove_array_to_list({arr_tmp});")
+            return tmp, ListType(list_type.element)
         self._line(f"Prove_List *{tmp} = {list_code};")
         return tmp, list_type
 

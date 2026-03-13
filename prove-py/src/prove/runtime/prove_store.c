@@ -478,6 +478,25 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                                       Prove_ResolverFn resolver) {
     Prove_MergeResult *mr = (Prove_MergeResult *)prove_alloc(sizeof(Prove_MergeResult));
 
+    /* Resolution tracking — never mutate the caller's diff structs.
+       resolved_change_val[l]: winning Prove_String* for changed conflict l (NULL = keep local).
+       resolved_add_remote_idx[l]: index r of the remote addition that won for addition
+       conflict l (-1 = keep local). */
+    Prove_String **resolved_change_val = NULL;
+    int64_t *resolved_add_remote_idx = NULL;
+
+    if (local->changed_count > 0) {
+        resolved_change_val = (Prove_String **)calloc(
+            (size_t)local->changed_count, sizeof(Prove_String *));
+        if (!resolved_change_val) prove_panic("store merge: out of memory");
+    }
+    if (local->added_count > 0) {
+        resolved_add_remote_idx = (int64_t *)malloc(
+            sizeof(int64_t) * (size_t)local->added_count);
+        if (!resolved_add_remote_idx) prove_panic("store merge: out of memory");
+        for (int64_t i = 0; i < local->added_count; i++) resolved_add_remote_idx[i] = -1;
+    }
+
     Prove_List *conflicts = prove_list_new(4);
     bool has_unresolved = false;
 
@@ -501,13 +520,12 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                         } else {
                             if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
                                 prove_retain(remote->changed[r].new_value);
-                                prove_release(local->changed[l].new_value);
-                                local->changed[l].new_value = remote->changed[r].new_value;
+                                resolved_change_val[l] = remote->changed[r].new_value;
                             } else if (res->tag == PROVE_RESOLUTION_USE_VALUE) {
                                 prove_retain(res->data.use_value);
-                                prove_release(local->changed[l].new_value);
-                                local->changed[l].new_value = res->data.use_value;
+                                resolved_change_val[l] = res->data.use_value;
                             }
+                            /* KEEP_LOCAL: resolved_change_val[l] stays NULL */
                             free(c);
                         }
                     } else {
@@ -521,6 +539,7 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
 
     for (int64_t l = 0; l < local->added_count; l++) {
         for (int64_t r = 0; r < remote->added_count; r++) {
+            if (!remote->added[r].variant) continue;
             if (prove_string_eq(local->added[l].variant, remote->added[r].variant)) {
                 Prove_Conflict *c = (Prove_Conflict *)calloc(1, sizeof(Prove_Conflict));
                 c->tag = PROVE_CONFLICT_ADDITION;
@@ -547,14 +566,9 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
                         prove_list_push(conflicts, c);
                     } else {
                         if (res->tag == PROVE_RESOLUTION_KEEP_REMOTE) {
-                            int64_t ncols = local_vc < remote_vc ? local_vc : remote_vc;
-                            for (int64_t col = 0; col < ncols; col++) {
-                                prove_retain(remote->added[r].values[col]);
-                                prove_release(local->added[l].values[col]);
-                                local->added[l].values[col] = remote->added[r].values[col];
-                            }
+                            resolved_add_remote_idx[l] = r;
                         }
-                        remote->added[r].variant = NULL;
+                        /* KEEP_LOCAL: resolved_add_remote_idx[l] stays -1 */
                         free(c);
                     }
                 } else {
@@ -566,13 +580,59 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
     }
 
     if (has_unresolved) {
+        if (resolved_change_val) {
+            for (int64_t i = 0; i < local->changed_count; i++)
+                prove_release(resolved_change_val[i]);
+            free(resolved_change_val);
+        }
+        free(resolved_add_remote_idx);
         mr->tag = PROVE_MERGE_CONFLICTED;
         mr->data.conflicts = conflicts;
         return mr;
     }
 
+    /* Build merged = base + local (local is unmodified; resolutions applied below) */
     Prove_StoreTable *merged = prove_store_patch(base, local);
 
+    /* Apply resolved changed-conflict values to merged */
+    if (resolved_change_val) {
+        for (int64_t l = 0; l < local->changed_count; l++) {
+            if (!resolved_change_val[l]) continue;
+            int64_t vi = _find_variant(merged, local->changed[l].variant);
+            if (vi >= 0) {
+                for (int64_t c = 0; c < merged->column_count; c++) {
+                    if (prove_string_eq(merged->column_names[c], local->changed[l].column)) {
+                        prove_release(merged->values[vi][c]);
+                        merged->values[vi][c] = resolved_change_val[l]; /* already retained */
+                        break;
+                    }
+                }
+            } else {
+                prove_release(resolved_change_val[l]);
+            }
+        }
+        free(resolved_change_val);
+    }
+
+    /* Apply resolved addition-conflict remote values to merged */
+    if (resolved_add_remote_idx) {
+        for (int64_t l = 0; l < local->added_count; l++) {
+            int64_t r = resolved_add_remote_idx[l];
+            if (r < 0) continue;
+            int64_t vi = _find_variant(merged, local->added[l].variant);
+            if (vi >= 0) {
+                int64_t ncols = remote->added[r].value_count < merged->column_count
+                                ? remote->added[r].value_count : merged->column_count;
+                for (int64_t c = 0; c < ncols; c++) {
+                    prove_release(merged->values[vi][c]);
+                    merged->values[vi][c] = remote->added[r].values[c];
+                    prove_retain(remote->added[r].values[c]);
+                }
+            }
+        }
+    }
+
+    /* Apply non-conflicting remote changes */
     for (int64_t r = 0; r < remote->changed_count; r++) {
         bool was_conflict = false;
         for (int64_t l = 0; l < local->changed_count; l++) {
@@ -597,20 +657,23 @@ Prove_MergeResult *prove_store_merge(Prove_StoreTable *base,
         }
     }
 
+    /* Apply non-conflicting remote additions */
     for (int64_t r = 0; r < remote->added_count; r++) {
-        if (remote->added[r].variant == NULL) continue;
-        bool local_added = false;
+        if (!remote->added[r].variant) continue;
+        bool was_conflict = false;
         for (int64_t l = 0; l < local->added_count; l++) {
             if (local->added[l].variant &&
                 prove_string_eq(local->added[l].variant, remote->added[r].variant)) {
-                local_added = true;
+                was_conflict = true;
                 break;
             }
         }
-        if (!local_added) {
+        if (!was_conflict) {
             prove_store_table_add_variant(merged, remote->added[r].variant, remote->added[r].values);
         }
     }
+
+    free(resolved_add_remote_idx);
 
     for (int64_t r = 0; r < remote->removed_count; r++) {
         int64_t vi = _find_variant(merged, remote->removed[r].variant);
