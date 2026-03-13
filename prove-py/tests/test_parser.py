@@ -979,3 +979,69 @@ class TestParserBinaryLookup:
         assert isinstance(td, TypeDef)
         assert td.doc_comment is not None
         assert "Token kinds" in td.doc_comment
+
+    def test_binary_lookup_named_columns(self):
+        """Parse named columns with name:Type syntax."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary Prediction probability:Float String confidence:Float where\n"
+            '      Cat | 0.9 | "cat" | 0.95\n'
+            '      Dog | 0.8 | "dog" | 0.85\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td, TypeDef)
+        assert td.name == "Prediction"
+        assert isinstance(td.body, LookupTypeDef)
+        assert td.body.is_binary is True
+        assert len(td.body.value_types) == 3
+        assert td.body.column_names == ("probability", None, "confidence")
+        assert len(td.body.entries) == 2
+        assert td.body.entries[0].variant == "Cat"
+        assert td.body.entries[0].values == ("0.9", "cat", "0.95")
+
+    def test_binary_lookup_all_named_columns(self):
+        """Parse binary lookup where all columns are named."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary Score value:Integer label:String where\n"
+            '      High | 100 | "high"\n'
+            '      Low | 10 | "low"\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td.body, LookupTypeDef)
+        assert td.body.column_names == ("value", "label")
+
+    def test_binary_lookup_unnamed_columns_compat(self):
+        """Existing unnamed columns still work — column_names are all None."""
+        source = (
+            "module M\n"
+            "\n"
+            "  binary TokenKind String Integer where\n"
+            '      First | "first" | 1\n'
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        0\n"
+        )
+        mod = parse(source)
+        decl = mod.declarations[0]
+        assert isinstance(decl, ModuleDecl)
+        td = decl.types[0]
+        assert isinstance(td.body, LookupTypeDef)
+        assert td.body.column_names == (None, None)

@@ -490,6 +490,8 @@ class TypeEmitterMixin:
             if body.is_binary:
                 self._emit_binary_lookup_tables(cname, variant_names, body)
 
+    _BINARY_SEARCH_THRESHOLD = 16
+
     def _emit_binary_lookup_tables(
         self, cname: str, variant_names: list[str], body: LookupTypeDef
     ) -> None:
@@ -510,9 +512,26 @@ class TypeEmitterMixin:
 
         # Emit forward arrays (variant index → column value)
         for col_idx, vt in enumerate(body.value_types):
-            col_name = vt.name if hasattr(vt, "name") else "Unknown"
-            c_type = _C_TYPE_MAP.get(col_name, "const char*")
-            array_name = f"{cname}_col_{col_name}"
+            col_type_name = vt.name if hasattr(vt, "name") else "Unknown"
+            c_type = _C_TYPE_MAP.get(col_type_name, "const char*")
+            # Use named column if available, otherwise fall back to type name
+            named = (
+                body.column_names[col_idx]
+                if body.column_names and col_idx < len(body.column_names)
+                   and body.column_names[col_idx] is not None
+                else None
+            )
+            if named:
+                array_name = f"{cname}_col_{named}"
+            else:
+                array_name = f"{cname}_col_{col_type_name}"
+                # If there are duplicate type names, suffix with index
+                type_names = [
+                    vt2.name if hasattr(vt2, "name") else "Unknown"
+                    for vt2 in body.value_types
+                ]
+                if type_names.count(col_type_name) > 1:
+                    array_name = f"{cname}_col_{col_type_name}_{col_idx}"
 
             self._line(f"static {c_type} {array_name}[] = {{")
             self._indent += 1
@@ -538,6 +557,8 @@ class TypeEmitterMixin:
             self._line("};")
             self._line("")
 
+        use_sorted = len(variant_names) > self._BINARY_SEARCH_THRESHOLD
+
         # Emit reverse lookup table (string key → variant index)
         # Uses the first String column for reverse lookup keys
         str_col_idx = None
@@ -547,14 +568,21 @@ class TypeEmitterMixin:
                 break
 
         if str_col_idx is not None:
-            self._line(f"static const Prove_LookupEntry {cname}_reverse_entries[] = {{")
-            self._indent += 1
+            # Build entries list
+            reverse_entries: list[tuple[str, int]] = []
             for i, vname in enumerate(variant_names):
                 entry = variant_to_entry.get(vname)
                 if entry and str_col_idx < len(entry.values):
-                    key = entry.values[str_col_idx]
-                    escaped = key.replace("\\", "\\\\").replace('"', '\\"')
-                    self._line(f'{{"{escaped}", {i}}},')
+                    reverse_entries.append((entry.values[str_col_idx], i))
+            if use_sorted:
+                reverse_entries.sort(key=lambda e: e[0])
+            self._line(f"static const Prove_LookupEntry {cname}_reverse_entries[] = {{")
+            if use_sorted:
+                self._line("/* sorted for binary search */")
+            self._indent += 1
+            for key, idx in reverse_entries:
+                escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+                self._line(f'{{"{escaped}", {idx}}},')
             self._indent -= 1
             self._line("};")
             self._line(f"static const Prove_LookupTable {cname}_reverse = {{")
@@ -573,13 +601,20 @@ class TypeEmitterMixin:
                 break
 
         if int_col_idx is not None:
-            self._line(f"static const Prove_IntLookupEntry {cname}_int_reverse_entries[] = {{")
-            self._indent += 1
+            # Build entries list
+            int_reverse_entries: list[tuple[str, int]] = []
             for i, vname in enumerate(variant_names):
                 entry = variant_to_entry.get(vname)
                 if entry and int_col_idx < len(entry.values):
-                    key = entry.values[int_col_idx]
-                    self._line(f"{{{key}, {i}}},")
+                    int_reverse_entries.append((entry.values[int_col_idx], i))
+            if use_sorted:
+                int_reverse_entries.sort(key=lambda e: int(e[0]))
+            self._line(f"static const Prove_IntLookupEntry {cname}_int_reverse_entries[] = {{")
+            if use_sorted:
+                self._line("/* sorted for binary search */")
+            self._indent += 1
+            for key, idx in int_reverse_entries:
+                self._line(f"{{{key}, {idx}}},")
             self._indent -= 1
             self._line("};")
             self._line(f"static const Prove_IntLookupTable {cname}_int_reverse = {{")

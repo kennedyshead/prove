@@ -1,9 +1,7 @@
 # Stdlib Knowledge Base — Docstrings as Training Data
 
-Prove's standard library (18 modules: Character, Text, Table, System, Parse, Math,
-Types, List, Path, Pattern, Format, Error, Random, Time, Bytes, Hash, Log, Network)
-has `///` doc comments on every function and type. These docstrings are natural
-language descriptions of what each function does — effectively the stdlib's version
+Prove code has `///` doc comments on functions and types. These docstrings are natural
+language descriptions of what each function does — effectively the stdlib's uses this as a version
 of `explain` (step-by-step documentation of a function's behavior), `intent` (why a
 function exists), and `chosen` (which approach was taken). These are Prove-specific
 prose annotation blocks that the compiler parses and verifies against the code.
@@ -170,7 +168,7 @@ data/lsp-ml-store/
 
 Format:
 ```prove
-type DocstringMap:[Lookup] is String String String String String where
+type DocstringMap:[Lookup] is keyword:String module:String function:String verb:String docstring:String where
     r00000 | "hash" | "Hash" | "sha256" | "creates" | "Hash a byte array to SHA-256 digest"
     r00001 | "hash" | "Hash" | "sha512" | "creates" | "Hash a byte array to SHA-512 digest"
     r00002 | "hash" | "Hash" | "blake3" | "creates" | "Hash a byte array to BLAKE3 digest"

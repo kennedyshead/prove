@@ -632,13 +632,33 @@ class TypeCheckMixin:
             # Binary lookup with multiple columns: use expected type
             # to select the correct column
             if lookup.is_binary and lookup.value_types:
+                # E399: reject ambiguous type-based access on duplicate types
                 expected = self._expected_type
                 if expected is not None:
                     from prove.types import type_name as tn
 
+                    exp_name = tn(expected)
+                    col_type_names = [
+                        vt.name if hasattr(vt, "name") else str(vt)
+                        for vt in lookup.value_types
+                    ]
+                    if col_type_names.count(exp_name) > 1:
+                        has_names = lookup.column_names and any(
+                            n is not None for n in lookup.column_names
+                        )
+                        if not has_names:
+                            self._error(
+                                "E399",
+                                f"ambiguous column type '{exp_name}' in "
+                                f"binary lookup '{type_name}'; "
+                                f"use named columns to disambiguate",
+                                expr.span,
+                            )
+                            return ERROR_TY
+
                     for vt in lookup.value_types:
                         col_type = self._resolve_type_expr(vt)
-                        if tn(col_type) == tn(expected):
+                        if tn(col_type) == exp_name:
                             self._used_types.add(type_name)
                             return col_type
                 # No expected type or no match — return first column

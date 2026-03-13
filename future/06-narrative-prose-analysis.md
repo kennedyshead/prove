@@ -579,7 +579,7 @@ No changes to parser, AST, lexer, emitter, C runtime, or formatter.
 
 ## Test cases to add
 
-```python
+```prove
 # W501 — verb not in narrative
 source = '''
 module Calc

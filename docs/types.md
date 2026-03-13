@@ -157,9 +157,30 @@ var as Integer = TokenKind:One    // var is 1
 ```
 
 Rules:
-- **No overlapping types** — each type can only appear once: `String | Integer | String` is invalid
-- **Native types only** — only primitive types are supported (String, Integer, Boolean, Byte)
+- **No overlapping types** — each type can only appear once: `String | Integer | String` is invalid (unless using named columns, see below)
+- **Native types only** — only primitive types are supported (String, Integer, Decimal, Float, Boolean)
 - **Compile-time only** — this is not a runtime type; the lookup type is resolved at compile time based on usage context
+
+### Named Columns
+
+When a lookup needs two or more columns of the same type, use named columns to disambiguate:
+
+```prove
+binary Prediction probability:Float String confidence:Float where
+    Cat | 0.9 | "cat" | 0.95
+    Dog | 0.8 | "dog" | 0.85
+```
+
+Named and unnamed columns can be mixed. Access named columns with dot syntax:
+
+```prove
+Prediction:Cat.probability    // 0.9
+Prediction:Cat.confidence     // 0.95
+```
+
+Without named columns, duplicate types produce warning W350 and ambiguous access produces error E399.
+
+For large lookup tables (more than 16 entries), reverse lookups automatically use binary search instead of linear scan for better performance.
 
 ### Store-Backed Lookup (Runtime)
 

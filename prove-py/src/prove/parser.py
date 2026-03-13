@@ -1569,8 +1569,21 @@ class Parser:
         name = name_tok.value
 
         # Parse column types until 'where' keyword
+        # Supports optional named columns: name:Type
         value_types: list[TypeExpr] = []
+        column_names: list[str | None] = []
         while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
+            # Check for name:Type pattern (IDENTIFIER COLON TYPE_IDENTIFIER)
+            col_name: str | None = None
+            if (
+                self._at(TokenKind.IDENTIFIER)
+                and self._peek(1).kind == TokenKind.COLON
+                and self._peek(2).kind == TokenKind.TYPE_IDENTIFIER
+            ):
+                col_name = self._current().value
+                self._advance()  # consume name
+                self._advance()  # consume colon
+            column_names.append(col_name)
             value_types.append(self._parse_type_expr())
 
         self._expect(TokenKind.WHERE)
@@ -1596,6 +1609,7 @@ class Parser:
             entries=entries,
             span=span,
             value_types=tuple(value_types),
+            column_names=tuple(column_names),
             is_binary=True,
             csv_path=csv_path,
         )

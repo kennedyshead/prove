@@ -101,8 +101,9 @@ _register_doc_range("E", 375, 379)
 # Contract checking
 for _c in ("E331", "E380", "E381", "E382", "E383", "E384", "E385", "E386"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Binary lookup tables E387-E389
+# Binary lookup tables E387-E389, E399
 _register_doc_range("E", 387, 389)
+DIAGNOSTIC_DOCS["E399"] = f"{_DOCS_BASE}#E399"
 # Explain verification E391-E396 (E390 replaced by W323)
 _register_doc_range("E", 391, 396)
 # Reserved keyword E397
@@ -122,6 +123,8 @@ DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
 # Warning — domain profile W340-W342
 _register_doc_range("W", 340, 342)
+# Warning — duplicate binary column type W350
+DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
 # Warning — temporal/satisfies W390-W391
 _register_doc_range("W", 390, 391)
 # Warning — prose coherence W501-W505
