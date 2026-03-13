@@ -332,7 +332,7 @@ Effects are encoded in the verb, not in type annotations. The compiler tracks th
 |--------|-------|--------|
 | **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
 | **IO** | `inputs`, `outputs` | Reads from or writes to the external world. `!` marks additional fallibility |
-| **Async** | `detached`, `attached`, `listens` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` may call IO; `attached`/`listens` may not |
+| **Async** | `detached`, `attached`, `listens` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` and `attached` may call IO freely (own coroutine stacks); `listens` may not (cooperative yield cycle) |
 
 ```prove
 inputs read_config(path Path) String!               // IO inherent, ! = can fail
