@@ -62,6 +62,7 @@ def _make_func(
         believe=[],
         intent=None,
         satisfies=[],
+        event_type=None,
         body=body or [],
         doc_comment=None,
         span=_SPAN,

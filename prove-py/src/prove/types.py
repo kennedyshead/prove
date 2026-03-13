@@ -135,6 +135,7 @@ STRING = PrimitiveType("String")
 CHARACTER = PrimitiveType("Character")
 BYTE = PrimitiveType("Byte")
 UNIT = UnitType()
+ATTACHED = PrimitiveType("Attached")
 ERROR_TY = ErrorType()
 
 # Numeric widening hierarchy: Integer → Decimal → Float

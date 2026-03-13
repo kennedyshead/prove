@@ -63,6 +63,7 @@ class TokenKind(Enum):
     NARRATIVE = auto()
     TEMPORAL = auto()
     SATISFIES = auto()
+    EVENT_TYPE = auto()
     INVARIANT_NETWORK = auto()
 
     # Literals
@@ -180,6 +181,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "narrative": TokenKind.NARRATIVE,
     "temporal": TokenKind.TEMPORAL,
     "satisfies": TokenKind.SATISFIES,
+    "event_type": TokenKind.EVENT_TYPE,
     "invariant_network": TokenKind.INVARIANT_NETWORK,
     "true": TokenKind.BOOLEAN_LIT,
     "false": TokenKind.BOOLEAN_LIT,

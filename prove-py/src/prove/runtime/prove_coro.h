@@ -46,6 +46,9 @@ typedef struct Prove_Coro {
     void      (*fn)(struct Prove_Coro *);  /* body function (sequential mode) */
 } Prove_Coro;
 
+/* Named function pointer type for attached verb references. */
+typedef void (*Prove_CoroFn)(Prove_Coro *);
+
 #define PROVE_CORO_STACK_DEFAULT (64 * 1024)
 
 Prove_Coro *prove_coro_new(void (*fn)(Prove_Coro *), size_t stack_size);
