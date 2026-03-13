@@ -883,10 +883,6 @@ from
 
 The `&` async dispatch marker is used on a call to a function that is not an async verb (`detached`, `attached`, `listens`). The marker has no effect. `prove format` removes it.
 
-### I376 — `attached` body has no `&` calls
-
-An `attached` function body contains no `&` async dispatch calls. This likely means the function should use `inputs` instead. `prove format` changes the verb.
-
 ### I377 — `attached` call runs synchronously outside `listens`
 
 An `attached` function is called with `&` outside a `listens` body. The call works but runs synchronously — there is no event loop to schedule it on. Inside a `listens` body, `attached&` is the standard await pattern and produces no diagnostic.

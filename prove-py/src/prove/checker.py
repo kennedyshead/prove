@@ -1631,13 +1631,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"the caller does not wait for a result",
                     fd.span,
                 )
-            if verb == "attached" and not self._has_async_call_in_body(fd.body):
-                self._info(
-                    "I376",
-                    "`attached` body has no `&` calls; consider using `inputs` instead",
-                    fd.span,
-                )
-
         # event_type annotation rules (listens event dispatcher)
         if fd.event_type is not None and verb != "listens":
             self._error(
@@ -2376,41 +2369,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return self._infer_expr(expr.expr, expected_type=expected_type)
         finally:
             self._inside_async_call = False
-
-    def _has_async_call_in_body(self, body: list) -> bool:
-        """Return True if any AsyncCallExpr appears anywhere in body."""
-        for stmt in body:
-            if self._stmt_has_async_call(stmt):
-                return True
-        return False
-
-    def _stmt_has_async_call(self, stmt: object) -> bool:
-        if isinstance(stmt, VarDecl):
-            return self._expr_has_async_call(stmt.value)
-        if isinstance(stmt, Assignment):
-            return self._expr_has_async_call(stmt.value)
-        if isinstance(stmt, ExprStmt):
-            return self._expr_has_async_call(stmt.expr)
-        if isinstance(stmt, MatchExpr):
-            if stmt.subject and self._expr_has_async_call(stmt.subject):
-                return True
-            return any(self._stmt_has_async_call(s) for arm in stmt.arms for s in arm.body)
-        return False
-
-    def _expr_has_async_call(self, expr: Expr) -> bool:
-        if isinstance(expr, AsyncCallExpr):
-            return True
-        if isinstance(expr, CallExpr):
-            return any(self._expr_has_async_call(a) for a in expr.args)
-        if isinstance(expr, (BinaryExpr,)):
-            return self._expr_has_async_call(expr.left) or self._expr_has_async_call(expr.right)
-        if isinstance(expr, UnaryExpr):
-            return self._expr_has_async_call(expr.operand)
-        if isinstance(expr, (FailPropExpr, AsyncCallExpr)):
-            return self._expr_has_async_call(expr.expr)
-        if isinstance(expr, PipeExpr):
-            return self._expr_has_async_call(expr.left) or self._expr_has_async_call(expr.right)
-        return False
 
     @staticmethod
     def _exprs_equal(a: Expr, b: Expr) -> bool:

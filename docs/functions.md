@@ -211,7 +211,6 @@ from
 | E406 | `listens` missing `event_type` annotation | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
-| [I376](diagnostics.md#i376-attached-body-has-no-calls) | `attached` body with no `&` calls — probably meant `inputs`; `prove format` changes the verb | Info |
 | [I377](diagnostics.md#i377-attached-call-runs-synchronously-outside-listens) | `attached&` outside `listens` — runs synchronously | Info |
 | [I378](diagnostics.md#i378-detached-function-called-without) | `detached` called without `&` — `prove format` will add it | Info |
 
