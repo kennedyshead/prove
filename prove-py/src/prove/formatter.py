@@ -296,6 +296,8 @@ class ProveFormatter:
             lines.append(f'  intent: "{fd.intent}"')
         for name in fd.satisfies:
             lines.append(f"  satisfies {name}")
+        if fd.event_type is not None:
+            lines.append(f"  event_type {self._format_type_expr(fd.event_type)}")
         return lines
 
     def _format_explain_block(self, explain: ExplainBlock, indent: int) -> list[str]:

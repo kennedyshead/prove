@@ -173,6 +173,7 @@ _BUILTIN_TYPE_NAMES = frozenset(
         "Value",
         "Source",
         "Verb",
+        "Attached",
     }
 )
 
@@ -454,6 +455,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self.symbols.define_type("Value", TypeVariable("Value"))
         self.symbols.define_type("Source", TypeVariable("Source"))
         self.symbols.define_type("Verb", PrimitiveType("Verb"))
+        self.symbols.define_type("Attached", PrimitiveType("Attached"))
 
         _dummy = Span("<builtin>", 0, 0, 0, 0)
 

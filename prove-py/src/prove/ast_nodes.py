@@ -508,6 +508,7 @@ class FunctionDef:
     believe: list[Expr]
     intent: str | None
     satisfies: list[str]
+    event_type: TypeExpr | None
     body: list[Stmt | MatchExpr]
     doc_comment: str | None
     span: Span

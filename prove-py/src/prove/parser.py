@@ -461,6 +461,7 @@ class Parser:
         know, assume, believe = [], [], []
         intent = None
         satisfies: list[str] = []
+        event_type_expr: TypeExpr | None = None
 
         # Skip INDENT if annotations/from are indented under the function
         in_indent = False
@@ -527,6 +528,9 @@ class Parser:
             elif self._at(TokenKind.SATISFIES):
                 self._advance()
                 satisfies.append(self._expect(TokenKind.TYPE_IDENTIFIER).value)
+            elif self._at(TokenKind.EVENT_TYPE):
+                self._advance()
+                event_type_expr = self._parse_type_expr()
             elif self._at(TokenKind.COMMENT):
                 self._advance()  # skip comments between annotations
             elif self._at(TokenKind.DEDENT):
@@ -579,6 +583,7 @@ class Parser:
             believe=believe,
             intent=intent,
             satisfies=satisfies,
+            event_type=event_type_expr,
             body=body,
             doc_comment=doc_comment,
             span=span,

@@ -96,6 +96,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Resolution": CType("Prove_Resolution*", is_pointer=True, header="prove_store.h"),
     "MergeResult": CType("Prove_MergeResult*", is_pointer=True, header="prove_store.h"),
     "Verb": CType("void*", is_pointer=True, header=None),
+    "Attached": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
 }
 
 # ── Public API ─────────────────────────────────────────────────────
