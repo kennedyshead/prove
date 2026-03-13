@@ -874,7 +874,13 @@ def index(path: str) -> None:
 @click.option("--update", is_flag=True, help="Only add stubs for new narrative content.")
 @click.option("--dry-run", is_flag=True, help="Preview generated stubs without writing.")
 def generate(path: str, update: bool, dry_run: bool) -> None:
-    """Generate function stubs from module narrative prose."""
+    """Generate function stubs from module narrative prose.
+
+    Uses the body generation engine to produce complete function bodies
+    when stdlib matches are available. Falls back to todo stubs for
+    functions that require programmer input.
+    """
+    from prove._body_gen import generate_function_source, has_generated_marker
     from prove._generate import generate_stub_function
     from prove._nl_intent import extract_nouns, implied_verbs, pair_verbs_nouns
     from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
@@ -921,23 +927,50 @@ def generate(path: str, update: bool, dry_run: bool) -> None:
     # Generate stubs
     stubs = pair_verbs_nouns(verbs, nouns)
 
-    # Filter out functions that already exist
-    existing_names = {
-        d.name for d in module.declarations if isinstance(d, FunctionDef)
-    }
-    new_stubs = [s for s in stubs if s.name not in existing_names]
+    # Collect existing function names and check for @generated markers
+    existing_fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
+    if mod_decl:
+        existing_fns.extend(d for d in mod_decl.body if isinstance(d, FunctionDef))
+    existing_names = {fn.name for fn in existing_fns}
+
+    # On --update: also regenerate @generated functions that still have todos
+    updatable_names: set[str] = set()
+    if update:
+        for fn in existing_fns:
+            if has_generated_marker(fn.doc_comment) and any(
+                isinstance(s, TodoStmt) for s in fn.body
+            ):
+                updatable_names.add(fn.name)
+
+    new_stubs = [s for s in stubs if s.name not in existing_names or s.name in updatable_names]
 
     if not new_stubs:
         click.echo("no new stubs to generate — all verb+noun pairs already have functions")
         return
 
-    # Generate and append
+    # Try body generation for each stub, fall back to simple stub
     generated_lines: list[str] = []
+    body_count = 0
+    stub_count = 0
     for stub in new_stubs:
         if stub.confidence < 0.3:
             continue
         generated_lines.append("")
-        generated_lines.append(generate_stub_function(stub))
+
+        # Attempt body generation using stdlib knowledge base
+        result = generate_function_source(
+            verb=stub.verb,
+            name=stub.name,
+            param_names=[p[0] for p in stub.params],
+            param_types=[p[1] for p in stub.params],
+            return_type=stub.return_type,
+            declaration_text=f"{stub.verb} {stub.name}",
+        )
+        if "todo" not in result.lower() or "chosen:" in result:
+            body_count += 1
+        else:
+            stub_count += 1
+        generated_lines.append(result)
 
     generated_text = "\n".join(generated_lines) + "\n"
 
@@ -946,10 +979,9 @@ def generate(path: str, update: bool, dry_run: bool) -> None:
     else:
         with open(target, "a") as f:
             f.write(generated_text)
-        click.echo(f"generated {len(new_stubs)} stub(s) in {target}")
+        click.echo(f"generated {body_count} body(ies) + {stub_count} stub(s) in {target}")
 
     # Report completeness
-    existing_fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
     todo_count = sum(
         1 for fn in existing_fns
         if any(isinstance(s, TodoStmt) for s in fn.body)
