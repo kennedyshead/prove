@@ -405,7 +405,8 @@ def _check_summary(
 @click.option("--strict", is_flag=True, help="Treat warnings as errors.")
 @click.option("--coherence", is_flag=True, help="Check vocabulary consistency between narrative and code.")
 @click.option("--challenges", is_flag=True, help="Generate refutation challenges from ensures contracts.")
-def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool) -> None:
+@click.option("--status", is_flag=True, help="Show module completeness (todo count).")
+def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, status: bool) -> None:
     """Type-check and lint a Prove project or a single .prv file."""
     target = Path(path)
 
@@ -466,12 +467,65 @@ def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool) 
             )
         )
         _print_verification_stats(stats)
+
+        if status:
+            _print_completeness_status(project_dir)
+
         _update_project_cache(project_dir)
         if errors:
             raise SystemExit(1)
     except FileNotFoundError:
         click.echo("error: no prove.toml found", err=True)
         raise SystemExit(1)
+
+
+def _print_completeness_status(project_dir: Path) -> None:
+    """Print per-module completeness showing todo counts."""
+    from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
+
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = sorted(src_dir.rglob("*.prv"))
+    if not prv_files:
+        return
+
+    click.echo("\nCompleteness:")
+    for prv_file in prv_files:
+        try:
+            source = prv_file.read_text()
+            tokens = Lexer(source, str(prv_file)).lex()
+            module = Parser(tokens, str(prv_file)).parse()
+        except Exception:
+            continue
+
+        mod_name = prv_file.stem
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                mod_name = decl.name
+                break
+
+        fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
+        if not fns:
+            continue
+
+        todo_fns = []
+        complete_fns = []
+        for fn in fns:
+            if any(isinstance(s, TodoStmt) for s in fn.body):
+                todo_fns.append(fn)
+            else:
+                complete_fns.append(fn)
+
+        total = len(fns)
+        done = len(complete_fns)
+        pct = 100 * done // total if total else 0
+        click.echo(f"  Module {mod_name}: {done}/{total} functions complete ({pct}%)")
+        for fn in fns:
+            has_todo = any(isinstance(s, TodoStmt) for s in fn.body)
+            marker = "[todo]" if has_todo else "[complete]"
+            click.echo(f"    - {fn.verb} {fn.name}     {marker}")
 
 
 @main.command()
@@ -813,6 +867,96 @@ def index(path: str) -> None:
     indexer = _ProjectIndexer(project_dir)
     indexer.index_all_files()
     click.echo(f"indexed {len(indexer._file_ngrams)} files -> {project_dir / '.prove_cache'}")
+
+
+@main.command()
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--update", is_flag=True, help="Only add stubs for new narrative content.")
+@click.option("--dry-run", is_flag=True, help="Preview generated stubs without writing.")
+def generate(path: str, update: bool, dry_run: bool) -> None:
+    """Generate function stubs from module narrative prose."""
+    from prove._generate import generate_stub_function
+    from prove._nl_intent import extract_nouns, implied_verbs, pair_verbs_nouns
+    from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
+
+    target = Path(path)
+    if not target.suffix == ".prv":
+        click.echo("error: generate requires a .prv file", err=True)
+        raise SystemExit(1)
+
+    source = target.read_text()
+    filename = str(target)
+
+    try:
+        tokens = Lexer(source, filename).lex()
+        module = Parser(tokens, filename).parse()
+    except CompileError as e:
+        renderer = DiagnosticRenderer(color=True)
+        for diag in e.diagnostics:
+            click.echo(renderer.render(diag), err=True)
+        raise SystemExit(1)
+
+    # Find narrative
+    mod_decl = None
+    for decl in module.declarations:
+        if isinstance(decl, ModuleDecl):
+            mod_decl = decl
+            break
+
+    if mod_decl is None or not mod_decl.narrative:
+        click.echo("error: file has no module declaration with narrative", err=True)
+        raise SystemExit(1)
+
+    # Extract verbs and nouns from narrative
+    verbs = implied_verbs(mod_decl.narrative)
+    nouns = extract_nouns(mod_decl.narrative)
+
+    if not verbs:
+        click.echo("warning: no verbs implied by narrative", err=True)
+        return
+    if not nouns:
+        click.echo("warning: no nouns extracted from narrative", err=True)
+        return
+
+    # Generate stubs
+    stubs = pair_verbs_nouns(verbs, nouns)
+
+    # Filter out functions that already exist
+    existing_names = {
+        d.name for d in module.declarations if isinstance(d, FunctionDef)
+    }
+    new_stubs = [s for s in stubs if s.name not in existing_names]
+
+    if not new_stubs:
+        click.echo("no new stubs to generate — all verb+noun pairs already have functions")
+        return
+
+    # Generate and append
+    generated_lines: list[str] = []
+    for stub in new_stubs:
+        if stub.confidence < 0.3:
+            continue
+        generated_lines.append("")
+        generated_lines.append(generate_stub_function(stub))
+
+    generated_text = "\n".join(generated_lines) + "\n"
+
+    if dry_run:
+        click.echo(generated_text)
+    else:
+        with open(target, "a") as f:
+            f.write(generated_text)
+        click.echo(f"generated {len(new_stubs)} stub(s) in {target}")
+
+    # Report completeness
+    existing_fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
+    todo_count = sum(
+        1 for fn in existing_fns
+        if any(isinstance(s, TodoStmt) for s in fn.body)
+    )
+    complete = len(existing_fns) - todo_count
+    total = len(existing_fns) + len(new_stubs)
+    click.echo(f"  {complete}/{total} functions complete ({100 * complete // total if total else 0}%)")
 
 
 @main.command("export")

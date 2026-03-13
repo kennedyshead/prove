@@ -7,9 +7,12 @@ semantic tokens from prose and function bodies.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from prove.ast_nodes import FunctionDef
 
 # Each entry: (regex pattern, prove_verb_keyword)
@@ -87,3 +90,108 @@ def prose_overlaps(prose: str, tokens: set[str]) -> bool:
                 if t.startswith(pw) or pw.startswith(t[:4]):
                     return True
     return False
+
+
+# ── Noun extraction ──────────────────────────────────────────────
+
+_NOUN_STOPS = frozenset({
+    "the", "a", "an", "this", "that", "each", "every", "all", "some",
+    "is", "are", "was", "were", "be", "been", "being",
+    "has", "have", "had", "do", "does", "did",
+    "will", "would", "could", "should", "can", "may", "might",
+    "and", "or", "but", "not", "no", "nor",
+    "from", "into", "with", "for", "to", "of", "in", "on", "at", "by",
+    "it", "its", "them", "their", "they",
+    "module", "function", "type", "using", "against", "between",
+})
+
+
+def extract_nouns(text: str) -> list[str]:
+    """Extract candidate noun phrases from prose (domain objects, not verbs).
+
+    Returns lowercase words that are likely to become function names,
+    type names, or parameter names. Preserves order of first occurrence.
+    """
+    words = re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", text)
+    seen: set[str] = set()
+    nouns: list[str] = []
+
+    for word in words:
+        low = word.lower()
+        if low in _NOUN_STOPS or low in seen or len(low) < 3:
+            continue
+        # Skip words that match verb stems
+        is_verb = False
+        for pattern, _ in _PROSE_STEMS:
+            if re.search(pattern, low):
+                is_verb = True
+                break
+        if is_verb:
+            continue
+        seen.add(low)
+        nouns.append(low)
+
+    return nouns
+
+
+# ── Stub generation ──────────────────────────────────────────────
+
+@dataclass
+class FunctionStub:
+    verb: str
+    name: str
+    params: list[tuple[str, str]] = field(default_factory=list)
+    return_type: str = "String"
+    confidence: float = 0.5
+
+
+# Heuristic parameter and return type defaults per verb family
+_VERB_PARAM_HINTS: dict[str, list[tuple[str, str]]] = {
+    "validates": [("value", "String")],
+    "transforms": [("value", "String")],
+    "reads": [("source", "String")],
+    "creates": [],
+    "matches": [("value", "Value")],
+    "inputs": [("path", "String")],
+    "outputs": [("value", "String")],
+}
+
+_VERB_RETURN_DEFAULTS: dict[str, str] = {
+    "validates": "Boolean",
+    "transforms": "String",
+    "reads": "String",
+    "creates": "String",
+    "matches": "Boolean",
+    "inputs": "String",
+    "outputs": "Unit",
+}
+
+
+def pair_verbs_nouns(
+    verbs: set[str],
+    nouns: list[str],
+    model_predict: Callable[[str, str], list[str]] | None = None,
+) -> list[FunctionStub]:
+    """Generate verb+noun pairings ranked by confidence.
+
+    Each verb is paired with each noun. The model (if available) predicts
+    likely parameter types and return types.
+    """
+    stubs: list[FunctionStub] = []
+    for verb in sorted(verbs):
+        for noun in nouns:
+            params = _VERB_PARAM_HINTS.get(verb, [("value", "String")])
+            ret = _VERB_RETURN_DEFAULTS.get(verb, "String")
+            conf = 0.5
+            if model_predict is not None:
+                hits = model_predict(verb, noun)
+                if noun in [h.lower() for h in hits]:
+                    conf = 0.9
+                else:
+                    conf = 0.3
+            stubs.append(FunctionStub(
+                verb=verb, name=noun,
+                params=params, return_type=ret,
+                confidence=conf,
+            ))
+    return sorted(stubs, key=lambda s: -s.confidence)

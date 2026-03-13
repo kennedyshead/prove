@@ -76,6 +76,7 @@ from prove.ast_nodes import (
     StoreLookupExpr,
     StringInterp,
     StringLit,
+    TodoStmt,
     TripleStringLit,
     TypeDef,
     TypeIdentifierExpr,
@@ -640,6 +641,10 @@ class ProveFormatter:
             return self._format_match_expr(stmt)
         if isinstance(stmt, CommentStmt):
             return f"// {stmt.text}" if stmt.text else "//"
+        if isinstance(stmt, TodoStmt):
+            if stmt.message:
+                return f'todo "{stmt.message}"'
+            return "todo"
         return ""
 
     def _format_var_decl(self, vd: VarDecl) -> str:
