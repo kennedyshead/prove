@@ -8,6 +8,7 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
+    ListLiteral,
     PipeExpr,
     SimpleType,
     TypeIdentifierExpr,
@@ -16,6 +17,7 @@ from prove.errors import Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
 from prove.types import (
     ERROR_TY,
+    AlgebraicType,
     BorrowType,
     ErrorType,
     FunctionType,
@@ -210,6 +212,38 @@ class CallCheckMixin:
 
             # Ownership tracking: mark variables as moved if passed to Own parameters
             self._track_moved_args(expr.args, sig.param_types)
+
+            # E403/E404: validate registered workers for listens call
+            if sig.verb == "listens" and expr.args:
+                first_arg = expr.args[0]
+                if isinstance(first_arg, ListLiteral):
+                    for elem in first_arg.elements:
+                        if isinstance(elem, IdentifierExpr):
+                            elem_sig = self.symbols.resolve_function_any(elem.name)
+                            if elem_sig is None:
+                                continue  # E311 will catch undefined
+                            if elem_sig.verb != "attached":
+                                self._error(
+                                    "E403",
+                                    f"registered function '{elem.name}' is not an `attached` verb",
+                                    elem.span,
+                                )
+                            elif (
+                                sig.event_type is not None
+                                and isinstance(sig.event_type, AlgebraicType)
+                            ):
+                                # E404: return type must match a variant of event_type
+                                variant_names = {
+                                    v.name for v in sig.event_type.variants
+                                }
+                                ret_name = type_name(elem_sig.return_type)
+                                if ret_name not in variant_names and ret_name != type_name(sig.event_type):
+                                    self._error(
+                                        "E404",
+                                        f"return type of '{elem.name}' does not match "
+                                        f"a variant of event type '{type_name(sig.event_type)}'",
+                                        elem.span,
+                                    )
 
             # Verb-gated serialization: creates/validates value(V)
             # requires the argument to be json-serializable.
