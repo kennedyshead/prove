@@ -415,7 +415,8 @@ class StmtEmitterMixin:
                 return
 
         # Determine target type: from annotation if present, else from value
-        target_ty = self._infer_expr_type(vd.value)
+        inferred_ty = self._infer_expr_type(vd.value)
+        target_ty = inferred_ty
         if vd.type_expr:
             # Resolve type from annotation
             # SimpleType has 'name', GenericType has 'name' and 'args', ModifiedType has 'base_type'
@@ -460,7 +461,7 @@ class StmtEmitterMixin:
 
         # When annotation and value are both Option but with different inner types,
         # emit conversion code (e.g. Option<String> → Option<Integer> via parse)
-        value_ty = self._infer_expr_type(vd.value)
+        value_ty = inferred_ty
         if (
             isinstance(target_ty, GenericInstance)
             and isinstance(value_ty, GenericInstance)

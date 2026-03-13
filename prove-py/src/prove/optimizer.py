@@ -1082,65 +1082,32 @@ class Optimizer:
         # Runtime lookup: operand is a param identifier, not a literal
         return isinstance(expr.operand, IdentifierExpr)
 
+    def _is_inline_candidate(self, fd: FunctionDef) -> bool:
+        """Check if a function is eligible for inlining."""
+        _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
+        if fd.binary or fd.terminates is not None or fd.requires or fd.ensures:
+            return False
+        if self._calls_self(fd.name, fd.body):
+            return False
+        if len(fd.body) != 1:
+            return False
+        if fd.verb in _pure_verbs:
+            return isinstance(fd.body[0], ExprStmt) and not self._is_runtime_lookup(fd)
+        if fd.verb == "inputs" and fd.can_fail:
+            return True
+        return False
+
     def _inline_small_functions(self, module: Module) -> Module:
         """Inline pure single-expression functions at call sites."""
-        _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
         candidates: dict[str, FunctionDef] = {}
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
-                if (
-                    decl.verb in _pure_verbs
-                    and len(decl.body) == 1
-                    and isinstance(decl.body[0], ExprStmt)
-                    and not decl.binary
-                    and decl.terminates is None
-                    and not self._calls_self(decl.name, decl.body)
-                    and not decl.requires
-                    and not decl.ensures
-                    and not self._is_runtime_lookup(decl)
-                ):
-                    candidates[decl.name] = decl
-                # Always inline single-return validators (inputs with can_fail)
-                # Their return type already encodes the contract (Option<Value>!, Result<Value, Error>!)
-                # But only if no explicit contracts - let those be explicit
-                elif (
-                    decl.verb == "inputs"
-                    and len(decl.body) == 1
-                    and decl.can_fail
-                    and not decl.binary
-                    and decl.terminates is None
-                    and not self._calls_self(decl.name, decl.body)
-                    and not decl.requires
-                    and not decl.ensures
-                ):
+                if self._is_inline_candidate(decl):
                     candidates[decl.name] = decl
             elif isinstance(decl, ModuleDecl):
                 for inner in decl.body:
-                    if isinstance(inner, FunctionDef):
-                        if (
-                            inner.verb in _pure_verbs
-                            and len(inner.body) == 1
-                            and isinstance(inner.body[0], ExprStmt)
-                            and not inner.binary
-                            and inner.terminates is None
-                            and not self._calls_self(inner.name, inner.body)
-                            and not inner.requires
-                            and not inner.ensures
-                            and not self._is_runtime_lookup(inner)
-                        ):
-                            candidates[inner.name] = inner
-                        # Always inline single-return validators
-                        elif (
-                            inner.verb == "inputs"
-                            and len(inner.body) == 1
-                            and inner.can_fail
-                            and not inner.binary
-                            and inner.terminates is None
-                            and not self._calls_self(inner.name, inner.body)
-                            and not inner.requires
-                            and not inner.ensures
-                        ):
-                            candidates[inner.name] = inner
+                    if isinstance(inner, FunctionDef) and self._is_inline_candidate(inner):
+                        candidates[inner.name] = inner
 
         if not candidates:
             return module

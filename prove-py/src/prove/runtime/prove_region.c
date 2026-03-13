@@ -1,4 +1,5 @@
 #include "prove_region.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -62,7 +63,8 @@ void prove_region_enter(ProveRegion *r) {
     size_t chunk_size = PROVE_REGION_CHUNK_SIZE;
     ProveRegionFrame *frame = (ProveRegionFrame *)malloc(chunk_size);
     if (!frame) {
-        return;
+        fprintf(stderr, "prove: panic: region enter: out of memory\n");
+        exit(1);
     }
 
     frame->prev = r->current;

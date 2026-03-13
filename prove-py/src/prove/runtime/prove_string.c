@@ -15,6 +15,7 @@ Prove_String *prove_string_new(const char *src, int64_t len) {
 
 Prove_String *prove_string_new_region(ProveRegion *r, const char *src, int64_t len) {
     Prove_String *s = (Prove_String *)prove_region_alloc(r, sizeof(Prove_String) + (size_t)len + 1);
+    if (!s) prove_panic("region alloc failed for string");
     s->length = len;
     if (src && len > 0) {
         memcpy(s->data, src, (size_t)len);
@@ -38,6 +39,8 @@ Prove_String *prove_string_from_cstr_region(ProveRegion *r, const char *src) {
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b) {
     if (!a) { if (b) prove_retain(b); return b; }
     if (!b) { prove_retain(a); return a; }
+    if (a->length == 0) { prove_retain(b); return b; }
+    if (b->length == 0) { prove_retain(a); return a; }
     int64_t new_len = a->length + b->length;
     Prove_String *s = (Prove_String *)prove_alloc(sizeof(Prove_String) + (size_t)new_len + 1);
     s->length = new_len;

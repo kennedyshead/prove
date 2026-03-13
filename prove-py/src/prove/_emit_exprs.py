@@ -28,6 +28,7 @@ from prove.ast_nodes import (
     PathLit,
     PipeExpr,
     RawStringLit,
+    RegexLit,
     StoreLookupExpr,
     StringInterp,
     StringLit,
@@ -100,6 +101,12 @@ class ExprEmitterMixin:
             escaped = self._escape_c_string(expr.value)
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
+            if self._use_region_allocation():
+                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
+            return f'prove_string_from_cstr("{escaped}")'
+
+        if isinstance(expr, RegexLit):
+            escaped = self._escape_c_string(expr.value)
             if self._use_region_allocation():
                 return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
             return f'prove_string_from_cstr("{escaped}")'

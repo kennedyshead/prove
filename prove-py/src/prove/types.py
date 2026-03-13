@@ -299,6 +299,8 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     cascading errors and allow generic params through without full inference.
     Refinement types are compatible with their base type.
     """
+    if expected is actual:
+        return True
     if isinstance(expected, ErrorType) or isinstance(actual, ErrorType):
         return True
     if isinstance(expected, TypeVariable) or isinstance(actual, TypeVariable):

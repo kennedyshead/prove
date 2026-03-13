@@ -24,7 +24,7 @@ Prove_ByteArray *prove_bytes_create(Prove_List *values) {
     int64_t len = values ? values->length : 0;
     Prove_ByteArray *ba = _alloc_bytes(len);
     for (int64_t i = 0; i < len; i++) {
-        int64_t val = *(int64_t *)prove_list_get(values, i);
+        int64_t val = (int64_t)(intptr_t)prove_list_get(values, i);
         ba->data[i] = (uint8_t)(val & 0xFF);
     }
     return ba;

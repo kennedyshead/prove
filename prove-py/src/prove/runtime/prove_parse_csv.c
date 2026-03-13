@@ -48,7 +48,9 @@ static Prove_String *_csv_parse_quoted(CsvParser *p) {
                 p->pos++; /* skip second " */
             } else {
                 /* End of quoted field */
-                return prove_text_build(b);
+                Prove_String *result = prove_text_build(b);
+                free(b);
+                return result;
             }
         } else {
             b = prove_text_write_char(b, c);
@@ -56,6 +58,7 @@ static Prove_String *_csv_parse_quoted(CsvParser *p) {
     }
 
     /* Unterminated quoted field */
+    free(b);
     snprintf(p->err, sizeof(p->err), "unterminated quoted field");
     return NULL;
 }
@@ -72,7 +75,9 @@ static Prove_String *_csv_parse_unquoted(CsvParser *p) {
         p->pos++;
     }
 
-    return prove_text_build(b);
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return result;
 }
 
 /* ── Row parsing ─────────────────────────────────────────────── */
@@ -175,8 +180,7 @@ Prove_String *prove_emit_csv(Prove_List *rows) {
                 }
                 b = prove_text_write_char(b, '"');
             } else {
-                for (int64_t k = 0; k < len; k++)
-                    b = prove_text_write_char(b, data[k]);
+                b = prove_text_write(b, field);
             }
         }
 
@@ -184,7 +188,9 @@ Prove_String *prove_emit_csv(Prove_List *rows) {
         b = prove_text_write_char(b, '\n');
     }
 
-    return prove_text_build(b);
+    Prove_String *result = prove_text_build(b);
+    free(b);
+    return result;
 }
 
 bool prove_validates_csv(Prove_String *source) {

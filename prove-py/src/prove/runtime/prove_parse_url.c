@@ -1,5 +1,6 @@
 #include "prove_parse.h"
 #include "prove_bytes.h"
+#include "prove_text.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -125,16 +126,15 @@ Prove_Url *prove_parse_url_transform(Prove_Url *source, Prove_Table *params) {
         return u;
     }
 
-    /* Estimate size and build query */
-    Prove_String *parts[64];
-    int64_t nparts = 0;
+    /* Build query with O(n) Builder instead of O(n²) concat */
+    Prove_Builder *b = prove_text_builder();
 
     /* Keep existing query */
     if (source->query && source->query->length > 0) {
-        parts[nparts++] = source->query;
+        b = prove_text_write(b, source->query);
     }
 
-    for (int64_t i = 0; i < nkeys && nparts < 62; i++) {
+    for (int64_t i = 0; i < nkeys; i++) {
         Prove_String *key = (Prove_String *)prove_list_get(keys, i);
         Prove_Option opt = prove_table_get(key, params);
         if (opt.tag == 0) continue;
@@ -149,22 +149,16 @@ Prove_Url *prove_parse_url_transform(Prove_Url *source, Prove_Table *params) {
             val_str = prove_string_from_cstr("");
         }
 
-        /* key=value */
-        Prove_String *pair = prove_string_concat(key, prove_string_from_cstr("="));
-        pair = prove_string_concat(pair, val_str);
-
-        if (nparts > 0) {
-            parts[nparts++] = prove_string_from_cstr("&");
+        if (prove_text_builder_length(b) > 0) {
+            b = prove_text_write_char(b, '&');
         }
-        parts[nparts++] = pair;
+        b = prove_text_write(b, key);
+        b = prove_text_write_char(b, '=');
+        b = prove_text_write(b, val_str);
     }
 
-    /* Join all parts */
-    Prove_String *query = prove_string_from_cstr("");
-    for (int64_t i = 0; i < nparts; i++) {
-        query = prove_string_concat(query, parts[i]);
-    }
-    u->query = query;
+    u->query = prove_text_build(b);
+    free(b);
 
     return u;
 }

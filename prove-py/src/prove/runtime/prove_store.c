@@ -174,18 +174,18 @@ static Prove_StoreTable *_deserialize_table(Prove_String *path, const char *name
     free(col_names);
 
     int64_t var_count;
-    if (!_read_i64(f, &var_count)) { fclose(f); return NULL; }
-    if (var_count < 0 || var_count > 1000000) { fclose(f); return NULL; }
+    if (!_read_i64(f, &var_count)) { fclose(f); prove_release(table); return NULL; }
+    if (var_count < 0 || var_count > 1000000) { fclose(f); prove_release(table); return NULL; }
 
     Prove_String **row = (Prove_String **)calloc((size_t)col_count, sizeof(Prove_String *));
-    if (!row) { fclose(f); return NULL; }
+    if (!row) { fclose(f); prove_release(table); return NULL; }
 
     for (int64_t v = 0; v < var_count; v++) {
         Prove_String *vname = _read_str(f);
-        if (!vname) { fclose(f); free(row); return NULL; }
+        if (!vname) { fclose(f); free(row); prove_release(table); return NULL; }
         for (int64_t c = 0; c < col_count; c++) {
             row[c] = _read_str(f);
-            if (!row[c]) { fclose(f); free(row); return NULL; }
+            if (!row[c]) { fclose(f); free(row); prove_release(table); return NULL; }
         }
         prove_store_table_add_variant(table, vname, row);
     }
@@ -728,12 +728,10 @@ Prove_String *prove_store_integrity(Prove_StoreTable *table) {
 
     #undef APPEND
 
-    Prove_ByteArray *data = (Prove_ByteArray *)prove_alloc(sizeof(Prove_ByteArray) + buf_len);
-    data->length = (int64_t)buf_len;
-    memcpy(data->data, buf, buf_len);
+    Prove_String *data = prove_string_new((const char *)buf, (int64_t)buf_len);
     free(buf);
 
-    Prove_String *hash = prove_crypto_sha256_string((Prove_String *)data);
+    Prove_String *hash = prove_crypto_sha256_string(data);
     return hash;
 }
 

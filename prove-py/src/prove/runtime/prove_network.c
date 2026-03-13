@@ -1,4 +1,5 @@
 #include "prove_network.h"
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -38,17 +39,9 @@ static Prove_Socket *_alloc_socket(int fd) {
 
 static Prove_Result _socket_error(const char *context) {
     const char *msg = strerror(errno);
-    int ctx_len = (int)strlen(context);
-    int msg_len = (int)strlen(msg);
-    int total = ctx_len + 2 + msg_len;
-    char *buf = prove_alloc(total + 1);
-    memcpy(buf, context, ctx_len);
-    buf[ctx_len] = ':';
-    buf[ctx_len + 1] = ' ';
-    memcpy(buf + ctx_len + 2, msg, msg_len);
-    buf[total] = '\0';
-    Prove_String *err_str = prove_string_from_cstr(buf);
-    return prove_result_err(err_str);
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%s: %s", context, msg);
+    return prove_result_err(prove_string_from_cstr(buf));
 }
 
 static int _resolve_and_fill(Prove_String *host, int64_t port,
@@ -163,13 +156,15 @@ Prove_Result prove_network_message_inputs(Prove_Socket *sock, int64_t size) {
     if (!sock || sock->fd < 0) return _socket_error("recv");
     if (size <= 0) size = 4096;
 
-    uint8_t *buf = prove_alloc(size);
+    uint8_t *buf = (uint8_t *)malloc((size_t)size);
+    if (!buf) return _socket_error("malloc");
     ssize_t n = recv(sock->fd, (char *)buf, (size_t)size, 0);
-    if (n < 0) return _socket_error("recv");
+    if (n < 0) { free(buf); return _socket_error("recv"); }
 
     Prove_ByteArray *ba = prove_alloc(sizeof(Prove_ByteArray) + n);
     ba->length = n;
     if (n > 0) memcpy(ba->data, buf, n);
+    free(buf);
 
     return prove_result_ok_ptr(ba);
 }
@@ -178,8 +173,14 @@ Prove_Result prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *
     if (!sock || sock->fd < 0) return _socket_error("send");
     if (!data || data->length == 0) return prove_result_ok();
 
-    ssize_t sent = send(sock->fd, (const char *)data->data, (size_t)data->length, 0);
-    if (sent < 0) return _socket_error("send");
+    const char *ptr = (const char *)data->data;
+    size_t remaining = (size_t)data->length;
+    while (remaining > 0) {
+        ssize_t sent = send(sock->fd, ptr, remaining, 0);
+        if (sent < 0) return _socket_error("send");
+        ptr += sent;
+        remaining -= (size_t)sent;
+    }
 
     return prove_result_ok();
 }
