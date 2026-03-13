@@ -29,10 +29,47 @@ The initial implementation checked `_inside_async_call` before `_in_listens_work
 
 The async_demo shows `I376: attached body has no & calls; consider using inputs instead` on `attached double(x Integer) Data<Integer>`. This is technically correct (the double function body has no `&` calls), but the info is misleading for worker functions that are meant to be simple computation factories for a listens dispatcher. Consider suppressing I376 for attached functions whose return type is a variant of a known event_type.
 
-## Emitter: Untested End-to-End
+## Emitter: Untested End-to-End — RESOLVED
 
-The emitter changes (12d) generate C code for the event dispatcher pattern (worker spawning, event queue, receive loop), but no e2e test exercises the full compilation pipeline yet. The async_demo type-checks but hasn't been built. This should be validated with a real e2e build test once the full async pipeline is stable.
+The emitter changes (12d) generated C code for the event dispatcher pattern, but the async_demo failed to compile. Multiple issues were discovered and fixed:
+
+### Optimizer DCE Removes Async Functions
+
+`AsyncCallExpr` (the `&` operator) was not handled in the optimizer's dead code elimination pass (`_find_called_in_expr`). Functions called only via `fire("hello")&` or `handler([double(2)])&` were treated as unreachable and removed. Fixed by adding `AsyncCallExpr` handling to five optimizer methods: `_find_called_in_expr`, `_expr_calls`, `_count_uses_in_expr`, `_inline_in_expr`, and `_expr_has_side_effects`.
+
+### `Prove_Event` Name Collision
+
+The runtime's `prove_event.h` defined `Prove_Event` (queue node struct) which collided with user-defined algebraic types named `Event` (emitted as `Prove_Event`). Fixed by renaming the runtime type to `Prove_EventNode` and the queue to `Prove_EventNodeQueue`.
+
+### Event Queue Architecture Replaced with Direct Worker Polling
+
+The original emitter design used a `Prove_EventNodeQueue` as an intermediary between attached workers and the listens dispatcher. This caused multiple issues: brace mismatches in the generated C, incorrect match dispatch (queue nodes vs algebraic types), and unnecessary complexity. Replaced with a direct worker polling model:
+
+- Workers are pre-started coroutines stored in a `Prove_List`
+- Listens body iterates the list, resumes each worker to completion, extracts result
+- Match dispatches directly on the algebraic event type
+- No event queue needed at runtime
+
+### Attached Result Passing via Heap Allocation
+
+Attached functions returning algebraic types (structs in C) cannot pass results through `_coro->result` (which is `void*`) by value. Fixed by heap-allocating the result struct in the attached body (`malloc + store pointer in _coro->result`) and dereferencing in the caller (`*(Type*)_c->result` + `free`).
+
+### Listens Entry Point Signature
+
+The listens entry function initially took a `Prove_Coro *_coro` parameter, which was unnecessary since listens creates its own internal coroutine. Removed from both the entry point and forward declaration.
+
+### Worker List Emission
+
+`[double(2)]` in a listens call was being emitted as a direct function call list. Fixed with `_emit_listens_call` in `_emit_exprs.py` which properly creates args structs, allocates coroutines, starts them, and pushes coro pointers to the list.
+
+### W501 False Positives for Async Verbs
+
+`_PROSE_STEMS` in `_nl_intent.py` had no patterns for `detached`, `attached`, or `streams` verbs. Added stem patterns so narrative coherence checking recognizes these verbs from prose.
 
 ## `Attached` Type Semantics
 
 `Attached` is currently a bare `PrimitiveType` that maps to `Prove_CoroFn` (a function pointer). It doesn't carry type information about the attached function's parameters or return type. This means `List<Attached>` is untyped — any attached function fits. A future enhancement could make `Attached<Event>` generic to enforce that all workers in a list produce variants of the same event type at compile time.
+
+## Remove I376 
+
+It forces you to always call a new Coro and always end with an atached which makes it a bad practise.
