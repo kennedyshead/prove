@@ -16,6 +16,7 @@ from prove.ast_nodes import (
 from prove.errors import Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
 from prove.types import (
+    ATTACHED,
     ERROR_TY,
     AlgebraicType,
     BorrowType,
@@ -52,8 +53,21 @@ class CallCheckMixin:
         # Check for own/borrow overlap in arguments (W360)
         self._check_own_borrow_overlap(expr)
 
+        # Pre-check: if calling a listens verb with a list literal first arg,
+        # set flag so attached calls inside the list suppress E372
+        _was_in_listens = self._in_listens_worker_list
+        if (
+            isinstance(expr.func, IdentifierExpr)
+            and expr.args
+            and isinstance(expr.args[0], ListLiteral)
+        ):
+            peek_sig = self.symbols.resolve_function_any(expr.func.name)
+            if peek_sig and peek_sig.verb == "listens":
+                self._in_listens_worker_list = True
+
         # Determine function name and resolve
         arg_types = [self._infer_expr(a) for a in expr.args]
+        self._in_listens_worker_list = _was_in_listens
         arg_count = len(expr.args)
 
         if isinstance(expr.func, IdentifierExpr):
@@ -104,7 +118,13 @@ class CallCheckMixin:
 
             # Check calls to async functions without &
             if sig.verb in ("detached", "attached", "listens"):
-                if self._inside_async_call:
+                if self._in_listens_worker_list and sig.verb == "attached":
+                    # Attached calls inside listens worker list are worker
+                    # registrations, not coroutine invocations — no & needed.
+                    # Do NOT consume _inside_async_call (it belongs to the
+                    # outer listens call wrapped in &).
+                    return ATTACHED
+                elif self._inside_async_call:
                     # Consumed: only applies to the direct callee, not args
                     self._inside_async_call = False
                 else:
@@ -218,32 +238,38 @@ class CallCheckMixin:
                 first_arg = expr.args[0]
                 if isinstance(first_arg, ListLiteral):
                     for elem in first_arg.elements:
+                        # Resolve the function name from bare ref or call
                         if isinstance(elem, IdentifierExpr):
-                            elem_sig = self.symbols.resolve_function_any(elem.name)
-                            if elem_sig is None:
-                                continue  # E311 will catch undefined
-                            if elem_sig.verb != "attached":
+                            elem_name = elem.name
+                        elif isinstance(elem, CallExpr) and isinstance(elem.func, IdentifierExpr):
+                            elem_name = elem.func.name
+                        else:
+                            continue
+                        elem_sig = self.symbols.resolve_function_any(elem_name)
+                        if elem_sig is None:
+                            continue  # E311 will catch undefined
+                        if elem_sig.verb != "attached":
+                            self._error(
+                                "E403",
+                                f"registered function '{elem_name}' is not an `attached` verb",
+                                elem.span,
+                            )
+                        elif (
+                            sig.event_type is not None
+                            and isinstance(sig.event_type, AlgebraicType)
+                        ):
+                            # E404: return type must match a variant of event_type
+                            variant_names = {
+                                v.name for v in sig.event_type.variants
+                            }
+                            ret_name = type_name(elem_sig.return_type)
+                            if ret_name not in variant_names and ret_name != type_name(sig.event_type):
                                 self._error(
-                                    "E403",
-                                    f"registered function '{elem.name}' is not an `attached` verb",
+                                    "E404",
+                                    f"return type of '{elem_name}' does not match "
+                                    f"a variant of event type '{type_name(sig.event_type)}'",
                                     elem.span,
                                 )
-                            elif (
-                                sig.event_type is not None
-                                and isinstance(sig.event_type, AlgebraicType)
-                            ):
-                                # E404: return type must match a variant of event_type
-                                variant_names = {
-                                    v.name for v in sig.event_type.variants
-                                }
-                                ret_name = type_name(elem_sig.return_type)
-                                if ret_name not in variant_names and ret_name != type_name(sig.event_type):
-                                    self._error(
-                                        "E404",
-                                        f"return type of '{elem.name}' does not match "
-                                        f"a variant of event type '{type_name(sig.event_type)}'",
-                                        elem.span,
-                                    )
 
             # Verb-gated serialization: creates/validates value(V)
             # requires the argument to be json-serializable.

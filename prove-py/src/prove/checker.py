@@ -250,6 +250,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._is_stdlib: bool = False
         # Flag: current expression is the direct callee of an AsyncCallExpr (&)
         self._inside_async_call: bool = False
+        # Flag: inferring elements of a listens worker list (suppresses E372)
+        self._in_listens_worker_list: bool = False
         # Flag: inside a HOF lambda body (emitter adds retains, suppress W360)
         self._inside_lambda: bool = False
 
@@ -2897,6 +2899,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(type_expr, SimpleType):
             resolved = self.symbols.resolve_type(type_expr.name)
             if resolved is None:
+                # Variant name used as type → resolve to parent algebraic
+                vsig = self.symbols.resolve_function_any(type_expr.name)
+                if (
+                    vsig is not None
+                    and vsig.verb is None
+                    and isinstance(vsig.return_type, AlgebraicType)
+                ):
+                    self._used_types.add(vsig.return_type.name)
+                    return vsig.return_type
                 self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
@@ -2919,6 +2930,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Check base type exists
             base = self.symbols.resolve_type(type_expr.name)
             if base is None:
+                # Variant name used as generic type → resolve to parent algebraic
+                vsig = self.symbols.resolve_function_any(type_expr.name)
+                if (
+                    vsig is not None
+                    and vsig.verb is None
+                    and isinstance(vsig.return_type, AlgebraicType)
+                ):
+                    self._used_types.add(vsig.return_type.name)
+                    return vsig.return_type
                 self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)

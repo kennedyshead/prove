@@ -1,8 +1,16 @@
 module Main
-  narrative: """Demonstrates async verb family: detached, attached, listens."""
-  System outputs console
+  narrative: """
+  Demonstrates async verb family: detached, attached, listens.
 
-  type Event is Data(payload String)
+  fire a detached console output
+  listens for attached events in handler and calls double that fire a Data Event, 
+  when Data is recieved we Exit
+  """
+  System outputs console
+  Types reads string
+  Log detached debug
+
+  type Event is Data(payload Integer)
     | Exit
 
 /// Fire and forget — logs a message without waiting.
@@ -11,17 +19,20 @@ from
     console(msg)
 
 /// Spawn and await — doubles an integer.
-attached double(x Integer) Integer
+attached double(x Integer) Data<Integer>
 from
-    x * 2
+    Data(x * 2)
 
 /// Cooperative loop — processes events until Exit.
-listens handler(source Event)
+listens handler(registered_attached_verbs List<Attached>)
+  event_type Event
 from
-    Exit => 0
-    Data(payload) => fire(payload)&
+    Data(payload) =>
+        debug(f"Event double says: {string(payload)} from attached")&
+        Exit()
+    Exit => Unit
 
-main() Unit
+main()
 from
     fire("hello from detached")&
-    fire("async verbs working")&
+    handler([double(2)])&
