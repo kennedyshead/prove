@@ -67,6 +67,7 @@ from prove.ast_nodes import (
     StoreLookupExpr,
     StringInterp,
     StringLit,
+    TodoStmt,
     TripleStringLit,
     TypeBody,
     TypeDef,
@@ -2037,6 +2038,10 @@ class Parser:
 
     def _parse_statement(self) -> Stmt:
         """Parse a statement: var decl, assignment, field assignment, or expression."""
+        # Todo marker: todo or todo "message"
+        if self._at(TokenKind.IDENTIFIER) and self._current().value == "todo":
+            return self._parse_todo_stmt()
+
         # Variable declaration: identifier 'as' Type '=' expr
         if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.AS:
             return self._parse_var_decl()
@@ -2076,6 +2081,13 @@ class Parser:
         value = self._parse_expression(0)
         end = value.span
         return Assignment(name_tok.value, value, self._span(start, end))
+
+    def _parse_todo_stmt(self) -> TodoStmt:
+        tok = self._advance()  # 'todo'
+        message: str | None = None
+        if self._at(TokenKind.STRING_LIT):
+            message = self._advance().value
+        return TodoStmt(message=message, span=tok.span)
 
     # ── Pratt expression parser ──────────────────────────────────
 

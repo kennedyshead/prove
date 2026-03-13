@@ -381,7 +381,13 @@ class CommentStmt:
     span: Span
 
 
-Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, WhileLoop, CommentStmt]
+@dataclass(frozen=True)
+class TodoStmt:
+    message: str | None  # optional: todo "implement credential check"
+    span: Span
+
+
+Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, WhileLoop, CommentStmt, TodoStmt]
 
 
 # ── Function parts ───────────────────────────────────────────────

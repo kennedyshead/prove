@@ -213,6 +213,7 @@ from
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee — has no effect; `prove format` removes it | Info |
 | [I377](diagnostics.md#i377-attached-call-runs-synchronously-outside-listens) | `attached&` outside `listens` — runs synchronously | Info |
 | [I378](diagnostics.md#i378-detached-function-called-without) | `detached` called without `&` — `prove format` will add it | Info |
+| [I601](diagnostics.md#i601-incomplete-implementation-todo) | Function body contains `todo` — incomplete implementation | Info |
 
 ---
 

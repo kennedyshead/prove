@@ -62,6 +62,7 @@ from prove.ast_nodes import (
     StoreLookupExpr,
     StringInterp,
     StringLit,
+    TodoStmt,
     TripleStringLit,
     TypeDef,
     TypeExpr,
@@ -1079,12 +1080,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return
 
         # Check body
+        has_todo = any(isinstance(s, TodoStmt) for s in fd.body)
         body_type = UNIT
         for i, stmt in enumerate(fd.body):
             # W332: warn on unused pure function result (except for last statement)
             if i < len(fd.body) - 1:
                 self._check_unused_pure_result(stmt)
             body_type = self._check_stmt(stmt)
+
+        # I601: function has incomplete implementation (todo)
+        if has_todo:
+            self._info(
+                "I601",
+                f"function '{fd.name}' has incomplete implementation (todo)",
+                fd.span,
+            )
 
         # Track return-position move: if the last expression is an Own-typed
         # identifier, mark it as moved (consumed by the return). This closes
@@ -1964,6 +1974,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return self._infer_expr(stmt.expr)
         if isinstance(stmt, MatchExpr):
             return self._infer_match(stmt)
+        if isinstance(stmt, TodoStmt):
+            return UNIT
         return UNIT
 
     def _check_var_decl(self, vd: VarDecl) -> Type:

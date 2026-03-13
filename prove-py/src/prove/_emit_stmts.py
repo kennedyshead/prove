@@ -23,6 +23,7 @@ from prove.ast_nodes import (
     Stmt,
     TailContinue,
     TailLoop,
+    TodoStmt,
     UnaryExpr,
     WhileLoop,
     ValidExpr,
@@ -365,6 +366,9 @@ class StmtEmitterMixin:
             self._emit_match_stmt(stmt)
         elif isinstance(stmt, CommentStmt):
             pass  # comments don't emit C code
+        elif isinstance(stmt, TodoStmt):
+            msg = stmt.message or self._get_current_function_name() or "not implemented"
+            self._line(f'prove_panic("TODO: {msg}");')
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
         # Dispatch lookup assignment: skip C var, record for lazy dispatch at call site

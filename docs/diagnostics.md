@@ -890,3 +890,13 @@ An `attached` function is called with `&` outside a `listens` body. The call wor
 ### I378 — `detached` function called without `&`
 
 A `detached` function is called without the `&` marker. `detached` is fire-and-forget and should always use `&`. `prove format` will add it.
+
+### I601 — Incomplete implementation (todo)
+
+A function body contains a `todo` placeholder, indicating the implementation is not finished. This is informational only — the function will compile but will panic at runtime if the `todo` path is reached.
+
+```prove
+transforms stub(x Integer) Integer
+from
+    todo "implement hash function"
+```
