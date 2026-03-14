@@ -1,16 +1,15 @@
 module Main
   narrative: """Demonstrates Bytes module operations."""
   System outputs console
-  Bytes types ByteArray
-  Bytes creates byte hex
-  Bytes reads hex at
+  Bytes types ByteArray reads at creates bytearray
+  Parse reads hexadecimal creates hexadecimal
 
-main() Result<Unit, Error>!
+main()
 from
-    data as ByteArray = byte([72, 101, 108, 108, 111])
-    encoded as String = hex(data)
+    data as ByteArray = bytearray([72, 101, 108, 108, 111])
+    encoded as String = hexadecimal(data)
     console(f"hex: {encoded}")
     first as Integer = at(data, 0)
     console(f"first byte: {first}")
-    decoded as ByteArray = hex("48656c6c6f")
-    console(f"decoded hex: {hex(decoded)}")
+    decoded as ByteArray = hexadecimal("48656c6c6f")
+    console(f"decoded hex: {hexadecimal(decoded)}")

@@ -902,13 +902,46 @@ def index(path: str) -> None:
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--update", is_flag=True, help="Only add stubs for new narrative content.")
 @click.option("--dry-run", is_flag=True, help="Preview generated stubs without writing.")
-def generate(path: str, update: bool, dry_run: bool) -> None:
+@click.option(
+    "--from-intent", is_flag=True,
+    help="Generate .prv files from a .intent file instead of narrative.",
+)
+def generate(path: str, update: bool, dry_run: bool, from_intent: bool) -> None:
     """Generate function stubs from module narrative prose.
 
     Uses the body generation engine to produce complete function bodies
     when stdlib matches are available. Falls back to todo stubs for
     functions that require programmer input.
+
+    With --from-intent, generates .prv files from a .intent project file
+    (equivalent to 'prove intent --generate').
     """
+    if from_intent:
+        from prove.intent_generator import generate_project
+        from prove.intent_parser import parse_intent
+
+        target = Path(path)
+        source = target.read_text(encoding="utf-8")
+        result = parse_intent(source, str(target))
+
+        for diag in result.diagnostics:
+            severity = diag.severity.upper()
+            code = f" {diag.code}" if diag.code else ""
+            click.echo(f"{target}:{diag.line}: {severity}{code}: {diag.message}", err=True)
+
+        if result.project is None:
+            click.echo("error: failed to parse intent file", err=True)
+            raise SystemExit(1)
+
+        generated = generate_project(result.project, target.parent, dry_run=dry_run)
+        for filename, src in generated:
+            if dry_run:
+                click.echo(f"--- {filename} ---")
+                click.echo(src)
+            else:
+                click.echo(f"generated {filename}")
+        return
+
     from prove._body_gen import generate_function_source, has_generated_marker
     from prove._generate import generate_stub_function
     from prove._nl_intent import extract_nouns, implied_verbs, pair_verbs_nouns

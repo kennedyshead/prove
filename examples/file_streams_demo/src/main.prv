@@ -1,6 +1,6 @@
 module Main
   narrative: """Demonstrates file streaming: write stdin chunks to a file, then read them back."""
-  System outputs console close line, inputs console line, creates reader writer, types File
+  System types File creates reader writer inputs console line outputs console close line
 
   type ChunkIO is Streaming(handle File)
     | Exit

@@ -580,6 +580,26 @@ class TestProseCoherence:
             '    true\n',
         )
 
+    def test_w501_synonym_in_narrative(self) -> None:
+        # "converts" is a synonym for "transforms" — no W501
+        check_coherence_ok(
+            'module Converter\n'
+            '  narrative: """Converts passwords into hashes."""\n'
+            'transforms hash_password(password String) String\n'
+            'from\n'
+            '    password\n',
+        )
+
+    def test_w501_singular_verb_in_narrative(self) -> None:
+        # "check" (singular) is a synonym for "validates" — no W501
+        check_coherence_ok(
+            'module Auth\n'
+            '  narrative: """Check user credentials."""\n'
+            'validates credential(user String) Boolean\n'
+            'from\n'
+            '    true\n',
+        )
+
     def test_w503_chosen_without_why_not(self) -> None:
         check_coherence_warns(
             'transforms sort(items List<Integer>) List<Integer>\n'

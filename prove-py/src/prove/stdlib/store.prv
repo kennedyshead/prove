@@ -1,18 +1,51 @@
 module Store
   narrative: """Manages lookup tables with storage, versioning, diffs, and compilation. Prove db is more like a key value store where all values are actually keys. For more info read the docs here: https://prove.botwork.se"""
 
+  /// Store is
+  ///   path String
   type Store is binary
 
+  /// StoreTable is
+  ///   name String
+  ///   version Integer
+  ///   column_count Integer
+  ///   column_names List<String>
+  ///   variant_count Integer
+  ///   variant_names List<String>
+  ///   values List<List<String>>
   type StoreTable is binary
 
+  /// TableDiff is
+  ///   added_count Integer
+  ///   added List<DiffVariant>
+  ///   removed_count Integer
+  ///   removed List<DiffVariant>
+  ///   changed_count Integer
+  ///   changed List<DiffChange>
   type TableDiff is binary
 
+  /// Version is
+  ///   number Integer
+  ///   timestamp Integer
+  ///   hash String
   type Version is binary
 
+  /// Conflict is
+  ///   Value(variant String, column String, local_value String, remote_value String)
+  ///   Addition(variant String, local_values List<String>, remote_values List<String>)
+  ///   Schema(base_columns List<String>, changed_columns List<String>)
   type Conflict is binary
 
+  /// Resolution is
+  ///   KeepLocal
+  ///   KeepRemote
+  ///   UseValue(value String)
+  ///   Reject(reason String)
   type Resolution is binary
 
+  /// MergeResult is
+  ///   Merged(table StoreTable)
+  ///   Conflicted(conflicts List<Conflict>)
   type MergeResult is binary
 
 /// Create a new store at the given directory path

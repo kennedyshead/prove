@@ -71,6 +71,16 @@ class TestFormatterBasic:
         )
         assert _roundtrip(source) == source
 
+    def test_doc_comment_with_generated_marker(self):
+        source = (
+            "/// Validates credentials against stored data\n"
+            "/// @generated\n"
+            "validates credentials(value String)\n"
+            "from\n"
+            "    value != \"\"\n"
+        )
+        assert _roundtrip(source) == source
+
     def test_long_signature_groups_params(self):
         """Signatures >90 cols get params grouped one-per-line."""
         source = (
@@ -272,12 +282,45 @@ class TestFormatterImports:
         assert _roundtrip(source) == source
 
     def test_import_verb_groups(self):
+        source = "module Foo\n  System outputs console inputs file\n"
+        expected = "module Foo\n  System inputs file outputs console\n"
+        assert _roundtrip(source) == expected
+
+    def test_import_verb_groups_comma_compat(self):
+        """Commas between verb groups are accepted and stripped by formatter."""
         source = "module Foo\n  System outputs console, inputs file\n"
-        assert _roundtrip(source) == source
+        expected = "module Foo\n  System inputs file outputs console\n"
+        assert _roundtrip(source) == expected
 
     def test_import_types_verb(self):
         source = "module Foo\n  System inputs console file\n"
         assert _roundtrip(source) == source
+
+    def test_import_verb_order(self):
+        """Verb groups are sorted: types > reads > creates > validates > transforms > inputs > outputs."""
+        source = "module Foo\n  Table transforms add validates has types Table Value reads get creates new\n"
+        expected = "module Foo\n  Table types Table Value reads get creates new validates has transforms add\n"
+        assert _roundtrip(source) == expected
+
+    def test_import_multiline_over_line_length(self):
+        """When over MAX_LINE_LENGTH, verb groups split to indented continuation lines."""
+        source = (
+            "module Foo\n"
+            "  Pattern reads search find_all text start end validates test"
+            " transforms replace split join types Match\n"
+        )
+        result = _roundtrip(source)
+        lines = result.split("\n")
+        # First line: module declaration
+        assert lines[0] == "module Foo"
+        # Import should be multi-line with indented continuation
+        import_lines = [l for l in lines[1:] if l.strip()]
+        assert len(import_lines) > 1
+        # First import line starts with module name
+        assert import_lines[0].strip().startswith("Pattern")
+        # Continuation lines are further indented
+        for cont_line in import_lines[1:]:
+            assert cont_line.startswith("    ")  # 2 (module) + 2 (continuation)
 
 
 class TestFormatterConstants:

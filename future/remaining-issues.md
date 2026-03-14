@@ -1,8 +1,12 @@
-# Remaining Issues — Post-Implementation
+# Remaining Issues — Post-Implementation (RESOLVED)
 
 Issues and potential improvements discovered during implementation of
 plans 07-11 (stub generation, stdlib knowledge base, body generation,
 intent format).
+
+**Status:** All actionable issues resolved. Issue #6 (stdlib docstring
+audit) is user work. Issue #7 (LSP .intent support) deferred to
+`future/lsp-intent-support.md`.
 
 ---
 

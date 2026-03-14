@@ -1,8 +1,7 @@
 module Main
   narrative: """Demonstrates Character module operations."""
   System outputs console
-  Character validates alpha digit alnum upper lower space
-  Character reads at
+  Character reads at validates digit alphanumeric uppercase alphabetic whitespace lowercase
 
 main() Result<Unit, Error>!
 from
@@ -11,17 +10,17 @@ from
     num as Character = '5'
     space_char as Character = ' '
     lower_a as Character = 'a'
-    console(f"'A' alpha: {alpha(a)}")
+    console(f"'A' alpha: {alphanumeric(a)}")
     console(f"'A' digit: {digit(a)}")
-    console(f"'A' alnum: {alnum(a)}")
-    console(f"'A' upper: {upper(a)}")
-    console(f"'A' lower: {lower(a)}")
-    console(f"'5' alpha: {alpha(num)}")
+    console(f"'A' alnum: {alphanumeric(a)}")
+    console(f"'A' upper: {uppercase(a)}")
+    console(f"'A' lower: {lowercase(a)}")
+    console(f"'5' alpha: {alphabetic(num)}")
     console(f"'5' digit: {digit(num)}")
-    console(f"'5' alnum: {alnum(num)}")
-    console(f"' ' space: {space(space_char)}")
-    console(f"'a' upper: {upper(lower_a)}")
-    console(f"'a' lower: {lower(lower_a)}")
+    console(f"'5' alnum: {alphanumeric(num)}")
+    console(f"' ' space: {whitespace(space_char)}")
+    console(f"'a' upper: {uppercase(lower_a)}")
+    console(f"'a' lower: {lowercase(lower_a)}")
     text as String = "Hello"
     char_at_0 as Character = at(text, 0)
     char_at_4 as Character = at(text, 4)

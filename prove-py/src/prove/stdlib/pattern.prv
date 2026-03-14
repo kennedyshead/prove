@@ -1,6 +1,10 @@
 module Pattern
   narrative: """Regular expression matching."""
 
+  /// Match is
+  ///   start Integer
+  ///   end Integer
+  ///   text String
   type Match is binary
 
 /// Test if a string matches a regex pattern

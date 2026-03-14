@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates CSV parsing and emission via the Parse module."""
   System outputs console
-  Parse creates csv, validates csv
+  Parse creates csv validates csv
   Sequence reads length
   Types reads string
 

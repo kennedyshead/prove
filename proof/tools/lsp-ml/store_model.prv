@@ -1,6 +1,6 @@
 module StoreModel
   narrative: """Writes trained LSP ML completion model into Store format.
-  InputOutput outputs console
+  System outputs console
 
   Reads data/completions_model.json and data/bigrams_model.json produced
   by scripts/ml_train.py and writes them into data/lsp-ml-store/ using the
@@ -9,7 +9,7 @@ module StoreModel
   Expected to fail: build.
   (Blocked on impl03 loads/saves tests passing.)
   """
-  InputOutput outputs console
+  System outputs console
 
 // TODO: implement once impl03 loads/saves are stable.
 

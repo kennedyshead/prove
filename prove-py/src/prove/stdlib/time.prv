@@ -1,16 +1,34 @@
 module Time
   narrative: """Time representation, arithmetic, and calendar operations."""
 
+  /// Time is
+  ///   seconds Integer
+  ///   nanoseconds Integer
   type Time is binary
 
+  /// Duration is
+  ///   seconds Integer
+  ///   nanoseconds Integer
   type Duration is binary
 
+  /// Date is
+  ///   year Integer
+  ///   month Integer
+  ///   day Integer
   type Date is binary
 
+  /// Clock is
+  ///   hour Integer
+  ///   minute Integer
+  ///   second Integer
   type Clock is binary
 
+  /// DateTime is
+  ///   date Date
+  ///   clock Clock
   type DateTime is binary
 
+  /// Weekday is Integer
   type Weekday is binary
 
 /// Get current time

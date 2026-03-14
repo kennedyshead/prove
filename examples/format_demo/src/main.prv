@@ -1,12 +1,13 @@
 module Main
   narrative: """Demonstrates Format module operations"""
   System outputs console
-  Format transforms hex pad_left pad_right center bin octal decimal
+  Format transforms pad_left pad_right center octal decimal
+  Parse transforms hexadecimal bin
 
 main() Result<Unit, Error>!
 from
     // Hex formatting
-    console(f"hex(255): {hex(255)}")
+    console(f"hex(255): {hexadecimal(255)}")
     // Pad left
     console(f"pad_left('hi', 10): {pad_left("hi", 10, ' ')}")
     // Pad right

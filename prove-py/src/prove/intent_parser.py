@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from prove._nl_intent import normalize_verb
 from prove.intent_ast import (
     ConstraintDecl,
     FlowDecl,
@@ -17,13 +18,6 @@ from prove.intent_ast import (
     VerbPhrase,
     VocabularyEntry,
 )
-
-# Prove verb set (closed — must match the compiler's verb list)
-_PROVE_VERBS = frozenset({
-    "transforms", "validates", "reads", "creates", "matches",
-    "inputs", "outputs",
-    "detached", "attached", "listens", "streams",
-})
 
 
 @dataclass
@@ -216,19 +210,19 @@ def _parse_verb_phrase(
     if not words:
         return None
 
-    verb = words[0].lower()
-    if verb not in _PROVE_VERBS:
+    canonical = normalize_verb(words[0])
+    if canonical is None:
         diags.append(IntentDiagnostic(
             line=lineno,
-            message=f"unrecognized verb '{verb}' in intent",
+            message=f"unrecognized verb '{words[0]}' in intent",
             code="W601",
         ))
         return None
 
-    noun = words[1] if len(words) > 1 else verb
+    noun = words[1] if len(words) > 1 else canonical
     context = " ".join(words[2:]) if len(words) > 2 else ""
 
-    return VerbPhrase(verb=verb, noun=noun, context=context, raw_line=text)
+    return VerbPhrase(verb=canonical, noun=noun, context=context, raw_line=text)
 
 
 def _parse_flow_step(

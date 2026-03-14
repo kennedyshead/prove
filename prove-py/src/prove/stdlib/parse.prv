@@ -1,7 +1,15 @@
 module Parse
   narrative: """Encoding and decoding of structured data formats."""
   Bytes types ByteArray
+  Time types Time Date DateTime Duration
 
+  /// Url is
+  ///   scheme String
+  ///   host String
+  ///   port Integer
+  ///   path String
+  ///   query String
+  ///   fragment String
   type Url is binary
 
 /// Parse a source string into a Value
@@ -84,6 +92,18 @@ binary
 reads port(url Url) Integer
 binary
 
+/// Encode a byte array as a hexadecimal string
+reads hexadecimal(data ByteArray) String
+binary
+
+/// Decode a hexadecimal string to a byte array
+creates hexadecimal(string String) ByteArray
+binary
+
+/// Check if a string is valid hexadecimal
+validates hexadecimal(string String)
+binary
+
 /// Decode a Base64 string into a byte array
 reads base64(encoded String) ByteArray
 binary
@@ -106,4 +126,40 @@ binary
 
 /// Validate a CSV string
 validates csv(source String)
+binary
+
+/// Converts an integer to hexadecimal string.
+transforms hexadecimal(number Integer) String
+binary
+
+/// Converts an integer to binary string.
+transforms bin(number Integer) String
+binary
+
+/// Parse a string into a time using a pattern.
+creates time(source String, pattern String) Time
+binary
+
+/// Check if a string matches a time format.
+validates time(source String, pattern String)
+binary
+
+/// Parse a string into a date using a pattern.
+creates date(source String, pattern String) Date
+binary
+
+/// Check if a string matches a date format.
+validates date(source String, pattern String)
+binary
+
+/// Parse a string into a datetime using a pattern.
+creates datetime(source String, pattern String) DateTime
+binary
+
+/// Check if a string matches a datetime format.
+validates datetime(source String, pattern String)
+binary
+
+/// Parse a string into a duration using a pattern.
+creates duration(source String, pattern String) Duration
 binary

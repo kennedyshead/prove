@@ -503,48 +503,53 @@ class ProveFormatter:
 
     MAX_LINE_LENGTH = 90
 
+    # Canonical ordering for verb groups in import lines.
+    _VERB_ORDER = {
+        "types": 0, "reads": 1, "creates": 2, "validates": 3,
+        "transforms": 4, "inputs": 5, "attached": 6, "outputs": 7,
+        "detached": 8, "streams": 9, "listens": 10,
+    }
+
     def _format_import_decl(self, imp: ImportDecl) -> str | None:
         # Filter out unused import items (W302)
         items = [item for item in imp.items if not self._is_unused_import(item.span)]
         if not items:
             return None  # entire import line is unused
 
-        # Group items by verb, preserving order of first appearance and ensuring unique names.
-        groups: list[tuple[str | None, list[str]]] = []
-        seen_verbs: dict[str | None, int] = {}
+        # Group items by verb, merging duplicates and ensuring unique names.
+        groups: dict[str | None, list[str]] = {}
         for item in items:
-            if item.verb in seen_verbs:
-                idx = seen_verbs[item.verb]
-                if item.name not in groups[idx][1]:
-                    groups[idx][1].append(item.name)
-            else:
-                seen_verbs[item.verb] = len(groups)
-                groups.append((item.verb, [item.name]))
+            if item.verb not in groups:
+                groups[item.verb] = []
+            if item.name not in groups[item.verb]:
+                groups[item.verb].append(item.name)
+
+        # Sort verb groups by canonical order.
+        sorted_groups = sorted(
+            groups.items(),
+            key=lambda kv: self._VERB_ORDER.get(kv[0] or "", 99),
+        )
 
         # Build verb group strings
         group_strings = []
-        for verb, names in groups:
+        for verb, names in sorted_groups:
             if verb:
                 group_strings.append(f"{verb} {' '.join(names)}")
             else:
                 group_strings.append(" ".join(names))
 
-        line = f"{imp.module} {', '.join(group_strings)}"
-        # If within 90 chars, use single line
+        line = f"{imp.module} {' '.join(group_strings)}"
+        # If within line length, use single line
         if len(line) <= self.MAX_LINE_LENGTH:
             return line
 
-        # Over 90 chars: multi-line format with indented continuation
+        # Over line length: multi-line format with indented continuation
         lines = []
-        for i, (verb, names) in enumerate(groups):
-            if verb:
-                group_str = f"{verb} {' '.join(names)}"
-            else:
-                group_str = " ".join(names)
+        for i, gs in enumerate(group_strings):
             if i == 0:
-                lines.append(f"{imp.module} {group_str}")
+                lines.append(f"{imp.module} {gs}")
             else:
-                lines.append(f"  {group_str}")
+                lines.append(f"  {gs}")
 
         return "\n".join(lines)
 

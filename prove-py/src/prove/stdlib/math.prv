@@ -1,5 +1,12 @@
 module Math
-  narrative: """Numeric operations."""
+  narrative: """
+  Numeric operations.
+
+  reads abs, sqrt, floor, ceil, and log of Float and Integer. 
+  round, power Float
+  max, min, clamp of given Integers or Floats
+  transforms clamp of given Integers or Floats
+  """
 
 /// Absolute value of an integer
 reads abs(number Integer) Integer

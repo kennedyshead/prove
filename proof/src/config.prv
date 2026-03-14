@@ -1,6 +1,6 @@
 module Config
   narrative: """Handles config parsing and transforms it to a Config type"""
-  Parse creates toml, validates toml
+  Parse creates toml validates toml
 
   type Package is
     name String

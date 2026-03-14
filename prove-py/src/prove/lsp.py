@@ -24,6 +24,7 @@ from prove.ast_nodes import (
     ModuleDecl,
     TypeDef,
 )
+from prove._nl_intent import VERB_SYNONYMS as _VERB_PROSE_HINTS
 from prove.checker import Checker
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.formatter import ProveFormatter
@@ -244,7 +245,7 @@ class _ProjectIndexer:
                     )
                 elif isinstance(decl, TypeDef):
                     symbols.append(
-                        {"name": decl.name, "verb": "type", "kind": "type",
+                        {"name": decl.name, "verb": "types", "kind": "type",
                          "file": rel, "line": decl.span.start_line, "module": module_name,
                          "signature": "", "docstring": decl.doc_comment or ""}
                     )
@@ -727,17 +728,7 @@ def _extract_context_tokens(source: str, position: lsp.Position, n: int = 2) -> 
 
 _PROSE_BLOCK_KEYWORDS = frozenset({"intent", "chosen", "why_not"})
 
-# English synonyms shown in prose blocks, mapped to the Prove verb they imply.
-_VERB_PROSE_HINTS: dict[str, list[str]] = {
-    "transforms": ["transforms", "converts", "computes", "calculates", "processes"],
-    "validates":  ["validates", "checks", "verifies", "ensures", "guards"],
-    "reads":      ["reads", "fetches", "loads", "retrieves", "queries"],
-    "creates":    ["creates", "builds", "constructs", "generates", "makes"],
-    "matches":    ["matches", "compares", "classifies", "selects"],
-    "outputs":    ["outputs", "writes", "prints", "sends", "emits", "logs"],
-    "inputs":     ["inputs", "receives", "accepts", "parses"],
-    "listens":    ["listens", "monitors", "watches", "waits"],
-}
+# English synonyms shown in prose blocks — shared canonical map from _nl_intent.
 _ALL_PROSE_VERB_WORDS: list[str] = [w for words in _VERB_PROSE_HINTS.values() for w in words]
 
 

@@ -1,8 +1,12 @@
 module Character
-  narrative: """Character classification and access."""
+  narrative: """
+  validates if a character is alphabetic, alphanumeric, digit
+  also validates uppercase, lowercase or if its whitespace
+  reads and gets a character from String at a given index
+  """
 
 /// Checks if a character is alphabetic (a-z, A-Z).
-validates alpha(character Character)
+validates alphabetic(character Character)
 binary
 
 /// Checks if a character is a digit (0-9).
@@ -10,19 +14,19 @@ validates digit(character Character)
 binary
 
 /// Checks if a character is alphanumeric (a-z, A-Z, 0-9).
-validates alnum(character Character)
+validates alphanumeric(character Character)
 binary
 
 /// Checks if a character is uppercase (A-Z).
-validates upper(character Character)
+validates uppercase(character Character)
 binary
 
 /// Checks if a character is lowercase (a-z).
-validates lower(character Character)
+validates lowercase(character Character)
 binary
 
 /// Checks if a character is whitespace.
-validates space(character Character)
+validates whitespace(character Character)
 binary
 
 /// Gets the character at a specific index in a string.

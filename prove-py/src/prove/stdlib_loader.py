@@ -122,12 +122,12 @@ _register_module(
     display="Character",
     prv_file="character.prv",
     c_map={
-        ("validates", "alpha"): "prove_character_alpha",
+        ("validates", "alphabetic"): "prove_character_alpha",
         ("validates", "digit"): "prove_character_digit",
-        ("validates", "alnum"): "prove_character_alnum",
-        ("validates", "upper"): "prove_character_upper",
-        ("validates", "lower"): "prove_character_lower",
-        ("validates", "space"): "prove_character_space",
+        ("validates", "alphanumeric"): "prove_character_alnum",
+        ("validates", "uppercase"): "prove_character_upper",
+        ("validates", "lowercase"): "prove_character_lower",
+        ("validates", "whitespace"): "prove_character_space",
         ("reads", "at"): "prove_character_at",
     },
 )
@@ -193,26 +193,6 @@ _register_module(
 )
 
 _register_module(
-    "error",
-    display="Error",
-    prv_file="error.prv",
-    c_map={
-        ("validates", "ok"): "prove_error_ok",
-        ("validates", "err"): "prove_error_err",
-    },
-    overloads={
-        ("validates", "some", "Option<Integer>"): "prove_error_some_int",
-        ("validates", "some", "Option<String>"): "prove_error_some_str",
-        ("validates", "none", "Option<Integer>"): "prove_error_none_int",
-        ("validates", "none", "Option<String>"): "prove_error_none_str",
-        ("transforms", "unwrap", "Option<Integer>"): "prove_error_unwrap_int",
-        ("transforms", "unwrap", "Option<String>"): "prove_error_unwrap_str",
-        ("reads", "unwrap_or", "Option<Integer>"): "prove_error_unwrap_or_int",
-        ("reads", "unwrap_or", "Option<String>"): "prove_error_unwrap_or_str",
-    },
-)
-
-_register_module(
     "path",
     display="Path",
     prv_file="path.prv",
@@ -235,17 +215,8 @@ _register_module(
         ("transforms", "pad_left"): "prove_format_pad_left",
         ("transforms", "pad_right"): "prove_format_pad_right",
         ("transforms", "center"): "prove_format_center",
-        ("transforms", "hex"): "prove_format_hex",
-        ("transforms", "bin"): "prove_format_binary",
         ("transforms", "octal"): "prove_format_octal",
         ("transforms", "decimal"): "prove_format_decimal",
-        ("creates", "time"): "prove_time_parse_time",
-        ("validates", "time"): "prove_time_validates_time",
-        ("creates", "date"): "prove_time_parse_date",
-        ("validates", "date"): "prove_time_validates_date_str",
-        ("creates", "datetime"): "prove_time_parse_datetime",
-        ("validates", "datetime"): "prove_time_validates_datetime_str",
-        ("creates", "duration"): "prove_time_parse_duration",
     },
     overloads={
         ("transforms", "decimal", "Float"): "prove_format_decimal",
@@ -335,6 +306,8 @@ _register_module(
         ("validates", "object"): "prove_value_is_object",
         ("validates", "null"): "prove_value_is_null",
         ("validates", "value"): "prove_validates_value",
+        ("validates", "ok"): "prove_error_ok",
+        ("validates", "error"): "prove_error_err",
     },
     overloads={
         ("creates", "integer", "String"): "prove_convert_integer_str",
@@ -345,6 +318,14 @@ _register_module(
         ("reads", "string", "Float"): "prove_convert_string_float",
         ("reads", "string", "Boolean"): "prove_convert_string_bool",
         ("creates", "character", "Integer"): "prove_convert_character",
+        ("validates", "value", "Option<Integer>"): "prove_error_some_int",
+        ("validates", "value", "Option<String>"): "prove_error_some_str",
+        ("validates", "unit", "Option<Integer>"): "prove_error_none_int",
+        ("validates", "unit", "Option<String>"): "prove_error_none_str",
+        ("transforms", "unwrap", "Option<Integer>"): "prove_error_unwrap_int",
+        ("transforms", "unwrap", "Option<String>"): "prove_error_unwrap_str",
+        ("reads", "unwrap", "Option<Integer>"): "prove_error_unwrap_or_int",
+        ("reads", "unwrap", "Option<String>"): "prove_error_unwrap_or_str",
     },
 )
 
@@ -451,16 +432,13 @@ _register_module(
     display="Bytes",
     prv_file="bytes.prv",
     c_map={
-        ("creates", "byte"): "prove_bytes_create",
-        ("validates", "byte"): "prove_bytes_validates",
-        ("validates", "hex"): "prove_bytes_hex_validates",
-        ("validates", "at"): "prove_bytes_at_validates",
+        ("creates", "bytearray"): "prove_bytes_create",
+        ("validates", "bytearray"): "prove_bytes_validates",
+        ("validates", "exist"): "prove_bytes_at_validates",
     },
     overloads={
-        ("reads", "slice", "ByteArray"): "prove_bytes_slice",
-        ("creates", "slice", "ByteArray"): "prove_bytes_concat",
-        ("reads", "hex", "ByteArray"): "prove_bytes_hex_encode",
-        ("creates", "hex", "String"): "prove_bytes_hex_decode",
+        ("reads", "bytearray", "ByteArray"): "prove_bytes_slice",
+        ("transforms", "bytearray", "ByteArray"): "prove_bytes_concat",
         ("reads", "at", "ByteArray"): "prove_bytes_at",
     },
 )
@@ -488,6 +466,9 @@ _register_module(
         ("creates", "url"): "prove_parse_url_create",
         ("validates", "url"): "prove_parse_url_validates",
         ("transforms", "url"): "prove_parse_url_transform",
+        ("reads", "hexadecimal"): "prove_bytes_hex_encode",
+        ("creates", "hexadecimal"): "prove_bytes_hex_decode",
+        ("validates", "hexadecimal"): "prove_bytes_hex_validates",
         ("reads", "base64"): "prove_parse_base64_decode",
         ("creates", "base64"): "prove_parse_base64_encode",
         ("validates", "base64"): "prove_parse_base64_validates",
@@ -496,6 +477,15 @@ _register_module(
         ("validates", "csv"): "prove_validates_csv",
         ("reads", "host"): "prove_parse_url_host_reads",
         ("reads", "port"): "prove_parse_url_port_reads",
+        ("transforms", "hexadecimal"): "prove_format_hex",
+        ("transforms", "bin"): "prove_format_binary",
+        ("creates", "time"): "prove_time_parse_time",
+        ("validates", "time"): "prove_time_validates_time",
+        ("creates", "date"): "prove_time_parse_date",
+        ("validates", "date"): "prove_time_validates_date_str",
+        ("creates", "datetime"): "prove_time_parse_datetime",
+        ("validates", "datetime"): "prove_time_validates_datetime_str",
+        ("creates", "duration"): "prove_time_parse_duration",
     },
 )
 

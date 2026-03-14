@@ -1,16 +1,13 @@
 module Main
   narrative: """Demonstrates Parse module URL and Base64 operations."""
   System outputs console
-  Parse reads url
-  Parse creates base64
-  Parse types Url
-  Bytes creates byte
-  Bytes types ByteArray
+  Parse types Url reads url creates base64
+  Bytes types ByteArray creates bytearray
 
 main() Result<Unit, Error>!
 from
     parsed as Url = url("https://example.com/path?q=1")
     console("parsed URL ok")
-    data as ByteArray = byte([72, 101, 108, 108, 111])
+    data as ByteArray = bytearray([72, 101, 108, 108, 111])
     encoded as String = base64(data)
     console("base64: " + encoded)

@@ -1,5 +1,9 @@
 module Hash
-  narrative: """Cryptographic hashing and verification."""
+  narrative: """
+  Cryptographic hashing and verification.
+
+  creates reads and validates sha256 sha512 blake3 and hmac signatures
+  """
   Bytes types ByteArray
 
 /// Hash a byte array to SHA-256 digest

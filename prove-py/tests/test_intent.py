@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from prove.intent_ast import IntentModule, IntentProject, VerbPhrase, VocabularyEntry
+from prove.intent_ast import (
+    ConstraintDecl, FlowDecl, FlowStep, IntentModule, IntentProject, VerbPhrase, VocabularyEntry,
+)
 from prove.intent_generator import check_intent_coverage, generate_module_source
 from prove.intent_parser import parse_intent
 
@@ -122,6 +124,63 @@ project Minimal
         assert result.project.name == "Minimal"
         assert result.project.modules == []
 
+    def test_singular_verb_accepted(self) -> None:
+        """Singular form 'transform' should normalize to 'transforms'."""
+        source = """\
+project Test
+  purpose: test
+  module Converter
+    transform data into hashes
+"""
+        result = parse_intent(source)
+        assert result.project is not None
+        assert len(result.project.modules[0].intents) == 1
+        vp = result.project.modules[0].intents[0]
+        assert vp.verb == "transforms"
+        assert vp.raw_line == "transform data into hashes"
+        # No W601 warning
+        assert not any(d.code == "W601" for d in result.diagnostics)
+
+    def test_synonym_verb_accepted(self) -> None:
+        """Synonym 'convert' should normalize to 'transforms'."""
+        source = """\
+project Test
+  purpose: test
+  module Converter
+    convert passwords into hashes
+"""
+        result = parse_intent(source)
+        assert result.project is not None
+        assert len(result.project.modules[0].intents) == 1
+        vp = result.project.modules[0].intents[0]
+        assert vp.verb == "transforms"
+        assert vp.raw_line == "convert passwords into hashes"
+        assert not any(d.code == "W601" for d in result.diagnostics)
+
+    def test_synonym_check_normalizes_to_validates(self) -> None:
+        source = """\
+project Test
+  purpose: test
+  module Auth
+    check credentials against stored data
+"""
+        result = parse_intent(source)
+        assert result.project is not None
+        vp = result.project.modules[0].intents[0]
+        assert vp.verb == "validates"
+
+    def test_synonym_fetch_normalizes_to_reads(self) -> None:
+        source = """\
+project Test
+  purpose: test
+  module Loader
+    fetch records from database
+"""
+        result = parse_intent(source)
+        assert result.project is not None
+        vp = result.project.modules[0].intents[0]
+        assert vp.verb == "reads"
+
 
 class TestIntentGenerator:
     def test_generate_module_source(self) -> None:
@@ -146,6 +205,174 @@ class TestIntentGenerator:
         project = IntentProject(name="P", purpose="test", domain="Finance")
         source = generate_module_source(module, project)
         assert "domain: Finance" in source
+
+    def test_generate_with_vocabulary_types(self) -> None:
+        module = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="credentials",
+                    context="against stored credential data",
+                    raw_line="validates credentials against stored credential data",
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Credential", description="user identity paired with secret"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        # Vocabulary type should be used as parameter type
+        assert "Credential" in source
+        # Should not use hardcoded (value String) fallback
+        assert "(value String) String" not in source
+
+    def test_generate_with_flow_imports(self) -> None:
+        auth_mod = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(
+                    verb="creates",
+                    noun="sessions",
+                    context="for authenticated users",
+                    raw_line="creates sessions for authenticated users",
+                ),
+            ],
+        )
+        session_mod = IntentModule(
+            name="SessionManager",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="sessions",
+                    context="for expiry",
+                    raw_line="validates sessions for expiry",
+                ),
+            ],
+        )
+        flow = FlowDecl(
+            steps=[
+                FlowStep(
+                    module="Auth",
+                    verb_phrase=VerbPhrase(
+                        verb="creates", noun="sessions",
+                        context="", raw_line="creates sessions",
+                    ),
+                ),
+                FlowStep(
+                    module="SessionManager",
+                    verb_phrase=VerbPhrase(
+                        verb="validates", noun="sessions",
+                        context="", raw_line="validates sessions",
+                    ),
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            modules=[auth_mod, session_mod],
+            flows=[flow],
+        )
+        auth_source = generate_module_source(auth_mod, project)
+        session_source = generate_module_source(session_mod, project)
+        # Auth flows to SessionManager, so Auth should import SessionManager
+        assert "use SessionManager" in auth_source
+        # SessionManager flows from Auth, so it should import Auth
+        assert "use Auth" in session_source
+
+    def test_constraint_mapping(self) -> None:
+        module = IntentModule(
+            name="Validator",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="input",
+                    context="data",
+                    raw_line="validates input data",
+                ),
+            ],
+        )
+        # Test "must use" pattern
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="must use Argon2 for hashing"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert 'chosen: "Argon2"' in source
+
+    def test_constraint_failable(self) -> None:
+        module = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="credentials",
+                    context="",
+                    raw_line="validates credentials",
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="all credential operations are failable"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "!" in source
+
+    def test_constraint_bounded(self) -> None:
+        module = IntentModule(
+            name="Limiter",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="rate",
+                    context="",
+                    raw_line="validates rate",
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="rates have bounded values"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "ensures:" in source
+
+    def test_constraint_requires(self) -> None:
+        module = IntentModule(
+            name="Validator",
+            intents=[
+                VerbPhrase(
+                    verb="validates",
+                    noun="entries",
+                    context="",
+                    raw_line="validates entries",
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="all entries must be non-empty"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "requires:" in source
 
 
 class TestIntentCoverage:

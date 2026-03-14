@@ -3,7 +3,7 @@ module Source
   Reads all source content through dir inputs,
   """
   Config types Config
-  System inputs dir file, validates file
+  System validates file inputs dir file
   Text validates ends
 
   type SourceFile is
