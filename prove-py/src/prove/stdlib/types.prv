@@ -85,10 +85,40 @@ binary
 validates object(value Value)
 binary
 
+// TODO: Rename to unit
+
 /// Check if a Value is null
 validates null(value Value)
 binary
 
 /// Validate a source string
 validates value(source Source)
+binary
+
+/// Check if a Result have a Value to unwrap
+validates ok(result Result<Value, Error>)
+binary
+
+/// Check if a Result have an Error to unwrap
+validates error(result Result<Value, Error>)
+binary
+
+/// Check if an Option is a Value and not Unit
+validates value(option Option<Value>)
+binary
+
+/// Check if an Option is a Unit
+validates unit(option Option<Value>)
+binary
+
+/// Unwrap an Option or return a default integer
+reads unwrap(option Option<Integer>, default Integer) Integer
+binary
+
+/// Unwrap an Option or return a default string
+reads unwrap(option Option<String>, default String) String
+binary
+
+/// Unwrap an Option, returning the inner value
+transforms unwrap(option Option<Value>) Value
 binary

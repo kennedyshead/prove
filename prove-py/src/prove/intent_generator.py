@@ -6,12 +6,110 @@ module declarations, type stubs, and function stubs/bodies.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
-from prove._body_gen import generate_function_source
-from prove._generate import generate_module
-from prove._nl_intent import FunctionStub
-from prove.intent_ast import ConstraintDecl, IntentModule, IntentProject, VocabularyEntry
+from prove._body_gen import _format_type, find_stdlib_matches, generate_function_source
+from prove._nl_intent import _VERB_PARAM_HINTS, _VERB_RETURN_DEFAULTS, extract_nouns
+from prove.intent_ast import (
+    ConstraintDecl,
+    FlowDecl,
+    IntentModule,
+    IntentProject,
+    VerbPhrase,
+    VocabularyEntry,
+)
+
+
+def _infer_params_from_vocab(
+    intent: VerbPhrase,
+    vocabulary: list[VocabularyEntry],
+) -> tuple[list[str], list[str], str]:
+    """Infer parameter names, types, and return type from vocabulary and stdlib.
+
+    Strategy:
+    1. Try stdlib match — use its parameter signature
+    2. Check if vocabulary type names appear in context — use as param type
+    3. Fall back to verb-based defaults
+    """
+    declaration_text = f"{intent.verb} {intent.noun} {intent.context}".strip()
+    nouns = extract_nouns(declaration_text)
+
+    # 1. Try stdlib match
+    matches = find_stdlib_matches(intent.verb, nouns)
+    if matches:
+        best = matches[0]
+        fn = best.function
+        if fn.param_names and fn.param_types:
+            return (
+                list(fn.param_names),
+                [_format_type(t) for t in fn.param_types],
+                _format_type(fn.return_type),
+            )
+
+    # 2. Check vocabulary names in context
+    context_lower = f"{intent.noun} {intent.context}".lower()
+    for v in vocabulary:
+        if v.name.lower() in context_lower:
+            param_name = v.name[0].lower() + v.name[1:]
+            return_type = _VERB_RETURN_DEFAULTS.get(intent.verb, "String")
+            return [param_name], [v.name], return_type
+
+    # 3. Fall back to verb defaults
+    hints = _VERB_PARAM_HINTS.get(intent.verb, [("value", "String")])
+    param_names = [h[0] for h in hints] if hints else ["value"]
+    param_types = [h[1] for h in hints] if hints else ["String"]
+    return_type = _VERB_RETURN_DEFAULTS.get(intent.verb, "String")
+    return param_names, param_types, return_type
+
+
+def _map_constraint(
+    constraint: ConstraintDecl,
+) -> dict[str, str | bool]:
+    """Map constraint text to code features.
+
+    Returns a dict with recognized features:
+    - can_fail: bool — failable constraint
+    - chosen: str — "must use X" pattern
+    - ensures: str — bounded/negative constraint
+    - requires: str — "all ... must" pattern
+    """
+    result: dict[str, str | bool] = {}
+    text = constraint.text
+    text_lower = text.lower()
+
+    if "failable" in text_lower:
+        result["can_fail"] = True
+
+    m = re.search(r"must use (\w+)", text, re.IGNORECASE)
+    if m:
+        result["chosen"] = m.group(1)
+
+    if "bounded" in text_lower:
+        result["ensures"] = "value is within bounds"
+
+    if re.search(r"no\b.+\bappears? in\b", text, re.IGNORECASE):
+        result["ensures"] = "excluded values are absent"
+
+    if re.search(r"all\b.+\bmust\b", text, re.IGNORECASE):
+        result["requires"] = "all elements satisfy constraint"
+
+    return result
+
+
+def _collect_flow_imports(
+    module: IntentModule,
+    flows: list[FlowDecl],
+) -> list[str]:
+    """Collect module names that this module should import based on flows."""
+    imports: set[str] = set()
+    for flow in flows:
+        module_steps = [s for s in flow.steps if s.module == module.name]
+        if module_steps:
+            for step in flow.steps:
+                if step.module != module.name:
+                    imports.add(step.module)
+    return sorted(imports)
 
 
 def generate_module_source(
@@ -39,6 +137,13 @@ def generate_module_source(
         lines.append(f'  narrative: """{narrative.capitalize()}"""')
     lines.append("")
 
+    # Imports from flow declarations
+    flow_imports = _collect_flow_imports(module, project.flows)
+    for imp in flow_imports:
+        lines.append(f"use {imp}")
+    if flow_imports:
+        lines.append("")
+
     # Vocabulary types used by this module
     vocab_types = _find_vocab_references(module, project.vocabulary)
     if vocab_types:
@@ -50,12 +155,19 @@ def generate_module_source(
     # Constraints that apply to this module
     module_constraints = _find_module_constraints(module, project.constraints)
 
+    # Map all constraints to code features
+    constraint_features: dict[str, str | bool] = {}
+    for c in module_constraints:
+        constraint_features.update(_map_constraint(c))
+
+    failable = bool(constraint_features.get("can_fail"))
+    chosen = constraint_features.get("chosen")
+
     # Generate functions from verb phrases
     for intent in module.intents:
-        # Determine if failable from constraints
-        failable = any(
-            "failable" in c.text.lower()
-            for c in module_constraints
+        # Infer parameters from vocabulary and stdlib
+        param_names, param_types, return_type = _infer_params_from_vocab(
+            intent, project.vocabulary,
         )
 
         # Build the function
@@ -63,12 +175,41 @@ def generate_module_source(
         source = generate_function_source(
             verb=intent.verb,
             name=intent.noun,
-            param_names=["value"],
-            param_types=["String"],
-            return_type="String",
+            param_names=param_names,
+            param_types=param_types,
+            return_type=return_type,
             declaration_text=declaration_text,
             can_fail=failable,
         )
+
+        # Inject constraint annotations into generated source
+        if chosen and isinstance(chosen, str):
+            # Insert chosen annotation before the from block
+            source_lines = source.split("\n")
+            for i, line in enumerate(source_lines):
+                if line.strip() == "from":
+                    source_lines.insert(i, f'  chosen: "{chosen}"')
+                    break
+            source = "\n".join(source_lines)
+
+        if "ensures" in constraint_features:
+            ensures_text = constraint_features["ensures"]
+            source_lines = source.split("\n")
+            for i, line in enumerate(source_lines):
+                if line.strip() == "from":
+                    source_lines.insert(i, f"  ensures: {ensures_text}")
+                    break
+            source = "\n".join(source_lines)
+
+        if "requires" in constraint_features:
+            requires_text = constraint_features["requires"]
+            source_lines = source.split("\n")
+            for i, line in enumerate(source_lines):
+                if line.strip() == "from":
+                    source_lines.insert(i, f"  requires: {requires_text}")
+                    break
+            source = "\n".join(source_lines)
+
         lines.append(source)
         lines.append("")
 

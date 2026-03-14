@@ -1,12 +1,12 @@
 module Main
   narrative: """Demonstrates Store module operations: creating stores, saving/loading tables, computing diffs and patches, integrity hashing, merge, and subprocess compilation."""
-  System outputs console, inputs system, types ProcessResult
-  Store outputs store table add
-    inputs table version
+  System types ProcessResult inputs system outputs console
+  Store types Store StoreTable TableDiff MergeResult Version
+    reads integrity merged
     validates store table merged
     transforms diff patch merge
-    reads integrity merged
-    types Store StoreTable TableDiff MergeResult Version
+    inputs table version
+    outputs store table add
 
   type Color:[Lookup] is String | Integer
     runtime

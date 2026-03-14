@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from prove._nl_intent import body_tokens, implied_verbs, prose_overlaps
+from prove._nl_intent import (
+    VERB_SYNONYMS,
+    body_tokens,
+    extract_nouns,
+    implied_verbs,
+    normalize_verb,
+    prose_overlaps,
+)
 from prove.ast_nodes import FunctionDef
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -121,3 +128,86 @@ class TestBodyTokens:
         tokens = body_tokens(fd)
         # No params, no calls — may be empty or contain literal-related names
         assert isinstance(tokens, set)
+
+
+class TestNormalizeVerb:
+    """Tests for normalize_verb() canonical lookup."""
+
+    def test_canonical_verbs_return_themselves(self) -> None:
+        for verb in VERB_SYNONYMS:
+            assert normalize_verb(verb) == verb
+
+    def test_singular_forms(self) -> None:
+        assert normalize_verb("transform") == "transforms"
+        assert normalize_verb("validate") == "validates"
+        assert normalize_verb("read") == "reads"
+        assert normalize_verb("create") == "creates"
+        assert normalize_verb("match") == "matches"
+        assert normalize_verb("output") == "outputs"
+        assert normalize_verb("input") == "inputs"
+        assert normalize_verb("listen") == "listens"
+        assert normalize_verb("detach") == "detached"
+        assert normalize_verb("attach") == "attached"
+        assert normalize_verb("stream") == "streams"
+
+    def test_common_synonyms(self) -> None:
+        assert normalize_verb("convert") == "transforms"
+        assert normalize_verb("check") == "validates"
+        assert normalize_verb("fetch") == "reads"
+        assert normalize_verb("build") == "creates"
+        assert normalize_verb("compare") == "matches"
+        assert normalize_verb("write") == "outputs"
+        assert normalize_verb("receive") == "inputs"
+        assert normalize_verb("monitor") == "listens"
+        assert normalize_verb("spawn") == "detached"
+        assert normalize_verb("await") == "attached"
+        assert normalize_verb("poll") == "streams"
+
+    def test_unrecognized_returns_none(self) -> None:
+        assert normalize_verb("foobar") is None
+        assert normalize_verb("") is None
+
+    def test_case_insensitive(self) -> None:
+        assert normalize_verb("TRANSFORM") == "transforms"
+        assert normalize_verb("Convert") == "transforms"
+
+
+class TestImpliedVerbsSynonyms:
+    """Synonym-specific tests for implied_verbs()."""
+
+    def test_singular_form_in_prose(self) -> None:
+        assert "transforms" in implied_verbs("transform the data")
+
+    def test_synonym_in_prose(self) -> None:
+        assert "transforms" in implied_verbs("convert the input to output")
+        assert "validates" in implied_verbs("check user credentials")
+        assert "reads" in implied_verbs("fetch records from database")
+        assert "creates" in implied_verbs("build a new session")
+
+    def test_all_synonym_forms(self) -> None:
+        """Every word in VERB_SYNONYMS should be recognized by implied_verbs."""
+        for verb, synonyms in VERB_SYNONYMS.items():
+            for syn in synonyms:
+                result = implied_verbs(syn)
+                assert verb in result, f"'{syn}' should imply '{verb}'"
+
+
+class TestExtractNounsSynonyms:
+    """Synonym-specific tests for extract_nouns()."""
+
+    def test_filters_verb_synonyms(self) -> None:
+        nouns = extract_nouns("convert the data into results")
+        assert "convert" not in nouns
+        assert "data" in nouns
+        assert "results" in nouns
+
+    def test_filters_singular_verb_forms(self) -> None:
+        nouns = extract_nouns("transform credentials and validate them")
+        assert "transform" not in nouns
+        assert "validate" not in nouns
+        assert "credentials" in nouns
+
+    def test_preserves_domain_nouns(self) -> None:
+        nouns = extract_nouns("hash the password using argon2")
+        assert "password" in nouns
+        assert "argon2" in nouns

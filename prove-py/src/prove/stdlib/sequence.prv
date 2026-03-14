@@ -153,6 +153,8 @@ binary
 transforms map(arr Array<Integer>, f Function<Integer, Integer>) Array<Integer>
 binary
 
+// TODO: Function == Verb
+
 /// Accumulate elements with function, starting from initial value
 reads reduce(
     arr Array<Boolean>,
@@ -160,6 +162,8 @@ reads reduce(
     f Function<Boolean, Boolean, Boolean>
 ) Boolean
 binary
+
+// TODO: Function == Verb
 
 /// Accumulate elements with function, starting from initial value
 reads reduce(

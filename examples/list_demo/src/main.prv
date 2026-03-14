@@ -2,12 +2,12 @@ module Main
   narrative: """Demonstrates List module operations"""
   System outputs console
   Sequence reads first last length index
-    validates empty contains
     creates range
+    validates empty contains
     transforms slice reverse sort
-  Error transforms unwrap
   Parse reads text
   Text transforms join
+  Types reads unwrap
 
 main() Result<Unit, Error>!
 from

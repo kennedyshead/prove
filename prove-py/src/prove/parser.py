@@ -1179,9 +1179,12 @@ class Parser:
         while True:
             group = self._parse_import_group(seen_verbs)
             items.extend(group)
-            if not self._at(TokenKind.COMMA):
+            # Accept optional comma for backwards compat, but don't require it.
+            if self._at(TokenKind.COMMA):
+                self._advance()
+            # Continue if next token is a verb (next verb group on same line).
+            if self._current().kind not in _IMPORT_VERBS:
                 break
-            self._advance()
 
         # Handle indented continuation verb groups (multi-line import)
         if self._at(TokenKind.NEWLINE) and self._peek(1).kind == TokenKind.INDENT:

@@ -1,8 +1,8 @@
 module Main
   narrative: """Read a TOML file and print its content."""
-  System inputs file, outputs console
-  Parse reads object toml, types Value
-  Table reads keys, types Table
+  System inputs file outputs console
+  Parse types Value reads object toml
+  Table types Table reads keys
   Text transforms join
 
 main() Result<Unit, Error>!

@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates pattern matching on Result type."""
   System outputs console
-  Parse creates json, reads text
+  Parse reads text creates json
 
 main() Unit
 from

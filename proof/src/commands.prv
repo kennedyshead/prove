@@ -10,7 +10,7 @@ module Commands
   Log detached info
   List validates contains
   System outputs console
-  Source inputs source, types SourceFile
+  Source types SourceFile inputs source
 
   HELP_BUILD_TEXT as String = comptime
       read("static/help_build.txt")

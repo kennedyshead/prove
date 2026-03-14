@@ -1,40 +1,40 @@
 module Bytes
-  narrative: """Byte sequence manipulation."""
+  narrative: """
+  Byte and ByteArray manipulation.
 
+  Create ByteArray from integers, validates ByteArray to make sure they contain any value. 
+  Reads slice of ByteArray with start and length, Concats 2 ByteArrray and transforms a new.
+  Reads and encode ByteArray to hex String, decodes and creates a ByteArray from a hex String.
+  Validates if a string is a hex.
+  Reads a Byte at a specific index in a ByteArray, 
+  validates that an index exist in a ByteArray.
+  """
+
+  /// ByteArray is
+  ///   length Integer
+  ///   data List<Byte>
   type ByteArray is binary
 
 /// Create a byte array from a list of integers
-creates byte(values List<Integer>) ByteArray
+creates bytearray(values List<Integer>) ByteArray
 binary
 
 /// Check if a byte array is empty
-validates byte(data ByteArray)
+validates bytearray(data ByteArray)
 binary
 
-/// Extract a sub-range of bytes
-reads slice(data ByteArray, start Integer, length Integer) ByteArray
+/// Extract a sub-range of bytes and return a new ByteArray
+reads bytearray(data ByteArray, start Integer, length Integer) ByteArray
 binary
 
-/// Concatenate two byte arrays
-creates slice(first ByteArray, second ByteArray) ByteArray
+/// Concatenate two byte arrays and return a new combined ByteArray
+transforms bytearray(first ByteArray, second ByteArray) ByteArray
 binary
 
-/// Encode a byte array as a hex string
-reads hex(data ByteArray) String
-binary
-
-/// Decode a hex string to a byte array
-creates hex(source String) ByteArray
-binary
-
-/// Check if a string is valid hex
-validates hex(source String)
-binary
-
-/// Read byte at index
+/// Read byte at a specified index in a ByteArray
 reads at(data ByteArray, index Integer) Integer
 binary
 
-/// Check if index is within bounds
-validates at(data ByteArray, index Integer)
+/// Check if index exists in a ByteArray
+validates exist(data ByteArray, index Integer)
 binary

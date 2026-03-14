@@ -1,5 +1,13 @@
 module Format
-  narrative: """String formatting and numeric display."""
+  narrative: """
+  String formatting and numeric display.
+  Transforms a string and adds padding to the left to a given width.
+  Transforms a string and adds padding to the right to a given width.
+  Center a string and adds the whitespace even to the sides
+  Takes an integer and transforms it to an octal String. 
+  Add or remove decimal accuracy to a Float or Decimal 
+  Formats time, date, datetime and duration
+  """
   Time types Time Date DateTime Duration
 
 /// Pads a string on the left to reach the specified width.
@@ -12,14 +20,6 @@ binary
 
 /// Centers a string within the specified width.
 transforms center(text String, width Integer, fill Character) String
-binary
-
-/// Converts an integer to hexadecimal string.
-transforms hex(number Integer) String
-binary
-
-/// Converts an integer to binary string.
-transforms bin(number Integer) String
 binary
 
 /// Converts an integer to octal string.
@@ -38,42 +38,14 @@ binary
 transforms time(time Time, pattern String) String
 binary
 
-/// Parse a string into a time using a pattern.
-creates time(source String, pattern String) Time
-binary
-
-/// Check if a string matches a time format.
-validates time(source String, pattern String)
-binary
-
 /// Format a date as a string using a pattern.
 transforms date(date Date, pattern String) String
-binary
-
-/// Parse a string into a date using a pattern.
-creates date(source String, pattern String) Date
-binary
-
-/// Check if a string matches a date format.
-validates date(source String, pattern String)
 binary
 
 /// Format a datetime as a string using a pattern.
 transforms datetime(datetime DateTime, pattern String) String
 binary
 
-/// Parse a string into a datetime using a pattern.
-creates datetime(source String, pattern String) DateTime
-binary
-
-/// Check if a string matches a datetime format.
-validates datetime(source String, pattern String)
-binary
-
 /// Format a duration as a string using a pattern.
 transforms duration(duration Duration, pattern String) String
-binary
-
-/// Parse a string into a duration using a pattern.
-creates duration(source String, pattern String) Duration
 binary

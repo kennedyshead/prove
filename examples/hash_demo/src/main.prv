@@ -2,7 +2,8 @@ module Main
   narrative: """Demonstrates Hash module operations"""
   System outputs console
   Hash creates hmac sha256 sha512 blake3
-  Bytes types ByteArray, creates hex, reads hex
+  Bytes types ByteArray
+  Parse reads hexadecimal creates hexadecimal
 
 main() Result<Unit, Error>!
 from
@@ -16,8 +17,8 @@ from
     console(f"blake3('hello'): {b3}")
     // HMAC
     mac as ByteArray = hmac(ByteArray("message"), ByteArray("key"))
-    console(f"hmac: {hex(mac)}")
+    console(f"hmac: {hexadecimal(mac)}")
     // ByteArray hashing
-    data as ByteArray = hex("deadbeef")
+    data as ByteArray = hexadecimal("deadbeef")
     bh256 as ByteArray = sha256(data)
     console("sha256 of bytes: done")

@@ -1,10 +1,7 @@
 module Main
   narrative: """Demonstrates Array<T> - fixed-size unboxed arrays."""
   System outputs console
-  Array creates array
-  Array reads get
-  Array transforms set
-  Array reads length
+  Array reads length get creates array transforms set
 
 main() Result<Unit, Error>!
 from

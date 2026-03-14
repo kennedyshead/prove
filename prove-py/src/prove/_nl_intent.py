@@ -15,21 +15,41 @@ if TYPE_CHECKING:
 
     from prove.ast_nodes import FunctionDef
 
-# Each entry: (regex pattern, prove_verb_keyword)
-# Patterns match word stems — checked against individual lowercased words.
-_PROSE_STEMS: list[tuple[str, str]] = [
-    (r"transform|convert|comput|calculat|process|produc", "transforms"),
-    (r"validat|check|verif|ensur|guard", "validates"),
-    (r"\bread|fetch|load|retriev|queri", "reads"),
-    (r"creat|make|build|construct|generat", "creates"),
-    (r"match|compar|classif|select", "matches"),
-    (r"output|write|print|send|emit|log|display", "outputs"),
-    (r"input|receiv|accept|pars|tak", "inputs"),
-    (r"listen|watch|monitor|wait", "listens"),
-    (r"detach|fire|spawn|fork|background", "detached"),
-    (r"attach|await|join|child|worker", "attached"),
-    (r"stream|block|poll|loop", "streams"),
-]
+# ── Verb synonym map ────────────────────────────────────────────
+# Canonical Prove verb → all recognized prose synonyms (including singular forms).
+VERB_SYNONYMS: dict[str, list[str]] = {
+    "transforms": ["transforms", "transform", "converts", "convert", "computes", "compute",
+                    "calculates", "calculate", "processes", "process", "produces", "produce"],
+    "validates":  ["validates", "validate", "checks", "check", "verifies", "verify",
+                    "ensures", "ensure", "guards", "guard"],
+    "reads":      ["reads", "read", "fetches", "fetch", "loads", "load",
+                    "retrieves", "retrieve", "queries", "query"],
+    "creates":    ["creates", "create", "makes", "make", "builds", "build",
+                    "constructs", "construct", "generates", "generate"],
+    "matches":    ["matches", "match", "compares", "compare", "classifies", "classify",
+                    "selects", "select"],
+    "outputs":    ["outputs", "output", "writes", "write", "prints", "print",
+                    "sends", "send", "emits", "emit", "logs", "log", "displays", "display"],
+    "inputs":     ["inputs", "input", "receives", "receive", "accepts", "accept",
+                    "parses", "parse", "takes", "take"],
+    "listens":    ["listens", "listen", "monitors", "monitor", "watches", "watch",
+                    "waits", "wait"],
+    "detached":   ["detached", "detach", "fires", "fire", "spawns", "spawn",
+                    "forks", "fork", "backgrounds", "background"],
+    "attached":   ["attached", "attach", "awaits", "await", "joins", "join",
+                    "child", "worker"],
+    "streams":    ["streams", "stream", "blocks", "block", "polls", "poll",
+                    "loops", "loop"],
+}
+
+_SYNONYM_TO_VERB: dict[str, str] = {
+    syn: verb for verb, syns in VERB_SYNONYMS.items() for syn in syns
+}
+
+
+def normalize_verb(word: str) -> str | None:
+    """Return canonical verb for a synonym/singular, or None if not recognized."""
+    return _SYNONYM_TO_VERB.get(word.lower())
 
 
 def implied_verbs(text: str) -> set[str]:
@@ -37,10 +57,9 @@ def implied_verbs(text: str) -> set[str]:
     words = re.findall(r"[a-z]+", text.lower())
     result: set[str] = set()
     for word in words:
-        for pattern, verb in _PROSE_STEMS:
-            if re.search(pattern, word):
-                result.add(verb)
-                break
+        canonical = _SYNONYM_TO_VERB.get(word)
+        if canonical is not None:
+            result.add(canonical)
     return result
 
 
@@ -120,13 +139,8 @@ def extract_nouns(text: str) -> list[str]:
         low = word.lower()
         if low in _NOUN_STOPS or low in seen or len(low) < 3:
             continue
-        # Skip words that match verb stems
-        is_verb = False
-        for pattern, _ in _PROSE_STEMS:
-            if re.search(pattern, low):
-                is_verb = True
-                break
-        if is_verb:
+        # Skip words that are verb synonyms
+        if low in _SYNONYM_TO_VERB:
             continue
         seen.add(low)
         nouns.append(low)

@@ -1,5 +1,11 @@
 module Log
-  narrative: """Console color constants for terminal output."""
+  narrative: """
+  Writes colorized stdout log through detached verbs, all output is preficed with [SEVERITY][timestamp]
+  debug generates blue output
+  info generate green 
+  warning generate yellow
+  error generate red
+  """
   System outputs console
   Time inputs time, types Time
   Format transforms time
@@ -24,21 +30,29 @@ module Log
 
   WHITE as String = "[37m"
 
+/// Send a console message to stdout of a debug message 
+/// with severity and timestamp added
 detached debug(string String)
 from
     now as Time = time()
     console(f"{BLUE}[DEBUG][{time(now, "HH:ii")}] {string}{RESET}")
 
+/// Send a console message to stdout of a info message 
+/// with severity and timestamp added
 detached info(string String)
 from
     now as Time = time()
     console(f"{GREEN}[INFO][{time(now, "HH:ii")}] {string}{RESET}")
 
+/// Send a console message to stdout of a warning message 
+/// with severity and timestamp added
 detached warning(string String)
 from
     now as Time = time()
     console(f"{YELLOW}[WARNING][{time(now, "HH:ii")}] {string}{RESET}")
 
+/// Send a console message to stdout of a error message 
+/// with severity and timestamp added
 detached error(string String)
 from
     now as Time = time()
