@@ -51,6 +51,10 @@ binary
 creates float(value Integer) Float
 binary
 
+/// Convert an integer to a decimal
+creates decimal(value Integer) Decimal
+binary
+
 /// Convert an integer to a string
 reads string(value Integer) String
 binary

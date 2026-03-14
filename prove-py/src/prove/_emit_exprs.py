@@ -304,6 +304,11 @@ class ExprEmitterMixin:
             if isinstance(arg, IdentifierExpr) and arg.name != loop_param:
                 ty = self._locals.get(arg.name)
                 if ty and map_type(ty).is_pointer:
+                    # Skip retain for non-escaping vars in release mode
+                    if self._release_mode and self._escape_info is not None:
+                        func_name = self._get_current_function_name()
+                        if func_name and not self._escape_info.escapes(func_name, arg.name):
+                            continue
                     self._line(f"prove_retain({arg.name});")
 
     # -- Field expressions ------------------------------------------
@@ -434,16 +439,17 @@ class ExprEmitterMixin:
     # -- Fail propagation -------------------------------------------
 
     def _emit_fail_prop(self, expr: FailPropExpr) -> str:
-        tmp = self._tmp()
+        self._line("")
+        tmp = self._named_tmp("result")
         inner = self._emit_expr(expr.expr)
         self._line(f"Prove_Result {tmp} = {inner};")
         if self._in_main:
             self._line(f"if (prove_result_is_err({tmp})) {{")
             self._indent += 1
-            err_str = self._tmp()
+            err_str = self._named_tmp("error")
             self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
             self._line(
-                f"if ({err_str}) fprintf(stderr,"
+                f"fprintf(stderr,"
                 f' "error: %.*s\\n",'
                 f" (int){err_str}->length,"
                 f" {err_str}->data);"

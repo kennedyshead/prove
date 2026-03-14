@@ -1,11 +1,10 @@
 module Main
   narrative: """JSON benchmark from kostya/benchmarks — parse JSON, sum coordinates."""
-  System inputs file, outputs console
-  Parse creates json, reads object array decimal
+  System inputs file outputs console
+  Parse reads object array decimal creates json
   Table reads get
   Sequence reads length
-  Error transforms unwrap
-  Types reads string, creates float
+  Types reads string unwrap creates float
 
 main() Result<Unit, Error>!
 from

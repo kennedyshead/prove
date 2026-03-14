@@ -21,6 +21,7 @@ Prove_Array *prove_array_new(int64_t length, int64_t elem_size, const void *defa
 /* Typed constructors for common element types */
 Prove_Array *prove_array_new_bool(int64_t size, bool default_val);
 Prove_Array *prove_array_new_int(int64_t size, int64_t default_val);
+Prove_Array *prove_array_new_float(int64_t size, double default_val);
 
 /* Get element at index as a void* (for pointer types) or intptr_t-cast (for scalars).
    The caller is responsible for casting back to the correct type. */
@@ -29,6 +30,7 @@ void *prove_array_get(Prove_Array *arr, int64_t idx);
 /* Typed getters */
 bool    prove_array_get_bool(Prove_Array *arr, int64_t idx);
 int64_t prove_array_get_int(Prove_Array *arr, int64_t idx);
+double  prove_array_get_float(Prove_Array *arr, int64_t idx);
 
 /* Return a new array (copy-on-write) with element at idx replaced by val. */
 Prove_Array *prove_array_set(Prove_Array *arr, int64_t idx, const void *val);
@@ -36,6 +38,7 @@ Prove_Array *prove_array_set(Prove_Array *arr, int64_t idx, const void *val);
 /* Typed setters (copy-on-write) */
 Prove_Array *prove_array_set_bool(Prove_Array *arr, int64_t idx, bool val);
 Prove_Array *prove_array_set_int(Prove_Array *arr, int64_t idx, int64_t val);
+Prove_Array *prove_array_set_float(Prove_Array *arr, int64_t idx, double val);
 
 /* In-place mutation — caller must own the array (:[Mutable]). */
 /* Returns the array pointer for chaining */
@@ -44,6 +47,7 @@ Prove_Array *prove_array_set_mut(Prove_Array *arr, int64_t idx, const void *val)
 /* Typed setters (in-place) for mutable arrays - returns arr for chaining */
 Prove_Array *prove_array_set_mut_bool(Prove_Array *arr, int64_t idx, bool val);
 Prove_Array *prove_array_set_mut_int(Prove_Array *arr, int64_t idx, int64_t val);
+Prove_Array *prove_array_set_mut_float(Prove_Array *arr, int64_t idx, double val);
 
 /* Number of elements. */
 int64_t prove_array_length(Prove_Array *arr);
@@ -58,11 +62,17 @@ Prove_Option prove_array_get_safe_bool(Prove_Array *arr, int64_t idx);
 /* Bounds-checked get: returns Option<Integer> */
 Prove_Option prove_array_get_safe_int(Prove_Array *arr, int64_t idx);
 
+/* Bounds-checked get: returns Option<Float> */
+Prove_Option prove_array_get_safe_float(Prove_Array *arr, int64_t idx);
+
 /* Bounds-checked set (copy-on-write): returns Option<Array<Boolean>> */
 Prove_Option prove_array_set_safe_bool(Prove_Array *arr, int64_t idx, bool val);
 
 /* Bounds-checked set (copy-on-write): returns Option<Array<Integer>> */
 Prove_Option prove_array_set_safe_int(Prove_Array *arr, int64_t idx, int64_t val);
+
+/* Bounds-checked set (copy-on-write): returns Option<Array<Float>> */
+Prove_Option prove_array_set_safe_float(Prove_Array *arr, int64_t idx, double val);
 
 /* ── Higher-order operations ─────────────────────────────────── */
 

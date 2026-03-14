@@ -1,0 +1,163 @@
+module Main
+  narrative: """
+  Matrix multiplication benchmark — kostya/benchmarks.
+
+  Generates two matrices with seed scaling, transposes B for cache-friendly
+  access, then multiplies using triple-nested recursion. Uses floating-point
+  arithmetic with Array<Decimal>:[Mutable] flat representation.
+
+  Element (i,j) stored at index i*n + j.
+  Generation: element(i,j) = seed / n / n * (i - j) * (i + j)
+  """
+  System outputs console
+  Array reads get creates array transforms set
+  Types creates decimal
+
+  SIZE as Integer = 100
+
+/// Generate matrix: fill row by iterating columns
+transforms gen_cols(
+    mat Array<Decimal>:[Mutable],
+    n Integer,
+    tmp Decimal,
+    i Integer,
+    j Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - j
+from
+    match j >= n
+        true => mat
+        _ =>
+            val as Decimal = tmp * decimal((i - j) * (i + j))
+            gen_cols(set(mat, i * n + j, val), n, tmp, i, j + 1)
+
+/// Generate matrix: iterate rows
+transforms gen_rows(
+    mat Array<Decimal>:[Mutable],
+    n Integer,
+    tmp Decimal,
+    i Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - i
+from
+    match i >= n
+        true => mat
+        _ =>
+            filled as Array<Decimal>:[Mutable] = gen_cols(mat, n, tmp, i, 0)
+            gen_rows(filled, n, tmp, i + 1)
+
+/// Generate an n x n matrix with seed scaling
+transforms gen(n Integer, seed Decimal) Array<Decimal>:[Mutable]
+from
+    tmp as Decimal = seed / decimal(n) / decimal(n)
+    mat as Array<Decimal>:[Mutable] = array(n * n, 0.0)
+    gen_rows(mat, n, tmp, 0)
+
+/// Transpose: copy columns of src into rows of dst
+transforms transpose_cols(
+    dst Array<Decimal>:[Mutable],
+    src Array<Decimal>:[Mutable],
+    n Integer,
+    i Integer,
+    j Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - j
+from
+    match j >= n
+        true => dst
+        _ =>
+            val as Decimal = get(src, j * n + i)
+            transpose_cols(set(dst, i * n + j, val), src, n, i, j + 1)
+
+/// Transpose: iterate rows
+transforms transpose_rows(
+    dst Array<Decimal>:[Mutable],
+    src Array<Decimal>:[Mutable],
+    n Integer,
+    i Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - i
+from
+    match i >= n
+        true => dst
+        _ =>
+            updated as Array<Decimal>:[Mutable] = transpose_cols(dst, src, n, i, 0)
+            transpose_rows(updated, src, n, i + 1)
+
+/// Transpose a matrix
+transforms transpose(src Array<Decimal>:[Mutable], n Integer) Array<Decimal>:[Mutable]
+from
+    dst as Array<Decimal>:[Mutable] = array(n * n, 0.0)
+    transpose_rows(dst, src, n, 0)
+
+/// Dot product of row i of a with row j of bt (transposed b)
+reads dot(
+    a Array<Decimal>:[Mutable],
+    bt Array<Decimal>:[Mutable],
+    n Integer,
+    i Integer,
+    j Integer,
+    k Integer,
+    acc Decimal
+) Decimal
+  terminates: n - k
+from
+    match k >= n
+        true => acc
+        _ =>
+            product as Decimal = get(a, i * n + k) * get(bt, j * n + k)
+            dot(a, bt, n, i, j, k + 1, acc + product)
+
+/// Multiply: fill one row of result
+transforms mul_cols(
+    result Array<Decimal>:[Mutable],
+    a Array<Decimal>:[Mutable],
+    bt Array<Decimal>:[Mutable],
+    n Integer,
+    i Integer,
+    j Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - j
+from
+    match j >= n
+        true => result
+        _ =>
+            val as Decimal = dot(a, bt, n, i, j, 0, 0.0)
+            mul_cols(set(result, i * n + j, val), a, bt, n, i, j + 1)
+
+/// Multiply: iterate rows
+transforms mul_rows(
+    result Array<Decimal>:[Mutable],
+    a Array<Decimal>:[Mutable],
+    bt Array<Decimal>:[Mutable],
+    n Integer,
+    i Integer
+) Array<Decimal>:[Mutable]
+  terminates: n - i
+from
+    match i >= n
+        true => result
+        _ =>
+            filled as Array<Decimal>:[Mutable] = mul_cols(result, a, bt, n, i, 0)
+            mul_rows(filled, a, bt, n, i + 1)
+
+/// Multiply two matrices: a * b with transpose optimization
+transforms mul(
+    a Array<Decimal>:[Mutable],
+    b Array<Decimal>:[Mutable],
+    n Integer
+) Array<Decimal>:[Mutable]
+from
+    bt as Array<Decimal>:[Mutable] = transpose(b, n)
+    result as Array<Decimal>:[Mutable] = array(n * n, 0.0)
+    mul_rows(result, a, bt, n, 0)
+
+main() Result<Unit, Error>!
+from
+    n as Integer = SIZE
+    a as Array<Decimal>:[Mutable] = gen(n, 1.0)
+    b as Array<Decimal>:[Mutable] = gen(n, 2.0)
+    c as Array<Decimal>:[Mutable] = mul(a, b, n)
+    mid as Integer = n / 2
+    result as Decimal = get(c, mid * n + mid)
+    console(f"{result}")

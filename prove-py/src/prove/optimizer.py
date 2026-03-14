@@ -1843,12 +1843,15 @@ class Optimizer:
         for stmt in body:
             if isinstance(stmt, VarDecl):
                 vars_set.add(stmt.name)
-            elif hasattr(stmt, "body"):
-                if isinstance(stmt, (MatchExpr,)):
-                    for arm in getattr(stmt, "arms", []):
-                        self._collect_local_vars(arm.body, vars_set)
-                elif isinstance(stmt, list):
-                    self._collect_local_vars(stmt, vars_set)
+            elif isinstance(stmt, TailLoop):
+                self._collect_local_vars(stmt.body, vars_set)
+            elif isinstance(stmt, WhileLoop):
+                self._collect_local_vars(stmt.body, vars_set)
+            elif isinstance(stmt, MatchExpr):
+                for arm in stmt.arms:
+                    self._collect_local_vars(arm.body, vars_set)
+            elif isinstance(stmt, list):
+                self._collect_local_vars(stmt, vars_set)
 
     def _check_escapes_in_body(
         self,
@@ -1877,6 +1880,13 @@ class Optimizer:
         elif isinstance(stmt, MatchExpr):
             for arm in stmt.arms:
                 self._check_escapes_in_body(func_name, arm.body, local_vars, param_names)
+        elif isinstance(stmt, TailLoop):
+            self._check_escapes_in_body(func_name, stmt.body, local_vars, param_names)
+        elif isinstance(stmt, TailContinue):
+            for _, expr in stmt.assignments:
+                self._check_expr_escape(func_name, expr, local_vars, param_names)
+        elif isinstance(stmt, WhileLoop):
+            self._check_escapes_in_body(func_name, stmt.body, local_vars, param_names)
 
     def _check_assignment_escape(
         self,

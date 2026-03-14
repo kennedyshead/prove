@@ -2613,9 +2613,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _infer_list(self, expr: ListLiteral, expected_type: Type | None = None) -> Type:
         if not expr.elements:
             # Try to use expected type for empty list
-            if expected_type is not None:
-                from prove.types import ListType
+            from prove.types import ListType
 
+            if expected_type is not None:
                 if isinstance(expected_type, ListType):
                     return expected_type
                 if isinstance(expected_type, GenericInstance) and expected_type.base_name == "List":

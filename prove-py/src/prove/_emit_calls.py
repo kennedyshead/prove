@@ -37,6 +37,29 @@ from prove.types import (
 )
 
 
+def _has_object_call(expr: Expr, param_name: str) -> bool:
+    """Check if an expression tree contains a call to object(param_name)."""
+    if isinstance(expr, CallExpr):
+        if (
+            isinstance(expr.func, IdentifierExpr)
+            and expr.func.name == "object"
+            and len(expr.args) == 1
+            and isinstance(expr.args[0], IdentifierExpr)
+            and expr.args[0].name == param_name
+        ):
+            return True
+        # Check in function args and sub-expressions
+        for arg in expr.args:
+            if _has_object_call(arg, param_name):
+                return True
+        return _has_object_call(expr.func, param_name)
+    if isinstance(expr, BinaryExpr):
+        return _has_object_call(expr.left, param_name) or _has_object_call(expr.right, param_name)
+    if isinstance(expr, FieldExpr):
+        return _has_object_call(expr.obj, param_name)
+    return False
+
+
 class CallEmitterMixin:
     def _resolve_stdlib_c_name(
         self,
@@ -522,6 +545,18 @@ class CallEmitterMixin:
         return result_tmp
 
     def _emit_call(self, expr: CallExpr) -> str:
+        # CSE: fused multi-reduce object() cache substitution
+        cache = getattr(self, "_fused_object_cache", None)
+        if (
+            cache
+            and isinstance(expr.func, IdentifierExpr)
+            and expr.func.name == "object"
+            and len(expr.args) == 1
+            and isinstance(expr.args[0], IdentifierExpr)
+            and expr.args[0].name == cache[0]
+        ):
+            return cache[1]
+
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
 
@@ -565,6 +600,27 @@ class CallEmitterMixin:
 
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
+
+            # Optimization: detect console(string(float_expr)) pattern and replace with printf
+            # The Prove code "console(string(x))" becomes prove_println(prove_convert_string_float(x))
+            if name == "console" and len(expr.args) == 1:
+                arg_expr = expr.args[0]
+                # Check if the argument is a call to string(float)
+                if isinstance(arg_expr, CallExpr):
+                    inner_func = arg_expr.func
+                    if isinstance(inner_func, IdentifierExpr) and inner_func.name == "string":
+                        # Check if string's argument is a Float type
+                        if len(arg_expr.args) == 1:
+                            inner_arg = arg_expr.args[0]
+                            arg_type = self._infer_expr_type(inner_arg)
+                            if (
+                                arg_type
+                                and isinstance(arg_type, PrimitiveType)
+                                and arg_type.name in ("Float", "Decimal")
+                            ):
+                                # Emit the inner float expression directly
+                                inner_c = self._emit_expr(inner_arg)
+                                return f'printf("%f\\n", {inner_c})'
 
             # Type-aware dispatch for to_string
             if name == "to_string" and expr.args:
@@ -670,10 +726,21 @@ class CallEmitterMixin:
                             if hasattr(self, "_store_rows") and rn in self._store_rows:
                                 variant_name, vals_name = self._store_rows[rn]
                                 return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
+                    # Release mode: rewrite Array<Boolean> ops to BitArray
+                    is_bitarray_set = False
+                    if self._release_mode:
+                        orig_name = c_name
+                        c_name = self._bitarray_rewrite(c_name)
+                        if c_name == "prove_bitarray_set":
+                            is_bitarray_set = True
                     call_str = f"{c_name}({', '.join(args)})"
+                    # Optimization: replace conversion functions with direct C operations
+                    # float(Integer) -> direct cast to double
+                    if c_name == "prove_convert_float_int" and len(args) == 1:
+                        call_str = f"(double){args[0]}"
                     # In-place mutating functions return void; wrap as comma
                     # expression so the array pointer stays as the result value.
-                    if "set_mut" in c_name and args:
+                    if ("set_mut" in c_name or is_bitarray_set) and args:
                         call_str = f"({call_str}, {args[0]})"
                         return call_str
                     call_str = self._maybe_unwrap_option(
@@ -882,10 +949,7 @@ class CallEmitterMixin:
             return f"_prove_f64_box({expr})"
         # Struct types (non-pointer Prove_* types) must be heap-allocated
         if ct.decl.startswith("Prove_"):
-            return (
-                f"({{" f"{ct.decl} *_bx = malloc(sizeof({ct.decl})); "
-                f"*_bx = {expr}; (void*)_bx;" f"}})"
-            )
+            return f"({{{ct.decl} *_bx = malloc(sizeof({ct.decl})); *_bx = {expr}; (void*)_bx;}})"
         return f"(void*)(intptr_t){expr}"
 
     @staticmethod
@@ -951,7 +1015,8 @@ class CallEmitterMixin:
         lam = expr.args[1]
         if isinstance(lam, LambdaExpr):
             param = lam.params[0] if lam.params else "_x"
-            idx = self._tmp()
+            self._line("")
+            idx = self._named_tmp("i")
             self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
             self._indent += 1
             elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
@@ -1035,7 +1100,10 @@ class CallEmitterMixin:
         for lit in sorted(literals):
             if lit not in self._string_literal_cache:
                 escaped = self._escape_c_string(lit)
-                tmp = self._tmp()
+                if lit.isidentifier() and len(lit) <= 20:
+                    tmp = self._named_tmp(f"_str_{lit}")
+                else:
+                    tmp = self._tmp()
                 self._line(f'Prove_String *{tmp} = prove_string_from_cstr("{escaped}");')
                 self._string_literal_cache[escaped] = tmp
 
@@ -1067,7 +1135,8 @@ class CallEmitterMixin:
             # Hoist string literals before the loop
             self._hoist_string_literals(self._collect_string_literals(callback.body))
 
-            idx = self._tmp()
+            self._line("")
+            idx = self._named_tmp("i")
             self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
             self._indent += 1
 
@@ -1297,9 +1366,7 @@ class CallEmitterMixin:
             body_box = self._hof_box(body_code, body_ct)
             # Own/borrow: retain pointer fields passed to function calls
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
-            retain_lines = "".join(
-                f"    prove_retain({r});\n" for r in retains
-            )
+            retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
                 f"static void *{name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
@@ -1315,9 +1382,7 @@ class CallEmitterMixin:
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
-            retain_lines = "".join(
-                f"    prove_retain({r});\n" for r in retains
-            )
+            retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
                 f"static bool {name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
@@ -1352,9 +1417,7 @@ class CallEmitterMixin:
             body_code = self._emit_expr(expr.body)
             self._locals = saved_locals
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
-            retain_lines = "".join(
-                f"    prove_retain({r});\n" for r in retains
-            )
+            retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
                 f"static void {name}(void *_arg) {{\n"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
@@ -1373,6 +1436,9 @@ class CallEmitterMixin:
     def _cache_array_arg(self, expr: Expr) -> tuple[str, "Type"]:
         """Emit an array expression into a temp variable before loop use."""
         arr_type = self._infer_expr_type(expr)
+        # Skip alias when expression is already a simple variable
+        if isinstance(expr, IdentifierExpr) and expr.name in self._locals:
+            return expr.name, arr_type
         arr_code = self._emit_expr(expr)
         tmp = self._tmp()
         self._line(f"Prove_Array *{tmp} = {arr_code};")
@@ -1381,10 +1447,29 @@ class CallEmitterMixin:
     def _array_elem_get(self, arr_var: str, idx_var: str, elem_ct) -> str:
         """Generate C code to get a typed element from an array at index."""
         if elem_ct.decl == "bool":
+            if self._release_mode:
+                self._needed_headers.add("prove_bitarray.h")
+                return f"prove_bitarray_get({arr_var}, {idx_var})"
             return f"prove_array_get_bool({arr_var}, {idx_var})"
         elif elem_ct.decl == "int64_t":
             return f"prove_array_get_int({arr_var}, {idx_var})"
         return f"({elem_ct.decl})prove_array_get({arr_var}, {idx_var})"
+
+    # ── BitArray release-mode rewriting ────────────────────────
+
+    _BITARRAY_REWRITES: dict[str, str] = {
+        "prove_array_new_bool": "prove_bitarray_new",
+        "prove_array_get_bool": "prove_bitarray_get",
+        "prove_array_set_mut_bool": "prove_bitarray_set",
+    }
+
+    def _bitarray_rewrite(self, c_name: str) -> str:
+        """Rewrite Array<Boolean> runtime calls to BitArray equivalents."""
+        rewritten = self._BITARRAY_REWRITES.get(c_name)
+        if rewritten:
+            self._needed_headers.add("prove_bitarray.h")
+            return rewritten
+        return c_name
 
     def _emit_array_hof_map(self, expr: CallExpr, arr_type: ArrayType) -> str:
         """Emit map over Array<T> as inline loop producing a new array."""
@@ -1420,7 +1505,8 @@ class CallEmitterMixin:
 
         if isinstance(fn_expr, LambdaExpr) and fn_expr.params:
             param = fn_expr.params[0]
-            idx = self._tmp()
+            self._line("")
+            idx = self._named_tmp("i")
             self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
             self._indent += 1
             elem_get = self._array_elem_get(arr_arg, idx, elem_ct)
@@ -1454,7 +1540,8 @@ class CallEmitterMixin:
         lam = expr.args[1]
         if isinstance(lam, LambdaExpr):
             param = lam.params[0] if lam.params else "_x"
-            idx = self._tmp()
+            self._line("")
+            idx = self._named_tmp("i")
             self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
             self._indent += 1
             elem_get = self._array_elem_get(arr_arg, idx, elem_ct)
@@ -1503,7 +1590,8 @@ class CallEmitterMixin:
 
             self._hoist_string_literals(self._collect_string_literals(callback.body))
 
-            idx = self._tmp()
+            self._line("")
+            idx = self._named_tmp("i")
             self._line(f"for (int64_t {idx} = 0; {idx} < {arr_arg}->length; {idx}++) {{")
             self._indent += 1
 
@@ -1536,14 +1624,10 @@ class CallEmitterMixin:
         accum_val = self._emit_expr(expr.args[1])
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
-        fn_name = self._emit_hof_lambda(
-            callback, elem_type, "reduce", accum_type=accum_type
-        )
+        fn_name = self._emit_hof_lambda(callback, elem_type, "reduce", accum_type=accum_type)
         init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()
-        self._line(
-            f"void *{result_tmp} = prove_array_reduce({arr_arg}, {init_cast}, {fn_name});"
-        )
+        self._line(f"void *{result_tmp} = prove_array_reduce({arr_arg}, {init_cast}, {fn_name});")
         return self._hof_unbox(result_tmp, accum_ct)
 
     # ── Fused iterator emission ─────────────────────────────────
@@ -1563,7 +1647,7 @@ class CallEmitterMixin:
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
 
         self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
@@ -1604,7 +1688,7 @@ class CallEmitterMixin:
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
         mapped_var = self._tmp()
 
@@ -1648,7 +1732,7 @@ class CallEmitterMixin:
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
 
         self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
@@ -1687,7 +1771,7 @@ class CallEmitterMixin:
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
 
         self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
@@ -1739,7 +1823,7 @@ class CallEmitterMixin:
                 lits |= self._collect_string_literals(arg.body)
         self._hoist_string_literals(lits)
 
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
         mapped_var = self._tmp()
 
@@ -1809,7 +1893,7 @@ class CallEmitterMixin:
                 lits |= self._collect_string_literals(arg.body)
         self._hoist_string_literals(lits)
 
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
 
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
@@ -1877,14 +1961,14 @@ class CallEmitterMixin:
                 triples.append((name, init_expr, lam_expr))
             i += 3
 
-        # Emit typed accumulators
+        # Emit typed accumulators (prefixed to avoid shadowing lambda params)
         accum_tmps: list[str] = []
         accum_cts = []
-        for _name, init_expr, _lam in triples:
+        for name, init_expr, _lam in triples:
             accum_type = self._infer_expr_type(init_expr)
             accum_ct = map_type(accum_type)
             accum_cts.append(accum_ct)
-            accum_tmp = self._tmp()
+            accum_tmp = self._named_tmp(f"_acc_{name}")
             accum_tmps.append(accum_tmp)
             accum_val = self._emit_expr(init_expr)
             self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
@@ -1896,7 +1980,8 @@ class CallEmitterMixin:
         self._hoist_string_literals(all_lits)
 
         # Single fused loop
-        idx = self._tmp()
+        self._line("")
+        idx = self._named_tmp("i")
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
@@ -1908,6 +1993,13 @@ class CallEmitterMixin:
         elem_var = self._tmp()
         self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
+        # CSE: detect shared object(elem_param) calls across lambda bodies
+        shared_obj = self._detect_shared_object_call(triples)
+        obj_cache_var: str | None = None
+        if shared_obj:
+            obj_cache_var = self._tmp()
+            self._line(f"Prove_Table* {obj_cache_var} = prove_value_as_object({elem_var});")
+
         # Inline each lambda body in its own block to isolate param names
         for k, (_name, _init, lam) in enumerate(triples):
             accum_type = self._infer_expr_type(_init)
@@ -1918,7 +2010,12 @@ class CallEmitterMixin:
             self._locals[lam.params[1]] = elem_type
             self._line(f"{accum_cts[k].decl} {lam.params[0]} = {accum_tmps[k]};")
             self._line(f"{elem_ct.decl} {lam.params[1]} = {elem_var};")
+            # Set up CSE substitution for object(elem_param)
+            saved_obj_cache = getattr(self, "_fused_object_cache", None)
+            if obj_cache_var and len(lam.params) >= 2:
+                self._fused_object_cache = (lam.params[1], obj_cache_var)
             body_code = self._emit_expr(lam.body)
+            self._fused_object_cache = saved_obj_cache
             self._locals = saved
             self._line(f"{accum_tmps[k]} = {body_code};")
             self._indent -= 1
@@ -1942,6 +2039,20 @@ class CallEmitterMixin:
                 return self._fused_reduce_results[idx]
         return "0 /* fused reduce ref error */"
 
+    @staticmethod
+    def _detect_shared_object_call(
+        triples: list[tuple[str, "Expr", "LambdaExpr"]],
+    ) -> bool:
+        """Check if >=2 lambda bodies contain object(elem_param) calls."""
+        count = 0
+        for _name, _init, lam in triples:
+            if len(lam.params) < 2:
+                continue
+            elem_param = lam.params[1]
+            if _has_object_call(lam.body, elem_param):
+                count += 1
+        return count >= 2
+
     def _emit_fused_each_map(self, expr: CallExpr) -> str:
         """Emit each(map(list, f), g) as a single-pass loop.
 
@@ -1956,7 +2067,7 @@ class CallEmitterMixin:
             elem_type = list_type.element
         elem_ct = map_type(elem_type)
 
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
         mapped_var = self._tmp()
 
@@ -1990,7 +2101,7 @@ class CallEmitterMixin:
             elem_type = list_type.element
         elem_ct = map_type(elem_type)
 
-        idx = self._tmp()
+        idx = self._named_tmp("i")
         elem_var = self._tmp()
 
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
@@ -2021,6 +2132,10 @@ class CallEmitterMixin:
         with list-based iteration (used by fused emitters).
         """
         list_type = self._infer_expr_type(expr)
+        # Skip alias when expression is already a simple variable
+        if isinstance(expr, IdentifierExpr) and expr.name in self._locals:
+            if not isinstance(list_type, ArrayType):
+                return expr.name, list_type
         list_code = self._emit_expr(expr)
         tmp = self._tmp()
         if isinstance(list_type, ArrayType):

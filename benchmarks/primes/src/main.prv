@@ -1,64 +1,287 @@
 module Main
   narrative: """
-  Primes benchmark - Sieve of Eratosthenes
+  Primes benchmark — Sieve of Atkin + Trie prefix search.
 
-  Optimized implementation using mutable array and in-place marking. 
-  reads primes and transforms multiples in composites recursivly
+  Matching kostya/benchmarks C++ reference: Sieve of Atkin to find all primes
+  up to UPPER_BOUND, store in a Trie keyed by digit strings, then search for
+  all primes sharing a given prefix.
   """
   System outputs console
-  Array creates array
-  Array reads get
-  Array transforms set
+  Sequence reads get length creates array transforms set
+  Text reads length
+  Character reads at
+  Table types Table reads keys get creates new validates has transforms add
+  Types reads string code transforms unwrap
+  Parse reads object
 
   UPPER_BOUND as Integer = 5000000
 
-/// Mark all multiples of p starting from `multiple` as composite
-transforms composites(
-    arr Array<Boolean>:[Mutable],
-    p Integer,
-    multiple Integer,
-    limit Integer
-) Array<Boolean>:[Mutable]
-  terminates: limit - multiple
-from
-    match multiple > limit
-        true => arr
-        _ => composites(set(arr, multiple, true), p, multiple + p, limit)
+  PREFIX as String = "32338"
 
-/// Run one pass of the sieve: for each prime p up to sqrt(limit), mark its multiples
-transforms sieve_pass(
-    arr Array<Boolean>:[Mutable],
-    p Integer,
+/// Sieve of Atkin step 1: flip bits for n = 4*x*x + y*y where n % 12 == 1 or 5
+transforms atkin_step1_y(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    y Integer,
     limit Integer
 ) Array<Boolean>:[Mutable]
-  terminates: limit - p
+  terminates: limit - y
 from
-    match p * p > limit
-        true => arr
+    n as Integer = 4 * x * x + y * y
+    match n > limit
+        true => sieve
         _ =>
-            match get(arr, p)
-                true => sieve_pass(arr, p + 1, limit)
-                _ => sieve_pass(composites(arr, p, p * p, limit), p + 1, limit)
+            remainder as Integer = n % 12
+            match remainder == 1
+                true =>
+                    current as Boolean = get(sieve, n)
+                    match current
+                        true => atkin_step1_y(set(sieve, n, false), x, y + 1, limit)
+                        _ => atkin_step1_y(set(sieve, n, true), x, y + 1, limit)
+                _ =>
+                    match remainder == 5
+                        true =>
+                            current2 as Boolean = get(sieve, n)
+                            match current2
+                                true =>
+                                    atkin_step1_y(set(sieve, n, false), x, y + 1, limit)
+                                _ => atkin_step1_y(set(sieve, n, true), x, y + 1, limit)
+                        _ => atkin_step1_y(sieve, x, y + 1, limit)
 
-/// Count indices where arr[i] is false (prime = not composite)
-reads primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer) Integer
+/// Sieve of Atkin step 1: iterate x
+transforms atkin_step1_x(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - x
+from
+    match x * x > limit
+        true => sieve
+        _ =>
+            updated as Array<Boolean>:[Mutable] = atkin_step1_y(sieve, x, 1, limit)
+            atkin_step1_x(updated, x + 1, limit)
+
+/// Sieve of Atkin step 2: flip bits for n = 3*x*x + y*y where n % 12 == 7
+transforms atkin_step2_y(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    y Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - y
+from
+    n as Integer = 3 * x * x + y * y
+    match n > limit
+        true => sieve
+        _ =>
+            match (n % 12) == 7
+                true =>
+                    current as Boolean = get(sieve, n)
+                    match current
+                        true => atkin_step2_y(set(sieve, n, false), x, y + 1, limit)
+                        _ => atkin_step2_y(set(sieve, n, true), x, y + 1, limit)
+                _ => atkin_step2_y(sieve, x, y + 1, limit)
+
+/// Sieve of Atkin step 2: iterate x
+transforms atkin_step2_x(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - x
+from
+    match x * x > limit
+        true => sieve
+        _ =>
+            updated as Array<Boolean>:[Mutable] = atkin_step2_y(sieve, x, 1, limit)
+            atkin_step2_x(updated, x + 1, limit)
+
+/// Sieve of Atkin step 3: flip bits for n = 3*x*x - y*y where x > y and n % 12 == 11
+transforms atkin_step3_y(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    y Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: y
+from
+    match y < 1
+        true => sieve
+        _ =>
+            n as Integer = 3 * x * x - y * y
+            match n > limit
+                true => atkin_step3_y(sieve, x, y - 1, limit)
+                _ =>
+                    match (n % 12) == 11
+                        true =>
+                            current as Boolean = get(sieve, n)
+                            match current
+                                true =>
+                                    atkin_step3_y(set(sieve, n, false), x, y - 1, limit)
+                                _ => atkin_step3_y(set(sieve, n, true), x, y - 1, limit)
+                        _ => atkin_step3_y(sieve, x, y - 1, limit)
+
+/// Sieve of Atkin step 3: iterate x
+transforms atkin_step3_x(
+    sieve Array<Boolean>:[Mutable],
+    x Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - x
+from
+    match x * x > limit
+        true => sieve
+        _ =>
+            updated as Array<Boolean>:[Mutable] = atkin_step3_y(sieve, x, x - 1, limit)
+            atkin_step3_x(updated, x + 1, limit)
+
+/// Eliminate squares of primes: mark multiples of n*n
+transforms eliminate_multiples(
+    sieve Array<Boolean>:[Mutable],
+    n Integer,
+    k Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - k
+from
+    multiple as Integer = n * n * k
+    match multiple > limit
+        true => sieve
+        _ => eliminate_multiples(set(sieve, multiple, false), n, k + 1, limit)
+
+/// Eliminate squares of primes: iterate over sieve
+transforms eliminate_squares(
+    sieve Array<Boolean>:[Mutable],
+    n Integer,
+    limit Integer
+) Array<Boolean>:[Mutable]
+  terminates: limit - n
+from
+    match n * n > limit
+        true => sieve
+        _ =>
+            match get(sieve, n)
+                true =>
+                    eliminate_squares(eliminate_multiples(sieve, n, 1, limit), n + 1, limit)
+                _ => eliminate_squares(sieve, n + 1, limit)
+
+/// Insert a prime into the trie by iterating its digits
+transforms trie_insert_digits(
+    node Table<Value>,
+    digits String,
+    idx Integer,
+    str_len Integer
+) Table<Value>
+  terminates: str_len - idx
+from
+    match idx >= str_len
+        true => add("_", new(), node)
+        _ =>
+            digit as Character = at(digits, idx)
+            digit_key as String = string(code(digit))
+            match valid has(digit_key, node)
+                true =>
+                    child as Table<Value> = object(unwrap(get(digit_key, node)))
+                    updated_child as Table<Value> = trie_insert_digits(child, digits, idx + 1, str_len)
+                    add(digit_key, updated_child, node)
+                _ =>
+                    new_child as Table<Value> = trie_insert_digits(new(), digits, idx + 1, str_len)
+                    add(digit_key, new_child, node)
+
+/// Build the trie from sieve: iterate indices and insert primes
+transforms build_trie_iter(
+    sieve Array<Boolean>:[Mutable],
+    trie Table<Value>,
+    i Integer,
+    limit Integer
+) Table<Value>
   terminates: limit - i
 from
     match i > limit
+        true => trie
+        _ =>
+            match get(sieve, i)
+                true =>
+                    digits as String = string(i)
+                    str_len as Integer = length(digits)
+                    updated as Table<Value> = trie_insert_digits(trie, digits, 0, str_len)
+                    build_trie_iter(sieve, updated, i + 1, limit)
+                _ => build_trie_iter(sieve, trie, i + 1, limit)
+
+/// Navigate trie to the prefix node, return found node or empty table
+reads trie_find_prefix(
+    node Table<Value>,
+    prefix String,
+    idx Integer,
+    str_len Integer
+) Table<Value>
+  terminates: str_len - idx
+from
+    match idx >= str_len
+        true => node
+        _ =>
+            digit as Character = at(prefix, idx)
+            digit_key as String = string(code(digit))
+            match valid has(digit_key, node)
+                true =>
+                    child as Table<Value> = object(unwrap(get(digit_key, node)))
+                    trie_find_prefix(child, prefix, idx + 1, str_len)
+                _ => new()
+
+/// Collect all terminal primes under a trie node as a comma-separated string
+transforms collect_from_keys(
+    node Table<Value>,
+    prefix String,
+    key_list List<String>,
+    key_idx Integer,
+    key_count Integer,
+    acc String
+) String
+  terminates: key_count - key_idx
+from
+    match key_idx >= key_count
         true => acc
         _ =>
-            match get(arr, i)
-                true => primes(arr, i + 1, limit, acc)
-                _ => primes(arr, i + 1, limit, acc + 1)
+            k as String = key_list[key_idx]
+            match k == "_"
+                true =>
+                    match acc == ""
+                        true =>
+                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, prefix)
+                        _ =>
+                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, acc + ", " + prefix)
+                _ =>
+                    match valid has(k, node)
+                        true =>
+                            child as Table<Value> = object(unwrap(get(k, node)))
+                            sub as String = collect_primes(child, prefix + k)
+                            new_acc as String = match acc == ""
+                                true => sub
+                                _ => acc + ", " + sub
+                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, new_acc)
+                        _ =>
+                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, acc)
+
+/// Collect all primes under a trie node as comma-separated string
+transforms collect_primes(node Table<Value>, prefix String) String
+from
+    all_keys as List<String> = keys(node)
+    key_count as Integer = length(all_keys)
+    collect_from_keys(node, prefix, all_keys, 0, key_count, "")
 
 main() Result<Unit, Error>!
 from
     limit as Integer = UPPER_BOUND
-    // is_composite[i] = true means i is NOT prime
-    is_composite as Array<Boolean>:[Mutable] = array(limit + 1, false)
-    // 0 and 1 are not prime
-    marked0 as Array<Boolean>:[Mutable] = set(is_composite, 0, true)
-    marked1 as Array<Boolean>:[Mutable] = set(marked0, 1, true)
-    sieved as Array<Boolean>:[Mutable] = sieve_pass(marked1, 2, limit)
-    count as Integer = primes(sieved, 2, limit, 0)
-    console(f"Primes found: {count}")
+    sieve0 as Array<Boolean>:[Mutable] = array(limit + 1, false)
+    sieve1 as Array<Boolean>:[Mutable] = atkin_step1_x(sieve0, 1, limit)
+    sieve2 as Array<Boolean>:[Mutable] = atkin_step2_x(sieve1, 1, limit)
+    sieve3 as Array<Boolean>:[Mutable] = atkin_step3_x(sieve2, 1, limit)
+    sieve4 as Array<Boolean>:[Mutable] = eliminate_squares(sieve3, 5, limit)
+    sieve5 as Array<Boolean>:[Mutable] = set(set(sieve4, 2, true), 3, true)
+    trie as Table<Value> = build_trie_iter(sieve5, new(), 2, limit)
+    prefix_node as Table<Value> = trie_find_prefix(trie, PREFIX, 0, length(PREFIX))
+    result as String = collect_primes(prefix_node, PREFIX)
+    match result == ""
+        true => console("[]")
+        _ => console("[" + result + "]")

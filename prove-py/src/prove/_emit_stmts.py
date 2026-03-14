@@ -334,7 +334,7 @@ class StmtEmitterMixin:
             if name == skip_var:
                 continue
             ct = map_type(ty)
-            if ct.is_pointer:
+            if ct.is_pointer and not self._can_elide_retain(name):
                 self._line(f"prove_release({name});")
 
     def _stmt_expr(self, stmt: Stmt) -> Expr | None:
@@ -563,19 +563,20 @@ class StmtEmitterMixin:
 
         if needs_unwrap:
             # For failable function returning Result, unwrap before assignment
-            tmp = self._tmp()
+            self._line("")
+            tmp = self._named_tmp("result")
             self._line(f"Prove_Result {tmp} = {val};")
             # Check for error - panic if non-failable function, return error if failable
             is_failable = (
                 getattr(self._current_func, "can_fail", False) if self._current_func else False
             )
             if self._in_main:
-                err_str = self._tmp()
+                err_str = self._named_tmp("error")
                 self._line(f"if (prove_result_is_err({tmp})) {{")
                 self._indent += 1
                 self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
                 self._line(
-                    f"if ({err_str}) fprintf(stderr,"
+                    f"fprintf(stderr,"
                     f' "error: %.*s\\n",'
                     f" (int){err_str}->length,"
                     f" {err_str}->data);"
@@ -695,8 +696,8 @@ class StmtEmitterMixin:
                 )
                 if call_sig and call_sig.verb == "inputs":
                     self._line(f"if (!{vd.name}) goto _streams_exit;")
-        # Retain pointer types
-        if ct.is_pointer:
+        # Retain pointer types (skip for non-escaping vars in release mode)
+        if ct.is_pointer and not self._can_elide_retain(vd.name):
             self._line(f"prove_retain({vd.name});")
 
     def _emit_refinement_validation(self, var_name: str, target_ty: RefinementType) -> None:

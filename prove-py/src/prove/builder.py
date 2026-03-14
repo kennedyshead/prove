@@ -201,7 +201,9 @@ def _build_c(
                 if isinstance(decl, ModuleDecl):
                     for imp in decl.imports:
                         runtime_deps.add_module(imp.module)
-        emitter = CEmitter(module, symbols, memo_info, escape_info)
+        release = config.optimize.enabled and not debug
+        emitter = CEmitter(module, symbols, memo_info, escape_info,
+                           release_mode=release)
         c_sources.append(emitter.emit())
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:
@@ -267,6 +269,10 @@ def _build_c(
                     for flag in stdlib_link_flags(imp.module):
                         if flag not in link_flags:
                             link_flags.append(flag)
+
+    # Release mode: enable PROVE_RELEASE define for runtime check elision
+    if config.optimize.enabled and not debug:
+        extra_flags.append("-DPROVE_RELEASE")
 
     # Compile
     runtime_dir = build_dir / "runtime"

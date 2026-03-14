@@ -95,11 +95,14 @@ class CEmitter(
         symbols: SymbolTable,
         memo_info: "MemoizationInfo | None" = None,
         escape_info: "EscapeInfo | None" = None,
+        *,
+        release_mode: bool = False,
     ) -> None:
         self._module = module
         self._symbols = symbols
         self._memo_info = memo_info
         self._escape_info = escape_info
+        self._release_mode = release_mode
         self._out: list[str] = []
         self._indent = 0
         self._tmp_counter = 0
@@ -128,6 +131,8 @@ class CEmitter(
         self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
         self._in_hof_inline = False  # True when emitting inline HOF loop body
         self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
+        self._fused_object_cache: tuple[str, str] | None = None  # (param, var) for CSE
+        self._used_names: set[str] = set()  # collision tracking for _named_tmp()
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -247,6 +252,8 @@ class CEmitter(
         "Character": "prove_character.h",
         "Text": "prove_text.h",
         "Table": "prove_table.h",
+        "System": "prove_input_output.h",
+        "IO": "prove_input_output.h",
         "Parse": "prove_parse.h",
         "Math": "prove_math.h",
         "Convert": "prove_convert.h",
@@ -262,17 +269,116 @@ class CEmitter(
         "Time": "prove_time.h",
         "Bytes": "prove_bytes.h",
         "Hash": "prove_hash_crypto.h",
+        "Log": "prove_input_output.h",
+        "Network": "prove_network.h",
         "Store": "prove_store.h",
     }
+
+    def _module_uses_strings(self) -> bool:
+        """Return True if the module uses strings in any function signature or literal."""
+        from prove.ast_nodes import (
+            Assignment,
+            ImportDecl,
+        )
+
+        _STRING_NODES = (
+            StringLit, StringInterp, TripleStringLit, PathLit, RawStringLit, RegexLit,
+        )
+
+        # Check function signatures for String types
+        for (_verb, _name), sigs in self._symbols.all_functions().items():
+            for sig in sigs:
+                for pt in sig.param_types:
+                    ct = map_type(pt)
+                    if ct.header == "prove_string.h":
+                        return True
+                ct = map_type(sig.return_type)
+                if ct.header == "prove_string.h":
+                    return True
+
+        # Walk declarations for string literal nodes
+        def _has_string_node(expr: object) -> bool:
+            if isinstance(expr, _STRING_NODES):
+                return True
+            if isinstance(expr, BinaryExpr):
+                return _has_string_node(expr.left) or _has_string_node(expr.right)
+            if isinstance(expr, CallExpr):
+                return any(_has_string_node(a) for a in expr.args)
+            if isinstance(expr, PipeExpr):
+                return _has_string_node(expr.left) or _has_string_node(expr.right)
+            if isinstance(expr, MatchExpr):
+                if expr.subject and _has_string_node(expr.subject):
+                    return True
+                return any(
+                    any(_has_string_stmt(s) for s in arm.body)
+                    for arm in expr.arms
+                )
+            if isinstance(expr, FailPropExpr):
+                return _has_string_node(expr.expr)
+            if isinstance(expr, UnaryExpr):
+                return _has_string_node(expr.operand)
+            if isinstance(expr, IndexExpr):
+                return _has_string_node(expr.obj) or _has_string_node(expr.index)
+            if isinstance(expr, FieldExpr):
+                return _has_string_node(expr.obj)
+            if isinstance(expr, ListLiteral):
+                return any(_has_string_node(e) for e in expr.elements)
+            return False
+
+        def _has_string_stmt(stmt: object) -> bool:
+            if isinstance(stmt, VarDecl):
+                return _has_string_node(stmt.value)
+            if isinstance(stmt, ExprStmt):
+                return _has_string_node(stmt.expr)
+            if isinstance(stmt, Assignment):
+                return _has_string_node(stmt.value)
+            if isinstance(stmt, MatchExpr):
+                return _has_string_node(stmt)
+            return False
+
+        for decl in self._module.declarations:
+            if isinstance(decl, FunctionDef):
+                if any(_has_string_stmt(s) for s in decl.body):
+                    return True
+            elif isinstance(decl, MainDef):
+                if any(_has_string_stmt(s) for s in decl.body):
+                    return True
+            elif isinstance(decl, ModuleDecl):
+                for bd in decl.body:
+                    if isinstance(bd, FunctionDef):
+                        if any(_has_string_stmt(s) for s in bd.body):
+                            return True
+                # Check constants for string values
+                for const in decl.constants:
+                    if isinstance(const.value, _STRING_NODES):
+                        return True
+
+        return False
 
     def _collect_needed_headers(self) -> None:
         """Pre-scan to determine which runtime headers are needed."""
         # Always include the base runtime
         self._needed_headers.add("prove_runtime.h")
-        # The hello world always needs strings
-        self._needed_headers.add("prove_string.h")
-        # IO init_args is always called in main
-        self._needed_headers.add("prove_input_output.h")
+
+        # String header: only when strings are actually used
+        has_main = False
+        for d in self._module.declarations:
+            if isinstance(d, MainDef):
+                has_main = True
+                break
+            if isinstance(d, ModuleDecl):
+                for item in d.body:
+                    if isinstance(item, MainDef):
+                        has_main = True
+                        break
+                if has_main:
+                    break
+        if has_main or self._module_uses_strings():
+            self._needed_headers.add("prove_string.h")
+
+        # IO header: only when main exists (prove_io_init_args) or System imported
+        if has_main:
+            self._needed_headers.add("prove_input_output.h")
 
         # Scan function signatures and types for what we need
         for (_verb, _name), sigs in self._symbols.all_functions().items():
@@ -350,6 +456,18 @@ class CEmitter(
         self._tmp_counter += 1
         return f"_tmp{self._tmp_counter}"
 
+    def _named_tmp(self, hint: str) -> str:
+        """Generate a readable temp name from hint, avoiding collisions."""
+        if hint not in self._used_names and hint not in self._locals:
+            self._used_names.add(hint)
+            return hint
+        n = 2
+        while f"{hint}{n}" in self._used_names or f"{hint}{n}" in self._locals:
+            n += 1
+        name = f"{hint}{n}"
+        self._used_names.add(name)
+        return name
+
     def _in_function_with_escape_info(self) -> bool:
         """Check if we're inside a function with escape analysis info."""
         return self._escape_info is not None and self._current_func is not None
@@ -359,6 +477,17 @@ class CEmitter(
         if isinstance(self._current_func, FunctionDef):
             return self._current_func.name
         return None
+
+    def _can_elide_retain(self, var_name: str) -> bool:
+        """True if retain/release for var_name can be skipped in release mode."""
+        if not self._release_mode:
+            return False
+        if self._escape_info is None:
+            return False
+        func_name = self._get_current_function_name()
+        if func_name is None:
+            return False
+        return not self._escape_info.escapes(func_name, var_name)
 
     def _use_region_allocation(self, var_name: str | None = None) -> bool:
         """Check if we should use region allocation for this allocation.
@@ -842,9 +971,19 @@ class CEmitter(
 
         # Reset locals
         self._locals.clear()
+        self._used_names.clear()
         self._string_literal_cache.clear()
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
+
+        # Retain pointer params at entry — the epilogue releases all locals
+        # including params, but recursive calls or stdlib functions that
+        # return their input may also release them.  The entry retain
+        # ensures the outer scope's reference stays alive.
+        for p, pt in zip(fd.params, param_types):
+            ct = map_type(pt)
+            if ct.is_pointer:
+                self._line(f"prove_retain({p.name});")
 
         # Emit assume assertions at function entry
         for assume_expr in fd.assume:
@@ -904,6 +1043,7 @@ class CEmitter(
         self._current_func = fd
         self._current_func_return = sig.return_type if sig else UNIT
         self._locals.clear()
+        self._used_names.clear()
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
@@ -1051,6 +1191,7 @@ class CEmitter(
         self._in_region_scope = True
 
         self._locals.clear()
+        self._used_names.clear()
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
@@ -1113,6 +1254,7 @@ class CEmitter(
         self._current_func_return = UNIT
         self._in_main = True
         self._locals.clear()
+        self._used_names.clear()
         self._string_literal_cache.clear()
         self._current_requires = []
 
@@ -1126,6 +1268,7 @@ class CEmitter(
         for stmt in md.body:
             self._emit_stmt(stmt)
 
+        self._line("")
         self._line("prove_runtime_cleanup();")
         self._line("return 0;")
         self._indent -= 1
