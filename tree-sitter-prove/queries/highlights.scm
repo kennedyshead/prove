@@ -162,6 +162,8 @@
 (regex_alternation) @operator
 (regex_dot) @operator
 
+(character_literal) @character
+
 (integer_literal) @number
 (decimal_literal) @number.float
 
@@ -214,6 +216,20 @@
 (doc_comment) @comment.documentation
 (line_comment) @comment
 
+; ─── Module annotations ────────────────────────────────────
+
+(domain_annotation
+  (type_identifier) @type
+  (#set! "priority" 101))
+
+(temporal_annotation
+  "->" @punctuation.delimiter
+  (#set! "priority" 101))
+
+(temporal_annotation
+  (identifier) @variable
+  (#set! "priority" 101))
+
 ; ─── Near-miss annotations ──────────────────────────────────
 
 (near_miss_annotation
@@ -234,16 +250,24 @@
 
 ; ─── Import items ───────────────────────────────────────────
 
-; Only highlight imports that have the 'types' keyword
+; Module name in imports
 (import_declaration
-  (import_group
-    (type_identifier) @module))
+  (type_identifier) @module)
 
+; Verb in import groups
 (import_group
-  (identifier) @function)
+  (verb) @keyword.function
+  (#set! "priority" 101))
 
+; Function names in import groups
 (import_group
-  (type_identifier) @type)
+  (identifier) @function
+  (#set! "priority" 101))
+
+; Type names in import groups (from 'types' keyword)
+(import_group
+  (type_identifier) @type
+  (#set! "priority" 101))
 
 ; ─── Variable references (fallback) ───────────────────────────
 ; Low priority so more specific patterns above win.

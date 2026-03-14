@@ -1,5 +1,15 @@
 module Types
-  narrative: """Type validation and conversion functions."""
+  narrative: """
+  Type validation and conversion functions.
+
+  Validates string integer float decimal boolean character unit value text
+  array object number
+  reads the Unicode code point of a character
+  creates float integer from string
+  reads and converts integer float boolean to string
+  unwrap Option values
+  handles error 
+  """
 
 /// Check if a value is a string
 validates string(value String)
@@ -74,7 +84,7 @@ validates decimal(value Value)
 binary
 
 /// Check if a Value is a boolean
-validates bool(value Value)
+validates boolean(value Value)
 binary
 
 /// Check if a Value is an array
@@ -85,10 +95,8 @@ binary
 validates object(value Value)
 binary
 
-// TODO: Rename to unit
-
-/// Check if a Value is null
-validates null(value Value)
+/// Check if a Value is unit
+validates unit(value Value)
 binary
 
 /// Validate a source string

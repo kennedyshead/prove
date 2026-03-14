@@ -1,0 +1,5 @@
+project intent_demo
+  purpose: Demonstrate the Prove intent-driven development workflow
+
+  module Greet
+    outputs hello world in the console

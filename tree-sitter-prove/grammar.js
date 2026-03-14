@@ -31,12 +31,77 @@ module.exports = grammar({
   ],
 
   rules: {
-    source_file: $ => repeat($._top_level),
+    source_file: $ => choice(
+      $.intent_file,
+      repeat($._top_level),
+    ),
 
     _top_level: $ => choice(
       $.module_declaration,
       $.function_definition,
       $.main_definition,
+    ),
+
+    // ─── .intent file ─────────────────────────────────────────────
+
+    intent_file: $ => seq(
+      $.intent_project,
+      repeat(choice(
+        $.intent_vocabulary,
+        $.intent_module,
+        $.intent_flow,
+        $.intent_constraints,
+      )),
+    ),
+
+    intent_project: $ => seq(
+      'project',
+      $.type_identifier,
+      optional(seq('purpose', ':', /[^\n]+/)),
+      optional(seq('domain', ':', /[^\n]+/)),
+    ),
+
+    intent_vocabulary: $ => seq(
+      'vocabulary',
+      repeat1($.intent_vocab_entry),
+    ),
+
+    intent_vocab_entry: $ => seq(
+      $.type_identifier,
+      'is',
+      /[^\n]+/,
+    ),
+
+    intent_module: $ => seq(
+      'module',
+      $.type_identifier,
+      repeat1($.intent_verb_phrase),
+    ),
+
+    intent_verb_phrase: $ => seq(
+      $.intent_verb,
+      repeat1(choice($.identifier, $.type_identifier)),
+    ),
+
+    intent_verb: $ => choice(
+      'validates', 'transforms', 'reads', 'creates', 'matches',
+      'inputs', 'outputs', 'streams', 'listens', 'detached', 'attached',
+    ),
+
+    intent_flow: $ => seq(
+      'flow',
+      repeat1($.intent_flow_step),
+    ),
+
+    intent_flow_step: $ => seq(
+      $.type_identifier,
+      $.intent_verb_phrase,
+      optional(seq('->', $.intent_flow_step)),
+    ),
+
+    intent_constraints: $ => seq(
+      'constraints',
+      repeat1(/[^\n]+/),
     ),
 
     // ─── Comments ──────────────────────────────────────────────
@@ -69,10 +134,10 @@ module.exports = grammar({
       repeat1($.import_group),
     )),
 
-    import_group: $ => prec.right(choice(
-      seq('types', repeat1($.type_identifier)),
-      seq($.verb, repeat1($.identifier)),
-    )),
+    import_group: $ => choice(
+      prec.left(seq('types', repeat1($.type_identifier))),
+      prec.right(seq($.verb, repeat1($.identifier))),
+    ),
 
     // ─── Type Definitions ──────────────────────────────────────
 
@@ -539,10 +604,20 @@ module.exports = grammar({
 
     _literal: $ => choice(
       $.string_literal,
+      $.character_literal,
       $.integer_literal,
       $.decimal_literal,
       $.boolean_literal,
       $.regex_literal,
+    ),
+
+    character_literal: $ => seq(
+      "'",
+      choice(
+        $.escape_sequence,
+        token.immediate(prec(1, /[^'\\]/)),
+      ),
+      token.immediate("'"),
     ),
 
     // Regex literals: /pattern/ (deprecated — prefer r"pattern")

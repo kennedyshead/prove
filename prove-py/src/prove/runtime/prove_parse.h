@@ -62,10 +62,10 @@ Prove_Table  *prove_value_as_object(Prove_Value *v);
 bool prove_value_is_text(Prove_Value *v);
 bool prove_value_is_number(Prove_Value *v);
 bool prove_value_is_decimal(Prove_Value *v);
-bool prove_value_is_bool(Prove_Value *v);
+bool prove_value_is_boolean(Prove_Value *v);
 bool prove_value_is_array(Prove_Value *v);
 bool prove_value_is_object(Prove_Value *v);
-bool prove_value_is_null(Prove_Value *v);
+bool prove_value_is_unit(Prove_Value *v);
 
 /* ── TOML codec ──────────────────────────────────────────────── */
 

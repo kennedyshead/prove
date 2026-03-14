@@ -7,8 +7,10 @@ from prove._nl_intent import (
     body_tokens,
     extract_nouns,
     implied_verbs,
+    normalize_noun,
     normalize_verb,
     prose_overlaps,
+    split_name,
 )
 from prove.ast_nodes import FunctionDef
 from prove.lexer import Lexer
@@ -199,15 +201,123 @@ class TestExtractNounsSynonyms:
         nouns = extract_nouns("convert the data into results")
         assert "convert" not in nouns
         assert "data" in nouns
-        assert "results" in nouns
+        assert "result" in nouns  # normalized from "results"
 
     def test_filters_singular_verb_forms(self) -> None:
         nouns = extract_nouns("transform credentials and validate them")
         assert "transform" not in nouns
         assert "validate" not in nouns
-        assert "credentials" in nouns
+        assert "credential" in nouns  # normalized from "credentials"
 
     def test_preserves_domain_nouns(self) -> None:
         nouns = extract_nouns("hash the password using argon2")
         assert "password" in nouns
         assert "argon2" in nouns
+
+
+class TestNormalizeNoun:
+    """Tests for normalize_noun() morphological normalization."""
+
+    def test_ation_suffix(self) -> None:
+        assert normalize_noun("validation") == "valid"
+        assert normalize_noun("computation") == "comput"
+
+    def test_tion_suffix(self) -> None:
+        # "tion" without preceding "a" — stripped as -tion
+        assert normalize_noun("exception") == "excep"
+        assert normalize_noun("connection") == "connec"
+
+    def test_ment_suffix(self) -> None:
+        assert normalize_noun("management") == "manage"
+
+    def test_ments_suffix(self) -> None:
+        assert normalize_noun("environments") == "environ"
+
+    def test_ness_suffix(self) -> None:
+        assert normalize_noun("correctness") == "correct"
+
+    def test_ing_suffix(self) -> None:
+        assert normalize_noun("hashing") == "hash"
+        assert normalize_noun("processing") == "process"
+
+    def test_ing_short_root_kept(self) -> None:
+        assert normalize_noun("doing") == "doing"
+
+    def test_ies_suffix(self) -> None:
+        assert normalize_noun("entries") == "entry"
+        assert normalize_noun("queries") == "query"
+
+    def test_es_suffix_sibilant(self) -> None:
+        assert normalize_noun("hashes") == "hash"
+        assert normalize_noun("matches") == "match"
+        assert normalize_noun("boxes") == "box"
+
+    def test_ed_suffix(self) -> None:
+        assert normalize_noun("hashed") == "hash"
+
+    def test_ed_short_root_kept(self) -> None:
+        assert normalize_noun("axed") == "axed"
+
+    def test_s_suffix(self) -> None:
+        assert normalize_noun("passwords") == "password"
+        assert normalize_noun("tokens") == "token"
+
+    def test_ss_not_stripped(self) -> None:
+        assert normalize_noun("pass") == "pass"
+
+    def test_no_suffix(self) -> None:
+        assert normalize_noun("hash") == "hash"
+        assert normalize_noun("token") == "token"
+
+    def test_case_insensitive(self) -> None:
+        assert normalize_noun("Hashing") == "hash"
+        assert normalize_noun("PASSWORDS") == "password"
+
+
+class TestSplitName:
+    """Tests for split_name() snake_case splitting."""
+
+    def test_snake_case(self) -> None:
+        assert split_name("hash_password") == ["hash", "password"]
+
+    def test_single_word(self) -> None:
+        assert split_name("hash") == ["hash"]
+
+    def test_multi_part(self) -> None:
+        assert split_name("check_user_input") == ["check", "user", "input"]
+
+    def test_uppercase_lowered(self) -> None:
+        assert split_name("Hash_Password") == ["hash", "password"]
+
+    def test_empty_parts_skipped(self) -> None:
+        assert split_name("a__b") == ["a", "b"]
+
+
+class TestProseOverlapsNormalized:
+    """Tests for updated prose_overlaps() with normalize+split."""
+
+    def test_normalized_match(self) -> None:
+        assert prose_overlaps("hashing the password", {"hash"})
+
+    def test_token_split_match(self) -> None:
+        assert prose_overlaps("hashing", {"hash_password"})
+
+    def test_plural_match(self) -> None:
+        assert prose_overlaps("passwords", {"password"})
+
+    def test_ing_match(self) -> None:
+        assert prose_overlaps("processing data", {"process"})
+
+
+class TestExtractNounsNormalized:
+    """Tests for extract_nouns() returning normalized forms."""
+
+    def test_normalized_output(self) -> None:
+        nouns = extract_nouns("validates credentials against stored password hashes")
+        assert "credential" in nouns
+        assert "password" in nouns
+        assert "hash" in nouns
+
+    def test_deduplication(self) -> None:
+        nouns = extract_nouns("hash hashes hashing")
+        assert nouns.count("hash") == 1

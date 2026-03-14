@@ -1,4 +1,4 @@
-"""Pygments lexer for the Prove programming language."""
+"""Pygments lexers for the Prove programming language and .intent files."""
 
 from pygments.lexer import RegexLexer, bygroups, words
 from pygments.token import (
@@ -203,5 +203,59 @@ class ProveLexer(RegexLexer):
             (r'\|', Operator),
             (r'\.', Operator),
             (r'[^"\\.|()[\]{}+*?^$]+', String.Regex),
+        ],
+    }
+
+
+class ProveIntentLexer(RegexLexer):
+    """Pygments lexer for Prove .intent files."""
+
+    name = "ProveIntent"
+    aliases = ["prove-intent"]
+    filenames = ["*.intent"]
+    mimetypes = ["text/x-prove-intent"]
+
+    tokens = {
+        "root": [
+            # Whitespace
+            (r"\s+", Text),
+            # Comments
+            (r"//.*$", Comment.Single),
+            # Section keywords
+            (
+                words(
+                    (
+                        "project", "purpose", "domain", "vocabulary",
+                        "module", "flow", "constraints",
+                    ),
+                    prefix=r"\b",
+                    suffix=r"\b",
+                ),
+                Keyword,
+            ),
+            # Verb keywords
+            (
+                words(
+                    (
+                        "validates", "transforms", "reads", "creates", "matches",
+                        "inputs", "outputs", "streams", "listens", "detached", "attached",
+                    ),
+                    prefix=r"\b",
+                    suffix=r"\b",
+                ),
+                Keyword.Declaration,
+            ),
+            # "is" keyword (vocabulary definitions)
+            (r"\bis\b", Keyword),
+            # Flow arrow
+            (r"->", Operator),
+            # Colon
+            (r":", Punctuation),
+            # Type identifiers (PascalCase)
+            (r"[A-Z][a-zA-Z0-9]*", Name.Class),
+            # Regular identifiers
+            (r"[a-z_][a-z0-9_]*", Name),
+            # Punctuation
+            (r"[(),]", Punctuation),
         ],
     }
