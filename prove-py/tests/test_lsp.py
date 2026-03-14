@@ -11,12 +11,17 @@ from prove.lsp import (
     _SEVERITY_MAP,
     _ProjectIndexer,
     DocumentState,
+    IntentDocumentState,
     _analyze,
+    _analyze_intent,
     _build_import_edit,
     _build_import_edit_text,
     _extract_undefined_name,
     _get_word_at,
+    _intent_code_actions,
+    _intent_completions,
     _is_e310,
+    _is_intent_uri,
     _types_display,
     completion,
     span_to_range,
@@ -746,3 +751,126 @@ class TestProjectIndexerLoad:
             assert len(fresh._file_ngrams) > 0
         finally:
             lsp_mod._project_indexer = old_global
+
+
+# ── .intent file LSP tests ──────────────────────────────────────
+
+
+class TestIsIntentUri:
+    def test_intent_uri(self):
+        assert _is_intent_uri("file:///project/project.intent")
+
+    def test_prv_uri(self):
+        assert not _is_intent_uri("file:///project/main.prv")
+
+    def test_no_extension(self):
+        assert not _is_intent_uri("file:///project/readme")
+
+
+_SAMPLE_INTENT = """\
+project UserAuth
+  purpose: Authenticate users and manage sessions
+  domain: Security
+
+  vocabulary
+    Credential is a user identity paired with a secret
+    Session is a time-limited access token
+
+  module Auth
+    validates credentials against stored password hashes
+    transforms passwords into hashes
+    creates sessions for authenticated users
+
+  module SessionManager
+    validates sessions for expiry
+    reads session data from storage
+
+  flow
+    Auth creates sessions -> SessionManager validates sessions
+
+  constraints
+    all credential operations are failable
+"""
+
+
+class TestAnalyzeIntent:
+    def test_parses_valid_intent(self):
+        ids = _analyze_intent("file:///test/project.intent", _SAMPLE_INTENT)
+        assert ids.project is not None
+        assert ids.project.name == "UserAuth"
+
+    def test_missing_project_produces_error(self):
+        ids = _analyze_intent("file:///test/bad.intent", "purpose: something\n")
+        diags = ids.diagnostics
+        assert any(d.severity == lsp.DiagnosticSeverity.Error for d in diags)
+
+    def test_unrecognized_verb_produces_warning(self):
+        source = """\
+project Test
+  purpose: test
+  module Foo
+    handles something gracefully
+"""
+        ids = _analyze_intent("file:///test/test.intent", source)
+        assert any(
+            d.code == "W601" for d in ids.diagnostics
+        )
+
+    def test_w602_unreferenced_vocabulary(self):
+        source = """\
+project Test
+  purpose: test
+  vocabulary
+    Orphan is never used anywhere
+  module Foo
+    validates data
+"""
+        ids = _analyze_intent("file:///test/test.intent", source)
+        w602 = [d for d in ids.diagnostics if d.code == "W602"]
+        assert len(w602) == 1
+        assert "Orphan" in w602[0].message
+
+    def test_w603_undefined_flow_module(self):
+        source = """\
+project Test
+  purpose: test
+  module Auth
+    validates credentials
+  flow
+    Auth validates credentials -> Ghost validates sessions
+"""
+        ids = _analyze_intent("file:///test/test.intent", source)
+        w603 = [d for d in ids.diagnostics if d.code == "W603"]
+        assert len(w603) == 1
+        assert "Ghost" in w603[0].message
+
+
+class TestIntentCompletions:
+    def test_top_level_keywords(self):
+        source = "project Test\n  purpose: test\n"
+        items = _intent_completions(source, lsp.Position(line=2, character=0))
+        labels = {i.label for i in items}
+        assert "module" in labels
+        assert "vocabulary" in labels
+
+    def test_module_block_verbs(self):
+        source = "project Test\n  purpose: test\n  module Foo\n    "
+        items = _intent_completions(source, lsp.Position(line=3, character=4))
+        labels = {i.label for i in items}
+        assert "validates" in labels
+        assert "transforms" in labels
+
+    def test_vocabulary_block_snippet(self):
+        source = "project Test\n  purpose: test\n  vocabulary\n    "
+        items = _intent_completions(source, lsp.Position(line=3, character=4))
+        assert len(items) > 0
+        assert any("is" in (i.insert_text or i.label) for i in items)
+
+
+class TestIntentCodeActions:
+    def test_generate_prv_action(self):
+        ids = _analyze_intent("file:///test/project.intent", _SAMPLE_INTENT)
+        actions = _intent_code_actions("file:///test/project.intent", ids)
+        assert len(actions) == 2  # Auth and SessionManager
+        assert any("auth.prv" in a.title for a in actions)
+        assert any("sessionmanager.prv" in a.title for a in actions)

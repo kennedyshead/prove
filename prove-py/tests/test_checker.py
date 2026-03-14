@@ -625,6 +625,18 @@ class TestUserDefinedOverloads:
             "E301",
         )
 
+    def test_different_type_variable_params_no_e301(self):
+        """Same verb+name but different TypeVariable params is NOT a duplicate."""
+        check(
+            "validates value(source Source)\n"
+            "    from\n"
+            "        true\n"
+            "\n"
+            "validates value(option Option<Value>)\n"
+            "    from\n"
+            "        true\n"
+        )
+
     def test_different_verb_same_name_allowed(self):
         """Same name with different verbs is channel dispatch, not overloading."""
         check(

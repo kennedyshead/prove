@@ -35,6 +35,14 @@ from
     console("Hello from Prove!")
 """
 
+_INTENT_TEMPLATE = """\
+project {name}
+  purpose: A new Prove project
+
+  module Main
+    outputs greeting to console
+"""
+
 _GITIGNORE = """\
 build/
 dist/
@@ -60,6 +68,9 @@ def scaffold(name: str, parent: Path | None = None) -> Path:
 
     # src/main.prv
     (src_dir / "main.prv").write_text(_MAIN_PRV_TEMPLATE)
+
+    # project.intent
+    (project_dir / "project.intent").write_text(_INTENT_TEMPLATE.format(name=name))
 
     # .gitignore
     (project_dir / ".gitignore").write_text(_GITIGNORE)

@@ -93,22 +93,87 @@ def body_tokens(fd: FunctionDef) -> set[str]:
     return names
 
 
-def prose_overlaps(prose: str, tokens: set[str]) -> bool:
-    """True if any word in prose matches a body token (case-insensitive, with stemming).
+def normalize_noun(word: str) -> str:
+    """Reduce a noun to its root form via ordered suffix stripping.
 
-    Checks both direct matches and 4-character prefix stems, so "hashing"
-    matches "hash" and vice versa.
+    Ordered rules (first match wins):
+    1. -ation/-tion → strip
+    2. -ment/-ments → strip
+    3. -ness → strip
+    4. -ing → strip (keep if root < 3 chars)
+    5. -ies → replace with y
+    6. -es → strip (only if root ends in s/x/z/sh/ch)
+    7. -ed → strip (keep if root < 3 chars)
+    8. -s → strip (not -ss)
     """
-    prose_words = {w.lower() for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", prose)}
-    lower_tokens = {t.lower() for t in tokens}
-    if prose_words & lower_tokens:
-        return True
-    for pw in prose_words:
-        if len(pw) >= 4:
-            for t in lower_tokens:
-                if t.startswith(pw) or pw.startswith(t[:4]):
-                    return True
-    return False
+    w = word.lower()
+    if w.endswith("ation"):
+        root = w[:-5]
+        if len(root) >= 3:
+            return root
+    if w.endswith("tion"):
+        root = w[:-4]
+        if len(root) >= 3:
+            return root
+    if w.endswith("ments"):
+        root = w[:-5]
+        if len(root) >= 3:
+            return root
+    if w.endswith("ment"):
+        root = w[:-4]
+        if len(root) >= 3:
+            return root
+    if w.endswith("ness"):
+        root = w[:-4]
+        if len(root) >= 3:
+            return root
+    if w.endswith("ing"):
+        root = w[:-3]
+        if len(root) >= 3:
+            return root
+        return w
+    if w.endswith("ies"):
+        root = w[:-3]
+        if len(root) >= 1:
+            return root + "y"
+    if w.endswith("es"):
+        root = w[:-2]
+        if root and root[-1] in ("s", "x", "z") or root.endswith("sh") or root.endswith("ch"):
+            if len(root) >= 3:
+                return root
+    if w.endswith("ed"):
+        root = w[:-2]
+        if len(root) >= 3:
+            return root
+        return w
+    if w.endswith("s") and not w.endswith("ss"):
+        root = w[:-1]
+        if len(root) >= 3:
+            return root
+    return w
+
+
+def split_name(name: str) -> list[str]:
+    """Split a snake_case name into lowercase parts.
+
+    ``hash_password`` → ``["hash", "password"]``
+    """
+    return [p.lower() for p in name.split("_") if p]
+
+
+def prose_overlaps(prose: str, tokens: set[str]) -> bool:
+    """True if any word in prose matches a body token after normalization.
+
+    Both prose words and token parts (split on ``_``) are reduced to their
+    root form via ``normalize_noun`` before comparison.
+    """
+    prose_words = {normalize_noun(w.lower())
+                   for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", prose)}
+    token_roots: set[str] = set()
+    for t in tokens:
+        for part in split_name(t):
+            token_roots.add(normalize_noun(part))
+    return bool(prose_words & token_roots)
 
 
 # ── Noun extraction ──────────────────────────────────────────────
@@ -128,8 +193,9 @@ _NOUN_STOPS = frozenset({
 def extract_nouns(text: str) -> list[str]:
     """Extract candidate noun phrases from prose (domain objects, not verbs).
 
-    Returns lowercase words that are likely to become function names,
-    type names, or parameter names. Preserves order of first occurrence.
+    Returns normalized lowercase words that are likely to become function
+    names, type names, or parameter names.  Preserves order of first
+    occurrence (by normalized form).
     """
     words = re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", text)
     seen: set[str] = set()
@@ -137,13 +203,16 @@ def extract_nouns(text: str) -> list[str]:
 
     for word in words:
         low = word.lower()
-        if low in _NOUN_STOPS or low in seen or len(low) < 3:
+        if low in _NOUN_STOPS or len(low) < 3:
             continue
         # Skip words that are verb synonyms
         if low in _SYNONYM_TO_VERB:
             continue
-        seen.add(low)
-        nouns.append(low)
+        norm = normalize_noun(low)
+        if norm in seen:
+            continue
+        seen.add(norm)
+        nouns.append(norm)
 
     return nouns
 

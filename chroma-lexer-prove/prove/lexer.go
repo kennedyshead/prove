@@ -6,6 +6,40 @@ import (
 )
 
 var (
+	// IntentLexer is the Chroma lexer for Prove .intent files.
+	IntentLexer = chroma.MustNewLexer(
+		&chroma.Config{
+			Name:      "ProveIntent",
+			Aliases:   []string{"prove-intent"},
+			Filenames: []string{"*.intent"},
+			MimeTypes: []string{"text/x-prove-intent"},
+		},
+		chroma.Rules{
+			"root": {
+				// Whitespace
+				{`\s+`, chroma.Text, nil},
+				// Comments
+				{`//[^\n]*`, chroma.Comment, nil},
+				// Section keywords
+				{`\b(project|purpose|domain|vocabulary|module|flow|constraints)\b`, chroma.Keyword, nil},
+				// Verb keywords
+				{`\b(validates|transforms|reads|creates|matches|inputs|outputs|streams|listens|detached|attached)\b`, chroma.KeywordDeclaration, nil},
+				// "is" keyword
+				{`\bis\b`, chroma.Keyword, nil},
+				// Flow arrow
+				{`->`, chroma.Operator, nil},
+				// Colon
+				{`:`, chroma.Punctuation, nil},
+				// Type identifiers (PascalCase)
+				{`[A-Z][a-zA-Z0-9]*`, chroma.KeywordType, nil},
+				// Regular identifiers
+				{`[a-z_][a-z0-9_]*`, chroma.Name, nil},
+				// Punctuation
+				{`[(),]`, chroma.Punctuation, nil},
+			},
+		},
+	)
+
 	// Lexer is the Chroma lexer for the Prove programming language.
 	Lexer = chroma.MustNewLexer(
 		&chroma.Config{

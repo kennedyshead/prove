@@ -499,7 +499,9 @@ def _check_intent_coverage(project_dir: Path) -> None:
         click.echo("  error parsing project.intent", err=True)
         return
 
-    statuses = check_intent_coverage(result.project, project_dir)
+    src_dir = project_dir / "src"
+    source_dir = src_dir if src_dir.is_dir() else project_dir
+    statuses = check_intent_coverage(result.project, source_dir)
     click.echo("\nIntent coverage:")
     for s in statuses:
         icon = {"implemented": "+", "todo": "~", "missing": "-"}.get(s["status"], "?")
@@ -1080,9 +1082,13 @@ def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool) -> No
 
     project = result.project
     project_dir = target.parent
+    # Intent file at project root → generate into src/; inside src/ → in-place
+    src_dir = project_dir / "src"
+    source_dir = src_dir if src_dir.is_dir() else project_dir
 
     if gen:
-        generated = generate_project(project, project_dir, dry_run=dry_run)
+        source_dir.mkdir(parents=True, exist_ok=True)
+        generated = generate_project(project, source_dir, dry_run=dry_run)
         for filename, src in generated:
             if dry_run:
                 click.echo(f"--- {filename} ---")
@@ -1092,7 +1098,7 @@ def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool) -> No
         return
 
     # Default: show status/drift
-    statuses = check_intent_coverage(project, project_dir)
+    statuses = check_intent_coverage(project, source_dir)
 
     if drift:
         statuses = [s for s in statuses if s["status"] != "implemented"]

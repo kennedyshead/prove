@@ -483,6 +483,230 @@ _MAX_CACHED_DOCUMENTS = 50
 _project_indexer: _ProjectIndexer | None = None
 
 
+# ── .intent file support ─────────────────────────────────────────────
+
+
+@dataclass
+class IntentDocumentState:
+    """Cached analysis results for an open .intent file."""
+
+    source: str = ""
+    project: object | None = None  # IntentProject
+    diagnostics: list[lsp.Diagnostic] = field(default_factory=list)
+
+
+_intent_state: dict[str, IntentDocumentState] = {}
+
+_INTENT_SEVERITY_MAP = {
+    "error": lsp.DiagnosticSeverity.Error,
+    "warning": lsp.DiagnosticSeverity.Warning,
+    "info": lsp.DiagnosticSeverity.Information,
+}
+
+# Verbs recognized in .intent files (for completions)
+_INTENT_VERBS = [
+    "validates", "transforms", "reads", "creates", "matches",
+    "inputs", "outputs", "streams", "listens", "detached", "attached",
+]
+
+_INTENT_KEYWORDS = [
+    "project", "purpose", "domain", "vocabulary", "module",
+    "flow", "constraints",
+]
+
+
+def _is_intent_uri(uri: str) -> bool:
+    """True if the URI points to a .intent file."""
+    return uri.endswith(".intent")
+
+
+def _analyze_intent(uri: str, source: str) -> IntentDocumentState:
+    """Parse an .intent file and return diagnostics."""
+    from prove.intent_parser import parse_intent
+
+    ids = IntentDocumentState(source=source)
+    diags: list[lsp.Diagnostic] = []
+
+    result = parse_intent(source, uri)
+    ids.project = result.project
+
+    for d in result.diagnostics:
+        line = max(d.line - 1, 0)
+        sev = _INTENT_SEVERITY_MAP.get(d.severity, lsp.DiagnosticSeverity.Warning)
+        code = d.code or "I000"
+        diags.append(lsp.Diagnostic(
+            range=lsp.Range(
+                start=lsp.Position(line=line, character=0),
+                end=lsp.Position(line=line, character=1000),
+            ),
+            severity=sev,
+            source="prove-intent",
+            code=code,
+            message=f"[{code}] {d.message}" if d.code else d.message,
+        ))
+
+    # Post-parse checks (only if project parsed successfully)
+    if result.project is not None:
+        project = result.project
+        # W602: vocabulary term defined but never referenced
+        for vocab in project.vocabulary:
+            referenced = False
+            for mod in project.modules:
+                mod_text = " ".join(
+                    f"{i.verb} {i.noun} {i.context}" for i in mod.intents
+                ).lower()
+                if vocab.name.lower() in mod_text:
+                    referenced = True
+                    break
+            if not referenced:
+                diags.append(lsp.Diagnostic(
+                    range=lsp.Range(
+                        start=lsp.Position(0, 0),
+                        end=lsp.Position(0, 1000),
+                    ),
+                    severity=lsp.DiagnosticSeverity.Warning,
+                    source="prove-intent",
+                    code="W602",
+                    message=(
+                        f"[W602] vocabulary term '{vocab.name}'"
+                        " is defined but never referenced"
+                    ),
+                ))
+
+        # W603: flow references a module not defined in project.modules
+        defined_modules = {m.name for m in project.modules}
+        for flow in project.flows:
+            for step in flow.steps:
+                if step.module not in defined_modules:
+                    diags.append(lsp.Diagnostic(
+                        range=lsp.Range(
+                            start=lsp.Position(0, 0),
+                            end=lsp.Position(0, 1000),
+                        ),
+                        severity=lsp.DiagnosticSeverity.Warning,
+                        source="prove-intent",
+                        code="W603",
+                        message=f"[W603] flow references undefined module '{step.module}'",
+                    ))
+
+    ids.diagnostics = diags
+    _intent_state[uri] = ids
+    return ids
+
+
+def _intent_completions(source: str, position: lsp.Position) -> list[lsp.CompletionItem]:
+    """Return context-aware completions for .intent files."""
+    items: list[lsp.CompletionItem] = []
+    lines = source.splitlines()
+    line_idx = position.line
+    current_line = lines[line_idx] if line_idx < len(lines) else ""
+
+    # Detect current section by scanning upward
+    section: str | None = None
+    for i in range(line_idx, -1, -1):
+        ln = lines[i].strip() if i < len(lines) else ""
+        if ln.startswith("module "):
+            section = "module"
+            break
+        if ln == "vocabulary":
+            section = "vocabulary"
+            break
+        if ln == "flow":
+            section = "flow"
+            break
+        if ln == "constraints":
+            section = "constraints"
+            break
+        if ln.startswith("project "):
+            section = "project"
+            break
+
+    indent = len(current_line) - len(current_line.lstrip())
+
+    if section == "module" and indent >= 2:
+        # Inside a module block: suggest verbs
+        for verb in _INTENT_VERBS:
+            items.append(lsp.CompletionItem(
+                label=verb,
+                kind=lsp.CompletionItemKind.Keyword,
+                detail="intent verb",
+            ))
+    elif section == "flow" and indent >= 2:
+        # Inside a flow block: suggest module names from current state
+        for uri, ids in _intent_state.items():
+            if ids.project is not None:
+                for mod in ids.project.modules:
+                    items.append(lsp.CompletionItem(
+                        label=mod.name,
+                        kind=lsp.CompletionItemKind.Module,
+                        detail="module",
+                    ))
+                break
+    elif section == "vocabulary" and indent >= 2:
+        # Suggest vocabulary structure
+        items.append(lsp.CompletionItem(
+            label="Name is description",
+            kind=lsp.CompletionItemKind.Snippet,
+            detail="vocabulary entry",
+            insert_text="Name is ",
+        ))
+    elif indent < 2 or section == "project":
+        # Top-level: suggest section keywords
+        for kw in _INTENT_KEYWORDS:
+            items.append(lsp.CompletionItem(
+                label=kw,
+                kind=lsp.CompletionItemKind.Keyword,
+                detail=".intent keyword",
+            ))
+
+    return items
+
+
+def _intent_code_actions(
+    uri: str, ids: IntentDocumentState,
+) -> list[lsp.CodeAction]:
+    """Return code actions for .intent files."""
+    actions: list[lsp.CodeAction] = []
+    if ids.project is None:
+        return actions
+
+    from prove.intent_generator import generate_module_source
+
+    for mod in ids.project.modules:
+        source = generate_module_source(mod, ids.project)
+
+        # Determine output path
+        file_path = uri[7:] if uri.startswith("file://") else uri
+        project_dir = Path(file_path).parent
+        prv_path = project_dir / f"{mod.name.lower()}.prv"
+        prv_uri = f"file://{prv_path}"
+
+        actions.append(lsp.CodeAction(
+            title=f"Generate {mod.name.lower()}.prv from intent",
+            kind=lsp.CodeActionKind.Source,
+            edit=lsp.WorkspaceEdit(
+                document_changes=[
+                    lsp.CreateFile(uri=prv_uri, kind="create",
+                                   options=lsp.CreateFileOptions(overwrite=True)),
+                    lsp.TextDocumentEdit(
+                        text_document=lsp.OptionalVersionedTextDocumentIdentifier(
+                            uri=prv_uri, version=None,
+                        ),
+                        edits=[lsp.TextEdit(
+                            range=lsp.Range(
+                                start=lsp.Position(0, 0),
+                                end=lsp.Position(0, 0),
+                            ),
+                            new_text=source,
+                        )],
+                    ),
+                ],
+            ),
+        ))
+
+    return actions
+
+
 def _ensure_project_indexed(uri: str) -> None:
     """Create and populate project indexer for uri's project (once per session)."""
     global _project_indexer
@@ -1196,6 +1420,12 @@ def _get_word_at(source: str, line: int, character: int) -> str:
 def did_open(params: lsp.DidOpenTextDocumentParams) -> None:
     uri = params.text_document.uri
     source = params.text_document.text
+    if _is_intent_uri(uri):
+        ids = _analyze_intent(uri, source)
+        server.text_document_publish_diagnostics(
+            lsp.PublishDiagnosticsParams(uri=uri, diagnostics=ids.diagnostics)
+        )
+        return
     ds = _analyze(uri, source)
     server.text_document_publish_diagnostics(
         lsp.PublishDiagnosticsParams(
@@ -1214,6 +1444,12 @@ def did_change(params: lsp.DidChangeTextDocumentParams) -> None:
     uri = params.text_document.uri
     # Full sync — take last content change
     source = params.content_changes[-1].text if params.content_changes else ""
+    if _is_intent_uri(uri):
+        ids = _analyze_intent(uri, source)
+        server.text_document_publish_diagnostics(
+            lsp.PublishDiagnosticsParams(uri=uri, diagnostics=ids.diagnostics)
+        )
+        return
     ds = _analyze(uri, source)
     server.text_document_publish_diagnostics(
         lsp.PublishDiagnosticsParams(
@@ -1233,7 +1469,9 @@ def did_change(params: lsp.DidChangeTextDocumentParams) -> None:
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_CLOSE)
 def did_close(params: lsp.DidCloseTextDocumentParams) -> None:
-    _state.pop(params.text_document.uri, None)
+    uri = params.text_document.uri
+    _state.pop(uri, None)
+    _intent_state.pop(uri, None)
 
 
 @server.feature(lsp.TEXT_DOCUMENT_DID_SAVE)
@@ -1316,6 +1554,11 @@ def hover(params: lsp.HoverParams) -> lsp.Hover | None:
 )
 def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
     uri = params.text_document.uri
+    if _is_intent_uri(uri):
+        ids = _intent_state.get(uri)
+        source = ids.source if ids else ""
+        items = _intent_completions(source, params.position)
+        return lsp.CompletionList(is_incomplete=False, items=items)
     ds = _state.get(uri)
     items: list[lsp.CompletionItem] = []
 
@@ -2018,10 +2261,19 @@ def _build_import_edit(
 
 @server.feature(
     lsp.TEXT_DOCUMENT_CODE_ACTION,
-    lsp.CodeActionOptions(code_action_kinds=[lsp.CodeActionKind.QuickFix]),
+    lsp.CodeActionOptions(code_action_kinds=[
+        lsp.CodeActionKind.QuickFix,
+        lsp.CodeActionKind.Source,
+    ]),
 )
 def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
     uri = params.text_document.uri
+    if _is_intent_uri(uri):
+        ids = _intent_state.get(uri)
+        if ids is None:
+            return None
+        actions = _intent_code_actions(uri, ids)
+        return actions if actions else None
     ds = _state.get(uri)
     if ds is None:
         return None

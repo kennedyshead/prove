@@ -75,6 +75,7 @@ class TestCLI:
             assert (project / "prove.toml").exists()
             assert (project / "src" / "main.prv").exists()
             assert (project / ".gitignore").exists()
+            assert (project / "project.intent").exists()
 
             # Verify prove.toml content
             toml_text = (project / "prove.toml").read_text()

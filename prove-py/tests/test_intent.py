@@ -397,3 +397,32 @@ class TestIntentCoverage:
             statuses = check_intent_coverage(project, Path(tmpdir))
             assert len(statuses) == 1
             assert statuses[0]["status"] == "missing"
+
+    def test_normalized_matching(self) -> None:
+        """Intent noun 'credentials' should match function named 'credential'."""
+        from pathlib import Path
+        import tempfile
+
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            modules=[
+                IntentModule(
+                    name="Auth",
+                    intents=[
+                        VerbPhrase(verb="validates", noun="credentials",
+                                   context="", raw_line="validates credentials"),
+                    ],
+                ),
+            ],
+        )
+        prv_source = (
+            "validates credential(value String) Boolean\n"
+            "from\n"
+            "    true\n"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "auth.prv").write_text(prv_source, encoding="utf-8")
+            statuses = check_intent_coverage(project, Path(tmpdir))
+            assert len(statuses) == 1
+            assert statuses[0]["status"] == "implemented"

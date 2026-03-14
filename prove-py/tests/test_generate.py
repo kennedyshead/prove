@@ -10,8 +10,8 @@ class TestExtractNouns:
     def test_basic_extraction(self) -> None:
         nouns = extract_nouns("validates user credentials against a stored database")
         assert "user" in nouns
-        assert "credentials" in nouns
-        assert "stored" in nouns
+        assert "credential" in nouns  # normalized from "credentials"
+        assert "stor" in nouns  # normalized from "stored" (-ed)
         assert "database" in nouns
 
     def test_stops_excluded(self) -> None:
@@ -19,11 +19,11 @@ class TestExtractNouns:
         assert "the" not in nouns
         assert "module" not in nouns
         assert "for" not in nouns
-        assert "users" in nouns
+        assert "user" in nouns  # normalized from "users"
 
     def test_verbs_excluded(self) -> None:
         nouns = extract_nouns("validates and transforms passwords")
-        assert "passwords" in nouns
+        assert "password" in nouns  # normalized from "passwords"
         # "validates" and "transforms" match verb stems
         assert "validates" not in nouns
         assert "transforms" not in nouns
@@ -36,8 +36,8 @@ class TestExtractNouns:
 
     def test_preserves_order(self) -> None:
         nouns = extract_nouns("session tokens and password hashes")
-        assert nouns.index("session") < nouns.index("tokens")
-        assert nouns.index("password") < nouns.index("hashes")
+        assert nouns.index("session") < nouns.index("token")  # normalized
+        assert nouns.index("password") < nouns.index("hash")  # normalized
 
 
 class TestPairVerbsNouns:

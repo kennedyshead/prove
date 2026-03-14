@@ -280,14 +280,14 @@ class TestJsonParse:
                 Prove_Result r1 = prove_parse_json(s1);
                 if (prove_result_is_err(r1)) return 1;
                 Prove_Value *v1 = (Prove_Value *)prove_result_unwrap_ptr(r1);
-                if (!prove_value_is_bool(v1) || !prove_value_as_bool(v1)) return 2;
+                if (!prove_value_is_boolean(v1) || !prove_value_as_bool(v1)) return 2;
 
                 /* null */
                 Prove_String *s2 = prove_string_from_cstr("null");
                 Prove_Result r2 = prove_parse_json(s2);
                 if (prove_result_is_err(r2)) return 3;
                 Prove_Value *v2 = (Prove_Value *)prove_result_unwrap_ptr(r2);
-                if (!prove_value_is_null(v2)) return 4;
+                if (!prove_value_is_unit(v2)) return 4;
 
                 /* string */
                 Prove_String *s3 = prove_string_from_cstr("\\"hello\\"");

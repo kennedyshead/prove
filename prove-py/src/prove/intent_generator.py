@@ -10,7 +10,12 @@ import re
 from pathlib import Path
 
 from prove._body_gen import _format_type, find_stdlib_matches, generate_function_source
-from prove._nl_intent import _VERB_PARAM_HINTS, _VERB_RETURN_DEFAULTS, extract_nouns
+from prove._nl_intent import (
+    _VERB_PARAM_HINTS,
+    _VERB_RETURN_DEFAULTS,
+    extract_nouns,
+    normalize_noun,
+)
 from prove.intent_ast import (
     ConstraintDecl,
     FlowDecl,
@@ -274,8 +279,13 @@ def check_intent_coverage(
             except Exception:
                 pass
 
+        # Build a normalized lookup for fuzzy matching
+        normalized_fns = {normalize_noun(n): fd for n, fd in existing_fns.items()}
+
         for intent in module.intents:
-            fn = existing_fns.get(intent.noun)
+            fn = existing_fns.get(intent.noun) or normalized_fns.get(
+                normalize_noun(intent.noun)
+            )
             if fn is None:
                 status = "missing"
             elif any(isinstance(s, TodoStmt) for s in fn.body):

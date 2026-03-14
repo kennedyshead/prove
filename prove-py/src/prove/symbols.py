@@ -77,6 +77,54 @@ class Scope:
         return list(self._symbols.values())
 
 
+def _types_structurally_equal(a: Type, b: Type) -> bool:
+    """Strict structural equality for duplicate detection.
+
+    Unlike ``types_compatible``, this does NOT treat TypeVariable as a wildcard.
+    Two types are equal only when they have the same structure and names.
+    """
+    from prove.types import (
+        AlgebraicType,
+        FunctionType,
+        GenericInstance,
+        PrimitiveType,
+        RecordType,
+        RefinementType,
+        TypeVariable,
+        UnitType,
+    )
+
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, TypeVariable):
+        return a.name == b.name  # type: ignore[union-attr]
+    if isinstance(a, PrimitiveType):
+        return a.name == b.name  # type: ignore[union-attr]
+    if isinstance(a, UnitType):
+        return True
+    if isinstance(a, GenericInstance):
+        b_gi: GenericInstance = b  # type: ignore[assignment]
+        return (
+            a.base_name == b_gi.base_name
+            and len(a.args) == len(b_gi.args)
+            and all(_types_structurally_equal(x, y) for x, y in zip(a.args, b_gi.args))
+        )
+    if isinstance(a, (RecordType, AlgebraicType, RefinementType)):
+        return a.name == b.name  # type: ignore[union-attr]
+    if isinstance(a, FunctionType):
+        b_fn: FunctionType = b  # type: ignore[assignment]
+        return (
+            len(a.param_types) == len(b_fn.param_types)
+            and all(
+                _types_structurally_equal(x, y)
+                for x, y in zip(a.param_types, b_fn.param_types)
+            )
+            and _types_structurally_equal(a.return_type, b_fn.return_type)
+        )
+    # Fallback: identity
+    return a is b
+
+
 class SymbolTable:
     """Manages scoping, function signatures, and type registry."""
 
@@ -118,14 +166,12 @@ class SymbolTable:
 
     def find_exact_duplicate(self, sig: FunctionSignature) -> FunctionSignature | None:
         """Find a previously registered function with the same verb, name, and param types."""
-        from prove.types import types_compatible
-
         key = (sig.verb, sig.name)
         for existing in self._functions.get(key, []):
             if len(existing.param_types) != len(sig.param_types):
                 continue
             if all(
-                types_compatible(a, b) and types_compatible(b, a)
+                _types_structurally_equal(a, b)
                 for a, b in zip(existing.param_types, sig.param_types)
             ):
                 return existing
