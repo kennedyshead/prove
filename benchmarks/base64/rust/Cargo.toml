@@ -1,0 +1,11 @@
+[package]
+name = "base64-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+
+[profile.release]
+lto = true
+codegen-units = 1

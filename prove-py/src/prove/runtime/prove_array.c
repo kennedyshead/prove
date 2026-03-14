@@ -30,22 +30,34 @@ Prove_Array *prove_array_new_int(int64_t size, int64_t default_val) {
 }
 
 void *prove_array_get(Prove_Array *arr, int64_t idx) {
+#ifndef PROVE_RELEASE
+    if (idx < 0 || idx >= arr->length) prove_panic("array: index out of bounds");
+#endif
     return (char *)arr->data + idx * arr->elem_size;
 }
 
 bool prove_array_get_bool(Prove_Array *arr, int64_t idx) {
+#ifndef PROVE_RELEASE
+    if (idx < 0 || idx >= arr->length) prove_panic("array: index out of bounds");
+#endif
     bool val;
     memcpy(&val, (char *)arr->data + idx * arr->elem_size, sizeof(bool));
     return val;
 }
 
 int64_t prove_array_get_int(Prove_Array *arr, int64_t idx) {
+#ifndef PROVE_RELEASE
+    if (idx < 0 || idx >= arr->length) prove_panic("array: index out of bounds");
+#endif
     int64_t val;
     memcpy(&val, (char *)arr->data + idx * arr->elem_size, sizeof(int64_t));
     return val;
 }
 
 Prove_Array *prove_array_set(Prove_Array *arr, int64_t idx, const void *val) {
+#ifndef PROVE_RELEASE
+    if (idx < 0 || idx >= arr->length) prove_panic("array: index out of bounds");
+#endif
     /* Copy-on-write optimization: mutate in-place when sole owner */
     if (arr->header.refcount == 1) {
         return prove_array_set_mut(arr, idx, val);
@@ -71,6 +83,9 @@ Prove_Array *prove_array_set_int(Prove_Array *arr, int64_t idx, int64_t val) {
 }
 
 Prove_Array *prove_array_set_mut(Prove_Array *arr, int64_t idx, const void *val) {
+#ifndef PROVE_RELEASE
+    if (idx < 0 || idx >= arr->length) prove_panic("array: index out of bounds");
+#endif
     memcpy((char *)arr->data + idx * arr->elem_size, val, (size_t)arr->elem_size);
     return arr;
 }

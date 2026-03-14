@@ -1,0 +1,24 @@
+[package]
+name = "brainfuck"
+version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+mutate = true
+debug = false
+ccache = true
+
+[optimize]
+enabled = true
+pgo = true
+strip = true
+tune_host = true
+gc_sections = true
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90

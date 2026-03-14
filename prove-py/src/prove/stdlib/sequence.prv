@@ -81,6 +81,10 @@ binary
 creates array(size Integer, default Integer) Array<Integer>
 binary
 
+/// Create an array of given size with every element set to the default value
+creates array(size Integer, default Decimal) Array<Decimal>
+binary
+
 /// Get element at index (unchecked)
 reads get(arr Array<Boolean>, idx Integer) Boolean
 binary
@@ -97,20 +101,20 @@ binary
 reads get(arr Array<Integer>, idx Integer) Integer
 binary
 
-/// Return a new array with element at idx replaced by val
+/// Get element at index (unchecked)
+reads get(arr Array<Decimal>, idx Integer) Decimal
+binary
+
+/// Set element at index (copy-on-write for immutable, in-place for mutable)
 transforms set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
 binary
 
-/// Return a new array with element at idx replaced by val
+/// Set element at index (copy-on-write for immutable, in-place for mutable)
 transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
 binary
 
-/// In-place mutation - returns the same array (for Array<T>:[Mutable])
-transforms set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
-binary
-
-/// In-place mutation - returns the same array (for Array<T>:[Mutable])
-transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
+/// Set element at index (copy-on-write for immutable, in-place for mutable)
+transforms set(arr Array<Decimal>, idx Integer, val Decimal) Array<Decimal>
 binary
 
 /// Get element at index, or None if out of bounds
@@ -130,19 +134,19 @@ reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
 binary
 
 /// Set element at index; returns None if out of bounds
-transforms set_safe(arr Array<Boolean>, idx Integer, val Boolean) Option<Array<Boolean>>
+creates set_safe(arr Array<Boolean>, idx Integer, val Boolean) Option<Array<Boolean>>
 binary
 
 /// Set element at index; returns None if out of bounds
-transforms set_safe(arr Array<Integer>, idx Integer, val Integer) Option<Array<Integer>>
+creates set_safe(arr Array<Integer>, idx Integer, val Integer) Option<Array<Integer>>
 binary
 
-/// Set element at index; returns None if out of bounds - mutable variant
-transforms set_safe(arr Array<Boolean>, idx Integer, val Boolean) Option<Array<Boolean>>
+/// Set element at index; returns None if out of bounds
+creates set_safe(arr Array<Decimal>, idx Integer, val Decimal) Option<Array<Decimal>>
 binary
 
-/// Set element at index; returns None if out of bounds - mutable variant
-transforms set_safe(arr Array<Integer>, idx Integer, val Integer) Option<Array<Integer>>
+/// Get element at index, or None if out of bounds
+reads get_safe(arr Array<Decimal>, idx Integer) Option<Decimal>
 binary
 
 /// Apply function to every element, returning a new array of the same length
@@ -195,4 +199,30 @@ binary
 
 /// Copy array contents into a new List
 creates to_sequence(arr Array<Integer>) List<Integer>
+binary
+
+/// Apply function to every element, returning a new array of the same length
+transforms map(arr Array<Decimal>, f Function<Decimal, Decimal>) Array<Decimal>
+binary
+
+// TODO: Function == Verb
+
+/// Accumulate elements with function, starting from initial value
+reads reduce(
+    arr Array<Decimal>,
+    init Decimal,
+    f Function<Decimal, Decimal, Decimal>
+) Decimal
+binary
+
+/// Run function for each element; returns Unit
+outputs each(arr Array<Decimal>, f Function<Decimal, Unit>)
+binary
+
+/// Keep elements matching predicate; returns List because length is unknown
+creates filter(arr Array<Decimal>, p Function<Decimal, Boolean>) List<Decimal>
+binary
+
+/// Copy array contents into a new List
+creates to_sequence(arr Array<Decimal>) List<Decimal>
 binary
