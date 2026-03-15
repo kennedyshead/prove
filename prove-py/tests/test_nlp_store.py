@@ -9,12 +9,17 @@ import pytest
 
 from prove.nlp_store import (
     _reset,
+    build_semantic_features,
+    build_similarity_matrix,
     build_stdlib_index,
+    load_semantic_features,
+    load_similarity_matrix,
     load_stdlib_index,
+    load_synonym_cache,
     load_verb_groups,
     load_verb_synonyms,
 )
-from prove.store_binary import read_pdat
+from prove.store_binary import read_pdat, write_pdat
 
 
 @pytest.fixture(autouse=True)
@@ -176,3 +181,180 @@ class TestFallback:
             result = load_verb_groups()
             assert isinstance(result, dict)
             assert "transforms" in result
+
+
+# ── Synonym cache store ─────────────────────────────────────────
+
+
+class TestSynonymCache:
+    def test_write_and_read_round_trip(self, tmp_path) -> None:
+        """Write a synonym cache PDAT, then read it back."""
+        dat = tmp_path / "synonym_cache.dat"
+        variants = [
+            ("transform", ["convert|change|alter|modify"]),
+            ("validate", ["check|verify|ensure"]),
+        ]
+        write_pdat(dat, "SynonymCache", ["String"], variants)
+
+        import prove.nlp_store as store_mod
+
+        _reset()
+        with mock.patch.object(store_mod, "_data_path", return_value=dat):
+            result = load_synonym_cache()
+            assert isinstance(result, dict)
+            assert "transform" in result
+            assert "convert" in result["transform"]
+            assert "change" in result["transform"]
+            assert "alter" in result["transform"]
+            assert "modify" in result["transform"]
+            assert "check" in result["validate"]
+
+    def test_caches_result(self, tmp_path) -> None:
+        dat = tmp_path / "synonym_cache.dat"
+        write_pdat(dat, "SynonymCache", ["String"], [
+            ("test", ["example|sample"]),
+        ])
+
+        import prove.nlp_store as store_mod
+
+        _reset()
+        with mock.patch.object(store_mod, "_data_path", return_value=dat):
+            first = load_synonym_cache()
+            second = load_synonym_cache()
+            assert first is second
+
+    def test_fallback_to_empty_dict(self) -> None:
+        import prove.nlp_store as store_mod
+
+        _reset()
+        with mock.patch.object(
+            store_mod,
+            "_data_path",
+            return_value=Path("/nonexistent/synonym_cache.dat"),
+        ):
+            result = load_synonym_cache()
+            assert isinstance(result, dict)
+            assert len(result) == 0
+
+    def test_empty_synonym_list(self, tmp_path) -> None:
+        dat = tmp_path / "synonym_cache.dat"
+        write_pdat(dat, "SynonymCache", ["String"], [
+            ("lonely", [""]),
+        ])
+
+        import prove.nlp_store as store_mod
+
+        _reset()
+        with mock.patch.object(store_mod, "_data_path", return_value=dat):
+            result = load_synonym_cache()
+            assert "lonely" in result
+            assert result["lonely"] == []
+
+
+# ── Similarity matrix store ─────────────────────────────────────
+
+
+class TestSimilarityMatrix:
+    def test_write_and_read_round_trip(self, tmp_path) -> None:
+        """Write a similarity matrix PDAT, then read it back."""
+        prove_dir = tmp_path / ".prove"
+        prove_dir.mkdir()
+        dat = prove_dir / "similarity_matrix.dat"
+        variants = [
+            ("text.length|text.split", ["0.423"]),
+            ("math.add|math.subtract", ["0.891"]),
+        ]
+        write_pdat(dat, "SimilarityMatrix", ["String"], variants)
+
+        _reset()
+        result = load_similarity_matrix(tmp_path)
+        assert isinstance(result, dict)
+        assert "text.length" in result
+        assert "text.split" in result["text.length"]
+        assert abs(result["text.length"]["text.split"] - 0.423) < 0.001
+        # Symmetric
+        assert abs(result["text.split"]["text.length"] - 0.423) < 0.001
+
+    def test_fallback_to_empty_dict(self, tmp_path) -> None:
+        _reset()
+        result = load_similarity_matrix(tmp_path)
+        assert isinstance(result, dict)
+        assert len(result) == 0
+
+    def test_none_project_dir_returns_empty(self) -> None:
+        _reset()
+        result = load_similarity_matrix(None)
+        assert isinstance(result, dict)
+        assert len(result) == 0
+
+    def test_build_creates_file(self, tmp_path) -> None:
+        _reset()
+        out = build_similarity_matrix(tmp_path)
+        assert out.exists()
+        assert out.name == "similarity_matrix.dat"
+        data = read_pdat(out)
+        assert data["columns"] == ["String"]
+
+    def test_caches_result(self, tmp_path) -> None:
+        prove_dir = tmp_path / ".prove"
+        prove_dir.mkdir()
+        dat = prove_dir / "similarity_matrix.dat"
+        write_pdat(dat, "SimilarityMatrix", ["String"], [
+            ("a.x|b.y", ["0.5"]),
+        ])
+
+        _reset()
+        first = load_similarity_matrix(tmp_path)
+        second = load_similarity_matrix(tmp_path)
+        assert first is second
+
+
+# ── Semantic features store ─────────────────────────────────────
+
+
+class TestSemanticFeatures:
+    def test_write_and_read_round_trip(self, tmp_path) -> None:
+        """Write semantic features PDAT, then read it back."""
+        prove_dir = tmp_path / ".prove"
+        prove_dir.mkdir()
+        dat = prove_dir / "semantic_features.dat"
+        variants = [
+            ("text.length", ["text", "reads", "length string character count"]),
+            ("math.add", ["math", "transforms", "add number sum"]),
+        ]
+        write_pdat(dat, "SemanticFeatures", ["String", "String", "String"], variants)
+
+        result = load_semantic_features(tmp_path)
+        assert isinstance(result, dict)
+        assert "text.length" in result
+        entry = result["text.length"]
+        assert entry["module"] == "text"
+        assert entry["verb"] == "reads"
+        assert "length" in entry["keywords"]
+
+    def test_fallback_to_empty_dict(self, tmp_path) -> None:
+        result = load_semantic_features(tmp_path)
+        assert isinstance(result, dict)
+        assert len(result) == 0
+
+    def test_none_project_dir_returns_empty(self) -> None:
+        result = load_semantic_features(None)
+        assert isinstance(result, dict)
+        assert len(result) == 0
+
+    def test_build_creates_file(self, tmp_path) -> None:
+        out = build_semantic_features(tmp_path)
+        assert out.exists()
+        assert out.name == "semantic_features.dat"
+        data = read_pdat(out)
+        assert data["columns"] == ["String", "String", "String"]
+        assert len(data["variants"]) > 0
+
+    def test_build_entries_have_keywords(self, tmp_path) -> None:
+        build_semantic_features(tmp_path)
+        result = load_semantic_features(tmp_path)
+        # At least some entries should have keywords
+        has_keywords = any(
+            entry["keywords"].strip() for entry in result.values()
+        )
+        assert has_keywords

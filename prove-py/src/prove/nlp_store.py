@@ -19,6 +19,8 @@ from prove.store_binary import read_pdat, write_pdat
 
 _verb_map: dict[str, str] | None = None
 _verb_groups: dict[str, list[str]] | None = None
+_synonym_cache: dict[str, list[str]] | None = None
+_similarity_matrix: dict[str, dict[str, float]] | None = None
 
 
 # ── Data file resolution ─────────────────────────────────────────
@@ -72,6 +74,182 @@ def load_verb_groups() -> dict[str, list[str]]:
         groups[verb].append(syn)
     _verb_groups = dict(groups)
     return _verb_groups
+
+
+# ── Synonym cache store ──────────────────────────────────────────
+
+
+def load_synonym_cache() -> dict[str, list[str]]:
+    """Load WordNet-expanded synonym cache from PDAT.
+
+    Returns a dict like ``{"transform": ["convert", "change", ...], ...}``.
+    Falls back to empty dict if the PDAT is missing.
+    """
+    global _synonym_cache
+    if _synonym_cache is not None:
+        return _synonym_cache
+
+    dat = _data_path("synonym_cache.dat")
+    if dat.is_file():
+        data = read_pdat(dat)
+        _synonym_cache = {
+            variant: values[0].split("|") if values[0] else []
+            for variant, values in data["variants"]
+        }
+        return _synonym_cache
+
+    _synonym_cache = {}
+    return _synonym_cache
+
+
+# ── Similarity matrix store ─────────────────────────────────────
+
+
+def load_similarity_matrix(
+    project_dir: Path | None = None,
+) -> dict[str, dict[str, float]]:
+    """Load pre-computed pairwise similarity scores from PDAT.
+
+    Returns nested dict ``{"fn1": {"fn2": 0.847, ...}, ...}``.
+    Falls back to empty dict if the PDAT is missing.
+    """
+    global _similarity_matrix
+    if _similarity_matrix is not None:
+        return _similarity_matrix
+
+    dat: Path | None = None
+    if project_dir is not None:
+        candidate = project_dir / ".prove" / "similarity_matrix.dat"
+        if candidate.is_file():
+            dat = candidate
+
+    if dat is None:
+        _similarity_matrix = {}
+        return _similarity_matrix
+
+    data = read_pdat(dat)
+    matrix: dict[str, dict[str, float]] = {}
+    for variant, values in data["variants"]:
+        parts = variant.split("|", 1)
+        if len(parts) != 2:
+            continue
+        fn1, fn2 = parts
+        try:
+            score = float(values[0])
+        except (ValueError, IndexError):
+            continue
+        matrix.setdefault(fn1, {})[fn2] = score
+        matrix.setdefault(fn2, {})[fn1] = score
+    _similarity_matrix = matrix
+    return _similarity_matrix
+
+
+def build_similarity_matrix(project_dir: Path | None = None) -> Path:
+    """Build and write ``similarity_matrix.dat`` in project's ``.prove/`` dir.
+
+    Uses ``text_similarity()`` from ``nlp.py`` for each pair of stdlib
+    functions.  Returns the path to the written file.
+    """
+    from prove.stdlib_loader import _STDLIB_MODULES, load_stdlib
+
+    keys: list[str] = []
+    descs: list[str] = []
+    for module_key in sorted(_STDLIB_MODULES):
+        sigs = load_stdlib(module_key)
+        for fn in sigs:
+            key = f"{module_key}.{fn.name}"
+            desc = fn.doc_comment or fn.name
+            keys.append(key)
+            descs.append(desc)
+
+    from prove.nlp import text_similarity
+
+    variants: list[tuple[str, list[str]]] = []
+    for i in range(len(keys)):
+        for j in range(i + 1, len(keys)):
+            score = text_similarity(descs[i], descs[j])
+            if score > 0.1:
+                pair_key = f"{keys[i]}|{keys[j]}"
+                variants.append((pair_key, [f"{score:.3f}"]))
+
+    if project_dir is None:
+        project_dir = Path.cwd()
+
+    prove_dir = project_dir / ".prove"
+    prove_dir.mkdir(exist_ok=True)
+
+    out = prove_dir / "similarity_matrix.dat"
+    write_pdat(out, "SimilarityMatrix", ["String"], variants)
+    return out
+
+
+# ── Semantic features store ─────────────────────────────────────
+
+
+def build_semantic_features(project_dir: Path | None = None) -> Path:
+    """Build ``semantic_features.dat`` with lemmatized keywords per function.
+
+    Returns the path to the written file.
+    """
+    from prove.stdlib_loader import _STDLIB_MODULES, load_stdlib
+
+    variants: list[tuple[str, list[str]]] = []
+    for module_key in sorted(_STDLIB_MODULES):
+        sigs = load_stdlib(module_key)
+        for fn in sigs:
+            key = f"{module_key}.{fn.name}"
+            verb = fn.verb or ""
+            # Extract keywords from name and doc
+            text = f"{fn.name} {fn.doc_comment or ''}"
+            words = re.findall(r"[a-z]{3,}", text.lower())
+            # Try lemmatization when available
+            try:
+                from prove.nlp import lemmatize
+
+                lemmas = sorted({lemmatize(w) for w in words})
+            except Exception:
+                lemmas = sorted(set(words))
+            keywords = " ".join(lemmas)
+            variants.append((key, [module_key, verb, keywords]))
+
+    if project_dir is None:
+        project_dir = Path.cwd()
+
+    prove_dir = project_dir / ".prove"
+    prove_dir.mkdir(exist_ok=True)
+
+    out = prove_dir / "semantic_features.dat"
+    write_pdat(out, "SemanticFeatures", ["String", "String", "String"], variants)
+    return out
+
+
+def load_semantic_features(
+    project_dir: Path | None = None,
+) -> dict[str, dict]:
+    """Load semantic features per stdlib function from PDAT.
+
+    Returns ``{"text.length": {"module": "text", "verb": "reads",
+    "keywords": "length string ..."}, ...}``.
+    Falls back to empty dict if the PDAT is missing.
+    """
+    dat: Path | None = None
+    if project_dir is not None:
+        candidate = project_dir / ".prove" / "semantic_features.dat"
+        if candidate.is_file():
+            dat = candidate
+
+    if dat is None:
+        return {}
+
+    data = read_pdat(dat)
+    result: dict[str, dict] = {}
+    for key, cols in data["variants"]:
+        result[key] = {
+            "module": cols[0],
+            "verb": cols[1],
+            "keywords": cols[2],
+        }
+    return result
 
 
 # ── Stdlib index store ───────────────────────────────────────────
@@ -161,6 +339,8 @@ def load_stdlib_index(
 
 def _reset() -> None:
     """Clear all cached store data.  For testing only."""
-    global _verb_map, _verb_groups
+    global _verb_map, _verb_groups, _synonym_cache, _similarity_matrix
     _verb_map = None
     _verb_groups = None
+    _synonym_cache = None
+    _similarity_matrix = None

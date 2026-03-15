@@ -95,6 +95,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Conflict": CType("Prove_Conflict*", is_pointer=True, header="prove_store.h"),
     "Resolution": CType("Prove_Resolution*", is_pointer=True, header="prove_store.h"),
     "MergeResult": CType("Prove_MergeResult*", is_pointer=True, header="prove_store.h"),
+    "Token": CType("Prove_Language_Token*", is_pointer=True, header="prove_language.h"),
     "Verb": CType("void*", is_pointer=True, header=None),
     "Attached": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
 }

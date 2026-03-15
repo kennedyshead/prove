@@ -272,6 +272,7 @@ class CEmitter(
         "Log": "prove_input_output.h",
         "Network": "prove_network.h",
         "Store": "prove_store.h",
+        "Language": "prove_language.h",
     }
 
     def _module_uses_strings(self) -> bool:

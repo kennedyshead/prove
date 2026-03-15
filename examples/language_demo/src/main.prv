@@ -1,0 +1,36 @@
+module Main
+  narrative: """Demonstrates Language module NLP operations."""
+  System outputs console
+  Language reads words sentences distance similarity soundex metaphone bigrams keywords
+    transforms stem root normalize without_stopwords
+  Parse reads text
+  Text transforms join
+
+main() Result<Unit, Error>!
+from
+    // Tokenization
+    sample as String = "The quick brown fox jumps over the lazy dog."
+    console(f"Words: {join(words(sample), ", ")}")
+    console(f"Sentences: {join(sentences(sample), " | ")}")
+    // Stemming and root extraction
+    console(f"Stem 'running': {stem("running")}")
+    console(f"Stem 'caresses': {stem("caresses")}")
+    console(f"Root 'validation': {root("validation")}")
+    // Edit distance and similarity
+    d as Integer = distance("kitten", "sitting")
+    console(f"Distance 'kitten'/'sitting': {d}")
+    s as Float = similarity("hello", "hallo")
+    console(f"Similarity 'hello'/'hallo': {text(s)}")
+    // Phonetic codes
+    console(f"Soundex 'Robert': {soundex("Robert")}")
+    console(f"Metaphone 'Smith': {metaphone("Smith")}")
+    // N-grams
+    console(f"Bigrams: {join(bigrams("one two three four"), " | ")}")
+    // Normalization
+    console(f"Normalize 'Héllo WORLD': {normalize("Héllo WORLD")}")
+    // Stopword removal and keywords
+    article as String = "The cat sat on the mat and the cat played with the ball"
+    filtered as List<String> = without_stopwords(article)
+    console(f"Without stopwords: {join(filtered, ", ")}")
+    top as List<String> = keywords(article, 3)
+    console(f"Top keywords: {join(top, ", ")}")

@@ -1,0 +1,93 @@
+module Language
+  narrative: """Natural language processing primitives."""
+
+  /// Token is
+  ///   text String
+  ///   start Integer
+  ///   end Integer
+  ///   kind Integer
+  type Token is binary
+
+/// Extract individual words from text
+reads words(text String) List<String>
+binary
+
+/// Split text into sentences
+reads sentences(text String) List<String>
+binary
+
+/// Tokenize text into a list of tokens with position and kind
+reads tokens(text String) List<Token>
+binary
+
+/// Apply the Porter stemming algorithm to a word
+transforms stem(word String) String
+binary
+
+/// Strip common suffixes to find the root form of a word
+transforms root(word String) String
+binary
+
+/// Compute the Levenshtein edit distance between two strings
+reads distance(first String, second String) Integer
+binary
+
+/// Compute normalized similarity between two strings (0.0 to 1.0)
+reads similarity(first String, second String) Float
+binary
+
+/// Compute the Soundex phonetic code for a word
+reads soundex(word String) String
+binary
+
+/// Compute the Double Metaphone phonetic code for a word
+reads metaphone(word String) String
+binary
+
+/// Extract word-level n-grams from text
+reads ngrams(text String, size Integer) List<String>
+binary
+
+/// Extract word-level bigrams from text
+reads bigrams(text String) List<String>
+binary
+
+/// Normalize text by lowercasing and folding accented characters to ASCII
+transforms normalize(text String) String
+binary
+
+/// Transliterate accented characters to ASCII equivalents preserving case
+transforms transliterate(text String) String
+binary
+
+/// Return a list of common English stopwords
+reads stopwords() List<String>
+binary
+
+/// Remove common stopwords from text and return remaining words
+transforms without_stopwords(text String) List<String>
+binary
+
+/// Count word frequencies in text and return a table of word to count
+reads frequency(text String) Table<String, Integer>
+binary
+
+/// Extract the top N most frequent words from text
+reads keywords(text String, count Integer) List<String>
+binary
+
+/// Get the matched text from a token
+reads text(token Token) String
+binary
+
+/// Get the start position of a token
+reads start(token Token) Integer
+binary
+
+/// Get the end position of a token
+reads end(token Token) Integer
+binary
+
+/// Get the kind of a token as an integer
+reads kind(token Token) Integer
+binary

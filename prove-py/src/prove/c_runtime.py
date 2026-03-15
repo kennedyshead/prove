@@ -105,6 +105,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
         "prove_path",
     },
     "network": {"prove_network", "prove_bytes"},
+    "language": {"prove_language"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -511,6 +512,29 @@ _RUNTIME_FUNCTIONS = {
         "prove_network_accept_inputs",
         "prove_network_message_inputs",
         "prove_network_message_outputs",
+    ],
+    "prove_language": [
+        "prove_language_words",
+        "prove_language_sentences",
+        "prove_language_tokens",
+        "prove_language_stem",
+        "prove_language_root",
+        "prove_language_distance",
+        "prove_language_similarity",
+        "prove_language_soundex",
+        "prove_language_metaphone",
+        "prove_language_ngrams",
+        "prove_language_bigrams",
+        "prove_language_normalize",
+        "prove_language_transliterate",
+        "prove_language_stopwords",
+        "prove_language_without_stopwords",
+        "prove_language_frequency",
+        "prove_language_keywords",
+        "prove_language_token_text",
+        "prove_language_token_start",
+        "prove_language_token_end",
+        "prove_language_token_kind",
     ],
 }
 

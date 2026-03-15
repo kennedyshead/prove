@@ -126,8 +126,8 @@ def test_single_file(prv_file: Path) -> tuple[dict, set[str]]:
     rc, stdout, stderr = run_command(cmd, cwd=parent)
     results["format_check"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
-    # prove view <file>
-    cmd = PROVE_CLI + ["view", str(prv_file)]
+    # prove advanced view <file>
+    cmd = PROVE_CLI + ["advanced", "view", str(prv_file)]
     rc, stdout, stderr = run_command(cmd, cwd=parent)
     results["view"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 
@@ -208,7 +208,7 @@ def test_project(project_dir: Path) -> tuple[dict, set[str]]:
         main_prv = project_dir / "main.prv"
 
     if main_prv.exists():
-        cmd = PROVE_CLI + ["view", str(main_prv)]
+        cmd = PROVE_CLI + ["advanced", "view", str(main_prv)]
         rc, stdout, stderr = run_command(cmd, cwd=project_dir)
         results["view"] = {"returncode": rc, "stdout": stdout, "stderr": stderr}
 

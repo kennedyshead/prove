@@ -244,8 +244,6 @@ Each new `.pdat` store gets a test in `test_nlp_store.py`:
 
 ## Graceful Degradation
 
-Three tiers, best to worst:
-
 | Function | Tier 1: spaCy/NLTK | Tier 2: Hand-rolled | Tier 3: Future (Language C) |
 |----------|-------------------|--------------------|-----------------------------|
 | `lemmatize()` | `token.lemma_` | 8 suffix-strip rules | `Language.stem()` / `Language.root()` |
