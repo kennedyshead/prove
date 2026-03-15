@@ -574,6 +574,41 @@ _register_module(
     },
 )
 
+_register_module(
+    "language",
+    display="Language",
+    prv_file="language.prv",
+    c_map={
+        ("reads", "words"): "prove_language_words",
+        ("reads", "sentences"): "prove_language_sentences",
+        ("reads", "tokens"): "prove_language_tokens",
+        ("transforms", "stem"): "prove_language_stem",
+        ("transforms", "root"): "prove_language_root",
+        ("reads", "distance"): "prove_language_distance",
+        ("reads", "similarity"): "prove_language_similarity",
+        ("reads", "soundex"): "prove_language_soundex",
+        ("reads", "metaphone"): "prove_language_metaphone",
+        ("reads", "ngrams"): "prove_language_ngrams",
+        ("reads", "bigrams"): "prove_language_bigrams",
+        ("transforms", "normalize"): "prove_language_normalize",
+        ("transforms", "transliterate"): "prove_language_transliterate",
+        ("reads", "stopwords"): "prove_language_stopwords",
+        ("transforms", "without_stopwords"): "prove_language_without_stopwords",
+        ("reads", "frequency"): "prove_language_frequency",
+        ("reads", "keywords"): "prove_language_keywords",
+        ("reads", "text"): "prove_language_token_text",
+        ("reads", "start"): "prove_language_token_start",
+        ("reads", "end"): "prove_language_token_end",
+        ("reads", "kind"): "prove_language_token_kind",
+    },
+    overloads={
+        ("reads", "text", "Token"): "prove_language_token_text",
+        ("reads", "start", "Token"): "prove_language_token_start",
+        ("reads", "end", "Token"): "prove_language_token_end",
+        ("reads", "kind", "Token"): "prove_language_token_kind",
+    },
+)
+
 
 def binary_c_name(
     module: str,
@@ -668,6 +703,7 @@ _KNOWN_TYPES = {
     "MergeResult": PrimitiveType("MergeResult"),
     "Socket": PrimitiveType("Socket"),
     "File": PrimitiveType("File"),
+    "Token": PrimitiveType("Token"),
 }
 
 

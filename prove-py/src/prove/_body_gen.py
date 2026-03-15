@@ -115,6 +115,24 @@ def find_stdlib_matches(
                     score=len(overlap) / max(len(noun_set), 1),
                 ))
 
+    # Boost scores with pre-computed similarity matrix when available
+    from prove.nlp_store import load_similarity_matrix
+
+    sim_matrix = load_similarity_matrix()
+    if sim_matrix and matches:
+        query_key = f"{verb} {' '.join(nouns)}"
+        for m in matches:
+            fn_key = f"{m.module}.{m.function.name}"
+            fn_scores = sim_matrix.get(fn_key, {})
+            if fn_scores:
+                # Average similarity to other matched functions as a boost
+                avg_sim = sum(
+                    fn_scores.get(f"{other.module}.{other.function.name}", 0.0)
+                    for other in matches if other is not m
+                ) / max(len(matches) - 1, 1)
+                # Blend: 60% original score, 40% similarity boost
+                m.score = round(m.score * 0.6 + avg_sim * 0.4, 3)
+
     # Docstring index matching (if available)
     if docstring_index is not None:
         text = " ".join(nouns)

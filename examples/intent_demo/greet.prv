@@ -1,9 +1,0 @@
-module Greet
-  narrative: """Reads the license file and outputs content in console"""
-
-/// reads the LICENSE file and outputs content in console
-/// @generated
-reads the(source String) String
-from
-  todo "reads the LICENSE file and outputs content in console"
-

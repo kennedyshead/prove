@@ -428,6 +428,65 @@ def _check_summary(
     return f"checked {name} — {', '.join(parts)}, no issues"
 
 
+def _apply_nlp_override(enabled: bool) -> None:
+    """Force NLP backend on or off for the current process."""
+    import prove.nlp as nlp_mod
+
+    if enabled:
+        if not nlp_mod.has_nlp_backend():
+            click.echo("error: --nlp requested but no NLP backend available", err=True)
+            click.echo("  run: prove advanced setup-nlp", err=True)
+            raise SystemExit(1)
+    else:
+        # Disable by marking both backends as checked but unavailable
+        nlp_mod._spacy_checked = True
+        nlp_mod._spacy_available = False
+        nlp_mod._nlp_model = None
+        nlp_mod._wordnet_checked = True
+        nlp_mod._wordnet_available = False
+
+
+def _print_nlp_status() -> None:
+    """Print NLP backend and PDAT store availability."""
+    from prove.nlp import has_spacy, has_wordnet
+    from prove.nlp_store import _data_path
+
+    click.echo("NLP status:")
+
+    # Backends
+    spacy_ok = has_spacy()
+    wordnet_ok = has_wordnet()
+    click.echo(f"  spaCy:   {'available' if spacy_ok else 'not available'}")
+    click.echo(f"  WordNet: {'available' if wordnet_ok else 'not available'}")
+
+    # PDAT stores
+    click.echo("  Stores:")
+    stores = [
+        "verb_synonyms.dat",
+        "synonym_cache.dat",
+    ]
+    for name in stores:
+        p = _data_path(name)
+        exists = p.is_file()
+        click.echo(f"    {name}: {'found' if exists else 'missing'}")
+
+    # Project-local stores (check cwd)
+    cwd = Path.cwd()
+    project_stores = [
+        "stdlib_index.dat",
+        "similarity_matrix.dat",
+        "semantic_features.dat",
+    ]
+    prove_dir = cwd / ".prove"
+    if prove_dir.is_dir():
+        for name in project_stores:
+            p = prove_dir / name
+            exists = p.is_file()
+            click.echo(f"    .prove/{name}: {'found' if exists else 'missing'}")
+    else:
+        click.echo("    .prove/ directory: not found")
+
+
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
@@ -436,8 +495,13 @@ def _check_summary(
 @click.option("--no-challenges", is_flag=True, help="Skip refutation challenges.")
 @click.option("--no-status", is_flag=True, help="Skip module completeness report.")
 @click.option("--no-intent", is_flag=True, help="Skip intent coverage check.")
-def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: bool, no_status: bool, no_intent: bool) -> None:
+@click.option("--nlp-status", is_flag=True, help="Report NLP backend and store availability.")
+def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: bool, no_status: bool, no_intent: bool, nlp_status: bool) -> None:
     """Type-check, lint, and verify a Prove project or a single .prv file."""
+    if nlp_status:
+        _print_nlp_status()
+        return
+
     target = Path(path)
 
     if target.is_file() and target.suffix == ".prv":
@@ -1068,8 +1132,12 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--update", is_flag=True, help="Regenerate @generated functions with todos.")
 @click.option("--dry-run", is_flag=True, help="Preview without writing.")
-def generate(path: str, update: bool, dry_run: bool) -> None:
+@click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
+def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
     """Generate function stubs from narrative or intent."""
+    if nlp is not None:
+        _apply_nlp_override(nlp)
+
     target = Path(path)
     if target.suffix == ".intent":
         _generate_from_intent(target, dry_run)
@@ -1086,8 +1154,12 @@ def generate(path: str, update: bool, dry_run: bool) -> None:
 @click.option("--drift", is_flag=True, help="Show only mismatches between intent and code.")
 @click.option("--generate", "gen", is_flag=True, help="Generate .prv files from intent.")
 @click.option("--dry-run", is_flag=True, help="Preview generated files without writing.")
-def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool) -> None:
+@click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
+def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool, nlp: bool | None) -> None:
     """Work with .intent project declaration files."""
+    if nlp is not None:
+        _apply_nlp_override(nlp)
+
     from prove.intent_generator import check_intent_coverage, generate_project
     from prove.intent_parser import parse_intent
 
@@ -1305,6 +1377,25 @@ def setup_nlp() -> None:
     if errors:
         click.echo(f"\nCompleted with {errors} error(s).", err=True)
         raise SystemExit(1)
+
+    # Build PDAT stores now that NLP deps are available
+    click.echo("\nBuilding NLP data stores...")
+    try:
+        from prove.nlp_store import build_similarity_matrix
+
+        build_similarity_matrix()
+        click.echo("  similarity matrix built.")
+    except Exception:
+        click.echo("  similarity matrix skipped.")
+
+    try:
+        from prove.nlp_store import build_semantic_features
+
+        build_semantic_features()
+        click.echo("  semantic features built.")
+    except Exception:
+        click.echo("  semantic features skipped.")
+
     click.echo("\nNLP setup complete.")
 
 

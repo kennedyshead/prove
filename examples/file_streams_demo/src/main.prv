@@ -1,5 +1,9 @@
 module Main
-  narrative: """Demonstrates file streaming: write stdin chunks to a file, then read them back."""
+  narrative: """
+  Demonstrates file streaming: write stdin chunks to a file, then read them back.
+
+  streams write and read file data
+  """
   System types File creates reader writer inputs console line outputs console close line
 
   type ChunkIO is Streaming(handle File)
@@ -8,7 +12,7 @@ module Main
 /// Write stdin chunks to a file, one line at a time.
 /// Each iteration: read a line from stdin, write it as a chunk to the file.
 /// Exits on EOF (Ctrl+D).
-streams write_chunks(state ChunkIO)
+streams write(state ChunkIO)
 from
     Exit => state
     Streaming(handle) =>
@@ -18,7 +22,7 @@ from
 /// Read a file line by line, one chunk at a time.
 /// Each iteration: read the next line chunk, echo it to console.
 /// Exits when file is fully consumed.
-streams read_chunks(state ChunkIO)
+streams read(state ChunkIO)
 from
     Exit => state
     Streaming(handle) =>
@@ -31,11 +35,11 @@ from
     // Write phase: stream stdin chunks to file
     wh as File = writer(path)!
     console(f"writing to {path} — type lines (Ctrl+D when done):")
-    write_chunks(Streaming(wh))
+    write(Streaming(wh))
     close(wh)
     // Read phase: stream file chunks back to console
     rh as File = reader(path)!
     console(f"reading back from {path}:")
-    read_chunks(Streaming(rh))
+    read(Streaming(rh))
     close(rh)
     console("done")

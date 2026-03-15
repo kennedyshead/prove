@@ -148,7 +148,7 @@ def synonyms(word: str, pos: str = "v") -> set[str]:
     """Return synonyms of *word* via WordNet.
 
     *pos* is ``"v"`` for verbs, ``"n"`` for nouns (WordNet POS codes).
-    Falls back to ``_nl_intent.VERB_SYNONYMS`` table.
+    Falls back to the synonym cache PDAT, then to ``VERB_SYNONYMS``.
     """
     if _ensure_wordnet():
         from nltk.corpus import wordnet  # type: ignore[import-untyped]
@@ -158,6 +158,13 @@ def synonyms(word: str, pos: str = "v") -> set[str]:
             for lemma in synset.lemmas():
                 result.add(lemma.name().replace("_", " ").lower())
         return result
+
+    # Try pre-computed synonym cache (richer than hardcoded table)
+    from prove.nlp_store import load_synonym_cache
+
+    cache = load_synonym_cache()
+    if word.lower() in cache:
+        return set(cache[word.lower()])
 
     # Fallback: use the PDAT-backed synonym groups
     from prove.nlp_store import load_verb_groups
