@@ -12,15 +12,11 @@
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
-  "attached"
   "creates"
-  "detached"
   "inputs"
-  "listens"
   "matches"
   "outputs"
   "reads"
-  "streams"
   "transforms"
   "validates"
   "types"
@@ -53,11 +49,9 @@
 ; PROVE-EXPORT-BEGIN: contract-keywords
 [
   "ensures"
-  "event_type"
   "explain"
   "requires"
   "terminates"
-  "trusted"
   "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords

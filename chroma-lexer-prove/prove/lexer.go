@@ -87,7 +87,7 @@ var (
 				// PROVE-EXPORT-END: verbs
 
 				// PROVE-EXPORT-BEGIN: contract-keywords
-				{`\b(ensures|event_type|explain|requires|terminates|trusted|when)\b`, chroma.KeywordNamespace, nil},
+				{`\b(ensures|explain|requires|terminates|trusted|when)\b`, chroma.KeywordNamespace, nil},
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords

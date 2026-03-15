@@ -11,15 +11,11 @@
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
-  "attached"
   "creates"
-  "detached"
   "inputs"
-  "listens"
   "matches"
   "outputs"
   "reads"
-  "streams"
   "transforms"
   "validates"
   "types"
@@ -55,7 +51,6 @@
   "explain"
   "requires"
   "terminates"
-  "trusted"
   "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords
@@ -101,7 +96,7 @@
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
-  "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Table" "Unit" "Value" "Verb"))
+  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Table" "Unit" "Value" "Verb"))
 ; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────

@@ -166,8 +166,26 @@ def _compile_project(
     return errors == 0, checked, errors, warnings, format_issues, total_stats
 
 
+def _is_cache_stale(project_dir: Path) -> bool:
+    """Check if .prove/ stores need rebuilding."""
+    cache_dir = project_dir / ".prove"
+    index_file = cache_dir / "stdlib_index.dat"
+    if not index_file.exists():
+        return True
+    index_mtime = index_file.stat().st_mtime
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+    for prv in src_dir.rglob("*.prv"):
+        if prv.stat().st_mtime > index_mtime:
+            return True
+    return False
+
+
 def _update_project_cache(project_dir: Path) -> None:
-    """Rebuild .prove_cache after a check or build run."""
+    """Rebuild .prove_cache and .prove/ stores when stale."""
+    if not _is_cache_stale(project_dir):
+        return
     try:
         from prove.lsp import _ProjectIndexer
 
@@ -175,12 +193,23 @@ def _update_project_cache(project_dir: Path) -> None:
         indexer.index_all_files()
     except Exception:
         pass  # cache update is always non-fatal
+    try:
+        from prove.nlp_store import build_stdlib_index
+
+        build_stdlib_index(project_dir)
+    except Exception:
+        pass  # store generation is always non-fatal
 
 
 @click.group()
 @click.version_option(__version__, prog_name="prove")
 def main() -> None:
     """The Prove programming language compiler."""
+
+
+@main.group()
+def advanced() -> None:
+    """Advanced development and debugging tools."""
 
 
 @main.command()
@@ -403,12 +432,12 @@ def _check_summary(
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
 @click.option("--strict", is_flag=True, help="Treat warnings as errors.")
-@click.option("--coherence", is_flag=True, help="Check vocabulary consistency between narrative and code.")
-@click.option("--challenges", is_flag=True, help="Generate refutation challenges from ensures contracts.")
-@click.option("--status", is_flag=True, help="Show module completeness (todo count).")
-@click.option("--intent", "check_intent", is_flag=True, help="Verify code matches project.intent declarations.")
-def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, status: bool, check_intent: bool) -> None:
-    """Type-check and lint a Prove project or a single .prv file."""
+@click.option("--no-coherence", is_flag=True, help="Skip vocabulary consistency check.")
+@click.option("--no-challenges", is_flag=True, help="Skip refutation challenges.")
+@click.option("--no-status", is_flag=True, help="Skip module completeness report.")
+@click.option("--no-intent", is_flag=True, help="Skip intent coverage check.")
+def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: bool, no_status: bool, no_intent: bool) -> None:
+    """Type-check, lint, and verify a Prove project or a single .prv file."""
     target = Path(path)
 
     if target.is_file() and target.suffix == ".prv":
@@ -440,10 +469,10 @@ def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, 
         project_dir = config_path.parent
         ok, checked, errors, warnings, format_issues, stats = _compile_project(
             project_dir,
-            coherence=coherence,
+            coherence=not no_coherence,
         )
 
-        if challenges:
+        if not no_challenges:
             _print_refutation_challenges(project_dir)
 
         md_blocks = 0
@@ -469,10 +498,10 @@ def check(path: str, md: bool, strict: bool, coherence: bool, challenges: bool, 
         )
         _print_verification_stats(stats)
 
-        if status:
+        if not no_status:
             _print_completeness_status(project_dir)
 
-        if check_intent:
+        if not no_intent:
             _check_intent_coverage(project_dir)
 
         _update_project_cache(project_dir)
@@ -672,6 +701,7 @@ def new(name: str) -> None:
 
     try:
         project_dir = scaffold(name)
+        _update_project_cache(project_dir)
         click.echo(f"created project '{name}' at {project_dir}")
     except FileExistsError as e:
         click.echo(f"error: {e}", err=True)
@@ -886,7 +916,7 @@ def lsp() -> None:
     lsp_main()
 
 
-@main.command()
+@advanced.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 def index(path: str) -> None:
     """Rebuild the .prove_cache ML completion index."""
@@ -900,59 +930,38 @@ def index(path: str) -> None:
     click.echo(f"indexed {len(indexer._file_ngrams)} files -> {project_dir / '.prove_cache'}")
 
 
-@main.command()
-@click.argument("path", type=click.Path(exists=True))
-@click.option("--update", is_flag=True, help="Only add stubs for new narrative content.")
-@click.option("--dry-run", is_flag=True, help="Preview generated stubs without writing.")
-@click.option(
-    "--from-intent", is_flag=True,
-    help="Generate .prv files from a .intent file instead of narrative.",
-)
-def generate(path: str, update: bool, dry_run: bool, from_intent: bool) -> None:
-    """Generate function stubs from module narrative prose.
+def _generate_from_intent(target: Path, dry_run: bool) -> None:
+    """Generate .prv files from a .intent project file."""
+    from prove.intent_generator import generate_project
+    from prove.intent_parser import parse_intent
 
-    Uses the body generation engine to produce complete function bodies
-    when stdlib matches are available. Falls back to todo stubs for
-    functions that require programmer input.
+    source = target.read_text(encoding="utf-8")
+    result = parse_intent(source, str(target))
 
-    With --from-intent, generates .prv files from a .intent project file
-    (equivalent to 'prove intent --generate').
-    """
-    if from_intent:
-        from prove.intent_generator import generate_project
-        from prove.intent_parser import parse_intent
+    for diag in result.diagnostics:
+        severity = diag.severity.upper()
+        code = f" {diag.code}" if diag.code else ""
+        click.echo(f"{target}:{diag.line}: {severity}{code}: {diag.message}", err=True)
 
-        target = Path(path)
-        source = target.read_text(encoding="utf-8")
-        result = parse_intent(source, str(target))
+    if result.project is None:
+        click.echo("error: failed to parse intent file", err=True)
+        raise SystemExit(1)
 
-        for diag in result.diagnostics:
-            severity = diag.severity.upper()
-            code = f" {diag.code}" if diag.code else ""
-            click.echo(f"{target}:{diag.line}: {severity}{code}: {diag.message}", err=True)
+    generated = generate_project(result.project, target.parent, dry_run=dry_run)
+    for filename, src in generated:
+        if dry_run:
+            click.echo(f"--- {filename} ---")
+            click.echo(src)
+        else:
+            click.echo(f"generated {filename}")
 
-        if result.project is None:
-            click.echo("error: failed to parse intent file", err=True)
-            raise SystemExit(1)
 
-        generated = generate_project(result.project, target.parent, dry_run=dry_run)
-        for filename, src in generated:
-            if dry_run:
-                click.echo(f"--- {filename} ---")
-                click.echo(src)
-            else:
-                click.echo(f"generated {filename}")
-        return
-
+def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
+    """Generate function stubs from module narrative prose in a .prv file."""
     from prove._body_gen import generate_function_source, has_generated_marker
     from prove._generate import generate_stub_function
     from prove._nl_intent import extract_nouns, implied_verbs, pair_verbs_nouns
     from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
-
-    target = Path(path)
-    if not target.suffix == ".prv":
-        click.echo("error: generate requires a .prv file", err=True)
-        raise SystemExit(1)
 
     source = target.read_text()
     filename = str(target)
@@ -1055,7 +1064,23 @@ def generate(path: str, update: bool, dry_run: bool, from_intent: bool) -> None:
     click.echo(f"  {complete}/{total} functions complete ({100 * complete // total if total else 0}%)")
 
 
-@main.command()
+@advanced.command()
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--update", is_flag=True, help="Regenerate @generated functions with todos.")
+@click.option("--dry-run", is_flag=True, help="Preview without writing.")
+def generate(path: str, update: bool, dry_run: bool) -> None:
+    """Generate function stubs from narrative or intent."""
+    target = Path(path)
+    if target.suffix == ".intent":
+        _generate_from_intent(target, dry_run)
+    elif target.suffix == ".prv":
+        _generate_from_narrative(target, update, dry_run)
+    else:
+        click.echo("error: expected .prv or .intent file", err=True)
+        raise SystemExit(1)
+
+
+@advanced.command()
 @click.argument("path", default="project.intent", type=click.Path(exists=True))
 @click.option("--status", is_flag=True, help="Show completeness report.")
 @click.option("--drift", is_flag=True, help="Show only mismatches between intent and code.")
@@ -1117,7 +1142,7 @@ def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool) -> No
     click.echo(f"\n  {impl}/{total} declarations implemented")
 
 
-@main.command("export")
+@advanced.command("export")
 @click.option(
     "-f",
     "--format",
@@ -1176,7 +1201,7 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
                 build_chroma(workspace)
 
 
-@main.command()
+@advanced.command()
 @click.argument("file", type=click.Path(exists=True))
 def view(file: str) -> None:
     """View the AST of a Prove source file."""
@@ -1195,7 +1220,7 @@ def view(file: str) -> None:
     _dump_ast(module, 0)
 
 
-@main.command()
+@advanced.command()
 @click.argument("file", type=click.Path(exists=True))
 @click.option("--load", "mode", flag_value="load", help="Compile .prv lookup to PDAT binary.")
 @click.option("--dump", "mode", flag_value="dump", help="Dump PDAT binary to .prv source.")
@@ -1236,6 +1261,51 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(f"Wrote {output}")
         else:
             click.echo(source, nl=False)
+
+
+@advanced.command("setup-nlp")
+def setup_nlp() -> None:
+    """Download NLP models for enhanced intent analysis."""
+    import subprocess
+
+    errors = 0
+
+    # spaCy model
+    click.echo("Downloading spaCy en_core_web_sm model...")
+    try:
+        result = subprocess.run(
+            ["python", "-m", "spacy", "download", "en_core_web_sm"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            click.echo("  spaCy model installed.")
+        else:
+            click.echo(f"  spaCy download failed: {result.stderr.strip()}", err=True)
+            errors += 1
+    except FileNotFoundError:
+        click.echo("  spaCy not installed. Run: pip install 'prove[nlp]'", err=True)
+        errors += 1
+
+    # NLTK WordNet data
+    click.echo("Downloading NLTK WordNet data...")
+    try:
+        import nltk  # type: ignore[import-untyped]
+
+        nltk.download("wordnet", quiet=True)
+        nltk.download("omw-1.4", quiet=True)
+        click.echo("  NLTK data installed.")
+    except ImportError:
+        click.echo("  NLTK not installed. Run: pip install 'prove[nlp]'", err=True)
+        errors += 1
+    except Exception as e:
+        click.echo(f"  NLTK download failed: {e}", err=True)
+        errors += 1
+
+    if errors:
+        click.echo(f"\nCompleted with {errors} error(s).", err=True)
+        raise SystemExit(1)
+    click.echo("\nNLP setup complete.")
 
 
 def _dump_ast(node: object, depth: int) -> None:

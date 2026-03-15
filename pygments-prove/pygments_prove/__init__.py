@@ -65,7 +65,7 @@ class ProveLexer(RegexLexer):
             (
                 words(
                     (
-                        "ensures", "event_type", "explain", "requires", "terminates", "trusted", "when",
+                        "ensures", "explain", "requires", "terminates", "trusted", "when",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",

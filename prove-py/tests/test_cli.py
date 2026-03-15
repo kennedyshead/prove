@@ -58,7 +58,7 @@ class TestCLI:
         assert "new" in result.output
         assert "format" in result.output
         assert "lsp" in result.output
-        assert "view" in result.output
+        assert "advanced" in result.output
 
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
@@ -76,6 +76,7 @@ class TestCLI:
             assert (project / "src" / "main.prv").exists()
             assert (project / ".gitignore").exists()
             assert (project / "project.intent").exists()
+            assert (project / ".prove").is_dir()
 
             # Verify prove.toml content
             toml_text = (project / "prove.toml").read_text()
@@ -141,22 +142,22 @@ class TestCLI:
 
     def test_view_command(self, runner, tmp_project):
         prv_file = tmp_project / "src" / "main.prv"
-        result = runner.invoke(main, ["view", str(prv_file)])
+        result = runner.invoke(main, ["advanced", "view", str(prv_file)])
         assert result.exit_code == 0
         assert "Module" in result.output
 
     def test_export_help(self, runner):
-        result = runner.invoke(main, ["export", "--help"])
+        result = runner.invoke(main, ["advanced", "export", "--help"])
         assert result.exit_code == 0
         assert "--format" in result.output or "-f" in result.output
         assert "treesitter" in result.output
         assert "pygments" in result.output
         assert "chroma" in result.output
 
-    def test_export_in_help(self, runner):
+    def test_advanced_in_help(self, runner):
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
-        assert "export" in result.output
+        assert "advanced" in result.output
 
     def test_export_runs(self, runner, tmp_path):
         # Create minimal workspace with stub grammar.js containing sentinels
@@ -168,7 +169,7 @@ class TestCLI:
         )
         result = runner.invoke(
             main,
-            ["export", "-f", "treesitter", "-w", str(tmp_path)],
+            ["advanced", "export", "-f", "treesitter", "-w", str(tmp_path)],
         )
         # Should succeed (tree-sitter-prove exists in workspace)
         assert result.exit_code == 0

@@ -96,13 +96,13 @@ class CEmitter(
         memo_info: "MemoizationInfo | None" = None,
         escape_info: "EscapeInfo | None" = None,
         *,
-        release_mode: bool = False,
+        optimize: bool = False,
     ) -> None:
         self._module = module
         self._symbols = symbols
         self._memo_info = memo_info
         self._escape_info = escape_info
-        self._release_mode = release_mode
+        self._release_mode = optimize
         self._out: list[str] = []
         self._indent = 0
         self._tmp_counter = 0
