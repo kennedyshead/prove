@@ -201,9 +201,9 @@ def _build_c(
                 if isinstance(decl, ModuleDecl):
                     for imp in decl.imports:
                         runtime_deps.add_module(imp.module)
-        release = config.optimize.enabled and not debug
+        optimized = config.optimize.enabled and not debug
         emitter = CEmitter(module, symbols, memo_info, escape_info,
-                           release_mode=release)
+                           optimize=optimized)
         c_sources.append(emitter.emit())
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:

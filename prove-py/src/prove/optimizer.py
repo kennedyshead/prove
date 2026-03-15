@@ -14,6 +14,7 @@ from prove.ast_nodes import (
     Assignment,
     AsyncCallExpr,
     BinaryExpr,
+    BindingPattern,
     BooleanLit,
     CallExpr,
     CharLit,
@@ -154,6 +155,7 @@ class Optimizer:
         module = self._ct_eval_pure_calls(module)
         module = self._inline_small_functions(module)
         module = self._inline_tco_calls(module)
+        module = self._fold_trivial_loops(module)
         module = self._iterator_fusion(module)
         module = self._copy_elision(module)
         module = self._dead_code_elimination(module)
@@ -1558,7 +1560,276 @@ class Optimizer:
 
         return [*prepend, while_loop, new_tc]
 
-    # ── Pass 3c: Memoization Candidate Identification ─────────────
+    # ── Pass 3c: Trivial Loop Folding ──────────────────────────────
+
+    def _fold_trivial_loops(self, module: Module) -> Module:
+        """Fold trivial counting/accumulating loops to O(1) computations.
+
+        Detects TailLoop nodes where:
+        - Body is a single MatchExpr with 2 arms
+        - One arm is the base case (returns the accumulator)
+        - Other arm is a TailContinue with simple arithmetic updates
+        - Counter decrements by a constant, accumulator updates by loop-invariant
+
+        Example: count(n-1, acc+1) folds to match n<=0: True->acc, False->acc+n
+        """
+        new_decls: list[Declaration] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                new_decls.append(self._fold_loops_in_function(decl))
+            elif isinstance(decl, ModuleDecl):
+                new_body: list[Declaration] = []
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        new_body.append(self._fold_loops_in_function(inner))
+                    else:
+                        new_body.append(inner)
+                new_decls.append(replace(decl, body=new_body))
+            else:
+                new_decls.append(decl)
+        return replace(module, declarations=new_decls)
+
+    def _fold_loops_in_function(self, fd: FunctionDef) -> FunctionDef:
+        """Try to fold trivial loops in a function body."""
+        new_body = self._fold_loops_in_stmts(fd.body)
+        if new_body is not fd.body:
+            return replace(fd, body=new_body)
+        return fd
+
+    def _fold_loops_in_stmts(self, stmts: list[Any]) -> list[Any]:
+        """Walk statements looking for TailLoop nodes to fold."""
+        changed = False
+        result: list[Any] = []
+        for stmt in stmts:
+            if isinstance(stmt, TailLoop):
+                folded = self._try_fold_tail_loop(stmt)
+                if folded is not None:
+                    result.extend(folded)
+                    changed = True
+                    continue
+            result.append(stmt)
+        return result if changed else stmts
+
+    def _try_fold_tail_loop(self, tl: TailLoop) -> list[Any] | None:
+        """Try to fold a TailLoop to O(1). Returns replacement stmts or None."""
+        # Must have a single MatchExpr body
+        if len(tl.body) != 1:
+            return None
+        match_expr = tl.body[0]
+        if isinstance(match_expr, ExprStmt):
+            match_expr = match_expr.expr
+        if not isinstance(match_expr, MatchExpr):
+            return None
+
+        # Must have exactly 2 arms
+        if len(match_expr.arms) != 2:
+            return None
+
+        # Identify base case arm and recursive arm
+        base_arm, rec_arm = self._classify_loop_arms(match_expr.arms)
+        if base_arm is None or rec_arm is None:
+            return None
+
+        # Recursive arm must end with a TailContinue
+        tc = self._extract_tail_continue(rec_arm)
+        if tc is None:
+            return None
+
+        # Check that recursive arm body has no side effects (besides the TailContinue)
+        for stmt in rec_arm.body:
+            if isinstance(stmt, TailContinue):
+                continue
+            if self._stmt_has_side_effects(stmt):
+                return None
+
+        # Analyze the TailContinue assignments to find counter and accumulator
+        info = self._analyze_loop_pattern(tl.params, tc)
+        if info is None:
+            return None
+
+        counter_param, acc_param, step_expr, delta_expr = info
+
+        # Verify the base case returns the accumulator
+        base_expr = self._extract_base_return(base_arm)
+        if base_expr is None:
+            return None
+        if not (isinstance(base_expr, IdentifierExpr) and base_expr.name == acc_param):
+            return None
+
+        # Build the folded expression
+        folded = self._build_folded_expr(
+            counter_param, acc_param, step_expr, delta_expr, tl.span,
+        )
+        if folded is None:
+            return None
+
+        # Replace the TailLoop with a MatchExpr that checks the base condition
+        # and returns either the base case or the folded O(1) result
+        new_rec_arm = replace(rec_arm, body=[ExprStmt(expr=folded, span=tl.span)])
+        new_match = replace(match_expr, arms=[base_arm, new_rec_arm])
+        return [new_match]
+
+    def _classify_loop_arms(
+        self, arms: list[MatchArm],
+    ) -> tuple[MatchArm | None, MatchArm | None]:
+        """Identify which arm is the base case and which is the recursive case."""
+        # The recursive arm is the one containing a TailContinue
+        for i, arm in enumerate(arms):
+            if self._extract_tail_continue(arm) is not None:
+                other = 1 - i
+                return arms[other], arm
+        return None, None
+
+    def _extract_tail_continue(self, arm: MatchArm) -> TailContinue | None:
+        """Extract TailContinue from a match arm body, if present."""
+        for stmt in arm.body:
+            if isinstance(stmt, TailContinue):
+                return stmt
+        return None
+
+    def _extract_base_return(self, arm: MatchArm) -> Expr | None:
+        """Extract the return expression from the base case arm."""
+        if len(arm.body) != 1:
+            return None
+        stmt = arm.body[0]
+        if isinstance(stmt, ExprStmt):
+            return stmt.expr
+        return None
+
+    def _analyze_loop_pattern(
+        self,
+        params: list[str],
+        tc: TailContinue,
+    ) -> tuple[str, str, Expr, Expr] | None:
+        """Analyze TailContinue to find counter/accumulator pattern.
+
+        Returns (counter_param, acc_param, step, delta) or None.
+        - counter_param decremented by step each iteration
+        - acc_param updated by acc_param + delta each iteration
+        - delta must not reference counter_param (loop-invariant)
+        """
+        if len(params) != 2 or len(tc.assignments) != 2:
+            return None
+
+        assignments = dict(tc.assignments)
+
+        # Try each param as the counter
+        for counter_param in params:
+            acc_param = [p for p in params if p != counter_param][0]
+
+            # Check counter: counter = counter - step (step is positive literal)
+            counter_expr = assignments.get(counter_param)
+            step = self._extract_decrement_step(counter_param, counter_expr)
+            if step is None:
+                continue
+
+            # Check accumulator: acc = acc + delta (or acc - delta)
+            acc_expr = assignments.get(acc_param)
+            delta = self._extract_accumulator_delta(acc_param, acc_expr)
+            if delta is None:
+                continue
+
+            # Delta must not reference the counter (must be loop-invariant)
+            if self._expr_references_var(delta, counter_param):
+                continue
+
+            # Delta must not have side effects
+            if self._expr_has_side_effects(delta):
+                continue
+
+            return counter_param, acc_param, step, delta
+
+        return None
+
+    def _extract_decrement_step(
+        self, param: str, expr: Expr | None,
+    ) -> Expr | None:
+        """Check if expr is `param - step` where step is a positive integer literal."""
+        if expr is None:
+            return None
+        if not isinstance(expr, BinaryExpr):
+            return None
+        if expr.op != "-":
+            return None
+        if not (isinstance(expr.left, IdentifierExpr) and expr.left.name == param):
+            return None
+        # Step must be a positive integer literal
+        if isinstance(expr.right, IntegerLit):
+            try:
+                val = int(expr.right.value)
+                if val > 0:
+                    return expr.right
+            except ValueError:
+                pass
+        return None
+
+    def _extract_accumulator_delta(
+        self, param: str, expr: Expr | None,
+    ) -> Expr | None:
+        """Check if expr is `param + delta` or `param - delta`.
+
+        Returns delta (negated for subtraction) or None.
+        """
+        if expr is None:
+            return None
+        if not isinstance(expr, BinaryExpr):
+            return None
+        if expr.op not in ("+", "-"):
+            return None
+        # Check `acc + delta` form
+        if isinstance(expr.left, IdentifierExpr) and expr.left.name == param:
+            return expr.right
+        # Check `delta + acc` form (commutative for +)
+        if expr.op == "+" and isinstance(expr.right, IdentifierExpr) and expr.right.name == param:
+            return expr.left
+        return None
+
+    def _expr_references_var(self, expr: Expr, var: str) -> bool:
+        """Check if an expression references a variable name."""
+        if isinstance(expr, IdentifierExpr):
+            return expr.name == var
+        if isinstance(expr, BinaryExpr):
+            return self._expr_references_var(expr.left, var) or self._expr_references_var(
+                expr.right, var
+            )
+        if isinstance(expr, UnaryExpr):
+            return self._expr_references_var(expr.operand, var)
+        if isinstance(expr, CallExpr):
+            return any(self._expr_references_var(a, var) for a in expr.args)
+        if isinstance(expr, (IntegerLit, DecimalLit, FloatLit, StringLit, BooleanLit, CharLit)):
+            return False
+        # Conservative: unknown expr type might reference the var
+        return True
+
+    def _build_folded_expr(
+        self,
+        counter_param: str,
+        acc_param: str,
+        step: Expr,
+        delta: Expr,
+        span: Any,
+    ) -> Expr | None:
+        """Build the O(1) folded expression.
+
+        For step=1, delta=constant:
+            acc + delta * counter  (or acc + counter when delta is 1)
+        """
+        # Only handle step=1 for now
+        if not (isinstance(step, IntegerLit) and int(step.value) == 1):
+            return None
+
+        counter_ref = IdentifierExpr(name=counter_param, span=span)
+        acc_ref = IdentifierExpr(name=acc_param, span=span)
+
+        # Special case: delta is literal 1 → acc + counter
+        if isinstance(delta, IntegerLit) and int(delta.value) == 1:
+            return BinaryExpr(left=acc_ref, op="+", right=counter_ref, span=span)
+
+        # General case: acc + delta * counter
+        product = BinaryExpr(left=delta, op="*", right=counter_ref, span=span)
+        return BinaryExpr(left=acc_ref, op="+", right=product, span=span)
+
+    # ── Pass 3d: Memoization Candidate Identification ─────────────
 
     def _identify_memoization_candidates(self, module: Module) -> Module:
         """Identify pure functions eligible for memoization.

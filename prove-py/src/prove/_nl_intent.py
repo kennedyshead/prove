@@ -42,9 +42,15 @@ VERB_SYNONYMS: dict[str, list[str]] = {
                     "loops", "loop"],
 }
 
-_SYNONYM_TO_VERB: dict[str, str] = {
+_HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {
     syn: verb for verb, syns in VERB_SYNONYMS.items() for syn in syns
 }
+
+try:
+    from prove.nlp_store import load_verb_synonyms
+    _SYNONYM_TO_VERB: dict[str, str] = load_verb_synonyms()
+except Exception:
+    _SYNONYM_TO_VERB: dict[str, str] = _HARDCODED_SYNONYM_TO_VERB  # type: ignore[no-redef]
 
 
 def normalize_verb(word: str) -> str | None:

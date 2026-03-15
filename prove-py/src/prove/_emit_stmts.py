@@ -1434,21 +1434,70 @@ class StmtEmitterMixin:
         self._in_tail_loop = saved_in_tail
 
     def _emit_tail_continue(self, tc: TailContinue) -> None:
-        """Emit temporaries for all new values, then assign + continue."""
-        # First, evaluate all new values into temporaries
-        # (avoids evaluation-order bugs when params depend on each other)
-        tmps: list[tuple[str, str]] = []
+        """Emit param reassignments for tail-call loop iteration.
+
+        Skips temporaries when no cross-dependencies exist between params.
+        Omits redundant 'continue' since TailContinue always appears at the
+        end of a while(1) body branch.
+        """
+        if self._needs_temporaries(tc):
+            # Cross-dependencies between params: use temps to avoid order bugs
+            tmps: list[tuple[str, str]] = []
+            for param_name, new_val_expr in tc.assignments:
+                tmp = self._tmp()
+                ty = self._locals.get(param_name)
+                ct = map_type(ty) if ty else CType("int64_t", False, None)
+                val = self._emit_expr(new_val_expr)
+                self._line(f"{ct.decl} {tmp} = {val};")
+                tmps.append((param_name, tmp))
+            for param_name, tmp in tmps:
+                self._line(f"{param_name} = {tmp};")
+        else:
+            # No cross-dependencies: assign directly without temporaries
+            for param_name, new_val_expr in tc.assignments:
+                val = self._emit_expr(new_val_expr)
+                self._line(f"{param_name} = {val};")
+
+    @staticmethod
+    def _expr_refs_any(expr: Any, names: set[str]) -> bool:
+        """Check if an expression references any of the given variable names."""
+        from prove.ast_nodes import (
+            BinaryExpr,
+            CallExpr,
+            IdentifierExpr,
+            IndexExpr,
+            UnaryExpr,
+        )
+
+        if isinstance(expr, IdentifierExpr):
+            return expr.name in names
+        if isinstance(expr, BinaryExpr):
+            return StmtEmitterMixin._expr_refs_any(
+                expr.left, names
+            ) or StmtEmitterMixin._expr_refs_any(expr.right, names)
+        if isinstance(expr, UnaryExpr):
+            return StmtEmitterMixin._expr_refs_any(expr.operand, names)
+        if isinstance(expr, CallExpr):
+            return any(StmtEmitterMixin._expr_refs_any(a, names) for a in expr.args)
+        if isinstance(expr, IndexExpr):
+            return StmtEmitterMixin._expr_refs_any(
+                expr.obj, names
+            ) or StmtEmitterMixin._expr_refs_any(expr.index, names)
+        return False
+
+    def _needs_temporaries(self, tc: TailContinue) -> bool:
+        """Check if TailContinue assignments have cross-dependencies.
+
+        Temporaries are needed when param A's new value expression references
+        param B, and param B is also being reassigned.
+        """
+        assigned_params = {name for name, _ in tc.assignments}
         for param_name, new_val_expr in tc.assignments:
-            tmp = self._tmp()
-            ty = self._locals.get(param_name)
-            ct = map_type(ty) if ty else CType("int64_t", False, None)
-            val = self._emit_expr(new_val_expr)
-            self._line(f"{ct.decl} {tmp} = {val};")
-            tmps.append((param_name, tmp))
-        # Then assign all at once
-        for param_name, tmp in tmps:
-            self._line(f"{param_name} = {tmp};")
-        self._line("continue;")
+            # Check if expr references any OTHER param being reassigned
+            other_params = assigned_params - {param_name}
+            if other_params and self._expr_refs_any(new_val_expr, other_params):
+                return True
+        return False
 
     def _emit_while_loop(self, wl: WhileLoop) -> None:
         """Emit a finite while loop inlined from a TCO'd function."""

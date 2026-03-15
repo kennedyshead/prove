@@ -264,7 +264,6 @@ class TestTCOIntegration:
         c_code = emitter.emit()
 
         assert "while (1)" in c_code
-        assert "continue;" in c_code
 
 
 # ── Dead Branch Elimination tests ─────────────────────────────────
@@ -666,3 +665,257 @@ class TestCopyElision:
         opt.optimize()
 
         assert "tmp" not in opt.get_elision_candidates()
+
+
+# ── Trivial Loop Folding tests ────────────────────────────────────
+
+
+class TestTrivialLoopFolding:
+    """Tests for the _fold_trivial_loops optimizer pass."""
+
+    def _make_count_loop(self, delta: str = "1") -> FunctionDef:
+        """Build count(n, acc) = match n<=0: True->acc, _->count(n-1, acc+delta).
+
+        After TCO this becomes a TailLoop.
+        """
+        n = IdentifierExpr("n", _SPAN)
+        acc = IdentifierExpr("acc", _SPAN)
+
+        base_arm = MatchArm(
+            pattern=LiteralPattern("true", _SPAN),
+            body=[ExprStmt(acc, _SPAN)],
+            span=_SPAN,
+        )
+
+        recursive_call = CallExpr(
+            func=IdentifierExpr("count", _SPAN),
+            args=[
+                BinaryExpr(n, "-", IntegerLit("1", _SPAN), _SPAN),
+                BinaryExpr(acc, "+", IntegerLit(delta, _SPAN), _SPAN),
+            ],
+            span=_SPAN,
+        )
+        rec_arm = MatchArm(
+            pattern=WildcardPattern(_SPAN),
+            body=[ExprStmt(recursive_call, _SPAN)],
+            span=_SPAN,
+        )
+
+        cond = BinaryExpr(n, "<=", IntegerLit("0", _SPAN), _SPAN)
+        match_expr = MatchExpr(subject=cond, arms=[base_arm, rec_arm], span=_SPAN)
+
+        return _make_func(
+            "count",
+            params=[_make_param("n"), _make_param("acc")],
+            body=[match_expr],
+            terminates=n,
+        )
+
+    def test_count_loop_folded(self):
+        """count(n-1, acc+1) should fold to: match n<=0: True->acc, _->acc+n."""
+        fd = self._make_count_loop("1")
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        assert isinstance(new_fd, FunctionDef)
+        # Should NOT have a TailLoop anymore — it should be folded
+        assert len(new_fd.body) == 1
+        body_stmt = new_fd.body[0]
+        assert isinstance(body_stmt, MatchExpr), f"Expected MatchExpr, got {type(body_stmt)}"
+        assert len(body_stmt.arms) == 2
+
+        # The recursive arm should now be acc + n (no TailContinue)
+        rec_arm = body_stmt.arms[1]
+        assert len(rec_arm.body) == 1
+        assert isinstance(rec_arm.body[0], ExprStmt)
+        folded = rec_arm.body[0].expr
+        assert isinstance(folded, BinaryExpr)
+        assert folded.op == "+"
+        # Left should be acc, right should be n
+        assert isinstance(folded.left, IdentifierExpr) and folded.left.name == "acc"
+        assert isinstance(folded.right, IdentifierExpr) and folded.right.name == "n"
+
+    def test_constant_delta_folded(self):
+        """count(n-1, acc+3) should fold to: match n<=0: True->acc, _->acc+3*n."""
+        fd = self._make_count_loop("3")
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        new_fd = result.declarations[0]
+        body_stmt = new_fd.body[0]
+        assert isinstance(body_stmt, MatchExpr)
+        rec_arm = body_stmt.arms[1]
+        folded = rec_arm.body[0].expr
+        assert isinstance(folded, BinaryExpr)
+        assert folded.op == "+"
+        # Left: acc, Right: 3 * n
+        assert isinstance(folded.left, IdentifierExpr) and folded.left.name == "acc"
+        product = folded.right
+        assert isinstance(product, BinaryExpr)
+        assert product.op == "*"
+
+    def test_factorial_not_folded(self):
+        """fact(n-1, acc*n) should NOT be folded — acc*n is not acc+delta."""
+        n = IdentifierExpr("n", _SPAN)
+        acc = IdentifierExpr("acc", _SPAN)
+
+        base_arm = MatchArm(
+            pattern=LiteralPattern("true", _SPAN),
+            body=[ExprStmt(acc, _SPAN)],
+            span=_SPAN,
+        )
+        recursive_call = CallExpr(
+            func=IdentifierExpr("factorial", _SPAN),
+            args=[
+                BinaryExpr(n, "-", IntegerLit("1", _SPAN), _SPAN),
+                BinaryExpr(acc, "*", n, _SPAN),
+            ],
+            span=_SPAN,
+        )
+        rec_arm = MatchArm(
+            pattern=WildcardPattern(_SPAN),
+            body=[ExprStmt(recursive_call, _SPAN)],
+            span=_SPAN,
+        )
+
+        cond = BinaryExpr(n, "<=", IntegerLit("0", _SPAN), _SPAN)
+        match_expr = MatchExpr(subject=cond, arms=[base_arm, rec_arm], span=_SPAN)
+
+        fd = _make_func(
+            "factorial",
+            params=[_make_param("n"), _make_param("acc")],
+            body=[match_expr],
+            terminates=n,
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        # Should still have a TailLoop (not folded because acc*n is not acc+delta)
+        new_fd = result.declarations[0]
+        assert isinstance(new_fd.body[0], TailLoop)
+
+    def test_counter_dependent_delta_not_folded(self):
+        """count(n-1, acc+n) should NOT be folded — delta depends on counter."""
+        n = IdentifierExpr("n", _SPAN)
+        acc = IdentifierExpr("acc", _SPAN)
+
+        base_arm = MatchArm(
+            pattern=LiteralPattern("true", _SPAN),
+            body=[ExprStmt(acc, _SPAN)],
+            span=_SPAN,
+        )
+        recursive_call = CallExpr(
+            func=IdentifierExpr("count", _SPAN),
+            args=[
+                BinaryExpr(n, "-", IntegerLit("1", _SPAN), _SPAN),
+                BinaryExpr(acc, "+", n, _SPAN),  # delta = n, depends on counter
+            ],
+            span=_SPAN,
+        )
+        rec_arm = MatchArm(
+            pattern=WildcardPattern(_SPAN),
+            body=[ExprStmt(recursive_call, _SPAN)],
+            span=_SPAN,
+        )
+
+        cond = BinaryExpr(n, "<=", IntegerLit("0", _SPAN), _SPAN)
+        match_expr = MatchExpr(subject=cond, arms=[base_arm, rec_arm], span=_SPAN)
+
+        fd = _make_func(
+            "count",
+            params=[_make_param("n"), _make_param("acc")],
+            body=[match_expr],
+            terminates=n,
+        )
+        module = _make_module(fd)
+        symbols = SymbolTable()
+        result = Optimizer(module, symbols).optimize()
+
+        # Should still have a TailLoop (not folded because delta depends on counter)
+        new_fd = result.declarations[0]
+        assert isinstance(new_fd.body[0], TailLoop)
+
+
+class TestTailContinueTemporaryElimination:
+    """Tests for temporary elimination in _emit_tail_continue."""
+
+    def test_no_cross_deps_no_temps(self, tmp_path, needs_cc):
+        """count(n-1, acc+1) should NOT use temp variables (no cross-deps)."""
+        from prove.c_emitter import CEmitter
+        from prove.checker import Checker
+        from prove.lexer import Lexer
+        from prove.optimizer import Optimizer
+        from prove.parser import Parser
+
+        source = (
+            "module CountTest\n"
+            "  System outputs console\n"
+            "matches count(n Integer, acc Integer) Integer\n"
+            "  terminates: n\n"
+            "from\n"
+            "    match n\n"
+            "        0 => acc\n"
+            "        _ => count(n - 1, acc + 1)\n"
+            "\n"
+            "main()\n"
+            "from\n"
+            "    console(to_string(count(5, 0)))\n"
+        )
+
+        tokens = Lexer(source, "<test>").lex()
+        module = Parser(tokens, "<test>").parse()
+        checker = Checker()
+        symbols = checker.check(module)
+
+        optimizer = Optimizer(module, symbols)
+        optimized = optimizer.optimize()
+
+        emitter = CEmitter(optimized, symbols)
+        c_code = emitter.emit()
+
+        # This loop gets folded, so no TailContinue should remain.
+        # The folded version is: match n: 0->acc, _->acc+n
+        assert "while (1)" not in c_code
+
+    def test_cross_deps_use_temps(self, tmp_path, needs_cc):
+        """fact(n-1, acc*n) should still use temps (acc*n references n)."""
+        from prove.c_emitter import CEmitter
+        from prove.checker import Checker
+        from prove.lexer import Lexer
+        from prove.optimizer import Optimizer
+        from prove.parser import Parser
+
+        source = (
+            "module FactTest\n"
+            "  System outputs console\n"
+            "transforms fact(n Integer, acc Integer) Integer\n"
+            "  terminates: n\n"
+            "from\n"
+            "    match n\n"
+            "        0 => acc\n"
+            "        _ => fact(n - 1, acc * n)\n"
+            "\n"
+            "main()\n"
+            "from\n"
+            "    console(to_string(fact(5, 1)))\n"
+        )
+
+        tokens = Lexer(source, "<test>").lex()
+        module = Parser(tokens, "<test>").parse()
+        checker = Checker()
+        symbols = checker.check(module)
+
+        optimizer = Optimizer(module, symbols)
+        optimized = optimizer.optimize()
+
+        emitter = CEmitter(optimized, symbols)
+        c_code = emitter.emit()
+
+        # Should still have while(1) (not folded — acc*n is not additive)
+        assert "while (1)" in c_code
+        # Should use temps because acc*n references n (cross-dependency)
+        assert "_tmp" in c_code

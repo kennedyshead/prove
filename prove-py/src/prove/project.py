@@ -62,6 +62,7 @@ def scaffold(name: str, parent: Path | None = None) -> Path:
     # Create directories
     src_dir = project_dir / "src"
     src_dir.mkdir(parents=True)
+    (project_dir / ".prove").mkdir()
 
     # prove.toml
     (project_dir / "prove.toml").write_text(_PROVE_TOML_TEMPLATE.format(name=name))
