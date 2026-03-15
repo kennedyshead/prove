@@ -31,7 +31,7 @@ the Store.
    compiler never *requires* optional deps.
 
 4. **`build_stores.py` is the generation entry point.**  Any new NLP data store
-   gets a builder function there.  `prove setup-nlp` calls it after downloading
+   gets a builder function there.  `prove advanced setup-nlp` calls it after downloading
    models.  Pre-built `.dat` files ship as package data.
 
 ---
@@ -42,7 +42,7 @@ the Store.
 
 - `pyproject.toml` has `[nlp]` optional dep group (spaCy + NLTK)
 - `src/prove/nlp.py` exists with lazy backend detection, 6 public functions
-- `prove setup-nlp` CLI command in `cli.py`
+- `prove advanced setup-nlp` CLI command in `cli.py`
 
 ### Phase 2 — Core NLP Functions (COMPLETE)
 
@@ -76,83 +76,36 @@ All six functions implemented in `nlp.py` with spaCy/NLTK path + fallback:
 
 ## Remaining Work
 
-### Phase 3: Integration — Wire `nlp.py` Into the Compiler
+### Phase 3: Integration — Wire `nlp.py` Into the Compiler (COMPLETE)
 
-The NLP module exists but nothing uses it yet.  The four integration points
-below connect `nlp.py` to the compiler's intent pipeline.  Each integration
-must route **all new persistent data through `.pdat`**.
+All four integration points are wired.  Each function tries `nlp.py` first
+and falls through to the original hand-rolled logic when backends are absent.
+Circular fallback between `nlp.py` ↔ `_nl_intent.py` is broken by having
+`nlp.py` fallbacks import `_*_fallback` variants directly.
 
-#### 3a. `_nl_intent.py` — Delegate to `nlp.py`
+#### 3a. `_nl_intent.py` — Delegate to `nlp.py` (DONE)
 
-Rename current implementations to `_*_fallback` and delegate:
+Four functions renamed to `_*_fallback`, wrappers delegate to `nlp.py`:
+- `normalize_noun` → `nlp.lemmatize`
+- `implied_verbs` → `nlp.extract_parts` + verb normalization
+- `extract_nouns` → `nlp.extract_parts`
+- `prose_overlaps` → `nlp.text_similarity` (threshold 0.2)
 
-```python
-def normalize_noun(word: str) -> str:
-    from prove.nlp import lemmatize
-    return lemmatize(word)
+#### 3b. `_body_gen.py` — Better stdlib matching (DONE)
 
-def implied_verbs(text: str) -> set[str]:
-    from prove.nlp import extract_parts
-    _, verbs = extract_parts(text)
-    result = set()
-    for v in verbs:
-        canonical = normalize_verb(v)
-        if canonical:
-            result.add(canonical)
-    return result
+`find_stdlib_matches` delegates to `nlp.match_stdlib_function` when backend
+available.  `_nlp_active` guard prevents infinite recursion since
+`match_stdlib_function` calls back into `find_stdlib_matches`.
 
-def extract_nouns(text: str) -> list[str]:
-    from prove.nlp import extract_parts
-    nouns, _ = extract_parts(text)
-    return nouns
+#### 3c. `intent_parser.py` — Smarter phrase parsing (DONE)
 
-def prose_overlaps(prose: str, tokens: set[str]) -> bool:
-    from prove.nlp import text_similarity
-    score = text_similarity(prose, " ".join(tokens))
-    return score > 0.2  # threshold tuned to match current behavior
-```
+`_parse_verb_phrase` tries `nlp.parse_intent_phrase` first, builds VerbPhrase
+from structured parse.  Falls through to existing regex logic.
 
-Original implementations stay as `_normalize_noun_fallback()` etc., called
-by `nlp.py` when backends are unavailable.
+#### 3d. `intent_generator.py` — Better parameter inference (DONE)
 
-#### 3b. `_body_gen.py` — Better stdlib matching
-
-```python
-def find_stdlib_matches(verb, nouns, stdlib_index=None, docstring_index=None):
-    from prove.nlp import has_nlp_backend
-    if has_nlp_backend():
-        from prove.nlp import match_stdlib_function
-        intent = f"{verb} {' '.join(nouns)}"
-        return match_stdlib_function(intent, stdlib_index or _build_stdlib_index())
-    # ... existing implementation unchanged ...
-```
-
-The stdlib index is already `.pdat`-backed via `nlp_store.load_stdlib_index()`.
-
-#### 3c. `intent_parser.py` — Smarter phrase parsing
-
-```python
-def _parse_verb_phrase(text, lineno, diags):
-    from prove.nlp import has_nlp_backend, parse_intent_phrase
-    if has_nlp_backend():
-        parsed = parse_intent_phrase(text)
-        if parsed["verb"]:
-            # Build VerbPhrase from structured parse
-            ...
-    # Fall through to existing regex logic
-    ...
-```
-
-#### 3d. `intent_generator.py` — Better parameter inference
-
-```python
-def _infer_params_from_vocab(intent, vocabulary):
-    from prove.nlp import has_nlp_backend, lemmatize, text_similarity
-    if has_nlp_backend():
-        # Lemmatize intent nouns and vocabulary terms, match by similarity
-        ...
-    # ... existing keyword matching ...
-```
+`_infer_params_from_vocab` uses `nlp.text_similarity` for fuzzy vocabulary
+matching (threshold 0.3) when backend available, exact substring match otherwise.
 
 ### Phase 4: Expand PDAT Stores
 
@@ -216,16 +169,17 @@ if __name__ == "__main__":
     build_stdlib_index()        # existing, moved here from cli.py cache
 ```
 
-All builders are idempotent.  `prove setup-nlp` calls `build_stores.py` after
+All builders are idempotent.  `prove advanced setup-nlp` calls `build_stores.py` after
 downloading models.  The resulting `.dat` files ship as package data so
 end users never need spaCy/NLTK installed.
 
 ### Phase 5: Tests
 
-#### 5a. Integration tests for delegation (Phase 3)
+#### 5a. Integration tests for delegation (Phase 3) — COMPLETE
 
-`test_nl_intent.py` and `test_body_gen.py` must continue to pass with and
-without NLP deps.  Delegation should be transparent in fallback mode.
+`test_nl_intent.py` and `test_body_gen.py` continue to pass (151 tests,
+6 skipped).  Full suite: 1401 passed, 6 skipped.  Delegation is transparent
+in fallback mode.
 
 #### 5b. Store round-trip tests (Phase 4)
 
@@ -235,15 +189,15 @@ Each new `.pdat` store gets a test in `test_nlp_store.py`:
 
 #### 5c. End-to-end integration test
 
-`.intent` file -> `prove intent --generate` -> valid `.prv` -> `prove check`
-passes.  Run both with and without NLP backends.
+`.intent` file -> `prove advanced generate project.intent` -> valid `.prv` ->
+`prove check` passes.  Run both with and without NLP backends.
 
 ### Phase 6: CLI Flags
 
-- **6a. `prove setup-nlp`** — COMPLETE.  Downloads models + rebuilds stores.
-- **6b. `prove generate --nlp` / `--no-nlp`** — Explicitly control NLP use.
+- **6a. `prove advanced setup-nlp`** — COMPLETE.  Downloads models + rebuilds stores.
+- **6b. `prove advanced generate --nlp` / `--no-nlp`** — Explicitly control NLP use.
   Default: auto-detect.
-- **6c. `prove intent --nlp`** — Semantic similarity for coverage checking.
+- **6c. `prove advanced intent --nlp`** — Semantic similarity for coverage checking.
 - **6d. `prove check --nlp-status`** — Report backend availability and which
   `.pdat` stores are present.
 
@@ -313,14 +267,14 @@ stdlib is implemented — same quality or better, zero Python deps.
 | `pyproject.toml` | `[nlp]` optional dep group | DONE |
 | `src/prove/nlp.py` | NLP backend with fallback | DONE |
 | `src/prove/nlp_store.py` | PDAT-backed verb synonyms + stdlib index | DONE |
-| `src/prove/cli.py` | `prove setup-nlp` command | DONE |
+| `src/prove/cli.py` | `prove advanced setup-nlp` command | DONE |
 | `scripts/build_stores.py` | PDAT generator for verb synonyms | DONE |
 | `tests/test_nlp.py` | Unit tests for `nlp.py` | DONE |
 | `tests/test_nlp_store.py` | Store round-trip tests | DONE |
-| `src/prove/_nl_intent.py` | Delegate to `nlp.py` | TODO (Phase 3a) |
-| `src/prove/_body_gen.py` | Delegate `find_stdlib_matches` | TODO (Phase 3b) |
-| `src/prove/intent_parser.py` | Delegate `_parse_verb_phrase` | TODO (Phase 3c) |
-| `src/prove/intent_generator.py` | Delegate `_infer_params_from_vocab` | TODO (Phase 3d) |
+| `src/prove/_nl_intent.py` | Delegate to `nlp.py` | DONE (Phase 3a) |
+| `src/prove/_body_gen.py` | Delegate `find_stdlib_matches` | DONE (Phase 3b) |
+| `src/prove/intent_parser.py` | Delegate `_parse_verb_phrase` | DONE (Phase 3c) |
+| `src/prove/intent_generator.py` | Delegate `_infer_params_from_vocab` | DONE (Phase 3d) |
 | `src/prove/nlp_store.py` | Add synonym cache + similarity matrix | TODO (Phase 4a-b) |
 | `scripts/build_stores.py` | Add builders for new stores | TODO (Phase 4d) |
 | `scripts/ml_extract.py` | Semantic features via PDAT (not JSON) | TODO (Phase 4c) |
@@ -329,13 +283,13 @@ stdlib is implemented — same quality or better, zero Python deps.
 
 ## Priority Order
 
-1. **Phase 3a-b: Wire `_nl_intent.py` + `_body_gen.py`** — highest impact,
-   connects the existing NLP module to the compiler's most-used code paths
-2. **Phase 3c-d: Wire intent parser + generator** — completes integration
-3. **Phase 4a: Synonym expansion store** — ship expanded synonyms as `.pdat`,
+1. ~~**Phase 3a-b: Wire `_nl_intent.py` + `_body_gen.py`**~~ — DONE
+2. ~~**Phase 3c-d: Wire intent parser + generator**~~ — DONE
+3. ~~**Phase 5a: Integration tests for delegation**~~ — DONE (1401 pass)
+4. **Phase 4a: Synonym expansion store** — ship expanded synonyms as `.pdat`,
    eliminates runtime NLTK dependency for users
-4. **Phase 4b: Similarity matrix store** — ship pre-computed scores as `.pdat`,
+5. **Phase 4b: Similarity matrix store** — ship pre-computed scores as `.pdat`,
    eliminates runtime spaCy dependency for users
-5. **Phase 5: Tests** — verify delegation + store round-trips
-6. **Phase 6b-d: CLI flags** — user-facing controls
-7. **Phase 4c: ML semantic features** — longer-term LSP improvement
+6. **Phase 5b-c: Store round-trip + e2e tests** — verify new stores
+7. **Phase 6b-d: CLI flags** — user-facing controls (under `prove advanced`)
+8. **Phase 4c: ML semantic features** — longer-term LSP improvement

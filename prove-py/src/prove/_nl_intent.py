@@ -60,6 +60,21 @@ def normalize_verb(word: str) -> str | None:
 
 def implied_verbs(text: str) -> set[str]:
     """Return Prove verb keywords implied by action words in prose text."""
+    from prove.nlp import extract_parts, has_nlp_backend
+
+    if has_nlp_backend():
+        parts = extract_parts(text)
+        result: set[str] = set()
+        for v in parts.verbs:
+            canonical = normalize_verb(v)
+            if canonical:
+                result.add(canonical)
+        return result
+    return _implied_verbs_fallback(text)
+
+
+def _implied_verbs_fallback(text: str) -> set[str]:
+    """Return Prove verb keywords implied by action words in prose text (no NLP)."""
     words = re.findall(r"[a-z]+", text.lower())
     result: set[str] = set()
     for word in words:
@@ -100,6 +115,15 @@ def body_tokens(fd: FunctionDef) -> set[str]:
 
 
 def normalize_noun(word: str) -> str:
+    """Return the root form of *word*, using NLP lemmatizer when available."""
+    from prove.nlp import has_nlp_backend, lemmatize
+
+    if has_nlp_backend():
+        return lemmatize(word)
+    return _normalize_noun_fallback(word)
+
+
+def _normalize_noun_fallback(word: str) -> str:
     """Reduce a noun to its root form via ordered suffix stripping.
 
     Ordered rules (first match wins):
@@ -168,7 +192,17 @@ def split_name(name: str) -> list[str]:
 
 
 def prose_overlaps(prose: str, tokens: set[str]) -> bool:
-    """True if any word in prose matches a body token after normalization.
+    """True if any word in prose matches a body token after normalization."""
+    from prove.nlp import has_nlp_backend, text_similarity
+
+    if has_nlp_backend():
+        score = text_similarity(prose, " ".join(tokens))
+        return score > 0.2
+    return _prose_overlaps_fallback(prose, tokens)
+
+
+def _prose_overlaps_fallback(prose: str, tokens: set[str]) -> bool:
+    """True if any word in prose matches a body token after normalization (no NLP).
 
     Both prose words and token parts (split on ``_``) are reduced to their
     root form via ``normalize_noun`` before comparison.
@@ -197,7 +231,17 @@ _NOUN_STOPS = frozenset({
 
 
 def extract_nouns(text: str) -> list[str]:
-    """Extract candidate noun phrases from prose (domain objects, not verbs).
+    """Extract candidate noun phrases from prose (domain objects, not verbs)."""
+    from prove.nlp import extract_parts, has_nlp_backend
+
+    if has_nlp_backend():
+        parts = extract_parts(text)
+        return parts.nouns
+    return _extract_nouns_fallback(text)
+
+
+def _extract_nouns_fallback(text: str) -> list[str]:
+    """Extract candidate noun phrases from prose (no NLP).
 
     Returns normalized lowercase words that are likely to become function
     names, type names, or parameter names.  Preserves order of first

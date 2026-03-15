@@ -206,6 +206,28 @@ def _parse_verb_phrase(
     text: str, lineno: int, diags: list[IntentDiagnostic],
 ) -> VerbPhrase | None:
     """Parse a verb phrase line into a VerbPhrase node."""
+    from prove.nlp import has_nlp_backend
+
+    if has_nlp_backend():
+        from prove.nlp import parse_intent_phrase
+
+        parsed = parse_intent_phrase(text)
+        if parsed.action:
+            canonical = normalize_verb(parsed.action)
+            if canonical:
+                noun = parsed.object or canonical
+                context_parts: list[str] = []
+                if parsed.object and parsed.modifiers:
+                    context_parts = parsed.modifiers
+                elif parsed.object:
+                    # Reconstruct remaining context from text
+                    words = text.split()
+                    if len(words) > 2:
+                        context_parts = words[2:]
+                context = " ".join(context_parts) if context_parts else ""
+                return VerbPhrase(verb=canonical, noun=noun, context=context, raw_line=text)
+
+    # Existing implementation (fallback)
     words = text.split()
     if not words:
         return None
