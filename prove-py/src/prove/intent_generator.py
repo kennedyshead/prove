@@ -52,13 +52,30 @@ def _infer_params_from_vocab(
                 _format_type(fn.return_type),
             )
 
-    # 2. Check vocabulary names in context
+    # 2. Check vocabulary names in context — NLP-enhanced matching
+    from prove.nlp import has_nlp_backend
+
     context_lower = f"{intent.noun} {intent.context}".lower()
-    for v in vocabulary:
-        if v.name.lower() in context_lower:
-            param_name = v.name[0].lower() + v.name[1:]
+    if has_nlp_backend():
+        from prove.nlp import text_similarity
+
+        best_score = 0.0
+        best_vocab: VocabularyEntry | None = None
+        for v in vocabulary:
+            score = text_similarity(v.name.lower(), context_lower)
+            if score > best_score and score > 0.3:
+                best_score = score
+                best_vocab = v
+        if best_vocab:
+            param_name = best_vocab.name[0].lower() + best_vocab.name[1:]
             return_type = _VERB_RETURN_DEFAULTS.get(intent.verb, "String")
-            return [param_name], [v.name], return_type
+            return [param_name], [best_vocab.name], return_type
+    else:
+        for v in vocabulary:
+            if v.name.lower() in context_lower:
+                param_name = v.name[0].lower() + v.name[1:]
+                return_type = _VERB_RETURN_DEFAULTS.get(intent.verb, "String")
+                return [param_name], [v.name], return_type
 
     # 3. Fall back to verb defaults
     hints = _VERB_PARAM_HINTS.get(intent.verb, [("value", "String")])

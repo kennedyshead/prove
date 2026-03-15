@@ -93,10 +93,10 @@ def lemmatize(word: str) -> str:
         doc = _nlp_model(word.lower())  # type: ignore[operator]
         if doc and doc[0].lemma_:
             return doc[0].lemma_
-    # Fallback
-    from prove._nl_intent import normalize_noun
+    # Fallback — use _fallback variant to avoid recursion
+    from prove._nl_intent import _normalize_noun_fallback
 
-    return normalize_noun(word)
+    return _normalize_noun_fallback(word)
 
 
 # ── Part-of-speech extraction ────────────────────────────────────
@@ -132,12 +132,12 @@ def extract_parts(text: str) -> ExtractedParts:
                 verbs.append(lemma)
         return ExtractedParts(nouns=nouns, verbs=verbs)
 
-    # Fallback: use existing _nl_intent helpers
-    from prove._nl_intent import extract_nouns, implied_verbs
+    # Fallback — use _fallback variants to avoid recursion
+    from prove._nl_intent import _extract_nouns_fallback, _implied_verbs_fallback
 
     return ExtractedParts(
-        nouns=extract_nouns(text),
-        verbs=sorted(implied_verbs(text)),
+        nouns=_extract_nouns_fallback(text),
+        verbs=sorted(_implied_verbs_fallback(text)),
     )
 
 
@@ -190,11 +190,11 @@ def text_similarity(a: str, b: str) -> float:
             sim = doc_a.similarity(doc_b)  # type: ignore[union-attr]
             return max(0.0, min(1.0, float(sim)))
 
-    # Fallback: Jaccard on normalized words
-    from prove._nl_intent import normalize_noun
+    # Fallback: Jaccard on normalized words — use _fallback to avoid recursion
+    from prove._nl_intent import _normalize_noun_fallback
 
-    words_a = {normalize_noun(w) for w in re.findall(r"[a-z]+", a.lower()) if len(w) >= 3}
-    words_b = {normalize_noun(w) for w in re.findall(r"[a-z]+", b.lower()) if len(w) >= 3}
+    words_a = {_normalize_noun_fallback(w) for w in re.findall(r"[a-z]+", a.lower()) if len(w) >= 3}
+    words_b = {_normalize_noun_fallback(w) for w in re.findall(r"[a-z]+", b.lower()) if len(w) >= 3}
     if not words_a or not words_b:
         return 0.0
     intersection = words_a & words_b

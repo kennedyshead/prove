@@ -61,6 +61,9 @@ def _build_stdlib_index() -> dict[str, list[FunctionSignature]]:
     return index
 
 
+_nlp_active: bool = False
+
+
 def find_stdlib_matches(
     verb: str,
     nouns: list[str],
@@ -70,8 +73,25 @@ def find_stdlib_matches(
     """Search stdlib for functions matching verb and domain nouns.
 
     Uses both signature matching (verb + name overlap) and the docstring
-    index (if available) for higher-quality matches.
+    index (if available) for higher-quality matches.  When an NLP backend
+    is available, delegates to ``nlp.match_stdlib_function`` for improved
+    semantic matching.
     """
+    global _nlp_active
+
+    if not _nlp_active:
+        from prove.nlp import has_nlp_backend
+
+        if has_nlp_backend():
+            from prove.nlp import match_stdlib_function
+
+            _nlp_active = True
+            try:
+                intent = f"{verb} {' '.join(nouns)}"
+                return match_stdlib_function(intent, verb=verb, stdlib_index=stdlib_index)
+            finally:
+                _nlp_active = False
+
     if stdlib_index is None:
         stdlib_index = _build_stdlib_index()
 
