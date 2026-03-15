@@ -102,6 +102,48 @@ def load_synonym_cache() -> dict[str, list[str]]:
     return _synonym_cache
 
 
+def build_synonym_cache() -> Path:
+    """Build ``synonym_cache.dat`` with WordNet-expanded synonyms.
+
+    Requires NLTK with WordNet data.  Returns the path to the written file.
+    Raises if WordNet is not available.
+    """
+    from nltk.corpus import wordnet  # type: ignore[import-untyped]
+
+    # Probe that data is actually downloaded
+    wordnet.synsets("test")
+
+    from prove._nl_intent import VERB_SYNONYMS
+
+    # Collect all words from VERB_SYNONYMS + common intent nouns
+    seed_words: set[str] = set()
+    for syns in VERB_SYNONYMS.values():
+        seed_words.update(syns)
+    seed_words.update([
+        "file", "text", "string", "number", "list", "array", "table",
+        "path", "hash", "format", "parse", "error", "result", "option",
+        "byte", "character", "pattern", "time", "random", "network",
+        "log", "system", "math", "length", "split", "join", "sort",
+        "filter", "map", "reduce", "count", "find", "search", "replace",
+    ])
+
+    variants: list[tuple[str, list[str]]] = []
+    for word in sorted(seed_words):
+        syns_set: set[str] = set()
+        for pos in ("v", "n"):
+            for synset in wordnet.synsets(word, pos=pos):
+                for lemma in synset.lemmas():
+                    name = lemma.name().replace("_", " ").lower()
+                    if name != word.lower():
+                        syns_set.add(name)
+        if syns_set:
+            variants.append((word.lower(), ["|".join(sorted(syns_set))]))
+
+    out = _data_path("synonym_cache.dat")
+    write_pdat(out, "SynonymCache", ["String"], variants)
+    return out
+
+
 # ── Similarity matrix store ─────────────────────────────────────
 
 
@@ -162,12 +204,25 @@ def build_similarity_matrix(project_dir: Path | None = None) -> Path:
             keys.append(key)
             descs.append(desc)
 
-    from prove.nlp import text_similarity
+    # Compute Jaccard similarity directly on normalized word sets.
+    # This avoids O(n^2) spaCy Doc creations via text_similarity(),
+    # which is prohibitively slow for ~315 stdlib functions (~49K pairs)
+    # and falls back to Jaccard anyway since en_core_web_sm has no vectors.
+    from prove._nl_intent import _normalize_noun_fallback
+
+    word_sets = [
+        {_normalize_noun_fallback(w) for w in re.findall(r"[a-z]+", d.lower()) if len(w) >= 3}
+        for d in descs
+    ]
 
     variants: list[tuple[str, list[str]]] = []
     for i in range(len(keys)):
         for j in range(i + 1, len(keys)):
-            score = text_similarity(descs[i], descs[j])
+            if not word_sets[i] or not word_sets[j]:
+                continue
+            intersection = word_sets[i] & word_sets[j]
+            union = word_sets[i] | word_sets[j]
+            score = len(intersection) / len(union)
             if score > 0.1:
                 pair_key = f"{keys[i]}|{keys[j]}"
                 variants.append((pair_key, [f"{score:.3f}"]))

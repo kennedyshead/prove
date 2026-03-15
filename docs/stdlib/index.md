@@ -6,7 +6,7 @@ keywords: Prove stdlib, standard library, design pattern, verb families, channel
 
 # Standard Library
 
-The Prove standard library is a set of 19 modules that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 19 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -77,14 +77,14 @@ The caller's verb determines which function is invoked. This is channel dispatch
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, and CSV codecs with `Value` and `Url` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
-| **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer |
+| **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer; Result/Option validators and unwrap |
 | **[Path](io-path.md#path)** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | **[Pattern](parse-format-pattern.md#pattern)** | Complete | Regex operations: test, search, replace, split with `Match` type |
 | **[Format](parse-format-pattern.md#format)** | Complete | String/number formatting (pad, hex, bin) and time/date formatting |
-| **[Error](error-log.md#error)** | Complete | Result/Option utilities: ok, err, some, none, unwrap_or |
 | **[Bytes](bytes-hash.md#bytes)** | Complete | Byte sequence manipulation: create, slice, hex encode/decode, index access |
 | **[Hash](bytes-hash.md#hash)** | Complete | Cryptographic hashing: SHA-256, SHA-512, BLAKE3, HMAC-SHA256 |
 | **[Random](time-random.md#random)** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
-| **[Log](error-log.md#log)** | Complete | ANSI color constants and structured logging with `detached` verb |
+| **[Log](log.md)** | Complete | ANSI color constants and structured logging with `detached` verb |
 | **[Network](network.md)** | Complete | TCP sockets: `socket`, `server`, `accept`, `message` channels with `Socket` type; pairs with `streams` for accept loops |
+| **[Language](language.md)** | Complete | Natural language processing: tokenization, stemming, edit distance, phonetic codes, n-grams, stopwords, frequency analysis |

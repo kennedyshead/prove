@@ -1,5 +1,8 @@
 module Main
-  narrative: """Demonstrates advanced contract features: terminates, explain, near_miss."""
+  narrative: """
+  Demonstrates advanced contract features: terminates, explain, near_miss. By a
+  factorial match statement.
+  """
   System outputs console
 
 matches factorial(n Integer) Integer

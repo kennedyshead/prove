@@ -20,11 +20,11 @@ Source (.prv) → Lexer → Parser → Checker → Prover → Optimizer → C Em
 | **Parser** | Token stream | AST | Pratt expression parsing, recursive descent for declarations |
 | **Checker** | AST | Typed AST + symbol table | Type inference, verb enforcement, match exhaustiveness |
 | **Prover** | AST + contracts | Diagnostics | Explain entry verification, contract consistency |
-| **Optimizer** | Typed AST | Optimized AST | Tail call optimization, inlining, dead branch elimination, runtime dependency tracking |
+| **Optimizer** | Typed AST | Optimized AST | 13 passes: TCO, inlining, dead branch/code elimination, iterator fusion, copy elision, loop folding, runtime dependency tracking |
 | **C Emitter** | Optimized AST | C source | Type mapping, name mangling, lambda hoisting, reference counting |
 | **gcc/clang** | C source | Native binary | Optimization, linking with C runtime |
 
-The build system performs **runtime stripping** — only the C runtime modules actually used by the program are compiled and linked. A CLI that parses JSON, reads/writes console, and saves a file with guarded contracts produces a **37 KB** binary.
+The build system performs **runtime stripping** — only the C runtime modules actually used by the program are compiled and linked. A program using console output and Array operations produces a **35 KB** binary; a larger CLI with JSON parsing, file IO, and guarded contracts stays well under 50 KB.
 
 ---
 
@@ -161,9 +161,12 @@ When `enabled = true` under `[optimize]` in `prove.toml`, the compiler runs opti
 | **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a [`terminates`](contracts.md#terminates) annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
 | **Compile-time evaluation** | Evaluates pure functions with constant arguments at compile time. For example, `double(21)` becomes `42` during compilation. Recursive functions are not evaluated to avoid infinite loops. |
+| **Iterator fusion** | Fuses chained `map`/`filter`/`reduce` calls into a single traversal, eliminating intermediate list allocations. |
+| **Copy elision** | Identifies variables that are assigned once and consumed once, eliminating redundant copies by forwarding the value directly to its use site. |
+| **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
 | **TCO loop inlining** | When a TCO-converted function calls another TCO-converted function in tail position, inlines the callee as a nested `while` loop inside the caller's loop body. Eliminates the function call overhead entirely and enables the C compiler to see the combined loop as a single unit. The inlined function is then removed by dead code elimination. |
-| **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
+| **Trivial loop folding** | Detects TCO-converted counting or accumulating loops with constant step and folds them to O(1) closed-form computations (e.g., `sum(1..n)` becomes `n*(n+1)/2`). |
 | **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
 | **Escape analysis** | Tracks which local variables escape their enclosing function (returned, stored in mutable parameters, passed to escaping functions). Non-escaping values are candidates for region allocation instead of arena/malloc, reducing allocation overhead. Conservative by default — unknown variables are assumed to escape. |

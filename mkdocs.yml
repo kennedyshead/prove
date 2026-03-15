@@ -18,10 +18,11 @@ nav:
       - System & Path: stdlib/io-path.md
       - Parse, Format & Pattern: stdlib/parse-format-pattern.md
       - Math & Types: stdlib/math-types.md
-      - Error & Log: stdlib/error-log.md
+      - Log: stdlib/log.md
       - Time & Random: stdlib/time-random.md
       - Bytes & Hash: stdlib/bytes-hash.md
       - Network: stdlib/network.md
+      - Language: stdlib/language.md
   - Compiler:
       - CLI Reference: cli.md
       - Compiler Features: compiler.md

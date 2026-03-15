@@ -33,42 +33,20 @@ def build_synonym_cache() -> None:
     Requires NLTK with WordNet data.  Gracefully skips if unavailable.
     """
     try:
-        from nltk.corpus import wordnet  # type: ignore[import-untyped]
-
-        # Probe that data is actually downloaded
-        wordnet.synsets("test")
+        from prove.nlp_store import build_synonym_cache as _build
     except Exception:
-        print("skipping synonym_cache.dat (NLTK/WordNet not available)")
+        print("skipping synonym_cache.dat (import error)")
         return
 
-    # Collect all words from VERB_SYNONYMS + common intent nouns
-    seed_words: set[str] = set()
-    for syns in VERB_SYNONYMS.values():
-        seed_words.update(syns)
-    # Common intent domain nouns
-    seed_words.update([
-        "file", "text", "string", "number", "list", "array", "table",
-        "path", "hash", "format", "parse", "error", "result", "option",
-        "byte", "character", "pattern", "time", "random", "network",
-        "log", "system", "math", "length", "split", "join", "sort",
-        "filter", "map", "reduce", "count", "find", "search", "replace",
-    ])
+    try:
+        out = _build()
+        from prove.store_binary import read_pdat
 
-    variants: list[tuple[str, list[str]]] = []
-    for word in sorted(seed_words):
-        syns_set: set[str] = set()
-        for pos in ("v", "n"):
-            for synset in wordnet.synsets(word, pos=pos):
-                for lemma in synset.lemmas():
-                    name = lemma.name().replace("_", " ").lower()
-                    if name != word.lower():
-                        syns_set.add(name)
-        if syns_set:
-            variants.append((word.lower(), ["|".join(sorted(syns_set))]))
-
-    out = DATA_DIR / "synonym_cache.dat"
-    write_pdat(out, "SynonymCache", ["String"], variants)
-    print(f"wrote {out} ({len(variants)} entries)")
+        data = read_pdat(out)
+        print(f"wrote {out} ({len(data['variants'])} entries)")
+    except Exception as e:
+        reason = str(e).split("\n")[0].strip() or type(e).__name__
+        print(f"skipping synonym_cache.dat ({reason})")
 
 
 def build_similarity_matrix() -> None:
@@ -113,8 +91,23 @@ def build_semantic_features() -> None:
         print(f"skipping semantic_features.dat ({e})")
 
 
+def build_stdlib_index() -> None:
+    """Write stdlib_index.dat in current directory's .prove/ dir."""
+    try:
+        from prove.nlp_store import build_stdlib_index as _build
+
+        out = _build()
+        from prove.store_binary import read_pdat
+
+        data = read_pdat(out)
+        print(f"wrote {out} ({len(data['variants'])} entries)")
+    except Exception as e:
+        print(f"skipping stdlib_index.dat ({e})")
+
+
 if __name__ == "__main__":
     build_verb_synonyms()
     build_synonym_cache()
     build_similarity_matrix()
     build_semantic_features()
+    build_stdlib_index()

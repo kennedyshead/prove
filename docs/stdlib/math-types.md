@@ -99,6 +99,12 @@ The function name is the *target type*. Failable conversions from strings return
 | `reads` | `code(character Character) Integer` | Character to code point |
 | `creates` | `character(code Integer) Character` | Code point to character |
 
+### Decimal Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `decimal(n Integer) Decimal` | Promote integer to decimal |
+
 ### Value Validators
 
 | Verb | Signature | Description |
@@ -106,15 +112,46 @@ The function name is the *target type*. Failable conversions from strings return
 | `validates` | `text(value Value)` | Check if Value is text |
 | `validates` | `number(value Value)` | Check if Value is a number |
 | `validates` | `decimal(value Value)` | Check if Value is a decimal |
-| `validates` | `bool(value Value)` | Check if Value is a boolean |
+| `validates` | `boolean(value Value)` | Check if Value is a boolean |
 | `validates` | `array(value Value)` | Check if Value is an array |
 | `validates` | `object(value Value)` | Check if Value is an object |
-| `validates` | `null(value Value)` | Check if Value is null |
+| `validates` | `unit(value Value)` | Check if Value is unit (null) |
+| `validates` | `value(source Source)` | Check if a Source is valid |
+
+### Result and Option Utilities
+
+The Types module also provides validators and unwrap functions for [`Result<Value, Error>`](../types.md#option-and-result) and [`Option<Value>`](../types.md#option-and-result).
+
+#### Result Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `ok(result Result<Value, Error>)` | True if Result is Ok |
+| `validates` | `error(result Result<Value, Error>)` | True if Result is Err |
+
+#### Option Validators
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `validates` | `value(option Option<Value>)` | True if Option has a value |
+| `validates` | `unit(option Option<Value>)` | True if Option is empty |
+
+#### Unwrap
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `unwrap(option Option<Integer>, default Integer) Integer` | Extract integer or use default |
+| `reads` | `unwrap(option Option<String>, default String) String` | Extract string or use default |
+| `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
 
 ```prove
-Types creates integer float, reads string code, validates integer string
+Types creates integer float, reads string code unwrap, validates integer string ok value
 
 reads format_pair(label String, n Integer) String
 from
     label + ": " + Types.string(n)
+
+reads safe_first(items List<Integer>) Integer
+from
+    Types.unwrap(List.first(items), 0)
 ```

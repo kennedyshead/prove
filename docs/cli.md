@@ -114,6 +114,18 @@ Reformats all `.prv` files recursively under the given path. Files with parse er
 
 ---
 
+## `prove setup`
+
+Set up Prove tools and data stores.
+
+```bash
+prove setup
+```
+
+Installs prerequisites for narrative verb analysis, vocabulary coherence checking, and stub generation. Without NLP, these features fall back to simpler heuristics. NLP-dependent commands (`check`, `build`, `test`, `generate`, `intent`) print a one-time info message when NLP is not available.
+
+---
+
 ## Advanced Commands
 
 These commands live under `prove advanced` and are intended for development, debugging, and tooling workflows.
@@ -136,6 +148,7 @@ prove advanced generate project.intent --dry-run  # preview without writing
 |------|-------------|
 | `--update` | Regenerate `@generated` functions that still contain `todo` (`.prv` only) |
 | `--dry-run` | Preview generated output without writing files |
+| `--nlp` / `--no-nlp` | Force NLP backend on or off (default: auto-detect) |
 
 For `.prv` files, the generator extracts verbs and nouns from the module's `narrative:` block, matches them against the stdlib knowledge base, and produces:
 
@@ -154,6 +167,14 @@ prove advanced intent --drift                     # show only mismatches
 prove advanced intent --generate                  # generate .prv files from intent
 prove advanced intent --generate --dry-run        # preview without writing
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--status` | Show completeness report |
+| `--drift` | Show only mismatches between intent and code |
+| `--generate` | Generate `.prv` files from intent |
+| `--dry-run` | Preview generated files without writing |
+| `--nlp` / `--no-nlp` | Force NLP backend on or off (default: auto-detect) |
 
 The `.intent` file is a human-readable project declaration that describes modules, vocabulary, data flow, and constraints. The toolchain generates `.prv` source files from it and verifies the code stays aligned.
 
@@ -195,14 +216,6 @@ Rebuild the `.prove_cache` ML completion index.
 
 ```bash
 prove advanced index
-```
-
-### `prove advanced setup-nlp`
-
-Download NLP models (spaCy, NLTK WordNet) for enhanced intent analysis.
-
-```bash
-prove advanced setup-nlp
 ```
 
 ### `prove advanced export`
