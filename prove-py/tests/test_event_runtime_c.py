@@ -52,6 +52,7 @@ class TestEventQueue:
         code = textwrap.dedent("""\
             #include "prove_event.h"
             #include <stdio.h>
+            #include <stdlib.h>
 
             int main(void) {
                 Prove_EventNodeQueue *q = prove_event_queue_new();
