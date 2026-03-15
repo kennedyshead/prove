@@ -807,17 +807,19 @@ class ContractCheckMixin:
         from prove._nl_intent import implied_verbs
 
         verbs = implied_verbs(mod_decl.narrative)
-        if not verbs:
-            return
         for fd in fns:
             if fd.verb not in verbs:
+                if verbs:
+                    note = f"narrative implies: {', '.join(sorted(verbs))}"
+                else:
+                    note = "narrative does not describe any verb intent"
                 self.diagnostics.append(
                     make_diagnostic(
                         Severity.WARNING,
                         "W501",
                         f"verb '{fd.verb}' not described in module narrative",
                         labels=[DiagnosticLabel(span=fd.span, message="")],
-                        notes=[f"narrative implies: {', '.join(sorted(verbs))}"],
+                        notes=[note],
                     )
                 )
 

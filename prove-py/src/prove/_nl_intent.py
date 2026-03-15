@@ -59,18 +59,22 @@ def normalize_verb(word: str) -> str | None:
 
 
 def implied_verbs(text: str) -> set[str]:
-    """Return Prove verb keywords implied by action words in prose text."""
+    """Return Prove verb keywords implied by action words in prose text.
+
+    When spaCy is available, NLP results are merged with the exact-synonym
+    fallback.  This compensates for POS-tagging errors on short imperative
+    sentences (spaCy often misclassifies sentence-initial verbs as nouns).
+    """
+    result = _implied_verbs_fallback(text)
     from prove.nlp import extract_parts, has_nlp_backend
 
     if has_nlp_backend():
         parts = extract_parts(text)
-        result: set[str] = set()
         for v in parts.verbs:
             canonical = normalize_verb(v)
             if canonical:
                 result.add(canonical)
-        return result
-    return _implied_verbs_fallback(text)
+    return result
 
 
 def _implied_verbs_fallback(text: str) -> set[str]:

@@ -218,6 +218,7 @@ def advanced() -> None:
 @click.option("--debug", is_flag=True, default=None, help="Compile with debug symbols (-g) and no optimization.")
 def build(path: str, no_mutate: bool, debug: bool | None) -> None:
     """Compile a Prove project."""
+    _warn_no_nlp()
     from prove.builder import build_project
 
     try:
@@ -302,7 +303,7 @@ def build(path: str, no_mutate: bool, debug: bool | None) -> None:
         raise SystemExit(1)
 
 
-def _check_file(filepath: Path) -> tuple[int, int, int]:
+def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, int]:
     """Lex, parse, and check a single .prv file.
 
     Returns (errors, warnings, format_issues) tuple.
@@ -323,6 +324,7 @@ def _check_file(filepath: Path) -> tuple[int, int, int]:
         return len(e.diagnostics), 0, 0
 
     checker = Checker()
+    checker._coherence = coherence
     symbols = checker.check(module)
 
     errors = 0
@@ -435,7 +437,7 @@ def _apply_nlp_override(enabled: bool) -> None:
     if enabled:
         if not nlp_mod.has_nlp_backend():
             click.echo("error: --nlp requested but no NLP backend available", err=True)
-            click.echo("  run: prove advanced setup-nlp", err=True)
+            click.echo("  run: prove setup", err=True)
             raise SystemExit(1)
     else:
         # Disable by marking both backends as checked but unavailable
@@ -444,6 +446,21 @@ def _apply_nlp_override(enabled: bool) -> None:
         nlp_mod._nlp_model = None
         nlp_mod._wordnet_checked = True
         nlp_mod._wordnet_available = False
+
+
+_nlp_warned = False
+
+
+def _warn_no_nlp() -> None:
+    """Print a one-line info to stderr when NLP is not available (once per process)."""
+    global _nlp_warned
+    if _nlp_warned:
+        return
+    _nlp_warned = True
+    import prove.nlp as nlp_mod
+
+    if not nlp_mod.has_nlp_backend():
+        click.echo("info: NLP not available \u2014 run `prove setup` for improved narrative analysis.", err=True)
 
 
 def _print_nlp_status() -> None:
@@ -498,6 +515,7 @@ def _print_nlp_status() -> None:
 @click.option("--nlp-status", is_flag=True, help="Report NLP backend and store availability.")
 def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: bool, no_status: bool, no_intent: bool, nlp_status: bool) -> None:
     """Type-check, lint, and verify a Prove project or a single .prv file."""
+    _warn_no_nlp()
     if nlp_status:
         _print_nlp_status()
         return
@@ -506,7 +524,7 @@ def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: 
 
     if target.is_file() and target.suffix == ".prv":
         click.echo(f"checking {target.name}...")
-        errors, warnings, fmt = _check_file(target)
+        errors, warnings, fmt = _check_file(target, coherence=not no_coherence)
         if strict:
             errors += warnings
             warnings = 0
@@ -657,6 +675,7 @@ def _print_completeness_status(project_dir: Path) -> None:
 @click.option("--property-rounds", type=int, default=None, help="Override property test rounds.")
 def test(path: str, property_rounds: int | None) -> None:
     """Run tests for a Prove project."""
+    _warn_no_nlp()
     from prove.checker import Checker
     from prove.testing import run_tests
 
@@ -1135,6 +1154,7 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
 @click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
 def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
     """Generate function stubs from narrative or intent."""
+    _warn_no_nlp()
     if nlp is not None:
         _apply_nlp_override(nlp)
 
@@ -1157,6 +1177,7 @@ def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
 @click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
 def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool, nlp: bool | None) -> None:
     """Work with .intent project declaration files."""
+    _warn_no_nlp()
     if nlp is not None:
         _apply_nlp_override(nlp)
 
@@ -1335,10 +1356,11 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(source, nl=False)
 
 
-@advanced.command("setup-nlp")
-def setup_nlp() -> None:
-    """Download NLP models for enhanced intent analysis."""
+@main.command()
+def setup() -> None:
+    """Set up Prove tools and data stores."""
     import subprocess
+    import sys
 
     errors = 0
 
@@ -1346,7 +1368,8 @@ def setup_nlp() -> None:
     click.echo("Downloading spaCy en_core_web_sm model...")
     try:
         result = subprocess.run(
-            ["python", "-m", "spacy", "download", "en_core_web_sm"],
+            [sys.executable, "-m", "spacy", "download", "en_core_web_sm",
+             "--break-system-packages"],
             capture_output=True,
             text=True,
         )
@@ -1381,6 +1404,14 @@ def setup_nlp() -> None:
     # Build PDAT stores now that NLP deps are available
     click.echo("\nBuilding NLP data stores...")
     try:
+        from prove.nlp_store import build_synonym_cache
+
+        build_synonym_cache()
+        click.echo("  synonym cache built.")
+    except Exception:
+        click.echo("  synonym cache skipped.")
+
+    try:
         from prove.nlp_store import build_similarity_matrix
 
         build_similarity_matrix()
@@ -1397,6 +1428,13 @@ def setup_nlp() -> None:
         click.echo("  semantic features skipped.")
 
     click.echo("\nNLP setup complete.")
+
+
+@advanced.command("setup-nlp", hidden=True)
+@click.pass_context
+def setup_nlp(ctx: click.Context) -> None:
+    """Download NLP models (alias for `prove setup`)."""
+    ctx.invoke(setup)
 
 
 def _dump_ast(node: object, depth: int) -> None:

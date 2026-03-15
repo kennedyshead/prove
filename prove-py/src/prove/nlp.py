@@ -4,7 +4,7 @@ Provides improved lemmatization, POS tagging, synonym lookup, and
 semantic similarity when spaCy and/or NLTK are installed.  Falls
 back to the hand-rolled logic in ``_nl_intent`` when they are not.
 
-**Never auto-downloads** models or data.  Users run ``prove setup-nlp``
+**Never auto-downloads** models or data.  Users run ``prove setup``
 to install prerequisites.
 """
 
@@ -28,7 +28,12 @@ _wordnet_available: bool = False
 
 
 def _ensure_spacy() -> bool:
-    """Lazy-check and load spaCy + en_core_web_sm.  Returns True if available."""
+    """Lazy-check and load spaCy + en_core_web_sm.  Returns True if available.
+
+    If spaCy is installed but the model is missing, downloads it automatically
+    using ``pip install`` with ``--break-system-packages`` to handle PEP 668
+    externally-managed environments.
+    """
     global _spacy_checked, _spacy_available, _nlp_model
     if _spacy_checked:
         return _spacy_available
@@ -36,7 +41,21 @@ def _ensure_spacy() -> bool:
     try:
         import spacy  # type: ignore[import-untyped]
 
-        _nlp_model = spacy.load("en_core_web_sm")
+        try:
+            _nlp_model = spacy.load("en_core_web_sm")
+        except OSError:
+            # Model not installed — download it automatically.
+            # Extra pip args handle PEP 668 externally-managed environments.
+            import subprocess
+            import sys
+
+            subprocess.run(
+                [sys.executable, "-m", "spacy", "download", "en_core_web_sm",
+                 "--break-system-packages", "--quiet"],
+                check=True,
+                capture_output=True,
+            )
+            _nlp_model = spacy.load("en_core_web_sm")
         _spacy_available = True
     except Exception:
         _spacy_available = False
@@ -47,7 +66,7 @@ def _ensure_spacy() -> bool:
 def _ensure_wordnet() -> bool:
     """Lazy-check whether NLTK WordNet data is present.  Returns True if usable.
 
-    Does NOT download anything — ``prove setup-nlp`` handles that.
+    Does NOT download anything — ``prove setup`` handles that.
     """
     global _wordnet_checked, _wordnet_available
     if _wordnet_checked:

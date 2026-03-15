@@ -1,5 +1,5 @@
 module Config
-  narrative: """Handles config parsing and turn it to a Config type"""
+  narrative: """Handles config parsing and turns it to a Config type"""
   Parse creates toml validates toml
 
   type Package is

@@ -107,12 +107,12 @@ from structured parse.  Falls through to existing regex logic.
 `_infer_params_from_vocab` uses `nlp.text_similarity` for fuzzy vocabulary
 matching (threshold 0.3) when backend available, exact substring match otherwise.
 
-### Phase 4: Expand PDAT Stores
+### Phase 4: Expand PDAT Stores (COMPLETE)
 
 All new NLP-derived data persists as `.pdat`.  This phase adds stores beyond
 the existing verb synonyms and stdlib index.
 
-#### 4a. Synonym expansion store — `synonym_cache.dat`
+#### 4a. Synonym expansion store — `synonym_cache.dat` (DONE)
 
 When NLTK WordNet discovers synonyms beyond `VERB_SYNONYMS`, cache them:
 
@@ -129,7 +129,7 @@ def cache_expanded_synonyms(expansions: dict[str, list[str]]) -> Path:
 Add a builder to `build_stores.py` that runs WordNet expansion once and ships
 the result as package data.  No WordNet needed at runtime — just the `.pdat`.
 
-#### 4b. Similarity matrix store — `similarity_matrix.dat`
+#### 4b. Similarity matrix store — `similarity_matrix.dat` (DONE)
 
 Pre-compute pairwise similarity scores for ~200 stdlib functions:
 
@@ -143,7 +143,7 @@ def build_similarity_matrix(stdlib_index) -> Path:
 Used by `_body_gen.py` to rank alternative matches without loading spaCy at
 compile time.
 
-#### 4c. Semantic features store — `semantic_features.dat`
+#### 4c. Semantic features store — `semantic_features.dat` (DONE)
 
 For the ML pipeline, extract lemmatized keywords and (optionally) doc vectors
 per stdlib function:
@@ -158,7 +158,7 @@ def build_semantic_features() -> None:
 
 This replaces the JSON output from `ml_extract.py` for semantic features.
 
-#### 4d. Update `build_stores.py`
+#### 4d. Update `build_stores.py` (DONE)
 
 ```python
 if __name__ == "__main__":
@@ -181,7 +181,7 @@ end users never need spaCy/NLTK installed.
 6 skipped).  Full suite: 1401 passed, 6 skipped.  Delegation is transparent
 in fallback mode.
 
-#### 5b. Store round-trip tests (Phase 4)
+#### 5b. Store round-trip tests (Phase 4) — COMPLETE
 
 Each new `.pdat` store gets a test in `test_nlp_store.py`:
 - Write store → read store → verify data integrity
@@ -192,14 +192,12 @@ Each new `.pdat` store gets a test in `test_nlp_store.py`:
 `.intent` file -> `prove advanced generate project.intent` -> valid `.prv` ->
 `prove check` passes.  Run both with and without NLP backends.
 
-### Phase 6: CLI Flags
+### Phase 6: CLI Flags (COMPLETE)
 
 - **6a. `prove advanced setup-nlp`** — COMPLETE.  Downloads models + rebuilds stores.
-- **6b. `prove advanced generate --nlp` / `--no-nlp`** — Explicitly control NLP use.
-  Default: auto-detect.
-- **6c. `prove advanced intent --nlp`** — Semantic similarity for coverage checking.
-- **6d. `prove check --nlp-status`** — Report backend availability and which
-  `.pdat` stores are present.
+- **6b. `prove advanced generate --nlp` / `--no-nlp`** — COMPLETE.  Explicitly control NLP use.
+- **6c. `prove advanced intent --nlp` / `--no-nlp`** — COMPLETE.  Force NLP for coverage checking.
+- **6d. `prove check --nlp-status`** — COMPLETE.  Reports backend and `.pdat` store availability.
 
 ---
 
@@ -273,9 +271,11 @@ stdlib is implemented — same quality or better, zero Python deps.
 | `src/prove/_body_gen.py` | Delegate `find_stdlib_matches` | DONE (Phase 3b) |
 | `src/prove/intent_parser.py` | Delegate `_parse_verb_phrase` | DONE (Phase 3c) |
 | `src/prove/intent_generator.py` | Delegate `_infer_params_from_vocab` | DONE (Phase 3d) |
-| `src/prove/nlp_store.py` | Add synonym cache + similarity matrix | TODO (Phase 4a-b) |
-| `scripts/build_stores.py` | Add builders for new stores | TODO (Phase 4d) |
-| `scripts/ml_extract.py` | Semantic features via PDAT (not JSON) | TODO (Phase 4c) |
+| `src/prove/nlp_store.py` | Add synonym cache + similarity matrix + semantic features | DONE (Phase 4a-c) |
+| `scripts/build_stores.py` | Add builders for new stores | DONE (Phase 4d) |
+| `src/prove/_body_gen.py` | Similarity matrix score blending | DONE (Phase 4b) |
+| `src/prove/cli.py` | `--nlp/--no-nlp`, `--nlp-status` flags | DONE (Phase 6b-d) |
+| `tests/test_nlp_store.py` | Round-trip tests for all stores | DONE (Phase 5b) |
 
 ---
 
@@ -284,10 +284,9 @@ stdlib is implemented — same quality or better, zero Python deps.
 1. ~~**Phase 3a-b: Wire `_nl_intent.py` + `_body_gen.py`**~~ — DONE
 2. ~~**Phase 3c-d: Wire intent parser + generator**~~ — DONE
 3. ~~**Phase 5a: Integration tests for delegation**~~ — DONE (1401 pass)
-4. **Phase 4a: Synonym expansion store** — ship expanded synonyms as `.pdat`,
-   eliminates runtime NLTK dependency for users
-5. **Phase 4b: Similarity matrix store** — ship pre-computed scores as `.pdat`,
-   eliminates runtime spaCy dependency for users
-6. **Phase 5b-c: Store round-trip + e2e tests** — verify new stores
-7. **Phase 6b-d: CLI flags** — user-facing controls (under `prove advanced`)
-8. **Phase 4c: ML semantic features** — longer-term LSP improvement
+4. ~~**Phase 4a: Synonym expansion store**~~ — DONE
+5. ~~**Phase 4b: Similarity matrix store**~~ — DONE
+6. ~~**Phase 5b: Store round-trip tests**~~ — DONE (1444 pass)
+7. ~~**Phase 6b-d: CLI flags**~~ — DONE
+8. ~~**Phase 4c: ML semantic features**~~ — DONE
+9. **Phase 5c: End-to-end integration test** — `.intent` → generate → check (both with/without NLP)
