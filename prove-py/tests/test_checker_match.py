@@ -352,6 +352,31 @@ class TestMatchRestriction:
             "I367",
         )
 
+    def test_match_three_arms_fires(self):
+        """I367: 3-arm match in transforms fires (lowered threshold)."""
+        check_info(
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
+            "transforms bad(c Color) Integer\n"
+            "    from\n"
+            "        match c\n"
+            "            Red => 1\n"
+            "            Green => 2\n"
+            "            Blue => 3\n",
+            "I367",
+        )
+
+    def test_match_two_arms_ok(self):
+        """2-arm match in transforms does not fire I367."""
+        check(
+            "module M\n"
+            "transforms f(b Boolean) Integer\n"
+            "    from\n"
+            "        match b\n"
+            "            true => 1\n"
+            "            false => 0\n"
+        )
+
     def test_match_in_main_ok(self):
         """match in main is exempt from I367."""
         check(

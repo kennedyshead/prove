@@ -5,6 +5,7 @@ Each auto-fixable diagnostic is tested for correct formatter behavior:
 - I301: unreachable match arm → remove arm
 - I302: unused import → remove item or entire line
 - I303: unused type → remove definition
+- I304: unused constant → remove definition
 - I314: unknown module → remove import line
 - I360: validates Boolean → strip return type
 """
@@ -205,6 +206,52 @@ class TestFixI303:
         result = check_and_format(source)
         assert "Unused" not in result
         assert "type Used is" in result
+
+
+# ── I304: unused constant — formatter removes ─────────────────────────
+
+
+class TestFixI304:
+    """Formatter removes unused constant definitions."""
+
+    def test_removes_unused_constant(self):
+        source = (
+            "module M\n"
+            "  PI as Float = 3.14\n"
+            "\n"
+            "transforms one() Integer\n"
+            "from\n"
+            "    1\n"
+        )
+        result = check_and_format(source)
+        assert "PI" not in result
+        assert "transforms one() Integer" in result
+
+    def test_keeps_used_constant(self):
+        source = (
+            "module M\n"
+            "  PI as Float = 3.14\n"
+            "\n"
+            "transforms f() Float\n"
+            "from\n"
+            "    PI\n"
+        )
+        result = check_and_format(source)
+        assert "PI as Float = 3.14" in result
+
+    def test_removes_unused_keeps_used(self):
+        source = (
+            "module M\n"
+            "  UNUSED as Integer = 99\n"
+            "  USED as Integer = 42\n"
+            "\n"
+            "transforms f() Integer\n"
+            "from\n"
+            "    USED\n"
+        )
+        result = check_and_format(source)
+        assert "UNUSED" not in result
+        assert "USED as Integer = 42" in result
 
 
 # ── I314: unknown module — formatter removes ────────────────────────

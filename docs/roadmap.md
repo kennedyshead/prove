@@ -134,6 +134,15 @@ Manifest (`manifest.json` with per-file mtime/size and `cache_version`) and
 running. `prove index` subcommand (re)builds the cache from the command line
 for CI pre-warming and post-clone setup.
 
+### Lint Threshold Fixes & Unused Constant Detection
+
+- **I320 thresholds** — `transforms`/`matches` verbs now fire at >1 statement without
+  contracts (pure verbs should always have contracts). Other verbs fire at >5 statements.
+  Fixed dead `elif` branch that previously made the pure-verb check unreachable.
+- **I367 threshold** — Match extraction suggestion lowered from >=4 arms to >=3 arms.
+- **I304** — Unused constant detection. Constants defined but never referenced produce
+  an info diagnostic. The formatter auto-removes them.
+
 ---
 
 ## Preview
@@ -155,7 +164,7 @@ Core `comptime` works in all positions. Remaining:
 
 ### Lint Gaps
 
-- I367/I320 thresholds, unused constant detection, module struct return validation
+- Module struct return validation
 
 ---
 

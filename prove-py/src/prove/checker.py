@@ -218,6 +218,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._user_types: dict[str, Span] = {}
         # Track which user-defined types are referenced
         self._used_types: set[str] = set()
+        # Track user-defined constant names and their spans for I304
+        self._user_constants: dict[str, Span] = {}
         # Requires-based narrowing: list of (module, args)
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
         # Mutation survivors from previous --mutate runs
@@ -349,6 +351,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Check unused type definitions (W303)
         self._check_unused_types()
+
+        # Check unused constants (I304)
+        self._check_unused_constants()
 
         # Domain profile enforcement (W340-W342)
         self._check_domain_profiles(module)
@@ -733,6 +738,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         )
         if existing is not None:
             self._error("E301", f"duplicate definition of '{cd.name}'", cd.span)
+        self._user_constants[cd.name] = cd.span
 
     def _register_foreign_block(self, fb: ForeignBlock) -> None:
         """Register foreign (C FFI) functions in the symbol table."""
@@ -1200,14 +1206,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         is_inputs_no_args = fd.verb == "inputs" and not fd.params
         body_len = len(fd.body)
         no_contracts = not fd.requires and not fd.ensures
-        if body_len > 3 and no_contracts and not is_inputs_no_args:
+        if body_len > 5 and no_contracts and not is_inputs_no_args:
             self._info(
                 "I320",
                 f"Function '{fd.name}' has {body_len} statements but no contracts. "
                 "Consider adding requires/ensures for mutation testing.",
                 fd.span,
             )
-        elif body_len > 3 and fd.verb in ("transforms", "matches") and no_contracts:
+        elif body_len > 1 and fd.verb in ("transforms", "matches") and no_contracts:
             self._info(
                 "I320",
                 f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
@@ -1877,7 +1883,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                if len(stmt.arms) >= 4:
+                if len(stmt.arms) >= 3:
                     self._info(
                         "I367",
                         "consider extracting match to a 'matches' verb function for better code flow",
@@ -1895,7 +1901,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            if len(expr.arms) >= 4:
+            if len(expr.arms) >= 3:
                 self._info(
                     "I367",
                     "consider extracting match to a 'matches' verb function for better code flow",
@@ -3067,6 +3073,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._info(
                     "I303",
                     f"Type '{name}' is defined but never used.",
+                    span,
+                )
+
+    def _check_unused_constants(self) -> None:
+        """I304: warn about user-defined constants that are never referenced."""
+        for name, span in self._user_constants.items():
+            sym = self.symbols.lookup(name)
+            if sym is not None and not sym.used:
+                self._info(
+                    "I304",
+                    f"Constant '{name}' is defined but never used.",
                     span,
                 )
 

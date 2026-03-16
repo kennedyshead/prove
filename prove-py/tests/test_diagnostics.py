@@ -531,6 +531,46 @@ class TestI303:
         assert "I303" not in _codes(diags)
 
 
+# ── I304: unused constant definition ──────────────────────────────────
+
+
+class TestI304:
+    """I304 fires when a user-defined constant is never referenced."""
+
+    def test_fires_for_unused_constant(self):
+        source = (
+            "module M\n"
+            "  PI as Float = 3.14\n"
+            "transforms f() Integer\n"
+            "from\n"
+            "    1\n"
+        )
+        diags = check_info(source, "I304")
+        assert len(diags) == 1
+
+    def test_not_fired_when_constant_used(self):
+        source = (
+            "module M\n"
+            "  PI as Float = 3.14\n"
+            "transforms f() Float\n"
+            "from\n"
+            "    PI\n"
+        )
+        diags = check_all(source)
+        assert "I304" not in _codes(diags)
+
+    def test_not_fired_when_constant_used_in_expr(self):
+        source = (
+            "module M\n"
+            "  FACTOR as Integer = 10\n"
+            "transforms f(x Integer) Integer\n"
+            "from\n"
+            "    x * FACTOR\n"
+        )
+        diags = check_all(source)
+        assert "I304" not in _codes(diags)
+
+
 # ── I310: implicitly typed variable ─────────────────────────────────
 
 
@@ -603,3 +643,62 @@ class TestI360:
         source = "transforms f(x Integer) Boolean\nfrom\n    x > 0\n"
         diags = check_all(source)
         assert "I360" not in _codes(diags)
+
+
+# ── I320: mutation testing contract recommendation ─────────────────────
+
+
+class TestI320:
+    """I320 fires when functions lack contracts."""
+
+    def test_transforms_two_stmts_no_contracts(self):
+        """transforms with 2 statements and no contracts -> I320 fires."""
+        source = (
+            "transforms f(x Integer) Integer\n"
+            "from\n"
+            "    y as Integer = x + 1\n"
+            "    y * 2\n"
+        )
+        diags = check_info(source, "I320")
+        assert len(diags) == 1
+
+    def test_transforms_one_stmt_no_contracts(self):
+        """transforms with 1 statement and no contracts -> no I320."""
+        source = (
+            "transforms f(x Integer) Integer\n"
+            "from\n"
+            "    x + 1\n"
+        )
+        diags = check_all(source)
+        assert "I320" not in _codes(diags)
+
+    def test_outputs_three_stmts_no_contracts(self):
+        """outputs with 3 statements and no contracts -> no I320 (threshold is >5)."""
+        source = (
+            "module Main\n"
+            "  System outputs print\n"
+            "outputs f()\n"
+            "from\n"
+            '    System.print("a")&\n'
+            '    System.print("b")&\n'
+            '    System.print("c")&\n'
+        )
+        diags = check_all(source)
+        assert "I320" not in _codes(diags)
+
+    def test_outputs_six_stmts_no_contracts(self):
+        """outputs with 6 statements and no contracts -> I320 fires."""
+        source = (
+            "module Main\n"
+            "  System outputs print\n"
+            "outputs f()\n"
+            "from\n"
+            '    System.print("a")&\n'
+            '    System.print("b")&\n'
+            '    System.print("c")&\n'
+            '    System.print("d")&\n'
+            '    System.print("e")&\n'
+            '    System.print("f")&\n'
+        )
+        diags = check_info(source, "I320")
+        assert len(diags) == 1

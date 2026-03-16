@@ -516,7 +516,7 @@ class ContractCheckMixin:
         """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                if len(stmt.arms) >= 4:
+                if len(stmt.arms) >= 3:
                     self._info(
                         "I367",
                         "consider extracting match to a 'matches' verb function for better code flow",
@@ -534,7 +534,7 @@ class ContractCheckMixin:
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            if len(expr.arms) >= 4:
+            if len(expr.arms) >= 3:
                 self._info(
                     "I367",
                     "consider extracting match to a 'matches' verb function for better code flow",

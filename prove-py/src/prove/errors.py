@@ -137,7 +137,7 @@ _register_doc_range("W", 390, 391)
 _register_doc_range("W", 501, 505)
 # Info
 for _c in (
-    "I201", "I300", "I301", "I302", "I303", "I310", "I311",
+    "I201", "I300", "I301", "I302", "I303", "I304", "I310", "I311",
     "I314", "I320", "I340", "I360", "I367", "I375", "I377", "I378", "I601",
 ):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
