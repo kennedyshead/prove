@@ -838,6 +838,10 @@ from
 
 A user-defined type is declared but never referenced. The formatter removes it.
 
+### I304 — Unused constant definition
+
+A user-defined constant is declared but never referenced. The formatter removes it.
+
 ### I310 — Implicitly typed variable
 
 A variable declared via `x = expr` without a type annotation. The formatter adds `as Type` based on type inference.

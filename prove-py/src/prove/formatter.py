@@ -129,6 +129,7 @@ class ProveFormatter:
         # Build span lookup sets for auto-fixable diagnostics
         self._unused_var_spans: set[tuple[str, int, int]] = set()
         self._unused_type_spans: set[tuple[str, int, int]] = set()
+        self._unused_constant_spans: set[tuple[str, int, int]] = set()
         self._unused_import_spans: set[tuple[str, int, int]] = set()
         self._unknown_module_spans: set[tuple[str, int, int]] = set()
         self._strip_async_marker_spans: set[tuple[str, int, int]] = set()
@@ -156,6 +157,10 @@ class ProveFormatter:
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_type_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I304":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unused_constant_spans.add((s.file, s.start_line, s.start_col))
             elif d.code == "I314":
                 for lbl in d.labels:
                     s = lbl.span
@@ -610,6 +615,8 @@ class ProveFormatter:
             lines.append(self._indent_spaces(formatted, 2))
 
         for cd in mod.constants:
+            if self._is_unused_constant(cd.span):
+                continue  # I304: drop unused constant definitions
             lines.append("")
             formatted = self._format_constant_def(cd)
             lines.append(self._indent_spaces(formatted, 2))
@@ -1120,6 +1127,10 @@ class ProveFormatter:
     def _is_unused_type(self, span: object) -> bool:
         """Check if a type definition span was flagged as W303."""
         return (span.file, span.start_line, span.start_col) in self._unused_type_spans
+
+    def _is_unused_constant(self, span: object) -> bool:
+        """Check if a constant definition span was flagged as I304."""
+        return (span.file, span.start_line, span.start_col) in self._unused_constant_spans
 
     def _is_unused_import(self, span: object) -> bool:
         """Check if an import item span was flagged as I302."""

@@ -26,12 +26,17 @@ class TestProofVerification:
     """Test explain block verification errors and warnings."""
 
     def test_ensures_without_explain_warning(self):
-        """W323: ensures without explain is now a warning, not an error."""
+        """W323: ensures without explain is now a warning, not an error.
+
+        W323 only fires when the body has 3+ statements.
+        """
         check_warns(
             "transforms add(a Integer, b Integer) Integer\n"
             "    ensures result == a + b\n"
             "    from\n"
-            "        a + b\n",
+            "        sum as Integer = a + b\n"
+            "        doubled as Integer = sum * 2\n"
+            "        doubled - sum\n",
             "W323",
         )
 
