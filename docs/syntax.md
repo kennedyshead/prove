@@ -41,19 +41,28 @@ A verb applies to all space-separated names that follow it. Commas separate verb
 
 ## Foreign Blocks (C FFI)
 
-Modules can declare `foreign` blocks to bind C functions. Each block names a C library and lists the functions it provides. Foreign functions are raw C bindings — wrap them in a Prove function with a verb to provide type safety and contracts:
+Modules can declare `foreign` blocks to bind C functions. Each block names a C library and lists the functions it provides with their parameter types and return types:
 
 ```prove
 module Math
   narrative: """Mathematical functions via C libm."""
 
-transforms sqrt(x Decimal) Decimal
+  foreign "libm"
+    sqrt(x Decimal) Decimal
+    pow(base Decimal, exp Decimal) Decimal
+    floor(x Decimal) Decimal
+```
+
+Foreign functions are raw C bindings — wrap them in a Prove function with a verb to provide type safety and contracts:
+
+```prove
+transforms square_root(x Decimal) Decimal
   ensures result >= 0.0
   requires x >= 0.0
   explain
       delegate to C sqrt
 from
-    c_sqrt(x)
+    sqrt(x)
 ```
 
 The string after `foreign` is the library name passed to the linker (`"libm"` links `-lm`). Known libraries get automatic `#include` headers (`libm` → `math.h`, `libpthread` → `pthread.h`).

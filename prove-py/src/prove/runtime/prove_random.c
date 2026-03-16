@@ -62,7 +62,7 @@ bool prove_random_boolean(void) {
 
 void *prove_random_choice_raw(Prove_List *list) {
     _ensure_seeded();
-    if (!list || list->length == 0) {
+    if (list->length == 0) {
         prove_panic("choice: empty list");
     }
     uint64_t r = ((uint64_t)rand() << 16) ^ (uint64_t)rand();
@@ -74,7 +74,7 @@ void *prove_random_choice_raw(Prove_List *list) {
 
 Prove_List *prove_random_shuffle_raw(Prove_List *list) {
     _ensure_seeded();
-    if (!list || list->length == 0) {
+    if (list->length == 0) {
         return prove_list_new(4);
     }
     Prove_List *result = prove_list_new(list->length);

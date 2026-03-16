@@ -1082,3 +1082,33 @@ class TestOwnBorrowOverlap:
             "        Loaded(item.name, content(item.path))\n",
         )
         assert not any(d.code == "W360" for d in diags)
+
+
+class TestDivisionByZero:
+    """Test E357 — compile-time division-by-zero detection."""
+
+    def test_literal_zero_divisor_error(self):
+        """E357 fires for x / 0."""
+        check_fails(
+            "transforms half(x Integer) Integer\n"
+            "    from\n"
+            "        x / 0\n",
+            "E357",
+        )
+
+    def test_literal_zero_modulo_error(self):
+        """E357 fires for x % 0."""
+        check_fails(
+            "transforms mod(x Integer) Integer\n"
+            "    from\n"
+            "        x % 0\n",
+            "E357",
+        )
+
+    def test_nonzero_literal_ok(self):
+        """x / 2 does not trigger E357."""
+        check(
+            "transforms half(x Integer) Integer\n"
+            "    from\n"
+            "        x / 2\n"
+        )

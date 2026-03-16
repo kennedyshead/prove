@@ -255,12 +255,34 @@ class ExprEmitterMixin:
         # Runtime division-by-zero guard for integer / and %
         if expr.op in ("/", "%") and not isinstance(expr.right, IntegerLit):
             if isinstance(lt_eff, PrimitiveType) and lt_eff.name == "Integer":
-                tmp = self._tmp()
-                self._line(f"int64_t {tmp} = {right};")
-                self._line(f'if ({tmp} == 0) prove_panic("division by zero");')
-                return f"({left} {c_op} {tmp})"
+                if not self._divisor_covered_by_requires(expr.right):
+                    tmp = self._tmp()
+                    self._line(f"int64_t {tmp} = {right};")
+                    self._line("#ifndef PROVE_RELEASE")
+                    self._line(f'if ({tmp} == 0) prove_panic("division by zero");')
+                    self._line("#endif")
+                    return f"({left} {c_op} {tmp})"
 
         return f"({left} {c_op} {right})"
+
+    def _divisor_covered_by_requires(self, divisor_expr: Expr) -> bool:
+        """Check if a divisor is covered by a requires clause (e.g. requires b != 0)."""
+        if not self._current_requires:
+            return False
+        if not isinstance(divisor_expr, IdentifierExpr):
+            return False
+        name = divisor_expr.name
+        for req in self._current_requires:
+            if not isinstance(req, BinaryExpr):
+                continue
+            # Match patterns: param != 0, param > 0, 0 != param, 0 < param
+            if req.op in ("!=", ">") and isinstance(req.left, IdentifierExpr) and req.left.name == name:
+                if isinstance(req.right, IntegerLit) and req.right.value == "0":
+                    return True
+            if req.op in ("!=", "<") and isinstance(req.right, IdentifierExpr) and req.right.name == name:
+                if isinstance(req.left, IntegerLit) and req.left.value == "0":
+                    return True
+        return False
 
     # -- Unary expressions ------------------------------------------
 

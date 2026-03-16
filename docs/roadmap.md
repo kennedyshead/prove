@@ -87,8 +87,8 @@ Four independent items, each eliminating work the wrong layer is currently doing
   with no allocations. A `_needs_region_scope()` analysis pass in the emitter will skip
   emission for functions whose call graph contains no allocating calls.
 - **Division by zero** — Constant zero divisors become compile errors (new diagnostic).
-  Variable divisors without a `requires` contract get a runtime guard, suppressible
-  with `--release`.
+  Variable divisors without a `requires` contract get a runtime guard, stripped in
+  optimized (non-debug) builds via the `PROVE_RELEASE` define.
 - **Refinement type IO enforcement** — `type Port is Integer where 1..65535` is already
   enforced for literals. Values from IO sources will also get a compiler-generated
   runtime guard at the assignment site.
