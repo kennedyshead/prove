@@ -93,7 +93,7 @@ for _c in ("E340", "E341"):
 for _c in ("E350", "E352", "E355", "E356", "E357"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367)
-_register_doc_range("E", 361, 367)
+_register_doc_range("E", 361, 366)
 # Pattern matching E370-E374
 _register_doc_range("E", 370, 374)
 # Lookup tables E375-E379

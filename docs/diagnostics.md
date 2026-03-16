@@ -250,6 +250,17 @@ transforms bad(n Integer) Integer
         n
 ```
 
+### E357 — Division by zero
+
+A division or modulo operation has a literal zero as the divisor. This is always an error because it would cause undefined behaviour at runtime.
+
+```prove
+// Error — dividing by literal zero
+transforms bad(x Integer) Integer
+    from
+        x / 0
+```
+
 ### E361 — Pure function cannot be failable
 
 Functions with pure verbs cannot use the `!` fail marker.

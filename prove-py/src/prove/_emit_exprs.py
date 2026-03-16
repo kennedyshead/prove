@@ -276,10 +276,16 @@ class ExprEmitterMixin:
             if not isinstance(req, BinaryExpr):
                 continue
             # Match patterns: param != 0, param > 0, 0 != param, 0 < param
-            if req.op in ("!=", ">") and isinstance(req.left, IdentifierExpr) and req.left.name == name:
+            left_is_name = (
+                isinstance(req.left, IdentifierExpr) and req.left.name == name
+            )
+            right_is_name = (
+                isinstance(req.right, IdentifierExpr) and req.right.name == name
+            )
+            if req.op in ("!=", ">") and left_is_name:
                 if isinstance(req.right, IntegerLit) and req.right.value == "0":
                     return True
-            if req.op in ("!=", "<") and isinstance(req.right, IdentifierExpr) and req.right.name == name:
+            if req.op in ("!=", "<") and right_is_name:
                 if isinstance(req.left, IntegerLit) and req.left.value == "0":
                     return True
         return False

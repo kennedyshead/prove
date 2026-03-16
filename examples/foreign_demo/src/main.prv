@@ -3,6 +3,7 @@ module Main
 
   Demonstrates foreign blocks for binding C library functions.
   Wraps and transforms values using libm.
+  transforms decimal to square root, power and floored value
   """
   System outputs console
 
@@ -13,6 +14,7 @@ module Main
 
 transforms square_root(x Decimal) Decimal
   ensures result >= 0.0
+  requires x > 0.0
 from
     sqrt(x)
 
