@@ -106,6 +106,34 @@ through `List<Value>`. The optimizer fuses `map(map(...))`, `reduce(map(...))`, 
 mechanism used for existing Sequence fusions. `filter` returns `List<Value>` because
 output length is unknown at compile time — the type makes the escape explicit.
 
+### Store Stdlib
+
+Runtime management of `:[Lookup]` tables. Storage, versioning, diffs,
+three-way merge with user-provided conflict resolution via
+[`Verb<Conflict, Resolution>`](types.md#function-types-verb).
+Store-backed lookup types (`runtime` body) allow `[Lookup]` types with
+dynamic data from a `StoreTable`. Schema conflict detection covers addition,
+value, and schema-level conflicts.
+
+### Lookup Improvements
+
+Named columns (`probability:Float confidence:Float`) disambiguate duplicate column
+types and enable `.name` field access. Binary search for large tables (>16 entries)
+replaces linear scan in reverse lookups.
+
+### Compiler CLI Extensions
+
+`prove advanced compiler --load` and `--dump` for converting between `.prv` lookup
+tables and PDAT binary format. Auto-detects mode from file extension.
+
+### Cache Indexing & Reindexing
+
+`.prove_cache` lifecycle with manifest, warm load, and incremental re-index.
+Manifest (`manifest.json` with per-file mtime/size and `cache_version`) and
+`did_change` incremental re-index. `check` and `build` update the cache after
+running. `prove index` subcommand (re)builds the cache from the command line
+for CI pre-warming and post-clone setup.
+
 ---
 
 ## Preview
@@ -128,40 +156,6 @@ Core `comptime` works in all positions. Remaining:
 ### Lint Gaps
 
 - I367/I320 thresholds, unused constant detection, module struct return validation
-
-### Store Stdlib
-
-Runtime management of `:[Lookup]` tables. Storage, versioning, diffs,
-three-way merge with user-provided conflict resolution via
-[`Verb<Conflict, Resolution>`](types.md#function-types-verb).
-Store-backed lookup types (`runtime` body) allow `[Lookup]` types with
-dynamic data from a `StoreTable`. Remaining:
-
-- Schema conflict detection (addition and value conflicts implemented)
-- Store spotlight in Language Tour (index.md)
-
-### Lookup Improvements
-
-Named columns (`probability:Float confidence:Float`) disambiguate duplicate column
-types and enable `.name` field access. Binary search for large tables (>16 entries)
-replaces linear scan in reverse lookups. Remaining:
-
-- Edge cases in named column error reporting
-
-### Compiler CLI Extensions
-
-`prove advanced compiler --load` and `--dump` for converting between `.prv` lookup
-tables and PDAT binary format. Auto-detects mode from file extension.
-
-### Cache Indexing & Reindexing
-
-`.prove_cache` lifecycle with manifest, warm load, and incremental re-index.
-Manifest (`manifest.json` with per-file mtime/size and `cache_version`) and
-`did_change` incremental re-index are implemented. Remaining:
-
-- **CLI write-back** — `check` and `build` update the cache after running
-- **`prove index`** — explicit subcommand to (re)build the cache from the command
-  line, useful for CI pre-warming and post-clone setup
 
 ---
 
