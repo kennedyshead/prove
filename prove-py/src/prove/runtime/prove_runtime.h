@@ -21,13 +21,15 @@ static inline void prove_retain(void *obj) {
         Prove_Header *h = (Prove_Header *)obj;
         if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return;
         h->refcount++;
+        /* Saturate: prevent non-immortal objects from reaching INT32_MAX */
+        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) h->refcount = INT32_MAX - 1;
     }
 }
 
 static inline void prove_release(void *obj) {
     if (__builtin_expect(obj != NULL, 1)) {
         Prove_Header *h = (Prove_Header *)obj;
-        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return;
+        if (__builtin_expect(h->refcount == INT32_MAX, 0)) return; /* immortal */
         if (--h->refcount <= 0) {
             free(obj);
         }
