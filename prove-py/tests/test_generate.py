@@ -3,33 +3,39 @@
 from __future__ import annotations
 
 from prove._generate import generate_module, generate_stub_function
-from prove._nl_intent import FunctionStub, extract_nouns, implied_functions, pair_verbs_nouns
+from prove._nl_intent import (
+    FunctionStub,
+    _extract_nouns_fallback,
+    extract_nouns,
+    implied_functions,
+    pair_verbs_nouns,
+)
 
 
 class TestExtractNouns:
     def test_basic_extraction(self) -> None:
-        nouns = extract_nouns("validates user credentials against a stored database")
+        nouns = _extract_nouns_fallback("validates user credentials against a stored database")
         assert "user" in nouns
         assert "credential" in nouns  # normalized from "credentials"
         assert "stor" in nouns  # normalized from "stored" (-ed)
         assert "database" in nouns
 
     def test_stops_excluded(self) -> None:
-        nouns = extract_nouns("the module is for all users")
+        nouns = _extract_nouns_fallback("the module is for all users")
         assert "the" not in nouns
         assert "module" not in nouns
         assert "for" not in nouns
         assert "user" in nouns  # normalized from "users"
 
     def test_verbs_excluded(self) -> None:
-        nouns = extract_nouns("validates and transforms passwords")
+        nouns = _extract_nouns_fallback("validates and transforms passwords")
         assert "password" in nouns  # normalized from "passwords"
         # "validates" and "transforms" match verb stems
         assert "validates" not in nouns
         assert "transforms" not in nouns
 
     def test_short_words_excluded(self) -> None:
-        nouns = extract_nouns("id of an ip address")
+        nouns = _extract_nouns_fallback("id of an ip address")
         assert "id" not in nouns
         assert "ip" not in nouns
         assert "address" in nouns

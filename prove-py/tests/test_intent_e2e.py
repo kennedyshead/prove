@@ -459,6 +459,112 @@ class TestIntentE2ENegative:
 # Tests: Round-trip through intent file
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Tests: Rich type generation
+# ---------------------------------------------------------------------------
+
+RECORD_VOCAB_INTENT = """\
+project RecordTest
+  purpose: Test record type generation
+
+  vocabulary
+    Credential is a user identity paired with a secret
+
+  module Auth
+    validates credentials against stored credential data
+"""
+
+ALGEBRAIC_VOCAB_INTENT = """\
+project AlgTest
+  purpose: Test algebraic type generation
+
+  vocabulary
+    Status is either an active token or an expired marker
+
+  module Token
+    validates status for token status check
+"""
+
+REFINEMENT_VOCAB_INTENT = """\
+project RefTest
+  purpose: Test refinement type generation
+
+  vocabulary
+    Count is a positive integer
+
+  module Counter
+    creates counter for count tracking
+"""
+
+CONSTANT_INTENT = """\
+project ConstTest
+  purpose: Test constant generation
+
+  module Limiter
+    validates rate
+
+  constraints
+    maximum 5 attempts
+"""
+
+
+class TestIntentE2ERichTypes:
+    """Verify rich type definitions in generated source."""
+
+    def test_record_vocab_generates_fields(self) -> None:
+        """Vocabulary 'paired with' produces record type with fields."""
+        info = _generate_and_check(RECORD_VOCAB_INTENT)
+        assert info["parse_ok"]
+        _, source, _, _ = info["files"][0]
+        assert "type Credential" in source
+        assert "identity" in source
+        assert "secret" in source
+
+    def test_algebraic_vocab_generates_variants(self) -> None:
+        """Vocabulary 'either X or Y' produces algebraic type."""
+        info = _generate_and_check(ALGEBRAIC_VOCAB_INTENT)
+        assert info["parse_ok"]
+        _, source, _, _ = info["files"][0]
+        assert "type Status" in source
+
+    def test_refinement_vocab_generates_constraint(self) -> None:
+        """Vocabulary 'positive integer' produces refinement type."""
+        info = _generate_and_check(REFINEMENT_VOCAB_INTENT)
+        assert info["parse_ok"]
+        _, source, _, _ = info["files"][0]
+        assert "type Count" in source
+        assert "Integer" in source
+
+    def test_constants_generated_from_constraints(self) -> None:
+        """'maximum N attempts' generates a constant."""
+        info = _generate_and_check(CONSTANT_INTENT)
+        assert info["parse_ok"]
+        _, source, _, _ = info["files"][0]
+        assert "MAX_ATTEMPT" in source
+        assert "5" in source
+
+
+class TestIntentE2EImportPlacement:
+    """Verify imports are inside module block."""
+
+    def test_flow_imports_indented(self) -> None:
+        """Flow-derived use-imports should be indented inside module block."""
+        result = parse_intent(MULTI_MODULE_INTENT)
+        assert result.project is not None
+        with tempfile.TemporaryDirectory() as d:
+            gen = generate_project(result.project, Path(d), dry_run=True)
+        auth_source = next(s for f, s in gen if f == "auth.prv")
+        # Should have indented use, not at column 0
+        for line in auth_source.split("\n"):
+            if "use SessionManager" in line:
+                assert line.startswith("  "), (
+                    f"use-import should be indented, got: {line!r}"
+                )
+                break
+        else:
+            assert False, "use SessionManager not found in auth.prv"
+
+
 class TestIntentRoundTrip:
     """Full .intent text → parse → generate → check pipeline."""
 

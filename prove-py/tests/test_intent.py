@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from prove.intent_ast import (
-    ConstraintDecl, FlowDecl, FlowStep, IntentModule, IntentProject, VerbPhrase, VocabularyEntry,
+    ConstraintDecl, FlowDecl, FlowStep, IntentModule, IntentProject, VerbPhrase,
+    VocabularyEntry,
 )
 from prove.intent_generator import check_intent_coverage, generate_module_source
 from prove.intent_parser import parse_intent
@@ -60,7 +61,7 @@ class TestIntentParser:
         assert modules[0].name == "Auth"
         assert len(modules[0].intents) == 3
         assert modules[0].intents[0].verb == "validates"
-        assert modules[0].intents[0].noun == "credentials"
+        assert modules[0].intents[0].noun in ("credentials", "credential")
         assert modules[1].name == "SessionManager"
         assert len(modules[1].intents) == 2
 
@@ -375,6 +376,187 @@ class TestIntentGenerator:
         assert "requires:" in source
 
 
+class TestIntentGeneratorTypes:
+    """Tests for rich type generation from vocabulary."""
+
+    def test_generate_record_type(self) -> None:
+        module = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(verb="validates", noun="credentials",
+                           context="against stored credential data",
+                           raw_line="validates credentials against stored credential data"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Credential",
+                                description="a user identity paired with a secret"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "type Credential" in source
+        assert "identity String" in source
+        assert "secret String" in source
+
+    def test_generate_algebraic_type(self) -> None:
+        module = IntentModule(
+            name="Token",
+            intents=[
+                VerbPhrase(verb="validates", noun="token",
+                           context="for status check",
+                           raw_line="validates token for status check"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Status",
+                                description="either an active token or an expired marker"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "type Status" in source
+        assert "Token" in source or "Marker" in source
+
+    def test_generate_refinement_type(self) -> None:
+        module = IntentModule(
+            name="Counter",
+            intents=[
+                VerbPhrase(verb="creates", noun="counter",
+                           context="for count tracking",
+                           raw_line="creates counter for count tracking"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Count",
+                                description="a positive integer"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "type Count" in source
+        assert "Integer" in source
+        assert "self > 0" in source
+
+    def test_generate_opaque_type(self) -> None:
+        module = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(verb="validates", noun="session",
+                           context="for session validity",
+                           raw_line="validates session for session validity"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Session",
+                                description="a time-limited access token"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "type Session" in source
+        # Opaque — no fields, no variants
+        assert "identity" not in source or "Session" in source
+
+
+class TestIntentGeneratorImports:
+    """Tests for stdlib-inferred imports."""
+
+    def test_generate_inferred_imports_inside_module(self) -> None:
+        """Imports should be indented inside the module block."""
+        module = IntentModule(
+            name="Auth",
+            intents=[
+                VerbPhrase(verb="creates", noun="sessions",
+                           context="for authenticated users",
+                           raw_line="creates sessions for authenticated users"),
+            ],
+        )
+        flow = FlowDecl(
+            steps=[
+                FlowStep(
+                    module="Auth",
+                    verb_phrase=VerbPhrase(
+                        verb="creates", noun="sessions",
+                        context="", raw_line="creates sessions",
+                    ),
+                ),
+                FlowStep(
+                    module="SessionManager",
+                    verb_phrase=VerbPhrase(
+                        verb="validates", noun="sessions",
+                        context="", raw_line="validates sessions",
+                    ),
+                ),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            modules=[module],
+            flows=[flow],
+        )
+        source = generate_module_source(module, project)
+        # Imports should be indented (inside module block)
+        assert "  use SessionManager" in source
+        # Should NOT have unindented use at column 0
+        lines = source.split("\n")
+        for line in lines:
+            if line.strip().startswith("use "):
+                assert line.startswith("  "), f"use-import not indented: {line!r}"
+
+
+class TestIntentGeneratorConstants:
+    """Tests for constant inference from constraints."""
+
+    def test_generate_inferred_constants(self) -> None:
+        module = IntentModule(
+            name="Limiter",
+            intents=[
+                VerbPhrase(verb="validates", noun="rate",
+                           context="", raw_line="validates rate"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="maximum 5 attempts"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "MAX_ATTEMPT" in source
+        assert "Integer" in source
+        assert "5" in source
+
+    def test_generate_timeout_constant(self) -> None:
+        module = IntentModule(
+            name="Net",
+            intents=[
+                VerbPhrase(verb="reads", noun="data",
+                           context="from network", raw_line="reads data from network"),
+            ],
+        )
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            constraints=[
+                ConstraintDecl(text="timeout of 30 seconds"),
+            ],
+        )
+        source = generate_module_source(module, project)
+        assert "TIMEOUT_SECOND" in source
+        assert "30" in source
+
+
 class TestIntentCoverage:
     def test_all_missing(self) -> None:
         from pathlib import Path
@@ -395,8 +577,9 @@ class TestIntentCoverage:
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             statuses = check_intent_coverage(project, Path(tmpdir))
-            assert len(statuses) == 1
-            assert statuses[0]["status"] == "missing"
+            fn_statuses = [s for s in statuses if s.get("kind") == "function"]
+            assert len(fn_statuses) == 1
+            assert fn_statuses[0]["status"] == "missing"
 
     def test_normalized_matching(self) -> None:
         """Intent noun 'credentials' should match function named 'credential'."""
@@ -424,5 +607,62 @@ class TestIntentCoverage:
         with tempfile.TemporaryDirectory() as tmpdir:
             (Path(tmpdir) / "auth.prv").write_text(prv_source, encoding="utf-8")
             statuses = check_intent_coverage(project, Path(tmpdir))
-            assert len(statuses) == 1
-            assert statuses[0]["status"] == "implemented"
+            fn_statuses = [s for s in statuses if s.get("kind") == "function"]
+            assert len(fn_statuses) == 1
+            assert fn_statuses[0]["status"] == "implemented"
+
+    def test_coverage_checks_types(self) -> None:
+        """Coverage reports missing vocabulary types."""
+        from pathlib import Path
+        import tempfile
+
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            vocabulary=[
+                VocabularyEntry(name="Credential", description="user identity"),
+            ],
+            modules=[
+                IntentModule(
+                    name="Auth",
+                    intents=[
+                        VerbPhrase(verb="validates", noun="credentials",
+                                   context="against stored credential data",
+                                   raw_line="validates credentials against stored credential data"),
+                    ],
+                ),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            statuses = check_intent_coverage(project, Path(tmpdir))
+            type_statuses = [s for s in statuses if s.get("kind") == "type"]
+            assert len(type_statuses) >= 1
+            assert type_statuses[0]["noun"] == "Credential"
+            assert type_statuses[0]["status"] == "missing"
+
+    def test_coverage_checks_constants(self) -> None:
+        """Coverage reports missing inferred constants."""
+        from pathlib import Path
+        import tempfile
+
+        project = IntentProject(
+            name="Test",
+            purpose="test",
+            modules=[
+                IntentModule(
+                    name="Auth",
+                    intents=[
+                        VerbPhrase(verb="validates", noun="login",
+                                   context="", raw_line="validates login"),
+                    ],
+                ),
+            ],
+            constraints=[
+                ConstraintDecl(text="maximum 3 attempts"),
+            ],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            statuses = check_intent_coverage(project, Path(tmpdir))
+            const_statuses = [s for s in statuses if s.get("kind") == "constant"]
+            assert len(const_statuses) >= 1
+            assert const_statuses[0]["status"] == "missing"

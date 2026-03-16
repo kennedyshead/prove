@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 # Canonical Prove verb → all recognized prose synonyms (including singular forms).
 VERB_SYNONYMS: dict[str, list[str]] = {
     "transforms": ["transforms", "transform", "converts", "convert", "computes", "compute",
-                    "calculates", "calculate", "processes", "process", "produces", "produce"],
+                    "calculates", "calculate", "processes", "process", "produces", "produce",
+                    "updates", "update", "modifies", "modify"],
     "validates":  ["validates", "validate", "checks", "check", "verifies", "verify",
                     "ensures", "ensure", "guards", "guard"],
     "reads":      ["reads", "read", "fetches", "fetch", "loads", "load",
@@ -48,7 +49,7 @@ _HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {
 
 try:
     from prove.nlp_store import load_verb_synonyms
-    _SYNONYM_TO_VERB: dict[str, str] = load_verb_synonyms()
+    _SYNONYM_TO_VERB: dict[str, str] = {**_HARDCODED_SYNONYM_TO_VERB, **load_verb_synonyms()}
 except Exception:
     _SYNONYM_TO_VERB: dict[str, str] = _HARDCODED_SYNONYM_TO_VERB  # type: ignore[no-redef]
 
@@ -201,7 +202,8 @@ def prose_overlaps(prose: str, tokens: set[str]) -> bool:
 
     if has_nlp_backend():
         score = text_similarity(prose, " ".join(tokens))
-        return score > 0.2
+        if score > 0.2:
+            return True
     return _prose_overlaps_fallback(prose, tokens)
 
 
@@ -209,14 +211,14 @@ def _prose_overlaps_fallback(prose: str, tokens: set[str]) -> bool:
     """True if any word in prose matches a body token after normalization (no NLP).
 
     Both prose words and token parts (split on ``_``) are reduced to their
-    root form via ``normalize_noun`` before comparison.
+    root form via ``_normalize_noun_fallback`` before comparison.
     """
-    prose_words = {normalize_noun(w.lower())
+    prose_words = {_normalize_noun_fallback(w.lower())
                    for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", prose)}
     token_roots: set[str] = set()
     for t in tokens:
         for part in split_name(t):
-            token_roots.add(normalize_noun(part))
+            token_roots.add(_normalize_noun_fallback(part))
     return bool(prose_words & token_roots)
 
 
@@ -262,7 +264,7 @@ def _extract_nouns_fallback(text: str) -> list[str]:
         # Skip words that are verb synonyms
         if low in _SYNONYM_TO_VERB:
             continue
-        norm = normalize_noun(low)
+        norm = _normalize_noun_fallback(low)
         if norm in seen:
             continue
         seen.add(norm)
@@ -376,3 +378,372 @@ def implied_functions(
         })
 
     return sorted(results, key=lambda r: -r["score"])
+
+
+# ── Type body inference ──────────────────────────────────────────
+
+_RECORD_INDICATORS = frozenset({
+    "paired with", "has a", "contains", "consisting of", "with a",
+    "composed of", "made up of",
+})
+_ALGEBRAIC_INDICATORS = frozenset({
+    "either", "one of",
+})
+_REFINEMENT_INDICATORS = frozenset({
+    "where", "within", "bounded", "positive", "non-negative",
+    "at least", "at most", "greater than", "less than",
+})
+
+
+@dataclass
+class TypeBodyHint:
+    """Inferred structure for a vocabulary type definition."""
+
+    kind: str  # "record", "algebraic", "refinement", "opaque"
+    fields: list[tuple[str, str]] = field(default_factory=list)
+    variants: list[tuple[str, list[tuple[str, str]]]] = field(default_factory=list)
+    base_type: str | None = None
+    constraint: str | None = None
+
+
+def _infer_type_body_nlp(description: str) -> TypeBodyHint | None:
+    """Try to infer type body via spaCy dependency parse."""
+    from prove.nlp import has_spacy
+
+    if not has_spacy():
+        return None
+    from prove.nlp import _nlp_model
+
+    assert _nlp_model is not None
+    doc = _nlp_model(description)  # type: ignore[operator]
+
+    # Look for conjunction patterns indicating algebraic types
+    has_conj = any(tok.dep_ == "conj" for tok in doc)
+    desc_lower = description.lower()
+    if has_conj and any(ind in desc_lower for ind in _ALGEBRAIC_INDICATORS):
+        variants = _extract_variants_from_text(description)
+        if variants:
+            return TypeBodyHint(kind="algebraic", variants=variants)
+
+    # Look for prepositional phrases indicating record fields
+    if any(ind in desc_lower for ind in _RECORD_INDICATORS):
+        fields = _extract_fields_from_text(description)
+        if fields:
+            return TypeBodyHint(kind="record", fields=fields)
+
+    # Look for adjective modifiers indicating refinement
+    if any(ind in desc_lower for ind in _REFINEMENT_INDICATORS):
+        base, constraint = _extract_refinement_from_text(description)
+        if base and constraint:
+            return TypeBodyHint(kind="refinement", base_type=base, constraint=constraint)
+
+    return None
+
+
+def infer_type_body(description: str) -> TypeBodyHint:
+    """Infer type body structure from vocabulary description.
+
+    3-tier: spaCy dep parse, keyword matching, opaque fallback.
+    """
+    # Tier 1: NLP-based inference
+    nlp_hint = _infer_type_body_nlp(description)
+    if nlp_hint is not None:
+        return nlp_hint
+
+    # Tier 2: Keyword matching
+    desc_lower = description.lower()
+
+    # Algebraic: "either X or Y"
+    if any(ind in desc_lower for ind in _ALGEBRAIC_INDICATORS):
+        variants = _extract_variants_from_text(description)
+        if variants:
+            return TypeBodyHint(kind="algebraic", variants=variants)
+
+    # Record: "paired with", "has a", etc.
+    if any(ind in desc_lower for ind in _RECORD_INDICATORS):
+        fields = _extract_fields_from_text(description)
+        if fields:
+            return TypeBodyHint(kind="record", fields=fields)
+
+    # Refinement: "positive", "bounded", etc.
+    if any(ind in desc_lower for ind in _REFINEMENT_INDICATORS):
+        base, constraint = _extract_refinement_from_text(description)
+        if base and constraint:
+            return TypeBodyHint(kind="refinement", base_type=base, constraint=constraint)
+
+    # Tier 3: Opaque fallback
+    return TypeBodyHint(kind="opaque")
+
+
+def _extract_variants_from_text(description: str) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Extract algebraic variants from text like 'either X or Y'."""
+    desc_lower = description.lower()
+
+    # Pattern: "either an X or a Y"
+    m = re.search(r"either\s+(?:an?\s+)?(.+?)\s+or\s+(?:an?\s+)?(.+?)(?:\s*$|\.)", desc_lower)
+    if m:
+        variants: list[tuple[str, list[tuple[str, str]]]] = []
+        for part in (m.group(1), m.group(2)):
+            words = part.strip().split()
+            if not words:
+                continue
+            # Last significant word becomes the variant name
+            variant_name = _to_pascal_case(words[-1])
+            # Preceding words become field hints
+            fields: list[tuple[str, str]] = []
+            if len(words) > 1:
+                field_name = _to_snake_case(words[0])
+                fields.append((field_name, "String"))
+            variants.append((variant_name, fields))
+        return variants
+
+    # Pattern: "one of X, Y, or Z"
+    m = re.search(r"one of\s+(.+?)(?:\s*$|\.)", desc_lower)
+    if m:
+        items = re.split(r",\s*(?:or\s+)?|\s+or\s+", m.group(1))
+        variants = []
+        for item in items:
+            item = item.strip()
+            if item:
+                words = item.split()
+                variant_name = _to_pascal_case(words[-1])
+                fields = []
+                if len(words) > 1:
+                    field_name = _to_snake_case(words[0])
+                    fields.append((field_name, "String"))
+                variants.append((variant_name, fields))
+        return variants
+
+    return []
+
+
+def _extract_fields_from_text(description: str) -> list[tuple[str, str]]:
+    """Extract record fields from text like 'X paired with Y'."""
+    desc_lower = description.lower()
+    fields: list[tuple[str, str]] = []
+
+    # Pattern: "a X paired with a Y"
+    m = re.search(r"(?:an?\s+)?(\w+(?:\s+\w+)?)\s+paired with\s+(?:an?\s+)?(\w+(?:\s+\w+)?)", desc_lower)
+    if m:
+        fields.append((_to_snake_case(m.group(1).split()[-1]), "String"))
+        fields.append((_to_snake_case(m.group(2).split()[-1]), "String"))
+        return fields
+
+    # Pattern: "has a X and a Y" / "contains X and Y"
+    for indicator in ("has a", "contains", "consisting of", "with a", "composed of"):
+        if indicator in desc_lower:
+            after = desc_lower.split(indicator, 1)[1]
+            parts = re.split(r"\s+and\s+(?:an?\s+)?|\s*,\s*(?:an?\s+)?", after)
+            for part in parts:
+                words = part.strip().split()
+                if words:
+                    field_name = _to_snake_case(words[-1])
+                    if field_name and len(field_name) >= 2:
+                        fields.append((field_name, "String"))
+            if fields:
+                return fields
+
+    return []
+
+
+def _extract_refinement_from_text(description: str) -> tuple[str | None, str | None]:
+    """Extract refinement base type and constraint from description."""
+    desc_lower = description.lower()
+
+    # "positive number/integer"
+    if "positive" in desc_lower:
+        if "integer" in desc_lower or "number" in desc_lower:
+            return "Integer", "self > 0"
+        if "decimal" in desc_lower or "float" in desc_lower:
+            return "Float", "self > 0.0"
+        return "Integer", "self > 0"
+
+    # "non-negative number/integer"
+    if "non-negative" in desc_lower:
+        if "integer" in desc_lower or "number" in desc_lower:
+            return "Integer", "self >= 0"
+        return "Integer", "self >= 0"
+
+    # "bounded" / "within"
+    if "bounded" in desc_lower or "within" in desc_lower:
+        return "Integer", "self >= 0"
+
+    # "at least N"
+    m = re.search(r"at least (\d+)", desc_lower)
+    if m:
+        return "Integer", f"self >= {m.group(1)}"
+
+    # "at most N"
+    m = re.search(r"at most (\d+)", desc_lower)
+    if m:
+        return "Integer", f"self <= {m.group(1)}"
+
+    # "greater than N"
+    m = re.search(r"greater than (\d+)", desc_lower)
+    if m:
+        return "Integer", f"self > {m.group(1)}"
+
+    # "less than N"
+    m = re.search(r"less than (\d+)", desc_lower)
+    if m:
+        return "Integer", f"self < {m.group(1)}"
+
+    return None, None
+
+
+def _to_pascal_case(word: str) -> str:
+    """Convert a word to PascalCase."""
+    return word.capitalize()
+
+
+def _to_snake_case(word: str) -> str:
+    """Convert a word to snake_case."""
+    return word.lower().replace(" ", "_")
+
+
+# ── Import inference ─────────────────────────────────────────────
+
+
+def infer_stdlib_imports(
+    stdlib_matches: list[object],
+) -> dict[str, dict[str | None, list[str]]]:
+    """Group stdlib function matches by module -> verb -> names.
+
+    Each StdlibMatch has .module, .function.verb, .function.name.
+    Returns: {module: {verb_or_None: [name, ...]}}.
+    """
+    result: dict[str, dict[str | None, list[str]]] = {}
+    seen: set[tuple[str, str]] = set()
+
+    for match in stdlib_matches:
+        mod = match.module.capitalize()  # type: ignore[union-attr]
+        fn = match.function  # type: ignore[union-attr]
+        key = (mod, fn.name)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if mod not in result:
+            result[mod] = {}
+        verb = fn.verb if fn.verb else None
+        if verb not in result[mod]:
+            result[mod][verb] = []
+        result[mod][verb].append(fn.name)
+
+    return result
+
+
+# ── Constant inference ───────────────────────────────────────────
+
+
+def infer_constants(
+    constraints: list[object],
+) -> list[tuple[str, str, str, str]]:
+    """Extract named constants from constraint text.
+
+    Looks for patterns like:
+    - "maximum N attempts" -> MAX_ATTEMPTS as Integer = N
+    - "timeout of N seconds" -> TIMEOUT_SECONDS as Integer = N
+    - "limit to N" -> LIMIT as Integer = N
+
+    Returns list of (name, type, value, doc) tuples.
+    """
+    results: list[tuple[str, str, str, str]] = []
+    seen_names: set[str] = set()
+
+    for c in constraints:
+        text = c.text if hasattr(c, "text") else str(c)  # type: ignore[union-attr]
+        text_lower = text.lower()
+
+        # "maximum N UNIT"
+        m = re.search(r"maximum\s+(\d+)\s+(\w+)", text_lower)
+        if m:
+            value = m.group(1)
+            unit = m.group(2).rstrip("s")  # strip trailing s
+            name = f"MAX_{unit.upper()}"
+            if name not in seen_names:
+                seen_names.add(name)
+                results.append((name, "Integer", value, f"Maximum {unit} (from constraint)"))
+
+        # "timeout of N seconds/minutes"
+        m = re.search(r"timeout\s+(?:of\s+)?(\d+)\s+(\w+)", text_lower)
+        if m:
+            value = m.group(1)
+            unit = m.group(2).rstrip("s")
+            name = f"TIMEOUT_{unit.upper()}"
+            if name not in seen_names:
+                seen_names.add(name)
+                results.append((name, "Integer", value, f"Timeout in {unit}s (from constraint)"))
+
+        # "limit to N" / "limit of N"
+        m = re.search(r"limit\s+(?:to|of)\s+(\d+)", text_lower)
+        if m:
+            value = m.group(1)
+            name = "LIMIT"
+            if name not in seen_names:
+                seen_names.add(name)
+                results.append((name, "Integer", value, f"Limit (from constraint)"))
+
+        # "at most N UNIT"
+        m = re.search(r"at most\s+(\d+)\s+(\w+)", text_lower)
+        if m:
+            value = m.group(1)
+            unit = m.group(2).rstrip("s")
+            name = f"MAX_{unit.upper()}"
+            if name not in seen_names:
+                seen_names.add(name)
+                results.append((name, "Integer", value, f"Maximum {unit} (from constraint)"))
+
+    return results
+
+
+# ── Comptime inference ───────────────────────────────────────────
+
+_COMPTIME_INDICATORS = frozenset({
+    "at compile time", "compile-time", "static", "precomputed", "built-in",
+})
+
+
+def infer_comptime(
+    constraints: list[object],
+) -> list[tuple[str, str, str, str]]:
+    """Extract comptime hints from constraints.
+
+    Returns list of (name, type, expression, doc) tuples.
+    Only generates comptime when constraints explicitly mention compile-time.
+    """
+    results: list[tuple[str, str, str, str]] = []
+
+    for c in constraints:
+        text = c.text if hasattr(c, "text") else str(c)  # type: ignore[union-attr]
+        text_lower = text.lower()
+
+        if not any(ind in text_lower for ind in _COMPTIME_INDICATORS):
+            continue
+
+        # "precomputed table of X" / "static table of X"
+        m = re.search(r"(?:precomputed|static|compile-time|built-in)\s+(?:table|map|list|set)\s+of\s+(\w+)", text_lower)
+        if m:
+            subject = m.group(1)
+            name = f"{subject.upper()}_TABLE"
+            results.append((
+                name,
+                f"Table<String, String>",
+                f'Table.empty()',
+                f"Compile-time {subject} table (from constraint)",
+            ))
+            continue
+
+        # "X computed at compile time" / "X is precomputed"
+        m = re.search(r"(\w+)\s+(?:computed at compile time|is precomputed|is static|is built-in)", text_lower)
+        if m:
+            subject = m.group(1)
+            name = subject.upper()
+            results.append((
+                name,
+                "String",
+                f'""',
+                f"Compile-time {subject} (from constraint)",
+            ))
+
+    return results

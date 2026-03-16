@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from prove._nl_intent import (
     VERB_SYNONYMS,
+    _extract_nouns_fallback,
+    _normalize_noun_fallback,
     body_tokens,
     extract_nouns,
     implied_verbs,
@@ -198,7 +200,7 @@ class TestExtractNounsSynonyms:
     """Synonym-specific tests for extract_nouns()."""
 
     def test_filters_verb_synonyms(self) -> None:
-        nouns = extract_nouns("convert the data into results")
+        nouns = _extract_nouns_fallback("convert the data into results")
         assert "convert" not in nouns
         assert "data" in nouns
         assert "result" in nouns  # normalized from "results"
@@ -216,62 +218,62 @@ class TestExtractNounsSynonyms:
 
 
 class TestNormalizeNoun:
-    """Tests for normalize_noun() morphological normalization."""
+    """Tests for _normalize_noun_fallback() suffix-stripping rules."""
 
     def test_ation_suffix(self) -> None:
-        assert normalize_noun("validation") == "valid"
-        assert normalize_noun("computation") == "comput"
+        assert _normalize_noun_fallback("validation") == "valid"
+        assert _normalize_noun_fallback("computation") == "comput"
 
     def test_tion_suffix(self) -> None:
         # "tion" without preceding "a" — stripped as -tion
-        assert normalize_noun("exception") == "excep"
-        assert normalize_noun("connection") == "connec"
+        assert _normalize_noun_fallback("exception") == "excep"
+        assert _normalize_noun_fallback("connection") == "connec"
 
     def test_ment_suffix(self) -> None:
-        assert normalize_noun("management") == "manage"
+        assert _normalize_noun_fallback("management") == "manage"
 
     def test_ments_suffix(self) -> None:
-        assert normalize_noun("environments") == "environ"
+        assert _normalize_noun_fallback("environments") == "environ"
 
     def test_ness_suffix(self) -> None:
-        assert normalize_noun("correctness") == "correct"
+        assert _normalize_noun_fallback("correctness") == "correct"
 
     def test_ing_suffix(self) -> None:
-        assert normalize_noun("hashing") == "hash"
-        assert normalize_noun("processing") == "process"
+        assert _normalize_noun_fallback("hashing") == "hash"
+        assert _normalize_noun_fallback("processing") == "process"
 
     def test_ing_short_root_kept(self) -> None:
-        assert normalize_noun("doing") == "doing"
+        assert _normalize_noun_fallback("doing") == "doing"
 
     def test_ies_suffix(self) -> None:
-        assert normalize_noun("entries") == "entry"
-        assert normalize_noun("queries") == "query"
+        assert _normalize_noun_fallback("entries") == "entry"
+        assert _normalize_noun_fallback("queries") == "query"
 
     def test_es_suffix_sibilant(self) -> None:
-        assert normalize_noun("hashes") == "hash"
-        assert normalize_noun("matches") == "match"
-        assert normalize_noun("boxes") == "box"
+        assert _normalize_noun_fallback("hashes") == "hash"
+        assert _normalize_noun_fallback("matches") == "match"
+        assert _normalize_noun_fallback("boxes") == "box"
 
     def test_ed_suffix(self) -> None:
-        assert normalize_noun("hashed") == "hash"
+        assert _normalize_noun_fallback("hashed") == "hash"
 
     def test_ed_short_root_kept(self) -> None:
-        assert normalize_noun("axed") == "axed"
+        assert _normalize_noun_fallback("axed") == "axed"
 
     def test_s_suffix(self) -> None:
-        assert normalize_noun("passwords") == "password"
-        assert normalize_noun("tokens") == "token"
+        assert _normalize_noun_fallback("passwords") == "password"
+        assert _normalize_noun_fallback("tokens") == "token"
 
     def test_ss_not_stripped(self) -> None:
-        assert normalize_noun("pass") == "pass"
+        assert _normalize_noun_fallback("pass") == "pass"
 
     def test_no_suffix(self) -> None:
-        assert normalize_noun("hash") == "hash"
-        assert normalize_noun("token") == "token"
+        assert _normalize_noun_fallback("hash") == "hash"
+        assert _normalize_noun_fallback("token") == "token"
 
     def test_case_insensitive(self) -> None:
-        assert normalize_noun("Hashing") == "hash"
-        assert normalize_noun("PASSWORDS") == "password"
+        assert _normalize_noun_fallback("Hashing") == "hash"
+        assert _normalize_noun_fallback("PASSWORDS") == "password"
 
 
 class TestSplitName:

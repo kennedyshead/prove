@@ -295,6 +295,62 @@ def add_generated_marker(doc_comment: str, source_line: int | None = None) -> st
 # ── Full function generation ──────────────────────────────────────
 
 
+def generate_import_source(module: str, verb_groups: dict[str | None, list[str]]) -> str:
+    """Generate a Prove use-import line with verb groups.
+
+    Produces: ``  use Module verb name1, verb2 name2 name3``
+
+    When verb is None, names are emitted without a verb prefix.
+    """
+    parts: list[str] = []
+    for verb, names in sorted(verb_groups.items(), key=lambda kv: (kv[0] or "")):
+        if verb:
+            parts.append(f"{verb} {' '.join(sorted(names))}")
+        else:
+            parts.extend(sorted(names))
+    return f"  use {module} {', '.join(parts)}" if parts else f"  use {module}"
+
+
+def generate_type_source(name: str, description: str, hint: object) -> str:
+    """Generate Prove type definition from vocabulary + TypeBodyHint."""
+    from prove._nl_intent import TypeBodyHint
+
+    if not isinstance(hint, TypeBodyHint):
+        return f"  /// {description}\n  type {name}"
+
+    lines: list[str] = []
+    lines.append(f"  /// {description}")
+
+    if hint.kind == "record" and hint.fields:
+        lines.append(f"  type {name}")
+        for field_name, field_type in hint.fields:
+            lines.append(f"    {field_name} {field_type}")
+    elif hint.kind == "algebraic" and hint.variants:
+        lines.append(f"  type {name}")
+        for variant_name, variant_fields in hint.variants:
+            if variant_fields:
+                field_strs = ", ".join(f"{fn} {ft}" for fn, ft in variant_fields)
+                lines.append(f"    {variant_name}({field_strs})")
+            else:
+                lines.append(f"    {variant_name}")
+    elif hint.kind == "refinement" and hint.base_type and hint.constraint:
+        lines.append(f"  type {name} is {hint.base_type} where {hint.constraint}")
+    else:
+        lines.append(f"  type {name}")
+
+    return "\n".join(lines)
+
+
+def generate_constant_source(name: str, type_name: str, value: str, doc: str) -> str:
+    """Generate a Prove constant definition."""
+    return f"  /// {doc}\n  {name} as {type_name} = {value}"
+
+
+def generate_comptime_source(name: str, type_name: str, expr: str, doc: str) -> str:
+    """Generate a Prove comptime definition."""
+    return f"  /// {doc}\n  {name} as {type_name} = comptime\n    {expr}"
+
+
 def generate_function_source(
     verb: str,
     name: str,
