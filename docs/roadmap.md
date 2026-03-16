@@ -57,6 +57,19 @@ dynamic data from a `StoreTable`. Remaining:
 - Schema conflict detection (addition and value conflicts implemented)
 - Store spotlight in Language Tour (index.md)
 
+### Lookup Improvements
+
+Named columns (`probability:Float confidence:Float`) disambiguate duplicate column
+types and enable `.name` field access. Binary search for large tables (>16 entries)
+replaces linear scan in reverse lookups. Remaining:
+
+- Edge cases in named column error reporting
+
+### Compiler CLI Extensions
+
+`prove advanced compiler --load` and `--dump` for converting between `.prv` lookup
+tables and PDAT binary format. Auto-detects mode from file extension.
+
 ---
 
 ## Proposed
@@ -107,23 +120,6 @@ through `List<Value>`. The optimizer fuses `map(map(...))`, `reduce(map(...))`, 
 mechanism used for existing Sequence fusions. `filter` returns `List<Value>` because
 output length is unknown at compile time — the type makes the escape explicit.
 
-
-### Lookup Improvements
-
-Two independent improvements for `[Lookup]` types:
-
-- **Named columns** — When a lookup has two columns of the same type (e.g. two `Float`
-  columns), column selection is currently ambiguous. Named column syntax
-  (`probability:Float confidence:Float`) disambiguates and enables `.name` field access.
-- **Binary search for large tables** — The reverse lookup currently uses a linear scan
-  O(n). For tables over a threshold (~16 entries), the emitter will sort the reverse
-  table at compile time and use binary search O(log n) automatically.
-
-
-### Compiler CLI Extensions
-
-`prove compiler --load` and `--dump` for converting between `.prv` lookup
-tables and compiled binaries.
 
 ### Cache Indexing & Reindexing
 
@@ -177,15 +173,6 @@ that connects natural-language prose to the actual code it describes.
 
 Implemented in a new `_nl_intent.py` utility (pure Python, no external deps) shared
 by the checker and LSP.
-
-### Self-Hosted Compiler (V2.0)
-
-Rewrite the compiler in Prove. The V1.0 Python bootstrap compiles it,
-the resulting binary recompiles itself, and both outputs must match.
-
----
-
-## Preview
 
 ### Stub Generation from Narrative
 
@@ -243,6 +230,11 @@ Per-call-site warnings for unverified `ensures` chains.
 ### Formal `know` Proofs
 
 General proof beyond the current lightweight `ClaimProver`.
+
+### Self-Hosted Compiler (V2.0)
+
+Rewrite the compiler in Prove. The V1.0 Python bootstrap compiles it,
+the resulting binary recompiles itself, and both outputs must match.
 
 ---
 

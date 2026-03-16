@@ -162,9 +162,10 @@ what the programmer has explicitly declared.
 This vision is being built incrementally:
 
 - **Implemented**: verb system, contracts, explain verification, ML completion
-  model (global + per-project n-gram), coherence checking (I340)
-- **Proposed**: prose coherence analysis (W501–W505), cache warm-start,
-  stub generation from narrative
-- **Exploring**: intent-driven body generation, project declaration format
+  model (global + per-project n-gram), coherence checking (I340),
+  stub generation from narrative, intent-driven body generation,
+  project intent declaration (`.intent` format)
+- **Preview**: prose coherence analysis (W501–W505), cache warm-start
+- **Exploring**: local AI integration, self-hosted compiler (V2.0)
 
 See the [Roadmap](roadmap.md) for detailed status of each component.
