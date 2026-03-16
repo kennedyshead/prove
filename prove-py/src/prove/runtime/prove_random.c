@@ -1,5 +1,6 @@
 #include "prove_random.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 
 /* ── Auto-seed ───────────────────────────────────────────────── */
@@ -13,23 +14,34 @@ static void _ensure_seeded(void) {
     }
 }
 
+/* ── Full 64-bit random helper ───────────────────────────────── */
+
+static uint64_t _random_u64(void) {
+    /* Combine multiple rand() calls to fill 64 bits.
+       rand() gives at least 15 bits (RAND_MAX >= 32767).
+       5 * 15 = 75 bits > 64, so all bits are covered. */
+    uint64_t r = 0;
+    for (int i = 0; i < 5; i++) {
+        r = (r << 15) | ((uint64_t)rand() & 0x7FFF);
+    }
+    return r;
+}
+
 /* ── Integer ─────────────────────────────────────────────────── */
 
 int64_t prove_random_integer(void) {
     _ensure_seeded();
-    /* Combine two rand() calls for wider range */
-    int64_t hi = (int64_t)rand();
-    int64_t lo = (int64_t)rand();
-    return (hi << 16) ^ lo;
+    return (int64_t)_random_u64();
 }
 
 int64_t prove_random_integer_range(int64_t min, int64_t max) {
     _ensure_seeded();
     if (min >= max) return min;
     uint64_t range = (uint64_t)(max - min) + 1;
-    int64_t hi = (int64_t)rand();
-    int64_t lo = (int64_t)rand();
-    uint64_t r = ((uint64_t)hi << 16) ^ (uint64_t)lo;
+    /* Rejection sampling: discard values that would cause modulo bias */
+    uint64_t limit = UINT64_MAX - (UINT64_MAX % range);
+    uint64_t r;
+    do { r = _random_u64(); } while (r >= limit);
     return min + (int64_t)(r % range);
 }
 
@@ -65,8 +77,11 @@ void *prove_random_choice_raw(Prove_List *list) {
     if (list->length == 0) {
         prove_panic("choice: empty list");
     }
-    uint64_t r = ((uint64_t)rand() << 16) ^ (uint64_t)rand();
-    int64_t idx = (int64_t)(r % (uint64_t)list->length);
+    uint64_t len = (uint64_t)list->length;
+    uint64_t limit = UINT64_MAX - (UINT64_MAX % len);
+    uint64_t r;
+    do { r = _random_u64(); } while (r >= limit);
+    int64_t idx = (int64_t)(r % len);
     return prove_list_get(list, idx);
 }
 
@@ -83,8 +98,11 @@ Prove_List *prove_random_shuffle_raw(Prove_List *list) {
 
     /* Fisher-Yates shuffle */
     for (int64_t i = result->length - 1; i > 0; i--) {
-        uint64_t r = ((uint64_t)rand() << 16) ^ (uint64_t)rand();
-        int64_t j = (int64_t)(r % (uint64_t)(i + 1));
+        uint64_t range = (uint64_t)(i + 1);
+        uint64_t limit = UINT64_MAX - (UINT64_MAX % range);
+        uint64_t r;
+        do { r = _random_u64(); } while (r >= limit);
+        int64_t j = (int64_t)(r % range);
         /* Swap pointers */
         void *tmp = result->data[i];
         result->data[i] = result->data[j];
