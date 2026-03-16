@@ -241,7 +241,7 @@ match Parse.json(raw)
     Err(msg) => report(msg)
 ```
 
-The [Error](stdlib/error-log.md#error) stdlib module provides utilities like `unwrap_or` for common patterns.
+The [Types](stdlib/math-types.md#result-and-option-utilities) stdlib module provides utilities like `unwrap` for common patterns.
 
 ## Algebraic Types with Exhaustive Matching
 
@@ -378,7 +378,8 @@ from
 
 The compiler enforces effect boundaries:
 - Pure verbs cannot call IO or async functions
-- `attached` and `listens` cannot call blocking IO (`inputs`/`outputs`) — they run cooperatively and blocking would stall the yield cycle
+- `listens` cannot call blocking IO (`inputs`/`outputs`) — it runs cooperatively and blocking would stall the yield cycle
+- `attached` may call blocking IO — it has its own coroutine stack. IO-bearing `attached` must be called from `listens` or another `attached` body ([E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context))
 - `detached` may call IO freely — it runs independently and blocking only affects its own coroutine, not the caller
 - `listens` dispatches on the first parameter's algebraic type — the `from` block is an implicit match with a mandatory `Exit` arm
 - The `&` marker at a call site signals async dispatch, analogous to `!` for error propagation

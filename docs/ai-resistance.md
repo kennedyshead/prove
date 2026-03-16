@@ -73,7 +73,7 @@ from
 
 ### Epistemic Checking (Basic)
 
-[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)). Full semantic enforcement (proving `know` claims, inserting runtime checks for `assume`, generating adversarial tests for `believe`) is upcoming.
+[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)). `know` claims are proven when possible via constant folding and algebraic identities — provably false claims are errors ([E356](diagnostics.md#e356-know-claim-is-provably-false)), unprovable claims fall back to runtime assertions ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)). `assume` inserts a runtime check. Remaining: generating adversarial tests for `believe`.
 
 ```prove
 transforms process_order(order Order) Receipt

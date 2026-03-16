@@ -270,10 +270,6 @@ Lambdas cannot reference variables from an enclosing scope (closures not support
 
 A `matches` function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, `String`, and `Integer`.
 
-### E367 — *(moved to I367)*
-
-See [I367](#i367-consider-extracting-match-to-matches-verb) in the Info section.
-
 ### E366 — Recursive function missing `terminates`
 
 Every recursive function must declare a `terminates` measure expression.
