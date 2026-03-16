@@ -148,9 +148,6 @@ Prove_List *prove_list_ops_sort_int(Prove_List *list) {
 static int _cmp_str(const void *a, const void *b) {
     Prove_String *sa = *(Prove_String *const *)a;
     Prove_String *sb = *(Prove_String *const *)b;
-    if (!sa && !sb) return 0;
-    if (!sa) return -1;
-    if (!sb) return 1;
     int64_t min_len = sa->length < sb->length ? sa->length : sb->length;
     int cmp = memcmp(sa->data, sb->data, (size_t)min_len);
     if (cmp != 0) return cmp;

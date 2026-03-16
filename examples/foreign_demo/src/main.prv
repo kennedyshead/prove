@@ -1,0 +1,31 @@
+module Main
+  narrative: """Foreign block demo — wrapping C math functions via FFI.
+
+  Demonstrates foreign blocks for binding C library functions.
+  Wraps and transforms values using libm.
+  """
+  System outputs console
+
+  foreign "libm"
+    sqrt(x Decimal) Decimal
+    pow(base Decimal, exp Decimal) Decimal
+    floor(x Decimal) Decimal
+
+transforms square_root(x Decimal) Decimal
+  ensures result >= 0.0
+from
+    sqrt(x)
+
+transforms power(base Decimal, exp Decimal) Decimal
+from
+    pow(base, exp)
+
+transforms floored(x Decimal) Decimal
+from
+    floor(x)
+
+main()
+from
+    console("sqrt(25.0) = " + to_string(square_root(25.0)))
+    console("pow(2.0, 10.0) = " + to_string(power(2.0, 10.0)))
+    console("floor(3.7) = " + to_string(floored(3.7)))

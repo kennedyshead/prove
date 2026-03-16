@@ -53,8 +53,6 @@ static void *_par_map_worker(void *arg) {
 }
 
 Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers) {
-    if (!list || !fn) return prove_list_new(0);
-
     int64_t len = prove_list_len(list);
     if (len == 0) return prove_list_new(0);
 
@@ -123,7 +121,6 @@ Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers)
 
 Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers) {
     (void)num_workers;
-    if (!list || !fn) return prove_list_new(0);
     return _par_map_sequential(list, fn);
 }
 

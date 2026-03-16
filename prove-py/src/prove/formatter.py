@@ -48,6 +48,8 @@ from prove.ast_nodes import (
     FieldAssignment,
     FieldExpr,
     FloatLit,
+    ForeignBlock,
+    ForeignFunction,
     FunctionDef,
     GenericType,
     IdentifierExpr,
@@ -594,6 +596,11 @@ class ProveFormatter:
                 for imp_line in formatted_imp.split("\n"):
                     lines.append(f"  {imp_line}")
 
+        for fb in mod.foreign_blocks:
+            lines.append("")
+            formatted = self._format_foreign_block(fb)
+            lines.append(self._indent_spaces(formatted, 2))
+
         for td in mod.types:
             if self._is_unused_type(td.span):
                 continue  # W303: drop unused type definitions
@@ -626,6 +633,23 @@ class ProveFormatter:
         for constraint in inv.constraints:
             lines.append(f"  {self._format_expr(constraint)}")
         return "\n".join(lines)
+
+    # ── Foreign blocks ──────────────────────────────────────────
+
+    def _format_foreign_block(self, fb: ForeignBlock) -> str:
+        lines = [f'foreign "{fb.library}"']
+        for ff in fb.functions:
+            lines.append(f"  {self._format_foreign_function(ff)}")
+        return "\n".join(lines)
+
+    def _format_foreign_function(self, ff: ForeignFunction) -> str:
+        params = ", ".join(
+            f"{p.name} {self._format_type_expr(p.type_expr)}" for p in ff.params
+        )
+        sig = f"{ff.name}({params})"
+        if ff.return_type is not None:
+            sig += f" {self._format_type_expr(ff.return_type)}"
+        return sig
 
     # ── Lookup declarations ─────────────────────────────────────
 

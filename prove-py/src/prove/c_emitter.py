@@ -1188,8 +1188,9 @@ class CEmitter(
         self._line(f"void {mangled}({param_str}) {{")
         self._indent += 1
 
-        self._line("prove_region_enter(prove_global_region());")
-        self._in_region_scope = True
+        if self._needs_region_scope(fd):
+            self._line("prove_region_enter(prove_global_region());")
+            self._in_region_scope = True
 
         self._locals.clear()
         self._used_names.clear()
@@ -1207,8 +1208,9 @@ class CEmitter(
         self._line("}")
         self._line("_streams_exit:;")
 
-        self._line("prove_region_exit(prove_global_region());")
-        self._in_region_scope = False
+        if self._in_region_scope:
+            self._line("prove_region_exit(prove_global_region());")
+            self._in_region_scope = False
         self._indent -= 1
         self._line("}")
         self._line("")

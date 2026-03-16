@@ -6,13 +6,17 @@ from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
     BindingPattern,
+    BooleanLit,
     CallExpr,
+    CharLit,
     CommentStmt,
+    DecimalLit,
     ExplainEntry,
     Expr,
     ExprStmt,
     FailPropExpr,
     FieldAssignment,
+    FloatLit,
     FunctionDef,
     IdentifierExpr,
     IntegerLit,
@@ -21,6 +25,7 @@ from prove.ast_nodes import (
     RawStringLit,
     RegexLit,
     Stmt,
+    StringLit,
     TailContinue,
     TailLoop,
     TodoStmt,
@@ -49,6 +54,25 @@ from prove.types import (
 )
 
 
+_IO_VERBS = frozenset({"inputs", "outputs", "streams", "listens", "attached", "detached"})
+
+# Literal types whose value the checker can statically verify against
+# refinement constraints (E355).  No runtime guard needed for these.
+_LITERAL_TYPES = (IntegerLit, DecimalLit, FloatLit, StringLit, BooleanLit, CharLit)
+
+
+def _is_compile_time_literal(expr: Expr | None) -> bool:
+    """Return True if *expr* is a compile-time literal (including negated numerics)."""
+    if expr is None:
+        return False
+    if isinstance(expr, _LITERAL_TYPES):
+        return True
+    # Negated numeric literal: -42, -3.14
+    if isinstance(expr, UnaryExpr) and expr.op == "-":
+        return isinstance(expr.operand, (IntegerLit, DecimalLit, FloatLit))
+    return False
+
+
 class StmtEmitterMixin:
 
     # ── Value → concrete type coercion helpers ─────────────────────
@@ -58,6 +82,14 @@ class StmtEmitterMixin:
         return (isinstance(ty, TypeVariable) and ty.name == "Value") or (
             isinstance(ty, PrimitiveType) and ty.name == "Value"
         )
+
+    def _is_io_context(self) -> bool:
+        """Check if the current function is an IO context (always needs runtime guards)."""
+        if self._in_main:
+            return True
+        if self._current_func is not None:
+            return getattr(self._current_func, "verb", None) in _IO_VERBS
+        return True  # conservative default
 
     def _value_coercion_expr(self, raw_expr: str, target_ty: Type) -> str | None:
         """Return a prove_value_as_*() call to coerce a Prove_Value* to target_ty.
@@ -680,11 +712,14 @@ class StmtEmitterMixin:
         # Validate refinement type constraints
         # Skip validation for GenericInstance (Option<Value>) because validation is already
         # done in the conversion code. Only validate direct RefinementType assignments.
+        # Also skip when the source is a compile-time literal — the checker already
+        # verified the constraint via _static_check_refinement (E355).
         if not isinstance(target_ty, GenericInstance):
             check_ty = target_ty
             validation_var = vd.name
             if isinstance(check_ty, RefinementType) and check_ty.constraint:
-                self._emit_refinement_validation(validation_var, check_ty)
+                if not _is_compile_time_literal(vd.value):
+                    self._emit_refinement_validation(validation_var, check_ty)
 
         # Update locals with target type
         self._locals[vd.name] = target_ty
@@ -701,14 +736,22 @@ class StmtEmitterMixin:
             self._line(f"prove_retain({vd.name});")
 
     def _emit_refinement_validation(self, var_name: str, target_ty: RefinementType) -> None:
-        """Emit runtime validation for refinement type constraints."""
+        """Emit runtime validation for refinement type constraints.
+
+        In pure (non-IO) functions the guard is wrapped in #ifndef PROVE_RELEASE
+        so it is stripped in release builds.  IO contexts always keep the guard.
+        """
         constraint = target_ty.constraint
         if constraint is None:
             return
 
+        io_ctx = self._is_io_context()
+
         if isinstance(constraint, RegexLit):
             self._needed_headers.add("prove_pattern.h")
             escaped_pattern = constraint.pattern.replace("\\", "\\\\")
+            if not io_ctx:
+                self._line("#ifndef PROVE_RELEASE")
             self._line(
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
             )
@@ -716,9 +759,13 @@ class StmtEmitterMixin:
             self._line('prove_panic("constraint failed: value does not match pattern");')
             self._indent -= 1
             self._line("}")
+            if not io_ctx:
+                self._line("#endif")
         elif isinstance(constraint, RawStringLit):
             self._needed_headers.add("prove_pattern.h")
             escaped_pattern = constraint.value.replace("\\", "\\\\")
+            if not io_ctx:
+                self._line("#ifndef PROVE_RELEASE")
             self._line(
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
             )
@@ -726,10 +773,14 @@ class StmtEmitterMixin:
             self._line('prove_panic("constraint failed: value does not match pattern");')
             self._indent -= 1
             self._line("}")
+            if not io_ctx:
+                self._line("#endif")
         elif isinstance(constraint, BinaryExpr):
-            self._emit_numeric_refinement(var_name, constraint)
+            self._emit_numeric_refinement(var_name, constraint, io_ctx)
 
-    def _emit_numeric_refinement(self, var_name: str, constraint: BinaryExpr) -> None:
+    def _emit_numeric_refinement(
+        self, var_name: str, constraint: BinaryExpr, io_context: bool = True,
+    ) -> None:
         """Emit runtime validation for numeric refinement constraints."""
         from prove.type_inference import BINARY_OP_TO_C
 
@@ -737,38 +788,52 @@ class StmtEmitterMixin:
             # Range: 1..65535 → if (val < 1 || val > 65535) { panic }
             lo = self._emit_constraint_operand(constraint.left, var_name)
             hi = self._emit_constraint_operand(constraint.right, var_name)
+            if not io_context:
+                self._line("#ifndef PROVE_RELEASE")
             self._line(f"if ({var_name} < {lo} || {var_name} > {hi}) {{")
             self._indent += 1
             self._line('prove_panic("refinement type constraint violated: value out of range");')
             self._indent -= 1
             self._line("}")
+            if not io_context:
+                self._line("#endif")
         elif constraint.op in BINARY_OP_TO_C:
             c_op = BINARY_OP_TO_C[constraint.op]
             if constraint.op in ("&&", "||"):
                 # Compound constraint: emit both sides
-                self._emit_compound_refinement(var_name, constraint)
+                self._emit_compound_refinement(var_name, constraint, io_context)
             else:
                 # Comparison: self != 0 → if (!(val != 0)) { panic }
                 left = self._emit_constraint_operand(constraint.left, var_name)
                 right = self._emit_constraint_operand(constraint.right, var_name)
+                if not io_context:
+                    self._line("#ifndef PROVE_RELEASE")
                 self._line(f"if (!({left} {c_op} {right})) {{")
                 self._indent += 1
                 self._line('prove_panic("refinement type constraint violated");')
                 self._indent -= 1
                 self._line("}")
+                if not io_context:
+                    self._line("#endif")
 
-    def _emit_compound_refinement(self, var_name: str, constraint: BinaryExpr) -> None:
+    def _emit_compound_refinement(
+        self, var_name: str, constraint: BinaryExpr, io_context: bool = True,
+    ) -> None:
         """Emit compound constraint (&&, ||)."""
         from prove.type_inference import BINARY_OP_TO_C
 
         c_op = BINARY_OP_TO_C[constraint.op]
         left = self._emit_constraint_condition(constraint.left, var_name)
         right = self._emit_constraint_condition(constraint.right, var_name)
+        if not io_context:
+            self._line("#ifndef PROVE_RELEASE")
         self._line(f"if (!({left} {c_op} {right})) {{")
         self._indent += 1
         self._line('prove_panic("refinement type constraint violated");')
         self._indent -= 1
         self._line("}")
+        if not io_context:
+            self._line("#endif")
 
     def _emit_constraint_condition(self, expr: Expr, var_name: str) -> str:
         """Emit a constraint sub-expression as a C condition string."""
@@ -881,9 +946,11 @@ class StmtEmitterMixin:
         val = self._emit_expr(assign.value)
         self._line(f"{assign.target} = {val};")
         # Validate refinement constraints on reassignment
+        # Skip when source is a compile-time literal (checker already verified via E355)
         target_ty = self._locals.get(assign.target)
         if isinstance(target_ty, RefinementType) and target_ty.constraint:
-            self._emit_refinement_validation(assign.target, target_ty)
+            if not _is_compile_time_literal(assign.value):
+                self._emit_refinement_validation(assign.target, target_ty)
 
     def _emit_field_assignment(self, fa: FieldAssignment) -> None:
         target = self._emit_expr(fa.target)

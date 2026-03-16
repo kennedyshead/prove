@@ -163,6 +163,62 @@ class TestForeignEmitter:
         assert "#include <pthread.h>" in c_code
 
 
+# ── Formatter tests ───────────────────────────────────────────────
+
+
+class TestForeignFormatter:
+    def test_foreign_block_roundtrip(self):
+        from prove.formatter import ProveFormatter
+
+        source = (
+            'module Math\n'
+            '\n'
+            '  foreign "libm"\n'
+            '    sqrt(x Float) Float\n'
+            '    pow(base Float, exp Float) Float\n'
+        )
+        module = _parse(source)
+        formatter = ProveFormatter()
+        result = formatter.format(module)
+        assert result.rstrip("\n") == source.rstrip("\n")
+
+    def test_multiple_foreign_blocks_roundtrip(self):
+        from prove.formatter import ProveFormatter
+
+        source = (
+            'module Sys\n'
+            '\n'
+            '  foreign "libm"\n'
+            '    sqrt(x Float) Float\n'
+            '\n'
+            '  foreign "libpthread"\n'
+            '    pthread_self() Integer\n'
+        )
+        module = _parse(source)
+        formatter = ProveFormatter()
+        result = formatter.format(module)
+        assert result.rstrip("\n") == source.rstrip("\n")
+
+    def test_foreign_with_function_roundtrip(self):
+        from prove.formatter import ProveFormatter
+
+        source = (
+            'module Math\n'
+            '  foreign "libm"\n'
+            '    sqrt(x Float) Float\n'
+            '\n'
+            'transforms root(x Float) Float\n'
+            'from\n'
+            '    sqrt(x)\n'
+        )
+        module, symbols, checker = _check(source)
+        assert not checker.has_errors()
+        formatter = ProveFormatter(symbols=symbols)
+        result = formatter.format(module)
+        assert 'foreign "libm"' in result
+        assert "sqrt(x Float) Float" in result
+
+
 # ── Config tests ──────────────────────────────────────────────────
 
 

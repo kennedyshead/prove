@@ -89,8 +89,8 @@ for _c in ("E320", "E321", "E322", "E325", "E326", "E330", "E331"):
 # Field access E340-E341
 for _c in ("E340", "E341"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Control flow E350, E352, E355-E356
-for _c in ("E350", "E352", "E355", "E356"):
+# Control flow E350, E352, E355-E357
+for _c in ("E350", "E352", "E355", "E356", "E357"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367)
 _register_doc_range("E", 361, 367)

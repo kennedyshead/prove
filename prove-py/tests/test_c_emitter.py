@@ -804,3 +804,119 @@ class TestRefinementTypeValidation:
         c_code = _emit(source)
         assert "prove_panic" in c_code
         assert ">=" in c_code
+
+
+class TestDivisionGuards:
+    """Test division-by-zero runtime guard emission."""
+
+    def test_variable_divisor_gets_guard(self):
+        """Division by a variable emits a panic guard."""
+        source = (
+            "transforms divide(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a / b\n"
+        )
+        c_code = _emit(source)
+        assert 'prove_panic("division by zero")' in c_code
+
+    def test_requires_nonzero_elides_guard(self):
+        """Division by a variable covered by requires b != 0 omits the guard."""
+        source = (
+            "transforms divide(a Integer, b Integer) Integer\n"
+            "    requires b != 0\n"
+            "    from\n"
+            "        a / b\n"
+        )
+        c_code = _emit(source)
+        assert 'prove_panic("division by zero")' not in c_code
+
+    def test_literal_divisor_no_guard(self):
+        """Division by a literal does not emit a runtime guard."""
+        source = (
+            "transforms half(x Integer) Integer\n"
+            "    from\n"
+            "        x / 2\n"
+        )
+        c_code = _emit(source)
+        assert 'prove_panic("division by zero")' not in c_code
+
+    def test_division_guard_behind_prove_release(self):
+        """Variable divisor guard is wrapped in #ifndef PROVE_RELEASE."""
+        source = (
+            "transforms divide(a Integer, b Integer) Integer\n"
+            "    from\n"
+            "        a / b\n"
+        )
+        c_code = _emit(source)
+        assert "#ifndef PROVE_RELEASE" in c_code
+
+
+class TestRefinementProveRelease:
+    """Test refinement type guards are conditionally wrapped in PROVE_RELEASE."""
+
+    def test_pure_refinement_behind_release(self):
+        """Pure function refinement guard is wrapped in #ifndef PROVE_RELEASE."""
+        source = (
+            "module M\n"
+            "  type NonZero is Integer where != 0\n"
+            "transforms use_nz(n Integer) Integer\n"
+            "    from\n"
+            "        nz as NonZero = n\n"
+            "        nz\n"
+        )
+        c_code = _emit(source)
+        assert "#ifndef PROVE_RELEASE" in c_code
+        assert "prove_panic" in c_code
+
+    def test_io_refinement_always_present(self):
+        """IO function refinement guard is NOT wrapped in #ifndef PROVE_RELEASE."""
+        source = (
+            "module M\n"
+            "  type NonZero is Integer where != 0\n"
+            "inputs read_nz(n Integer) Integer\n"
+            "    from\n"
+            "        nz as NonZero = n\n"
+            "        nz\n"
+        )
+        c_code = _emit(source)
+        assert "prove_panic" in c_code
+        # Find the function body and verify no #ifndef wrapping
+        fn_start = c_code.index("prv_inputs_read_nz")
+        fn_body = c_code[fn_start:]
+        # The guard should be present without PROVE_RELEASE wrapping
+        panic_idx = fn_body.index("prove_panic")
+        preceding = fn_body[:panic_idx]
+        # Count PROVE_RELEASE occurrences before the panic — should be zero
+        assert "#ifndef PROVE_RELEASE" not in preceding
+
+    def test_literal_assignment_skips_refinement_guard(self):
+        """Literal assignment to refinement type should NOT emit runtime guard."""
+        source = (
+            "module M\n"
+            "  type Port is Integer where 1..65535\n"
+            "transforms default_port() Integer\n"
+            "    from\n"
+            "        p as Port = 443\n"
+            "        p\n"
+        )
+        c_code = _emit(source)
+        fn_start = c_code.index("prv_transforms_default_port")
+        fn_body = c_code[fn_start:]
+        # Literal 443 is statically verified by checker (E355) — no runtime guard
+        assert "prove_panic" not in fn_body
+
+    def test_variable_assignment_keeps_refinement_guard(self):
+        """Variable assignment to refinement type should still emit runtime guard."""
+        source = (
+            "module M\n"
+            "  type Port is Integer where 1..65535\n"
+            "transforms use_port(n Integer) Integer\n"
+            "    from\n"
+            "        p as Port = n\n"
+            "        p\n"
+        )
+        c_code = _emit(source)
+        fn_start = c_code.index("prv_transforms_use_port")
+        fn_body = c_code[fn_start:]
+        # Variable source — runtime guard required
+        assert "prove_panic" in fn_body
