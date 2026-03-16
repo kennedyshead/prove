@@ -70,29 +70,25 @@ replaces linear scan in reverse lookups. Remaining:
 `prove advanced compiler --load` and `--dump` for converting between `.prv` lookup
 tables and PDAT binary format. Auto-detects mode from file extension.
 
----
-
-## Proposed
-
 ### Runtime Check Optimization
 
 Compiler-first coordination of safety checks between the compile step and the C runtime.
-Four independent items, each eliminating work the wrong layer is currently doing:
+Four items following the compiler-first principle:
 
-- **Dead null guards** — Remove defensive `!ptr` checks from runtime functions for types
-  (`String`, `List<T>`, `StringBuilder`, `Table<T>`) that Prove's type system guarantees
-  are never null. These run in hot loops and are pure waste.
-- **Region scope elision** — `prove_region_enter/exit` currently wraps every compiled
-  function, allocating a 4096-byte frame via `malloc` even for pure numeric functions
-  with no allocations. A `_needs_region_scope()` analysis pass in the emitter will skip
-  emission for functions whose call graph contains no allocating calls.
-- **Division by zero** — Constant zero divisors become compile errors (new diagnostic).
-  Variable divisors without a `requires` contract get a runtime guard, stripped in
-  optimized (non-debug) builds via the `PROVE_RELEASE` define.
-- **Refinement type IO enforcement** — `type Port is Integer where 1..65535` is already
-  enforced for literals. Values from IO sources will also get a compiler-generated
-  runtime guard at the assignment site.
+- **Dead null guards** — Removed defensive `!ptr` checks from HOF, parallel map, random,
+  and sort runtime functions for types that Prove's type system guarantees are never null.
+- **Region scope elision** — `_needs_region_scope()` analysis skips `prove_region_enter/exit`
+  for functions whose body contains no allocating calls.
+- **Division by zero** — Constant zero divisors are compile errors (E357). Variable
+  divisors without a `requires` contract get a runtime guard behind `#ifndef PROVE_RELEASE`.
+  Divisors covered by `requires param != 0` elide the guard entirely.
+- **Refinement type IO enforcement** — Refinement panics in pure functions are wrapped in
+  `#ifndef PROVE_RELEASE` (stripped in release builds). IO verb functions and `main` always
+  keep the guard.
 
+---
+
+## Proposed
 
 ### C Runtime Bug Fixes
 

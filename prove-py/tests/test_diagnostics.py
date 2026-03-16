@@ -250,12 +250,26 @@ class TestW322:
 
 
 class TestW323:
-    """W323 fires when a function has ensures but no explain block."""
+    """W323 fires when a function has ensures but no explain block (3+ statements)."""
 
     def test_fires_with_ensures_no_explain(self):
-        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
+        source = (
+            "transforms f(a Integer, b Integer) Integer\n"
+            "  ensures result >= 0\n"
+            "from\n"
+            "    x as Integer = a + b\n"
+            "    y as Integer = x * 2\n"
+            "    z as Integer = y + 1\n"
+            "    z\n"
+        )
         diags = check_warns(source, "W323")
         assert len(diags) >= 1
+
+    def test_not_fired_with_short_body(self):
+        """Single-statement bodies are self-explanatory — no W323."""
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
+        diags = check_all(source)
+        assert "W323" not in _codes(diags)
 
     def test_not_fired_with_explain(self):
         source = (
@@ -276,7 +290,15 @@ class TestW323:
         assert "W323" not in _codes(diags)
 
     def test_has_note(self):
-        source = "transforms f(n Integer) Integer\n  ensures result >= 0\nfrom\n    n\n"
+        source = (
+            "transforms f(a Integer, b Integer) Integer\n"
+            "  ensures result >= 0\n"
+            "from\n"
+            "    x as Integer = a + b\n"
+            "    y as Integer = x * 2\n"
+            "    z as Integer = y + 1\n"
+            "    z\n"
+        )
         diags = check_warns(source, "W323")
         assert _has_notes(diags), "W323 should have a note explaining the fix"
 

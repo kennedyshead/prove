@@ -1,5 +1,10 @@
 module Example
-  narrative: """An example of email update"""
+  narrative: """
+  An example of email update
+
+  Inputs email from console, transforms user json to User struct enusres i in matches ensure_user.
+  Updates the email an save the user to user.json through file output
+  """
   System inputs console file outputs console
   Parse types Value reads json object creates json value validates json
   Types validates string object value

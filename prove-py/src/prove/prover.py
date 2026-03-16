@@ -81,10 +81,14 @@ class ProofVerifier:
         )
 
     def _check_ensures_explain(self, fd: FunctionDef) -> None:
-        """W323: ensures without explain block (warning, not error)."""
+        """W323: ensures without explain block (warning, not error).
+
+        Only fires when the function body has 3 or more statements —
+        trivial one- or two-statement bodies are self-explanatory.
+        """
         if fd.trusted is not None:
             return  # trusted functions opt out of verification
-        if fd.ensures and not fd.explain:
+        if fd.ensures and not fd.explain and len(fd.body) >= 3:
             self.diagnostics.append(
                 Diagnostic(
                     severity=Severity.WARNING,
