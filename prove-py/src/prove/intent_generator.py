@@ -9,11 +9,23 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from prove._body_gen import _format_type, find_stdlib_matches, generate_function_source
+from prove._body_gen import (
+    _format_type,
+    find_stdlib_matches,
+    generate_comptime_source,
+    generate_constant_source,
+    generate_function_source,
+    generate_import_source,
+    generate_type_source,
+)
 from prove._nl_intent import (
     _VERB_PARAM_HINTS,
     _VERB_RETURN_DEFAULTS,
     extract_nouns,
+    infer_comptime,
+    infer_constants,
+    infer_stdlib_imports,
+    infer_type_body,
     normalize_noun,
 )
 from prove.intent_ast import (
@@ -141,7 +153,9 @@ def generate_module_source(
     """Generate .prv module source from an IntentModule.
 
     Produces a module declaration with narrative derived from verb phrases,
-    type imports from vocabulary, and function stubs/bodies.
+    imports (inside the module block), type definitions (rich bodies from
+    vocabulary), constants (inferred from constraints), comptime hints,
+    and function stubs/bodies.
     """
     lines: list[str] = []
 
@@ -159,23 +173,56 @@ def generate_module_source(
         lines.append(f'  narrative: """{narrative.capitalize()}"""')
     lines.append("")
 
-    # Imports from flow declarations
+    # Collect all stdlib matches for the module's intents (used for imports)
+    all_stdlib_matches: list[object] = []
+    for intent in module.intents:
+        declaration_text = f"{intent.verb} {intent.noun} {intent.context}".strip()
+        nouns = extract_nouns(declaration_text)
+        matches = find_stdlib_matches(intent.verb, nouns)
+        all_stdlib_matches.extend(matches)
+
+    # Imports — flow-based + stdlib-inferred, inside the module block
     flow_imports = _collect_flow_imports(module, project.flows)
+    stdlib_import_groups = infer_stdlib_imports(all_stdlib_matches)
+
+    # Emit flow imports (bare use, inside module block)
     for imp in flow_imports:
-        lines.append(f"use {imp}")
-    if flow_imports:
+        lines.append(f"  use {imp}")
+
+    # Emit stdlib imports with verb groups (inside module block)
+    for mod_name, verb_groups in sorted(stdlib_import_groups.items()):
+        # Skip if already covered by flow imports
+        if mod_name in flow_imports:
+            continue
+        lines.append(generate_import_source(mod_name, verb_groups))
+
+    if flow_imports or stdlib_import_groups:
         lines.append("")
 
-    # Vocabulary types used by this module
+    # Vocabulary types used by this module — rich bodies from description
     vocab_types = _find_vocab_references(module, project.vocabulary)
     if vocab_types:
         for vt in vocab_types:
-            lines.append(f"  /// {vt.description}")
-            lines.append(f"  type {vt.name}")
+            hint = infer_type_body(vt.description)
+            lines.append(generate_type_source(vt.name, vt.description, hint))
         lines.append("")
 
     # Constraints that apply to this module
     module_constraints = _find_module_constraints(module, project.constraints)
+
+    # Constants inferred from constraints
+    constants = infer_constants(module_constraints)
+    if constants:
+        for const_name, const_type, const_value, const_doc in constants:
+            lines.append(generate_constant_source(const_name, const_type, const_value, const_doc))
+        lines.append("")
+
+    # Comptime hints inferred from constraints
+    comptime_hints = infer_comptime(module_constraints)
+    if comptime_hints:
+        for ct_name, ct_type, ct_expr, ct_doc in comptime_hints:
+            lines.append(generate_comptime_source(ct_name, ct_type, ct_expr, ct_doc))
+        lines.append("")
 
     # Map all constraints to code features
     constraint_features: dict[str, str | bool] = {}
@@ -268,9 +315,16 @@ def check_intent_coverage(
 ) -> list[dict]:
     """Check which intent declarations have matching implementations.
 
-    Returns a list of status entries, one per verb phrase.
+    Returns a list of status entries for verb phrases, vocabulary types,
+    and inferred constants.
     """
-    from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
+    from prove.ast_nodes import (
+        ConstantDef,
+        FunctionDef,
+        ModuleDecl,
+        TodoStmt,
+        TypeDef,
+    )
     from prove.lexer import Lexer
     from prove.parser import Parser
 
@@ -280,6 +334,8 @@ def check_intent_coverage(
         # Try to find the corresponding .prv file
         prv_path = project_dir / f"{module.name.lower()}.prv"
         existing_fns: dict[str, FunctionDef] = {}
+        existing_types: set[str] = set()
+        existing_constants: set[str] = set()
 
         if prv_path.exists():
             try:
@@ -289,16 +345,25 @@ def check_intent_coverage(
                 for decl in parsed.declarations:
                     if isinstance(decl, FunctionDef):
                         existing_fns[decl.name] = decl
+                    elif isinstance(decl, TypeDef):
+                        existing_types.add(decl.name)
+                    elif isinstance(decl, ConstantDef):
+                        existing_constants.add(decl.name)
                     elif isinstance(decl, ModuleDecl):
                         for inner in decl.body:
                             if isinstance(inner, FunctionDef):
                                 existing_fns[inner.name] = inner
+                            elif isinstance(inner, TypeDef):
+                                existing_types.add(inner.name)
+                            elif isinstance(inner, ConstantDef):
+                                existing_constants.add(inner.name)
             except Exception:
                 pass
 
         # Build a normalized lookup for fuzzy matching
         normalized_fns = {normalize_noun(n): fd for n, fd in existing_fns.items()}
 
+        # Check function coverage
         for intent in module.intents:
             fn = existing_fns.get(intent.noun) or normalized_fns.get(
                 normalize_noun(intent.noun)
@@ -316,6 +381,34 @@ def check_intent_coverage(
                 "noun": intent.noun,
                 "status": status,
                 "raw_line": intent.raw_line,
+                "kind": "function",
+            })
+
+        # Check vocabulary type coverage
+        vocab_types = _find_vocab_references(module, project.vocabulary)
+        for vt in vocab_types:
+            type_status = "implemented" if vt.name in existing_types else "missing"
+            statuses.append({
+                "module": module.name,
+                "verb": "",
+                "noun": vt.name,
+                "status": type_status,
+                "raw_line": f"{vt.name} is {vt.description}",
+                "kind": "type",
+            })
+
+        # Check inferred constant coverage
+        module_constraints = _find_module_constraints(module, project.constraints)
+        constants = infer_constants(module_constraints)
+        for const_name, const_type, const_value, const_doc in constants:
+            const_status = "implemented" if const_name in existing_constants else "missing"
+            statuses.append({
+                "module": module.name,
+                "verb": "",
+                "noun": const_name,
+                "status": const_status,
+                "raw_line": f"{const_name} as {const_type} = {const_value}",
+                "kind": "constant",
             })
 
     return statuses
