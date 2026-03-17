@@ -134,9 +134,9 @@ counter = counter + 1
 On `Array<T>`, `Mutable` switches from copy-on-write to in-place mutation. This is the primary use case — allocating a fixed-size working buffer that is modified in a loop without heap allocation per update:
 
 ```prove
-Array creates array
-Array reads get
-Array transforms set
+Sequence creates array
+Sequence reads get
+Sequence transforms set
 
 sieve as Array<Boolean>:[Mutable] = array(1000001, false)
 sieve = set(sieve, 0, true)   // in-place, no copy
@@ -245,7 +245,7 @@ type Color:[Lookup] is String | Integer
 The variable is typed as the lookup type, but backed by a `StoreTable` at the C level:
 
 ```prove
-Store outputs store, inputs table, validates store table
+Store outputs store inputs table validates store table
     types Store StoreTable
 
 db as Store = store("/tmp/my_store")!

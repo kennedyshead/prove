@@ -69,7 +69,7 @@ This is the idiomatic way to handle validated data in Prove. Rather than manuall
 
 ```prove
 module Main
-  Parse validates toml, creates toml
+  Parse validates toml creates toml
 
 /// Parse validated TOML data into a Config record
 matches config(data Result<String, Error>) Config

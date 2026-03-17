@@ -24,7 +24,7 @@ Defines a binary type: `Table<Value>` (the hash map).
 | `reads` | `length(table Table<Value>) Integer` | Number of entries |
 
 ```prove
-Table creates new, validates has, transforms add, reads get keys
+Table creates new validates has transforms add reads get keys
 
 reads lookup(name String, db Table<String>) String
 from
@@ -168,7 +168,7 @@ overloads for `List<Integer>` and `List<String>`.
 | `creates` | `range(start Integer, end Integer) List<Integer>` | Integer sequence [start, end) |
 
 ```prove
-List reads length first, transforms sort reverse, creates range
+List reads length first transforms sort reverse creates range
 
 reads top_three() List<Integer>
 from
@@ -244,9 +244,9 @@ result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemot
 | `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
 
 ```prove
-Store outputs store, inputs table lookup, validates store table, transforms diff patch merge
-Store reads integrity merged conflicts, outputs rollback, inputs version
-Store validates merged, types Store StoreTable Conflict Resolution MergeResult
+Store outputs store inputs table lookup validates store table transforms diff patch merge
+Store reads integrity merged conflicts outputs rollback inputs version
+Store validates merged types Store StoreTable Conflict Resolution MergeResult
 
 inputs load_table(path String, name String) StoreTable!
 from
@@ -262,7 +262,7 @@ A `[Lookup]` type with `runtime` instead of `where` is backed by a `StoreTable`.
 type Color:[Lookup] is String | Integer
   runtime
 
-Store outputs store, inputs table, validates store table
+Store outputs store inputs table validates store table
     types Store StoreTable
 
 main()!

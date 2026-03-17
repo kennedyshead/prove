@@ -10,7 +10,7 @@ keywords: Prove System, Prove Path, file IO, console IO, path manipulation
 
 **Module:** `System` — handles IO operations across console, file, system, dir, and process channels.
 
-All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions) for how IO and fallibility work together.
+All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions.md) for how IO and fallibility work together.
 
 ### Console Channel
 
@@ -24,7 +24,7 @@ Console input, output, and availability check.
 | `validates` | `console()` | Check if stdin is a terminal |
 
 ```prove
-System outputs console, inputs console
+System outputs console inputs console
 
 outputs greet()
 from
@@ -56,7 +56,7 @@ Read, write, and check files. File operations are failable — use [`!`](../type
 | `validates` | `file(path String)` | Check if file exists |
 
 ```prove
-System inputs file, outputs file, validates file
+System inputs file outputs file validates file
 
 inputs load_config(path String) String!
 from
@@ -94,7 +94,7 @@ Access command-line arguments.
 
 ### File Streaming Channel
 
-Open file handles for line-by-line streaming — for use with the [`streams` verb](../async). Type: `File` (binary handle).
+Open file handles for line-by-line streaming — for use with the [`streams` verb](../async.md). Type: `File` (binary handle).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
@@ -105,7 +105,7 @@ Open file handles for line-by-line streaming — for use with the [`streams` ver
 | `outputs` | `close(handle File)` | Close an open file handle |
 
 ```prove
-System outputs console close line, inputs line, creates reader writer, types File
+System outputs console close line inputs line creates reader writer types File
 
 type ChunkIO is Streaming(handle File)
   | Exit

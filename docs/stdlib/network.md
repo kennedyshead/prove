@@ -9,7 +9,7 @@ keywords: Prove Network, sockets, TCP, networking, streams, accept loop
 **Module:** `Network` — TCP socket communication.
 
 `Network` provides blocking IO verbs for TCP connections. Servers pair naturally with the
-[`streams`](../async) verb for accept loops.
+[`streams`](../async.md) verb for accept loops.
 
 ---
 
@@ -66,13 +66,13 @@ Import only what your module uses. Verbs are declared per channel:
 
 ```prove
 // Client: connect and exchange messages
-Network inputs socket message, outputs socket message
+Network inputs socket message outputs socket message
 Network types Socket
-Bytes creates hex, reads hex
+Bytes creates hex reads hex
 Bytes types ByteArray
 
 // Server: bind, accept, and echo
-Network inputs server accept message, outputs socket message
+Network inputs server accept message outputs socket message
 Network types Socket
 Bytes reads hex
 Bytes types ByteArray
@@ -95,9 +95,9 @@ as `ByteArray` — use `creates hex` to decode a hex string into bytes to send, 
 module Main
   narrative: """Demonstrates Network module: TCP client connecting to a server."""
   System outputs console
-  Network inputs socket message, outputs socket message
+  Network inputs socket message outputs socket message
   Network types Socket
-  Bytes creates hex, reads hex
+  Bytes creates hex reads hex
   Bytes types ByteArray
 
 main() Result<Unit, Error>!
@@ -120,7 +120,7 @@ a printable hex string.
 
 ## Server with `streams`
 
-A TCP server uses the [`streams`](../async) verb for a
+A TCP server uses the [`streams`](../async.md) verb for a
 blocking accept loop. The first parameter is an algebraic type; each iteration dispatches
 on its variant. The loop continues until the `Exit` arm is matched.
 
@@ -128,7 +128,7 @@ on its variant. The loop continues until the `Exit` arm is matched.
 module Main
   narrative: """Demonstrates Network module: TCP echo server using streams."""
   System outputs console
-  Network inputs server accept message, outputs socket message
+  Network inputs server accept message outputs socket message
   Network types Socket
   Bytes reads hex
   Bytes types ByteArray
@@ -180,7 +180,7 @@ All network operations are failable (`!`). Use `!` at each call site to propagat
 match explicitly to handle individual failure cases:
 
 ```prove
-Network inputs socket, outputs socket
+Network inputs socket outputs socket
 Network types Socket
 
 inputs safe_connect(host String, port Integer) Option<Socket>

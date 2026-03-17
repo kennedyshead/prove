@@ -160,7 +160,7 @@ from
 ```prove
 module MyModule
   narrative: """What this module does."""
-  OtherModule validates x, transforms y  # Import what you need
+  OtherModule validates x transforms y  # Import what you need
 
   type MyType is
     VariantA

@@ -12,7 +12,7 @@ keywords: Prove Time, Prove Random, time operations, random generation, calendar
 
 Defines six binary types: `Time` (epoch timestamp), `Duration` (time span), `Date` (calendar date), `Clock` (time of day), `DateTime` (date + time), and `Weekday` (day of week, 0=Monday through 6=Sunday).
 
-Only `inputs time()` is an IO verb (reads the system clock). All other functions are pure. See [Functions & Verbs](../functions) for the IO/pure distinction.
+Only `inputs time()` is an IO verb (reads the system clock). All other functions are pure. See [Functions & Verbs](../functions.md) for the IO/pure distinction.
 
 ### Time
 
@@ -66,7 +66,7 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock components are valid |
 
 ```prove
-Time inputs time, creates duration date clock, reads days weekday, types Time Duration Date Clock
+Time inputs time creates duration date clock reads days weekday types Time Duration Date Clock
 
 reads elapsed_days(start Time, stop Time) Integer
 from

@@ -72,7 +72,7 @@ Defines a binary type: `Token` (a text span with position and kind).
 | `reads` | `kind(token Token) Integer` | Token kind as integer |
 
 ```prove
-Language reads words distance similarity keywords, transforms stem normalize
+Language reads words distance similarity keywords transforms stem normalize
 Language types Token
 
 reads find_similar(query String, candidates List<String>) List<String>
