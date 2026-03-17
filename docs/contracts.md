@@ -303,7 +303,7 @@ All three are type-checked — their expressions must be Boolean ([E384](diagnos
 
 ### why_not and chosen
 
-`why_not` documents rejected alternatives. `chosen` explains the selected approach. *Upcoming:* compiler verification of rationale consistency.
+`why_not` documents rejected alternatives. `chosen` explains the selected approach. The compiler verifies rationale consistency — it checks that `why_not` entries reference known names (W505), that `chosen` text relates to the implementation (W504), and that `why_not` entries don't contradict the implementation (W506).
 
 ```prove
 transforms select_gateway(amount Price, region Region) Gateway
@@ -352,7 +352,7 @@ The compiler stops warning. [`prove check`](cli.md) reports trusted functions in
 
 ## intent
 
-`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it and emits W311 when declared without `ensures`/`requires`. *Upcoming:* prose consistency verification (W313) — warning when the intent description has no vocabulary overlap with the function body.
+`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it and emits W311 when declared without `ensures`/`requires`. Prose consistency verification uses W501-W506 — warnings when the intent/why_not/chosen descriptions don't match the implementation.
 
 ```prove
 transforms filter_valid(records List<Record>) List<Record>
@@ -391,7 +391,7 @@ module PaymentService
   temporal: validate -> charge -> record
 ```
 
-The compiler requires `narrative` blocks and enforces that referenced function names exist in scope. *Upcoming:* full semantic coherence verification — rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering.
+The compiler requires `narrative` blocks and enforces that referenced function names exist in scope. Domain-specific rules are implemented — the compiler enforces finance/safety domain requirements via W340-W342. Temporal ordering verification is upcoming.
 
 ---
 

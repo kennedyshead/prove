@@ -1038,6 +1038,11 @@ class CEmitter(
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
 
+        # Emit believe assertions (always present — believe is explicitly uncertain)
+        for believe_expr in fd.believe:
+            cond = self._emit_expr(believe_expr)
+            self._line(f'if (!({cond})) prove_panic("believe violation");')
+
         # Check if explain block has structured conditions (when)
         has_explain_conditions = fd.explain is not None and any(
             e.condition is not None for e in fd.explain.entries
@@ -1127,6 +1132,10 @@ class CEmitter(
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
             self._line(f'if (!({cond})) prove_panic("assumption violated");')
+
+        for believe_expr in fd.believe:
+            cond = self._emit_expr(believe_expr)
+            self._line(f'if (!({cond})) prove_panic("believe violation");')
 
         has_explain_conditions = fd.explain is not None and any(
             e.condition is not None for e in fd.explain.entries

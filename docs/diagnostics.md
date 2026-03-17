@@ -726,6 +726,19 @@ module Example
   Parse transforms json   -- W312: Parse has no 'transforms json'; available: creates, reads
 ```
 
+### W313 — Intent prose doesn't reference function concepts
+
+The `intent:` prose text has no vocabulary overlap with the function body — no called function names, parameter names, or type names appear in the description.
+
+```prove
+transforms sort(xs List<Value>) List<Value>
+  intent: "count the number of elements"  -- W313: 'count' unrelated to sort/xs/merge_sort
+from
+    merge_sort(xs)
+```
+
+Fix: describe what the function actually does using the names of the functions it calls, its parameters, or its return type.
+
 ### W321 — Explain text missing concept references
 
 An explain entry doesn't reference any function concepts (parameter names, variable names, or `result`).
