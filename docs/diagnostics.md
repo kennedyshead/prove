@@ -783,6 +783,28 @@ from
     SourceFile(value.path, body)
 ```
 
+### W370 — Verification chain broken (public)
+
+A public function calls a verified function (one with `ensures` clauses) but has no `ensures` clause of its own. This means the callee's guarantees do not propagate to callers of this function.
+
+Add `ensures` to propagate verification, or `trusted` to explicitly opt out.
+
+```prove
+transforms helper(n Integer) Integer
+    ensures result >= 0
+    from
+        n
+
+// Warning — calls helper (verified) but has no ensures
+transforms caller(n Integer) Integer
+    from
+        helper(n)
+```
+
+### W371 — Verification chain broken (strict)
+
+Same as W370 but for internal (underscore-prefixed) functions. Only emitted with `--strict`.
+
 ### W390 — Temporal operation out of declared order
 
 A function calls temporal operations in an order that violates the module's `temporal:` declaration. If the module declares `temporal: a -> b -> c`, calling `b` before `a` in the same function body is flagged.

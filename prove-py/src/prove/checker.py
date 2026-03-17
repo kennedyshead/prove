@@ -196,6 +196,76 @@ def _edit_distance(a: str, b: str) -> int:
     return prev[-1]
 
 
+def _extract_call_targets(
+    stmts: list[Stmt | MatchExpr],
+) -> list[tuple[str, "Span"]]:
+    """Walk a function body and extract (callee_name, call_span) pairs."""
+    from prove.source import Span as _Span  # noqa: F811
+
+    targets: list[tuple[str, _Span]] = []
+
+    def _walk_expr(expr: Expr) -> None:
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                targets.append((expr.func.name, expr.span))
+            elif isinstance(expr.func, FieldExpr) and isinstance(
+                expr.func.obj, IdentifierExpr
+            ):
+                # Module.func() → just track the function name
+                targets.append((expr.func.field, expr.span))
+            for arg in expr.args:
+                _walk_expr(arg)
+        elif isinstance(expr, BinaryExpr):
+            _walk_expr(expr.left)
+            _walk_expr(expr.right)
+        elif isinstance(expr, UnaryExpr):
+            _walk_expr(expr.operand)
+        elif isinstance(expr, FieldExpr):
+            _walk_expr(expr.obj)
+        elif isinstance(expr, PipeExpr):
+            _walk_expr(expr.left)
+            _walk_expr(expr.right)
+        elif isinstance(expr, MatchExpr):
+            if expr.subject:
+                _walk_expr(expr.subject)
+            for arm in expr.arms:
+                _walk_stmts(arm.body)
+        elif isinstance(expr, IndexExpr):
+            _walk_expr(expr.obj)
+            _walk_expr(expr.index)
+        elif isinstance(expr, LambdaExpr):
+            _walk_expr(expr.body)
+        elif isinstance(expr, FailPropExpr):
+            _walk_expr(expr.expr)
+        elif isinstance(expr, ValidExpr) and expr.args:
+            for arg in expr.args:
+                _walk_expr(arg)
+        elif isinstance(expr, AsyncCallExpr):
+            _walk_expr(expr.expr)
+        elif isinstance(expr, ListLiteral):
+            for e in expr.elements:
+                _walk_expr(e)
+
+    def _walk_stmts(stmts: list) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, ExprStmt):
+                _walk_expr(stmt.expr)
+            elif isinstance(stmt, VarDecl) and stmt.value is not None:
+                _walk_expr(stmt.value)
+            elif isinstance(stmt, Assignment):
+                _walk_expr(stmt.value)
+            elif isinstance(stmt, MatchExpr):
+                if stmt.subject:
+                    _walk_expr(stmt.subject)
+                for arm in stmt.arms:
+                    _walk_stmts(arm.body)
+            elif hasattr(stmt, "expr"):
+                _walk_expr(stmt.expr)
+
+    _walk_stmts(stmts)
+    return targets
+
+
 class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     """Semantic analyzer for a single module."""
 
@@ -258,6 +328,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._in_listens_worker_list: bool = False
         # Flag: inside a HOF lambda body (emitter adds retains, suppress W360)
         self._inside_lambda: bool = False
+        # Verification chain tracking: function_name -> "verified"/"trusted"/"unverified"
+        self._verification_status: dict[str, str] = {}
+        # Strict verification chain checking (--strict enables W371)
+        self._strict: bool = False
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -358,6 +432,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # Domain profile enforcement (W340-W342)
         self._check_domain_profiles(module)
+
+        # Verification chain analysis (W370-W371)
+        self._check_verification_chains(module)
 
         # Coherence checking (I340-I341)
         if self._coherence:
@@ -1270,6 +1347,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         )
                 except (ValueError, IndexError):
                     pass
+
+        # Track verification status for chain analysis
+        if fd.trusted is not None:
+            self._verification_status[fd.name] = "trusted"
+        elif fd.ensures:
+            self._verification_status[fd.name] = "verified"
+        else:
+            self._verification_status[fd.name] = "unverified"
 
         self.symbols.pop_scope()
         self._current_function = None
@@ -3111,6 +3196,74 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     f"Constant '{name}' is defined but never used.",
                     span,
                 )
+
+    # ── Verification chain analysis ──────────────────────────────
+
+    def _check_verification_chains(self, module: Module) -> None:
+        """W370/W371: warn when verification chain is broken.
+
+        An unverified function that calls a verified function breaks the
+        verification chain — the callee's guarantees don't propagate.
+        """
+        _IO_VERBS = frozenset({"inputs", "outputs", "streams"})
+
+        # Collect all function definitions
+        all_fns: list[FunctionDef] = []
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                all_fns.append(decl)
+            elif isinstance(decl, ModuleDecl):
+                for item in decl.body:
+                    if isinstance(item, FunctionDef):
+                        all_fns.append(item)
+
+        # Build verification status for imported functions (from FunctionSignature)
+        imported_verified: set[str] = set()
+        for (_verb_key, _name_key), sigs in self.symbols.all_functions().items():
+            for sig in sigs:
+                if sig.module and sig.ensures:
+                    imported_verified.add(sig.name)
+
+        for fd in all_fns:
+            status = self._verification_status.get(fd.name, "unverified")
+            if status != "unverified":
+                continue  # verified or trusted — no warning
+
+            # Skip exceptions: main-like, IO verbs
+            if fd.verb in _IO_VERBS:
+                continue
+
+            # Walk body to find calls to verified functions
+            call_targets = _extract_call_targets(fd.body)
+            for callee_name, call_span in call_targets:
+                callee_status = self._verification_status.get(callee_name)
+                callee_is_verified = (
+                    callee_status == "verified"
+                    or (callee_status is None and callee_name in imported_verified)
+                )
+                if not callee_is_verified:
+                    continue
+
+                # Choose warning level
+                is_public = not fd.name.startswith("_")
+                if is_public:
+                    self._warning(
+                        "W370",
+                        f"function '{fd.name}' calls verified function "
+                        f"'{callee_name}' but has no `ensures` clause "
+                        f"— verification chain broken",
+                        call_span,
+                    )
+                elif self._strict:
+                    self._warning(
+                        "W371",
+                        f"internal function '{fd.name}' calls verified "
+                        f"function '{callee_name}' but has no `ensures` "
+                        f"clause — verification chain broken",
+                        call_span,
+                    )
+                # Only warn once per function (first chain break found)
+                break
 
     # ── Domain profile enforcement ─────────────────────────────
 
