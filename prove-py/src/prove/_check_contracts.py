@@ -202,6 +202,14 @@ class ContractCheckMixin:
                     req_expr.span if hasattr(req_expr, "span") else fd.span,
                 )
 
+        # Build proof context from requires, assume, believe
+        from prove.prover import ClaimProver, ProofContext
+
+        proof_context = ProofContext()
+        proof_context.add_all(fd.requires)
+        proof_context.add_all(fd.assume)
+        proof_context.add_all(fd.believe)
+
         # Type-check `know` and attempt proof
         for know_expr in fd.know:
             know_type = self._infer_expr(know_expr)
@@ -212,10 +220,8 @@ class ContractCheckMixin:
                     know_expr.span if hasattr(know_expr, "span") else fd.span,
                 )
             else:
-                # Attempt to prove the claim
-                from prove.prover import ClaimProver
-
-                prover = ClaimProver(symbols=self.symbols)
+                # Attempt to prove the claim using proof context
+                prover = ClaimProver(symbols=self.symbols, context=proof_context)
                 result = prover.prove_claim(know_expr)
                 if result is False:
                     self._error(
@@ -233,6 +239,9 @@ class ContractCheckMixin:
                             labels=[DiagnosticLabel(span=span, message="")],
                         )
                     )
+                else:
+                    # Proven true — add to context for subsequent claims
+                    proof_context.add(know_expr)
 
         # Type-check `assume`
         for assume_expr in fd.assume:

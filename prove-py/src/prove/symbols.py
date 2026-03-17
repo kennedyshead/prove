@@ -41,6 +41,7 @@ class FunctionSignature:
     requires: list[Type] = field(default_factory=list)
     doc_comment: str | None = None
     event_type: Type | None = None
+    ensures: list = field(default_factory=list)
 
 
 class Scope:

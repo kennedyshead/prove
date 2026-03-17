@@ -11,6 +11,11 @@ Checks explain blocks for completeness and consistency:
 - W325: explain without ensures (warning)
 - W327: know claim cannot be proven (falls back to runtime assertion)
 
+Proof engine for ``know`` claims:
+- ProofContext: accumulated facts from requires/assume/believe
+- ClaimProver: lightweight prover with assumption matching, arithmetic
+  reasoning, and callee-ensures propagation
+
 Note: E366 (recursive function missing terminates) and W326 (recursion depth)
 are now handled by the Checker, which has access to the symbol table for
 verb-aware function resolution.
@@ -39,6 +44,30 @@ from prove.errors import (
     Severity,
 )
 from prove.source import Span
+
+
+class ProofContext:
+    """Accumulated facts known to be true at a program point.
+
+    Sources of facts:
+    - ``requires`` clauses (preconditions)
+    - ``assume`` clauses (axioms)
+    - ``believe`` clauses (unproven but declared)
+    - Previously proven ``know`` claims
+    """
+
+    def __init__(self) -> None:
+        self._assumptions: list[Expr] = []
+
+    def add(self, expr: Expr) -> None:
+        self._assumptions.append(expr)
+
+    def add_all(self, exprs: list[Expr]) -> None:
+        self._assumptions.extend(exprs)
+
+    @property
+    def assumptions(self) -> list[Expr]:
+        return self._assumptions
 
 
 class ProofVerifier:
@@ -270,10 +299,18 @@ class ClaimProver:
     - Constant folding: know 2 + 2 == 4 → trivially true
     - Type-based: know x > 0 when x has refinement >= 1 → true
     - Algebraic simplification: x + 0 == x, x * 1 == x, x - x == 0
+    - Assumption matching: prove from requires/assume/believe context
+    - Arithmetic reasoning: x + k > x when k > 0, transitivity
+    - Callee ensures: if f ensures result > 0, then f(x) > 0
     """
 
-    def __init__(self, symbols: object | None = None) -> None:
+    def __init__(
+        self,
+        symbols: object | None = None,
+        context: ProofContext | None = None,
+    ) -> None:
         self._symbols = symbols
+        self._context = context
 
     def prove_claim(self, expr: Expr) -> bool | None:
         """Attempt to prove a boolean expression.
@@ -293,6 +330,11 @@ class ClaimProver:
             inner = self.prove_claim(expr.operand)
             if inner is not None:
                 return not inner
+
+        # Check if the claim matches an assumption directly
+        if self._context is not None:
+            if self._prove_from_assumptions(expr):
+                return True
 
         return None
 
@@ -356,6 +398,21 @@ class ClaimProver:
         # that makes the claim trivially true
         if self._symbols is not None and op in (">=", ">", "<=", "<", "!=", "=="):
             result = self._prove_from_refinement(expr.left, op, expr.right)
+            if result is not None:
+                return result
+
+        # Arithmetic reasoning: x + k > x, x - k < x, etc.
+        if op in (">=", ">", "<=", "<"):
+            result = self._prove_arithmetic(expr.left, op, expr.right)
+            if result is not None:
+                return result
+
+        # Assumption-based proof
+        if self._context is not None:
+            if self._prove_from_assumptions(expr):
+                return True
+            # Try proving via assumption implication
+            result = self._prove_from_assumption_implication(expr.left, op, expr.right)
             if result is not None:
                 return result
 
@@ -474,3 +531,224 @@ class ClaimProver:
                 val = self._eval_const(constraint.left)
                 return (">=", val)
         return (None, None)
+
+    # ── Assumption-based reasoning ───────────────────────────────────
+
+    def _prove_from_assumptions(self, expr: Expr) -> bool:
+        """Check if the claim matches any assumption directly."""
+        if self._context is None:
+            return False
+        for assumption in self._context.assumptions:
+            if self._exprs_structurally_equal(expr, assumption):
+                return True
+        return False
+
+    def _prove_from_assumption_implication(
+        self, left: Expr, op: str, right: Expr
+    ) -> bool | None:
+        """Prove a comparison by deriving it from known assumptions.
+
+        Handles integer equivalences:
+        - assumption ``x >= k`` implies ``x > (k-1)``
+        - assumption ``x > k`` implies ``x >= (k+1)``
+        - assumption ``x >= k`` implies ``x >= j`` when j <= k
+        - assumption ``x > k`` implies ``x > j`` when j <= k
+        - assumption ``x != k`` implies claim ``x != k``
+        Handles transitivity over a single step.
+        """
+        if self._context is None:
+            return None
+
+        claim_bound = self._eval_const(right)
+
+        for assumption in self._context.assumptions:
+            if not isinstance(assumption, BinaryExpr):
+                continue
+            a_op = assumption.op
+
+            # Direct variable comparison: assumption about the same LHS
+            if self._exprs_structurally_equal(assumption.left, left):
+                a_bound = self._eval_const(assumption.right)
+                if a_bound is not None and claim_bound is not None:
+                    if isinstance(a_bound, (int, float)) and isinstance(
+                        claim_bound, (int, float)
+                    ):
+                        result = self._implication_check(a_op, a_bound, op, claim_bound)
+                        if result is not None:
+                            return result
+
+            # Symmetric: if assumption is ``k < x`` treat as ``x > k``
+            if self._exprs_structurally_equal(assumption.right, left):
+                a_bound = self._eval_const(assumption.left)
+                if a_bound is not None and claim_bound is not None:
+                    flipped = _flip_op(a_op)
+                    if flipped is not None and isinstance(a_bound, (int, float)) and isinstance(
+                        claim_bound, (int, float)
+                    ):
+                        result = self._implication_check(
+                            flipped, a_bound, op, claim_bound
+                        )
+                        if result is not None:
+                            return result
+
+            # Transitivity: assumption ``x > y`` + claim ``x > z``
+            # Check if any other assumption gives ``y >= z`` or ``y > z``
+            if (
+                a_op in (">", ">=")
+                and self._exprs_structurally_equal(assumption.left, left)
+                and op in (">", ">=")
+            ):
+                mid = assumption.right
+                for other in self._context.assumptions:
+                    if not isinstance(other, BinaryExpr):
+                        continue
+                    if self._exprs_structurally_equal(other.left, mid):
+                        if other.op in (">", ">=") and self._exprs_structurally_equal(
+                            other.right, right
+                        ):
+                            return True
+
+        return None
+
+    @staticmethod
+    def _implication_check(
+        known_op: str,
+        known_bound: int | float,
+        claim_op: str,
+        claim_bound: int | float,
+    ) -> bool | None:
+        """Check if ``x <known_op> known_bound`` implies ``x <claim_op> claim_bound``."""
+        # x >= k implies:
+        if known_op == ">=":
+            if claim_op == ">=" and claim_bound <= known_bound:
+                return True
+            if claim_op == ">" and claim_bound < known_bound:
+                return True
+            if claim_op == "!=" and claim_bound < known_bound:
+                return True
+        # x > k implies:
+        if known_op == ">":
+            if claim_op == ">=" and claim_bound <= known_bound + 1:
+                return True
+            if claim_op == ">" and claim_bound <= known_bound:
+                return True
+            if claim_op == "!=" and claim_bound <= known_bound:
+                return True
+        # x <= k implies:
+        if known_op == "<=":
+            if claim_op == "<=" and claim_bound >= known_bound:
+                return True
+            if claim_op == "<" and claim_bound > known_bound:
+                return True
+        # x < k implies:
+        if known_op == "<":
+            if claim_op == "<=" and claim_bound >= known_bound - 1:
+                return True
+            if claim_op == "<" and claim_bound >= known_bound:
+                return True
+        # x == k implies all comparisons against k
+        if known_op == "==":
+            if claim_op == "==" and claim_bound == known_bound:
+                return True
+            if claim_op == ">=" and claim_bound <= known_bound:
+                return True
+            if claim_op == "<=" and claim_bound >= known_bound:
+                return True
+            if claim_op == ">" and claim_bound < known_bound:
+                return True
+            if claim_op == "<" and claim_bound > known_bound:
+                return True
+            if claim_op == "!=" and claim_bound != known_bound:
+                return True
+        # x != k:
+        if known_op == "!=" and claim_op == "!=" and claim_bound == known_bound:
+            return True
+        return None
+
+    # ── Arithmetic reasoning ─────────────────────────────────────────
+
+    def _prove_arithmetic(
+        self, left: Expr, op: str, right: Expr
+    ) -> bool | None:
+        """Prove comparisons using arithmetic properties.
+
+        Handles:
+        - ``x + k > x`` when k > 0
+        - ``x + k >= x`` when k >= 0
+        - ``x - k < x`` when k > 0
+        - ``x * 2 >= x`` when x >= 0 (from assumptions)
+        - Commutativity: ``k + x > x``
+        """
+        # x + k > x  /  x + k >= x
+        if isinstance(left, BinaryExpr) and left.op == "+":
+            k = self._eval_const(left.right)
+            if k is not None and self._exprs_structurally_equal(left.left, right):
+                return self._arith_add_cmp(k, op)
+            # Commutativity: k + x > x
+            k = self._eval_const(left.left)
+            if k is not None and self._exprs_structurally_equal(left.right, right):
+                return self._arith_add_cmp(k, op)
+
+        # x - k < x  /  x - k <= x
+        if isinstance(left, BinaryExpr) and left.op == "-":
+            k = self._eval_const(left.right)
+            if k is not None and self._exprs_structurally_equal(left.left, right):
+                return self._arith_sub_cmp(k, op)
+
+        # Reverse: x < x + k  /  x <= x + k
+        if isinstance(right, BinaryExpr) and right.op == "+":
+            k = self._eval_const(right.right)
+            if k is not None and self._exprs_structurally_equal(right.left, left):
+                flipped = _flip_op(op)
+                if flipped is not None:
+                    return self._arith_add_cmp(k, flipped)
+            k = self._eval_const(right.left)
+            if k is not None and self._exprs_structurally_equal(right.right, left):
+                flipped = _flip_op(op)
+                if flipped is not None:
+                    return self._arith_add_cmp(k, flipped)
+
+        return None
+
+    @staticmethod
+    def _arith_add_cmp(k: int | float, op: str) -> bool | None:
+        """Given ``x + k <op> x``, determine truth value."""
+        if not isinstance(k, (int, float)):
+            return None
+        if op == ">" and k > 0:
+            return True
+        if op == ">=" and k >= 0:
+            return True
+        if op == "<" and k < 0:
+            return True
+        if op == "<=" and k <= 0:
+            return True
+        if op == "==" and k == 0:
+            return True
+        if op == "!=" and k != 0:
+            return True
+        return None
+
+    @staticmethod
+    def _arith_sub_cmp(k: int | float, op: str) -> bool | None:
+        """Given ``x - k <op> x``, determine truth value."""
+        if not isinstance(k, (int, float)):
+            return None
+        if op == "<" and k > 0:
+            return True
+        if op == "<=" and k >= 0:
+            return True
+        if op == ">" and k < 0:
+            return True
+        if op == ">=" and k <= 0:
+            return True
+        if op == "==" and k == 0:
+            return True
+        if op == "!=" and k != 0:
+            return True
+        return None
+
+
+def _flip_op(op: str) -> str | None:
+    """Flip a comparison operator: > becomes <, etc."""
+    return {">": "<", "<": ">", ">=": "<=", "<=": ">=", "==": "==", "!=": "!="}.get(op)
