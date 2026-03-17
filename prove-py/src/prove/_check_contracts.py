@@ -796,7 +796,7 @@ class ContractCheckMixin:
             prev_pos = step_pos
             prev_name = name
 
-    # ── Prose coherence checks (W501-W505) ─────────────────────────────────
+    # ── Prose coherence checks (W501-W506) ─────────────────────────────────
 
     def _check_narrative_verb_coherence(
         self, mod_decl: ModuleDecl, fns: list[FunctionDef]
@@ -900,6 +900,46 @@ class ContractCheckMixin:
                         notes=[
                             f"entry: '{entry}'",
                             "Reference a function name, type, or algorithm to anchor the rejection.",
+                        ],
+                    )
+                )
+
+    def _check_why_not_contradiction(self, fd: FunctionDef) -> None:
+        """W506: why_not entry rejects an approach that appears to be used in the body.
+
+        If a why_not entry mentions words that match function names actually called
+        in the from-block, the rejection is contradicted by the implementation.
+        Only compares against call names (not parameter names) to avoid false positives
+        when programmers mention parameters in their rationale prose.
+        """
+        if not fd.why_not:
+            return
+
+        # Collect only actual function call names (not param names) to avoid
+        # false positives when params are mentioned in why_not prose.
+        _collected: list[str] = []
+        for stmt in fd.body:
+            self._collect_call_names_stmt(stmt, _collected)
+        call_names = set(_collected)
+
+        if not call_names:
+            return
+        lower_calls = {t.lower() for t in call_names}
+        for entry in fd.why_not:
+            words = {w.lower() for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", entry)}
+            overlap = words & lower_calls
+            if overlap:
+                self.diagnostics.append(
+                    make_diagnostic(
+                        Severity.WARNING,
+                        "W506",
+                        "why_not entry rejects an approach that the from-block appears to use",
+                        labels=[DiagnosticLabel(span=fd.span, message="")],
+                        notes=[
+                            f"entry: '{entry}'",
+                            f"body uses: {', '.join(sorted(overlap))}",
+                            "Either update the why_not to reflect the actual rejected approach, "
+                            "or revise the implementation.",
                         ],
                     )
                 )

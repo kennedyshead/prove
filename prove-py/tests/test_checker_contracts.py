@@ -677,3 +677,91 @@ class TestProseCoherence:
             'from\n'
             '    items\n',
         )
+
+
+class TestCounterfactualChecks:
+    """Tests for W503-W506 counterfactual annotation checks (always active)."""
+
+    def test_w503_always_active(self) -> None:
+        """W503 fires without --coherence flag."""
+        check_warns(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort for stability"\n'
+            'from\n'
+            '    items\n',
+            "W503",
+        )
+
+    def test_w503_ok_with_why_not(self) -> None:
+        """No W503 when why_not is present alongside chosen."""
+        check(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort"\n'
+            '    why_not: "items-based quick sort is unstable"\n'
+            'from\n'
+            '    items\n',
+        )
+
+    def test_w504_always_active(self) -> None:
+        """W504 fires without --coherence flag."""
+        check_warns(
+            'transforms compute(numbers List<Integer>) Integer\n'
+            '    chosen: "recursive approach"\n'
+            '    why_not: "compute iteratively"\n'
+            'from\n'
+            '    numbers\n',
+            "W504",
+        )
+
+    def test_w505_always_active(self) -> None:
+        """W505 fires without --coherence flag."""
+        check_warns(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge sort"\n'
+            '    why_not: "it was too slow"\n'
+            'from\n'
+            '    items\n',
+            "W505",
+        )
+
+    def test_w505_ok_when_anchored(self) -> None:
+        """No W505 when why_not references a known name (param or type)."""
+        check(
+            'transforms sort(items List<Integer>) List<Integer>\n'
+            '    chosen: "merge items"\n'
+            '    why_not: "items-based bubble sort is unstable"\n'
+            'from\n'
+            '    items\n',
+        )
+
+    def test_w506_why_not_contradicts_body(self) -> None:
+        """W506 fires when why_not rejects a function that the body actually calls."""
+        check_warns(
+            'transforms find(items List<Integer>, key Integer) Integer\n'
+            '    why_not: "linear_search is O(n) and too slow"\n'
+            '    chosen: "use first element"\n'
+            'from\n'
+            '    linear_search(items, key)\n',
+            "W506",
+        )
+
+    def test_w506_no_contradiction_when_different_call(self) -> None:
+        """No W506 when why_not mentions a different function than what body uses."""
+        # Why_not mentions "items" (a param, not collected as a call), no call contradiction
+        check(
+            'transforms find(items List<Integer>, key Integer) Integer\n'
+            '    why_not: "items-based approach has overhead"\n'
+            '    chosen: "use direct indexing"\n'
+            'from\n'
+            '    items[0]\n',
+        )
+
+    def test_w506_not_fired_with_no_body_calls(self) -> None:
+        """No W506 when function body has no function calls."""
+        check(
+            'transforms identity(items List<Integer>) List<Integer>\n'
+            '    why_not: "sort the items first"\n'
+            '    chosen: "return items unchanged"\n'
+            'from\n'
+            '    items\n',
+        )
