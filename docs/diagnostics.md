@@ -886,6 +886,22 @@ transforms caller(n Integer) Integer
 
 Same as W370 but for internal (underscore-prefixed) functions. Only emitted with `--strict`.
 
+### W372 — Arm-bound `know` claim cannot be proven
+
+A `know:` claim in the function header references a variable that is bound inside a match arm (e.g., `inner` from `Some(inner)`), but the proof context cannot establish the claim. The claim is treated as a runtime assertion.
+
+```prove
+// Warning — inner is arm-bound but know claim is not provable
+transforms get_first(xs Option<Integer>) Integer
+    know: inner > 0     // arm-bound `inner`, but no requires guarantees this
+from
+    match xs
+        Some(inner) => inner
+        None => 0
+```
+
+Add a `requires` that constrains the subject, or remove the `know` if the claim is not needed as a checked assertion.
+
 ### W390 — Temporal operation out of declared order
 
 A function calls temporal operations in an order that violates the module's `temporal:` declaration. If the module declares `temporal: a -> b -> c`, calling `b` before `a` in the same function body is flagged.
