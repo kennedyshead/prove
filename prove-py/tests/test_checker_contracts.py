@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from prove.ast_nodes import BinaryExpr, BooleanLit, IntegerLit, IdentifierExpr, UnaryExpr
-from prove.prover import ClaimProver
+from prove.prover import ClaimProver, ProofContext
 from prove.source import Span
 from tests.helpers import check, check_coherence_ok, check_coherence_warns, check_fails, check_warns
 
@@ -524,6 +524,133 @@ class TestClaimProver:
         assert prover.prove_claim(expr) is None
 
 
+class TestProofContext:
+    """Unit tests for ProofContext-based assumption matching."""
+
+    def test_direct_assumption_match(self):
+        """Claim matches assumption exactly."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">", _int(0)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">", _int(0))) is True
+
+    def test_no_match_without_assumption(self):
+        """Claim with no matching assumption remains indeterminate."""
+        ctx = ProofContext()
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">", _int(0))) is None
+
+    def test_implication_ge_implies_gt(self):
+        """x >= 1 implies x > 0."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">=", _int(1)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">", _int(0))) is True
+
+    def test_implication_gt_implies_ge(self):
+        """x > 0 implies x >= 1."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">", _int(0)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">=", _int(1))) is True
+
+    def test_implication_ge_weaker_bound(self):
+        """x >= 5 implies x >= 3."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">=", _int(5)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">=", _int(3))) is True
+
+    def test_implication_gt_weaker_bound(self):
+        """x > 5 implies x > 3."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">", _int(5)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">", _int(3))) is True
+
+    def test_implication_eq_implies_ge(self):
+        """x == 5 implies x >= 3."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), "==", _int(5)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">=", _int(3))) is True
+
+    def test_implication_neq_from_neq(self):
+        """x != 0 implies x != 0."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), "!=", _int(0)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), "!=", _int(0))) is True
+
+    def test_no_false_implication(self):
+        """x >= 3 does NOT imply x >= 5."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("x"), ">=", _int(3)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), ">=", _int(5))) is None
+
+    def test_multiple_assumptions(self):
+        """Multiple assumptions, second one matches."""
+        ctx = ProofContext()
+        ctx.add(_binop(_ident("y"), ">", _int(10)))
+        ctx.add(_binop(_ident("x"), "!=", _int(0)))
+        prover = ClaimProver(context=ctx)
+        assert prover.prove_claim(_binop(_ident("x"), "!=", _int(0))) is True
+
+
+class TestArithmeticReasoning:
+    """Unit tests for arithmetic reasoning in ClaimProver."""
+
+    def test_x_plus_k_gt_x(self):
+        """x + 1 > x is always true."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "+", _int(1))
+        assert prover.prove_claim(_binop(left, ">", _ident("x"))) is True
+
+    def test_x_plus_k_ge_x(self):
+        """x + 0 >= x is always true."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "+", _int(0))
+        assert prover.prove_claim(_binop(left, ">=", _ident("x"))) is True
+
+    def test_x_plus_negative_lt_x(self):
+        """x + (-1) < x is always true."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "+", _unary("-", _int(1)))
+        assert prover.prove_claim(_binop(left, "<", _ident("x"))) is True
+
+    def test_x_minus_k_lt_x(self):
+        """x - 1 < x is always true."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "-", _int(1))
+        assert prover.prove_claim(_binop(left, "<", _ident("x"))) is True
+
+    def test_x_minus_k_le_x(self):
+        """x - 0 <= x is always true."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "-", _int(0))
+        assert prover.prove_claim(_binop(left, "<=", _ident("x"))) is True
+
+    def test_k_plus_x_gt_x_commutativity(self):
+        """1 + x > x (commutative) is always true."""
+        prover = ClaimProver()
+        left = _binop(_int(1), "+", _ident("x"))
+        assert prover.prove_claim(_binop(left, ">", _ident("x"))) is True
+
+    def test_x_lt_x_plus_k(self):
+        """x < x + 1 (reversed form) is always true."""
+        prover = ClaimProver()
+        right = _binop(_ident("x"), "+", _int(1))
+        assert prover.prove_claim(_binop(_ident("x"), "<", right)) is True
+
+    def test_x_plus_zero_neq_x_false(self):
+        """x + 0 != x is false (k == 0)."""
+        prover = ClaimProver()
+        left = _binop(_ident("x"), "+", _int(0))
+        # This should not be provable as true (k=0, != requires k!=0)
+        assert prover.prove_claim(_binop(left, "!=", _ident("x"))) is None
+
+
 class TestKnowClaimProving:
     """Integration tests: know claims through the checker."""
 
@@ -554,6 +681,78 @@ class TestKnowClaimProving:
             "    from\n"
             "        n\n",
             "W327",
+        )
+
+    def test_know_from_requires(self):
+        """know n > 0 with requires n > 0 should be provable (no W327)."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    requires n > 0\n"
+            "    know: n > 0\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_from_requires_implication(self):
+        """know n > 0 with requires n >= 1 should be provable."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    requires n >= 1\n"
+            "    know: n > 0\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_from_assume(self):
+        """know n > 0 with assume n > 0 should be provable."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    assume: n > 0\n"
+            "    know: n > 0\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_from_believe(self):
+        """know n >= 0 with believe n >= 0 should be provable."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    ensures result >= 0\n"
+            "    believe: n >= 0\n"
+            "    know: n >= 0\n"
+            "    explain\n"
+            "        check result\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_chaining(self):
+        """First know proven, second uses it as assumption."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    know: 2 + 2 == 4\n"
+            "    know: 2 + 2 == 4\n"
+            "    from\n"
+            "        n\n"
+        )
+
+    def test_know_arithmetic_x_plus_1_gt_x(self):
+        """know n + 1 > n should be provable via arithmetic reasoning."""
+        check(
+            "transforms inc(n Integer) Integer\n"
+            "    know: n + 1 > n\n"
+            "    from\n"
+            "        n + 1\n"
+        )
+
+    def test_know_requires_ne_zero(self):
+        """know b != 0 with requires b != 0 should be provable."""
+        check(
+            "transforms safe_div(a Integer, b Integer) Integer\n"
+            "    requires b != 0\n"
+            "    know: b != 0\n"
+            "    from\n"
+            "        a\n"
         )
 
 

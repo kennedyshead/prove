@@ -689,6 +689,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             requires=fd.requires,
             doc_comment=fd.doc_comment,
             event_type=resolved_event_type,
+            ensures=fd.ensures,
         )
         # E301: duplicate function definition (exact same verb + name + param types)
         existing = self.symbols.find_exact_duplicate(sig)
