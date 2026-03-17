@@ -30,7 +30,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
   | [AI scrapes your code for training](ai-resistance.md#anti-training-license-for-prove-code) | Binary AST format + anti-training license + semantic normalization |
   | [AI slop PRs waste maintainer time](ai-resistance.md#implementation-explanation-as-code) | Compiler rejects code without explanations and intent |
   | [Tests are separate from code](contracts.md) | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
-  | ["Works on my machine"](functions.md#io-and-fallibility) | Verb system makes IO explicit |
+  | ["Works on my machine"](functions.md) | Verb system makes IO explicit |
   | [Null/nil crashes](types.md#option-and-result) | No null — `Option<Value>` enforced by compiler |
   | ["I forgot an edge case"](types.md#refinement-types) | Compiler generates edge cases from types |
   | [Runtime type errors](types.md) | Refinement types catch invalid values at compile time |
@@ -83,7 +83,7 @@ from
     query(db, "SELECT * FROM users")!
 ```
 
-The same name can exist with different verbs — the compiler [resolves which to call](functions.md#context-aware-call-resolution) from context.
+The same name can exist with different verbs — the compiler [resolves which to call](verbs.md#context-aware-call-resolution) from context.
 
 ### Refinement Types
 
@@ -111,7 +111,7 @@ from
 
 ### No Loops — Functional Iteration
 
-Prove enforces [functional iteration](functions.md#iteration-no-loops) (map, filter, reduce) over traditional loops.
+Prove enforces [functional iteration](lambdas.md) (map, filter, reduce) over traditional loops.
 
 ```prove
 names as List<String> = map(users, |u| u.name)

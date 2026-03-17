@@ -37,7 +37,7 @@ module InventoryService
     total >= 0
 ```
 
-A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity — see [Functions & Verbs](functions.md#verb-dispatched-identity) for details.
+A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity — see [Functions & Verbs](verbs.md#verb-dispatched-identity) for details.
 
 ## Foreign Blocks (C FFI)
 
@@ -107,39 +107,11 @@ link_flags = ["-L/usr/local/lib", "-lm"]
 
 No curly braces. Indentation defines scope (like Python). No semicolons — newlines terminate statements. Newlines are suppressed after operators, commas, opening brackets, `->`, `=>`.
 
-## Primitive Types — Full Names, No Shorthands
+## Primitive Types
 
-Every type uses its full name. No abbreviations. Type modifiers use bracket syntax `Type:[Modifier ...]` for storage and representation concerns. Value constraints belong in [refinement types](types.md#refinement-types) (`where`), not modifiers. See [Type System — Type Modifiers](types.md#type-modifiers) for the full reference.
+Every type uses its full name. No abbreviations. Type modifiers use bracket syntax `Type:[Modifier ...]` for storage and representation concerns. Value constraints belong in [refinement types](types.md#refinement-types) (`where`), not modifiers.
 
-| Type | Modifier Axes | Default | Examples |
-|------|---------------|---------|----------|
-| `Integer` | size (8/16/32/64/128), signedness (Signed/Unsigned) | `Integer:[64 Signed]` | `Integer:[32 Unsigned]`, `Integer:[8]` |
-| `Decimal` | precision (32/64/128), scale (Scale:N) | `Decimal:[64]` | `Decimal:[128 Scale:2]` |
-| `Float` | precision (32/64) | `Float:[64]` | `Float:[32]` |
-| `Boolean` | — | — | — |
-| `String` | encoding (UTF8/ASCII/UTF16), max length | `String:[UTF8]` | `String:[UTF8 15]`, `String:[ASCII 255]` |
-| `Byte` | — | — | Distinct type for binary data |
-| `Character` | encoding (UTF8/UTF16/ASCII) | `Character:[UTF8]` | `Character:[ASCII]` |
-
-**Modifier rules:**
-- Modifiers are **order-independent** — `Integer:[Signed 64]` and `Integer:[64 Signed]` are identical. The compiler normalizes internally.
-- Each modifier occupies a **distinct axis**. Two modifiers on the same axis is a compile error: `Integer:[32 64]` → ERROR: conflicting size modifiers.
-- **Positional modifiers** when unambiguous by kind. **Named modifiers** (`Key:Value`) when a bare value could be confused: `Decimal:[128 Scale:2]`.
-- Bare type name uses sensible defaults: `Integer` means `Integer:[64 Signed]`, `String` means `String:[UTF8]`, `Decimal` means `Decimal:[64]`.
-- **`Float` is opt-in** — `Decimal` is the default for fractional numbers. `Float:[64]` uses IEEE 754 hardware floats for performance-critical domains (scientific computing, graphics, signal processing) where speed matters more than exact precision. Mixing `Float` and `Decimal` requires explicit conversion.
-
-**Separation of concerns** — modifiers describe *storage*, refinements describe *values*:
-
-```prove
-// Modifier: how it's stored
-raw_port as Integer:[16 Unsigned] = 8080
-
-// Refinement: what values are valid
-type Port is Integer where 1..65535
-
-// Combined: storage + value constraint
-type Port is Integer:[16 Unsigned] where 1..65535
-```
+See [Type System — Type Modifiers](types.md#type-modifiers) for the complete reference.
 
 ## Type Definitions
 
@@ -216,37 +188,8 @@ The LSP shows inferred types inline as you type, so you always know what the com
 
 **The language encourages explicit types** — the formatter enforces them. But you're never blocked from writing code because you can't remember whether it's `List<Map<String, User>>` or `Map<String, List<User>>`.
 
-## Keyword Exclusivity
+## Keywords
 
 Every keyword in Prove has exactly one purpose. No keyword is overloaded across different contexts. This makes the language predictable and parseable by humans without memorizing context-dependent rules.
 
-**Core keywords:**
-
-| Keyword | What it does |
-|---------|-------------|
-| `transforms` | Declares a pure function — no side effects. See [Functions & Verbs](functions.md#intent-verbs) |
-| `validates` | Declares a function that returns true or false. See [Functions & Verbs](functions.md#intent-verbs) |
-| `reads` | Declares a pure function that extracts or queries data. See [Functions & Verbs](functions.md#intent-verbs) |
-| `creates` | Declares a pure function that constructs a new value. See [Functions & Verbs](functions.md#intent-verbs) |
-| `inputs` | Declares a function that reads from the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
-| `outputs` | Declares a function that writes to the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
-| `streams` | Declares a blocking IO loop over a source. See [Functions & Verbs](functions.md#streams-blocking-io-loop) |
-| `detached` | Declares a fire-and-forget async function. See [Functions & Verbs](functions.md#async-verbs) |
-| `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
-| `listens` | Declares an event dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
-| `matches` | Declares a pure match dispatch on algebraic type. See [Functions & Verbs](functions.md#intent-verbs) |
-| `main` | The program's entry point — can freely mix reading and writing |
-| `from` | Marks where the function body starts. See [Functions & Verbs](functions.md#body-marker-from) |
-| `where` | Adds a value constraint to a type. See [Type System](types.md#refinement-types) |
-| `as` / `is` | `as` declares a variable — `port as Port = 8080`. `is` defines a type — `type Port is Integer` |
-| `type` | Starts a type definition — `type Port is Integer where 1..65535` |
-| `match` | Branches on a value. See [Type System](types.md#pattern-matching) |
-| `ensures` | States what a function guarantees about its result. See [Contracts](contracts.md#requires-and-ensures) |
-| `requires` | States what must be true before calling a function. See [Contracts](contracts.md#requires-and-ensures) |
-| `explain` | Documents `from` block steps using controlled natural language. See [Contracts](contracts.md#explain) |
-| `terminates` | Required for recursive functions. See [Contracts](contracts.md#terminates) |
-| `trusted` | Marks a function as unverified. See [Contracts](contracts.md#trusted) |
-| `valid` | References a `validates` function as a predicate |
-| `comptime` | Marks code for compile-time evaluation. See [Compiler](compiler.md#comptime-compile-time-computation) |
-| `event_type` | Declares the algebraic type for a `listens` dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
-| `foreign` | Declares a C FFI block inside a module |
+For a complete keyword reference with links to detailed documentation, see the [Keyword Reference](types.md#keyword-reference) in the Type System document.
