@@ -135,8 +135,8 @@ _register_doc_range("W", 340, 343)
 DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
 # Warning — own/borrow overlap W360
 DIAGNOSTIC_DOCS["W360"] = f"{_DOCS_BASE}#W360"
-# Warning — verification chain W370-W371
-_register_doc_range("W", 370, 371)
+# Warning — verification chain W370-W372
+_register_doc_range("W", 370, 372)
 # Warning — temporal/satisfies W390-W391
 _register_doc_range("W", 390, 391)
 # Warning — prose coherence W501-W506

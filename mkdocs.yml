@@ -40,6 +40,7 @@ nav:
       - Design Decisions: design.md
       - Roadmap: roadmap.md
       - FAQ: faq.md
+      - Security: SECURITY.md
 
 theme:
   name: material

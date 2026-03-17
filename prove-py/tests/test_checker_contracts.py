@@ -5,7 +5,7 @@ from __future__ import annotations
 from prove.ast_nodes import BinaryExpr, BooleanLit, IntegerLit, IdentifierExpr, UnaryExpr
 from prove.prover import ClaimProver, ProofContext
 from prove.source import Span
-from tests.helpers import check, check_coherence_ok, check_coherence_warns, check_fails, check_warns
+from tests.helpers import check, check_all, check_coherence_ok, check_coherence_warns, check_fails, check_warns
 
 
 class TestContractChecking:
@@ -881,6 +881,60 @@ class TestMatchArmNarrowing:
         prover = ClaimProver(context=ctx)
         # No assumption, no binding → indeterminate
         assert prover.prove_claim(ne_none) is None
+
+
+class TestArmBoundKnow:
+    """Tests for arm-bound variable resolution in function-level know claims (W372)."""
+
+    def test_know_arm_bound_option_no_e310(self) -> None:
+        """know referencing arm-bound variable type-checks — no E310 for inner."""
+        # `inner` is only defined inside `Some(inner) =>`, but `know: inner > 0`
+        # in the function header should be resolved via arm-binding inference.
+        check_warns(
+            "transforms unwrap(xs Option<Integer>) Integer\n"
+            "    know: inner > 0\n"
+            "from\n"
+            "    match xs\n"
+            "        Some(inner) => inner\n"
+            "        None => 0\n",
+            "W372",
+        )
+
+    def test_know_arm_bound_unprovable_warns_w372_not_w327(self) -> None:
+        """Arm-bound know that can't be proven emits W372, not W327."""
+        result = check_all(
+            "transforms unwrap(xs Option<Integer>) Integer\n"
+            "    know: inner > 0\n"
+            "from\n"
+            "    match xs\n"
+            "        Some(inner) => inner\n"
+            "        None => 0\n"
+        )
+        codes = [d.code for d in result]
+        assert "W372" in codes, f"Expected W372, got: {codes}"
+        assert "W327" not in codes, f"W327 should not fire for arm-bound know; got: {codes}"
+
+    def test_know_not_arm_bound_still_w327(self) -> None:
+        """know referencing non-arm-bound variable still emits W327."""
+        check_warns(
+            "transforms add(a Integer, b Integer) Integer\n"
+            "    know: a > 0\n"
+            "from\n"
+            "    a + b\n",
+            "W327",
+        )
+
+    def test_know_arm_bound_result_ok_no_e310(self) -> None:
+        """know referencing Ok-bound variable type-checks — no E310 for val."""
+        check_warns(
+            "transforms unwrap_ok(r Result<Integer, Error>) Integer\n"
+            "    know: val > 0\n"
+            "from\n"
+            "    match r\n"
+            "        Ok(val) => val\n"
+            "        Err(e) => 0\n",
+            "W372",
+        )
 
 
 class TestProseCoherence:
