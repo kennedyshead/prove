@@ -30,6 +30,20 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 Structural subtyping for record types via the `Struct` builtin type and `with` field constraints.
 
+### Parallel Higher-Order Functions
+
+`par_map`, `par_filter`, and `par_reduce` execute pure higher-order operations in parallel
+using a thread pool. The runtime auto-detects available cores. Only pure verbs
+(`transforms`, `validates`, `reads`, `creates`, `matches`) are accepted as callbacks —
+IO and async verbs are rejected at compile time. Closure support (capturing outer bindings)
+is not yet implemented.
+
+### Verification Chain Propagation
+
+`W370` warns when a public function calls verified code (functions with `ensures` clauses)
+but has no `ensures` of its own, breaking the verification chain. `W371` (enabled with
+`--strict`) extends the warning to internal functions.
+
 ---
 
 ## Proposed
@@ -40,17 +54,11 @@ Structural subtyping for record types via the `Struct` builtin type and `with` f
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
 
-### `par_map` Concurrency
-
-Runtime scaffolding exists but is not callable from user code.
-
-### Verification Chain Propagation
-
-Per-call-site warnings for unverified `ensures` chains.
-
 ### Formal `know` Proofs
 
-General proof beyond the current lightweight `ClaimProver`.
+Extended proof engine beyond the current implementation. Phases 1–3 are done
+(`ProofContext`, assumption matching, arithmetic reasoning). Phases 4–5 remain:
+callee `ensures` propagation and match-arm path narrowing.
 
 ### Self-Hosted Compiler (V2.0)
 
