@@ -738,7 +738,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         )
         if existing is not None:
             self._error("E301", f"duplicate definition of '{cd.name}'", cd.span)
-        self._user_constants[cd.name] = cd.span
+        if not self._is_stdlib:
+            self._user_constants[cd.name] = cd.span
 
     def _register_foreign_block(self, fb: ForeignBlock) -> None:
         """Register foreign (C FFI) functions in the symbol table."""
