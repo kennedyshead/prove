@@ -1169,6 +1169,8 @@ class ContractCheckMixin:
             match_expr: MatchExpr | None = None
             if isinstance(stmt, MatchExpr):
                 match_expr = stmt
+            elif isinstance(stmt, ExprStmt) and isinstance(stmt.expr, MatchExpr):
+                match_expr = stmt.expr
             elif isinstance(stmt, VarDecl) and isinstance(stmt.value, MatchExpr):
                 match_expr = stmt.value
             if match_expr is None:
