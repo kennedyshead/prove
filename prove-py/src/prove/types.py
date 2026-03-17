@@ -40,6 +40,18 @@ class RecordType:
 
 
 @dataclass(frozen=True)
+class StructType:
+    """Row-polymorphic structural type.
+
+    A bare StructType() (no required_fields) means "any record".
+    With required_fields populated (via `with` constraints), it means
+    "any record that has at least these fields with these types".
+    """
+
+    required_fields: dict[str, Type] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class AlgebraicType:
     name: str
     variants: list[VariantInfo] = field(default_factory=list)
@@ -111,6 +123,7 @@ Type = (
     PrimitiveType
     | UnitType
     | RecordType
+    | StructType
     | AlgebraicType
     | RefinementType
     | GenericInstance
@@ -136,6 +149,7 @@ CHARACTER = PrimitiveType("Character")
 BYTE = PrimitiveType("Byte")
 UNIT = UnitType()
 ATTACHED = PrimitiveType("Attached")
+STRUCT = StructType()
 ERROR_TY = ErrorType()
 
 # Numeric widening hierarchy: Integer → Decimal → Float
@@ -172,6 +186,7 @@ BUILTINS: dict[str, Type] = {
     "Character": CHARACTER,
     "Byte": BYTE,
     "Unit": UNIT,
+    "Struct": STRUCT,
 }
 
 # ── Built-in function names ────────────────────────────────────
@@ -205,6 +220,13 @@ def type_name(ty: Type) -> str:
         return "Unit"
     if isinstance(ty, RecordType):
         return ty.name
+    if isinstance(ty, StructType):
+        if ty.required_fields:
+            fields = ", ".join(
+                f"{n}: {type_name(t)}" for n, t in ty.required_fields.items()
+            )
+            return f"Struct with {{{fields}}}"
+        return "Struct"
     if isinstance(ty, AlgebraicType):
         return ty.name
     if isinstance(ty, RefinementType):
@@ -275,6 +297,8 @@ def is_json_serializable(ty: Type) -> bool:
         return ty.name in _JSON_SERIALIZABLE_PRIMITIVES
     if isinstance(ty, RecordType):
         return all(is_json_serializable(ft) for ft in ty.fields.values())
+    if isinstance(ty, StructType):
+        return all(is_json_serializable(ft) for ft in ty.required_fields.values())
     if isinstance(ty, GenericInstance):
         if ty.base_name in ("List", "Option", "Table"):
             return all(is_json_serializable(a) for a in ty.args)
@@ -347,6 +371,21 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             act_name == "StoreTable" and exp_name in STORE_BACKED_TYPES
         ):
             return True
+    # Row polymorphism: StructType accepts any RecordType with matching fields
+    if isinstance(expected, StructType):
+        if isinstance(actual, RecordType):
+            for fname, ftype in expected.required_fields.items():
+                actual_ftype = actual.fields.get(fname)
+                if actual_ftype is None or not types_compatible(ftype, actual_ftype):
+                    return False
+            return True
+        if isinstance(actual, StructType):
+            for fname, ftype in expected.required_fields.items():
+                actual_ftype = actual.required_fields.get(fname)
+                if actual_ftype is None or not types_compatible(ftype, actual_ftype):
+                    return False
+            return True
+        return False
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):
@@ -428,6 +467,12 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
         return ListType(substitute_type_vars(ty.element, bindings))
     if isinstance(ty, ArrayType):
         return ArrayType(substitute_type_vars(ty.element, bindings))
+    if isinstance(ty, StructType) and ty.required_fields:
+        new_fields = {
+            n: substitute_type_vars(t, bindings)
+            for n, t in ty.required_fields.items()
+        }
+        return StructType(new_fields)
     return ty
 
 

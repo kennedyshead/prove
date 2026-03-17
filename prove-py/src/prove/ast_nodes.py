@@ -494,6 +494,16 @@ TypeBody = Union[RefinementTypeDef, AlgebraicTypeDef, RecordTypeDef, BinaryDef, 
 
 
 @dataclass(frozen=True)
+class WithConstraint:
+    """Row-polymorphism field constraint: ``with param.field Type``."""
+
+    param_name: str
+    field_name: str
+    field_type: TypeExpr
+    span: Span
+
+
+@dataclass(frozen=True)
 class FunctionDef:
     verb: str
     name: str
@@ -512,6 +522,7 @@ class FunctionDef:
     know: list[Expr]
     assume: list[Expr]
     believe: list[Expr]
+    with_constraints: list[WithConstraint]
     intent: str | None
     satisfies: list[str]
     event_type: TypeExpr | None

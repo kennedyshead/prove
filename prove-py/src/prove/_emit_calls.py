@@ -30,6 +30,7 @@ from prove.types import (
     ListType,
     PrimitiveType,
     RecordType,
+    StructType,
     Type,
     TypeVariable,
     resolve_type_vars,
@@ -773,6 +774,20 @@ class CallEmitterMixin:
                     )
 
             if sig and sig.verb is not None:
+                # Struct-polymorphic call — monomorphise
+                if any(isinstance(pt, StructType) for pt in sig.param_types):
+                    concrete_types = list(sig.param_types)
+                    for i, pt in enumerate(sig.param_types):
+                        if isinstance(pt, StructType) and i < len(expr.args):
+                            concrete_types[i] = self._infer_expr_type(expr.args[i])
+                    template_key = (sig.verb, sig.name, len(sig.param_types))
+                    template_fd = self._struct_templates.get(template_key)
+                    if template_fd:
+                        mangled = self._request_struct_specialisation(
+                            template_fd, concrete_types
+                        )
+                        return f"{mangled}({', '.join(args)})"
+
                 args = self._coerce_call_args(args, expr.args, sig)
                 mangled = mangle_name(sig.verb, sig.name, sig.param_types)
                 call = f"{mangled}({', '.join(args)})"
@@ -911,6 +926,27 @@ class CallEmitterMixin:
                     )
                     return call_str
             if sig and sig.verb is not None:
+                # Struct-polymorphic call — monomorphise
+                if any(isinstance(pt, StructType) for pt in sig.param_types):
+                    concrete_types = list(sig.param_types)
+                    for i, pt in enumerate(sig.param_types):
+                        if isinstance(pt, StructType) and i < len(expr.args):
+                            concrete_types[i] = self._infer_expr_type(expr.args[i])
+                    template_key = (sig.verb, sig.name, len(sig.param_types))
+                    template_fd = self._struct_templates.get(template_key)
+                    if template_fd:
+                        mangled = self._request_struct_specialisation(
+                            template_fd, concrete_types
+                        )
+                        call_str = f"{mangled}({', '.join(args)})"
+                        call_str = self._maybe_unwrap_option(
+                            call_str, sig, expr.args, module_name,
+                        )
+                        call_str = self._maybe_unwrap_result(
+                            call_str, sig, expr.args, module_name,
+                        )
+                        return call_str
+
                 # Emit Verb lambda args before coercion
                 for i, pt in enumerate(sig.param_types):
                     if isinstance(pt, FunctionType) and i < len(expr.args):

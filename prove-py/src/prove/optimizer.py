@@ -1107,7 +1107,7 @@ class Optimizer:
     def _is_inline_candidate(self, fd: FunctionDef) -> bool:
         """Check if a function is eligible for inlining."""
         _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
-        if fd.binary or fd.terminates is not None or fd.requires or fd.ensures:
+        if fd.binary or fd.with_constraints or fd.terminates is not None or fd.requires or fd.ensures:
             return False
         if self._calls_self(fd.name, fd.body):
             return False
@@ -1854,7 +1854,7 @@ class Optimizer:
         """Check if a function is a memoization candidate."""
         if fd.verb not in pure_verbs:
             return
-        if fd.binary:
+        if fd.binary or fd.with_constraints:
             return
         if fd.terminates is not None:
             return

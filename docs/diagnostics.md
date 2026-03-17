@@ -612,6 +612,36 @@ A `comptime` block calls a function that is not available in the compile-time in
 
 ---
 
+### E430 — `with` references unknown parameter
+
+A `with` constraint names a parameter that does not exist in the function signature.
+
+---
+
+### E431 — `with` on non-Struct parameter
+
+A `with` constraint targets a parameter whose type is not `Struct`. Only `Struct`-typed parameters support row-polymorphic field constraints.
+
+---
+
+### E432 — Duplicate `with` for same field
+
+Two `with` constraints declare the same field on the same parameter.
+
+---
+
+### E433 — Field access on Struct not in `with`
+
+Code accesses a field on a `Struct` parameter that was not declared via a `with` constraint. All accessed fields must be declared.
+
+---
+
+### E434 — Record missing required Struct fields
+
+A concrete record passed to a `Struct` parameter does not have all the fields required by the `with` constraints, or one of its fields has an incompatible type.
+
+---
+
 ## Warnings
 
 ### W304 — Match condition guaranteed by requires

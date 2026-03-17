@@ -14,6 +14,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     RefinementType,
+    StructType,
     Type,
     TypeVariable,
     UnitType,
@@ -164,6 +165,11 @@ def map_type(ty: Type) -> CType:
         # Generic — fallback to void* in POC
         return CType("void*", is_pointer=True, header=None)
 
+    if isinstance(ty, StructType):
+        # StructType is erased by monomorphisation — should not reach here
+        # in correct code.  Fallback to void* for safety.
+        return CType("void*", is_pointer=True, header=None)
+
     if isinstance(ty, VariantInfo):
         return CType("int64_t", is_pointer=False, header=None)
 
@@ -214,4 +220,6 @@ def _type_tag(ty: Type) -> str:
         return "Unit"
     if isinstance(ty, TypeVariable):
         return ty.name
+    if isinstance(ty, StructType):
+        return "Struct"
     return "unknown"

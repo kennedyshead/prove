@@ -51,6 +51,7 @@ class TokenKind(Enum):
     WHEN = auto()
     TERMINATES = auto()
     TRUSTED = auto()
+    WITH = auto()
 
     # AI-resistance
     WHY_NOT = auto()
@@ -171,6 +172,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "explain": TokenKind.EXPLAIN,
     "terminates": TokenKind.TERMINATES,
     "trusted": TokenKind.TRUSTED,
+    "with": TokenKind.WITH,
     "why_not": TokenKind.WHY_NOT,
     "chosen": TokenKind.CHOSEN,
     "near_miss": TokenKind.NEAR_MISS,

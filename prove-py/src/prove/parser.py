@@ -80,6 +80,7 @@ from prove.ast_nodes import (
     Variant,
     VariantPattern,
     WildcardPattern,
+    WithConstraint,
 )
 from prove.errors import CompileError, Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
@@ -460,6 +461,7 @@ class Parser:
         is_trusted: str | None = None
         why_not, chosen, near_misses = [], None, []
         know, assume, believe = [], [], []
+        with_constraints: list[WithConstraint] = []
         intent = None
         satisfies: list[str] = []
         event_type_expr: TypeExpr | None = None
@@ -522,6 +524,17 @@ class Parser:
                 self._advance()
                 self._expect(TokenKind.COLON)
                 believe.append(self._parse_expression(0))
+            elif self._at(TokenKind.WITH):
+                wc_start = self._current().span
+                self._advance()
+                param_tok = self._expect(TokenKind.IDENTIFIER)
+                self._expect(TokenKind.DOT)
+                field_tok = self._expect(TokenKind.IDENTIFIER)
+                field_type = self._parse_type_expr()
+                wc_span = self._span(wc_start, field_type.span if hasattr(field_type, "span") else wc_start)
+                with_constraints.append(
+                    WithConstraint(param_tok.value, field_tok.value, field_type, wc_span)
+                )
             elif self._at(TokenKind.INTENT):
                 self._advance()
                 self._expect(TokenKind.COLON)
@@ -582,6 +595,7 @@ class Parser:
             know=know,
             assume=assume,
             believe=believe,
+            with_constraints=with_constraints,
             intent=intent,
             satisfies=satisfies,
             event_type=event_type_expr,

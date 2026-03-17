@@ -116,6 +116,8 @@ DIAGNOSTIC_DOCS["E400"] = f"{_DOCS_BASE}#E400"
 _register_doc_range("E", 401, 406)
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
+# Row polymorphism E430-E434
+_register_doc_range("E", 430, 434)
 # Warnings
 for _c in ("W304", "W311", "W312"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
