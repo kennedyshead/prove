@@ -26,11 +26,31 @@ _FOREIGN_PKG_CONFIG: dict[str, str] = {
 def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
     """Resolve compiler and linker flags for a foreign library.
 
-    Returns (c_flags, link_flags).  Uses pkg-config when available,
-    falls back to -l<name>.
+    Returns (c_flags, link_flags).  Resolution order:
+      1. Environment variables (PROVE_<LIB>_CFLAGS / PROVE_<LIB>_LDFLAGS)
+      2. pkg-config when a mapping exists
+      3. Plain -l<name> fallback
+
+    For libpython3 the env vars are PROVE_PYTHON_CFLAGS and PROVE_PYTHON_LDFLAGS.
     """
+    import os
     import subprocess
 
+    # Step 1: Check environment variables.
+    # Derive env key: "libpython3" -> "PYTHON", "libjvm" -> "JVM"
+    env_key = library.upper()
+    if env_key.startswith("LIB"):
+        env_key = env_key[3:]
+    # Normalise: "python3" -> "PYTHON" (strip trailing digits for cleaner names)
+    env_key = env_key.rstrip("0123456789")
+    cflags_env = os.environ.get(f"PROVE_{env_key}_CFLAGS", "").strip()
+    ldflags_env = os.environ.get(f"PROVE_{env_key}_LDFLAGS", "").strip()
+    if cflags_env or ldflags_env:
+        c_flags = cflags_env.split() if cflags_env else []
+        l_flags = ldflags_env.split() if ldflags_env else []
+        return c_flags, l_flags
+
+    # Step 2: Try pkg-config
     pc_name = _FOREIGN_PKG_CONFIG.get(library)
     if pc_name:
         try:
@@ -48,7 +68,7 @@ def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-    # Fallback: plain -l<name>
+    # Step 3: Fallback — plain -l<name>
     name = library[3:] if library.startswith("lib") else library
     return [], [f"-l{name}"]
 
