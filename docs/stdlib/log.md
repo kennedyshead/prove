@@ -8,7 +8,7 @@ keywords: Prove Log, logging, ANSI colors
 
 **Module:** `Log` — console color constants and structured logging.
 
-A pure-Prove module providing ANSI terminal color constants and logging functions. The constants are available immediately; the logging functions use the [`detached`](../async) verb for fire-and-forget output.
+A pure-Prove module providing ANSI terminal color constants and logging functions. The constants are available immediately; the logging functions use the [`detached`](../async.md) verb for fire-and-forget output.
 
 ### Constants
 

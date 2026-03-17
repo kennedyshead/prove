@@ -229,8 +229,8 @@ A `[Lookup]` type with `runtime` declares a schema-typed table that gets its dat
 type Color:[Lookup] is String | Integer
   runtime
 
-Store outputs store table, inputs table
-    validates store table, types Store StoreTable
+Store outputs store table inputs table
+    validates store table types Store StoreTable
 
 db as Store = store("/tmp/my_store")!
 colors as Color = table(db, "colors")!
@@ -248,8 +248,8 @@ See [Store-Backed Lookup](types.md#store-backed-lookup-runtime) for the full typ
 The `Store` module provides persistent storage for lookup tables with versioning, diffs, and merges. Tables are stored in a directory-based format with optimistic concurrency control.
 
 ```prove
-Store outputs store table, inputs table version
-    validates store table merged, transforms diff patch merge
+Store outputs store table inputs table version
+    validates store table merged transforms diff patch merge
     reads integrity merged
     types Store StoreTable TableDiff MergeResult Version
 
@@ -282,7 +282,7 @@ match valid merged(result)
 A running Prove program can spawn `prove build` to recompile itself or a sibling module:
 
 ```prove
-System inputs system, types ProcessResult
+System inputs system types ProcessResult
 
 result as ProcessResult = system("prove", ["build", "path/to/project"])
 ```

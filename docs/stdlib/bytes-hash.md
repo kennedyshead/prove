@@ -42,7 +42,7 @@ Defines a binary type: `ByteArray` (a sequence of bytes).
 | `validates` | `at(data ByteArray, index Integer)` | True if index is within bounds |
 
 ```prove
-Bytes creates byte hex, reads slice hex at, validates hex
+Bytes creates byte hex reads slice hex at validates hex
 
 reads first_byte_hex(data ByteArray) String
 from
@@ -92,8 +92,8 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | `validates` | `hmac(data ByteArray, key ByteArray, signature ByteArray)` | Verify HMAC-SHA256 signature |
 
 ```prove
-Hash reads sha256, creates sha256 hmac, validates hmac
-Bytes creates byte, types ByteArray
+Hash reads sha256 creates sha256 hmac validates hmac
+Bytes creates byte types ByteArray
 
 reads checksum(content String) String
 from

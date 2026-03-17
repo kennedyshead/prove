@@ -75,8 +75,8 @@ RFC 4180-compliant CSV parsing. Returns raw `List<List<String>>` — no type inf
 | `validates` | `csv(source String)` | True if source is valid CSV |
 
 ```prove
-Parse creates toml url, reads text object url, validates url base64, types Value Url
-Table reads keys get, types Table
+Parse creates toml url reads text object url validates url base64 types Value Url
+Table reads keys get types Table
 
 main() Result<Unit, Error>!
 from
@@ -131,8 +131,8 @@ Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S
 | `creates` | `duration(source String, pattern String) Duration` | Parse a string into a duration |
 
 ```prove
-Format transforms pad_left hex decimal date, creates date
-Time creates date, types Date
+Format transforms pad_left hex decimal date creates date
+Time creates date types Date
 
 reads format_address(addr Integer) String
 from
@@ -176,7 +176,7 @@ end offset.
 | `reads` | `end(matched Match) Integer` | End offset in source string |
 
 ```prove
-Pattern validates test, transforms replace, types Match
+Pattern validates test transforms replace types Match
 
 reads sanitize(input String) String
 requires

@@ -23,8 +23,8 @@ Each file is a module. The filename (without extension) is the module name in Ca
 ```prove
 module InventoryService
   narrative: """Products are added to inventory..."""
-  String contains length
-  Auth validates login, transforms login
+  Text validates length
+  Auth validates login transforms login
   Http inputs request session
 
   type Product is

@@ -169,7 +169,7 @@ from
 ### REPL Example — Read stdin line by line
 
 ```prove
-System outputs console, inputs console
+System outputs console inputs console
 
 type Session is Active(prompt String)
   | Exit

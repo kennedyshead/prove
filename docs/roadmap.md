@@ -31,19 +31,14 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
 
-### Refinement Type Static Enforcement
+### `Scale:N` Modifier Enforcement
 
-The compiler inserts runtime guards at IO boundaries but does not yet reject
-provably-invalid literals at compile time (e.g., passing `0` to
-`Integer where != 0`). The `Scale:N` modifier is parsed but not enforced.
+The `Decimal:[Scale:N]` modifier is parsed and stored but not enforced. Static literal
+rejection for refinements (e.g., `Integer where != 0`) is already implemented (E355).
+What remains: validate that decimal literals assigned to `Decimal:[Scale:N]` have
+at most N decimal places, emit rounding code for arithmetic results, and check
+type compatibility between different Scale values.
 See `future/06-refinement-static-rejection.md`.
-
-### Memory — Per-Function Region Scoping and `Own` Tracking
-
-`prove_region_enter/exit` is emitted for all functions; a `_needs_region_scope()`
-analysis pass would skip it for non-allocating functions. Use-after-move detection
-(`Own` modifier) marks moved variables but does not yet emit an error when they are
-referenced after the move. See `future/08-memory-ownership.md`.
 
 ### Closure Capture for HOF Callbacks
 
