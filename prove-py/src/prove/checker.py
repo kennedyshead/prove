@@ -3423,6 +3423,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # W501-W502: prose coherence checks (coherence-flag only)
         fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
+
+        # W343: narrative flow step verification
+        if mod_decl is not None and mod_decl.narrative is not None:
+            self._check_narrative_flow_steps(mod_decl, fns)
         if mod_decl is not None:
             self._check_narrative_verb_coherence(mod_decl, fns)
         for fd in fns:

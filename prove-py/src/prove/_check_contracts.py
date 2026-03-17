@@ -918,6 +918,35 @@ class ContractCheckMixin:
                     )
                 )
 
+    def _check_narrative_flow_steps(
+        self, mod_decl: ModuleDecl, fns: list[FunctionDef]
+    ) -> None:
+        """W343: narrative flow: step name is not a defined function."""
+        if mod_decl.narrative is None:
+            return
+        defined = {fd.name for fd in fns}
+        # Find all `flow: X -> Y -> Z` lines in the narrative text
+        for match in re.finditer(r"(?m)^[ \t]*flow:\s*(.+)$", mod_decl.narrative):
+            step_text = match.group(1)
+            for raw in re.split(r"\s*->\s*", step_text):
+                step = raw.strip()
+                # Strip trailing punctuation (commas, periods) that may appear inline
+                step = step.rstrip(".,;")
+                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", step):
+                    continue  # skip non-identifier tokens (e.g. numbers, ellipsis)
+                if step not in defined:
+                    self.diagnostics.append(
+                        make_diagnostic(
+                            Severity.WARNING,
+                            "W343",
+                            f"narrative flow step '{step}' is not a defined function",
+                            labels=[DiagnosticLabel(span=mod_decl.span, message="")],
+                            notes=[
+                                f"defined functions: {', '.join(sorted(defined)[:5])}",
+                            ],
+                        )
+                    )
+
     def _check_explain_body_coherence(self, fd: FunctionDef) -> None:
         """W502: explain entry text has no overlap with from-body operations."""
         if fd.explain is None:

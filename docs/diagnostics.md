@@ -823,6 +823,24 @@ A function in a domain-tagged module is missing a contract required by the domai
 
 A function is missing an annotation required by the domain profile. For example, the `safety` domain requires `explain` blocks and `terminates` on recursive functions.
 
+### W343 — Narrative flow step is not a defined function
+
+A `flow:` line in the module `narrative` block references a step name that doesn't match any function defined in the module.
+
+```prove
+module PaymentFlow
+  narrative: "flow: validate -> charge -> send_receipt"
+  // send_receipt is not defined — W343
+
+transforms validate(amount Decimal) Boolean
+from amount > 0
+
+outputs charge(amount Decimal) Unit
+from System.print("charged")
+```
+
+Fix: either define the missing function or update the `flow:` entry to match the actual function names.
+
 ### W350 — Duplicate column type in lookup
 
 A lookup table has two or more columns with the same type but no named columns to tell them apart. Use `name:Type` syntax to disambiguate (e.g. `probability:Decimal`).
