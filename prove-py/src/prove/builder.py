@@ -17,6 +17,42 @@ from prove.parser import Parser
 from prove.symbols import SymbolTable
 
 
+_FOREIGN_PKG_CONFIG: dict[str, str] = {
+    "libpython3": "python3-embed",
+    "libjvm": "jni",
+}
+
+
+def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
+    """Resolve compiler and linker flags for a foreign library.
+
+    Returns (c_flags, link_flags).  Uses pkg-config when available,
+    falls back to -l<name>.
+    """
+    import subprocess
+
+    pc_name = _FOREIGN_PKG_CONFIG.get(library)
+    if pc_name:
+        try:
+            result = subprocess.run(
+                ["pkg-config", "--cflags", "--libs", pc_name],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                flags = result.stdout.strip().split()
+                c_flags = [f for f in flags if f.startswith("-I")]
+                l_flags = [f for f in flags if not f.startswith("-I")]
+                return c_flags, l_flags
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
+    # Fallback: plain -l<name>
+    name = library[3:] if library.startswith("lib") else library
+    return [], [f"-l{name}"]
+
+
 def _find_llvm_profdata() -> str | None:
     """Find llvm-profdata: plain name, versioned, or via xcrun (macOS)."""
     import shutil
@@ -257,11 +293,9 @@ def _build_c(
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 for fb in decl.foreign_blocks:
-                    lib = fb.library
-                    if lib.startswith("lib"):
-                        link_flags.append(f"-l{lib[3:]}")
-                    else:
-                        link_flags.append(f"-l{lib}")
+                    cf, lf = _resolve_foreign_flags(fb.library)
+                    extra_flags.extend(cf)
+                    link_flags.extend(lf)
                 # Add stdlib-required linker flags
                 from prove.stdlib_loader import stdlib_link_flags
 

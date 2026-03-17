@@ -195,6 +195,12 @@ MAX_CONNECTIONS as Integer = comptime
         _ => 1024
 ```
 
+### Comptime Dependency Tracking
+
+When a `comptime` block reads a file with `read(path)`, the compiler records the path as a **comptime dependency**. These dependencies are exposed on the `BuildResult.comptime_dependencies` set returned by `build_project()`. Build tools and CI pipelines can use this set to determine whether a rebuild is required when non-source files change — for example, a `routes.json` file embedded at compile time.
+
+Dependencies are tracked automatically; no annotation is needed. Every `read()` call in any comptime context adds its resolved absolute path to the dependency set.
+
 ---
 
 ## Verb Enforcement

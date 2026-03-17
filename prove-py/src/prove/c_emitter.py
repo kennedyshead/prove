@@ -87,6 +87,8 @@ class CEmitter(
         "libpthread": "pthread.h",
         "libdl": "dlfcn.h",
         "librt": "time.h",
+        "libpython3": "Python.h",
+        "libjvm": "jni.h",
     }
 
     def __init__(

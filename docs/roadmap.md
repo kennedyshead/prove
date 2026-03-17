@@ -34,13 +34,6 @@ network constraints (E396, W391) are all active. Remaining:
 - Counterfactual annotations (`why_not`/`chosen`) — parsed but no semantic checking beyond W503-W505
 - Formal invariant network verification — validated syntactically, not proven
 
-### Comptime Polish
-
-Core `comptime` works in all positions. Remaining:
-
-- Build dependency tracking for `comptime read()`
-- Comptime match for conditional compilation
-
 ### Lint Gaps
 
 - Module struct return validation
@@ -54,13 +47,6 @@ Core `comptime` works in all positions. Remaining:
 ## Exploring
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
-
-### Dynamic Self-Modifying Lookup
-
-Programs that modify their own lookup tables at runtime, recompile, and
-call the new binary. Store-backed lookup types (`runtime`) provide the
-runtime data layer; subprocess recompilation provides the binary update.
-Depends on Store stdlib and async verbs.
 
 ### Row Polymorphism
 
