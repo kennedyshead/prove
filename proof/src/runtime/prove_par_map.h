@@ -38,4 +38,16 @@ Prove_List *prove_par_filter(Prove_List *list, Prove_FilterFn pred, int64_t num_
  */
 void *prove_par_reduce(Prove_List *list, void *init, Prove_ReduceFn fn, int64_t num_workers);
 
+/* Function pointer type for par_each: takes one element, no result. */
+typedef void (*Prove_EachFn)(void *);
+
+/* Parallel each over a list.
+ *
+ * Calls fn on each element of list using num_workers threads.
+ * When num_workers == 0, auto-detects based on available CPU cores.
+ * Returns void — no result collection.
+ * Thread-safety is the caller's responsibility.
+ */
+void prove_par_each(Prove_List *list, Prove_EachFn fn, int64_t num_workers);
+
 #endif /* PROVE_PAR_MAP_H */

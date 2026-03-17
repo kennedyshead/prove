@@ -12,10 +12,6 @@ These same features serve a broader purpose. The intent declarations, verifiable
 
 ---
 
-## Implemented
-
-These mechanisms are enforced by the current compiler.
-
 ### Implementation Explanation as Code
 
 [`explain`](contracts.md#explain) documents the chain of operations in the `from` block using controlled natural language. With [`ensures`](contracts.md#requires-and-ensures) present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers. See [Contracts & Annotations — explain](contracts.md#explain) for full syntax.
@@ -122,7 +118,7 @@ It goes in the function **header**, not inside the body.
 
 ---
 
-## Implemented — Counterfactual Annotations
+## Counterfactual Annotations
 
 Every non-trivial design choice can explain what would break under alternative approaches. The compiler checks that `why_not` and `chosen` annotations are coherent with the implementation. See [Contracts & Annotations — Counterfactual Annotations](contracts.md#counterfactual-annotations) for the full reference.
 
@@ -144,7 +140,7 @@ Four checks are active on every function that uses `why_not` or `chosen`:
 
 AI can generate plausible-looking counterfactuals, but they won't satisfy these structural checks without understanding the actual implementation.
 
-## Implemented — Temporal Effect Ordering
+## Temporal Effect Ordering
 
 A module's `temporal:` declaration constrains the required call order for its operations. The compiler enforces this within function bodies — calling a later step before an earlier one is an error. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations) for the declaration syntax.
 
@@ -159,7 +155,7 @@ module Auth
 
 **[W390](diagnostics.md#w390-temporal-operation-out-of-declared-order)** fires when a function body calls temporal operations in the wrong order.
 
-## Implemented — Invariant Networks
+## Invariant Networks
 
 `invariant_network` declarations define sets of mutually-dependent constraints. Functions that claim to satisfy a network use `satisfies`. The compiler validates that constraint expressions are well-typed and that functions with `satisfies` provide `ensures` clauses to document how the invariant is maintained. See [Contracts & Annotations — Invariant Networks](contracts.md#invariant-networks) for the full reference.
 
@@ -179,7 +175,7 @@ from
 - **[E396](diagnostics.md#e396-invariant-constraint-must-be-boolean)** — a constraint expression in an `invariant_network` is not Boolean.
 - **[W391](diagnostics.md#w391-satisfies-invariant-without-ensures)** — a function declares `satisfies` but has no `ensures` clauses; without postconditions the invariant cannot be verified.
 
-## Implemented — Domain Declarations
+## Domain Declarations
 
 A module's `domain:` tag selects a built-in enforcement profile that adds domain-specific warnings. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations).
 
@@ -194,7 +190,7 @@ Active profiles:
 - **safety** — require `ensures`, `requires`, and `explain` blocks
 - **general** — no additional requirements
 
-## Implemented — Refutation Challenges
+## Refutation Challenges
 
 The compiler generates plausible-but-wrong alternative implementations using its mutation testing engine and requires the programmer to explain (via `why_not`) why they fail.
 
@@ -211,7 +207,7 @@ $ prove check --challenges
 
 Address challenges by adding `why_not` annotations to the function.
 
-## Implemented — Domain Profiles
+## Domain Profiles
 
 A module's [`domain:`](contracts.md#module-level-annotations) declaration selects a built-in profile that adds domain-specific warnings ([W340–W342](diagnostics.md)):
 
@@ -230,7 +226,7 @@ from
     reduce(amounts, 0.0, add)
 ```
 
-## Implemented — Coherence Checking
+## Coherence Checking
 
 Run [`prove check --coherence`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
 

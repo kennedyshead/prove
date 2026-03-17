@@ -337,7 +337,88 @@ void *prove_par_reduce(Prove_List *list, void *init, Prove_ReduceFn fn, int64_t 
     return result;
 }
 
+/* ── Threaded each implementation ──────────────────────────────── */
+
+typedef struct {
+    Prove_List  *input;
+    Prove_EachFn fn;
+    int64_t      start;
+    int64_t      end;
+} _ParEachChunk;
+
+static void _par_each_sequential(Prove_List *list, Prove_EachFn fn) {
+    int64_t len = prove_list_len(list);
+    for (int64_t i = 0; i < len; i++) {
+        fn(prove_list_get(list, i));
+    }
+}
+
+static void *_par_each_worker(void *arg) {
+    _ParEachChunk *chunk = (_ParEachChunk *)arg;
+    for (int64_t i = chunk->start; i < chunk->end; i++) {
+        chunk->fn(prove_list_get(chunk->input, i));
+    }
+    return NULL;
+}
+
+void prove_par_each(Prove_List *list, Prove_EachFn fn, int64_t num_workers) {
+    int64_t len = prove_list_len(list);
+    if (len == 0) return;
+
+    num_workers = _auto_workers(num_workers);
+
+    if (num_workers <= 1 || len <= num_workers) {
+        _par_each_sequential(list, fn);
+        return;
+    }
+
+    if (num_workers > len) num_workers = len;
+
+    int64_t chunk_size = (len + num_workers - 1) / num_workers;
+    _ParEachChunk *chunks = (_ParEachChunk *)malloc(sizeof(_ParEachChunk) * (size_t)num_workers);
+    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * (size_t)num_workers);
+    if (!chunks || !threads) {
+        free(chunks);
+        free(threads);
+        _par_each_sequential(list, fn);
+        return;
+    }
+
+    int64_t actual = 0;
+    for (int64_t i = 0; i < num_workers; i++) {
+        int64_t s = i * chunk_size;
+        if (s >= len) break;
+        int64_t e = s + chunk_size;
+        if (e > len) e = len;
+
+        chunks[actual].input = list;
+        chunks[actual].fn    = fn;
+        chunks[actual].start = s;
+        chunks[actual].end   = e;
+
+        if (pthread_create(&threads[actual], NULL, _par_each_worker, &chunks[actual]) != 0) {
+            _par_each_worker(&chunks[actual]);
+        } else {
+            actual++;
+        }
+    }
+
+    for (int64_t i = 0; i < actual; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    free(chunks);
+    free(threads);
+}
+
 #else /* !PROVE_HAS_PTHREADS */
+
+static void _par_each_sequential(Prove_List *list, Prove_EachFn fn) {
+    int64_t len = prove_list_len(list);
+    for (int64_t i = 0; i < len; i++) {
+        fn(prove_list_get(list, i));
+    }
+}
 
 Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers) {
     (void)num_workers;
@@ -352,6 +433,11 @@ Prove_List *prove_par_filter(Prove_List *list, Prove_FilterFn pred, int64_t num_
 void *prove_par_reduce(Prove_List *list, void *init, Prove_ReduceFn fn, int64_t num_workers) {
     (void)num_workers;
     return _par_reduce_sequential(list, init, fn);
+}
+
+void prove_par_each(Prove_List *list, Prove_EachFn fn, int64_t num_workers) {
+    (void)num_workers;
+    _par_each_sequential(list, fn);
 }
 
 #endif /* PROVE_HAS_PTHREADS */

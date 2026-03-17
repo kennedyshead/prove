@@ -186,6 +186,26 @@ class CallCheckMixin:
                                 cb_arg.span,
                             )
 
+            # par_each: IO callbacks are allowed; only reject async verbs.
+            if name == "par_each":
+                cb_idx = 1
+                if cb_idx < len(expr.args):
+                    cb_arg = expr.args[cb_idx]
+                    if isinstance(cb_arg, IdentifierExpr):
+                        cb_sig = self.symbols.resolve_function_any(
+                            cb_arg.name, arity=1
+                        )
+                        if cb_sig and cb_sig.verb and cb_sig.verb in (
+                            "detached", "attached", "listens"
+                        ):
+                            self._error(
+                                "E369",
+                                f"'par_each' callback cannot be an async verb "
+                                f"('{cb_sig.verb}'); use 'each' for sequential "
+                                "iteration or restructure with 'attached'",
+                                cb_arg.span,
+                            )
+
             # Skip strict checks for imported functions (ErrorType return = unknown sig)
             if isinstance(sig.return_type, ErrorType):
                 return sig.return_type

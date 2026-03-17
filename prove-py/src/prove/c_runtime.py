@@ -447,6 +447,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_par_map",
         "prove_par_filter",
         "prove_par_reduce",
+        "prove_par_each",
     ],
     "prove_store": [
         "prove_store_create",

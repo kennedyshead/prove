@@ -1,4 +1,4 @@
-"""Tests for par_map / par_filter / par_reduce checker support."""
+"""Tests for par_map / par_filter / par_reduce / par_each checker support."""
 
 from __future__ import annotations
 
@@ -189,6 +189,81 @@ class TestParHofPureVerbs:
             "    from\n"
             "        par_map(xs, double)\n"
             "        0\n"
+        )
+        e368 = [d for d in diags if d.code == "E368"]
+        assert not e368, f"Unexpected E368: {[d.message for d in e368]}"
+
+
+class TestParEachChecker:
+    """par_each type inference and verb enforcement."""
+
+    def test_par_each_accepts_io_callback(self):
+        """par_each allows IO verb callbacks (unlike par_map)."""
+        check(
+            "outputs log_item(n Integer) Unit\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, log_item)\n"
+        )
+
+    def test_par_each_accepts_pure_callback(self):
+        """par_each also accepts pure verb callbacks."""
+        check(
+            "transforms process(n Integer) Unit\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, process)\n"
+        )
+
+    def test_par_each_with_lambda(self):
+        """par_each with lambda callback passes type check."""
+        check(
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, |n| n)\n"
+        )
+
+    def test_par_each_infers_unit_return(self):
+        """par_each returns Unit."""
+        check(
+            "outputs log_item(n Integer) Unit\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, log_item)\n"
+        )
+
+    def test_par_each_rejects_async_detached_callback(self):
+        """par_each with detached verb callback emits E369."""
+        check_fails(
+            "detached fire_and_forget(n Integer) Unit\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, fire_and_forget)\n",
+            "E369",
+        )
+
+    def test_par_each_no_e368_for_io(self):
+        """par_each with IO callback does not produce E368."""
+        diags = check_all(
+            "outputs log_item(n Integer) Unit\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "outputs caller(xs List<Integer>) Unit\n"
+            "    from\n"
+            "        par_each(xs, log_item)\n"
         )
         e368 = [d for d in diags if d.code == "E368"]
         assert not e368, f"Unexpected E368: {[d.message for d in e368]}"
