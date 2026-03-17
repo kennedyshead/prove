@@ -59,6 +59,43 @@ results are collected. Async verbs (`detached`, `attached`, `listens`) would be
 rejected. Implemented atop the existing pthreads pool in `prove_par_map.h`.
 See `future/04-par-each.md`.
 
+### `explain` Block Semantic Verification
+
+`why_not` and `chosen` are parsed and stored but not checked against the function
+body — any prose is accepted. `narrative` blocks are required and structurally
+valid, but `flow:` step names are not checked against defined functions.
+Plan: W314/W315 for `why_not`/`chosen` with no symbol overlap; W341 for
+`narrative flow:` steps referencing undefined functions.
+See `future/05-explain-verification.md`.
+
+### Refinement Type Static Enforcement
+
+The compiler inserts runtime guards at IO boundaries but does not yet reject
+provably-invalid literals at compile time (e.g., passing `0` to
+`Integer where != 0`). The `Scale:N` modifier is parsed but not enforced.
+See `future/06-refinement-static-rejection.md`.
+
+### Memory — Per-Function Region Scoping and `Own` Tracking
+
+`prove_region_enter/exit` is emitted for all functions; a `_needs_region_scope()`
+analysis pass would skip it for non-allocating functions. Use-after-move detection
+(`Own` modifier) marks moved variables but does not yet emit an error when they are
+referenced after the move. See `future/08-memory-ownership.md`.
+
+### Closure Capture for HOF Callbacks
+
+All HOF callbacks (`map`, `filter`, `reduce`, `each`, `par_map`, `par_filter`,
+`par_reduce`, `par_each`) require named functions — inline lambdas with captured
+bindings are not yet supported. Phase 1: sequential lambdas with stack-allocated
+capture structs. Phase 2: parallel lambdas with region-allocated capture structs
+and mutability enforcement. See `future/09-parallel-closures.md`.
+
+### `know` Claims Inside Match Arms
+
+`know` claims are function-level. The match arm structural bindings are recorded
+in the proof context but `know` cannot yet be written inside an arm body to
+reference the locally-bound variant variable. See `future/10-match-arm-know.md`.
+
 ### Self-Hosted Compiler (V2.0)
 
 Rewrite the compiler in Prove. The V1.0 Python bootstrap compiles it,

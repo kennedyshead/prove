@@ -74,13 +74,13 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ---
 
-## Concurrency — Structured Concurrency and Effect Types
+## Concurrency — Structured Concurrency
 
 Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
 Thread-based `par_map`, `par_filter`, and `par_reduce` are available for pure verbs, running a pthreads-backed thread pool with automatic core detection. They are restricted to pure verbs at compile time — IO and async verbs are rejected. See [Parallel Iteration](functions.md#parallel-iteration).
 
-The verb system enforces purity boundaries — pure verbs cannot make IO calls, and the compiler rejects violations at compile time. *Upcoming:* explicit effect type annotations (`IO`, `Fail`, `Async`); the names are reserved as a CamelCase convention but are not yet part of the type system.
+The verb system enforces purity boundaries — pure verbs cannot make IO calls, and the compiler rejects violations at compile time.
 
 ---
 
@@ -127,7 +127,7 @@ from
 An honest assessment of the costs:
 
 1. **Compilation speed** — Proving properties is expensive. Incremental compilation and caching are essential. Expect Rust-like compile times, not Go-like.
-2. **Learning curve** — Refinement types and effect types are unfamiliar to most developers. The compiler's suggestions help, but there's still a ramp-up.
+2. **Learning curve** — Refinement types, verb purity, and formal contracts are unfamiliar to most developers. The compiler's suggestions help, but there's still a ramp-up.
 3. **Ecosystem bootstrap** — A new language needs libraries. A C FFI and a story for wrapping existing libraries is a secondary priority, deferred until the core language is stable.
 4. **Not every property is provable** — For complex invariants the compiler falls back to runtime property tests, which is still better than nothing but not a proof.
 
