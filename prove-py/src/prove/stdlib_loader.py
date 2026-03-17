@@ -788,9 +788,8 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     resource = pkg.joinpath(filename)
 
     try:
-        with importlib.resources.as_file(resource) as path:
-            source = path.read_text()
-    except (FileNotFoundError, TypeError):
+        source = resource.read_text(encoding="utf-8")
+    except Exception:
         return []
 
     # Parse the stdlib file to extract function declarations
@@ -862,6 +861,27 @@ def stdlib_pure_prv_path(module_name: str) -> Path | None:
     return stdlib_dir / prv_rel
 
 
+def load_stdlib_prv_source(module_name: str) -> str | None:
+    """Return the .prv source text for a pure (non-binary) stdlib module.
+
+    Uses importlib.resources so it works whether prove is installed on disk
+    or loaded from a zip bundle embedded in a compiled binary.
+    Returns None if the module is binary, unknown, or unreadable.
+    """
+    key = module_name.lower()
+    prv_rel = _STDLIB_MODULES.get(key)
+    if prv_rel is None:
+        return None
+    for mod, _verb, _func in _BINARY_C_MAP:
+        if mod == key:
+            return None
+    pkg = importlib.resources.files("prove.stdlib")
+    try:
+        return pkg.joinpath(prv_rel).read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+
 def is_stdlib_module(module_name: str) -> bool:
     """Return True if module_name is a known stdlib module."""
     return module_name.lower() in _STDLIB_MODULES
@@ -930,9 +950,8 @@ def _parse_stdlib_module(module_name: str) -> Module | None:
     resource = pkg.joinpath(filename)
 
     try:
-        with importlib.resources.as_file(resource) as path:
-            source = path.read_text()
-    except (FileNotFoundError, TypeError):
+        source = resource.read_text(encoding="utf-8")
+    except Exception:
         return None
 
     try:

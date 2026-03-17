@@ -1,0 +1,29 @@
+module Build
+  narrative: """
+  Handles the source build.
+  
+  outputs the command to python for a pybuild
+  """
+  Config types Config
+  System validates dir
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+    py_set_bool(name String, value Boolean) Unit
+
+  PYTHON_BUILD as String = comptime
+      read("python/build.py")
+
+outputs pybuild(config Config, path String, debug Boolean, no_mutate Boolean) Integer
+  requires valid dir(path)
+from
+    py_initialize()
+    py_set_string("path", path)
+    py_set_bool("debug", debug)
+    py_set_bool("no_mutate", no_mutate)
+    result as Integer = py_run_string(PYTHON_BUILD)
+    py_finalize()
+    result

@@ -11,6 +11,7 @@ module Commands
   List validates contains
   System outputs console
   Source types SourceFile inputs source
+  Build outputs pybuild
 
   HELP_BUILD_TEXT as String = comptime
       read("static/help_build.txt")
@@ -36,23 +37,21 @@ module Commands
   HELP_VIEW_TEXT as String = comptime
       read("static/help_view.txt")
 
-transforms handle(source_file SourceFile) Unit
-from
-    info(f"{source_file.path}\n{source_file.content}")&
-
 /// Run the build command
 outputs build(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
         _ =>
+            debug as Boolean = contains(arguments, "--debug")
+            no_mutate as Boolean = contains(arguments, "--no-mutate")
             source as List<SourceFile> = source(config)
-            each(source, |source_file| handle)
+            pybuild(config, ".", debug, no_mutate)
             info(f"{
                    config.package.name
                  } {
                    config.package.version
-                 } now available in build folder")&
+                 } now available in ./dist")&
 
 /// Run the check command
 outputs check(arguments List<String>, config Config)!

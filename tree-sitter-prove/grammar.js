@@ -28,6 +28,7 @@ module.exports = grammar({
     [$.expression, $.pattern],
     [$.algebraic_variant, $.simple_type],
     [$.refinement_type_body, $.lookup_type_body, $._lookup_column],
+    [$.intent_verb_phrase],
   ],
 
   rules: {
@@ -303,11 +304,15 @@ module.exports = grammar({
 
     // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
+      'attached',
       'creates',
+      'detached',
       'inputs',
+      'listens',
       'matches',
       'outputs',
       'reads',
+      'streams',
       'transforms',
       'validates',
     ),
@@ -432,7 +437,14 @@ module.exports = grammar({
     foreign_block: $ => prec(1, seq(
       'foreign',
       $.string_literal,
+      repeat($.foreign_function),
     )),
+
+    foreign_function: $ => seq(
+      $.identifier,
+      $.parameter_list,
+      $.type_expression,
+    ),
 
     // ─── Invariant Networks ────────────────────────────────────
 

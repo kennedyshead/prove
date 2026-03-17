@@ -83,7 +83,9 @@ def _print_refutation_challenges(project_dir: Path) -> None:
             if fn_addressed >= fn_challenges:
                 continue  # All challenges addressed
 
-            click.echo(f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:")
+            click.echo(
+                f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:"
+            )
             for i, mutant in enumerate(result.mutants):
                 marker = "+" if i < fn_addressed else "-"
                 click.echo(f"    [{marker}] {mutant.description}")
@@ -215,92 +217,24 @@ def advanced() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--no-mutate", is_flag=True, help="Disable mutation testing.")
-@click.option("--debug", is_flag=True, default=None, help="Compile with debug symbols (-g) and no optimization.")
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=None,
+    help="Compile with debug symbols (-g) and no optimization.",
+)
 def build(path: str, no_mutate: bool, debug: bool | None) -> None:
     """Compile a Prove project."""
     _warn_no_nlp()
-    from prove.builder import build_project
+    from prove._build_runner import run_build
 
-    try:
+    exit_code = run_build(path, debug=debug, no_mutate=no_mutate)
+    if exit_code == 0:
+        from prove.config import find_config
+
         config_path = find_config(Path(path))
-        config = load_config(config_path)
-        click.echo(f"building {config.package.name}...")
-        project_dir = config_path.parent
-
-        # CLI flags override config values
-        effective_debug = debug if debug is not None else config.build.debug
-        effective_mutate = not no_mutate and config.build.mutate
-
-        renderer = DiagnosticRenderer(color=True)
-        result = build_project(project_dir, config, debug=effective_debug)
-
-        for diag in result.diagnostics:
-            click.echo(renderer.render(diag), err=True)
-
-        if not result.ok:
-            if result.c_error:
-                click.echo(f"error: {result.c_error}", err=True)
-            raise SystemExit(1)
-
-        if effective_mutate:
-            click.echo("running mutation testing...")
-            from prove.checker import Checker
-            from prove.module_resolver import build_module_registry
-            from prove.mutator import run_mutation_tests
-
-            src_dir = project_dir / "src"
-            if not src_dir.is_dir():
-                src_dir = project_dir
-            prv_files = sorted(src_dir.rglob("*.prv"))
-
-            local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
-            modules = []
-            for prv_file in prv_files:
-                source = prv_file.read_text()
-                filename = str(prv_file)
-                try:
-                    tokens = Lexer(source, filename).lex()
-                    module = Parser(tokens, filename).parse()
-                    checker = Checker(local_modules=local_modules)
-                    symbols = checker.check(module)
-                    if not checker.has_errors():
-                        modules.append((module, symbols))
-                except CompileError:
-                    continue
-
-            mutation_result = run_mutation_tests(
-                project_dir,
-                modules,
-                max_mutants=50,
-                property_rounds=100,
-            )
-
-            from prove.mutator import get_survivors_path
-
-            get_survivors_path(project_dir).unlink(missing_ok=True)
-
-            from prove.mutator import save_survivors
-
-            save_survivors(project_dir, mutation_result)
-
-            if mutation_result.total_mutants == 0:
-                click.echo("no mutants generated")
-            else:
-                click.echo(
-                    f"mutation score: {mutation_result.mutation_score:.1%} "
-                    f"({mutation_result.killed_mutants}/{mutation_result.total_mutants} killed)"
-                )
-                if mutation_result.survivors:
-                    click.echo(f"\nsurviving mutants ({len(mutation_result.survivors)}):")
-                    for s in mutation_result.survivors:
-                        click.echo(f"  {s['id']}: {s['description']} at {s['location']}")
-                        click.echo("    suggestion: add contract to kill this mutant")
-
-        click.echo(f"built {config.package.name} -> {result.binary}")
-        _update_project_cache(project_dir)
-    except FileNotFoundError:
-        click.echo("error: no prove.toml found", err=True)
-        raise SystemExit(1)
+        _update_project_cache(config_path.parent)
+    raise SystemExit(exit_code)
 
 
 def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, int]:
@@ -460,7 +394,10 @@ def _warn_no_nlp() -> None:
     import prove.nlp as nlp_mod
 
     if not nlp_mod.has_nlp_backend():
-        click.echo("info: NLP not available \u2014 run `prove setup` for improved narrative analysis.", err=True)
+        click.echo(
+            "info: NLP not available \u2014 run `prove setup` for improved narrative analysis.",
+            err=True,
+        )
 
 
 def _print_nlp_status() -> None:
@@ -513,7 +450,16 @@ def _print_nlp_status() -> None:
 @click.option("--no-status", is_flag=True, help="Skip module completeness report.")
 @click.option("--no-intent", is_flag=True, help="Skip intent coverage check.")
 @click.option("--nlp-status", is_flag=True, help="Report NLP backend and store availability.")
-def check(path: str, md: bool, strict: bool, no_coherence: bool, no_challenges: bool, no_status: bool, no_intent: bool, nlp_status: bool) -> None:
+def check(
+    path: str,
+    md: bool,
+    strict: bool,
+    no_coherence: bool,
+    no_challenges: bool,
+    no_status: bool,
+    no_intent: bool,
+    nlp_status: bool,
+) -> None:
     """Type-check, lint, and verify a Prove project or a single .prv file."""
     _warn_no_nlp()
     if nlp_status:
@@ -760,8 +706,7 @@ def test(path: str, property_rounds: int | None) -> None:
 
         if result.ok:
             click.echo(
-                f"tested {config.package.name} — "
-                f"{result.tests_passed}/{result.tests_run} passed"
+                f"tested {config.package.name} — {result.tests_passed}/{result.tests_run} passed"
             )
         else:
             click.echo(
@@ -1138,13 +1083,12 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
         click.echo(f"generated {body_count} body(ies) + {stub_count} stub(s) in {target}")
 
     # Report completeness
-    todo_count = sum(
-        1 for fn in existing_fns
-        if any(isinstance(s, TodoStmt) for s in fn.body)
-    )
+    todo_count = sum(1 for fn in existing_fns if any(isinstance(s, TodoStmt) for s in fn.body))
     complete = len(existing_fns) - todo_count
     total = len(existing_fns) + len(new_stubs)
-    click.echo(f"  {complete}/{total} functions complete ({100 * complete // total if total else 0}%)")
+    click.echo(
+        f"  {complete}/{total} functions complete ({100 * complete // total if total else 0}%)"
+    )
 
 
 @advanced.command()
@@ -1175,7 +1119,9 @@ def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
 @click.option("--generate", "gen", is_flag=True, help="Generate .prv files from intent.")
 @click.option("--dry-run", is_flag=True, help="Preview generated files without writing.")
 @click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
-def intent(path: str, status: bool, drift: bool, gen: bool, dry_run: bool, nlp: bool | None) -> None:
+def intent(
+    path: str, status: bool, drift: bool, gen: bool, dry_run: bool, nlp: bool | None
+) -> None:
     """Work with .intent project declaration files."""
     _warn_no_nlp()
     if nlp is not None:
@@ -1368,8 +1314,14 @@ def setup() -> None:
     click.echo("Downloading spaCy en_core_web_sm model...")
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "spacy", "download", "en_core_web_sm",
-             "--break-system-packages"],
+            [
+                sys.executable,
+                "-m",
+                "spacy",
+                "download",
+                "en_core_web_sm",
+                "--break-system-packages",
+            ],
             capture_output=True,
             text=True,
         )

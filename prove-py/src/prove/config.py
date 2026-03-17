@@ -2,9 +2,26 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def _expand_flags(flags: list[str], base: Path) -> list[str]:
+    """Expand ~ and resolve relative paths in compiler/linker flags."""
+    result = []
+    for flag in flags:
+        for prefix in ("-I", "-L", "-Wl,-rpath,"):
+            if flag.startswith(prefix):
+                p = os.path.expanduser(flag[len(prefix):])
+                resolved = str((base / p).resolve()) if not os.path.isabs(p) else p
+                flag = prefix + resolved
+                break
+        else:
+            flag = os.path.expanduser(flag)
+        result.append(flag)
+    return result
 
 
 @dataclass
@@ -23,6 +40,7 @@ class BuildConfig:
     c_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
     c_sources: list[str] = field(default_factory=list)
+    pre_build: list[list[str]] = field(default_factory=list)
     ccache: bool = True
 
 
@@ -91,9 +109,10 @@ def load_config(path: Path) -> ProveConfig:
             target=bld.get("target", "native"),
             mutate=bld.get("mutate", True),
             debug=bld.get("debug", False),
-            c_flags=bld.get("c_flags", []),
-            link_flags=bld.get("link_flags", []),
+            c_flags=_expand_flags(bld.get("c_flags", []), path.parent),
+            link_flags=_expand_flags(bld.get("link_flags", []), path.parent),
             c_sources=bld.get("c_sources", []),
+            pre_build=bld.get("pre_build", []),
             ccache=bld.get("ccache", True),
         )
 

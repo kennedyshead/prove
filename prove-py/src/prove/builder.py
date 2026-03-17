@@ -170,7 +170,7 @@ def _compile_pure_stdlib(
     all_diags: list[Diagnostic],
 ) -> None:
     """Find and compile pure stdlib modules imported by the project."""
-    from prove.stdlib_loader import stdlib_pure_prv_path
+    from prove.stdlib_loader import load_stdlib_prv_source
 
     # Collect all imported module names
     seen: set[str] = set()
@@ -182,12 +182,11 @@ def _compile_pure_stdlib(
 
     # For each imported module, check if it's a pure stdlib module
     for mod_name in seen:
-        prv_path = stdlib_pure_prv_path(mod_name)
-        if prv_path is None or not prv_path.exists():
+        source = load_stdlib_prv_source(mod_name)
+        if source is None:
             continue
 
-        source = prv_path.read_text()
-        filename = str(prv_path)
+        filename = f"<stdlib:{mod_name}>"
         try:
             tokens = Lexer(source, filename).lex()
             stdlib_module = Parser(tokens, filename).parse()
@@ -271,6 +270,24 @@ def _build_c(
         c_path.write_text(c_src)
         gen_c_files.append(c_path)
 
+    # Auto-bundle Python packages if the project embeds libpython3
+    from prove._python_bundle import maybe_generate_bundle
+
+    maybe_generate_bundle(modules_and_symbols, comptime_deps, gen_dir)
+
+    # Run pre-build commands (e.g. generating C headers from scripts)
+    if config.build.pre_build:
+        import subprocess as _sp
+
+        for cmd in config.build.pre_build:
+            result = _sp.run(cmd, cwd=project_dir, capture_output=True, text=True)
+            if result.returncode != 0:
+                return BuildResult(
+                    ok=False,
+                    diagnostics=all_diags,
+                    c_error=f"pre_build command failed: {' '.join(cmd)}\n{result.stderr}",
+                )
+
     # Add user-specified extra C sources (thin wrappers for foreign libraries, etc.)
     for src_rel in config.build.c_sources:
         src_path = project_dir / src_rel
@@ -326,7 +343,7 @@ def _build_c(
         compiler=cc,
         optimize=optimize,
         debug=debug,
-        include_dirs=[runtime_dir],
+        include_dirs=[runtime_dir, gen_dir],
         extra_flags=extra_flags + link_flags,
         strip=config.optimize.strip,
         tune_host=config.optimize.tune_host,
