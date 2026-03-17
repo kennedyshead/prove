@@ -17,6 +17,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import io
+import os
 import zipfile
 from pathlib import Path
 
@@ -85,6 +86,9 @@ def _zip_packages(packages: dict[str, Path]) -> bytes:
     Includes .py source files AND package data files (e.g. .prv stdlib sources
     read via importlib.resources). Skips compiled bytecode and __pycache__.
 
+    Uses os.walk with followlinks=True so that symlinked sub-packages (e.g.
+    prove/runtime -> proof/src/runtime) are included in the archive.
+
     The archive uses paths relative to each package's parent so that
     `import prove` works after adding the zip to sys.path.
     """
@@ -92,14 +96,13 @@ def _zip_packages(packages: dict[str, Path]) -> bytes:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for _name, pkg_root in sorted(packages.items()):
             parent = pkg_root.parent
-            for f in sorted(pkg_root.rglob("*")):
-                if not f.is_file():
-                    continue
-                if f.suffix in _SKIP_SUFFIXES:
-                    continue
-                if any(part in _SKIP_DIRS for part in f.parts):
-                    continue
-                zf.write(f, str(f.relative_to(parent)))
+            for dirpath, dirnames, filenames in os.walk(pkg_root, followlinks=True):
+                dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
+                for fname in sorted(filenames):
+                    f = Path(dirpath) / fname
+                    if f.suffix in _SKIP_SUFFIXES:
+                        continue
+                    zf.write(f, str(f.relative_to(parent)))
     return buf.getvalue()
 
 
@@ -175,9 +178,10 @@ def maybe_generate_bundle(
 
     pkg_names = ", ".join(sorted(packages))
     total_files = sum(
-        1 for p in packages.values() for f in p.rglob("*")
-        if f.is_file() and f.suffix not in _SKIP_SUFFIXES
-        and not any(part in _SKIP_DIRS for part in f.parts)
+        1 for p in packages.values()
+        for _, _, filenames in os.walk(p, followlinks=True)
+        for fname in filenames
+        if not fname.endswith(tuple(_SKIP_SUFFIXES))
     )
     print(f"bundled python packages [{pkg_names}] → {total_files} files, {len(data):,} bytes")
     return True

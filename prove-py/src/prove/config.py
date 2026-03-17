@@ -72,6 +72,19 @@ class ProveConfig:
     style: StyleConfig = field(default_factory=StyleConfig)
 
 
+# Directories under src/ that contain shared resources (stdlib .prv files,
+# C runtime) rather than user source code.  Exclude from .prv discovery.
+_RESERVED_SRC_DIRS = frozenset({"stdlib", "runtime", ".prove_cache"})
+
+
+def discover_prv_files(root: Path) -> list[Path]:
+    """Return sorted .prv source files under *root*, excluding reserved dirs."""
+    return sorted(
+        p for p in root.rglob("*.prv")
+        if not (_RESERVED_SRC_DIRS & set(p.relative_to(root).parts))
+    )
+
+
 def find_config(start_path: Path | None = None) -> Path:
     """Walk up directories to find prove.toml. Raises FileNotFoundError."""
     path = (start_path or Path.cwd()).resolve()

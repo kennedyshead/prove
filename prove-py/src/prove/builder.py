@@ -10,7 +10,7 @@ from prove.c_compiler import CompileCError, _compiler_family, compile_c, find_c_
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
 from prove.checker import Checker
-from prove.config import ProveConfig
+from prove.config import discover_prv_files, ProveConfig
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -120,7 +120,7 @@ def build_project(
     if not src_dir.is_dir():
         src_dir = project_dir
 
-    prv_files = sorted(src_dir.rglob("*.prv"))
+    prv_files = discover_prv_files(src_dir)
     if not prv_files:
         return BuildResult(ok=False, diagnostics=[], c_error="no .prv files found")
 

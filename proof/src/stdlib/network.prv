@@ -2,8 +2,6 @@ module Network
   narrative: """Network communication — TCP and UDP sockets."""
   Bytes types ByteArray
 
-  /// Socket is
-  ///   fd Integer
   type Socket is binary
 
 /// Open a TCP connection to a remote host and port

@@ -3,13 +3,6 @@ module Parse
   Bytes types ByteArray
   Time types Time Date DateTime Duration
 
-  /// Url is
-  ///   scheme String
-  ///   host String
-  ///   port Integer
-  ///   path String
-  ///   query String
-  ///   fragment String
   type Url is binary
 
 /// Parse a source string into a Value

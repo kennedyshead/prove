@@ -1,25 +1,12 @@
 module System
   narrative: """Handles IO operations across console, file, system, dir, and process channels."""
 
-  /// ProcessResult is
-  ///   exit_code Integer
-  ///   standard_output String
-  ///   standard_error String
   type ProcessResult is binary
 
-  /// DirEntry is
-  ///   tag Integer
-  ///   name String
-  ///   path String
   type DirEntry is binary
 
-  /// File is
-  ///   handle Integer
   type File is binary
 
-  /// ByteArray is
-  ///   length Integer
-  ///   data List<Byte>
   type ByteArray is binary
 
 /// Print text to the console

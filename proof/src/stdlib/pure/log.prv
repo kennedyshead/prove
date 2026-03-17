@@ -7,7 +7,7 @@ module Log
   error generate red
   """
   System outputs console
-  Time inputs time, types Time
+  Time types Time inputs time
   Format transforms time
 
   RESET as String = "[0m"
