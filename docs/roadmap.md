@@ -50,15 +50,6 @@ debug builds (parallel to `assume`) and include `believe` clauses as
 falsification targets in `prove test` — reported as advisories by default,
 failures under `--strict`. See `future/03-intent-annotation-enforcement.md`.
 
-### `par_each` — Parallel Side-Effect Iterator
-
-`par_map`, `par_filter`, and `par_reduce` are parallel HOFs restricted to pure
-verbs. `par_each` fills the missing quadrant: concurrent iteration where the
-callback has IO side effects (`outputs`, `inputs`). Return type is `Unit` — no
-results are collected. Async verbs (`detached`, `attached`, `listens`) would be
-rejected. Implemented atop the existing pthreads pool in `prove_par_map.h`.
-See `future/04-par-each.md`.
-
 ### `explain` Block Semantic Verification
 
 `why_not` and `chosen` are parsed and stored but not checked against the function
