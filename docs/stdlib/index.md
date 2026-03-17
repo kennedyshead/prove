@@ -10,58 +10,40 @@ The Prove standard library is a set of 19 modules (plus aliases) that ship with 
 
 ---
 
-## Design Pattern
-
-Stdlib modules follow a consistent pattern:
-
-1. **One cohesive domain per module** — don't mix unrelated concerns.
-2. **Function name = the noun** — the thing being operated on.
-3. **Verb = the action** — what you do with it.
-4. **Same name + different verb = channel dispatch** — the compiler resolves which function to call based on the verb at the call site.
+## Core Concepts
 
 ### Verb Families
 
-Verbs fall into two families. **Pure verbs** have no side effects — the compiler enforces this. See [Functions & Verbs](../functions.md#intent-verbs) for the full verb reference.
+Verbs define what a function does. The compiler enforces their guarantees:
 
-| Verb | Intent | Example |
-|------|--------|---------|
-| `transforms` | Convert data from one form to another | `transforms trim(s String) String` |
-| `validates` | Check a condition, return Boolean | `validates has(key String, table Table<Value>)` |
-| `reads` | Extract or query data without changing it | `reads get(key String, table Table<Value>) Option<Value>` |
-| `creates` | Construct a new value from scratch | `creates builder() StringBuilder` |
-| `matches` | Algebraic dispatch (first param must be algebraic) | `matches area(s Shape) Decimal` |
+| Family | Verbs | Guarantees |
+|--------|-------|------------|
+| **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no side effects. Safe to memoize, parallelize |
+| **IO** | `inputs`, `outputs`, `streams` | Reads/writes to external world |
+| **Async** | `detached`, `attached`, `listens` | Concurrent execution via coroutines |
 
-**IO verbs** interact with the outside world:
-
-| Verb | Intent | Example |
-|------|--------|---------|
-| `inputs` | Read from an external source | `inputs file(path String) String!` |
-| `outputs` | Write to an external destination | `outputs file(path String, content String)!` |
-| `streams` | Blocking loop over an IO source until `Exit` | `streams serve(conn Connection)!` |
-
-The distinction matters: pure verbs cannot call IO functions, cannot use `!`, and are safe to memoize, inline, or reorder. IO verbs make side effects explicit in the function signature.
-
-**Async verbs** express structured concurrency:
-
-| Verb | Intent | Example |
-|------|--------|---------|
-| `detached` | Fire and forget — spawn a coroutine, move on immediately | `detached info(msg String)` |
-| `attached` | Spawn and await — caller blocks until result is ready | `attached fetch(url String) String` |
-| `listens` | Cooperative loop — process items until `Exit` (no blocking IO) | `listens dispatcher(cmd Command)` |
-
-See [Functions & Verbs — Async Verbs](../functions.md#async-verbs) for the full reference including compiler-enforced rules, the `&` call marker, and examples.
+See [Functions & Verbs](../verbs.md) for the full reference.
 
 ### Channel Dispatch
 
-For example, `System` is organized by *channels*. The `file` channel has three verbs:
+Many modules organize functions by **channel** — the same name with different verbs:
 
 ```prove
-inputs file(path String) String!          // read a file
-outputs file(path String, content String)! // write a file
-validates file(path String)               // check if file exists
+# Three operations on "file", resolved by verb at call site
+inputs file(path String) String!      // read file
+outputs file(path String, content String)!  // write file
+validates file(path String)           // check if exists
 ```
 
-The caller's verb determines which function is invoked. This is channel dispatch — one name, multiple intents. See [Functions & Verbs](../functions.md#verb-dispatched-identity) for how verb-dispatched identity works.
+The caller's context determines which function is invoked. This is **verb-dispatched identity** — see [Functions & Verbs](../verbs.md).
+
+### Always-Available Types
+
+These types need no import:
+
+- **Primitives:** `Integer`, `Decimal`, `Float`, `Boolean`, `String`, `Character`, `Byte`, `Unit`
+- **Containers:** `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>`
+- **Special:** `Value`, `Error`, `Source`
 
 ---
 

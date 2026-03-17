@@ -6,9 +6,13 @@ copyright: Copyright © 2026 Magnus Knutas
 
 nav:
   - Home: index.md
+  - Tutorial: tutorial.md
   - Language:
       - Syntax: syntax.md
       - Functions & Verbs: functions.md
+      - Intent Verbs: verbs.md
+      - Async & Streams: async.md
+      - Lambdas & Iteration: lambdas.md
       - Type System: types.md
       - Contracts & Annotations: contracts.md
   - Standard Library:
@@ -35,6 +39,7 @@ nav:
   - Project:
       - Design Decisions: design.md
       - Roadmap: roadmap.md
+      - FAQ: faq.md
 
 theme:
   name: material

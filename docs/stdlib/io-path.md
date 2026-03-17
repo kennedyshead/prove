@@ -10,7 +10,7 @@ keywords: Prove System, Prove Path, file IO, console IO, path manipulation
 
 **Module:** `System` — handles IO operations across console, file, system, dir, and process channels.
 
-All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions.md#io-and-fallibility) for how IO and fallibility work together.
+All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions) for how IO and fallibility work together.
 
 ### Console Channel
 
@@ -94,7 +94,7 @@ Access command-line arguments.
 
 ### File Streaming Channel
 
-Open file handles for line-by-line streaming — for use with the [`streams` verb](../functions.md#streams-blocking-io-loop). Type: `File` (binary handle).
+Open file handles for line-by-line streaming — for use with the [`streams` verb](../async). Type: `File` (binary handle).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|

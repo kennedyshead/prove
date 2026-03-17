@@ -394,7 +394,7 @@ from
     serve(config.port, db)!
 ```
 
-See [Functions & Verbs — IO and Fallibility](functions.md#io-and-fallibility) for how `!` relates to verb families.
+See [Functions & Verbs — IO and Fallibility](functions.md) for how `!` relates to verb families.
 
 ## Effect Types
 
@@ -488,3 +488,64 @@ No null. Prove replaces null's two roles with distinct types:
 - **`Unit`** — for functions that return nothing (the "void" equivalent)
 
 Both are enforced by the compiler. There is no null pointer, no nil, no sentinel value.
+
+---
+
+## Keyword Reference
+
+Every keyword in Prove has exactly one purpose. No keyword is overloaded across different contexts.
+
+### Intent Verbs
+
+| Keyword | What it does |
+|---------|-------------|
+| `transforms` | Declares a pure function — no side effects. See [Functions & Verbs](functions.md#intent-verbs) |
+| `validates` | Declares a function that returns true or false. Return type is implicitly `Boolean`. See [Functions & Verbs](functions.md#intent-verbs) |
+| `reads` | Declares a pure function that extracts or queries data. See [Functions & Verbs](functions.md#intent-verbs) |
+| `creates` | Declares a pure function that constructs a new value. See [Functions & Verbs](functions.md#intent-verbs) |
+| `inputs` | Declares a function that reads from the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
+| `outputs` | Declares a function that writes to the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
+| `streams` | Declares a blocking IO loop over a source. See [Async & Streams](async.md) |
+| `detached` | Declares a fire-and-forget async function. See [Functions & Verbs](functions.md#async-verbs) |
+| `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
+| `listens` | Declares an event dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
+| `matches` | Declares a pure match dispatch on algebraic type. See [Functions & Verbs](functions.md#intent-verbs) |
+
+### Declarations & Types
+
+| Keyword | What it does |
+|---------|-------------|
+| `main` | The program's entry point — can freely mix reading and writing |
+| `from` | Marks where the function body starts. See [Functions](functions.md) |
+| `where` | Adds a value constraint to a type. See [Refinement Types](#refinement-types) |
+| `as` | Declares a variable — `port as Port = 8080` |
+| `is` | Defines a type — `type Port is Integer` |
+| `type` | Starts a type definition — `type Port is Integer where 1..65535` |
+| `match` | Branches on a value. See [Pattern Matching](#pattern-matching) |
+| `module` | Starts a module block containing types, constants, and metadata |
+| `narrative` | Documents the module's purpose in the `module` block |
+| `invariant_network` | Declares a network of invariants in the `module` block |
+
+### Contracts & Verification
+
+| Keyword | What it does |
+|---------|-------------|
+| `ensures` | States what a function guarantees about its result. See [Contracts](contracts.md#requires-and-ensures) |
+| `requires` | States what must be true before calling a function. See [Contracts](contracts.md#requires-and-ensures) |
+| `explain` | Documents `from` block steps using controlled natural language. See [Contracts](contracts.md#explain) |
+| `terminates` | Required for recursive functions. See [Contracts](contracts.md#terminates) |
+| `trusted` | Marks a function as unverified. See [Contracts](contracts.md#trusted) |
+| `believe` | States an unverified assumption. See [Contracts](contracts.md) |
+| `assume` | States a runtime assumption. See [Contracts](contracts.md) |
+| `near_miss` | Defines approximate contracts for fuzzy matching. See [Contracts](contracts.md#near_miss) |
+
+### Special Keywords
+
+| Keyword | What it does |
+|---------|-------------|
+| `valid` | References a `validates` function as a predicate. Used in boolean contexts or as function references |
+| `comptime` | Marks code for compile-time evaluation. See [Compiler](compiler.md#comptime-compile-time-computation) |
+| `event_type` | Declares the algebraic type for a `listens` dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
+| `foreign` | Declares a C FFI block inside a module. See [Syntax Reference](syntax.md#foreign-blocks-c-ffi) |
+| `todo` | Marks incomplete implementation. Generates [I601](diagnostics.md#i601-incomplete-implementation-todo) diagnostic |
+| `with` | Declares required fields on a `Struct` parameter. See [Row Polymorphism](#row-polymorphism-struct) |
