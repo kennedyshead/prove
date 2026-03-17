@@ -1303,6 +1303,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
 
+        # ── Intent prose check ──
+        if fd.intent:
+            self._check_intent_prose(fd)
+
         # ── Counterfactual annotation checks (always active) ──
         if fd.chosen or fd.why_not:
             self._check_chosen_has_why_not(fd)

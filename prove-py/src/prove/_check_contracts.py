@@ -368,6 +368,27 @@ class ContractCheckMixin:
             )
             self.diagnostics.append(diag)
 
+    def _check_intent_prose(self, fd: FunctionDef) -> None:
+        """W313: intent: prose has no vocabulary overlap with the function body."""
+        if not fd.intent:
+            return
+        from prove._nl_intent import body_tokens, prose_overlaps
+
+        tokens = body_tokens(fd)
+        if tokens and not prose_overlaps(fd.intent, tokens):
+            self.diagnostics.append(
+                make_diagnostic(
+                    Severity.WARNING,
+                    "W313",
+                    "intent prose doesn't reference any function concepts",
+                    labels=[DiagnosticLabel(span=fd.span, message="")],
+                    notes=[
+                        f"intent: '{fd.intent}'",
+                        f"mention at least one of: {', '.join(sorted(tokens)[:5])}",
+                    ],
+                )
+            )
+
     # ── Requires-based option narrowing ─────────────────────────
 
     def _collect_requires_narrowings(

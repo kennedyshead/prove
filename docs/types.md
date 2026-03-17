@@ -155,7 +155,7 @@ from
 
 ## Refinement Types
 
-Types carry constraints, not just shapes. The compiler validates values against constraints via runtime checks inserted at assignment boundaries. *Upcoming:* static rejection of provably-invalid literals at compile time.
+Types carry constraints, not just shapes. The compiler validates values against constraints via runtime checks inserted at assignment boundaries. Static rejection of provably-invalid literals at compile time is implemented — literal values that violate refinement constraints are caught at compile time (E355).
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535

@@ -97,9 +97,9 @@ The Prove Source License covers the language, its specification, and `.prv` sour
 
 ---
 
-## Parsed (Syntax Ready, Enforcement Upcoming)
+## Intent and Counterfactual Annotations
 
-These keywords are parsed and stored in the AST, but the compiler does not yet enforce their semantic claims. They currently serve as documentation and structural annotations.
+These keywords are parsed and stored in the AST, and the compiler enforces their semantic claims.
 
 ### Intent Annotations
 
@@ -114,7 +114,12 @@ from
 
 It goes in the function **header**, not inside the body.
 
-*Upcoming:* The compiler will verify the `intent` prose is consistent with the function's actual behavior, linking intent declarations to the refutation challenge engine.
+The compiler verifies the `intent` prose is consistent with the function's actual behavior:
+- W501: Verb not described in module narrative
+- W502: Explain entry doesn't match from-body  
+- W504: Chosen text doesn't relate to from-body
+- W505: Why-not entry mentions no known name
+- W506: Why-not entry contradicts from-body
 
 ---
 
