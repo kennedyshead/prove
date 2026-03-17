@@ -1,8 +1,0 @@
-module DemoI360
-  narrative: """
-  Expected diagnostics: I360
-  """
-
-validates positive(x Integer)
-from
-    x > 0

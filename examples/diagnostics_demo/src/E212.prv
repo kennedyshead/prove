@@ -1,7 +1,0 @@
-module DemoE212
-  narrative: """
-  Expected diagnostics: E212
-  """
-
-  type Bad is
-    42

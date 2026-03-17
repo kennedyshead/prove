@@ -1,6 +1,0 @@
-module DemoE107
-  narrative: """
-  Expected diagnostics: E107
-  """
-from
-    "\x"

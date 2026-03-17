@@ -1,8 +1,0 @@
-module DemoI314
-  narrative: """
-  Expected diagnostics: I314
-  """
-
-transforms angle(x Integer) Integer
-from
-    x

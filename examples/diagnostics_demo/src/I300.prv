@@ -1,9 +1,0 @@
-module DemoI300
-  narrative: """
-  Expected diagnostics: I300
-  """
-
-transforms demo(n Integer) Integer
-from
-    unused as Integer = 42
-    n

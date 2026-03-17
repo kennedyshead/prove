@@ -1,7 +1,0 @@
-module DemoE397
-  narrative: """
-  Expected diagnostics: E397
-  """
-
-transforms demo() Integer
-binary

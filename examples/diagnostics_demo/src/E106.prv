@@ -1,6 +1,0 @@
-module DemoE106
-  narrative: """
-  Expected diagnostics: E106
-  """
-from
-    f"unterminated

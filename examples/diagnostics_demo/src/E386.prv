@@ -1,9 +1,0 @@
-module DemoE386
-  narrative: """
-  Expected diagnostics: E386
-  """
-
-transforms bad(a Integer) Integer
-  believe: result + 1
-from
-    a

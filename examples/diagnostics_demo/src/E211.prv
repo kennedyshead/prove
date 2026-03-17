@@ -1,5 +1,0 @@
-module DemoE211
-  narrative: """
-  Expected diagnostics: E211
-  """
-blah

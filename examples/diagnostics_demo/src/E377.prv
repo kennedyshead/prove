@@ -1,8 +1,0 @@
-module DemoE377
-  narrative: """
-  Expected diagnostics: E377
-  """
-
-main()
-from
-    TokenKind:"unknown"

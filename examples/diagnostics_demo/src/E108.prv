@@ -1,8 +1,0 @@
-module DemoE108
-  narrative: """
-  Expected diagnostics: E108
-  """
-
-transforms check() String
-from
-    "test\

@@ -1,8 +1,0 @@
-module DemoE315
-  narrative: """
-  Expected diagnostics: E315
-  """
-
-transforms demo(n Integer) Integer
-from
-    n

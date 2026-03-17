@@ -1,9 +1,0 @@
-module DemoE380
-  narrative: """
-  Expected diagnostics: E380
-  """
-
-transforms bad(a Integer) Integer
-  ensures result + 1
-from
-    a

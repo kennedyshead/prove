@@ -1,9 +1,0 @@
-module DemoE382
-  narrative: """
-  Expected diagnostics: E382
-  """
-
-transforms bad(a Integer) Integer
-  satisfies Nonexistent
-from
-    a

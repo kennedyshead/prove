@@ -1,8 +1,0 @@
-module DemoE300
-  narrative: """
-  Expected diagnostics: E300
-  """
-
-transforms bad(x Nonexistent) Integer
-from
-    0

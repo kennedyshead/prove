@@ -1,8 +1,0 @@
-module DemoW312
-  narrative: """
-  Expected diagnostics: W312
-  """
-
-transforms check() Integer
-from
-    1

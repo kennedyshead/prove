@@ -1,8 +1,0 @@
-module DemoE214
-  narrative: """
-  Expected diagnostics: E214
-  """
-
-transforms check() Integer
-from
-    transforms
