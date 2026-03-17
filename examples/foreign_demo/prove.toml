@@ -1,5 +1,5 @@
 [package]
-name = "foreign_demo"
+name = "py_embed"
 version = "0.1.0"
 authors = []
 license = ""
@@ -9,7 +9,8 @@ target = "native"
 optimize = true
 mutate = true
 debug = false
-link_flags = ["-lm"]
+c_sources = ["src/py_wrappers.c"]
+link_flags = []
 
 [test]
 property_rounds = 500

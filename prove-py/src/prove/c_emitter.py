@@ -22,6 +22,7 @@ from prove.ast_nodes import (
     FailPropExpr,
     FieldExpr,
     FloatLit,
+    ForeignFunction,
     FunctionDef,
     IdentifierExpr,
     IndexExpr,
@@ -120,6 +121,7 @@ class CEmitter(
         self._in_streams_loop = False
         self._in_listens_loop = False
         self._foreign_names: set[str] = set()
+        self._foreign_fns: list[ForeignFunction] = []
         self._foreign_libs: set[str] = set()
         self._current_requires: list[Expr] = []
         self._lookup_tables: dict[str, LookupTypeDef] = {}
@@ -145,6 +147,7 @@ class CEmitter(
                     self._foreign_libs.add(fb.library)
                     for ff in fb.functions:
                         self._foreign_names.add(ff.name)
+                        self._foreign_fns.append(ff)
                 for td in decl.types:
                     if isinstance(td.body, LookupTypeDef):
                         self._lookup_tables[td.name] = td.body
@@ -192,6 +195,7 @@ class CEmitter(
 
         # Emit includes
         self._emit_includes()
+        self._emit_foreign_extern_decls()
         self._line("")
 
         # Forward declarations for types
@@ -620,6 +624,23 @@ class CEmitter(
         for h in sorted(self._needed_headers):
             self._line(f'#include "{h}"')
         self._emitted_headers = set(self._needed_headers)
+
+    def _emit_foreign_extern_decls(self) -> None:
+        """Emit extern C declarations for foreign (FFI) functions."""
+        if not self._foreign_fns:
+            return
+        self._line("")
+        self._line("/* Foreign function declarations */")
+        for ff in self._foreign_fns:
+            sig = self._symbols.resolve_function_any(ff.name, arity=len(ff.params))
+            if sig is None:
+                continue
+            ret_c = map_type(sig.return_type).decl
+            if sig.param_types:
+                params_c = ", ".join(map_type(pt).decl for pt in sig.param_types)
+            else:
+                params_c = "void"
+            self._line(f"extern {ret_c} {ff.name}({params_c});")
 
     # ── Memoization ────────────────────────────────────────────
 

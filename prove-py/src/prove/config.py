@@ -22,6 +22,7 @@ class BuildConfig:
     debug: bool = False
     c_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
+    c_sources: list[str] = field(default_factory=list)
     ccache: bool = True
 
 
@@ -92,6 +93,7 @@ def load_config(path: Path) -> ProveConfig:
             debug=bld.get("debug", False),
             c_flags=bld.get("c_flags", []),
             link_flags=bld.get("link_flags", []),
+            c_sources=bld.get("c_sources", []),
             ccache=bld.get("ccache", True),
         )
 

@@ -271,6 +271,12 @@ def _build_c(
         c_path.write_text(c_src)
         gen_c_files.append(c_path)
 
+    # Add user-specified extra C sources (thin wrappers for foreign libraries, etc.)
+    for src_rel in config.build.c_sources:
+        src_path = project_dir / src_rel
+        if src_path.exists():
+            gen_c_files.append(src_path)
+
     # Copy runtime
     runtime_c_files = copy_runtime(build_dir, c_sources=c_sources, stdlib_libs=stdlib_libs or None)
 

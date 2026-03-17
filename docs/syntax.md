@@ -44,25 +44,28 @@ A verb applies to all space-separated names that follow it. Commas separate verb
 Modules can declare `foreign` blocks to bind C functions. Each block names a C library and lists the functions it provides with their parameter types and return types:
 
 ```prove
-module Math
-  narrative: """Mathematical functions via C libm."""
+module PyEmbed
+  narrative: """Embed a Python interpreter for scripting support."""
 
-  foreign "libm"
-    sqrt(x Decimal) Decimal
-    pow(base Decimal, exp Decimal) Decimal
-    floor(x Decimal) Decimal
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
 ```
+
+Foreign block names must be snake_case — Prove's naming rules apply even to C bindings. Libraries whose C API uses other conventions (like `libpython3`'s `Py_Initialize`) need thin C wrapper functions that follow snake_case naming before they can be declared in a `foreign` block.
 
 Foreign functions are raw C bindings — wrap them in a Prove function with a verb to provide type safety and contracts:
 
 ```prove
-transforms square_root(x Decimal) Decimal
-  ensures result >= 0.0
-  requires x >= 0.0
-  explain
-      delegate to C sqrt
+outputs run(code String)!
 from
-    sqrt(x)
+    py_initialize()
+    result as Integer = py_run_string(code)
+    py_finalize()
+    match result
+        0 => Unit
+        _ => console("script exited with non-zero status")
 ```
 
 The string after `foreign` is the library name passed to the linker (`"libm"` links `-lm`). Known libraries get automatic `#include` headers:
