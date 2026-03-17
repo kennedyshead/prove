@@ -166,6 +166,26 @@ class CallCheckMixin:
                     expr.span,
                 )
 
+            # Purity enforcement for par_map / par_filter / par_reduce:
+            # the callback must be a named function with a pure verb.
+            if name in ("par_map", "par_filter", "par_reduce"):
+                # par_reduce: callback is 3rd arg (idx 2); others: 2nd arg (idx 1)
+                cb_idx = 2 if name == "par_reduce" else 1
+                if cb_idx < len(expr.args):
+                    cb_arg = expr.args[cb_idx]
+                    if isinstance(cb_arg, IdentifierExpr):
+                        cb_arity = 2 if name == "par_reduce" else 1
+                        cb_sig = self.symbols.resolve_function_any(
+                            cb_arg.name, arity=cb_arity
+                        )
+                        if cb_sig and cb_sig.verb and cb_sig.verb not in _PURE_VERBS:
+                            self._error(
+                                "E368",
+                                f"'{name}' requires a pure callback, but "
+                                f"'{cb_arg.name}' has verb '{cb_sig.verb}'",
+                                cb_arg.span,
+                            )
+
             # Skip strict checks for imported functions (ErrorType return = unknown sig)
             if isinstance(sig.return_type, ErrorType):
                 return sig.return_type

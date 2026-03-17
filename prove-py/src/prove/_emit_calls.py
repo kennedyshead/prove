@@ -572,6 +572,12 @@ class CallEmitterMixin:
                 return self._emit_hof_filter(expr)
             if name == "reduce" and len(expr.args) == 3:
                 return self._emit_hof_reduce(expr)
+            if name == "par_map" and len(expr.args) == 2:
+                return self._emit_hof_par_map(expr)
+            if name == "par_filter" and len(expr.args) == 2:
+                return self._emit_hof_par_filter(expr)
+            if name == "par_reduce" and len(expr.args) == 3:
+                return self._emit_hof_par_reduce(expr)
             # Fused iterator patterns from optimizer
             if name == "__fused_map_filter" and len(expr.args) == 3:
                 return self._emit_fused_map_filter(expr)
@@ -1033,6 +1039,61 @@ class CallEmitterMixin:
         # Emit lambda with correct types
         fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
         return f"prove_list_map({list_arg}, {fn_name})"
+
+    def _emit_hof_par_map(self, expr: CallExpr) -> str:
+        """Emit prove_par_map(list, fn, 0) — parallel map with auto-detect workers."""
+        self._needed_headers.add("prove_par_map.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        coll_type = self._infer_expr_type(expr.args[0])
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
+
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "map")
+        return f"prove_par_map({list_arg}, {fn_name}, 0)"
+
+    def _emit_hof_par_filter(self, expr: CallExpr) -> str:
+        """Emit prove_par_filter(list, pred, 0) — parallel filter with auto-detect workers."""
+        self._needed_headers.add("prove_par_map.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        coll_type = self._infer_expr_type(expr.args[0])
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
+
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_par_filter({list_arg}, {fn_name}, 0)"
+
+    def _emit_hof_par_reduce(self, expr: CallExpr) -> str:
+        """Emit prove_par_reduce(list, init, fn, 0) — parallel reduce with auto-detect workers."""
+        self._needed_headers.add("prove_par_map.h")
+        self._needed_headers.add("prove_hof.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        coll_type = self._infer_expr_type(expr.args[0])
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
+
+        accum_type = self._infer_expr_type(expr.args[1])
+        accum_ct = map_type(accum_type)
+
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[1])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        fn_name = self._emit_hof_lambda(
+            expr.args[2],
+            elem_type,
+            "reduce",
+            accum_type=accum_type,
+        )
+        init_cast = self._hof_box(accum_tmp, accum_ct)
+        result_tmp = self._tmp()
+        self._line(f"void *{result_tmp} = prove_par_reduce({list_arg}, {init_cast}, {fn_name}, 0);")
+        return self._hof_unbox(result_tmp, accum_ct)
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
