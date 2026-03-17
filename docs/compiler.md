@@ -66,8 +66,8 @@ line_length = 90
 | | `authors` | `[]` | Author names |
 | | `license` | `""` | License identifier |
 | `[build]` | `target` | `"native"` | Build target |
-| | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`) |
-| | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`) |
+| | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`). For foreign libraries like `libpython3`, prefer [environment variables](syntax.md#foreign-blocks-c-ffi) instead. |
+| | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`). For foreign libraries like `libpython3`, prefer [environment variables](syntax.md#foreign-blocks-c-ffi) instead. |
 | | `ccache` | `true` | Use [ccache](https://ccache.dev) if installed (no-op otherwise) |
 | `[optimize]` | `enabled` | `true` | Enable compiler optimizations (`-O2 -flto`) |
 | | `pgo` | `false` | Enable [profile-guided optimization](performance.md#profile-guided-optimization-pgo) (requires `enabled = true`) |

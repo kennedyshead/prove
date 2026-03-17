@@ -337,3 +337,57 @@ class TestResolveForeignFlags:
         c_flags, l_flags = _resolve_foreign_flags("zlib")
         assert c_flags == []
         assert l_flags == ["-lzlib"]
+
+    def test_env_vars_override_pkg_config(self, monkeypatch):
+        from prove.builder import _resolve_foreign_flags
+
+        monkeypatch.setenv(
+            "PROVE_PYTHON_CFLAGS",
+            "-I/opt/homebrew/opt/python@3.13/include/python3.13",
+        )
+        monkeypatch.setenv(
+            "PROVE_PYTHON_LDFLAGS",
+            "-L/opt/homebrew/lib -lpython3.13 -ldl",
+        )
+        c_flags, l_flags = _resolve_foreign_flags("libpython3")
+        assert c_flags == ["-I/opt/homebrew/opt/python@3.13/include/python3.13"]
+        assert l_flags == ["-L/opt/homebrew/lib", "-lpython3.13", "-ldl"]
+
+    def test_env_vars_partial_cflags_only(self, monkeypatch):
+        from prove.builder import _resolve_foreign_flags
+
+        monkeypatch.setenv(
+            "PROVE_PYTHON_CFLAGS",
+            "-I/usr/include/python3.12",
+        )
+        monkeypatch.delenv("PROVE_PYTHON_LDFLAGS", raising=False)
+        c_flags, l_flags = _resolve_foreign_flags("libpython3")
+        assert c_flags == ["-I/usr/include/python3.12"]
+        assert l_flags == []
+
+    def test_env_vars_jvm(self, monkeypatch):
+        from prove.builder import _resolve_foreign_flags
+
+        monkeypatch.setenv("PROVE_JVM_CFLAGS", "-I/usr/lib/jvm/include")
+        monkeypatch.setenv("PROVE_JVM_LDFLAGS", "-L/usr/lib/jvm/lib -ljvm")
+        c_flags, l_flags = _resolve_foreign_flags("libjvm")
+        assert c_flags == ["-I/usr/lib/jvm/include"]
+        assert l_flags == ["-L/usr/lib/jvm/lib", "-ljvm"]
+
+    def test_empty_env_vars_fall_through(self, monkeypatch):
+        """Empty env vars should not short-circuit — fall through to pkg-config."""
+        from unittest.mock import MagicMock, patch
+
+        from prove.builder import _resolve_foreign_flags
+
+        monkeypatch.setenv("PROVE_PYTHON_CFLAGS", "")
+        monkeypatch.setenv("PROVE_PYTHON_LDFLAGS", "")
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "-I/usr/include/python3.12 -lpython3.12\n"
+
+        with patch("subprocess.run", return_value=mock_result):
+            c_flags, l_flags = _resolve_foreign_flags("libpython3")
+        assert c_flags == ["-I/usr/include/python3.12"]
+        assert l_flags == ["-lpython3.12"]

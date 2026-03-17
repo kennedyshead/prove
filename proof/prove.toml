@@ -10,11 +10,6 @@ mutate = true
 debug = false
 ccache = true
 c_sources = ["src/python/py_wrappers.c"]
-c_flags = [
-    "-I/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/include/python3.13",
-    "-DPYTHON_HOME=\"/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13\"",
-]
-link_flags = ["-L/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/lib/python3.13/config-3.13-darwin", "-L/opt/homebrew/lib", "-lpython3.13", "-lintl", "-ldl", "-framework", "CoreFoundation"]
 
 [optimize]
 enabled = true

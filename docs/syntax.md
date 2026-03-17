@@ -76,12 +76,26 @@ The string after `foreign` is the library name passed to the linker (`"libm"` li
 | `libpthread` | `pthread.h` | `-lpthread` |
 | `libdl` | `dlfcn.h` | `-ldl` |
 | `librt` | `time.h` | `-lrt` |
-| `libpython3` | `Python.h` | via `pkg-config python3-embed` |
-| `libjvm` | `jni.h` | via `pkg-config jni` |
+| `libpython3` | `Python.h` | env / `pkg-config python3-embed` |
+| `libjvm` | `jni.h` | env / `pkg-config jni` |
 
-For `libpython3` and `libjvm`, the compiler uses **`pkg-config`** to resolve the correct include paths and linker flags for the current platform. If `pkg-config` is not available or the query fails, it falls back to a plain `-l` flag.
+For `libpython3` and `libjvm`, the compiler resolves include paths and linker flags in this order:
 
-Configure additional compiler and linker flags in [`prove.toml`](compiler.md#provetoml-configuration):
+1. **Environment variables** — `PROVE_PYTHON_CFLAGS` / `PROVE_PYTHON_LDFLAGS` (or `PROVE_JVM_CFLAGS` / `PROVE_JVM_LDFLAGS`)
+2. **`pkg-config`** — queries `python3-embed` or `jni`
+3. **Fallback** — plain `-lpython3` or `-ljvm`
+
+Environment variables are the recommended approach for platform-specific paths (Homebrew, Frameworks, custom installs) since they keep `prove.toml` portable:
+
+```bash
+# macOS Homebrew example
+export PROVE_PYTHON_CFLAGS="-I/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/include/python3.13"
+export PROVE_PYTHON_LDFLAGS="-L/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/lib/python3.13/config-3.13-darwin -L/opt/homebrew/lib -lpython3.13 -lintl -ldl -framework CoreFoundation"
+```
+
+The naming convention is `PROVE_<LIB>_CFLAGS` / `PROVE_<LIB>_LDFLAGS`, where `<LIB>` is the library name with the `lib` prefix and trailing version digits stripped (`libpython3` → `PYTHON`, `libjvm` → `JVM`).
+
+For non-foreign flags (custom include paths, extra libraries), use `c_flags` and `link_flags` in [`prove.toml`](compiler.md#provetoml-configuration):
 
 ```toml
 [build]
