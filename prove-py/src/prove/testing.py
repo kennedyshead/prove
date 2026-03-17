@@ -406,7 +406,6 @@ class TestGenerator:
                 # Apply requires guards with boundary value substituted
                 if req_guards:
                     # Substitute param names with boundary value
-                    guarded = True
                     for guard in req_guards:
                         g = guard
                         for p in fd.params:

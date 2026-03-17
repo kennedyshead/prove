@@ -546,7 +546,9 @@ class ExprEmitterMixin:
 
     def _emit_listens_call(self, call: CallExpr, sig) -> str:
         """Emit a listens call with worker coro creation for List<Attached> args."""
-        from prove.ast_nodes import CallExpr as _CE, IdentifierExpr as _IE, ListLiteral
+        from prove.ast_nodes import CallExpr as _CE
+        from prove.ast_nodes import IdentifierExpr as _IE
+        from prove.ast_nodes import ListLiteral
         from prove.c_types import mangle_name
 
         fname = call.func.name  # type: ignore[attr-defined]
@@ -1318,7 +1320,7 @@ class ExprEmitterMixin:
 
         lookup = self._lookup_tables.get(type_name_str)
         if lookup is None or not isinstance(lookup, LookupTypeDef):
-            return f"/* unknown store lookup */ 0"
+            return "/* unknown store lookup */ 0"
 
         # key_col: index of column matching the key type (String)
         # val_col: index of column matching the expected return type

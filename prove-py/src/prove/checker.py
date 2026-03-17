@@ -13,8 +13,8 @@ from prove._check_contracts import ContractCheckMixin
 from prove._check_types import TypeCheckMixin
 from prove.ast_nodes import (
     AlgebraicTypeDef,
-    AsyncCallExpr,
     Assignment,
+    AsyncCallExpr,
     BinaryDef,
     BinaryExpr,
     BinaryLookupExpr,
@@ -45,6 +45,7 @@ from prove.ast_nodes import (
     LookupAccessExpr,
     LookupTypeDef,
     MainDef,
+    MatchArm,
     MatchExpr,
     ModifiedType,
     Module,
@@ -112,10 +113,7 @@ from prove.types import (
     VariantInfo,
     has_mutable_modifier,
     has_own_modifier,
-    is_json_serializable,
     numeric_widen,
-    resolve_type_vars,
-    substitute_type_vars,
     type_name,
     types_compatible,
 )
@@ -208,9 +206,7 @@ def _extract_call_targets(
         if isinstance(expr, CallExpr):
             if isinstance(expr.func, IdentifierExpr):
                 targets.append((expr.func.name, expr.span))
-            elif isinstance(expr.func, FieldExpr) and isinstance(
-                expr.func.obj, IdentifierExpr
-            ):
+            elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, IdentifierExpr):
                 # Module.func() → just track the function name
                 targets.append((expr.func.field, expr.span))
             for arg in expr.args:
@@ -789,9 +785,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # validates always returns Boolean — override implicit Unit
         if fd.verb == "validates" and not fd.return_type:
             return_type = BOOLEAN
-        resolved_event_type = (
-            self._resolve_type_expr(fd.event_type) if fd.event_type else None
-        )
+        resolved_event_type = self._resolve_type_expr(fd.event_type) if fd.event_type else None
         sig = FunctionSignature(
             verb=fd.verb,
             name=fd.name,
@@ -2668,8 +2662,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Skip for listens/streams where match arms are loop-body statements
         cur_verb = (
             self._current_function.verb
-            if self._current_function
-            and isinstance(self._current_function, FunctionDef)
+            if self._current_function and isinstance(self._current_function, FunctionDef)
             else None
         )
         # Find the dominant value type (first non-Unit, non-Error arm type)
@@ -3278,9 +3271,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             call_targets = _extract_call_targets(fd.body)
             for callee_name, call_span in call_targets:
                 callee_status = self._verification_status.get(callee_name)
-                callee_is_verified = (
-                    callee_status == "verified"
-                    or (callee_status is None and callee_name in imported_verified)
+                callee_is_verified = callee_status == "verified" or (
+                    callee_status is None and callee_name in imported_verified
                 )
                 if not callee_is_verified:
                     continue

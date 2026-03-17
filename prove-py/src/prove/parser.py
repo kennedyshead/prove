@@ -9,6 +9,7 @@ from __future__ import annotations
 from prove.ast_nodes import (
     AlgebraicTypeDef,
     Assignment,
+    AsyncCallExpr,
     BinaryDef,
     BinaryExpr,
     BindingPattern,
@@ -25,7 +26,6 @@ from prove.ast_nodes import (
     ExplainEntry,
     Expr,
     ExprStmt,
-    AsyncCallExpr,
     FailPropExpr,
     FieldAssignment,
     FieldDef,

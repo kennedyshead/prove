@@ -987,7 +987,6 @@ def _generate_from_intent(target: Path, dry_run: bool) -> None:
 def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
     """Generate function stubs from module narrative prose in a .prv file."""
     from prove._body_gen import generate_function_source, has_generated_marker
-    from prove._generate import generate_stub_function
     from prove._nl_intent import extract_nouns, implied_verbs, pair_verbs_nouns
     from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
 

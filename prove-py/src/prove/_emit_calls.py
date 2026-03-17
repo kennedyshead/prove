@@ -19,7 +19,7 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     ValidExpr,
 )
-from prove.c_types import mangle_name, map_type
+from prove.c_types import CType, mangle_name, map_type
 from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
@@ -738,7 +738,6 @@ class CallEmitterMixin:
                     # Release mode: rewrite Array<Boolean> ops to BitArray
                     is_bitarray_set = False
                     if self._release_mode:
-                        orig_name = c_name
                         c_name = self._bitarray_rewrite(c_name)
                         if c_name == "prove_bitarray_set":
                             is_bitarray_set = True
@@ -791,9 +790,7 @@ class CallEmitterMixin:
                     template_key = (sig.verb, sig.name, len(sig.param_types))
                     template_fd = self._struct_templates.get(template_key)
                     if template_fd:
-                        mangled = self._request_struct_specialisation(
-                            template_fd, concrete_types
-                        )
+                        mangled = self._request_struct_specialisation(template_fd, concrete_types)
                         return f"{mangled}({', '.join(args)})"
 
                 args = self._coerce_call_args(args, expr.args, sig)
@@ -943,15 +940,19 @@ class CallEmitterMixin:
                     template_key = (sig.verb, sig.name, len(sig.param_types))
                     template_fd = self._struct_templates.get(template_key)
                     if template_fd:
-                        mangled = self._request_struct_specialisation(
-                            template_fd, concrete_types
-                        )
+                        mangled = self._request_struct_specialisation(template_fd, concrete_types)
                         call_str = f"{mangled}({', '.join(args)})"
                         call_str = self._maybe_unwrap_option(
-                            call_str, sig, expr.args, module_name,
+                            call_str,
+                            sig,
+                            expr.args,
+                            module_name,
                         )
                         call_str = self._maybe_unwrap_result(
-                            call_str, sig, expr.args, module_name,
+                            call_str,
+                            sig,
+                            expr.args,
+                            module_name,
                         )
                         return call_str
 
@@ -1024,18 +1025,15 @@ class CallEmitterMixin:
             elem_type = coll_type.element
 
         # Determine result element type (may differ from input, e.g. Integer → String)
-        result_elem_type = elem_type
         fn_expr = expr.args[1]
         if isinstance(fn_expr, IdentifierExpr):
             fn_sig = self._symbols.resolve_function_any(fn_expr.name, arity=1)
-            if fn_sig:
-                result_elem_type = fn_sig.return_type
         elif isinstance(fn_expr, LambdaExpr):
             # Infer from lambda body
             saved = dict(self._locals)
             if fn_expr.params:
                 self._locals[fn_expr.params[0]] = elem_type
-            result_elem_type = self._infer_expr_type(fn_expr.body)
+            self._infer_expr_type(fn_expr.body)
             self._locals = saved
 
         # Emit lambda with correct types

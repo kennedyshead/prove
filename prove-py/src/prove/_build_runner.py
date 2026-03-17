@@ -13,10 +13,10 @@ from pathlib import Path
 def mutate(project_dir: Path):
     print("running mutation testing...")
     from prove.checker import Checker
-    from prove.module_resolver import build_module_registry
-    from prove.mutator import run_mutation_tests
     from prove.errors import CompileError
     from prove.lexer import Lexer
+    from prove.module_resolver import build_module_registry
+    from prove.mutator import run_mutation_tests
     from prove.parser import Parser
 
     src_dir = project_dir / "src"

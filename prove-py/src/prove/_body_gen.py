@@ -10,10 +10,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from prove._nl_intent import extract_nouns, implied_functions, implied_verbs
+from prove._nl_intent import extract_nouns, implied_functions
 from prove.stdlib_loader import _STDLIB_MODULES, load_stdlib
 from prove.symbols import FunctionSignature
-
 
 # ── Data types ────────────────────────────────────────────────────
 
@@ -108,19 +107,20 @@ def find_stdlib_matches(
                 fn_words |= set(re.findall(r"[a-z]{3,}", fn.doc_comment.lower()))
             overlap = fn_words & noun_set
             if overlap:
-                matches.append(StdlibMatch(
-                    module=module_name,
-                    function=fn,
-                    overlap=overlap,
-                    score=len(overlap) / max(len(noun_set), 1),
-                ))
+                matches.append(
+                    StdlibMatch(
+                        module=module_name,
+                        function=fn,
+                        overlap=overlap,
+                        score=len(overlap) / max(len(noun_set), 1),
+                    )
+                )
 
     # Boost scores with pre-computed similarity matrix when available
     from prove.nlp_store import load_similarity_matrix
 
     sim_matrix = load_similarity_matrix()
     if sim_matrix and matches:
-        query_key = f"{verb} {' '.join(nouns)}"
         for m in matches:
             fn_key = f"{m.module}.{m.function.name}"
             fn_scores = sim_matrix.get(fn_key, {})
@@ -128,7 +128,8 @@ def find_stdlib_matches(
                 # Average similarity to other matched functions as a boost
                 avg_sim = sum(
                     fn_scores.get(f"{other.module}.{other.function.name}", 0.0)
-                    for other in matches if other is not m
+                    for other in matches
+                    if other is not m
                 ) / max(len(matches) - 1, 1)
                 # Blend: 60% original score, 40% similarity boost
                 m.score = round(m.score * 0.6 + avg_sim * 0.4, 3)
@@ -142,8 +143,7 @@ def find_stdlib_matches(
                 continue
             # Check if already matched by signature
             already = any(
-                m.module == dm["module"] and m.function.name == dm["name"]
-                for m in matches
+                m.module == dm["module"] and m.function.name == dm["name"] for m in matches
             )
             if already:
                 continue
@@ -151,12 +151,14 @@ def find_stdlib_matches(
             mod_sigs = stdlib_index.get(dm["module"].lower(), [])
             for fn in mod_sigs:
                 if fn.name == dm["name"] and fn.verb == verb:
-                    matches.append(StdlibMatch(
-                        module=dm["module"].lower(),
-                        function=fn,
-                        overlap=set(),
-                        score=dm["score"],
-                    ))
+                    matches.append(
+                        StdlibMatch(
+                            module=dm["module"].lower(),
+                            function=fn,
+                            overlap=set(),
+                            score=dm["score"],
+                        )
+                    )
                     break
 
     return sorted(matches, key=lambda m: -m.score)
@@ -174,7 +176,7 @@ def _generate_call(match: StdlibMatch, param_names: list[str]) -> str:
     """Generate a stdlib call expression with parameter threading."""
     fn = match.function
     module_display = match.module.capitalize()
-    args = ", ".join(param_names[:len(fn.param_names)])
+    args = ", ".join(param_names[: len(fn.param_names)])
     fail_suffix = "!" if fn.can_fail else ""
     return f"{module_display}.{fn.name}({args}){fail_suffix}"
 
@@ -203,10 +205,12 @@ def generate_body(
     if not matches:
         # No stdlib match — produce todo stub
         msg = declaration_text or f"{verb} {name}"
-        body.stmts.append(GeneratedStmt(
-            code=f'todo "{msg}"',
-            is_todo=True,
-        ))
+        body.stmts.append(
+            GeneratedStmt(
+                code=f'todo "{msg}"',
+                is_todo=True,
+            )
+        )
         return body
 
     # Use the best match for the primary call
@@ -216,19 +220,26 @@ def generate_body(
     # Generate the statement
     fn = best.function
     ret_str = _format_type(fn.return_type)
-    if ret_str not in ("Unit", "()",):
-        body.stmts.append(GeneratedStmt(
-            code=f"result as {ret_str} = {call_code}",
-            stdlib_call=best,
-            explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
-        ))
+    if ret_str not in (
+        "Unit",
+        "()",
+    ):
+        body.stmts.append(
+            GeneratedStmt(
+                code=f"result as {ret_str} = {call_code}",
+                stdlib_call=best,
+                explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
+            )
+        )
         body.stmts.append(GeneratedStmt(code="result"))
     else:
-        body.stmts.append(GeneratedStmt(
-            code=call_code,
-            stdlib_call=best,
-            explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
-        ))
+        body.stmts.append(
+            GeneratedStmt(
+                code=call_code,
+                stdlib_call=best,
+                explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
+            )
+        )
 
     # Generate explain entries
     for stmt in body.stmts:
@@ -239,7 +250,11 @@ def generate_body(
 
     # Generate chosen
     module_display = best.module.capitalize()
-    doc_summary = _simplify_doc(best.function.doc_comment) if best.function.doc_comment else best.function.name
+    doc_summary = (
+        _simplify_doc(best.function.doc_comment)
+        if best.function.doc_comment
+        else best.function.name
+    )
     body.chosen = f"{module_display}.{best.function.name} for {doc_summary}"
 
     # Generate why_not for alternatives
@@ -384,12 +399,10 @@ def generate_function_source(
     # Doc comment
     doc = declaration_text or f"{verb.capitalize()} {name}"
     lines.append(f"/// {doc}")
-    lines.append(f"/// @generated")
+    lines.append("/// @generated")
 
     # Signature
-    params_str = ", ".join(
-        f"{pn} {pt}" for pn, pt in zip(param_names, param_types)
-    )
+    params_str = ", ".join(f"{pn} {pt}" for pn, pt in zip(param_names, param_types))
     fail_suffix = "!" if can_fail else ""
     ret = f" {return_type}{fail_suffix}" if return_type != "Unit" else ""
     lines.append(f"{verb} {name}({params_str}){ret}")

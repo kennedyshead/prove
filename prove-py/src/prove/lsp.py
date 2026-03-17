@@ -14,6 +14,7 @@ from pathlib import Path
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
 
+from prove._nl_intent import VERB_SYNONYMS as _VERB_PROSE_HINTS
 from prove.ast_nodes import (
     ConstantDef,
     FunctionDef,
@@ -24,7 +25,6 @@ from prove.ast_nodes import (
     ModuleDecl,
     TypeDef,
 )
-from prove._nl_intent import VERB_SYNONYMS as _VERB_PROSE_HINTS
 from prove.checker import Checker
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.formatter import ProveFormatter
@@ -140,9 +140,7 @@ def _ast_type_str(te: object) -> str:
 
 def _ast_sig_str(decl: FunctionDef) -> str:
     """Format a FunctionDef signature as '(name Type, ...) ReturnType[!]'."""
-    params = ", ".join(
-        f"{p.name} {_ast_type_str(p.type_expr)}" for p in decl.params
-    )
+    params = ", ".join(f"{p.name} {_ast_type_str(p.type_expr)}" for p in decl.params)
     ret = f" {_ast_type_str(decl.return_type)}" if decl.return_type is not None else ""
     fail = "!" if decl.can_fail else ""
     return f"({params}){ret}{fail}"
@@ -238,22 +236,42 @@ class _ProjectIndexer:
             def _collect(decl: object) -> None:
                 if isinstance(decl, FunctionDef):
                     symbols.append(
-                        {"name": decl.name, "verb": decl.verb, "kind": "function",
-                         "file": rel, "line": decl.span.start_line, "module": module_name,
-                         "signature": _ast_sig_str(decl),
-                         "docstring": decl.doc_comment or ""}
+                        {
+                            "name": decl.name,
+                            "verb": decl.verb,
+                            "kind": "function",
+                            "file": rel,
+                            "line": decl.span.start_line,
+                            "module": module_name,
+                            "signature": _ast_sig_str(decl),
+                            "docstring": decl.doc_comment or "",
+                        }
                     )
                 elif isinstance(decl, TypeDef):
                     symbols.append(
-                        {"name": decl.name, "verb": "types", "kind": "type",
-                         "file": rel, "line": decl.span.start_line, "module": module_name,
-                         "signature": "", "docstring": decl.doc_comment or ""}
+                        {
+                            "name": decl.name,
+                            "verb": "types",
+                            "kind": "type",
+                            "file": rel,
+                            "line": decl.span.start_line,
+                            "module": module_name,
+                            "signature": "",
+                            "docstring": decl.doc_comment or "",
+                        }
                     )
                 elif isinstance(decl, ConstantDef):
                     symbols.append(
-                        {"name": decl.name, "verb": "constant", "kind": "constant",
-                         "file": rel, "line": decl.span.start_line, "module": module_name,
-                         "signature": "", "docstring": decl.doc_comment or ""}
+                        {
+                            "name": decl.name,
+                            "verb": "constant",
+                            "kind": "constant",
+                            "file": rel,
+                            "line": decl.span.start_line,
+                            "module": module_name,
+                            "signature": "",
+                            "docstring": decl.doc_comment or "",
+                        }
                     )
                 elif isinstance(decl, ModuleDecl):
                     for td in decl.types:
@@ -302,6 +320,7 @@ class _ProjectIndexer:
     def index_all_files(self) -> None:
         """Scan and index all .prv files under project_root, then save cache."""
         from prove.config import _RESERVED_SRC_DIRS
+
         for prv_file in sorted(self.project_root.rglob("*.prv")):
             if _RESERVED_SRC_DIRS & set(prv_file.relative_to(self.project_root).parts):
                 continue
@@ -374,6 +393,7 @@ class _ProjectIndexer:
                 return False  # file deleted → stale
         # Also check for new .prv files not in manifest
         from prove.config import _RESERVED_SRC_DIRS
+
         for prv in self.project_root.rglob("*.prv"):
             if _RESERVED_SRC_DIRS & set(prv.relative_to(self.project_root).parts):
                 continue
@@ -507,13 +527,27 @@ _INTENT_SEVERITY_MAP = {
 
 # Verbs recognized in .intent files (for completions)
 _INTENT_VERBS = [
-    "validates", "transforms", "reads", "creates", "matches",
-    "inputs", "outputs", "streams", "listens", "detached", "attached",
+    "validates",
+    "transforms",
+    "reads",
+    "creates",
+    "matches",
+    "inputs",
+    "outputs",
+    "streams",
+    "listens",
+    "detached",
+    "attached",
 ]
 
 _INTENT_KEYWORDS = [
-    "project", "purpose", "domain", "vocabulary", "module",
-    "flow", "constraints",
+    "project",
+    "purpose",
+    "domain",
+    "vocabulary",
+    "module",
+    "flow",
+    "constraints",
 ]
 
 
@@ -536,16 +570,18 @@ def _analyze_intent(uri: str, source: str) -> IntentDocumentState:
         line = max(d.line - 1, 0)
         sev = _INTENT_SEVERITY_MAP.get(d.severity, lsp.DiagnosticSeverity.Warning)
         code = d.code or "I000"
-        diags.append(lsp.Diagnostic(
-            range=lsp.Range(
-                start=lsp.Position(line=line, character=0),
-                end=lsp.Position(line=line, character=1000),
-            ),
-            severity=sev,
-            source="prove-intent",
-            code=code,
-            message=f"[{code}] {d.message}" if d.code else d.message,
-        ))
+        diags.append(
+            lsp.Diagnostic(
+                range=lsp.Range(
+                    start=lsp.Position(line=line, character=0),
+                    end=lsp.Position(line=line, character=1000),
+                ),
+                severity=sev,
+                source="prove-intent",
+                code=code,
+                message=f"[{code}] {d.message}" if d.code else d.message,
+            )
+        )
 
     # Post-parse checks (only if project parsed successfully)
     if result.project is not None:
@@ -554,42 +590,43 @@ def _analyze_intent(uri: str, source: str) -> IntentDocumentState:
         for vocab in project.vocabulary:
             referenced = False
             for mod in project.modules:
-                mod_text = " ".join(
-                    f"{i.verb} {i.noun} {i.context}" for i in mod.intents
-                ).lower()
+                mod_text = " ".join(f"{i.verb} {i.noun} {i.context}" for i in mod.intents).lower()
                 if vocab.name.lower() in mod_text:
                     referenced = True
                     break
             if not referenced:
-                diags.append(lsp.Diagnostic(
-                    range=lsp.Range(
-                        start=lsp.Position(0, 0),
-                        end=lsp.Position(0, 1000),
-                    ),
-                    severity=lsp.DiagnosticSeverity.Warning,
-                    source="prove-intent",
-                    code="W602",
-                    message=(
-                        f"[W602] vocabulary term '{vocab.name}'"
-                        " is defined but never referenced"
-                    ),
-                ))
-
-        # W603: flow references a module not defined in project.modules
-        defined_modules = {m.name for m in project.modules}
-        for flow in project.flows:
-            for step in flow.steps:
-                if step.module not in defined_modules:
-                    diags.append(lsp.Diagnostic(
+                diags.append(
+                    lsp.Diagnostic(
                         range=lsp.Range(
                             start=lsp.Position(0, 0),
                             end=lsp.Position(0, 1000),
                         ),
                         severity=lsp.DiagnosticSeverity.Warning,
                         source="prove-intent",
-                        code="W603",
-                        message=f"[W603] flow references undefined module '{step.module}'",
-                    ))
+                        code="W602",
+                        message=(
+                            f"[W602] vocabulary term '{vocab.name}' is defined but never referenced"
+                        ),
+                    )
+                )
+
+        # W603: flow references a module not defined in project.modules
+        defined_modules = {m.name for m in project.modules}
+        for flow in project.flows:
+            for step in flow.steps:
+                if step.module not in defined_modules:
+                    diags.append(
+                        lsp.Diagnostic(
+                            range=lsp.Range(
+                                start=lsp.Position(0, 0),
+                                end=lsp.Position(0, 1000),
+                            ),
+                            severity=lsp.DiagnosticSeverity.Warning,
+                            source="prove-intent",
+                            code="W603",
+                            message=f"[W603] flow references undefined module '{step.module}'",
+                        )
+                    )
 
     ids.diagnostics = diags
     _intent_state[uri] = ids
@@ -628,44 +665,53 @@ def _intent_completions(source: str, position: lsp.Position) -> list[lsp.Complet
     if section == "module" and indent >= 2:
         # Inside a module block: suggest verbs
         for verb in _INTENT_VERBS:
-            items.append(lsp.CompletionItem(
-                label=verb,
-                kind=lsp.CompletionItemKind.Keyword,
-                detail="intent verb",
-            ))
+            items.append(
+                lsp.CompletionItem(
+                    label=verb,
+                    kind=lsp.CompletionItemKind.Keyword,
+                    detail="intent verb",
+                )
+            )
     elif section == "flow" and indent >= 2:
         # Inside a flow block: suggest module names from current state
         for uri, ids in _intent_state.items():
             if ids.project is not None:
                 for mod in ids.project.modules:
-                    items.append(lsp.CompletionItem(
-                        label=mod.name,
-                        kind=lsp.CompletionItemKind.Module,
-                        detail="module",
-                    ))
+                    items.append(
+                        lsp.CompletionItem(
+                            label=mod.name,
+                            kind=lsp.CompletionItemKind.Module,
+                            detail="module",
+                        )
+                    )
                 break
     elif section == "vocabulary" and indent >= 2:
         # Suggest vocabulary structure
-        items.append(lsp.CompletionItem(
-            label="Name is description",
-            kind=lsp.CompletionItemKind.Snippet,
-            detail="vocabulary entry",
-            insert_text="Name is ",
-        ))
+        items.append(
+            lsp.CompletionItem(
+                label="Name is description",
+                kind=lsp.CompletionItemKind.Snippet,
+                detail="vocabulary entry",
+                insert_text="Name is ",
+            )
+        )
     elif indent < 2 or section == "project":
         # Top-level: suggest section keywords
         for kw in _INTENT_KEYWORDS:
-            items.append(lsp.CompletionItem(
-                label=kw,
-                kind=lsp.CompletionItemKind.Keyword,
-                detail=".intent keyword",
-            ))
+            items.append(
+                lsp.CompletionItem(
+                    label=kw,
+                    kind=lsp.CompletionItemKind.Keyword,
+                    detail=".intent keyword",
+                )
+            )
 
     return items
 
 
 def _intent_code_actions(
-    uri: str, ids: IntentDocumentState,
+    uri: str,
+    ids: IntentDocumentState,
 ) -> list[lsp.CodeAction]:
     """Return code actions for .intent files."""
     actions: list[lsp.CodeAction] = []
@@ -683,28 +729,36 @@ def _intent_code_actions(
         prv_path = project_dir / f"{mod.name.lower()}.prv"
         prv_uri = f"file://{prv_path}"
 
-        actions.append(lsp.CodeAction(
-            title=f"Generate {mod.name.lower()}.prv from intent",
-            kind=lsp.CodeActionKind.Source,
-            edit=lsp.WorkspaceEdit(
-                document_changes=[
-                    lsp.CreateFile(uri=prv_uri, kind="create",
-                                   options=lsp.CreateFileOptions(overwrite=True)),
-                    lsp.TextDocumentEdit(
-                        text_document=lsp.OptionalVersionedTextDocumentIdentifier(
-                            uri=prv_uri, version=None,
+        actions.append(
+            lsp.CodeAction(
+                title=f"Generate {mod.name.lower()}.prv from intent",
+                kind=lsp.CodeActionKind.Source,
+                edit=lsp.WorkspaceEdit(
+                    document_changes=[
+                        lsp.CreateFile(
+                            uri=prv_uri,
+                            kind="create",
+                            options=lsp.CreateFileOptions(overwrite=True),
                         ),
-                        edits=[lsp.TextEdit(
-                            range=lsp.Range(
-                                start=lsp.Position(0, 0),
-                                end=lsp.Position(0, 0),
+                        lsp.TextDocumentEdit(
+                            text_document=lsp.OptionalVersionedTextDocumentIdentifier(
+                                uri=prv_uri,
+                                version=None,
                             ),
-                            new_text=source,
-                        )],
-                    ),
-                ],
-            ),
-        ))
+                            edits=[
+                                lsp.TextEdit(
+                                    range=lsp.Range(
+                                        start=lsp.Position(0, 0),
+                                        end=lsp.Position(0, 0),
+                                    ),
+                                    new_text=source,
+                                )
+                            ],
+                        ),
+                    ],
+                ),
+            )
+        )
 
     return actions
 
@@ -1060,11 +1114,10 @@ def _prose_completions(
                     existing_narrative = decl.narrative
                     break
         from prove._nl_intent import implied_verbs
+
         already_implied = implied_verbs(existing_narrative)
         for word in _ALL_PROSE_VERB_WORDS:
-            prove_verb = next(
-                (v for v, words in _VERB_PROSE_HINTS.items() if word in words), ""
-            )
+            prove_verb = next((v for v, words in _VERB_PROSE_HINTS.items() if word in words), "")
             sort = "0" if prove_verb in already_implied else "1"
             items.append(_text(word, f"→ {prove_verb}", sort))
         if module is not None:
@@ -1075,6 +1128,7 @@ def _prose_completions(
     elif context_kind == "explain":
         if fd is not None:
             from prove._nl_intent import body_tokens
+
             for tok in sorted(body_tokens(fd)):
                 items.append(_text(tok, "body", "0"))
             for word in _VERB_PROSE_HINTS.get(fd.verb, []):
@@ -1086,10 +1140,10 @@ def _prose_completions(
                 items.append(_text(p.name, "param", "0"))
             starters = {
                 "transforms": [f"Transforms {p.name} into" for p in fd.params[:1]],
-                "validates":  [f"Validates {p.name}" for p in fd.params[:1]],
-                "reads":      [f"Reads {p.name} from" for p in fd.params[:1]],
-                "creates":    ["Creates a new"],
-                "outputs":    ["Outputs"],
+                "validates": [f"Validates {p.name}" for p in fd.params[:1]],
+                "reads": [f"Reads {p.name} from" for p in fd.params[:1]],
+                "creates": ["Creates a new"],
+                "outputs": ["Outputs"],
             }
             for phrase in starters.get(fd.verb, []):
                 items.append(_text(phrase, "phrase", "1"))
@@ -1097,16 +1151,17 @@ def _prose_completions(
     elif context_kind == "chosen":
         if fd is not None:
             from prove._nl_intent import body_tokens
+
             for tok in sorted(body_tokens(fd)):
                 items.append(_text(tok, "body", "0"))
             for word in _VERB_PROSE_HINTS.get(fd.verb, []):
                 items.append(_text(word, fd.verb, "0"))
             starters = {
                 "transforms": ["linear scan because", "recursive because", "iterative because"],
-                "validates":  ["early-exit because", "regex because", "range check because"],
-                "reads":      ["lazy load because", "cached read because"],
-                "creates":    ["builder pattern because", "factory because"],
-                "matches":    ["pattern match because", "lookup table because"],
+                "validates": ["early-exit because", "regex because", "range check because"],
+                "reads": ["lazy load because", "cached read because"],
+                "creates": ["builder pattern because", "factory because"],
+                "matches": ["pattern match because", "lookup table because"],
             }
             for phrase in starters.get(fd.verb, []):
                 items.append(_text(phrase, "approach", "1"))
@@ -1117,10 +1172,15 @@ def _prose_completions(
                 if isinstance(decl, FunctionDef) and decl.name != fd.name:
                     items.append(_text(decl.name, "function", "0"))
             alt_phrases = [
-                "hash map because", "binary search because", "linear scan because",
-                "recursive approach because", "lookup table because",
-                "regex because", "manual parse because",
-                "eager evaluation because", "lazy evaluation because",
+                "hash map because",
+                "binary search because",
+                "linear scan because",
+                "recursive approach because",
+                "lookup table because",
+                "regex because",
+                "manual parse because",
+                "eager evaluation because",
+                "lazy evaluation because",
             ]
             for phrase in alt_phrases:
                 items.append(_text(phrase, "alternative", "1"))
@@ -1230,8 +1290,10 @@ def _ml_completions(
             lsp.CompletionItem(
                 label=name,
                 kind=(
-                    lsp.CompletionItemKind.Class if kind == "type"
-                    else lsp.CompletionItemKind.Constant if kind == "constant"
+                    lsp.CompletionItemKind.Class
+                    if kind == "type"
+                    else lsp.CompletionItemKind.Constant
+                    if kind == "constant"
                     else lsp.CompletionItemKind.Function
                 ),
                 detail=mod_name or "project",
@@ -1345,13 +1407,21 @@ def _load_docstring_model() -> None:
             else:
                 decoded.append(p)
         if len(decoded) >= 5:
-            keyword, module, name, verb, doc = decoded[0], decoded[1], decoded[2], decoded[3], decoded[4]
-            index[keyword].append({
-                "module": module,
-                "name": name,
-                "verb": verb,
-                "doc": doc,
-            })
+            keyword, module, name, verb, doc = (
+                decoded[0],
+                decoded[1],
+                decoded[2],
+                decoded[3],
+                decoded[4],
+            )
+            index[keyword].append(
+                {
+                    "module": module,
+                    "name": name,
+                    "verb": verb,
+                    "doc": doc,
+                }
+            )
     _docstring_index = dict(index)
 
 
@@ -1972,9 +2042,6 @@ def signature_help(params: lsp.SignatureHelpParams) -> lsp.SignatureHelp | None:
             verb = v
             break
 
-    # Count current arguments to match by arity
-    arg_count = text[pos:col].count(",") + 1 if col > pos else 0
-
     # Collect all matching overloads for this function name
     from prove.types import type_name
 
@@ -2130,7 +2197,7 @@ def _build_import_edit_text(
         if stripped.startswith("narrative:") or stripped.startswith("temporal:"):
             header_end = i + 1
             # Handle multiline triple-quote block: skip to closing """
-            rest = stripped[stripped.index(":") + 1:].strip()
+            rest = stripped[stripped.index(":") + 1 :].strip()
             if rest.startswith('"""'):
                 inner = rest[3:]
                 if '"""' not in inner:  # closing """ not on the same line
@@ -2263,10 +2330,12 @@ def _build_import_edit(
 
 @server.feature(
     lsp.TEXT_DOCUMENT_CODE_ACTION,
-    lsp.CodeActionOptions(code_action_kinds=[
-        lsp.CodeActionKind.QuickFix,
-        lsp.CodeActionKind.Source,
-    ]),
+    lsp.CodeActionOptions(
+        code_action_kinds=[
+            lsp.CodeActionKind.QuickFix,
+            lsp.CodeActionKind.Source,
+        ]
+    ),
 )
 def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
     uri = params.text_document.uri

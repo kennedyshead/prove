@@ -682,7 +682,7 @@ def infer_constants(
             name = "LIMIT"
             if name not in seen_names:
                 seen_names.add(name)
-                results.append((name, "Integer", value, f"Limit (from constraint)"))
+                results.append((name, "Integer", value, "Limit (from constraint)"))
 
         # "at most N UNIT"
         m = re.search(r"at most\s+(\d+)\s+(\w+)", text_lower)
@@ -728,8 +728,8 @@ def infer_comptime(
             name = f"{subject.upper()}_TABLE"
             results.append((
                 name,
-                f"Table<String, String>",
-                f'Table.empty()',
+                "Table<String, String>",
+                'Table.empty()',
                 f"Compile-time {subject} table (from constraint)",
             ))
             continue
@@ -742,7 +742,7 @@ def infer_comptime(
             results.append((
                 name,
                 "String",
-                f'""',
+                '""',
                 f"Compile-time {subject} (from constraint)",
             ))
 

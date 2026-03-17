@@ -801,7 +801,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
     except (CompileError, ValueError, IndexError):
         return []
 
-    from prove.ast_nodes import FunctionDef, GenericType, ModifiedType, ModuleDecl, SimpleType
+    from prove.ast_nodes import FunctionDef, ModuleDecl
 
     sigs: list[FunctionSignature] = []
     all_decls = list(module.declarations)

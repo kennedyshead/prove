@@ -138,7 +138,7 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
             else:
                 diags.append(IntentDiagnostic(
                     line=lineno,
-                    message=f"vocabulary entry should use 'Name is description' format",
+                    message="vocabulary entry should use 'Name is description' format",
                     code="W601",
                 ))
             continue

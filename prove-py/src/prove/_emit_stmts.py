@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
@@ -30,14 +32,15 @@ from prove.ast_nodes import (
     TailLoop,
     TodoStmt,
     UnaryExpr,
-    WhileLoop,
     ValidExpr,
     VarDecl,
     VariantPattern,
+    WhileLoop,
     WildcardPattern,
 )
 from prove.c_types import CType, mangle_type_name, map_type
 from prove.types import (
+    ERROR_TY,
     INTEGER,
     STRING,
     UNIT,
@@ -52,7 +55,6 @@ from prove.types import (
     TypeVariable,
     UnitType,
 )
-
 
 _IO_VERBS = frozenset({"inputs", "outputs", "streams", "listens", "attached", "detached"})
 
@@ -74,7 +76,6 @@ def _is_compile_time_literal(expr: Expr | None) -> bool:
 
 
 class StmtEmitterMixin:
-
     # ── Value → concrete type coercion helpers ─────────────────────
 
     def _is_value_type(self, ty: Type) -> bool:
@@ -261,11 +262,10 @@ class StmtEmitterMixin:
                             and expr_type.base_name == "Result"
                         )
                         is_result_ret = (
-                            isinstance(ret_type, GenericInstance)
-                            and ret_type.base_name == "Result"
+                            isinstance(ret_type, GenericInstance) and ret_type.base_name == "Result"
                         )
                         if is_result_expr and not is_result_ret:
-                                needs_ret_unwrap = True
+                            needs_ret_unwrap = True
                         if not needs_ret_unwrap and not isinstance(expr, FailPropExpr):
                             call_sig = self._resolve_call_sig(expr)
                             if (
@@ -307,35 +307,25 @@ class StmtEmitterMixin:
                             unwrap = f"prove_result_unwrap_ptr({res_tmp})"
                             if coercion is not None:
                                 val_tmp = self._tmp()
-                                self._line(
-                                    f"Prove_Value* {val_tmp} ="
-                                    f" (Prove_Value*){unwrap};"
-                                )
+                                self._line(f"Prove_Value* {val_tmp} = (Prove_Value*){unwrap};")
                                 cc = self._value_coercion_expr(val_tmp, ret_type)
                                 self._line(f"{ret_ct.decl} {ret_tmp} = {cc};")
                             elif isinstance(ret_type, RecordType):
                                 cast = f"*(({ret_ct.decl}*){unwrap})"
                                 self._line(f"{ret_ct.decl} {ret_tmp} = {cast};")
                             elif ret_ct.is_pointer:
-                                self._line(
-                                    f"{ret_ct.decl} {ret_tmp} ="
-                                    f" ({ret_ct.decl}){unwrap};"
-                                )
+                                self._line(f"{ret_ct.decl} {ret_tmp} = ({ret_ct.decl}){unwrap};")
                             elif ret_ct.decl == "double":
                                 self._line(
                                     f"{ret_ct.decl} {ret_tmp} ="
                                     f" prove_result_unwrap_double({res_tmp});"
                                 )
-                            elif (
-                                isinstance(ret_type, GenericInstance)
-                                and not ret_ct.is_pointer
-                            ):
+                            elif isinstance(ret_type, GenericInstance) and not ret_ct.is_pointer:
                                 cast = f"*(({ret_ct.decl}*){unwrap})"
                                 self._line(f"{ret_ct.decl} {ret_tmp} = {cast};")
                             else:
                                 self._line(
-                                    f"{ret_ct.decl} {ret_tmp} ="
-                                    f" prove_result_unwrap_int({res_tmp});"
+                                    f"{ret_ct.decl} {ret_tmp} = prove_result_unwrap_int({res_tmp});"
                                 )
                         else:
                             # For validates functions returning bool: if returning an Option,
@@ -406,6 +396,7 @@ class StmtEmitterMixin:
         # Dispatch lookup assignment: skip C var, record for lazy dispatch at call site
         from prove.ast_nodes import LookupAccessExpr
         from prove.types import PrimitiveType
+
         if isinstance(vd.value, LookupAccessExpr):
             lookup = self._lookup_tables.get(vd.value.type_name)
             if lookup is not None and lookup.is_dispatch:
@@ -443,8 +434,7 @@ class StmtEmitterMixin:
                     for i, vt in enumerate(lookup.value_types):
                         col_name = vt.name if hasattr(vt, "name") else "unknown"
                         self._line(
-                            f'{vd.name}->column_names[{i}] = '
-                            f'prove_string_from_cstr("{col_name}");'
+                            f'{vd.name}->column_names[{i}] = prove_string_from_cstr("{col_name}");'
                         )
                     self._indent -= 1
                     self._line("}")
@@ -554,9 +544,7 @@ class StmtEmitterMixin:
                             vd.name,
                         )
                     else:
-                        self._line(
-                            f"{vd.name} = prove_option_some({raw_tmp}.value);"
-                        )
+                        self._line(f"{vd.name} = prove_option_some({raw_tmp}.value);")
                 self._indent -= 1
                 self._line("} else {")
                 self._indent += 1
@@ -608,10 +596,7 @@ class StmtEmitterMixin:
                 self._indent += 1
                 self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
                 self._line(
-                    f"fprintf(stderr,"
-                    f' "error: %.*s\\n",'
-                    f" (int){err_str}->length,"
-                    f" {err_str}->data);"
+                    f'fprintf(stderr, "error: %.*s\\n", (int){err_str}->length, {err_str}->data);'
                 )
                 self._line("prove_runtime_cleanup();")
                 self._line("return 1;")
@@ -694,7 +679,9 @@ class StmtEmitterMixin:
                     if inner_ct.is_pointer:
                         self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*){val});")
                     else:
-                        self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});")
+                        self._line(
+                            f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});"
+                        )
             else:
                 # Value → concrete coercion (e.g. Prove_Value* → Prove_Table*)
                 val_ct = map_type(value_ty)
@@ -779,7 +766,10 @@ class StmtEmitterMixin:
             self._emit_numeric_refinement(var_name, constraint, io_ctx)
 
     def _emit_numeric_refinement(
-        self, var_name: str, constraint: BinaryExpr, io_context: bool = True,
+        self,
+        var_name: str,
+        constraint: BinaryExpr,
+        io_context: bool = True,
     ) -> None:
         """Emit runtime validation for numeric refinement constraints."""
         from prove.type_inference import BINARY_OP_TO_C
@@ -817,7 +807,10 @@ class StmtEmitterMixin:
                     self._line("#endif")
 
     def _emit_compound_refinement(
-        self, var_name: str, constraint: BinaryExpr, io_context: bool = True,
+        self,
+        var_name: str,
+        constraint: BinaryExpr,
+        io_context: bool = True,
     ) -> None:
         """Emit compound constraint (&&, ||)."""
         from prove.type_inference import BINARY_OP_TO_C
@@ -1056,7 +1049,6 @@ class StmtEmitterMixin:
 
     def _emit_dispatch_call(self, var_name: str, call_args: list) -> None:  # type: ignore[type-arg]
         """Emit if-else dispatch chain for a verb variable assigned from a dispatch lookup."""
-        from prove.ast_nodes import LookupEntry
         from prove.c_types import mangle_name
 
         table_name, key_expr = self._dispatch_vars[var_name]
@@ -1066,13 +1058,15 @@ class StmtEmitterMixin:
 
         first = True
         for entry in lookup.entries:
-            key_val = entry.value        # the string key, e.g. "build"
-            func_id = entry.variant      # the function identifier, e.g. "build"
+            key_val = entry.value  # the string key, e.g. "build"
+            func_id = entry.variant  # the function identifier, e.g. "build"
             n_args = len(call_args)
             sig = self._symbols.resolve_function_any(func_id, arity=n_args)
             if sig is None:
                 sig = self._symbols.resolve_function_any(func_id)
-            c_func = mangle_name(sig.verb, sig.name, sig.param_types) if sig and sig.verb else func_id
+            c_func = (
+                mangle_name(sig.verb, sig.name, sig.param_types) if sig and sig.verb else func_id
+            )
             escaped = key_val.replace("\\", "\\\\").replace('"', '\\"')
             kw = "if" if first else "} else if"
             self._line(f'{kw} (prove_string_eq({key_c}, prove_string_from_cstr("{escaped}"))) {{')
@@ -1088,9 +1082,10 @@ class StmtEmitterMixin:
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
             # listens uses _ev (received event from queue)
-            if (
-                self._current_func is not None
-                and self._current_func.verb in ("matches", "streams", "listens")
+            if self._current_func is not None and self._current_func.verb in (
+                "matches",
+                "streams",
+                "listens",
             ):
                 if self._current_func.verb == "listens":
                     subj_name = "_ev"
@@ -1229,7 +1224,11 @@ class StmtEmitterMixin:
                         inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                         inner_ct = map_type(inner_ty)
                         bind_name = arm.pattern.fields[0].name
-                        cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
+                        cast = (
+                            f"({inner_ct.decl})"
+                            if inner_ct.is_pointer
+                            else f"({inner_ct.decl})(intptr_t)"
+                        )
                         if bind_name == subj:
                             # Avoid C self-init UB when binding
                             # shadows subject
@@ -1237,9 +1236,7 @@ class StmtEmitterMixin:
                             self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
                             self._line(f"{inner_ct.decl} {bind_name} = {alias};")
                         else:
-                            self._line(
-                                f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;"
-                            )
+                            self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
                         self._locals[bind_name] = inner_ty
                     self._emit_match_arm_body(arm.body)
                     self._indent -= 1
@@ -1295,9 +1292,7 @@ class StmtEmitterMixin:
                         # Use temp to avoid shadowing when bind_name == subj
                         tmp = self._tmp()
                         if inner_ct.is_pointer:
-                            self._line(
-                                f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){subj}.value;"
-                            )
+                            self._line(f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){subj}.value;")
                         elif inner_ct.decl == "double":
                             self._line(
                                 f"{inner_ct.decl} {tmp} = prove_result_unwrap_double({subj});"
@@ -1323,9 +1318,7 @@ class StmtEmitterMixin:
                         bind_name = arm.pattern.fields[0].name
                         # Use temp to avoid shadowing when bind_name == subj
                         tmp = self._tmp()
-                        self._line(
-                            f"Prove_String* {tmp} = {subj}.error;"
-                        )
+                        self._line(f"Prove_String* {tmp} = {subj}.error;")
                         self._line(f"Prove_String* {bind_name} = {tmp};")
                         self._locals[bind_name] = STRING
                     self._emit_match_arm_body(arm.body)

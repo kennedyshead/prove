@@ -16,12 +16,10 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
-    IndexExpr,
     LambdaExpr,
     ListLiteral,
     MatchExpr,
     ModuleDecl,
-    NearMiss,
     Param,
     PipeExpr,
     Stmt,
@@ -36,7 +34,6 @@ from prove.source import Span
 from prove.symbols import Symbol, SymbolKind
 from prove.types import (
     BOOLEAN,
-    UNIT,
     AlgebraicType,
     BorrowType,
     ErrorType,

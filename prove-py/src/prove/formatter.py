@@ -12,6 +12,75 @@ are preserved. Trailing comments on the same line as code are not preserved.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from prove.ast_nodes import (
+    AlgebraicTypeDef,
+    Assignment,
+    AsyncCallExpr,
+    BinaryExpr,
+    BinaryLookupExpr,
+    BindingPattern,
+    BooleanLit,
+    CallExpr,
+    CharLit,
+    CommentDecl,
+    CommentStmt,
+    ComptimeExpr,
+    ConstantDef,
+    DecimalLit,
+    ExplainBlock,
+    ExprStmt,
+    FailPropExpr,
+    FieldAssignment,
+    FieldExpr,
+    FloatLit,
+    ForeignBlock,
+    ForeignFunction,
+    FunctionDef,
+    GenericType,
+    IdentifierExpr,
+    ImportDecl,
+    IndexExpr,
+    IntegerLit,
+    InvariantNetwork,
+    LambdaExpr,
+    ListLiteral,
+    LiteralPattern,
+    LookupAccessExpr,
+    LookupTypeDef,
+    MainDef,
+    MatchArm,
+    MatchExpr,
+    ModifiedType,
+    Module,
+    ModuleDecl,
+    PathLit,
+    PipeExpr,
+    RawStringLit,
+    RecordTypeDef,
+    RefinementTypeDef,
+    RegexLit,
+    SimpleType,
+    StoreLookupExpr,
+    StringInterp,
+    StringLit,
+    TodoStmt,
+    TripleStringLit,
+    TypeDef,
+    TypeIdentifierExpr,
+    UnaryExpr,
+    ValidExpr,
+    VarDecl,
+    VariantPattern,
+    WildcardPattern,
+)
+
+if TYPE_CHECKING:
+    from prove.errors import Diagnostic
+    from prove.symbols import SymbolTable
+    from prove.types import Type
+
 _STRING_ESCAPE_MAP = {
     "\\": "\\\\",
     "\n": "\\n",
@@ -29,8 +98,8 @@ def _escape_string(value: str) -> str:
 
 from prove.ast_nodes import (
     AlgebraicTypeDef,
-    AsyncCallExpr,
     Assignment,
+    AsyncCallExpr,
     BinaryExpr,
     BinaryLookupExpr,
     BindingPattern,
@@ -105,8 +174,6 @@ _PRECEDENCE: dict[str, int] = {
     "*": 7,
     "/": 7,
 }
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from prove.errors import Diagnostic
@@ -301,7 +368,9 @@ class ProveFormatter:
         for expr in fd.believe:
             lines.append(f"  believe: {self._format_expr(expr)}")
         for wc in fd.with_constraints:
-            lines.append(f"  with {wc.param_name}.{wc.field_name} {self._format_type_expr(wc.field_type)}")
+            lines.append(
+                f"  with {wc.param_name}.{wc.field_name} {self._format_type_expr(wc.field_type)}"
+            )
         if fd.intent:
             lines.append(f'  intent: "{fd.intent}"')
         for name in fd.satisfies:
@@ -344,16 +413,12 @@ class ProveFormatter:
         body = td.body
         if isinstance(body, LookupTypeDef):
             if body.is_store_backed:
-                col_types = " | ".join(
-                    self._format_type_expr(vt) for vt in body.value_types
-                )
+                col_types = " | ".join(self._format_type_expr(vt) for vt in body.value_types)
                 return f"type {td.name}{mods}{params} is {col_types}\n  runtime"
             if body.is_dispatch:
                 return self._format_pipe_entry_lookup(td.name, body, mods, params)
             if body.is_binary:
-                return self._format_binary_lookup_type_def(
-                    td.name, body, mods, params
-                )
+                return self._format_binary_lookup_type_def(td.name, body, mods, params)
             return self._format_lookup_type_def(td.name, mods, params, body)
 
         if isinstance(body, RecordTypeDef):
@@ -442,9 +507,7 @@ class ProveFormatter:
         for i, vt in enumerate(body.value_types):
             formatted_type = self._format_type_expr(vt)
             col_name = (
-                body.column_names[i]
-                if body.column_names and i < len(body.column_names)
-                else None
+                body.column_names[i] if body.column_names and i < len(body.column_names) else None
             )
             if col_name:
                 col_parts.append(f"{col_name}:{formatted_type}")
@@ -514,9 +577,17 @@ class ProveFormatter:
 
     # Canonical ordering for verb groups in import lines.
     _VERB_ORDER = {
-        "types": 0, "reads": 1, "creates": 2, "validates": 3,
-        "transforms": 4, "inputs": 5, "attached": 6, "outputs": 7,
-        "detached": 8, "streams": 9, "listens": 10,
+        "types": 0,
+        "reads": 1,
+        "creates": 2,
+        "validates": 3,
+        "transforms": 4,
+        "inputs": 5,
+        "attached": 6,
+        "outputs": 7,
+        "detached": 8,
+        "streams": 9,
+        "listens": 10,
     }
 
     def _format_import_decl(self, imp: ImportDecl) -> str | None:
@@ -652,9 +723,7 @@ class ProveFormatter:
         return "\n".join(lines)
 
     def _format_foreign_function(self, ff: ForeignFunction) -> str:
-        params = ", ".join(
-            f"{p.name} {self._format_type_expr(p.type_expr)}" for p in ff.params
-        )
+        params = ", ".join(f"{p.name} {self._format_type_expr(p.type_expr)}" for p in ff.params)
         sig = f"{ff.name}({params})"
         if ff.return_type is not None:
             sig += f" {self._format_type_expr(ff.return_type)}"
@@ -833,7 +902,10 @@ class ProveFormatter:
         return f"|{params}| {body}"
 
     def _format_string_interp(
-        self, expr: StringInterp, col: int = 0, force: bool = False,
+        self,
+        expr: StringInterp,
+        col: int = 0,
+        force: bool = False,
     ) -> str:
         parts: list[str] = []
         for part in expr.parts:
@@ -862,9 +934,7 @@ class ProveFormatter:
                 result_parts.append(_escape_string(part.value))
             else:
                 formatted = self._format_expr(part)
-                result_parts.append(
-                    "{\n" + expr_indent + formatted + "\n" + brace_indent + "}"
-                )
+                result_parts.append("{\n" + expr_indent + formatted + "\n" + brace_indent + "}")
         result_parts.append('"')
         return "".join(result_parts)
 
@@ -936,7 +1006,9 @@ class ProveFormatter:
             args = ", ".join(self._format_type_expr(a) for a in te.args)
             base = f"{te.name}<{args}>"
             if te.modifiers:
-                mods = " ".join((f"{m.name}:{m.value}" if m.name else m.value) for m in te.modifiers)
+                mods = " ".join(
+                    (f"{m.name}:{m.value}" if m.name else m.value) for m in te.modifiers
+                )
                 return f"{base}:[{mods}]"
             return base
         if isinstance(te, ModifiedType):
