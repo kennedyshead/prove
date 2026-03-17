@@ -200,7 +200,7 @@ class TestParEachChecker:
     def test_par_each_accepts_io_callback(self):
         """par_each allows IO verb callbacks (unlike par_map)."""
         check(
-            "outputs log_item(n Integer) Unit\n"
+            "outputs log_item(n Integer) Integer\n"
             "    from\n"
             "        n\n"
             "\n"
@@ -212,7 +212,7 @@ class TestParEachChecker:
     def test_par_each_accepts_pure_callback(self):
         """par_each also accepts pure verb callbacks."""
         check(
-            "transforms process(n Integer) Unit\n"
+            "transforms process(n Integer) Integer\n"
             "    from\n"
             "        n\n"
             "\n"
@@ -230,9 +230,9 @@ class TestParEachChecker:
         )
 
     def test_par_each_infers_unit_return(self):
-        """par_each returns Unit."""
+        """par_each returns Unit regardless of callback return type."""
         check(
-            "outputs log_item(n Integer) Unit\n"
+            "outputs log_item(n Integer) Integer\n"
             "    from\n"
             "        n\n"
             "\n"
@@ -244,7 +244,7 @@ class TestParEachChecker:
     def test_par_each_rejects_async_detached_callback(self):
         """par_each with detached verb callback emits E369."""
         check_fails(
-            "detached fire_and_forget(n Integer) Unit\n"
+            "detached fire_and_forget(n Integer) Integer\n"
             "    from\n"
             "        n\n"
             "\n"
@@ -257,7 +257,7 @@ class TestParEachChecker:
     def test_par_each_no_e368_for_io(self):
         """par_each with IO callback does not produce E368."""
         diags = check_all(
-            "outputs log_item(n Integer) Unit\n"
+            "outputs log_item(n Integer) Integer\n"
             "    from\n"
             "        n\n"
             "\n"
