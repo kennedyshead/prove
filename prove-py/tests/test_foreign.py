@@ -251,3 +251,89 @@ class TestForeignConfig:
         config = load_config(config_path)
         assert config.build.c_flags == []
         assert config.build.link_flags == []
+
+
+# ── Header emission tests ────────────────────────────────────────
+
+
+class TestForeignHeaders:
+    def test_python3_header_included(self):
+        source = (
+            'module PyBind\n'
+            '  foreign "libpython3"\n'
+            '    pyinit() Integer\n'
+        )
+        c_code = _emit(source)
+        assert "#include <Python.h>" in c_code
+
+    def test_jvm_header_included(self):
+        source = (
+            'module JvmBind\n'
+            '  foreign "libjvm"\n'
+            '    createvm() Integer\n'
+        )
+        c_code = _emit(source)
+        assert "#include <jni.h>" in c_code
+
+
+# ── pkg-config resolution tests ──────────────────────────────────
+
+
+class TestResolveForeignFlags:
+    def test_pkg_config_success(self):
+        from unittest.mock import MagicMock, patch
+
+        from prove.builder import _resolve_foreign_flags
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "-I/usr/include/python3.12 -lpython3.12\n"
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            c_flags, l_flags = _resolve_foreign_flags("libpython3")
+            mock_run.assert_called_once_with(
+                ["pkg-config", "--cflags", "--libs", "python3-embed"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        assert c_flags == ["-I/usr/include/python3.12"]
+        assert l_flags == ["-lpython3.12"]
+
+    def test_pkg_config_failure_falls_back(self):
+        from unittest.mock import MagicMock, patch
+
+        from prove.builder import _resolve_foreign_flags
+
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+
+        with patch("subprocess.run", return_value=mock_result):
+            c_flags, l_flags = _resolve_foreign_flags("libpython3")
+        assert c_flags == []
+        assert l_flags == ["-lpython3"]
+
+    def test_pkg_config_not_found_falls_back(self):
+        from unittest.mock import patch
+
+        from prove.builder import _resolve_foreign_flags
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            c_flags, l_flags = _resolve_foreign_flags("libjvm")
+        assert c_flags == []
+        assert l_flags == ["-ljvm"]
+
+    def test_unknown_library_plain_link(self):
+        from prove.builder import _resolve_foreign_flags
+
+        c_flags, l_flags = _resolve_foreign_flags("libcurl")
+        assert c_flags == []
+        assert l_flags == ["-lcurl"]
+
+    def test_library_without_lib_prefix(self):
+        from prove.builder import _resolve_foreign_flags
+
+        c_flags, l_flags = _resolve_foreign_flags("zlib")
+        assert c_flags == []
+        assert l_flags == ["-lzlib"]

@@ -65,7 +65,18 @@ from
     sqrt(x)
 ```
 
-The string after `foreign` is the library name passed to the linker (`"libm"` links `-lm`). Known libraries get automatic `#include` headers (`libm` → `math.h`, `libpthread` → `pthread.h`).
+The string after `foreign` is the library name passed to the linker (`"libm"` links `-lm`). Known libraries get automatic `#include` headers:
+
+| Library | Header | Link flags |
+|---------|--------|------------|
+| `libm` | `math.h` | `-lm` |
+| `libpthread` | `pthread.h` | `-lpthread` |
+| `libdl` | `dlfcn.h` | `-ldl` |
+| `librt` | `time.h` | `-lrt` |
+| `libpython3` | `Python.h` | via `pkg-config python3-embed` |
+| `libjvm` | `jni.h` | via `pkg-config jni` |
+
+For `libpython3` and `libjvm`, the compiler uses **`pkg-config`** to resolve the correct include paths and linker flags for the current platform. If `pkg-config` is not available or the query fails, it falls back to a plain `-l` flag.
 
 Configure additional compiler and linker flags in [`prove.toml`](compiler.md#provetoml-configuration):
 
