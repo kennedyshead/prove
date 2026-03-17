@@ -300,6 +300,8 @@ class ProveFormatter:
             lines.append(f"  assume: {self._format_expr(expr)}")
         for expr in fd.believe:
             lines.append(f"  believe: {self._format_expr(expr)}")
+        for wc in fd.with_constraints:
+            lines.append(f"  with {wc.param_name}.{wc.field_name} {self._format_type_expr(wc.field_type)}")
         if fd.intent:
             lines.append(f'  intent: "{fd.intent}"')
         for name in fd.satisfies:

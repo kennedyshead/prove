@@ -15,9 +15,60 @@ Certain types are built into the language and available without explicit import:
 | **Primitives** | `Integer`, `Decimal`, `Float`, `Boolean`, `String`, `Character`, `Byte`, `Unit` | Core types with optional modifiers |
 | **Containers** | `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>` | Generic collection types |
 | **Arrays** | `Array<T>` | Fixed-size contiguous array; requires import from `Array` module |
+| **Structural** | `Struct` | Row-polymorphic type accepting any record; constrained with `with` clauses |
 | **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
 
 These are implicitly available in every module. No import statement needed.
+
+## Row Polymorphism (`Struct`)
+
+`Struct` is a builtin type that accepts any record. Combined with `with` clauses, it enables row-polymorphic functions — functions that work on any record with the required fields, regardless of the record's concrete name.
+
+```prove
+transforms greeting(entity Struct) String
+  with entity.name String
+from
+  "Hello, " + entity.name
+```
+
+This function accepts any record type that has a `name` field of type `String`:
+
+```prove
+type User is
+  name String
+  age Integer
+
+type Company is
+  name String
+  founded Integer
+
+// Both calls are valid — User and Company both have `name String`
+greeting(User("Alice", 30))
+greeting(Company("Acme", 1990))
+```
+
+### `with` Constraints
+
+Each `with` clause declares one required field on a `Struct` parameter:
+
+```prove
+transforms display(obj Struct) String
+  with obj.name String
+  with obj.age Integer
+from
+  obj.name + " (" + Text.from_integer(obj.age) + ")"
+```
+
+Rules:
+
+- `with` must reference a parameter typed `Struct` ([E431](diagnostics.md#e431-with-on-non-struct-parameter))
+- The parameter must exist ([E430](diagnostics.md#e430-with-references-unknown-parameter))
+- No duplicate fields on the same parameter ([E432](diagnostics.md#e432-duplicate-with-for-same-field))
+- Field access on a `Struct` parameter is only allowed for fields declared via `with` ([E433](diagnostics.md#e433-field-access-on-struct-not-in-with))
+
+### Monomorphisation
+
+At the C level, `Struct` is erased. Each call site with a concrete record type produces a specialised copy of the function. Name mangling includes the concrete type, so `greeting(User(...))` and `greeting(Company(...))` compile to separate C functions.
 
 ## Type Modifiers
 

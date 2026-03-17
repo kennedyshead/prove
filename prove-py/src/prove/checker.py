@@ -105,6 +105,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     RefinementType,
+    StructType,
     Type,
     TypeVariable,
     UnitType,
@@ -1034,6 +1035,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 for i, p in enumerate(fd.params):
                     if p.name in borrowed_params:
                         param_types[i] = borrowed_params[p.name]
+
+        # Narrow Struct-typed parameters using `with` constraints
+        if fd.with_constraints:
+            param_index = {p.name: i for i, p in enumerate(fd.params)}
+            fields_by_param: dict[str, dict[str, Type]] = {}
+            for wc in fd.with_constraints:
+                if wc.param_name not in param_index:
+                    continue  # validated in _check_contracts
+                if not isinstance(param_types[param_index[wc.param_name]], StructType):
+                    continue  # validated in _check_contracts
+                fields = fields_by_param.setdefault(wc.param_name, {})
+                fields[wc.field_name] = self._resolve_type_expr(wc.field_type)
+            for pname, fields in fields_by_param.items():
+                idx = param_index[pname]
+                param_types[idx] = StructType(fields)
 
         for param, pty in zip(fd.params, param_types):
             # E316: parameter name shadows builtin function

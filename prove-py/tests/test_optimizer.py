@@ -60,6 +60,7 @@ def _make_func(
         know=[],
         assume=[],
         believe=[],
+        with_constraints=[],
         intent=None,
         satisfies=[],
         event_type=None,

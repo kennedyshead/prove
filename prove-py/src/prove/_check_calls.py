@@ -26,6 +26,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     RefinementType,
+    StructType,
     Type,
     TypeVariable,
     has_mutable_modifier,
@@ -212,22 +213,56 @@ class CallCheckMixin:
                     param_name = sig.param_names[i] if i < len(sig.param_names) else str(i + 1)
                     ordinal = {1: "1st", 2: "2nd", 3: "3rd"}.get(i + 1, f"{i + 1}th")
                     arg_span = expr.args[i].span if i < len(expr.args) else expr.span
-                    diag = Diagnostic(
-                        severity=Severity.ERROR,
-                        code="E331",
-                        message=(
-                            f"{ordinal} argument '{param_name}': "
-                            f"expected '{type_name(expected)}', "
-                            f"got '{type_name(actual)}'"
-                        ),
-                        labels=[
-                            DiagnosticLabel(
-                                span=arg_span,
-                                message=f"expected '{type_name(expected)}'",
-                            )
-                        ],
-                        notes=[f"function signature: {name}({sig_str})"],
-                    )
+                    # E434: specific message for Struct field mismatch
+                    if isinstance(expected, StructType) and isinstance(actual, RecordType):
+                        missing = [
+                            f for f in expected.required_fields
+                            if f not in actual.fields
+                        ]
+                        wrong = [
+                            f for f in expected.required_fields
+                            if f in actual.fields
+                            and not types_compatible(expected.required_fields[f], actual.fields[f])
+                        ]
+                        parts = []
+                        if missing:
+                            parts.append(f"missing fields: {', '.join(missing)}")
+                        if wrong:
+                            parts.append(f"incompatible fields: {', '.join(wrong)}")
+                        detail = "; ".join(parts) if parts else "type mismatch"
+                        diag = Diagnostic(
+                            severity=Severity.ERROR,
+                            code="E434",
+                            message=(
+                                f"{ordinal} argument '{param_name}': "
+                                f"record '{type_name(actual)}' does not satisfy "
+                                f"Struct constraints ({detail})"
+                            ),
+                            labels=[
+                                DiagnosticLabel(
+                                    span=arg_span,
+                                    message=f"expected '{type_name(expected)}'",
+                                )
+                            ],
+                            notes=[f"function signature: {name}({sig_str})"],
+                        )
+                    else:
+                        diag = Diagnostic(
+                            severity=Severity.ERROR,
+                            code="E331",
+                            message=(
+                                f"{ordinal} argument '{param_name}': "
+                                f"expected '{type_name(expected)}', "
+                                f"got '{type_name(actual)}'"
+                            ),
+                            labels=[
+                                DiagnosticLabel(
+                                    span=arg_span,
+                                    message=f"expected '{type_name(expected)}'",
+                                )
+                            ],
+                            notes=[f"function signature: {name}({sig_str})"],
+                        )
                     self.diagnostics.append(diag)
 
             # Ownership tracking: mark variables as moved if passed to Own parameters
@@ -476,6 +511,18 @@ class CallCheckMixin:
                 self._error(
                     "E340",
                     f"no field '{expr.field}' on type '{type_name(obj_type)}'",
+                    expr.span,
+                )
+                return ERROR_TY
+            return field_type
+
+        if isinstance(obj_type, StructType):
+            field_type = obj_type.required_fields.get(expr.field)
+            if field_type is None:
+                self._error(
+                    "E433",
+                    f"field '{expr.field}' not declared in `with` constraints "
+                    f"for Struct parameter",
                     expr.span,
                 )
                 return ERROR_TY

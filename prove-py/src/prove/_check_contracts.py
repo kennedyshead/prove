@@ -39,6 +39,7 @@ from prove.types import (
     BorrowType,
     ErrorType,
     PrimitiveType,
+    StructType,
     Type,
     has_mutable_modifier,
     type_name,
@@ -89,7 +90,39 @@ def _expr_references_name(expr: Expr, name: str) -> bool:
 
 class ContractCheckMixin:
     def _check_contracts(self, fd: FunctionDef, return_type: Type, param_types: list[Type]) -> None:
-        """Type-check ensures/requires/know/assume/believe contracts."""
+        """Type-check ensures/requires/know/assume/believe/with contracts."""
+        # Validate `with` constraints for row polymorphism
+        param_names = {p.name for p in fd.params}
+        param_type_map = {p.name: pt for p, pt in zip(fd.params, param_types)}
+        seen_with: set[tuple[str, str]] = set()
+        for wc in fd.with_constraints:
+            if wc.param_name not in param_names:
+                self._error(
+                    "E430",
+                    f"`with` references unknown parameter '{wc.param_name}'",
+                    wc.span,
+                )
+                continue
+            raw_pt = param_type_map[wc.param_name]
+            # Check the raw type before narrowing — StructType params
+            # are already narrowed, so also accept narrowed StructType
+            if not isinstance(raw_pt, StructType):
+                self._error(
+                    "E431",
+                    f"`with` on parameter '{wc.param_name}' "
+                    f"which is not typed Struct",
+                    wc.span,
+                )
+                continue
+            key = (wc.param_name, wc.field_name)
+            if key in seen_with:
+                self._error(
+                    "E432",
+                    f"duplicate `with` for {wc.param_name}.{wc.field_name}",
+                    wc.span,
+                )
+            seen_with.add(key)
+
         # Type-check `ensures` — push sub-scope with `result` bound to return type
         for ens_expr in fd.ensures:
             # Check for undefined validator in ensures

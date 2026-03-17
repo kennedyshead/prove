@@ -68,6 +68,7 @@ from prove.types import (
     ListType,
     PrimitiveType,
     RecordType,
+    StructType,
     Type,
     resolve_type_vars,
     substitute_type_vars,
@@ -137,6 +138,10 @@ class CEmitter(
         self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
         self._fused_object_cache: tuple[str, str] | None = None  # (param, var) for CSE
         self._used_names: set[str] = set()  # collision tracking for _named_tmp()
+        # Row-polymorphism monomorphisation state
+        self._struct_templates: dict[tuple[str, str, int], FunctionDef] = {}
+        self._struct_specialisations: dict[tuple, str] = {}
+        self._struct_specialisation_queue: list[tuple[FunctionDef, list[Type]]] = []
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -226,6 +231,9 @@ class CEmitter(
         # Function definitions
         for fd in self._all_function_defs():
             self._emit_function(fd)
+
+        # Emit monomorphised Struct specialisations
+        self._drain_struct_specialisations()
 
         # Main (may be top-level or inside a ModuleDecl)
         for decl in self._module.declarations:
@@ -860,6 +868,9 @@ class CEmitter(
         for decl in self._all_function_defs():
             if decl.binary:
                 continue
+            # Struct-polymorphic templates: skip forward decl
+            if self._is_struct_polymorphic(decl):
+                continue
             # Streams verb: void return, no coroutine
             if decl.verb == "streams":
                 sig = self._symbols.resolve_function(
@@ -930,7 +941,20 @@ class CEmitter(
 
     # ── Function emission ──────────────────────────────────────
 
+    def _is_struct_polymorphic(self, fd: FunctionDef) -> bool:
+        """Check if a function has any Struct-typed parameters."""
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return False
+        return any(isinstance(pt, StructType) for pt in sig.param_types)
+
     def _emit_function(self, fd: FunctionDef) -> None:
+        # Struct-polymorphic functions are templates — skip direct emission
+        if self._is_struct_polymorphic(fd):
+            key = (fd.verb, fd.name, len(fd.params))
+            self._struct_templates[key] = fd
+            return
+
         # Binary functions are C-backed — no Prove body to emit
         if fd.binary:
             return
@@ -1032,6 +1056,98 @@ class CEmitter(
         self._indent -= 1
         self._line("}")
         self._line("")
+
+    def _request_struct_specialisation(
+        self, fd: FunctionDef, concrete_types: list[Type]
+    ) -> str:
+        """Request a monomorphised copy of a Struct-polymorphic function.
+
+        Returns the mangled name for the specialisation.
+        """
+        key = (fd.verb, fd.name, tuple(concrete_types))
+        if key in self._struct_specialisations:
+            return self._struct_specialisations[key]
+        mangled = mangle_name(fd.verb, fd.name, concrete_types)
+        self._struct_specialisations[key] = mangled
+        self._struct_specialisation_queue.append((fd, concrete_types))
+        return mangled
+
+    def _emit_struct_specialisation(
+        self, fd: FunctionDef, concrete_types: list[Type]
+    ) -> None:
+        """Emit a monomorphised copy of a Struct-polymorphic function."""
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return
+        ret_type = sig.return_type
+        if fd.verb == "validates":
+            ret_type = BOOLEAN
+        ret_type = self._resolve_prim_type(ret_type)
+        self._current_func_return = ret_type
+        self._current_func = fd
+        self._current_requires = fd.requires
+
+        ret_ct = map_type(ret_type)
+        ret_decl = ret_ct.decl
+        if fd.can_fail:
+            ret_decl = "Prove_Result"
+
+        mangled = mangle_name(fd.verb, fd.name, concrete_types)
+
+        # Build params and forward declaration
+        params: list[str] = []
+        for p, pt in zip(fd.params, concrete_types):
+            ct = map_type(pt)
+            params.append(f"{ct.decl} {p.name}")
+        param_str = ", ".join(params) if params else "void"
+
+        # Forward declaration for the specialisation
+        self._line(f"{ret_decl} {mangled}({param_str});")
+
+        self._line(f"{ret_decl} {mangled}({param_str}) {{")
+        self._indent += 1
+
+        if self._needs_region_scope(fd):
+            self._line("prove_region_enter(prove_global_region());")
+            self._in_region_scope = True
+        else:
+            self._in_region_scope = False
+
+        self._locals.clear()
+        self._used_names.clear()
+        self._string_literal_cache.clear()
+        for p, pt in zip(fd.params, concrete_types):
+            self._locals[p.name] = pt
+
+        for p, pt in zip(fd.params, concrete_types):
+            ct = map_type(pt)
+            if ct.is_pointer:
+                self._line(f"prove_retain({p.name});")
+
+        for assume_expr in fd.assume:
+            cond = self._emit_expr(assume_expr)
+            self._line(f'if (!({cond})) prove_panic("assumption violated");')
+
+        has_explain_conditions = fd.explain is not None and any(
+            e.condition is not None for e in fd.explain.entries
+        )
+        if has_explain_conditions:
+            self._emit_explain_branches(fd, ret_type)
+        else:
+            self._emit_body(fd.body, ret_type, is_failable=fd.can_fail)
+
+        if self._in_region_scope:
+            self._line("prove_region_exit(prove_global_region());")
+            self._in_region_scope = False
+        self._indent -= 1
+        self._line("}")
+        self._line("")
+
+    def _drain_struct_specialisations(self) -> None:
+        """Emit all queued Struct specialisations (may queue more during emission)."""
+        while self._struct_specialisation_queue:
+            fd, concrete_types = self._struct_specialisation_queue.pop(0)
+            self._emit_struct_specialisation(fd, concrete_types)
 
     def _emit_async_function(self, fd: FunctionDef) -> None:
         """Emit a detached/attached/listens async function."""
@@ -1368,6 +1484,10 @@ class CEmitter(
             obj_type = self._infer_expr_type(expr.obj)
             if isinstance(obj_type, RecordType):
                 ft = obj_type.fields.get(expr.field)
+                if ft:
+                    return ft
+            if isinstance(obj_type, StructType):
+                ft = obj_type.required_fields.get(expr.field)
                 if ft:
                     return ft
             if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Table":

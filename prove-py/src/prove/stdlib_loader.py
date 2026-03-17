@@ -21,6 +21,7 @@ from prove.types import (
     ERROR_TY,
     INTEGER,
     STRING,
+    STRUCT,
     UNIT,
     ArrayType,
     FunctionType,
@@ -704,6 +705,7 @@ _KNOWN_TYPES = {
     "Socket": PrimitiveType("Socket"),
     "File": PrimitiveType("File"),
     "Token": PrimitiveType("Token"),
+    "Struct": STRUCT,
 }
 
 

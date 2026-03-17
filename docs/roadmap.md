@@ -26,6 +26,10 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 ## Preview
 
+### Row Polymorphism
+
+Structural subtyping for record types via the `Struct` builtin type and `with` field constraints.
+
 ---
 
 ## Proposed
@@ -35,10 +39,6 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 ## Exploring
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
-
-### Row Polymorphism
-
-Structural subtyping for record types.
 
 ### `par_map` Concurrency
 

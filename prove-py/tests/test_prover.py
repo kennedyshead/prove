@@ -15,7 +15,7 @@ def _make_fd(**kwargs) -> FunctionDef:
         can_fail=False, ensures=[], requires=[],
         explain=None, terminates=None, trusted=None, binary=False,
         why_not=[], chosen=None, near_misses=[], know=[], assume=[],
-        believe=[], intent=None, satisfies=[], event_type=None, body=[], doc_comment=None,
+        believe=[], with_constraints=[], intent=None, satisfies=[], event_type=None, body=[], doc_comment=None,
         span=_DUMMY,
     )
     defaults.update(kwargs)
