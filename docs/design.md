@@ -78,7 +78,7 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
-Thread-based `par_map` is [planned](roadmap.md) as a future primitive — runtime scaffolding exists but is not yet callable from user code.
+Thread-based `par_map`, `par_filter`, and `par_reduce` are available for pure verbs, running a pthreads-backed thread pool with automatic core detection. They are restricted to pure verbs at compile time — IO and async verbs are rejected. See [Parallel Higher-Order Functions](roadmap.md#parallel-higher-order-functions).
 
 The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries.
 

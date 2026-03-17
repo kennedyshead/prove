@@ -252,7 +252,7 @@ from
     // implementation
 ```
 
-- **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, and [refinement types](types.md#refinement-types). Provable claims pass silently; unprovable claims emit a warning (W327) and fall back to a runtime assertion.
+- **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, [refinement types](types.md#refinement-types), assumption matching (facts from `requires`, `assume`, and `believe` in scope), and arithmetic reasoning (e.g., `x + 1 > x`, transitivity). Provable claims pass silently; unprovable claims emit a warning ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)) and fall back to a runtime assertion.
 - **`assume`** — the compiler adds a runtime check. If the assumption fails at runtime, the program panics.
 - **`believe`** — the compiler tries to break it with generated tests. Requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)).
 

@@ -500,6 +500,35 @@ For complex iteration that doesn't fit map/filter/reduce, use recursion with a `
 
 ---
 
+## Parallel Iteration
+
+`par_map`, `par_filter`, and `par_reduce` are parallel variants of the standard
+higher-order functions. They use a pthreads thread pool with automatic core detection —
+no worker count needed.
+
+```prove
+// Parallel map — transform each element concurrently
+scores as List<Integer> = par_map(documents, compute_score)
+
+// Parallel filter — keep matching elements concurrently
+valid as List<Order> = par_filter(orders, validates order)
+
+// Parallel reduce — combine elements concurrently
+total as Integer = par_reduce(values, 0, add)
+```
+
+**Purity requirement:** the callback must be a named pure function (`transforms`,
+`validates`, `reads`, `creates`, or `matches`). IO verbs (`inputs`, `outputs`) and
+async verbs are rejected at compile time.
+
+**No closures:** the callback must be a named function, not a lambda. Lambdas with
+captured bindings are not yet supported for parallel execution.
+
+**Ordering:** result ordering is not guaranteed — elements may be placed in any order
+depending on thread scheduling. Use `map` if ordering must be preserved.
+
+---
+
 ## Complete Example: RESTful Server
 
 ```prove
