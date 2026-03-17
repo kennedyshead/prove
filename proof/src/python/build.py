@@ -15,9 +15,9 @@ import sys
 
 from prove._build_runner import run_build
 
-path: str = ""
-debug: bool = False
-no_mutate: bool = False
+path: str = ""  # pylint: disable=invalid-name
+debug: bool = False  # pylint: disable=invalid-name
+no_mutate: bool = False  # pylint: disable=invalid-name
 
 if __name__ == "__main__":
     import prove.nlp as nlp_mod
