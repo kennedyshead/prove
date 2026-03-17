@@ -78,9 +78,9 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
-Thread-based `par_map`, `par_filter`, and `par_reduce` are available for pure verbs, running a pthreads-backed thread pool with automatic core detection. They are restricted to pure verbs at compile time — IO and async verbs are rejected. See [Parallel Higher-Order Functions](roadmap.md#parallel-higher-order-functions).
+Thread-based `par_map`, `par_filter`, and `par_reduce` are available for pure verbs, running a pthreads-backed thread pool with automatic core detection. They are restricted to pure verbs at compile time — IO and async verbs are rejected. See [Parallel Iteration](functions.md#parallel-iteration).
 
-The type system includes effect type scaffolding (`IO`, `Fail`, `Async`) for annotating functions with side effects. The verb system enforces purity boundaries.
+The verb system enforces purity boundaries — pure verbs cannot make IO calls, and the compiler rejects violations at compile time. *Upcoming:* explicit effect type annotations (`IO`, `Fail`, `Async`); the names are reserved as a CamelCase convention but are not yet part of the type system.
 
 ---
 
@@ -100,9 +100,9 @@ from
 
 ## Zero-Cost Abstractions
 
-- Pure functions auto-memoized and inlined — *v0.9.5 ✓*
-- Region-based memory runtime exists — *v0.9.5 ✓ (per-function scoping planned)*
-- Basic use-after-move detection for `Own` modifier — *partial (comprehensive tracking planned)*
+- Pure functions auto-memoized and inlined
+- Region-based memory runtime; per-function scoping is upcoming
+- Use-after-move detection for `Own` modifier; comprehensive tracking is upcoming
 - No GC pauses, predictable performance
 - Native code output
 
@@ -114,7 +114,7 @@ from
 |---|---|
 | Tests are separate from code | Testing is part of the definition — [`ensures`, `requires`, `near_miss`](contracts.md) |
 | "Works on my machine" | [Verb system](functions.md#intent-verbs) makes IO explicit (`inputs`/`outputs`) |
-| Null/nil crashes | No null — use [`Option<Value>`](types.md#option-and-result), enforced by compiler |
+| Null/nil crashes | No null — use [`Option<Value>`](types.md#option-and-result) for absent values, [`Unit`](types.md#no-null) for no return value |
 | Race conditions | Ownership + verb purity; [structured concurrency](functions.md#async-verbs) via `detached`/`attached`/`listens` |
 | "I forgot an edge case" | Compiler generates edge cases from [refinement types](types.md#refinement-types) |
 | Slow test suites | Property tests generated from [contracts](contracts.md#auto-testing) |

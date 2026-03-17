@@ -7,6 +7,7 @@ import re
 from prove.ast_nodes import (
     Assignment,
     BinaryExpr,
+    BindingPattern,
     CallExpr,
     Expr,
     ExprStmt,
@@ -28,6 +29,7 @@ from prove.ast_nodes import (
     UnaryExpr,
     ValidExpr,
     VarDecl,
+    VariantPattern,
 )
 from prove.errors import DiagnosticLabel, Severity, make_diagnostic
 from prove.source import Span
@@ -86,6 +88,28 @@ def _expr_references_name(expr: Expr, name: str) -> bool:
         return any(_expr_references_name(e, name) for e in expr.elements)
     # TypeIdentifierExpr, IndexExpr, literals — no name references
     return False
+
+
+def _substitute_result_in_expr(expr: Expr, new_name: str) -> Expr:
+    """Replace all ``IdentifierExpr(name='result')`` with ``IdentifierExpr(name=new_name)``.
+
+    Used for Phase 4 callee-ensures propagation: when ``y = f(x)`` and
+    ``f`` has ``ensures: result > 0``, substitute ``result`` → ``y`` to
+    produce the fact ``y > 0`` for the caller's proof context.
+    """
+    if isinstance(expr, IdentifierExpr):
+        if expr.name == "result":
+            return IdentifierExpr(name=new_name, span=expr.span)
+        return expr
+    if isinstance(expr, BinaryExpr):
+        left = _substitute_result_in_expr(expr.left, new_name)
+        right = _substitute_result_in_expr(expr.right, new_name)
+        return BinaryExpr(op=expr.op, left=left, right=right, span=expr.span)
+    if isinstance(expr, UnaryExpr):
+        operand = _substitute_result_in_expr(expr.operand, new_name)
+        return UnaryExpr(op=expr.op, operand=operand, span=expr.span)
+    # Literals, field access, and other expressions — return as-is
+    return expr
 
 
 class ContractCheckMixin:
@@ -209,6 +233,14 @@ class ContractCheckMixin:
         proof_context.add_all(fd.requires)
         proof_context.add_all(fd.assume)
         proof_context.add_all(fd.believe)
+
+        # Phase 4: add callee ensures as facts (y = f(x) + f ensures result > 0
+        # → y > 0 added to context)
+        callee_facts = self._collect_callee_ensures_facts(fd.body)
+        proof_context.add_all(callee_facts)
+
+        # Phase 5: record match arm structural bindings
+        self._collect_match_arm_facts(fd.body, proof_context)
 
         # Type-check `know` and attempt proof
         for know_expr in fd.know:
@@ -984,4 +1016,91 @@ class ContractCheckMixin:
                             "or revise the implementation.",
                         ],
                     )
+                )
+
+    # ── Phase 4: callee-ensures propagation ──────────────────────────
+
+    def _collect_callee_ensures_facts(
+        self, body: list[Stmt | MatchExpr]
+    ) -> list[Expr]:
+        """Scan function body for call-result bindings and collect callee ensures.
+
+        Phase 4: callee-ensures propagation.
+
+        For each ``y = f(x)`` where ``f`` has ``ensures: result > 0``,
+        substitutes ``result`` → ``y`` to produce ``y > 0`` and adds it to
+        the list of proof context facts.  This lets subsequent ``know``
+        claims reference the callee's postcondition by the local name.
+        """
+        facts: list[Expr] = []
+        for stmt in body:
+            if not isinstance(stmt, VarDecl):
+                continue
+            call: Expr = stmt.value
+            # Unwrap fail-propagation: y = f()! → strip the !
+            if isinstance(call, FailPropExpr):
+                call = call.expr
+            if not isinstance(call, CallExpr):
+                continue
+            # Resolve callee name
+            func = call.func
+            if isinstance(func, IdentifierExpr):
+                callee_name = func.name
+            elif isinstance(func, FieldExpr):
+                callee_name = func.field
+            else:
+                continue
+            sig = self.symbols.resolve_function_any(
+                callee_name, arity=len(call.args)
+            )
+            if sig is None or not sig.ensures:
+                continue
+            for ens_expr in sig.ensures:
+                facts.append(_substitute_result_in_expr(ens_expr, stmt.name))
+        return facts
+
+    # ── Phase 5: match-arm structural narrowing ───────────────────────
+
+    def _collect_match_arm_facts(
+        self,
+        body: list[Stmt | MatchExpr],
+        proof_context: object,
+    ) -> None:
+        """Scan body match arms and record structural binding facts.
+
+        Phase 5: match-arm path narrowing.
+
+        For each ``match subj { Some(x) -> ..., None -> ... }`` found in
+        the body, records ``(subj, "Some", ["x"])`` in the proof context
+        via ``ProofContext.add_match_arm_binding``.  The proof engine can
+        then confirm structural facts (e.g. ``subj != None``) when they
+        are independently established by ``requires`` or ``assume``.
+
+        This is primarily infrastructure for future arm-level proof
+        checking; with function-level ``know`` claims the gain is the
+        structural confirmation described in ``ClaimProver._prove_from_match_bindings``.
+        """
+        for stmt in body:
+            match_expr: MatchExpr | None = None
+            if isinstance(stmt, MatchExpr):
+                match_expr = stmt
+            elif isinstance(stmt, VarDecl) and isinstance(stmt.value, MatchExpr):
+                match_expr = stmt.value
+            if match_expr is None:
+                continue
+            if not isinstance(match_expr.subject, IdentifierExpr):
+                continue
+            subj_name = match_expr.subject.name
+            for arm in match_expr.arms:
+                if not isinstance(arm.pattern, VariantPattern):
+                    continue
+                if arm.pattern.name not in ("Some", "Ok", "Error", "None"):
+                    continue
+                bindings = [
+                    f.name
+                    for f in arm.pattern.fields
+                    if isinstance(f, BindingPattern)
+                ]
+                proof_context.add_match_arm_binding(
+                    subj_name, arm.pattern.name, bindings
                 )

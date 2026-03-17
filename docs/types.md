@@ -108,7 +108,7 @@ Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). R
 
 `Float` is **opt-in** — `Decimal` is the default for fractional numbers. `Float:[64]` uses IEEE 754 hardware floats for performance-critical domains (scientific computing, graphics, signal processing) where speed matters more than exact precision. Mixing `Float` and `Decimal` requires explicit conversion.
 
-**Decimal precision mappings:** `Decimal:[32]` compiles to C `float`, `Decimal:[64]` (default) compiles to `double`, and `Decimal:[128]` compiles to `long double`. The `Scale:N` modifier is parsed but not yet enforced at runtime.
+**Decimal precision mappings:** `Decimal:[32]` compiles to C `float`, `Decimal:[64]` (default) compiles to `double`, and `Decimal:[128]` compiles to `long double`. *Upcoming:* `Scale:N` constraint enforcement at runtime.
 
 ```prove
 count as Integer = 42                          // Integer:[64 Signed]
@@ -155,7 +155,7 @@ from
 
 ## Refinement Types
 
-Types carry constraints, not just shapes. The compiler validates values against constraints — currently via runtime checks inserted at assignment boundaries, with static rejection of provably-invalid literals planned.
+Types carry constraints, not just shapes. The compiler validates values against constraints via runtime checks inserted at assignment boundaries. *Upcoming:* static rejection of provably-invalid literals at compile time.
 
 ```prove
 type Port is Integer:[16 Unsigned] where 1 .. 65535
@@ -482,4 +482,9 @@ from
 
 ## No Null
 
-No null — use `Option<Value>`, enforced by the compiler.
+No null. Prove replaces null's two roles with distinct types:
+
+- **`Option<Value>`** — for values that might not exist (`Some(value)` or `None`)
+- **`Unit`** — for functions that return nothing (the "void" equivalent)
+
+Both are enforced by the compiler. There is no null pointer, no nil, no sentinel value.

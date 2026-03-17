@@ -521,8 +521,7 @@ total as Integer = par_reduce(values, 0, add)
 `validates`, `reads`, `creates`, or `matches`). IO verbs (`inputs`, `outputs`) and
 async verbs are rejected at compile time.
 
-**No closures:** the callback must be a named function, not a lambda. Lambdas with
-captured bindings are not yet supported for parallel execution.
+**No closures:** the callback must be a named function, not a lambda. *Upcoming:* closure capture for parallel callbacks.
 
 **Ordering:** result ordering is not guaranteed — elements may be placed in any order
 depending on thread scheduling. Use `map` if ordering must be preserved.
