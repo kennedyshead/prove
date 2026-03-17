@@ -26,14 +26,6 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 ## Preview
 
-### AI-Resistance Enforcement
-
-Parsing, domain profiles (W340-W342), temporal ordering (W390), and invariant
-network constraints (E396, W391) are all active. Remaining:
-
-- Counterfactual annotations (`why_not`/`chosen`) — parsed but no semantic checking beyond W503-W505
-- Formal invariant network verification — validated syntactically, not proven
-
 ---
 
 ## Proposed

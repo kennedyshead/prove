@@ -1171,6 +1171,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # ── Contract type-checking ──
         self._check_contracts(fd, return_type, param_types)
 
+        # ── Counterfactual annotation checks (always active) ──
+        if fd.chosen or fd.why_not:
+            self._check_chosen_has_why_not(fd)
+            self._check_chosen_body_coherence(fd)
+            self._check_why_not_names(fd, self.symbols.all_known_names())
+            self._check_why_not_contradiction(fd)
+
         # ── Explain condition type-checking ──
         if fd.explain is not None:
             for entry in fd.explain.entries:
@@ -3202,15 +3209,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             decl.span,
                         )
 
-        # W501-W505: prose coherence checks
+        # W501-W502: prose coherence checks (coherence-flag only)
         fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
-        known_names = {name for (_, name) in self.symbols._functions.keys()} | set(
-            self.symbols._types.keys()
-        )
         if mod_decl is not None:
             self._check_narrative_verb_coherence(mod_decl, fns)
         for fd in fns:
             self._check_explain_body_coherence(fd)
-            self._check_chosen_has_why_not(fd)
-            self._check_chosen_body_coherence(fd)
-            self._check_why_not_names(fd, known_names)
+        # W503-W506 are always active — already fired per-function in _check_function

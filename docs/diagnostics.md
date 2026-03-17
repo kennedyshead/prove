@@ -783,15 +783,19 @@ An `explain` entry's prose text has no overlap with the names of operations or p
 
 ### W503 — Chosen declared without why_not
 
-A function declares `chosen:` to document the approach taken but has no `why_not:` entries for rejected alternatives. Design decisions are more valuable when paired with documented trade-offs. Emitted only with `prove check --coherence`.
+A function declares `chosen:` to document the approach taken but has no `why_not:` entries for rejected alternatives. Design decisions are more valuable when paired with documented trade-offs.
 
 ### W504 — Chosen text doesn't relate to from-body
 
-A function's `chosen:` text has no overlap with the operations or parameters in the `from` block. The chosen description should relate to what the implementation actually does. Emitted only with `prove check --coherence`.
+A function's `chosen:` text has no overlap with the operations or parameters in the `from` block. The chosen description should relate to what the implementation actually does.
 
 ### W505 — Why-not entry mentions no known name
 
-A `why_not:` entry contains no function name, type name, or other identifier from the current scope. Rejection notes should anchor to something concrete — a function, type, or algorithm — so future readers understand what was considered. Emitted only with `prove check --coherence`.
+A `why_not:` entry contains no function name, type name, or other identifier from the current scope. Rejection notes should anchor to something concrete — a function, type, or algorithm — so future readers understand what was considered.
+
+### W506 — Why-not entry contradicts from-body
+
+A `why_not:` entry mentions a function name that the `from` block actually calls. The rejected approach is in use, which contradicts the rationale. Either the `why_not` is outdated, or the implementation should use a different approach.
 
 ### I340 — Vocabulary drift from narrative
 

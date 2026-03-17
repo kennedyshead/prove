@@ -105,41 +105,9 @@ The Prove Source License covers the language, its specification, and `.prv` sour
 
 These keywords are parsed and stored in the AST, but the compiler does not yet enforce their semantic claims. They currently serve as documentation and structural annotations.
 
-All module-level keywords (`domain`, `temporal`, `invariant_network`) and function-level annotations (`why_not`, `chosen`, `intent`, `satisfies`) parse cleanly. The `satisfies` annotation validates that the referenced type or invariant network exists.
-
-### Counterfactual Annotations: `why_not`, `chosen`
-
-Every non-trivial design choice can explain what would break under alternative approaches. See [Contracts & Annotations — Counterfactual Annotations](contracts.md#counterfactual-annotations) for the full reference.
-
-```prove
-transforms evict(cache Cache:[Mutable]) Option<Entry>
-  why_not: "FIFO would evict still-hot entries under burst traffic"
-  why_not: "Random eviction has unbounded worst-case for repeated keys"
-  chosen: "LRU because access recency correlates with reuse probability"
-from
-    // LRU implementation
-```
-
-*Upcoming:* The compiler will verify the `chosen` rationale is consistent with the implementation's actual behavior. `why_not` clauses will be checked for plausibility against the function's type signature and effects.
-
-### Temporal Effect Ordering
-
-Not just *what* effects a function has, but the *required order* — enforced across function boundaries and call graphs. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations) for how `temporal` is declared.
-
-```prove
-module Auth
-  temporal: authenticate -> authorize -> access
-
-  inputs authenticate(creds Credentials) Token!
-  transforms authorize(token Token, resource Resource) Permission
-  inputs access(perm Permission, resource Resource) Data!
-```
-
-*Upcoming:* The compiler will build a call graph and verify temporal constraints are satisfied across all execution paths.
-
 ### Intent Annotations
 
-[`intent`](contracts.md#intent) documents the purpose of a function.
+[`intent`](contracts.md#intent) documents the purpose of a function in plain prose.
 
 ```prove
 transforms filter_valid(records List<Record>) List<Record>
@@ -150,36 +118,81 @@ from
 
 It goes in the function **header**, not inside the body.
 
-### Invariant Networks: `invariant_network`, `satisfies`
+*Upcoming:* The compiler will verify the `intent` prose is consistent with the function's actual behavior, linking intent declarations to the refutation challenge engine.
 
-Define networks of mutually-dependent invariants. Changing one cascades verification across the entire network. See [Contracts & Annotations — Invariant Networks](contracts.md#invariant-networks) for the full reference.
+---
+
+## Implemented — Counterfactual Annotations
+
+Every non-trivial design choice can explain what would break under alternative approaches. The compiler checks that `why_not` and `chosen` annotations are coherent with the implementation. See [Contracts & Annotations — Counterfactual Annotations](contracts.md#counterfactual-annotations) for the full reference.
+
+```prove
+transforms evict(cache Cache:[Mutable]) Option<Entry>
+  why_not: "FIFO would evict still-hot entries under burst traffic"
+  why_not: "Random eviction has unbounded worst-case for repeated keys"
+  chosen: "LRU because access recency correlates with reuse probability"
+from
+    // LRU implementation
+```
+
+Four checks are active on every function that uses `why_not` or `chosen`:
+
+- **[W503](diagnostics.md#w503-chosen-declared-without-why_not)** — `chosen:` declared without any `why_not:` entry. Design decisions are more valuable when paired with trade-offs.
+- **[W504](diagnostics.md#w504-chosen-text-doesnt-relate-to-from-body)** — `chosen:` text has no overlap with operations or parameters in the `from` block. The rationale should relate to what the code actually does.
+- **[W505](diagnostics.md#w505-why-not-entry-mentions-no-known-name)** — a `why_not:` entry contains no identifier from the current scope. Rejection notes must anchor to a concrete function, type, or algorithm.
+- **[W506](diagnostics.md#w506-why-not-entry-contradicts-from-body)** — a `why_not:` entry rejects an approach whose function name appears in the `from` block. The rejected approach is in use, which contradicts the rationale.
+
+AI can generate plausible-looking counterfactuals, but they won't satisfy these structural checks without understanding the actual implementation.
+
+## Implemented — Temporal Effect Ordering
+
+A module's `temporal:` declaration constrains the required call order for its operations. The compiler enforces this within function bodies — calling a later step before an earlier one is an error. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations) for the declaration syntax.
+
+```prove
+module Auth
+  temporal: authenticate -> authorize -> access
+
+  inputs authenticate(creds Credentials) Token!
+  transforms authorize(token Token, resource Resource) Permission
+  inputs access(perm Permission, resource Resource) Data!
+```
+
+**[W390](diagnostics.md#w390-temporal-operation-out-of-declared-order)** fires when a function body calls temporal operations in the wrong order.
+
+## Implemented — Invariant Networks
+
+`invariant_network` declarations define sets of mutually-dependent constraints. Functions that claim to satisfy a network use `satisfies`. The compiler validates that constraint expressions are well-typed and that functions with `satisfies` provide `ensures` clauses to document how the invariant is maintained. See [Contracts & Annotations — Invariant Networks](contracts.md#invariant-networks) for the full reference.
 
 ```prove
 invariant_network AccountingRules
   total_assets == total_liabilities + equity
   revenue - expenses == net_income
-  every(transaction) preserves total_assets == total_liabilities + equity
 
 transforms post_transaction(ledger Ledger, tx Transaction) Ledger
   satisfies AccountingRules
+  ensures result.total_assets == result.total_liabilities + result.equity
 from
     // implementation
 ```
 
-*Upcoming:* Constraint solver that scales across modules.
+- **[E382](diagnostics.md#e382-satisfies-references-undefined-type)** — `satisfies` references an unknown invariant network.
+- **[E396](diagnostics.md#e396-invariant-constraint-must-be-boolean)** — a constraint expression in an `invariant_network` is not Boolean.
+- **[W391](diagnostics.md#w391-satisfies-invariant-without-ensures)** — a function declares `satisfies` but has no `ensures` clauses; without postconditions the invariant cannot be verified.
 
-### Domain Declarations
+## Implemented — Domain Declarations
 
-[`domain`](contracts.md#module-level-annotations) tags a module's problem domain, potentially enabling domain-specific rules.
+A module's `domain:` tag selects a built-in enforcement profile that adds domain-specific warnings. See [Contracts & Annotations — Module-Level Annotations](contracts.md#module-level-annotations).
 
 ```prove
-module PaymentService
-  domain Finance
+module Accounting
+  domain finance
 ```
 
-*Upcoming:* Domain-specific keyword behavior and operator semantics.
+Active profiles:
 
----
+- **finance** — prefer `Decimal` over `Float` ([W340](diagnostics.md#w340-domain-profile-violation)); require `ensures` contracts and `near_miss` examples ([W341](diagnostics.md#w341-missing-required-contract-for-domain), [W342](diagnostics.md#w342-missing-required-annotation-for-domain))
+- **safety** — require `ensures`, `requires`, and `explain` blocks
+- **general** — no additional requirements
 
 ## Implemented — Refutation Challenges
 

@@ -133,8 +133,8 @@ DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
 DIAGNOSTIC_DOCS["W360"] = f"{_DOCS_BASE}#W360"
 # Warning — temporal/satisfies W390-W391
 _register_doc_range("W", 390, 391)
-# Warning — prose coherence W501-W505
-_register_doc_range("W", 501, 505)
+# Warning — prose coherence W501-W506
+_register_doc_range("W", 501, 506)
 # Info
 for _c in (
     "I201", "I300", "I301", "I302", "I303", "I304", "I310", "I311",
