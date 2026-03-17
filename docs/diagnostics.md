@@ -326,6 +326,30 @@ transforms caller(xs List<Integer>) Integer
         0
 ```
 
+### E369 — `par_each` callback cannot be an async verb
+
+`par_each` allows IO verb callbacks (unlike `par_map`/`par_filter`/`par_reduce`), but async verbs (`detached`, `attached`, `listens`) cannot be used as callbacks because they run in their own concurrency context and cannot be called as plain functions.
+
+```prove
+// Error — detached is an async verb
+detached fire_and_forget(n Integer) Integer
+    from
+        n
+
+outputs caller(xs List<Integer>) Unit
+    from
+        par_each(xs, fire_and_forget)
+
+// OK — outputs is allowed in par_each
+outputs log_item(n Integer) Integer
+    from
+        n
+
+outputs caller(xs List<Integer>) Unit
+    from
+        par_each(xs, log_item)
+```
+
 ### E151 — `listens` body missing `Exit` arm
 
 A `listens` function's `from` block must be a single implicit match (bare arms) with an `Exit` arm. The `Exit` variant terminates the cooperative loop.
