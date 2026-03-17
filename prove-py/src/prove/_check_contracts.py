@@ -40,6 +40,7 @@ from prove.types import (
     AlgebraicType,
     BorrowType,
     ErrorType,
+    GenericInstance,
     PrimitiveType,
     StructType,
     Type,
@@ -242,38 +243,72 @@ class ContractCheckMixin:
         # Phase 5: record match arm structural bindings
         self._collect_match_arm_facts(fd.body, proof_context)
 
+        # Phase 6: infer types for arm-bound variables so function-level
+        # `know` claims can reference them (e.g. `know: len(inner) > 0`
+        # when `inner` is bound in `Some(inner)`).
+        arm_bound_types = self._collect_arm_bound_types(proof_context)
+
         # Type-check `know` and attempt proof
         for know_expr in fd.know:
-            know_type = self._infer_expr(know_expr)
-            if not isinstance(know_type, ErrorType) and not types_compatible(BOOLEAN, know_type):
-                self._error(
-                    "E384",
-                    f"know expression must be Boolean, got '{type_name(know_type)}'",
-                    know_expr.span if hasattr(know_expr, "span") else fd.span,
-                )
-            else:
-                # Attempt to prove the claim using proof context
-                prover = ClaimProver(symbols=self.symbols, context=proof_context)
-                result = prover.prove_claim(know_expr)
-                if result is False:
-                    self._error(
-                        "E356",
-                        "know claim is provably false",
-                        know_expr.span if hasattr(know_expr, "span") else fd.span,
-                    )
-                elif result is None:
-                    span = know_expr.span if hasattr(know_expr, "span") else fd.span
-                    self.diagnostics.append(
-                        make_diagnostic(
-                            Severity.WARNING,
-                            "W327",
-                            "cannot prove know claim; treating as runtime assertion",
-                            labels=[DiagnosticLabel(span=span, message="")],
+            # Temporarily define arm-bound variables in scope so that
+            # know claims referencing them can be type-checked and proved.
+            uses_arm_var = arm_bound_types and any(
+                _expr_references_name(know_expr, bname)
+                for bname in arm_bound_types
+            )
+            if uses_arm_var:
+                self.symbols.push_scope("know_arm")
+                for bname, btype in arm_bound_types.items():
+                    self.symbols.define(
+                        Symbol(
+                            name=bname,
+                            kind=SymbolKind.VARIABLE,
+                            resolved_type=btype,
+                            span=fd.span,
                         )
                     )
+            try:
+                know_type = self._infer_expr(know_expr)
+                if not isinstance(know_type, ErrorType) and not types_compatible(
+                    BOOLEAN, know_type
+                ):
+                    self._error(
+                        "E384",
+                        f"know expression must be Boolean, got '{type_name(know_type)}'",
+                        know_expr.span if hasattr(know_expr, "span") else fd.span,
+                    )
                 else:
-                    # Proven true — add to context for subsequent claims
-                    proof_context.add(know_expr)
+                    # Attempt to prove the claim using proof context
+                    prover = ClaimProver(symbols=self.symbols, context=proof_context)
+                    result = prover.prove_claim(know_expr)
+                    if result is False:
+                        self._error(
+                            "E356",
+                            "know claim is provably false",
+                            know_expr.span if hasattr(know_expr, "span") else fd.span,
+                        )
+                    elif result is None:
+                        span = know_expr.span if hasattr(know_expr, "span") else fd.span
+                        code = "W372" if uses_arm_var else "W327"
+                        msg = (
+                            "cannot prove arm-bound know claim; treating as runtime assertion"
+                            if uses_arm_var
+                            else "cannot prove know claim; treating as runtime assertion"
+                        )
+                        self.diagnostics.append(
+                            make_diagnostic(
+                                Severity.WARNING,
+                                code,
+                                msg,
+                                labels=[DiagnosticLabel(span=span, message="")],
+                            )
+                        )
+                    else:
+                        # Proven true — add to context for subsequent claims
+                        proof_context.add(know_expr)
+            finally:
+                if uses_arm_var:
+                    self.symbols.pop_scope()
 
         # Type-check `assume`
         for assume_expr in fd.assume:
@@ -1154,3 +1189,40 @@ class ContractCheckMixin:
                 proof_context.add_match_arm_binding(
                     subj_name, arm.pattern.name, bindings
                 )
+
+    def _collect_arm_bound_types(self, proof_context: object) -> dict[str, Type]:
+        """Phase 6: infer types for arm-bound variables.
+
+        For each match arm binding recorded in proof_context, look up the
+        subject's type and derive the bound variable type from the variant:
+        - ``Option<T>`` / ``Some(x)``  → ``x: T``
+        - ``Result<T,E>`` / ``Ok(v)``   → ``v: T``
+        - ``Result<T,E>`` / ``Err(e)``  → ``e: E``
+
+        Returns a mapping from bound variable name → inferred type, so
+        function-level ``know`` claims that reference arm-bound variables
+        can be type-checked and proved.
+        """
+        bound: dict[str, Type] = {}
+        for subj_name, variant, bindings in proof_context.match_bindings:  # type: ignore[union-attr]
+            if not bindings:
+                continue
+            subj_sym = self.symbols.lookup(subj_name)
+            if subj_sym is None:
+                continue
+            subj_type = subj_sym.resolved_type
+            if not isinstance(subj_type, GenericInstance):
+                continue
+            inner: Type | None = None
+            if subj_type.base_name == "Option" and len(subj_type.args) >= 1:
+                if variant == "Some":
+                    inner = subj_type.args[0]
+            elif subj_type.base_name == "Result" and len(subj_type.args) >= 2:
+                if variant == "Ok":
+                    inner = subj_type.args[0]
+                elif variant in ("Err", "Error"):
+                    inner = subj_type.args[1]
+            if inner is not None:
+                for bname in bindings:
+                    bound[bname] = inner
+        return bound
