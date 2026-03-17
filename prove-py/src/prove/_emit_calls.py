@@ -578,6 +578,8 @@ class CallEmitterMixin:
                 return self._emit_hof_par_filter(expr)
             if name == "par_reduce" and len(expr.args) == 3:
                 return self._emit_hof_par_reduce(expr)
+            if name == "par_each" and len(expr.args) == 2:
+                return self._emit_hof_par_each(expr)
             # Fused iterator patterns from optimizer
             if name == "__fused_map_filter" and len(expr.args) == 3:
                 return self._emit_fused_map_filter(expr)
@@ -1094,6 +1096,19 @@ class CallEmitterMixin:
         result_tmp = self._tmp()
         self._line(f"void *{result_tmp} = prove_par_reduce({list_arg}, {init_cast}, {fn_name}, 0);")
         return self._hof_unbox(result_tmp, accum_ct)
+
+    def _emit_hof_par_each(self, expr: CallExpr) -> str:
+        """Emit prove_par_each(list, fn, 0) — parallel each with auto-detect workers."""
+        self._needed_headers.add("prove_par_map.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        coll_type = self._infer_expr_type(expr.args[0])
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element
+
+        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "each")
+        return f"prove_par_each({list_arg}, {fn_name}, 0)"
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""

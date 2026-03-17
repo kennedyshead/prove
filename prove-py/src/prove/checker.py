@@ -619,6 +619,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ],
                 TypeVariable("Output"),
             ),
+            (
+                "par_each",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], TypeVariable("Output")),
+                ],
+                UNIT,
+            ),
             ("to_string", [TypeVariable("Value")], STRING),
             ("clamp", [INTEGER, INTEGER, INTEGER], INTEGER),
         ]
