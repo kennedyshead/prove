@@ -6,6 +6,7 @@ module Build
   """
   Config types Config
   System validates dir
+  Source types SourceFile
 
   foreign "libpython3"
     py_initialize() Unit
@@ -17,7 +18,13 @@ module Build
   PYTHON_BUILD as String = comptime
       read("python/build.py")
 
-outputs pybuild(config Config, path String, debug Boolean, no_mutate Boolean) Integer
+outputs pybuild(
+    config Config,
+    path String,
+    debug Boolean,
+    no_mutate Boolean,
+    source List<SourceFile>
+) Integer
   requires valid dir(path)
 from
     py_initialize()

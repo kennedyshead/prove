@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from prove.ast_nodes import Module, ModuleDecl
-from prove.c_compiler import CompileCError, _compiler_family, compile_c, find_c_compiler, find_ccache
+from prove.c_compiler import (
+    CompileCError,
+    _compiler_family,
+    compile_c,
+    find_c_compiler,
+    find_ccache,
+)
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
 from prove.checker import Checker
@@ -89,7 +95,9 @@ def _find_llvm_profdata() -> str | None:
     try:
         result = subprocess.run(
             ["xcrun", "--find", "llvm-profdata"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
@@ -107,6 +115,12 @@ class BuildResult:
     diagnostics: list[Diagnostic] = field(default_factory=list)
     c_error: str | None = None
     comptime_dependencies: set[Path] = field(default_factory=set)
+
+
+def lex_and_parse(source: str, filename: str):
+    """Lexes and parses the source"""
+    tokens = Lexer(source, filename).lex()
+    return Parser(tokens, filename).parse()
 
 
 def build_project(
@@ -138,8 +152,7 @@ def build_project(
 
         # Lex + parse
         try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = lex_and_parse(source, filename)
         except CompileError as e:
             all_diags.extend(e.diagnostics)
             continue
@@ -155,8 +168,7 @@ def build_project(
             prv_file.write_text(formatted)
             # Re-parse the formatted source for a clean check
             try:
-                tokens = Lexer(formatted, filename).lex()
-                module = Parser(tokens, filename).parse()
+                module = lex_and_parse(formatted, filename)
             except CompileError as e:
                 all_diags.extend(e.diagnostics)
                 continue
@@ -180,8 +192,12 @@ def build_project(
     _compile_pure_stdlib(modules_and_symbols, all_diags)
 
     return _build_c(
-        project_dir, config, modules_and_symbols, all_diags,
-        debug=debug, user_module_count=user_module_count,
+        project_dir,
+        config,
+        modules_and_symbols,
+        all_diags,
+        debug=debug,
+        user_module_count=user_module_count,
     )
 
 
@@ -257,8 +273,7 @@ def _build_c(
                     for imp in decl.imports:
                         runtime_deps.add_module(imp.module)
         optimized = config.optimize.enabled and not debug
-        emitter = CEmitter(module, symbols, memo_info, escape_info,
-                           optimize=optimized)
+        emitter = CEmitter(module, symbols, memo_info, escape_info, optimize=optimized)
         c_sources.append(emitter.emit())
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:
@@ -279,9 +294,7 @@ def _build_c(
     gen_dir.mkdir(parents=True, exist_ok=True)
 
     if debug:
-        (gen_dir / ".clangd").write_text(
-            "CompileFlags:\n  Add: -I../runtime\n"
-        )
+        (gen_dir / ".clangd").write_text("CompileFlags:\n  Add: -I../runtime\n")
 
     # Write generated C
     gen_c_files: list[Path] = []
@@ -376,6 +389,7 @@ def _build_c(
         family = _compiler_family(cc)
         if family == "msvc":
             import warnings
+
             warnings.warn("PGO not supported with MSVC; building without PGO")
             use_pgo = False
 
@@ -409,8 +423,10 @@ def _build_c(
             env = {**os.environ, "LLVM_PROFILE_FILE": str(pgo_dir / "default_%m.profraw")}
             try:
                 subprocess.run(
-                    [str(binary_path)], timeout=10,
-                    stdin=subprocess.DEVNULL, capture_output=True,
+                    [str(binary_path)],
+                    timeout=10,
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
                     env=env,
                 )
             except (subprocess.TimeoutExpired, OSError):
@@ -425,16 +441,14 @@ def _build_c(
                         subprocess.run(
                             [llvm_profdata, "merge", "-output", str(profdata)]
                             + [str(f) for f in profraw_files],
-                            capture_output=True, timeout=30,
+                            capture_output=True,
+                            timeout=30,
                         )
                     else:
                         print("pgo: llvm-profdata not found; cannot merge profiles")
 
             # Step 3: Rebuild with profile-use (fall back to normal if no data)
-            has_profile = (
-                any(pgo_dir.glob("*.gcda"))
-                or profdata.exists()
-            )
+            has_profile = any(pgo_dir.glob("*.gcda")) or profdata.exists()
             if has_profile:
                 print("pgo: rebuilding with profile data...")
                 compile_c(**compile_kwargs, pgo_phase="use", pgo_dir=pgo_dir)
@@ -468,9 +482,7 @@ def _build_c(
 
 import re
 
-_FORWARD_DECL_RE = re.compile(
-    r"^(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$"
-)
+_FORWARD_DECL_RE = re.compile(r"^(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$")
 
 
 def _extract_forward_decls(stdlib_c_sources: list[str]) -> list[str]:

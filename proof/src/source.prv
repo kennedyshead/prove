@@ -1,7 +1,6 @@
 module Source
   narrative: """
-  Inputs all source files trough dir inputs.
-  Reads all source content of files.
+  Reads all source content through dir inputs
   """
   Config types Config
   System validates file inputs dir file
