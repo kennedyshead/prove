@@ -48,12 +48,6 @@ bindings are not yet supported. Phase 1: sequential lambdas with stack-allocated
 capture structs. Phase 2: parallel lambdas with region-allocated capture structs
 and mutability enforcement. See `future/09-parallel-closures.md`.
 
-### `know` Claims Inside Match Arms
-
-`know` claims are function-level. The match arm structural bindings are recorded
-in the proof context but `know` cannot yet be written inside an arm body to
-reference the locally-bound variant variable. See `future/10-match-arm-know.md`.
-
 ### Self-Hosted Compiler (V2.0)
 
 Rewrite the compiler in Prove. The V1.0 Python bootstrap compiles it,

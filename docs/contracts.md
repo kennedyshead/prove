@@ -293,7 +293,17 @@ transforms safe_unwrap(opt Option<Integer>) Integer
             None    => 0
 ```
 
-This is infrastructure for arm-level proof narrowing. *Upcoming:* `know` claims inside individual match arms referencing bound values directly.
+Function-level `know` claims can also reference arm-bound variables directly. When a match arm binds `Some(inner)`, the compiler infers the type of `inner` (the unwrapped value) and makes it available during `know` checking. Unprovable arm-bound claims emit [W372](diagnostics.md#w372-arm-bound-know-claim-cannot-be-proven) rather than the general [W327](diagnostics.md#w327-know-claim-cannot-be-proven).
+
+```prove
+transforms check_inner(xs Option<Integer>) Integer
+    requires xs != None
+    know: inner > 0   // references arm-bound `inner` — W372 if unprovable
+from
+    match xs
+        Some(inner) => inner
+        None        => 0
+```
 
 All three are type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)).
 
