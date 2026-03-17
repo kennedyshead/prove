@@ -13,6 +13,10 @@
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
+         <loc>https://prove.botwork.se/async/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
          <loc>https://prove.botwork.se/cli/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
@@ -33,7 +37,15 @@
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
+         <loc>https://prove.botwork.se/faq/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
          <loc>https://prove.botwork.se/functions/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
+         <loc>https://prove.botwork.se/lambdas/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
@@ -49,7 +61,15 @@
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
+         <loc>https://prove.botwork.se/tutorial/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
          <loc>https://prove.botwork.se/types/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
+         <loc>https://prove.botwork.se/verbs/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
