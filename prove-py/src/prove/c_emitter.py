@@ -161,7 +161,7 @@ class CEmitter(
 
     def _module_reads_console(self) -> bool:
         """Return True if the module declares 'System inputs console'."""
-        from prove.ast_nodes import ImportDecl, ModuleDecl
+        from prove.ast_nodes import ModuleDecl
         for decl in self._module.declarations:
             if isinstance(decl, ModuleDecl):
                 for imp in decl.imports:
@@ -293,7 +293,6 @@ class CEmitter(
         """Return True if the module uses strings in any function signature or literal."""
         from prove.ast_nodes import (
             Assignment,
-            ImportDecl,
         )
 
         _STRING_NODES = (
@@ -1179,7 +1178,7 @@ class CEmitter(
         body_fn = f"_{mangled}_body"
 
         # ── Arg struct ───────────────────────────────────────────
-        self._line(f"typedef struct {{")
+        self._line("typedef struct {")
         self._indent += 1
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
@@ -1247,7 +1246,7 @@ class CEmitter(
             for p in fd.params:
                 self._line(f"_a->{p.name} = {p.name};")
             self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
-            self._line(f"prove_coro_start(_c, _a);")
+            self._line("prove_coro_start(_c, _a);")
             self._indent -= 1
             self._line("}")
             self._line("")
@@ -1266,11 +1265,11 @@ class CEmitter(
             for p in fd.params:
                 self._line(f"_a->{p.name} = {p.name};")
             self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
-            self._line(f"prove_coro_start(_c, _a);")
-            self._line(f"while (!prove_coro_done(_c)) {{")
+            self._line("prove_coro_start(_c, _a);")
+            self._line("while (!prove_coro_done(_c)) {")
             self._indent += 1
-            self._line(f"prove_coro_yield(_caller);")
-            self._line(f"prove_coro_resume(_c);")
+            self._line("prove_coro_yield(_caller);")
+            self._line("prove_coro_resume(_c);")
             self._indent -= 1
             self._line("}")
             if is_struct_return:
@@ -1278,8 +1277,8 @@ class CEmitter(
                 self._line(f"free(({ret_ct.decl}*)_c->result);")
             else:
                 self._line(f"{ret_ct.decl} _result = ({ret_ct.decl})(intptr_t)_c->result;")
-            self._line(f"prove_coro_free(_c);")
-            self._line(f"return _result;")
+            self._line("prove_coro_free(_c);")
+            self._line("return _result;")
             self._indent -= 1
             self._line("}")
             self._line("")
@@ -1296,9 +1295,9 @@ class CEmitter(
             for p in fd.params:
                 self._line(f"_a->{p.name} = {p.name};")
             self._line(f"Prove_Coro *_c = prove_coro_new({body_fn}, PROVE_CORO_STACK_DEFAULT);")
-            self._line(f"prove_coro_start(_c, _a);")
-            self._line(f"while (!prove_coro_done(_c)) prove_coro_resume(_c);")
-            self._line(f"prove_coro_free(_c);")
+            self._line("prove_coro_start(_c, _a);")
+            self._line("while (!prove_coro_done(_c)) prove_coro_resume(_c);")
+            self._line("prove_coro_free(_c);")
             self._indent -= 1
             self._line("}")
             self._line("")
@@ -1561,7 +1560,8 @@ class CEmitter(
                 )
             elif narrowed_types:
                 # Re-resolve with narrowed types if initial sig doesn't match
-                from prove.types import types_compatible, TypeVariable as TV
+                from prove.types import TypeVariable as TV
+                from prove.types import types_compatible
                 if sig.param_types and not all(
                     isinstance(p, TV) or types_compatible(p, a)
                     for p, a in zip(sig.param_types, narrowed_types)

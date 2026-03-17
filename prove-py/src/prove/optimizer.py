@@ -14,7 +14,6 @@ from prove.ast_nodes import (
     Assignment,
     AsyncCallExpr,
     BinaryExpr,
-    BindingPattern,
     BooleanLit,
     CallExpr,
     CharLit,

@@ -26,7 +26,6 @@ from __future__ import annotations
 from prove.ast_nodes import (
     BinaryExpr,
     BooleanLit,
-    CallExpr,
     DecimalLit,
     Expr,
     FieldExpr,

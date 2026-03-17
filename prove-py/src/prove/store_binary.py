@@ -19,7 +19,6 @@ import struct
 from pathlib import Path
 
 from prove.ast_nodes import LookupTypeDef, ModuleDecl, TypeDef
-from prove.errors import CompileError
 from prove.lexer import Lexer
 from prove.parser import Parser
 

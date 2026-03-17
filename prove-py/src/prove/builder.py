@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,12 +17,11 @@ from prove.c_compiler import (
 from prove.c_emitter import CEmitter
 from prove.c_runtime import copy_runtime
 from prove.checker import Checker
-from prove.config import discover_prv_files, ProveConfig
+from prove.config import ProveConfig, discover_prv_files
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.symbols import SymbolTable
-
 
 _FOREIGN_PKG_CONFIG: dict[str, str] = {
     "libpython3": "python3-embed",
@@ -396,7 +396,6 @@ def _build_c(
     try:
         if use_pgo:
             import os
-            import shutil
             import subprocess
 
             pgo_dir = build_dir / "pgo_data"
@@ -479,8 +478,6 @@ def _build_c(
         comptime_dependencies=comptime_deps,
     )
 
-
-import re
 
 _FORWARD_DECL_RE = re.compile(r"^(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$")
 
