@@ -97,7 +97,7 @@
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
-  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Table" "Unit" "Value" "Verb"))
+  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Struct" "Table" "Unit" "Value" "Verb"))
 ; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────
