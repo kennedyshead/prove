@@ -300,6 +300,32 @@ from
         _ => n * factorial(n - 1)
 ```
 
+### E368 — Parallel HOF requires pure callback
+
+`par_map`, `par_filter`, and `par_reduce` require callbacks with pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`). IO verbs (`inputs`, `outputs`) and async verbs (`detached`, `attached`, `listens`) are not allowed because they cannot safely execute in parallel.
+
+```prove
+// Error — outputs is not a pure verb
+outputs show(n Integer) Unit
+    from
+        n
+
+transforms caller(xs List<Integer>) Integer
+    from
+        par_map(xs, show)
+        0
+
+// OK — transforms is pure
+transforms double(n Integer) Integer
+    from
+        n + n
+
+transforms caller(xs List<Integer>) Integer
+    from
+        par_map(xs, double)
+        0
+```
+
 ### E151 — `listens` body missing `Exit` arm
 
 A `listens` function's `from` block must be a single implicit match (bare arms) with an `Exit` arm. The `Exit` variant terminates the cooperative loop.

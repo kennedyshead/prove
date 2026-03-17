@@ -590,6 +590,35 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ],
                 TypeVariable("Output"),
             ),
+            # Parallel HOFs: same signatures as sequential counterparts
+            (
+                "par_map",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], TypeVariable("Output")),
+                ],
+                ListType(TypeVariable("Output")),
+            ),
+            (
+                "par_filter",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], BOOLEAN),
+                ],
+                ListType(TypeVariable("Value")),
+            ),
+            (
+                "par_reduce",
+                [
+                    ListType(TypeVariable("Value")),
+                    TypeVariable("Output"),
+                    FunctionType(
+                        [TypeVariable("Output"), TypeVariable("Value")],
+                        TypeVariable("Output"),
+                    ),
+                ],
+                TypeVariable("Output"),
+            ),
             ("to_string", [TypeVariable("Value")], STRING),
             ("clamp", [INTEGER, INTEGER, INTEGER], INTEGER),
         ]

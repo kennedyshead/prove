@@ -198,12 +198,17 @@ BUILTIN_FUNCTIONS: frozenset[str] = frozenset(
         "each",
         "filter",
         "reduce",
+        "par_map",
+        "par_filter",
+        "par_reduce",
         "to_string",
         "clamp",
     }
 )
 
-HOF_BUILTINS: frozenset[str] = frozenset({"map", "filter", "reduce", "each"})
+HOF_BUILTINS: frozenset[str] = frozenset(
+    {"map", "filter", "reduce", "each", "par_map", "par_filter", "par_reduce"}
+)
 
 
 # ── Type utilities ──────────────────────────────────────────────
