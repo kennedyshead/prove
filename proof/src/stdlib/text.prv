@@ -1,10 +1,6 @@
 module Text
   narrative: """String operations and construction."""
 
-  /// StringBuilder is
-  ///   length Integer
-  ///   capacity Integer
-  ///   data List<Character>
   type StringBuilder is binary
 
 /// Get the length of a string

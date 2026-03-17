@@ -10,9 +10,6 @@ module Bytes
   validates that an index exist in a ByteArray.
   """
 
-  /// ByteArray is
-  ///   length Integer
-  ///   data List<Byte>
   type ByteArray is binary
 
 /// Create a byte array from a list of integers

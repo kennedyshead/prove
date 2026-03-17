@@ -48,7 +48,8 @@ def run_build(path: str = ".", *, debug: bool | None = None, no_mutate: bool = F
             src_dir = project_dir / "src"
             if not src_dir.is_dir():
                 src_dir = project_dir
-            prv_files = sorted(src_dir.rglob("*.prv"))
+            from prove.config import discover_prv_files
+            prv_files = discover_prv_files(src_dir)
 
             local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
             modules = []

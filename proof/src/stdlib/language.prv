@@ -1,11 +1,6 @@
 module Language
   narrative: """Natural language processing primitives."""
 
-  /// Token is
-  ///   text String
-  ///   start Integer
-  ///   end Integer
-  ///   kind Integer
   type Token is binary
 
 /// Extract individual words from text

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import click
 
 from prove import __version__
-from prove.config import find_config, load_config
+from prove.config import discover_prv_files, find_config, load_config
 from prove.errors import CompileError, Diagnostic, DiagnosticRenderer, Severity
 from prove.lexer import Lexer
 from prove.parser import Parser
@@ -51,7 +51,7 @@ def _print_refutation_challenges(project_dir: Path) -> None:
     if not src_dir.is_dir():
         src_dir = project_dir
 
-    prv_files = sorted(src_dir.rglob("*.prv"))
+    prv_files = discover_prv_files(src_dir)
     total_challenges = 0
     addressed = 0
 
@@ -112,7 +112,7 @@ def _compile_project(
     if not src_dir.is_dir():
         src_dir = project_path  # fallback to project root
 
-    prv_files = sorted(src_dir.rglob("*.prv"))
+    prv_files = discover_prv_files(src_dir)
     if not prv_files:
         click.echo("warning: no .prv files found", err=True)
         return True, 0, 0, 0, 0, {"ensures_count": 0, "near_miss_count": 0, "trusted_count": 0}
@@ -178,7 +178,7 @@ def _is_cache_stale(project_dir: Path) -> bool:
     src_dir = project_dir / "src"
     if not src_dir.is_dir():
         src_dir = project_dir
-    for prv in src_dir.rglob("*.prv"):
+    for prv in discover_prv_files(src_dir):
         if prv.stat().st_mtime > index_mtime:
             return True
     return False
@@ -575,7 +575,7 @@ def _print_completeness_status(project_dir: Path) -> None:
     if not src_dir.is_dir():
         src_dir = project_dir
 
-    prv_files = sorted(src_dir.rglob("*.prv"))
+    prv_files = discover_prv_files(src_dir)
     if not prv_files:
         return
 
@@ -637,7 +637,7 @@ def test(path: str, property_rounds: int | None) -> None:
         if not src_dir.is_dir():
             src_dir = project_dir
 
-        prv_files = sorted(src_dir.rglob("*.prv"))
+        prv_files = discover_prv_files(src_dir)
         if not prv_files:
             click.echo("warning: no .prv files found", err=True)
             return
@@ -857,7 +857,7 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     target = Path(path)
 
     # --- .prv files ---
-    prv_files = sorted(target.rglob("*.prv")) if target.is_dir() else [target]
+    prv_files = discover_prv_files(target) if target.is_dir() else [target]
 
     # Build local module registry for cross-file type inference
     local_modules: dict[str, object] | None = None

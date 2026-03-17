@@ -301,8 +301,9 @@ class _ProjectIndexer:
 
     def index_all_files(self) -> None:
         """Scan and index all .prv files under project_root, then save cache."""
+        from prove.config import _RESERVED_SRC_DIRS
         for prv_file in sorted(self.project_root.rglob("*.prv")):
-            if ".prove_cache" in prv_file.parts:
+            if _RESERVED_SRC_DIRS & set(prv_file.relative_to(self.project_root).parts):
                 continue
             self.index_file(prv_file)
         self.save()
@@ -372,8 +373,9 @@ class _ProjectIndexer:
             except OSError:
                 return False  # file deleted → stale
         # Also check for new .prv files not in manifest
+        from prove.config import _RESERVED_SRC_DIRS
         for prv in self.project_root.rglob("*.prv"):
-            if ".prove_cache" in prv.parts:
+            if _RESERVED_SRC_DIRS & set(prv.relative_to(self.project_root).parts):
                 continue
             rel = str(prv.relative_to(self.project_root))
             if rel not in files:
