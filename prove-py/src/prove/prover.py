@@ -35,6 +35,7 @@ from prove.ast_nodes import (
     IdentifierExpr,
     IntegerLit,
     NearMiss,
+    TypeIdentifierExpr,
     UnaryExpr,
 )
 from prove.errors import (
@@ -436,6 +437,12 @@ class ClaimProver:
             if result is not None:
                 return result
 
+        # Match arm structural reasoning (Phase 5)
+        if self._context is not None:
+            result = self._prove_from_match_bindings(expr)
+            if result is not None:
+                return result
+
         return None
 
     def _eval_const(self, expr: Expr) -> int | float | str | bool | None:
@@ -477,6 +484,8 @@ class ClaimProver:
         if type(a) is not type(b):
             return False
         if isinstance(a, IdentifierExpr) and isinstance(b, IdentifierExpr):
+            return a.name == b.name
+        if isinstance(a, TypeIdentifierExpr) and isinstance(b, TypeIdentifierExpr):
             return a.name == b.name
         if isinstance(a, IntegerLit) and isinstance(b, IntegerLit):
             return a.value == b.value
@@ -766,6 +775,70 @@ class ClaimProver:
             return True
         if op == "!=" and k != 0:
             return True
+        return None
+
+
+    def _prove_from_match_bindings(self, expr: BinaryExpr) -> bool | None:
+        """Prove structural variant claims using match arm binding facts.
+
+        Phase 5: match-arm path narrowing.
+
+        Handles:
+        - ``subj != None`` when ``subj`` appears as the subject of a ``Some``
+          arm binding AND ``subj != None`` is independently provable from
+          the assumption set.
+        - ``subj != Error`` analogously for ``Ok`` arm bindings.
+
+        This lets the prover confirm structural non-null/non-error facts
+        that are established both by a ``requires`` clause and by the match
+        arm structure in the function body, without requiring the user to
+        repeat the assertion.
+        """
+        if self._context is None or not self._context.match_bindings:
+            return None
+
+        op = expr.op
+        if op not in ("!=", "=="):
+            return None
+
+        left: object = expr.left
+        right: object = expr.right
+
+        # Normalise: left should be IdentifierExpr, right TypeIdentifierExpr
+        if isinstance(right, IdentifierExpr) and isinstance(left, TypeIdentifierExpr):
+            left, right = right, left
+
+        if not isinstance(left, IdentifierExpr) or not isinstance(right, TypeIdentifierExpr):
+            return None
+
+        subject_name = left.name
+        null_name = right.name  # "None", "Error", etc.
+
+        for subj, variant, _bindings in self._context.match_bindings:
+            if subj != subject_name:
+                continue
+            # Some arm present → subject can be non-None
+            if null_name == "None" and variant == "Some" and op == "!=":
+                # The match arm establishes that the body handles the Some
+                # case.  If requires/assume already proves subj != None,
+                # the structural arm fact is consistent — confirm it.
+                if self._prove_from_assumptions(expr):
+                    return True
+                assump_result = self._prove_from_assumption_implication(
+                    left, op, right
+                )
+                if assump_result is not None:
+                    return assump_result
+            # Ok arm present → subject can be non-Error
+            elif null_name == "Error" and variant == "Ok" and op == "!=":
+                if self._prove_from_assumptions(expr):
+                    return True
+                assump_result = self._prove_from_assumption_implication(
+                    left, op, right
+                )
+                if assump_result is not None:
+                    return assump_result
+
         return None
 
 

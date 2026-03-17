@@ -756,6 +756,133 @@ class TestKnowClaimProving:
         )
 
 
+class TestCalleeEnsuresPropagation:
+    """Phase 4: callee ensures propagation into caller proof context."""
+
+    def test_callee_ensures_propagated_to_know(self):
+        """y = f(n) where f ensures result > 0 lets caller know y > 0."""
+        check(
+            "transforms positive(n Integer) Integer\n"
+            "    requires n > 0\n"
+            "    ensures result > 0\n"
+            "    explain\n"
+            "        n is positive so result is positive\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "transforms caller(n Integer) Integer\n"
+            "    requires n > 0\n"
+            "    know: y > 0\n"
+            "    from\n"
+            "        y as Integer = positive(n)\n"
+            "        y\n"
+        )
+
+    def test_callee_ensures_multiple_clauses(self):
+        """Multiple ensures clauses are all propagated."""
+        check(
+            "transforms bounded(n Integer) Integer\n"
+            "    requires n > 0\n"
+            "    ensures result > 0\n"
+            "    ensures result >= 1\n"
+            "    explain\n"
+            "        n bounds result\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "transforms caller(n Integer) Integer\n"
+            "    requires n > 0\n"
+            "    know: y > 0\n"
+            "    know: y >= 1\n"
+            "    from\n"
+            "        y as Integer = bounded(n)\n"
+            "        y\n"
+        )
+
+    def test_no_callee_ensures_still_indeterminate(self):
+        """Without callee ensures, know still emits W327."""
+        check_warns(
+            "transforms plain(n Integer) Integer\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "transforms caller(n Integer) Integer\n"
+            "    know: y > 0\n"
+            "    from\n"
+            "        y as Integer = plain(n)\n"
+            "        y\n",
+            "W327",
+        )
+
+    def test_callee_ensures_with_implication(self):
+        """Callee ensures result >= 1 implies caller can know y > 0."""
+        check(
+            "transforms safe(n Integer) Integer\n"
+            "    requires n >= 1\n"
+            "    ensures result >= 1\n"
+            "    explain\n"
+            "        n is at least 1\n"
+            "    from\n"
+            "        n\n"
+            "\n"
+            "transforms caller(n Integer) Integer\n"
+            "    requires n >= 1\n"
+            "    know: y > 0\n"
+            "    from\n"
+            "        y as Integer = safe(n)\n"
+            "        y\n"
+        )
+
+
+class TestMatchArmNarrowing:
+    """Phase 5: match arm structural binding facts in proof context."""
+
+    def test_match_arm_bindings_tracked(self):
+        """ProofContext records match arm bindings via add_match_arm_binding."""
+        ctx = ProofContext()
+        ctx.add_match_arm_binding("opt", "Some", ["x"])
+        ctx.add_match_arm_binding("res", "Ok", ["v"])
+        bindings = ctx.match_bindings
+        assert ("opt", "Some", ["x"]) in bindings
+        assert ("res", "Ok", ["v"]) in bindings
+
+    def test_match_arm_binding_none_variant(self):
+        """None variant arms are also tracked."""
+        ctx = ProofContext()
+        ctx.add_match_arm_binding("opt", "None", [])
+        assert ctx.match_bindings == [("opt", "None", [])]
+
+    def test_prove_ne_none_from_some_arm_and_assumption(self):
+        """subj != None provable when Some arm exists + requires subj != None."""
+        from prove.ast_nodes import TypeIdentifierExpr
+        ctx = ProofContext()
+        span = _span()
+        # Add requires: opt != None as assumption
+        none_expr = TypeIdentifierExpr(name="None", span=span)
+        ne_none = BinaryExpr(
+            left=_ident("opt"), op="!=", right=none_expr, span=span
+        )
+        ctx.add(ne_none)
+        # Record the Some arm binding
+        ctx.add_match_arm_binding("opt", "Some", ["x"])
+        prover = ClaimProver(context=ctx)
+        # know: opt != None should be provable (assumption + structural arm)
+        assert prover.prove_claim(ne_none) is True
+
+    def test_no_match_binding_still_indeterminate(self):
+        """Without a match binding, opt != None remains indeterminate."""
+        from prove.ast_nodes import TypeIdentifierExpr
+        ctx = ProofContext()
+        span = _span()
+        none_expr = TypeIdentifierExpr(name="None", span=span)
+        ne_none = BinaryExpr(
+            left=_ident("opt"), op="!=", right=none_expr, span=span
+        )
+        prover = ClaimProver(context=ctx)
+        # No assumption, no binding → indeterminate
+        assert prover.prove_claim(ne_none) is None
+
+
 class TestProseCoherence:
     """Tests for W501-W505 prose coherence checks."""
 

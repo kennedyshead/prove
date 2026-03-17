@@ -252,9 +252,48 @@ from
     // implementation
 ```
 
-- **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, [refinement types](types.md#refinement-types), assumption matching (facts from `requires`, `assume`, and `believe` in scope), and arithmetic reasoning (e.g., `x + 1 > x`, transitivity). Provable claims pass silently; unprovable claims emit a warning ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)) and fall back to a runtime assertion.
+- **`know`** — the compiler attempts to prove the claim using constant folding, algebraic identities, [refinement types](types.md#refinement-types), assumption matching (facts from `requires`, `assume`, and `believe` in scope), arithmetic reasoning (e.g., `x + 1 > x`, transitivity), callee ensures propagation, and match arm structural narrowing. Provable claims pass silently; unprovable claims emit a warning ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)) and fall back to a runtime assertion.
 - **`assume`** — the compiler adds a runtime check. If the assumption fails at runtime, the program panics.
 - **`believe`** — the compiler tries to break it with generated tests. Requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)).
+
+### Callee Ensures Propagation
+
+When a called function has an `ensures` clause, the compiler propagates that postcondition into the caller's proof context. If `f` declares `ensures result > 0`, and you write `y = f(x)`, the compiler automatically knows `y > 0` — no extra annotation required.
+
+```prove
+transforms positive(n Integer) Integer
+    requires n > 0
+    ensures result > 0
+    explain
+        n is positive so result is positive
+    from
+        n
+
+transforms caller(n Integer) Integer
+    requires n > 0
+    know: y > 0        // proven — positive ensures result > 0
+    from
+        y as Integer = positive(n)
+        y
+```
+
+The substitution is automatic: `result` in the callee's `ensures` is replaced by the binding name `y` in the caller's proof context. All `ensures` clauses on the callee are propagated, so multiple postconditions are all available.
+
+### Match Arm Structural Narrowing
+
+The compiler records structural match arm bindings in the proof context. When a `match` arm matches `Some(x)`, the compiler records that the subject was a `Some` variant; combined with a `requires` or `assume` fact, `know` claims about the subject's non-null status become provable.
+
+```prove
+transforms safe_unwrap(opt Option<Integer>) Integer
+    requires opt != None
+    know: opt != None   // proven — requires + Some arm recorded
+    from
+        match opt
+            Some(x) => x
+            None    => 0
+```
+
+This is infrastructure for arm-level proof narrowing. *Upcoming:* `know` claims inside individual match arms referencing bound values directly.
 
 All three are type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)).
 
@@ -264,7 +303,7 @@ All three are type-checked — their expressions must be Boolean ([E384](diagnos
 
 ### why_not and chosen
 
-`why_not` documents rejected alternatives. `chosen` explains the selected approach. These are currently **documentation keywords** — compiler verification of rationale consistency is planned.
+`why_not` documents rejected alternatives. `chosen` explains the selected approach. *Upcoming:* compiler verification of rationale consistency.
 
 ```prove
 transforms select_gateway(amount Price, region Region) Gateway
@@ -313,7 +352,7 @@ The compiler stops warning. [`prove check`](cli.md) reports trusted functions in
 
 ## intent
 
-`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it but does not yet verify that the intent matches the code's behavior.
+`intent` documents the purpose of a function. It goes in the function **header** (between the signature and `from`), not inside the body. The compiler records it and emits W311 when declared without `ensures`/`requires`. *Upcoming:* prose consistency verification (W313) — warning when the intent description has no vocabulary overlap with the function body.
 
 ```prove
 transforms filter_valid(records List<Record>) List<Record>
@@ -352,7 +391,7 @@ module PaymentService
   temporal: validate -> charge -> record
 ```
 
-These are currently **documentation keywords** — the compiler requires `narrative` but does not yet verify semantic coherence. Compiler verification (rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering) is planned for a future release.
+The compiler requires `narrative` blocks and enforces that referenced function names exist in scope. *Upcoming:* full semantic coherence verification — rejecting unrelated functions, enforcing domain-specific rules, checking temporal ordering.
 
 ---
 
@@ -423,6 +462,11 @@ from
 ```
 
 If `subtotal` has `ensures result >= 0`, the compiler can verify the chain. If it doesn't, the compiler warns that `calculate_total`'s verification depends on an unverified function.
+
+### Diagnostics
+
+- **[W370](diagnostics.md#w370-verification-chain-broken-public)** — a public function calls a verified function but has no `ensures` of its own. Add `ensures` to propagate verification, or `trusted` to explicitly opt out.
+- **[W371](diagnostics.md#w371-verification-chain-broken-strict)** — same as W370 but for internal (underscore-prefixed) functions. Only emitted with `--strict`.
 
 ### When `ensures` is expected
 
