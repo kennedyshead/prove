@@ -144,6 +144,7 @@ class ProveLexer(RegexLexer):
                         "Result",
                         "Source",
                         "String",
+                        "Struct",
                         "Table",
                         "Unit",
                         "Value",

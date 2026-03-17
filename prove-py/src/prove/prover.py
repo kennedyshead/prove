@@ -58,6 +58,7 @@ class ProofContext:
 
     def __init__(self) -> None:
         self._assumptions: list[Expr] = []
+        self._match_bindings: list[tuple[str, str, list[str]]] = []
 
     def add(self, expr: Expr) -> None:
         self._assumptions.append(expr)
@@ -68,6 +69,25 @@ class ProofContext:
     @property
     def assumptions(self) -> list[Expr]:
         return self._assumptions
+
+    def add_match_arm_binding(
+        self, subject: str, variant: str, bindings: list[str]
+    ) -> None:
+        """Record that ``subject`` was structurally matched as ``variant``.
+
+        ``bindings`` are the variable names bound in the arm pattern.
+        For example, ``match opt { Some(x) -> ... }`` produces
+        ``add_match_arm_binding("opt", "Some", ["x"])``.
+
+        Used by Phase 5 to expose match-arm facts to the proof engine
+        so that arm-level claims can be verified in future extensions.
+        """
+        self._match_bindings.append((subject, variant, bindings))
+
+    @property
+    def match_bindings(self) -> list[tuple[str, str, list[str]]]:
+        """Structural match arm bindings recorded in this context."""
+        return list(self._match_bindings)
 
 
 class ProofVerifier:

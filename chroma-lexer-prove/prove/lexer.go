@@ -103,7 +103,7 @@ var (
 				// PROVE-EXPORT-END: literals
 
 				// PROVE-EXPORT-BEGIN: builtin-types
-				{`\b(Attached|Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|Source|String|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
+				{`\b(Attached|Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|Source|String|Struct|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
 				// PROVE-EXPORT-END: builtin-types
 
 				// Operators (order matters — multi-char before single-char)
