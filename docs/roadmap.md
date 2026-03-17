@@ -31,15 +31,6 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
 
-### `explain` Block Semantic Verification
-
-`why_not` and `chosen` are parsed and stored but not checked against the function
-body — any prose is accepted. `narrative` blocks are required and structurally
-valid, but `flow:` step names are not checked against defined functions.
-Plan: W314/W315 for `why_not`/`chosen` with no symbol overlap; W341 for
-`narrative flow:` steps referencing undefined functions.
-See `future/05-explain-verification.md`.
-
 ### Refinement Type Static Enforcement
 
 The compiler inserts runtime guards at IO boundaries but does not yet reject

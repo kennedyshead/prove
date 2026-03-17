@@ -129,8 +129,8 @@ _register_doc_range("W", 321, 328)
 DIAGNOSTIC_DOCS["W330"] = f"{_DOCS_BASE}#W330"
 # Warning — unused pure result W332
 DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
-# Warning — domain profile W340-W342
-_register_doc_range("W", 340, 342)
+# Warning — domain profile W340-W342, narrative flow W343
+_register_doc_range("W", 340, 343)
 # Warning — duplicate binary column type W350
 DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
 # Warning — own/borrow overlap W360
