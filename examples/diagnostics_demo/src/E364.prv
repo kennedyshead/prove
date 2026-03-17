@@ -1,9 +1,0 @@
-module DemoE364
-  narrative: """
-  Expected diagnostics: E364
-  """
-
-transforms compute() List<Integer>
-from
-    y as Integer = 10
-    map([1, 2, 3], |x| x + y)

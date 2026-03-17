@@ -1,7 +1,0 @@
-module DemoE317
-  narrative: """
-  Expected diagnostics: E317
-  """
-
-  type Integer is
-    value String

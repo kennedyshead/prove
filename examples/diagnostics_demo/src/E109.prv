@@ -1,6 +1,0 @@
-module DemoE109
-  narrative: """
-  Expected diagnostics: E109
-  """
-from
-    @

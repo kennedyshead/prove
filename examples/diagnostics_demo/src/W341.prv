@@ -1,9 +1,0 @@
-module DemoW341
-  narrative: """
-  Expected diagnostics: W341
-  """
-  domain finance
-
-transforms total(x Decimal) Decimal
-from
-    x

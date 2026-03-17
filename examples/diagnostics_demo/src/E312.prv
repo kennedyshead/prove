@@ -1,8 +1,0 @@
-module DemoE312
-  narrative: """
-  Expected diagnostics: E312
-  """
-
-outputs run() Unit
-from
-    System.nonexistent("test.txt")

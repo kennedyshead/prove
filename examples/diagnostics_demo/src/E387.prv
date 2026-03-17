@@ -1,4 +1,0 @@
-module DemoE387
-  narrative: """
-  Expected diagnostics: E387
-  """

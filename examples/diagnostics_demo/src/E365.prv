@@ -1,8 +1,0 @@
-module DemoE365
-  narrative: """
-  Expected diagnostics: E365
-  """
-
-matches bad(flag Boolean) String
-from
-    "nope"

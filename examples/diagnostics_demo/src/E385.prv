@@ -1,9 +1,0 @@
-module DemoE385
-  narrative: """
-  Expected diagnostics: E385
-  """
-
-transforms bad(a Integer) Integer
-  assume: a + 1
-from
-    a

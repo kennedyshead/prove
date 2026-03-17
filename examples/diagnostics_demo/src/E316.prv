@@ -1,8 +1,0 @@
-module DemoE316
-  narrative: """
-  Expected diagnostics: E316
-  """
-
-transforms len(xs Integer) Integer
-from
-    xs

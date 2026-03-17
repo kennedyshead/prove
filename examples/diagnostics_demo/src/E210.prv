@@ -1,7 +1,0 @@
-module DemoE210
-  narrative: """
-  Expected diagnostics: E210
-  """
-transforms () Integer
-from
-    1

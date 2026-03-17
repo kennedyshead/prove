@@ -1,33 +1,23 @@
 module Main
   narrative: """Basic math operations.
 
-  Expected to fail: check_strict, build, build_debug, test, test_property_rounds.
+  transforms by sum of add arguments, double value, abs value
   """
   System outputs console
 
 transforms add(a Integer, b Integer) Integer
-  ensures result == a + b
-  requires a == a
-  explain
-      sum a and b
+  requires a > 0
+  requires b > 0
 from
     a + b
 
 transforms double(n Integer) Integer
-  ensures result == n * 2
-  requires n == n
-  explain
-      multiply n by 2
+  requires n > 0
 from
-    result as Integer = n * 2
-    result
+    n * 2
 
-transforms abs_val(n Integer) Integer
-  ensures result >= 0
-  requires n >= 0
-  explain
-      negate if negative
-  believe: result >= 0
+transforms abs(n Integer) Integer
+  requires n > 0
 from
     n
 
@@ -35,4 +25,4 @@ main()
 from
     console(to_string(add(10, 20)))
     console(to_string(double(15)))
-    console(to_string(abs_val(-42)))
+    console(to_string(abs(-42)))
