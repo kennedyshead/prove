@@ -31,25 +31,6 @@ V1.0 ships when the language is mature. V2.0 planning begins after.
 
 The items below build toward Prove's [vision](vision.md) of local, self-contained development — where the project's own declarations drive code generation without external services.
 
-### `intent:` Prose Consistency Check
-
-Function-level `intent:` annotations are parsed and W311 fires when declared
-without `ensures`/`requires`, but the prose text is not yet checked against
-the function body. A new diagnostic (W313) should warn when the `intent:`
-description has no vocabulary overlap with called function names, parameter
-names, or type names in the body — using the same `prose_overlaps` /
-`body_tokens` infrastructure already powering the W501–W505 narrative checks.
-A longer-term extension links `intent:` to the refutation challenge engine
-(W503–W506). See `future/03-intent-annotation-enforcement.md`.
-
-### Adversarial Tests for `believe`
-
-`believe` claims are type-checked and usable as proof context assumptions, but
-generate no tests. The plan: emit a runtime assertion for each `believe` in
-debug builds (parallel to `assume`) and include `believe` clauses as
-falsification targets in `prove test` — reported as advisories by default,
-failures under `--strict`. See `future/03-intent-annotation-enforcement.md`.
-
 ### `explain` Block Semantic Verification
 
 `why_not` and `chosen` are parsed and stored but not checked against the function
