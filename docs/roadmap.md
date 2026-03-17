@@ -34,10 +34,6 @@ network constraints (E396, W391) are all active. Remaining:
 - Counterfactual annotations (`why_not`/`chosen`) — parsed but no semantic checking beyond W503-W505
 - Formal invariant network verification — validated syntactically, not proven
 
-### Lint Gaps
-
-- Module struct return validation
-
 ---
 
 ## Proposed
