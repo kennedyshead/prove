@@ -1,0 +1,22 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: ruff-format
+        name: ruff-format
+        entry: ruff format
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: mypy
+        name: mypy
+        entry: bash -c "cd prove-py && mypy src/ --config-file=pyproject.toml"
+        language: system
+        pass_filenames: false
