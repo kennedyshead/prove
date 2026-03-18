@@ -193,7 +193,7 @@ class TestFormatterStringInterpWrapping:
         source = (
             "outputs build_report(config_package_name String, config_package_version String) Unit\n"
             "from\n"
-            '    info(f"{config_package_name} {config_package_version} is now available")\n'
+            '    info(f"{config_package_name} {config_package_version} is now available in the build folder")\n'  # noqa: E501
         )
         result = _parse_format(source)
         # The call exceeds 90 chars with indent, so the f-string should be wrapped
@@ -207,7 +207,7 @@ class TestFormatterStringInterpWrapping:
         source = (
             "outputs report(package_name String, package_version String) Unit\n"
             "from\n"
-            '    info(f"{package_name} version {package_version} is now available in the output")\n'
+            '    info(f"{package_name} version {package_version} is now available in the build output folder area")\n'  # noqa: E501
         )
         result = _parse_format(source)
         body = result.split("from\n")[1]
