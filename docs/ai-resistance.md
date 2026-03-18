@@ -248,73 +248,16 @@ module UserAuth
   // I340: 'send_email' — vocabulary not found in narrative
 ```
 
-## Proposed — Semantic Commit Verification (Post-1.0)
+## Post-1.0 Anti-Training Features
 
-The compiler diffs the previous version, reads the commit message, and verifies the change actually addresses the described bug. Deferred to post-1.0 due to the inherent complexity of natural language understanding.
+These features are in the **Exploring** stage on the [Roadmap](roadmap.md). They make Prove source code resistant to being useful as AI training data, but require significant toolchain changes and are deferred to post-1.0:
 
-```prove
-commit "fix: off-by-one in pagination — last page was empty
-       when total % page_size == 0"
-
-// Vague messages like "fix stuff" don't compile.
-```
-
----
-
-## Future Research (Post-1.0)
-
-These are anti-training mechanisms that make Prove source code resistant to being useful as AI training data. They require significant toolchain changes and are deferred to post-1.0.
-
-### Structured Source Format (Binary `.prv`)
-
-`.prv` files stored as a compact binary AST, not human-readable text. The `prove` CLI provides views:
-
-```bash
-$ prove view src/server.prv              # pretty-print to terminal
-```
-
-The editor experience is seamless — the language server decodes `.prv` on the fly, and the formatter writes binary back. Web scrapers and training pipelines see binary blobs, not parseable source code.
-
-### Semantic Normalization
-
-The compiler canonicalizes all code before storage. Variable names, ordering of declarations, whitespace, and stylistic choices are normalized away. A name map is stored alongside the canonical AST. The LSP reconstructs human-readable code on demand.
-
-```prove
-// What you write:
-transforms calculate_total_price(items List<Item>, tax TaxRate) Price
-from
-    subtotal as Decimal = sum(prices(items))
-    subtotal * (1 + tax.rate)
-
-// What is stored (canonical form):
-transforms _f0(_a0 List<_T0>, _a1 _T1) _T2
-from
-    _v0 as _T3 = _f1(_f2(_a0))
-    _v0 * (1 + _a1._f3)
-```
-
-### Fragmented Source
-
-A function's complete definition is distributed across multiple files that only make sense together:
-
-```
-src/
-  server.prv          # implementation (canonical binary AST)
-  server.explain      # implementation explanations
-  server.intent       # intent declarations
-  server.near_miss    # adversarial near-miss examples
-  server.narrative    # module narrative
-```
-
-All files are required to compile. No single artifact is useful in isolation.
-
-### Identity-Bound Compilation
-
-Source files carry a cryptographic signature chain. The compiler verifies authorship. Scraped code with stripped signatures won't compile.
-
-### Project-Specific Grammars
-
-Each project can define syntactic extensions via `prove.toml`. Two Prove projects may look completely different at the surface level, destroying the statistical regularities that AI training depends on.
+- **Binary AST Format** — store `.prv` as compact binary instead of text
+- **Semantic Normalization** — canonicalize variable names and declaration order before storage
+- **Fragmented Source** — distribute function definitions across multiple files
+- **Identity-Bound Compilation** — cryptographic signature chains on source files
+- **Project-Specific Grammars** — per-project syntactic extensions via `prove.toml`
+- **Semantic Commit Verification** — compiler verifies commit messages match actual changes
 
 ---
 
