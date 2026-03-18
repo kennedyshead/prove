@@ -1330,42 +1330,15 @@ def _from_block_completions(
 # ── From-block n-gram model (Phase 6) ────────────────────────────────
 
 
-def _load_from_block_model() -> None:
-    """Load from-block n-gram model from data/lsp-ml-store/from-blocks/."""
-    global _from_block_model
-    if _from_block_model is not None:
-        return
-
-    _from_block_model = {}
-    from_path = _GLOBAL_MODEL_DIR / "from_blocks" / "current.prv"
-    if not from_path.exists():
-        return
-
-    try:
-        for line in from_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line.startswith("r") or "|" not in line:
-                continue
-            parts = [p.strip() for p in line.split("|")[1:]]
-            if len(parts) >= 3:
-                prev2, prev1, top = str(parts[0]), str(parts[1]), str(parts[2])
-                toks = [t for t in top.split("|") if t]
-                _from_block_model[(prev2, prev1)] = toks
-    except Exception:
-        pass
-
-
-_from_block_model: dict[tuple[str, str], list[str]] | None = None
-
-
 def _from_block_ngram_complete(
     source: str,
     position: lsp.Position,
     top_k: int = 5,
 ) -> list[str]:
     """Return n-gram completions for from-block token sequences."""
-    _load_from_block_model()
-    if _from_block_model is None:
+    try:
+        model = load_lsp_from_blocks()
+    except Exception:
         return []
 
     context = _extract_context_tokens(source, position, n=2)
@@ -1382,14 +1355,14 @@ def _from_block_ngram_complete(
             prefix = m.group()
 
     results: list[str] = []
-    for tok in _from_block_model.get((prev2, prev1), []):
+    for tok in model.get((prev2, prev1), []):
         if not prefix or tok.startswith(prefix):
             results.append(tok)
         if len(results) >= top_k:
             break
 
     if not results:
-        for tok in _from_block_model.get(("<START>", prev1), []):
+        for tok in model.get(("<START>", prev1), []):
             if not prefix or tok.startswith(prefix):
                 results.append(tok)
             if len(results) >= top_k:
@@ -1570,135 +1543,41 @@ def _ml_completions(
 
 
 # ── Global model loader (Phase 5) ────────────────────────────────────────
+# Uses prove.data package (via nlp_store.py) for pip-installed data.
+# Falls back gracefully if the store files are missing (e.g. dev mode).
 
-_GLOBAL_MODEL_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "lsp-ml-store"
-_global_bigrams: dict[str, list[str]] | None = None  # prev1 → ranked list
-_global_completions: dict[tuple[str, str], list[str]] | None = None  # (p2,p1) → ranked list
-_docstring_index: dict[str, list[dict]] | None = None  # keyword → function entries
-
-
-def _load_global_model() -> None:
-    """Load global model from data/lsp-ml-store/ :[Lookup] .prv files (once)."""
-    global _global_bigrams, _global_completions
-    if _global_bigrams is not None:
-        return
-
-    _global_bigrams = {}
-    _global_completions = {}
-
-    def _parse_lookup_rows(path: Path) -> list[list[str]]:
-        """Parse rows from a :[Lookup] .prv file into lists of string values."""
-        rows = []
-        if not path.exists():
-            return rows
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line.startswith("r") or "|" not in line:
-                continue
-            parts = [p.strip() for p in line.split("|")[1:]]  # skip row id
-            decoded = []
-            for p in parts:
-                if p.startswith('"') and p.endswith('"'):
-                    decoded.append(p[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
-                else:
-                    try:
-                        decoded.append(int(p))  # type: ignore[arg-type]
-                    except ValueError:
-                        decoded.append(p)
-            rows.append(decoded)
-        return rows
-
-    # Load unigram (bigrams table): (prev1, next_tok, count)
-    bg_path = _GLOBAL_MODEL_DIR / "bigrams" / "current.prv"
-    for row in _parse_lookup_rows(bg_path):
-        if len(row) >= 2:
-            prev1 = str(row[0])
-            nxt = str(row[1])
-            _global_bigrams.setdefault(prev1, []).append(nxt)
-
-    # Load completions table: (prev2, prev1, pipe-separated list)
-    co_path = _GLOBAL_MODEL_DIR / "completions" / "current.prv"
-    for row in _parse_lookup_rows(co_path):
-        if len(row) >= 3:
-            prev2, prev1 = str(row[0]), str(row[1])
-            toks = [t for t in str(row[2]).split("|") if t]
-            _global_completions[(prev2, prev1)] = toks
-
-
-def _load_docstring_model() -> None:
-    """Load docstring knowledge base from data/lsp-ml-store/docstrings/ (once)."""
-    global _docstring_index
-    if _docstring_index is not None:
-        return
-
-    _docstring_index = {}
-    doc_path = _GLOBAL_MODEL_DIR / "docstrings" / "current.prv"
-    if not doc_path.exists():
-        return
-
-    from collections import defaultdict
-
-    index: dict[str, list[dict]] = defaultdict(list)
-    for line in doc_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line.startswith("r") or "|" not in line:
-            continue
-        parts = [p.strip() for p in line.split("|")[1:]]  # skip row id
-        decoded = []
-        for p in parts:
-            if p.startswith('"') and p.endswith('"'):
-                decoded.append(p[1:-1].replace('\\"', '"').replace("\\\\", "\\"))
-            else:
-                decoded.append(p)
-        if len(decoded) >= 5:
-            keyword, module, name, verb, doc = (
-                decoded[0],
-                decoded[1],
-                decoded[2],
-                decoded[3],
-                decoded[4],
-            )
-            index[keyword].append(
-                {
-                    "module": module,
-                    "name": name,
-                    "verb": verb,
-                    "doc": doc,
-                }
-            )
-    _docstring_index = dict(index)
-
-
-def get_docstring_index() -> dict[str, list[dict]]:
-    """Return the loaded docstring index (loading it on first call)."""
-    try:
-        _load_docstring_model()
-    except Exception:
-        return {}
-    return _docstring_index or {}
+from prove.nlp_store import (
+    load_lsp_bigrams,
+    load_lsp_completions,
+    load_lsp_docstrings,
+    load_lsp_from_blocks,
+)
 
 
 def _global_model_complete(prev2: str, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:
-    """Query global model; falls back to unigram. Returns [] if model not loaded."""
+    """Query global LSP ML model; falls back to unigram. Returns [] if model not loaded."""
     try:
-        _load_global_model()
+        completions = load_lsp_completions()
     except Exception:
         return []
 
     results: list[str] = []
-    if _global_completions is not None:
-        for tok in _global_completions.get((prev2, prev1), []):
-            if not prefix or tok.startswith(prefix):
-                results.append(tok)
-            if len(results) >= top_k:
-                break
+    for tok in completions.get((prev2, prev1), []):
+        if not prefix or tok.startswith(prefix):
+            results.append(tok)
+        if len(results) >= top_k:
+            break
 
-    if not results and _global_bigrams is not None:
-        for tok in _global_bigrams.get(prev1, []):
-            if not prefix or tok.startswith(prefix):
-                results.append(tok)
-            if len(results) >= top_k:
-                break
+    if not results:
+        try:
+            bigrams = load_lsp_bigrams()
+            for tok, _count in bigrams.get(prev1, []):
+                if not prefix or tok.startswith(prefix):
+                    results.append(tok)
+                if len(results) >= top_k:
+                    break
+        except Exception:
+            pass
 
     return results
 

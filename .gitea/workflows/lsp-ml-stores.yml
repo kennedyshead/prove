@@ -1,0 +1,92 @@
+name: Build LSP ML Stores
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'prove-py/src/prove/stdlib/**/*.prv'
+      - 'examples/**/*.prv'
+      - 'proof/**/*.prv'
+      - 'benchmarks/**/*.prv'
+      - 'prove-py/tests/fixtures/**/*.prv'
+      - 'scripts/ml_extract.py'
+      - 'scripts/ml_train.py'
+      - 'scripts/ml_store.py'
+      - 'prove-py/scripts/build_stores.py'
+  workflow_dispatch:
+
+jobs:
+  build-stores:
+    runs-on: ubuntu-latest
+    container: python:3.11-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install prove-py dependencies
+        run: |
+          pip install -e "prove-py[dev]" -q
+
+      - name: Extract ML data
+        run: python scripts/ml_extract.py
+
+      - name: Train ML models
+        run: python scripts/ml_train.py
+
+      - name: Build stores
+        run: |
+          cd prove-py && python scripts/build_stores.py --package-only
+          mkdir -p build/lsp-ml-stores
+          cp -r src/prove/data/lsp build/lsp-ml-stores/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lsp-ml-stores
+          path: build/lsp-ml-stores/
+          retention-days: 30
+
+  create-release:
+    needs: build-stores
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: gitea.ref == 'refs/heads/main'
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lsp-ml-stores
+          path: lsp-ml-stores
+
+      - name: Create tarball
+        run: tar -czf lsp-ml-stores.tar.gz lsp-ml-stores/
+
+      - name: Create or update release
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          VERSION=$(date +'%Y.%m.%d')
+          TAG="lsp-stores-v${VERSION}"
+          
+          # Create release via Gitea API
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -H "Content-Type: application/json" \
+            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}/releases" \
+            -d "{
+              \"tag_name\": \"$TAG\",
+              \"name\": \"LSP ML Stores $VERSION\",
+              \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \\\`prove setup\\\` to download.\"
+            }" || true)
+          
+          # Upload attachment
+          RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "")
+          
+          if [ -n "$RELEASE_ID" ]; then
+            curl -s -X POST \
+              -H "Authorization: token $GITEA_TOKEN" \
+              -F "attachment=@lsp-ml-stores.tar.gz" \
+              "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}/releases/$RELEASE_ID/attachments"
+          fi

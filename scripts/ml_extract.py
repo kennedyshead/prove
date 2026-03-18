@@ -250,8 +250,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
-        default="data/completions_raw.json",
-        help="Output JSON file path (default: data/completions_raw.json)",
+        default="build/completions_raw.json",
+        help="Output JSON file path (default: build/completions_raw.json)",
     )
     args = parser.parse_args()
 

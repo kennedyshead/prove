@@ -1302,90 +1302,115 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
 
 
 @main.command()
-def setup() -> None:
-    """Set up Prove tools and data stores."""
-    import subprocess
-    import sys
+def _download_lsp_ml_stores() -> bool:
+    """Download pre-trained LSP ML stores from GitHub releases.
 
-    errors = 0
+    Returns True if successful, False otherwise.
+    """
+    import tarfile
+    import tempfile
+    import urllib.request
+    import zipfile
 
-    # spaCy model
-    click.echo("Downloading spaCy en_core_web_sm model...")
+    click.echo("Downloading pre-trained LSP ML stores...")
+
+    # Find the latest release asset URL
+    api_url = "https://api.github.com/repos/kennedyshead/prove/releases/latest"
     try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "spacy",
-                "download",
-                "en_core_web_sm",
-                "--break-system-packages",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            click.echo("  spaCy model installed.")
-        else:
-            click.echo(f"  spaCy download failed: {result.stderr.strip()}", err=True)
-            errors += 1
-    except FileNotFoundError:
-        click.echo("  spaCy not installed. Run: pip install 'prove[nlp]'", err=True)
-        errors += 1
+        with urllib.request.urlopen(api_url, timeout=10) as response:
+            import json
 
-    # NLTK WordNet data
-    click.echo("Downloading NLTK WordNet data...")
-    try:
-        import nltk  # type: ignore[import-untyped]
+            release = json.loads(response.read().decode())
 
-        nltk.download("wordnet", quiet=True)
-        nltk.download("omw-1.4", quiet=True)
-        click.echo("  NLTK data installed.")
-    except ImportError:
-        click.echo("  NLTK not installed. Run: pip install 'prove[nlp]'", err=True)
-        errors += 1
+        asset_url = None
+        for asset in release.get("assets", []):
+            if asset.get("name") == "lsp-ml-stores.tar.gz":
+                asset_url = asset.get("browser_download_url")
+                break
+
+        if not asset_url:
+            click.echo("  No pre-trained stores found in latest release.")
+            return False
+
+        # Download and extract
+        click.echo(f"  Downloading {asset_url}...")
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        urllib.request.urlretrieve(asset_url, tmp_path)
+
+        # Extract to data/
+        data_dir = Path(__file__).resolve().parent.parent / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        with tarfile.open(tmp_path, "r:gz") as tar:
+            tar.extractall(data_dir)
+
+        Path(tmp_path).unlink()
+        click.echo("  Pre-trained stores installed.")
+        return True
+
     except Exception as e:
-        click.echo(f"  NLTK download failed: {e}", err=True)
-        errors += 1
+        click.echo(f"  Download failed: {e}", err=True)
+        return False
 
-    if errors:
-        click.echo(f"\nCompleted with {errors} error(s).", err=True)
-        raise SystemExit(1)
 
-    # Build PDAT stores now that NLP deps are available
-    click.echo("\nBuilding NLP data stores...")
+def setup() -> None:
+    """Set up Prove tools and data stores.
+
+    Downloads pre-trained LSP ML completion stores. For developers building
+    the stores from scratch, run: pip install 'prove[nlp]' && python scripts/build_stores.py
+    """
+    # Download pre-trained LSP ML stores (no NLP deps needed)
+    _download_lsp_ml_stores()
+
+    # Try building NLP stores if deps are available (optional)
+    click.echo("\nBuilding NLP data stores (optional)...")
     try:
-        from prove.nlp_store import build_synonym_cache
+        import importlib.util
 
-        build_synonym_cache()
-        click.echo("  synonym cache built.")
+        script = Path(__file__).parent.parent / "scripts" / "build_stores.py"
+        if script.exists():
+            spec = importlib.util.spec_from_file_location("build_stores", script)
+            if spec and spec.loader:
+                build = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(build)
+                build.build_lsp_ml_stores(package_only=True)
+                click.echo("  NLP stores updated.")
     except Exception:
-        click.echo("  synonym cache skipped.")
+        pass
 
+    click.echo("\nSetup complete.")
+
+
+@advanced.command("setup-nlp")
+def setup_nlp() -> None:
+    """Build NLP data stores from scratch (requires: pip install 'prove[nlp]')."""
+    import importlib.util
+    from pathlib import Path
+
+    click.echo("Building NLP data stores from scratch...")
     try:
-        from prove.nlp_store import build_similarity_matrix
+        import spacy  # noqa: F401
+        import nltk  # noqa: F401
+    except ImportError:
+        click.echo("  NLP deps not installed. Run: pip install 'prove[nlp]'")
+        return
 
-        build_similarity_matrix()
-        click.echo("  similarity matrix built.")
-    except Exception:
-        click.echo("  similarity matrix skipped.")
-
-    try:
-        from prove.nlp_store import build_semantic_features
-
-        build_semantic_features()
-        click.echo("  semantic features built.")
-    except Exception:
-        click.echo("  semantic features skipped.")
-
-    click.echo("\nNLP setup complete.")
-
-
-@advanced.command("setup-nlp", hidden=True)
-@click.pass_context
-def setup_nlp(ctx: click.Context) -> None:
-    """Download NLP models (alias for `prove setup`)."""
-    ctx.invoke(setup)
+    script = Path(__file__).parent.parent / "scripts" / "build_stores.py"
+    if script.exists():
+        spec = importlib.util.spec_from_file_location("build_stores", script)
+        if spec and spec.loader:
+            build = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(build)
+            build.build_verb_synonyms()
+            build.build_synonym_cache()
+            build.build_similarity_matrix()
+            build.build_semantic_features()
+            build.build_stdlib_index()
+            click.echo("  NLP stores built.")
+    else:
+        click.echo("  build_stores.py not found.")
 
 
 def _dump_ast(node: object, depth: int) -> None:
