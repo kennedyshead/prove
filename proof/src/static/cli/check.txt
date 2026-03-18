@@ -1,0 +1,13 @@
+Usage: python -m prove check [OPTIONS] [PATH]
+
+  Type-check, lint, and verify a Prove project or a single .prv file.
+
+Options:
+  --md             Also check ```prove blocks in .md files.
+  --strict         Treat warnings as errors.
+  --no-coherence   Skip vocabulary consistency check.
+  --no-challenges  Skip refutation challenges.
+  --no-status      Skip module completeness report.
+  --no-intent      Skip intent coverage check.
+  --nlp-status     Report NLP backend and store availability.
+  --help           Show this message and exit.

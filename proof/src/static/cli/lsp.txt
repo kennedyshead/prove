@@ -1,7 +1,7 @@
-Usage: proof lsp --help
 Usage: python -m prove lsp [OPTIONS]
 
   Start the Prove language server.
 
 Options:
   --help  Show this message and exit.
+

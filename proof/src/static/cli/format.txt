@@ -1,4 +1,3 @@
-Usage: proof format --help
 Usage: python -m prove format [OPTIONS] [PATH]
 
   Format Prove source files.

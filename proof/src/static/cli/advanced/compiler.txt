@@ -1,4 +1,3 @@
-Usage: proof compiler --help
 Usage: python -m prove compiler [OPTIONS] FILE
 
   Convert between .prv lookup types and PDAT binary format.
