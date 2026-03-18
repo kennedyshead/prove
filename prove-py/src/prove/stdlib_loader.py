@@ -831,7 +831,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
             param_types=param_types,
             return_type=ret_type,
             can_fail=decl.can_fail,
-            span=_DUMMY,
+            span=decl.span,
             module=normalized,
             requires=getattr(decl, "requires", []),
         )
@@ -844,6 +844,19 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 def stdlib_link_flags(module_name: str) -> list[str]:
     """Return linker flags required by a stdlib module."""
     return _STDLIB_LINK_FLAGS.get(module_name.lower(), [])
+
+
+def stdlib_prv_path(module_name: str) -> Path | None:
+    """Return the .prv Path for any stdlib module (pure or binary).
+
+    Returns None if the module is unknown.
+    """
+    key = module_name.lower()
+    prv_rel = _STDLIB_MODULES.get(key)
+    if prv_rel is None:
+        return None
+    stdlib_dir = Path(__file__).parent / "stdlib"
+    return stdlib_dir / prv_rel
 
 
 def stdlib_pure_prv_path(module_name: str) -> Path | None:

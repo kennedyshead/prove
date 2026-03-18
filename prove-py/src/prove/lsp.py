@@ -2016,22 +2016,40 @@ def definition(params: lsp.DefinitionParams) -> lsp.Location | None:
     if not word:
         return None
 
-    # Look up symbol
+    # Look up symbol — only use for locally-defined (non-imported) symbols
     sym = ds.symbols.lookup(word)
-    if sym is not None and sym.span.file != "<builtin>":
-        target_uri = uri  # same file for now (single-file analysis)
+    if sym is not None and not sym.is_imported and sym.span.file != "<builtin>":
         return lsp.Location(
-            uri=target_uri,
+            uri=uri,
             range=span_to_range(sym.span),
         )
 
-    # Try function lookup
+    # For imported symbols (or fallback), resolve via FunctionSignature which
+    # carries the actual declaration span in the source file.
     sig = ds.symbols.resolve_function_any(word)
-    if sig is not None and sig.span.file != "<builtin>":
-        return lsp.Location(
-            uri=uri,
-            range=span_to_range(sig.span),
-        )
+    if sig is not None and sig.span.file not in ("<builtin>", "<stdlib>"):
+        span_file = sig.span.file
+        if span_file.startswith("<stdlib:"):
+            # Extract module name from "<stdlib:ModuleName>" and find actual path
+            from prove.stdlib_loader import stdlib_prv_path
+
+            module_name = span_file[len("<stdlib:"):-1]
+            prv_path = stdlib_prv_path(module_name)
+            if prv_path is not None and prv_path.exists():
+                target_uri = prv_path.as_uri()
+                return lsp.Location(
+                    uri=target_uri,
+                    range=span_to_range(sig.span),
+                )
+        else:
+            # Local module — span_file is the actual file path
+            from pathlib import Path
+
+            target_uri = Path(span_file).as_uri()
+            return lsp.Location(
+                uri=target_uri,
+                range=span_to_range(sig.span),
+            )
 
     return None
 

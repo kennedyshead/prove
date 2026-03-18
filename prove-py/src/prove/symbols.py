@@ -26,6 +26,7 @@ class Symbol:
     verb: str | None = None
     mutable: bool = False
     used: bool = False
+    is_imported: bool = False
 
 
 @dataclass
