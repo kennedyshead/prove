@@ -14,22 +14,22 @@ module Commands
   Build outputs pybuild
 
   HELP_BUILD_TEXT as String = comptime
-      read("static/help_build.txt")
+      read("static/cli/build.txt")
 
   HELP_CHECK_TEXT as String = comptime
-      read("static/help_check.txt")
+      read("static/cli/check.txt")
 
   HELP_FORMAT_TEXT as String = comptime
-      read("static/help_format.txt")
+      read("static/cli/format.txt")
 
   HELP_LSP_TEXT as String = comptime
-      read("static/help_lsp.txt")
+      read("static/cli/lsp.txt")
 
   HELP_NEW_TEXT as String = comptime
-      read("static/help_new.txt")
+      read("static/cli/new.txt")
 
   HELP_TEST_TEXT as String = comptime
-      read("static/help_test.txt")
+      read("static/cli/test.txt")
 
 /// Run the build command
 outputs build(arguments List<String>, config Config)!
