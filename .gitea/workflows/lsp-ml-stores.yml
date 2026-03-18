@@ -42,7 +42,7 @@ jobs:
           cp -r src/prove/data/lsp build/lsp-ml-stores/
 
       - name: Create tarball
-        run: tar -czf lsp-ml-stores.tar.gz -C build lsp-ml-stores/
+        run: tar -czf lsp-ml-stores.tar.gz -C prove-py/build lsp-ml-stores/
 
       - name: Create or update release
         env:
