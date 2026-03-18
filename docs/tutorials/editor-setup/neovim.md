@@ -18,10 +18,10 @@ This guide covers setting up Prove in Neovim with syntax highlighting (tree-sitt
 
 ```bash
 pip install -e ".[dev]"
-prove setup
+prove advanced setup
 ```
 
-The `prove setup` command downloads NLP models and builds data stores for the LSP.
+The `prove advanced setup` command downloads pre-trained ML stores for the LSP.
 
 ---
 
@@ -232,7 +232,7 @@ prove-lsp --version
 If not found, run:
 
 ```bash
-prove setup
+prove advanced setup
 ```
 
 ### No syntax highlighting

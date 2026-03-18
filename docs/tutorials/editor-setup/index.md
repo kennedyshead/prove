@@ -29,7 +29,7 @@ All editors require:
 
 3. **Install prove-lsp** (optional but recommended):
    ```bash
-   prove setup
+   prove advanced setup
    ```
 
 ## Requirements

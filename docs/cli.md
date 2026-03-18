@@ -115,21 +115,21 @@ Reformats all `.prv` files recursively under the given path. Files with parse er
 
 ---
 
-## `prove setup`
-
-Set up Prove tools and data stores.
-
-```bash
-prove setup
-```
-
-Installs prerequisites for narrative verb analysis, vocabulary coherence checking, and stub generation. Without NLP, these features fall back to simpler heuristics. NLP-dependent commands (`check`, `build`, `test`, `generate`, `intent`) print a one-time info message when NLP is not available.
-
----
-
 ## Advanced Commands
 
 These commands live under `prove advanced` and are intended for development, debugging, and tooling workflows.
+
+### `prove advanced setup`
+
+Download pre-trained LSP ML completion stores.
+
+```bash
+prove advanced setup
+```
+
+Downloads the pre-trained ML stores used by the LSP for code completion. For developers building the stores from scratch, run `pip install 'prove[nlp]'` and then `python scripts/build_stores.py`.
+
+---
 
 ### `prove advanced generate <file>`
 
