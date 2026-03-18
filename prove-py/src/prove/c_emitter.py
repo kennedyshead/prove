@@ -142,6 +142,7 @@ class CEmitter(
         self._struct_templates: dict[tuple[str, str, int], FunctionDef] = {}
         self._struct_specialisations: dict[tuple, str] = {}
         self._struct_specialisation_queue: list[tuple[FunctionDef, list[Type]]] = []
+        self._lambda_captures: dict[int, list[str]] = {}
         self._collect_foreign_info()
 
     def _collect_foreign_info(self) -> None:
@@ -1431,7 +1432,7 @@ class CEmitter(
     def _resolve_prim_type(self, ty: Type) -> Type:
         """Resolve PrimitiveType to its actual type if it's a user-defined name.
 
-        Handles cases like User:[Mutable] being stored as PrimitiveType("User", ("Mutable",))
+        Handles cases like User:[Mutable] being stored as PrimitiveType("User", ((None, "Mutable"),))
         when it should be RecordType("User", ...).
         """
         if isinstance(ty, PrimitiveType):
@@ -1453,7 +1454,7 @@ class CEmitter(
         if isinstance(expr, (StringLit, TripleStringLit, StringInterp, PathLit, RegexLit)):
             return STRING
         if isinstance(expr, RawStringLit):
-            return PrimitiveType("String", ("Reg",))
+            return PrimitiveType("String", ((None, "Reg"),))
         if isinstance(expr, BooleanLit):
             return BOOLEAN
         if isinstance(expr, CharLit):

@@ -15,7 +15,8 @@ class TestParMapSequential:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void *double_val(void *x) {
+            static void *double_val(void *x, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)x * 2);
             }
 
@@ -24,7 +25,7 @@ class TestParMapSequential:
                 for (int i = 1; i <= 5; i++)
                     prove_list_push(l, (void *)(intptr_t)i);
 
-                Prove_List *r = prove_par_map(l, double_val, 1);
+                Prove_List *r = prove_par_map(l, double_val, NULL, 1);
                 for (int64_t i = 0; i < prove_list_len(r); i++)
                     printf("%lld ", (long long)(intptr_t)prove_list_get(r, i));
                 printf("\\n");
@@ -44,13 +45,14 @@ class TestParMapSequential:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void *double_val(void *x) {
+            static void *double_val(void *x, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)x * 2);
             }
 
             int main(void) {
                 Prove_List *l = prove_list_new(0);
-                Prove_List *r = prove_par_map(l, double_val, 4);
+                Prove_List *r = prove_par_map(l, double_val, NULL, 4);
                 printf("%lld\\n", (long long)prove_list_len(r));
                 return 0;
             }
@@ -71,7 +73,8 @@ class TestParMapParallel:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void *square_val(void *x) {
+            static void *square_val(void *x, void *ctx) {
+                (void)ctx;
                 intptr_t v = (intptr_t)x;
                 return (void *)(intptr_t)(v * v);
             }
@@ -81,7 +84,7 @@ class TestParMapParallel:
                 for (int i = 1; i <= 8; i++)
                     prove_list_push(l, (void *)(intptr_t)i);
 
-                Prove_List *r = prove_par_map(l, square_val, 2);
+                Prove_List *r = prove_par_map(l, square_val, NULL, 2);
                 for (int64_t i = 0; i < prove_list_len(r); i++)
                     printf("%lld ", (long long)(intptr_t)prove_list_get(r, i));
                 printf("\\n");
@@ -102,7 +105,8 @@ class TestParMapParallel:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void *triple_val(void *x) {
+            static void *triple_val(void *x, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)x * 3);
             }
 
@@ -111,7 +115,7 @@ class TestParMapParallel:
                 for (int i = 0; i < 12; i++)
                     prove_list_push(l, (void *)(intptr_t)(i + 1));
 
-                Prove_List *r = prove_par_map(l, triple_val, 4);
+                Prove_List *r = prove_par_map(l, triple_val, NULL, 4);
                 int64_t sum = 0;
                 for (int64_t i = 0; i < prove_list_len(r); i++)
                     sum += (intptr_t)prove_list_get(r, i);
@@ -134,7 +138,8 @@ class TestParMapParallel:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void *incr(void *x) {
+            static void *incr(void *x, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)x + 1);
             }
 
@@ -143,7 +148,7 @@ class TestParMapParallel:
                 prove_list_push(l, (void *)(intptr_t)10);
                 prove_list_push(l, (void *)(intptr_t)20);
 
-                Prove_List *r = prove_par_map(l, incr, 8);
+                Prove_List *r = prove_par_map(l, incr, NULL, 8);
                 for (int64_t i = 0; i < prove_list_len(r); i++)
                     printf("%lld ", (long long)(intptr_t)prove_list_get(r, i));
                 printf("\\n");

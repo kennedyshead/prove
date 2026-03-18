@@ -152,16 +152,15 @@ class TestFieldAccess:
 
 
 class TestLambdaCapture:
-    """Test closure capture detection."""
+    """Test closure capture collection."""
 
-    def test_lambda_capture_rejected(self):
-        """Lambda capturing a local variable -> E364."""
-        check_fails(
+    def test_lambda_local_capture_ok(self):
+        """Lambda capturing a local variable is now allowed (closures supported)."""
+        check(
             "transforms compute() List<Integer>\n"
             "    from\n"
             "        y as Integer = 10\n"
             "        map([1, 2, 3], |x| x + y)\n",
-            "E364",
         )
 
     def test_lambda_param_capture_ok(self):

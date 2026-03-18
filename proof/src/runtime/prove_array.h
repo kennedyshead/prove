@@ -78,19 +78,20 @@ Prove_Option prove_array_set_safe_float(Prove_Array *arr, int64_t idx, double va
 
 /* Map: apply fn to each element, producing a new array of same length.
    result_elem_size is the byte-width of the output element type. */
-Prove_Array *prove_array_map(Prove_Array *arr, void *(*fn)(void *),
-                              int64_t result_elem_size);
+Prove_Array *prove_array_map(Prove_Array *arr, void *(*fn)(void *, void *),
+                              void *ctx, int64_t result_elem_size);
 
 /* Reduce: fold array from left with an accumulator. */
 void *prove_array_reduce(Prove_Array *arr, void *init,
-                          void *(*fn)(void *accum, void *elem));
+                          void *(*fn)(void *accum, void *elem, void *ctx),
+                          void *ctx);
 
 /* Each: call fn for side effect on each element. */
-void prove_array_each(Prove_Array *arr, void (*fn)(void *));
+void prove_array_each(Prove_Array *arr, void (*fn)(void *, void *), void *ctx);
 
 /* Filter: keep elements matching predicate; returns Prove_List
    because the output length is unknown at compile time. */
-Prove_List *prove_array_filter(Prove_Array *arr, bool (*pred)(void *));
+Prove_List *prove_array_filter(Prove_Array *arr, bool (*pred)(void *, void *), void *ctx);
 
 /* ── Conversions ─────────────────────────────────────────────── */
 

@@ -132,15 +132,15 @@ Prove_Option prove_array_set_safe_int(Prove_Array *arr, int64_t idx, int64_t val
 
 /* ── Higher-order operations ─────────────────────────────────── */
 
-Prove_Array *prove_array_map(Prove_Array *arr, void *(*fn)(void *),
-                              int64_t result_elem_size) {
+Prove_Array *prove_array_map(Prove_Array *arr, void *(*fn)(void *, void *),
+                              void *ctx, int64_t result_elem_size) {
     int64_t zero = 0;
     Prove_Array *out = prove_array_new(arr->length, result_elem_size, &zero);
     for (int64_t i = 0; i < arr->length; i++) {
         void *elem = (char *)arr->data + i * arr->elem_size;
         intptr_t boxed = 0;
         memcpy(&boxed, elem, (size_t)arr->elem_size);
-        void *mapped = fn((void *)boxed);
+        void *mapped = fn((void *)boxed, ctx);
         intptr_t result = (intptr_t)mapped;
         memcpy((char *)out->data + i * result_elem_size, &result,
                (size_t)result_elem_size);
@@ -149,27 +149,28 @@ Prove_Array *prove_array_map(Prove_Array *arr, void *(*fn)(void *),
 }
 
 void *prove_array_reduce(Prove_Array *arr, void *init,
-                          void *(*fn)(void *accum, void *elem)) {
+                          void *(*fn)(void *accum, void *elem, void *ctx),
+                          void *ctx) {
     void *accum = init;
     for (int64_t i = 0; i < arr->length; i++) {
         void *elem = (char *)arr->data + i * arr->elem_size;
         intptr_t boxed = 0;
         memcpy(&boxed, elem, (size_t)arr->elem_size);
-        accum = fn(accum, (void *)boxed);
+        accum = fn(accum, (void *)boxed, ctx);
     }
     return accum;
 }
 
-void prove_array_each(Prove_Array *arr, void (*fn)(void *)) {
+void prove_array_each(Prove_Array *arr, void (*fn)(void *, void *), void *ctx) {
     for (int64_t i = 0; i < arr->length; i++) {
         void *elem = (char *)arr->data + i * arr->elem_size;
         intptr_t boxed = 0;
         memcpy(&boxed, elem, (size_t)arr->elem_size);
-        fn((void *)boxed);
+        fn((void *)boxed, ctx);
     }
 }
 
-Prove_List *prove_array_filter(Prove_Array *arr, bool (*pred)(void *)) {
+Prove_List *prove_array_filter(Prove_Array *arr, bool (*pred)(void *, void *), void *ctx) {
     int64_t hint = arr->length < 8 ? arr->length : arr->length / 2;
     if (hint < 4) hint = 4;
     Prove_List *out = prove_list_new(hint);
@@ -177,7 +178,7 @@ Prove_List *prove_array_filter(Prove_Array *arr, bool (*pred)(void *)) {
         void *elem = (char *)arr->data + i * arr->elem_size;
         intptr_t boxed = 0;
         memcpy(&boxed, elem, (size_t)arr->elem_size);
-        if (pred((void *)boxed)) {
+        if (pred((void *)boxed, ctx)) {
             prove_list_push(out, (void *)boxed);
         }
     }

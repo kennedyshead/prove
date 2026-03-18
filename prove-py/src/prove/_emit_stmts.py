@@ -54,6 +54,7 @@ from prove.types import (
     Type,
     TypeVariable,
     UnitType,
+    get_scale,
 )
 
 _IO_VERBS = frozenset({"inputs", "outputs", "streams", "listens", "attached", "detached"})
@@ -694,7 +695,13 @@ class StmtEmitterMixin:
                 elif ct.is_pointer and val_ct.decl != ct.decl:
                     self._line(f"{ct.decl} {vd.name} = ({ct.decl}){val};")
                 else:
-                    self._line(f"{ct.decl} {vd.name} = {val};")
+                    # Scale:N rounding for non-literal Decimal assignments
+                    scale = get_scale(target_ty)
+                    if scale is not None and not _is_compile_time_literal(vd.value):
+                        self._needed_headers.add("prove_math.h")
+                        self._line(f"{ct.decl} {vd.name} = prove_decimal_round({val}, {scale});")
+                    else:
+                        self._line(f"{ct.decl} {vd.name} = {val};")
 
         # Validate refinement type constraints
         # Skip validation for GenericInstance (Option<Value>) because validation is already

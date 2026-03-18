@@ -116,6 +116,10 @@ DIAGNOSTIC_DOCS["E398"] = f"{_DOCS_BASE}#E398"
 DIAGNOSTIC_DOCS["E400"] = f"{_DOCS_BASE}#E400"
 # Listens event dispatcher E401-E406
 _register_doc_range("E", 401, 406)
+# Scale:N enforcement E407-E408
+_register_doc_range("E", 407, 408)
+# Mutable capture in parallel lambda E409
+DIAGNOSTIC_DOCS["E409"] = f"{_DOCS_BASE}#E409"
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
 # Row polymorphism E430-E434

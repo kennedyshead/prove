@@ -2,7 +2,8 @@
 
 Prove_List *prove_list_map(
     Prove_List *list,
-    void *(*fn)(void *)
+    void *(*fn)(void *, void *),
+    void *ctx
 ) {
 #ifndef PROVE_RELEASE
     if (!list) prove_panic("hof: null list");
@@ -10,7 +11,7 @@ Prove_List *prove_list_map(
     Prove_List *out = prove_list_new(list->length);
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
-        void *mapped = fn(elem);
+        void *mapped = fn(elem, ctx);
         prove_list_push(out, mapped);
     }
     return out;
@@ -18,20 +19,22 @@ Prove_List *prove_list_map(
 
 void prove_list_each(
     Prove_List *list,
-    void (*fn)(void *)
+    void (*fn)(void *, void *),
+    void *ctx
 ) {
 #ifndef PROVE_RELEASE
     if (!list) prove_panic("hof: null list");
 #endif
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
-        fn(elem);
+        fn(elem, ctx);
     }
 }
 
 Prove_List *prove_list_filter(
     Prove_List *list,
-    bool (*pred)(void *)
+    bool (*pred)(void *, void *),
+    void *ctx
 ) {
 #ifndef PROVE_RELEASE
     if (!list) prove_panic("hof: null list");
@@ -41,7 +44,7 @@ Prove_List *prove_list_filter(
     Prove_List *out = prove_list_new(hint);
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
-        if (pred(elem)) {
+        if (pred(elem, ctx)) {
             prove_list_push(out, elem);
         }
     }
@@ -51,7 +54,8 @@ Prove_List *prove_list_filter(
 void *prove_list_reduce(
     Prove_List *list,
     void *init,
-    void *(*fn)(void *accum, void *elem)
+    void *(*fn)(void *accum, void *elem, void *ctx),
+    void *ctx
 ) {
 #ifndef PROVE_RELEASE
     if (!list) prove_panic("hof: null list");
@@ -59,7 +63,7 @@ void *prove_list_reduce(
     void *accum = init;
     for (int64_t i = 0; i < list->length; i++) {
         void *elem = prove_list_get(list, i);
-        accum = fn(accum, elem);
+        accum = fn(accum, elem, ctx);
     }
     return accum;
 }

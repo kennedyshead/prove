@@ -31,7 +31,7 @@ verified_emails as List<String> = filter(emails, valid email)
 **Constraints:**
 - **Single expression only** — no multi-line bodies, no statements. If you need more, write a named function.
 - **Must be pure** — no IO effects inside a lambda. Side effects require a named function.
-- **No closures** — lambdas cannot reference variables from the enclosing scope. All values must be passed as arguments or accessed through the lambda's own parameters.
+- **Closure capture** — lambdas can capture immutable variables from the enclosing scope. Captured values are passed via a compiler-generated context struct. Mutable captures in parallel lambdas are rejected (E409).
 - **Only as arguments** — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function or a [`Verb`](types.md#function-types-verb) parameter.
 
 Lambdas work with any function parameter typed as `Verb<P1, ..., R>`:
@@ -81,7 +81,7 @@ total as Integer = par_reduce(values, 0, add)
 
 **Purity requirement:** the callback must be a named pure function (`transforms`, `validates`, `reads`, `creates`, or `matches`). IO verbs (`inputs`, `outputs`) and async verbs are rejected at compile time.
 
-**No closures:** the callback must be a named function, not a lambda.
+**Closures:** lambdas with captured variables are supported. The compiler generates a context struct for captured values and passes it through the parallel runtime.
 
 **Ordering:** result ordering is not guaranteed — elements may be placed in any order depending on thread scheduling. Use `map` if ordering must be preserved.
 

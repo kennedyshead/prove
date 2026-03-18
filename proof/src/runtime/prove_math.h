@@ -29,4 +29,13 @@ int64_t prove_math_ceil(double x);
 int64_t prove_math_round(double x);
 double  prove_math_log(double x);
 
+/* ── Scale:N rounding ───────────────────────────────────────── */
+
+#include <math.h>
+
+static inline double prove_decimal_round(double val, int scale) {
+    double factor = pow(10.0, (double)scale);
+    return round(val * factor) / factor;
+}
+
 #endif /* PROVE_MATH_H */
