@@ -124,4 +124,12 @@
          <loc>https://prove.botwork.se/stdlib/time-random/</loc>
          <lastmod>2026-03-18</lastmod>
     </url>
+    <url>
+         <loc>https://prove.botwork.se/tutorials/editor-setup/</loc>
+         <lastmod>2026-03-18</lastmod>
+    </url>
+    <url>
+         <loc>https://prove.botwork.se/tutorials/editor-setup/neovim/</loc>
+         <lastmod>2026-03-18</lastmod>
+    </url>
 </urlset>
