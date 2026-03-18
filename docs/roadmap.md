@@ -16,10 +16,26 @@ Features use status labels rather than version numbers:
 Two milestones frame the overall project:
 
 - **V1.0** — Fully featured Python compiler. All language features implemented,
-  comprehensive standard library, complete tooling. The reference implementation.
+  comprehensive standard library, complete tooling. The reference implementation. **Released.**
 - **V2.0** — Self-hosted compiler written in Prove, compiled by the V1.0 bootstrap.
 
-V1.0 ships when the language is mature. V2.0 planning begins after.
+V1.0 has shipped. V2.0 planning is underway.
+
+---
+
+## Released
+
+### V1.0 — March 2026
+
+The Python bootstrap compiler is complete and released as the reference implementation.
+
+- Full compiler pipeline: lex → parse → type-check → emit C → native binary
+- 19 stdlib modules (plus aliases): Character, Text, Table, Array, System, Parse, Math, Types, List, Path, Pattern, Format, Random, Time, Bytes, Hash, Log, Network, Language
+- Checker with refinement types, contracts (`requires`/`ensures`/`explain`/`know`/`assume`/`believe`), intent coverage
+- 13-pass AST optimizer (TCO, dead code elimination, iterator fusion, memoization, escape analysis, etc.)
+- LSP with ML-powered n-gram completions and intent-driven stub generation
+- Mutation testing, compile-time evaluation, formatter, lint/diagnostics system
+- CI/CD pipeline with automated builds, tests, and releases
 
 ---
 

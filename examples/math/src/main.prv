@@ -7,8 +7,9 @@ module Main
 
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
-  requires a >= 0
-  requires b >= 0
+  requires valid integer(a) && valid integer(b)
+  explain
+      sum of a and b
 from
     a + b
 
