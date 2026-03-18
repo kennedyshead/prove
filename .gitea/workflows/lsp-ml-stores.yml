@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'lsp-stores-*'
     paths:
       - 'prove-py/src/prove/stdlib/**/*.prv'
       - 'examples/**/*.prv'
@@ -48,8 +50,11 @@ jobs:
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
-          VERSION=$(date +'%Y.%m.%d')
-          TAG="lsp-stores-v${VERSION}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="lsp-stores-v$(date +'%Y.%m.%d')"
+          fi
           
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token $GITEA_TOKEN" \
@@ -57,7 +62,7 @@ jobs:
             "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}/releases" \
             -d "{
               \"tag_name\": \"$TAG\",
-              \"name\": \"LSP ML Stores $VERSION\",
+              \"name\": \"LSP ML Stores ${TAG#lsp-stores-v}\",
               \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \\\`prove setup\\\` to download.\"
             }" || true)
           

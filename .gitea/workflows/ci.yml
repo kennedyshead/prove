@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e "prove-py[dev]" -q --break-system-packages
+
+      - name: Run unit tests
+        run: cd prove-py && python -m pytest tests/ -v --tb=short
+
+      - name: Run ruff linter
+        run: |
+          ruff check prove-py/src/
+          ruff check prove-py/tests/
+
+      - name: Run mypy
+        run: mypy prove-py/src/
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e "prove-py" -q --break-system-packages
+
+      - name: Build prove
+        run: pip install -e . -q --break-system-packages
+
+      - name: Run e2e tests
+        run: python scripts/test_e2e.py
