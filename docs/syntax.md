@@ -184,7 +184,7 @@ server as Server = new_server()
 users as List<User> = query(db, "SELECT * FROM users")!
 ```
 
-The LSP shows inferred types inline as you type, so you always know what the compiler deduced. Function signatures are always explicit — inference only applies to local variables.
+The LSP shows inferred types on hover, so you always know what the compiler deduced. Function signatures are always explicit — inference only applies to local variables.
 
 **The language encourages explicit types** — the formatter enforces them. But you're never blocked from writing code because you can't remember whether it's `List<Map<String, User>>` or `Map<String, List<User>>`.
 

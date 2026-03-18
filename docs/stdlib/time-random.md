@@ -66,7 +66,7 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock components are valid |
 
 ```prove
-Time inputs time creates duration date clock reads days weekday types Time Duration Date Clock
+  Time inputs time creates duration date clock reads days weekday types Time Duration Date Clock
 
 reads elapsed_days(start Time, stop Time) Integer
 from
@@ -108,7 +108,7 @@ All functions use the `inputs` verb because randomness requires external entropy
 | `validates` | `integer(value Integer, minimum Integer, maximum Integer)` | True if value falls within range |
 
 ```prove
-Random inputs integer boolean choice shuffle
+  Random inputs integer boolean choice shuffle
 
 inputs roll_pair() List<Integer>
 from

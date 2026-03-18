@@ -97,13 +97,14 @@ total as Integer = par_reduce(values, 0, add)
 ## Complete Example: RESTful Server
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1 .. 65535
-type Route is Get(path String) | Post(path String) | Delete(path String)
+module Rest
+  type Port is Integer:[16 Unsigned] where 1 .. 65535
+  type Route is Get(path String) | Post(path String) | Delete(path String)
 
-type User is
-  id Integer
-  name String
-  email String
+  type User is
+    id Integer
+    name String
+    email String
 
 /// Checks whether a string is a valid email address.
 validates email(address String)

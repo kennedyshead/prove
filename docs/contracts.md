@@ -401,7 +401,7 @@ module PaymentService
   temporal: validate -> charge -> record
 ```
 
-The compiler requires `narrative` blocks and enforces that referenced function names exist in scope. Domain-specific rules are implemented — the compiler enforces finance/safety domain requirements via W340-W342. Temporal ordering verification is upcoming.
+The compiler requires `narrative` blocks and enforces that referenced function names exist in scope. Domain-specific rules are implemented — the compiler enforces finance/safety domain requirements via W340-W342. Temporal ordering is enforced: if a module declares `temporal: a -> b -> c`, any function that calls those operations out of declared order is flagged with W390.
 
 ---
 
@@ -417,9 +417,12 @@ invariant_network AccountingRules
 
 transforms post_transaction(ledger Ledger, tx Transaction) Ledger
   satisfies AccountingRules
+  ensures result.total_assets == result.total_liabilities + result.equity
 from
-    // implementation — compiler verifies the rules hold after every change
+    // implementation
 ```
+
+The compiler validates structure: constraint expressions must be Boolean ([E396](diagnostics.md#e396-invariant-constraint-must-be-boolean)), `satisfies` must reference a known network ([E382](diagnostics.md#e382-satisfies-references-undefined-type)), and functions with `satisfies` must provide `ensures` clauses ([W391](diagnostics.md#w391-satisfies-invariant-without-ensures)). The compiler does **not** verify that `ensures` clauses imply the invariant constraints — property-test generation for invariant satisfaction is planned for post-1.0.
 
 ---
 

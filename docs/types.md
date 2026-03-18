@@ -134,9 +134,9 @@ counter = counter + 1
 On `Array<T>`, `Mutable` switches from copy-on-write to in-place mutation. This is the primary use case — allocating a fixed-size working buffer that is modified in a loop without heap allocation per update:
 
 ```prove
-Sequence creates array
-Sequence reads get
-Sequence transforms set
+  Sequence creates array
+  Sequence reads get
+  Sequence transforms set
 
 sieve as Array<Boolean>:[Mutable] = array(1000001, false)
 sieve = set(sieve, 0, true)   // in-place, no copy
@@ -158,9 +158,9 @@ from
 Types carry constraints, not just shapes. The compiler validates values against constraints via runtime checks inserted at assignment boundaries. Static rejection of provably-invalid literals at compile time is implemented — literal values that violate refinement constraints are caught at compile time (E355).
 
 ```prove
-type Port is Integer:[16 Unsigned] where 1 .. 65535
-type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
-type NonEmpty<Value> is List<Value> where len > 0
+  type Port is Integer:[16 Unsigned] where 1 .. 65535
+  type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
+  type NonEmpty<Value> is List<Value> where len > 0
 
 transforms head(xs NonEmpty<Value>) Value    // no Option needed, emptiness is impossible
 ```
@@ -174,7 +174,7 @@ A `[Lookup]` type is a bidirectional map combining an algebraic type with its va
 ### Single-Type Lookup
 
 ```prove
-type TokenKind:[Lookup] is String where
+  type TokenKind:[Lookup] is String where
     Main | "main"
     NotMain | "not_main"
     TrueLit | "true"
@@ -195,7 +195,7 @@ Lookup tables must be exhaustive — every variant needs at least one value, and
 A lookup can map to multiple primitive types simultaneously:
 
 ```prove
-type TokenKind:[Lookup] is String | Integer where
+  type TokenKind:[Lookup] is String | Integer where
     One | "one" | 1
     Two | "two" | 2
 ```
@@ -217,7 +217,7 @@ Rules:
 When a lookup needs two or more columns of the same type, use named columns to disambiguate:
 
 ```prove
-type Prediction:[Lookup] is probability:Float | String | confidence:Float where
+  type Prediction:[Lookup] is probability:Float | String | confidence:Float where
     Cat | 0.9 | "cat" | 0.95
     Dog | 0.8 | "dog" | 0.85
 ```
@@ -238,14 +238,14 @@ For large lookup tables (more than 16 entries), reverse lookups automatically us
 A `[Lookup]` type with `runtime` instead of `where` gets its data from a [Store](stdlib/table-list-store.md#store) at runtime instead of compiled-in entries. The type definition declares the column schema — pipe-separated types — and the data is populated dynamically.
 
 ```prove
-type Color:[Lookup] is String | Integer
-  runtime
+  type Color:[Lookup] is String | Integer
+    runtime
 ```
 
 The variable is typed as the lookup type, but backed by a `StoreTable` at the C level:
 
 ```prove
-Store outputs store inputs table validates store table
+  Store outputs store inputs table validates store table
     types Store StoreTable
 
 db as Store = store("/tmp/my_store")!
@@ -299,8 +299,8 @@ The [Types](stdlib/math-types.md#result-and-option-utilities) stdlib module prov
 Compiler errors if you forget a variant.
 
 ```prove
-type Result<Value, Error> is Ok(Value) | Err(Error)
-type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
+  type Result<Value, Error> is Ok(Value) | Err(Error)
+  type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
 transforms area(s Shape) Decimal
@@ -339,7 +339,7 @@ This is not an omission. It is a deliberate design choice.
 When you reach for `if connected then send(data) else retry()`, the real question is: what *kind* of connection state are you in? Model it as a type and the branching becomes meaningful:
 
 ```prove
-type Connection is Active(socket Socket) | Disconnected(reason String)
+  type Connection is Active(socket Socket) | Disconnected(reason String)
 
 match connection
     Active(socket) => send(socket, data)

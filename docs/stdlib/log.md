@@ -35,7 +35,7 @@ A pure-Prove module providing ANSI terminal color constants and logging function
 | `detached` | `error(string String)` | Log an error message (red) |
 
 ```prove
-Log types RESET RED GREEN, detached info error
+  Log types RESET RED GREEN, detached info error
 
 detached log_status(ok Boolean)
 from

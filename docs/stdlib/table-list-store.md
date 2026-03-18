@@ -24,7 +24,7 @@ Defines a binary type: `Table<Value>` (the hash map).
 | `reads` | `length(table Table<Value>) Integer` | Number of entries |
 
 ```prove
-Table creates new validates has transforms add reads get keys
+  Table creates new validates has transforms add reads get keys
 
 reads lookup(name String, db Table<String>) String
 from
@@ -79,9 +79,9 @@ The dispatch between copy-on-write and in-place is resolved by the array's type 
 ### Example — immutable (copy-on-write)
 
 ```prove
-Array creates array
-Array reads get length
-Array transforms set
+  Array creates array
+  Array reads get length
+  Array transforms set
 
 main() Result<Unit, Error>!
 from
@@ -95,9 +95,9 @@ from
 ### Example — mutable (in-place)
 
 ```prove
-Array creates array
-Array reads get
-Array transforms set
+  Array creates array
+  Array reads get
+  Array transforms set
 
 // Sieve of Eratosthenes: count primes up to limit
 reads count_primes(limit Integer) Integer
@@ -120,8 +120,8 @@ The `:[Mutable]` annotation tells the compiler to use in-place mutation — no i
 
 ```prove
 // These are equivalent:
-Array creates array
-Sequence creates array
+  Array creates array
+  Sequence creates array
 ```
 
 ---
@@ -168,7 +168,7 @@ overloads for `List<Integer>` and `List<String>`.
 | `creates` | `range(start Integer, end Integer) List<Integer>` | Integer sequence [start, end) |
 
 ```prove
-List reads length first transforms sort reverse creates range
+  List reads length first transforms sort reverse creates range
 
 reads top_three() List<Integer>
 from
@@ -244,9 +244,9 @@ result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemot
 | `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
 
 ```prove
-Store outputs store inputs table lookup validates store table transforms diff patch merge
-Store reads integrity merged conflicts outputs rollback inputs version
-Store validates merged types Store StoreTable Conflict Resolution MergeResult
+  Store outputs store inputs table lookup validates store table transforms diff patch merge
+  Store reads integrity merged conflicts outputs rollback inputs version
+  Store validates merged types Store StoreTable Conflict Resolution MergeResult
 
 inputs load_table(path String, name String) StoreTable!
 from
@@ -259,10 +259,10 @@ from
 A `[Lookup]` type with `runtime` instead of `where` is backed by a `StoreTable`. The type definition declares the column schema; data is populated at runtime. See [Store-Backed Lookup](../types.md#store-backed-lookup-runtime) for the type system details.
 
 ```prove
-type Color:[Lookup] is String | Integer
-  runtime
+  type Color:[Lookup] is String | Integer
+    runtime
 
-Store outputs store inputs table validates store table
+  Store outputs store inputs table validates store table
     types Store StoreTable
 
 main()!

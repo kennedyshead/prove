@@ -30,7 +30,7 @@ All classification functions take a single `Character` and return `Boolean`.
 | `reads` | `at(string String, index Integer) Character` | Character at index (0-based, bounds-checked) |
 
 ```prove
-Character validates alpha digit space reads at
+  Character validates alpha digit space reads at
 
 validates is_identifier_start(c Character)
 from
@@ -86,8 +86,8 @@ The `StringBuilder` type allows efficient incremental string construction.
 | `reads` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
-Text reads length index validates contains starts transforms split join trim replace
-Text creates builder transforms string reads build
+  Text reads length index validates contains starts transforms split join trim replace
+  Text creates builder transforms string reads build
 
 reads word_count(text String) Integer
 from
