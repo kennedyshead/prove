@@ -26,6 +26,7 @@ from prove.ast_nodes import (
     IdentifierExpr,
     IntegerLit,
     Module,
+    ModuleDecl,
     NearMiss,
     RawStringLit,
     StringLit,
@@ -90,6 +91,10 @@ class TestGenerator:
         for decl in self._module.declarations:
             if isinstance(decl, FunctionDef):
                 self._generate_function_tests(decl, suite)
+            elif isinstance(decl, ModuleDecl):
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        self._generate_function_tests(inner, suite)
 
         return suite
 
