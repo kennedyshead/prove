@@ -133,7 +133,10 @@ def _ast_type_str(te: object) -> str:
         args = ", ".join(_ast_type_str(a) for a in te.args)
         return f"{te.name}<{args}>"
     if isinstance(te, ModifiedType):
-        mods = " ".join(m.value for m in te.modifiers)
+        parts = []
+        for m in te.modifiers:
+            parts.append(f"{m.name}:{m.value}" if m.name else m.value)
+        mods = " ".join(parts)
         return f"{te.name}:[{mods}]"
     return str(te)
 

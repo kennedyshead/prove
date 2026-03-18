@@ -99,7 +99,7 @@ class TypeCheckMixin:
         if isinstance(expr, RegexLit):
             return STRING  # regex patterns are strings at type level
         if isinstance(expr, RawStringLit):
-            return PrimitiveType("String", ("Reg",))
+            return PrimitiveType("String", ((None, "Reg"),))
         if isinstance(expr, PathLit):
             return STRING  # path literals are string-typed
         if isinstance(expr, TripleStringLit):
@@ -390,38 +390,37 @@ class TypeCheckMixin:
                 )
             )
 
-        # Check for closure captures (not supported in v0.1)
-        self._check_lambda_captures(expr.body, param_names, expr.span)
+        # Collect closure captures (stored for emitter ctx struct generation)
+        captures: list[str] = []
+        self._collect_lambda_captures(expr.body, param_names, captures)
+        self._lambda_captures[id(expr)] = captures
 
         body_type = self._infer_expr(expr.body)
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
 
-    def _check_lambda_captures(
+    def _collect_lambda_captures(
         self,
         expr: Expr,
         param_names: set[str],
-        span: Span,
+        captures: list[str],
     ) -> None:
-        """Detect closure captures in lambda body (not supported)."""
+        """Walk lambda body; collect names of captured enclosing-scope locals."""
         if isinstance(expr, IdentifierExpr):
-            if expr.name not in param_names:
-                # Check if it's a local variable from enclosing scope
+            if expr.name not in param_names and expr.name not in captures:
                 sym = self.symbols.lookup(expr.name)
                 if sym is not None and sym.kind == SymbolKind.VARIABLE:
-                    self._error(
-                        "E364",
-                        f"lambda captures variable '{expr.name}' (closures not supported)",
-                        span,
-                    )
+                    captures.append(expr.name)
         elif isinstance(expr, BinaryExpr):
-            self._check_lambda_captures(expr.left, param_names, span)
-            self._check_lambda_captures(expr.right, param_names, span)
+            self._collect_lambda_captures(expr.left, param_names, captures)
+            self._collect_lambda_captures(expr.right, param_names, captures)
         elif isinstance(expr, UnaryExpr):
-            self._check_lambda_captures(expr.operand, param_names, span)
+            self._collect_lambda_captures(expr.operand, param_names, captures)
         elif isinstance(expr, CallExpr):
             for arg in expr.args:
-                self._check_lambda_captures(arg, param_names, span)
+                self._collect_lambda_captures(arg, param_names, captures)
+        elif isinstance(expr, FieldExpr):
+            self._collect_lambda_captures(expr.obj, param_names, captures)
 
     def _infer_index(self, expr: IndexExpr) -> Type:
         obj_type = self._infer_expr(expr.obj)
@@ -838,7 +837,7 @@ class TypeCheckMixin:
                 return ListType(args[0])
             # Special-case Array<T> → ArrayType
             if type_expr.name == "Array" and len(args) == 1:
-                mods = tuple(m.value for m in type_expr.modifiers)
+                mods = tuple((m.name, m.value) for m in type_expr.modifiers)
                 if mods:
                     return ArrayType(args[0], modifiers=mods)
                 return ArrayType(args[0])
@@ -859,7 +858,7 @@ class TypeCheckMixin:
                 self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
-            mods = tuple(m.value for m in type_expr.modifiers)
+            mods = tuple((m.name, m.value) for m in type_expr.modifiers)
             return PrimitiveType(type_expr.name, mods)
 
         return ERROR_TY

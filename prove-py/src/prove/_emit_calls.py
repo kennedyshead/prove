@@ -1037,8 +1037,8 @@ class CallEmitterMixin:
             self._locals = saved
 
         # Emit lambda with correct types
-        fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
-        return f"prove_list_map({list_arg}, {fn_name})"
+        fn_name, ctx_arg = self._emit_hof_lambda(fn_expr, elem_type, "map")
+        return f"prove_list_map({list_arg}, {fn_name}, {ctx_arg})"
 
     def _emit_hof_par_map(self, expr: CallExpr) -> str:
         """Emit prove_par_map(list, fn, 0) — parallel map with auto-detect workers."""
@@ -1050,8 +1050,8 @@ class CallEmitterMixin:
         if isinstance(coll_type, ListType):
             elem_type = coll_type.element
 
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "map")
-        return f"prove_par_map({list_arg}, {fn_name}, 0)"
+        fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "map")
+        return f"prove_par_map({list_arg}, {fn_name}, {ctx_arg}, 0)"
 
     def _emit_hof_par_filter(self, expr: CallExpr) -> str:
         """Emit prove_par_filter(list, pred, 0) — parallel filter with auto-detect workers."""
@@ -1063,8 +1063,8 @@ class CallEmitterMixin:
         if isinstance(coll_type, ListType):
             elem_type = coll_type.element
 
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
-        return f"prove_par_filter({list_arg}, {fn_name}, 0)"
+        fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_par_filter({list_arg}, {fn_name}, {ctx_arg}, 0)"
 
     def _emit_hof_par_reduce(self, expr: CallExpr) -> str:
         """Emit prove_par_reduce(list, init, fn, 0) — parallel reduce with auto-detect workers."""
@@ -1084,7 +1084,7 @@ class CallEmitterMixin:
         accum_val = self._emit_expr(expr.args[1])
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
-        fn_name = self._emit_hof_lambda(
+        fn_name, ctx_arg = self._emit_hof_lambda(
             expr.args[2],
             elem_type,
             "reduce",
@@ -1092,7 +1092,10 @@ class CallEmitterMixin:
         )
         init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()
-        self._line(f"void *{result_tmp} = prove_par_reduce({list_arg}, {init_cast}, {fn_name}, 0);")
+        self._line(
+            f"void *{result_tmp} = prove_par_reduce("
+            f"{list_arg}, {init_cast}, {fn_name}, {ctx_arg}, 0);"
+        )
         return self._hof_unbox(result_tmp, accum_ct)
 
     def _emit_hof_par_each(self, expr: CallExpr) -> str:
@@ -1105,8 +1108,8 @@ class CallEmitterMixin:
         if isinstance(coll_type, ListType):
             elem_type = coll_type.element
 
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "each")
-        return f"prove_par_each({list_arg}, {fn_name}, 0)"
+        fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "each")
+        return f"prove_par_each({list_arg}, {fn_name}, {ctx_arg}, 0)"
 
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
@@ -1164,8 +1167,8 @@ class CallEmitterMixin:
             return "(void)0"
         # Non-lambda: fall back to prove_list_each
         self._needed_headers.add("prove_hof.h")
-        fn_name = self._emit_hof_lambda(lam, elem_type, "each")
-        return f"prove_list_each({list_arg}, {fn_name})"
+        fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "each")
+        return f"prove_list_each({list_arg}, {fn_name}, {ctx_arg})"
 
     def _emit_hof_filter(self, expr: CallExpr) -> str:
         """Emit prove_list_filter or prove_array_filter depending on collection type."""
@@ -1181,8 +1184,8 @@ class CallEmitterMixin:
         if isinstance(coll_type, ListType):
             elem_type = coll_type.element
 
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
-        return f"prove_list_filter({list_arg}, {fn_name})"
+        fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
 
     @staticmethod
     def _collect_string_literals(expr: Expr) -> set[str]:
@@ -1285,7 +1288,7 @@ class CallEmitterMixin:
         accum_val = self._emit_expr(expr.args[1])
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
-        fn_name = self._emit_hof_lambda(
+        fn_name, ctx_arg = self._emit_hof_lambda(
             callback,
             elem_type,
             "reduce",
@@ -1293,7 +1296,10 @@ class CallEmitterMixin:
         )
         init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()
-        self._line(f"void *{result_tmp} = prove_list_reduce({list_arg}, {init_cast}, {fn_name});")
+        self._line(
+            f"void *{result_tmp} = prove_list_reduce("
+            f"{list_arg}, {init_cast}, {fn_name}, {ctx_arg});"
+        )
         return self._hof_unbox(result_tmp, accum_ct)
 
     def _emit_verb_lambda(self, expr: LambdaExpr, func_type: FunctionType) -> str:
@@ -1382,6 +1388,40 @@ class CallEmitterMixin:
                 result.append(f"{param}{accessor}{fname}")
         return result
 
+    def _collect_emitter_captures(
+        self,
+        body: Expr,
+        param_names: set[str],
+        captures: list[str],
+    ) -> None:
+        """Walk a lambda body to find references to enclosing local variables."""
+        from prove.ast_nodes import (
+            BinaryExpr,
+            CallExpr,
+            FieldExpr,
+            IdentifierExpr,
+            UnaryExpr,
+        )
+
+        if isinstance(body, IdentifierExpr):
+            if (
+                body.name not in param_names
+                and body.name not in captures
+                and body.name in self._locals
+            ):
+                captures.append(body.name)
+        elif isinstance(body, BinaryExpr):
+            self._collect_emitter_captures(body.left, param_names, captures)
+            self._collect_emitter_captures(body.right, param_names, captures)
+        elif isinstance(body, CallExpr):
+            self._collect_emitter_captures(body.func, param_names, captures)
+            for arg in body.args:
+                self._collect_emitter_captures(arg, param_names, captures)
+        elif isinstance(body, FieldExpr):
+            self._collect_emitter_captures(body.obj, param_names, captures)
+        elif isinstance(body, UnaryExpr):
+            self._collect_emitter_captures(body.operand, param_names, captures)
+
     def _emit_hof_lambda(
         self,
         expr: Expr,
@@ -1389,8 +1429,12 @@ class CallEmitterMixin:
         kind: str,
         *,
         accum_type: Type | None = None,
-    ) -> str:
-        """Emit a lambda for HOF use with correct C signature."""
+    ) -> tuple[str, str]:
+        """Emit a lambda for HOF use with correct C signature.
+
+        Returns (fn_name, ctx_arg) where ctx_arg is "NULL" when there are
+        no captures, or "&_ctx_N" after emitting a stack-allocated ctx struct.
+        """
         if isinstance(expr, ValidExpr) and expr.args is None and kind == "filter":
             # valid error → wrap validates function as filter predicate
             sig = self._symbols.resolve_function_any(expr.name)
@@ -1400,13 +1444,14 @@ class CallEmitterMixin:
             self._tmp_counter += 1
             elem_ct = map_type(elem_type)
             lam = (
-                f"static bool {wrapper}(void *_arg) {{\n"
+                f"static bool {wrapper}(void *_arg, void *_ctx) {{\n"
+                f"    (void)_ctx;\n"
                 f"    {elem_ct.decl} _x = {self._hof_unbox('_arg', elem_ct)};\n"
                 f"    return {fn}(_x);\n"
                 f"}}\n"
             )
             self._lambdas.append(lam)
-            return wrapper
+            return wrapper, "NULL"
         if not isinstance(expr, LambdaExpr):
             # Not a lambda — resolve function reference and generate wrapper
             if isinstance(expr, IdentifierExpr) and kind in ("map", "filter"):
@@ -1438,23 +1483,25 @@ class CallEmitterMixin:
                     if kind == "map":
                         ret_box = self._hof_box(f"{c_fn}(_x)", ret_ct)
                         lam = (
-                            f"static void *{wrapper}(void *_arg) {{\n"
+                            f"static void *{wrapper}(void *_arg, void *_ctx) {{\n"
+                            f"    (void)_ctx;\n"
                             f"    {elem_ct.decl} _x = {elem_unbox};\n"
                             f"    return {ret_box};\n"
                             f"}}\n"
                         )
                     elif kind == "filter":
                         lam = (
-                            f"static bool {wrapper}(void *_arg) {{\n"
+                            f"static bool {wrapper}(void *_arg, void *_ctx) {{\n"
+                            f"    (void)_ctx;\n"
                             f"    {elem_ct.decl} _x = {elem_unbox};\n"
                             f"    return {c_fn}(_x);\n"
                             f"}}\n"
                         )
                     else:
-                        return self._emit_expr(expr)
+                        return self._emit_expr(expr), "NULL"
                     self._lambdas.append(lam)
-                    return wrapper
-            return self._emit_expr(expr)
+                    return wrapper, "NULL"
+            return self._emit_expr(expr), "NULL"
 
         name = f"_lambda_{self._tmp_counter}"
         self._tmp_counter += 1
@@ -1463,8 +1510,42 @@ class CallEmitterMixin:
         elem_unbox_arg = self._hof_unbox("_arg", elem_ct)
         elem_unbox_elem = self._hof_unbox("_elem", elem_ct)
 
+        # Collect captures for ctx struct generation.
+        # Walk lambda body to find references to enclosing locals.
+        captures = self._lambda_captures.get(id(expr))
+        if captures is None:
+            captures = []
+            param_set = set(expr.params) if expr.params else set()
+            self._collect_emitter_captures(expr.body, param_set, captures)
+            self._lambda_captures[id(expr)] = captures
+        has_ctx = bool(captures)
+        ctx_struct = ""
+        ctx_unpack = ""
+        if has_ctx:
+            struct_name = f"_ctx_{name}"
+            fields = []
+            for c in captures:
+                cap_type = self._locals.get(c)
+                if cap_type is not None:
+                    cap_ct = map_type(cap_type)
+                    fields.append(f"    {cap_ct.decl} {c};")
+                else:
+                    fields.append(f"    int64_t {c};")
+            ctx_struct = f"struct {struct_name} {{\n" + "\n".join(fields) + "\n};\n"
+            self._lambdas.append(ctx_struct)
+            unpack_lines = [f"    struct {struct_name} *_c = (struct {struct_name} *)_ctx;"]
+            for c in captures:
+                cap_type = self._locals.get(c)
+                if cap_type is not None:
+                    cap_ct = map_type(cap_type)
+                    unpack_lines.append(f"    {cap_ct.decl} {c} = _c->{c};")
+                else:
+                    unpack_lines.append(f"    int64_t {c} = _c->{c};")
+            ctx_unpack = "\n".join(unpack_lines) + "\n"
+        void_ctx = "" if has_ctx else "    (void)_ctx;\n"
+
         if kind == "map":
-            # void *fn(void *_arg)
+            # void *fn(void *_arg, void *_ctx)
             param = expr.params[0] if expr.params else "_x"
             # Save and set locals for lambda body
             saved_locals = dict(self._locals)
@@ -1478,14 +1559,16 @@ class CallEmitterMixin:
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
             retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
-                f"static void *{name}(void *_arg) {{\n"
+                f"static void *{name}(void *_arg, void *_ctx) {{\n"
+                f"{void_ctx}"
+                f"{ctx_unpack}"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"{retain_lines}"
                 f"    return {body_box};\n"
                 f"}}\n"
             )
         elif kind == "filter":
-            # bool fn(void *_arg)
+            # bool fn(void *_arg, void *_ctx)
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
@@ -1494,14 +1577,16 @@ class CallEmitterMixin:
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
             retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
-                f"static bool {name}(void *_arg) {{\n"
+                f"static bool {name}(void *_arg, void *_ctx) {{\n"
+                f"{void_ctx}"
+                f"{ctx_unpack}"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"{retain_lines}"
                 f"    return {body_code};\n"
                 f"}}\n"
             )
         elif kind == "reduce":
-            # void *fn(void *_accum, void *_elem)
+            # void *fn(void *_accum, void *_elem, void *_ctx)
             accum_param = expr.params[0] if len(expr.params) > 0 else "_acc"
             elem_param = expr.params[1] if len(expr.params) > 1 else "_el"
             accum_ct = map_type(accum_type) if accum_type else elem_ct
@@ -1513,14 +1598,16 @@ class CallEmitterMixin:
             self._locals = saved_locals
             ret_box = self._hof_box(body_code, accum_ct)
             lam = (
-                f"static void *{name}(void *_accum, void *_elem) {{\n"
+                f"static void *{name}(void *_accum, void *_elem, void *_ctx) {{\n"
+                f"{void_ctx}"
+                f"{ctx_unpack}"
                 f"    {accum_ct.decl} {accum_param} = {accum_unbox};\n"
                 f"    {elem_ct.decl} {elem_param} = {elem_unbox_elem};\n"
                 f"    return {ret_box};\n"
                 f"}}\n"
             )
         elif kind == "each":
-            # void fn(void *_arg)
+            # void fn(void *_arg, void *_ctx)
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
@@ -1529,17 +1616,31 @@ class CallEmitterMixin:
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
             retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
             lam = (
-                f"static void {name}(void *_arg) {{\n"
+                f"static void {name}(void *_arg, void *_ctx) {{\n"
+                f"{void_ctx}"
+                f"{ctx_unpack}"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"{retain_lines}"
                 f"    {body_code};\n"
                 f"}}\n"
             )
         else:
-            return self._emit_expr(expr)
+            return self._emit_expr(expr), "NULL"
 
         self._lambdas.append(lam)
-        return name
+
+        # Emit ctx struct initialization at the call site when captures exist
+        ctx_arg = "NULL"
+        if has_ctx:
+            struct_name = f"_ctx_{name}"
+            ctx_var = f"_ctxv_{self._tmp_counter}"
+            self._tmp_counter += 1
+            self._line(f"struct {struct_name} {ctx_var};")
+            for c in captures:
+                self._line(f"{ctx_var}.{c} = {c};")
+            ctx_arg = f"&{ctx_var}"
+
+        return name, ctx_arg
 
     # ── Array HOF emission ──────────────────────────────────────
 
@@ -1637,8 +1738,8 @@ class CallEmitterMixin:
             return result_tmp
 
         # Non-lambda: use runtime function
-        fn_name = self._emit_hof_lambda(fn_expr, elem_type, "map")
-        return f"prove_array_map({arr_arg}, {fn_name}, sizeof({result_ct.decl}))"
+        fn_name, ctx_arg = self._emit_hof_lambda(fn_expr, elem_type, "map")
+        return f"prove_array_map({arr_arg}, {fn_name}, {ctx_arg}, sizeof({result_ct.decl}))"
 
     def _emit_array_hof_each(self, expr: CallExpr, arr_type: ArrayType) -> str:
         """Emit each over Array<T> as inline loop."""
@@ -1668,8 +1769,8 @@ class CallEmitterMixin:
 
         # Non-lambda: use runtime function
         self._needed_headers.add("prove_hof.h")
-        fn_name = self._emit_hof_lambda(lam, elem_type, "each")
-        return f"prove_array_each({arr_arg}, {fn_name})"
+        fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "each")
+        return f"prove_array_each({arr_arg}, {fn_name}, {ctx_arg})"
 
     def _emit_array_hof_filter(self, expr: CallExpr, arr_type: ArrayType) -> str:
         """Emit filter over Array<T> — returns Prove_List* (unknown output length)."""
@@ -1677,8 +1778,8 @@ class CallEmitterMixin:
         arr_arg = self._emit_expr(expr.args[0])
         elem_type = arr_type.element if arr_type.element else INTEGER
 
-        fn_name = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
-        return f"prove_array_filter({arr_arg}, {fn_name})"
+        fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
+        return f"prove_array_filter({arr_arg}, {fn_name}, {ctx_arg})"
 
     def _emit_array_hof_reduce(self, expr: CallExpr, arr_type: ArrayType) -> str:
         """Emit reduce over Array<T> as inline for-loop when callback is a lambda."""
@@ -1734,10 +1835,15 @@ class CallEmitterMixin:
         accum_val = self._emit_expr(expr.args[1])
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
-        fn_name = self._emit_hof_lambda(callback, elem_type, "reduce", accum_type=accum_type)
+        fn_name, ctx_arg = self._emit_hof_lambda(
+            callback, elem_type, "reduce", accum_type=accum_type,
+        )
         init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()
-        self._line(f"void *{result_tmp} = prove_array_reduce({arr_arg}, {init_cast}, {fn_name});")
+        self._line(
+            f"void *{result_tmp} = prove_array_reduce("
+            f"{arr_arg}, {init_cast}, {fn_name}, {ctx_arg});"
+        )
         return self._hof_unbox(result_tmp, accum_ct)
 
     # ── Fused iterator emission ─────────────────────────────────

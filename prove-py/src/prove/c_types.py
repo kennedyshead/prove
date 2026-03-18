@@ -45,22 +45,22 @@ _INT_SIZE_MAP: dict[tuple[bool, int], str] = {
 }
 
 
-def _map_integer(modifiers: tuple[str, ...]) -> CType:
-    unsigned = "Unsigned" in modifiers
+def _map_integer(modifiers: tuple[tuple[str | None, str], ...]) -> CType:
+    unsigned = any(v == "Unsigned" for (_, v) in modifiers)
     size = 64  # default
-    for m in modifiers:
-        if m.isdigit():
-            size = int(m)
+    for _, v in modifiers:
+        if v.isdigit():
+            size = int(v)
     key = (unsigned, size)
     c_type = _INT_SIZE_MAP.get(key, "int64_t")
     return CType(c_type, is_pointer=False, header=None)
 
 
-def _map_float(modifiers: tuple[str, ...]) -> CType:
-    for m in modifiers:
-        if m == "32":
+def _map_float(modifiers: tuple[tuple[str | None, str], ...]) -> CType:
+    for _, v in modifiers:
+        if v == "32":
             return CType("float", is_pointer=False, header=None)
-        if m == "128":
+        if v == "128":
             return CType("long double", is_pointer=False, header=None)
     return CType("double", is_pointer=False, header=None)
 

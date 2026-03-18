@@ -19,8 +19,8 @@ class TestParEachSequential:
             static int64_t counter = 0;
             static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-            static void increment(void *x) {
-                (void)x;
+            static void increment(void *x, void *ctx) {
+                (void)x; (void)ctx;
                 pthread_mutex_lock(&mu);
                 counter++;
                 pthread_mutex_unlock(&mu);
@@ -31,7 +31,7 @@ class TestParEachSequential:
                 for (int i = 0; i < 5; i++)
                     prove_list_push(l, (void *)(intptr_t)i);
 
-                prove_par_each(l, increment, 1);
+                prove_par_each(l, increment, NULL, 1);
                 printf("%lld\\n", (long long)counter);
                 return 0;
             }
@@ -50,13 +50,13 @@ class TestParEachSequential:
             #include <stdio.h>
             #include <stdint.h>
 
-            static void noop(void *x) {
-                (void)x;
+            static void noop(void *x, void *ctx) {
+                (void)x; (void)ctx;
             }
 
             int main(void) {
                 Prove_List *l = prove_list_new(0);
-                prove_par_each(l, noop, 4);
+                prove_par_each(l, noop, NULL, 4);
                 printf("ok\\n");
                 return 0;
             }
@@ -81,8 +81,8 @@ class TestParEachParallel:
             static int64_t counter = 0;
             static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-            static void increment(void *x) {
-                (void)x;
+            static void increment(void *x, void *ctx) {
+                (void)x; (void)ctx;
                 pthread_mutex_lock(&mu);
                 counter++;
                 pthread_mutex_unlock(&mu);
@@ -93,7 +93,7 @@ class TestParEachParallel:
                 for (int i = 0; i < 20; i++)
                     prove_list_push(l, (void *)(intptr_t)i);
 
-                prove_par_each(l, increment, 4);
+                prove_par_each(l, increment, NULL, 4);
                 printf("%lld\\n", (long long)counter);
                 return 0;
             }
@@ -116,8 +116,8 @@ class TestParEachParallel:
             static int64_t counter = 0;
             static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 
-            static void increment(void *x) {
-                (void)x;
+            static void increment(void *x, void *ctx) {
+                (void)x; (void)ctx;
                 pthread_mutex_lock(&mu);
                 counter++;
                 pthread_mutex_unlock(&mu);
@@ -128,7 +128,7 @@ class TestParEachParallel:
                 for (int i = 0; i < 16; i++)
                     prove_list_push(l, (void *)(intptr_t)i);
 
-                prove_par_each(l, increment, 0);
+                prove_par_each(l, increment, NULL, 0);
                 printf("%lld\\n", (long long)counter);
                 return 0;
             }

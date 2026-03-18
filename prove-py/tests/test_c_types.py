@@ -25,12 +25,12 @@ class TestMapType:
         assert ct.is_pointer is False
 
     def test_integer_32_unsigned(self):
-        ty = PrimitiveType("Integer", ("32", "Unsigned"))
+        ty = PrimitiveType("Integer", ((None, "32"), (None, "Unsigned")))
         ct = map_type(ty)
         assert ct.decl == "uint32_t"
 
     def test_integer_16(self):
-        ty = PrimitiveType("Integer", ("16",))
+        ty = PrimitiveType("Integer", ((None, "16"),))
         ct = map_type(ty)
         assert ct.decl == "int16_t"
 
@@ -39,7 +39,7 @@ class TestMapType:
         assert ct.decl == "double"
 
     def test_float_32(self):
-        ty = PrimitiveType("Float", ("32",))
+        ty = PrimitiveType("Float", ((None, "32"),))
         ct = map_type(ty)
         assert ct.decl == "float"
 

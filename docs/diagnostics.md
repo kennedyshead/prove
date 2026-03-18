@@ -273,9 +273,9 @@ A function with a pure verb cannot call the built-in IO function `sleep`. Other 
 
 A function with a pure verb cannot call a function that uses an IO verb (`inputs` or `outputs`).
 
-### E364 — Lambda captures variable
+### E364 — Lambda captures variable (deprecated)
 
-Lambdas cannot reference variables from an enclosing scope (closures not supported). All values must be passed as arguments.
+Lambdas now support capturing immutable variables from an enclosing scope. This error code is no longer emitted. Captured values are passed via a compiler-generated context struct.
 
 ### E365 — `matches` verb requires matchable first parameter
 
@@ -607,6 +607,18 @@ The `event_type` annotation was used on a function that is not a `listens` verb.
 ### E406 — `listens` missing `event_type` annotation
 
 A `listens` verb was declared without an `event_type` annotation. The `event_type` annotation is required to declare the algebraic type that the dispatcher matches on.
+
+### E407 — Decimal literal exceeds Scale:N precision
+
+A decimal literal assigned to a `Decimal:[Scale:N]` variable has more decimal places than the scale allows. For example, assigning `3.141` to `Decimal:[Scale:2]` exceeds the allowed 2 decimal places.
+
+### E408 — Scale mismatch between Decimal types
+
+An assignment or comparison between two `Decimal:[Scale:N]` types with different scale values. For example, assigning a `Decimal:[Scale:3]` to a `Decimal:[Scale:2]` variable is not allowed without explicit conversion.
+
+### E409 — Mutable capture in parallel lambda
+
+A lambda passed to a parallel HOF (`par_map`, `par_filter`, `par_reduce`) captures a mutable variable from the enclosing scope. Parallel lambdas must only capture immutable values to prevent data races.
 
 ### E410 — Tail recursion not supported in comptime
 

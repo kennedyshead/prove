@@ -148,7 +148,8 @@ class TestArrayHOF:
             #include "prove_array.h"
             #include <stdio.h>
             static int64_t total = 0;
-            static void add_val(void *v) {
+            static void add_val(void *v, void *ctx) {
+                (void)ctx;
                 total += (int64_t)(intptr_t)v;
             }
             int main(void) {
@@ -157,7 +158,7 @@ class TestArrayHOF:
                 prove_array_set_mut_int(arr, 0, 10);
                 prove_array_set_mut_int(arr, 1, 20);
                 prove_array_set_mut_int(arr, 2, 30);
-                prove_array_each(arr, add_val);
+                prove_array_each(arr, add_val, NULL);
                 printf("%lld\\n", (long long)total);
                 prove_runtime_cleanup();
                 return 0;
@@ -171,7 +172,8 @@ class TestArrayHOF:
         code = textwrap.dedent("""\
             #include "prove_array.h"
             #include <stdio.h>
-            static void *double_val(void *v) {
+            static void *double_val(void *v, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)v * 2);
             }
             int main(void) {
@@ -180,7 +182,7 @@ class TestArrayHOF:
                 prove_array_set_mut_int(arr, 0, 5);
                 prove_array_set_mut_int(arr, 1, 10);
                 prove_array_set_mut_int(arr, 2, 15);
-                Prove_Array *mapped = prove_array_map(arr, double_val, sizeof(int64_t));
+                Prove_Array *mapped = prove_array_map(arr, double_val, NULL, sizeof(int64_t));
                 for (int64_t i = 0; i < mapped->length; i++) {
                     printf("%lld ", (long long)prove_array_get_int(mapped, i));
                 }
@@ -197,7 +199,8 @@ class TestArrayHOF:
         code = textwrap.dedent("""\
             #include "prove_array.h"
             #include <stdio.h>
-            static void *sum_fn(void *accum, void *elem) {
+            static void *sum_fn(void *accum, void *elem, void *ctx) {
+                (void)ctx;
                 return (void *)((intptr_t)accum + (intptr_t)elem);
             }
             int main(void) {
@@ -207,7 +210,7 @@ class TestArrayHOF:
                 prove_array_set_mut_int(arr, 1, 2);
                 prove_array_set_mut_int(arr, 2, 3);
                 prove_array_set_mut_int(arr, 3, 4);
-                void *result = prove_array_reduce(arr, (void *)0, sum_fn);
+                void *result = prove_array_reduce(arr, (void *)0, sum_fn, NULL);
                 printf("%lld\\n", (long long)(int64_t)(intptr_t)result);
                 prove_runtime_cleanup();
                 return 0;
@@ -221,7 +224,8 @@ class TestArrayHOF:
         code = textwrap.dedent("""\
             #include "prove_array.h"
             #include <stdio.h>
-            static bool is_even(void *v) {
+            static bool is_even(void *v, void *ctx) {
+                (void)ctx;
                 return ((int64_t)(intptr_t)v % 2) == 0;
             }
             int main(void) {
@@ -229,7 +233,7 @@ class TestArrayHOF:
                 Prove_Array *arr = prove_array_new_int(5, 0);
                 for (int64_t i = 0; i < 5; i++)
                     prove_array_set_mut_int(arr, i, i + 1);
-                Prove_List *filtered = prove_array_filter(arr, is_even);
+                Prove_List *filtered = prove_array_filter(arr, is_even, NULL);
                 printf("%lld:", (long long)prove_list_len(filtered));
                 for (int64_t i = 0; i < prove_list_len(filtered); i++) {
                     printf(" %lld", (long long)(int64_t)(intptr_t)prove_list_get(filtered, i));
@@ -247,11 +251,11 @@ class TestArrayHOF:
         code = textwrap.dedent("""\
             #include "prove_array.h"
             #include <stdio.h>
-            static void *noop(void *v) { return v; }
+            static void *noop(void *v, void *ctx) { (void)ctx; return v; }
             int main(void) {
                 prove_runtime_init();
                 Prove_Array *arr = prove_array_new_int(0, 0);
-                Prove_Array *mapped = prove_array_map(arr, noop, sizeof(int64_t));
+                Prove_Array *mapped = prove_array_map(arr, noop, NULL, sizeof(int64_t));
                 printf("%lld\\n", (long long)mapped->length);
                 prove_runtime_cleanup();
                 return 0;

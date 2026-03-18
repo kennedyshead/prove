@@ -6,9 +6,9 @@
 #include <stdbool.h>
 
 /* Function pointer types for parallel HOFs. */
-typedef void *(*Prove_MapFn)(void *);
-typedef bool  (*Prove_FilterFn)(void *);
-typedef void *(*Prove_ReduceFn)(void *accum, void *elem);
+typedef void *(*Prove_MapFn)(void *, void *ctx);
+typedef bool  (*Prove_FilterFn)(void *, void *ctx);
+typedef void *(*Prove_ReduceFn)(void *accum, void *elem, void *ctx);
 
 /* Parallel map over a list.
  *
@@ -20,7 +20,7 @@ typedef void *(*Prove_ReduceFn)(void *accum, void *elem);
  * Pure functions only — no shared mutable state allowed (enforced by the
  * Prove type system, not by this runtime).
  */
-Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers);
+Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, void *ctx, int64_t num_workers);
 
 /* Parallel filter over a list.
  *
@@ -28,7 +28,7 @@ Prove_List *prove_par_map(Prove_List *list, Prove_MapFn fn, int64_t num_workers)
  * When num_workers == 0, auto-detects based on available CPU cores.
  * Order is preserved.
  */
-Prove_List *prove_par_filter(Prove_List *list, Prove_FilterFn pred, int64_t num_workers);
+Prove_List *prove_par_filter(Prove_List *list, Prove_FilterFn pred, void *ctx, int64_t num_workers);
 
 /* Parallel reduce over a list.
  *
@@ -36,10 +36,10 @@ Prove_List *prove_par_filter(Prove_List *list, Prove_FilterFn pred, int64_t num_
  * for the element-wise application phase.  The final merge is sequential.
  * When num_workers == 0, auto-detects based on available CPU cores.
  */
-void *prove_par_reduce(Prove_List *list, void *init, Prove_ReduceFn fn, int64_t num_workers);
+void *prove_par_reduce(Prove_List *list, void *init, Prove_ReduceFn fn, void *ctx, int64_t num_workers);
 
-/* Function pointer type for par_each: takes one element, no result. */
-typedef void (*Prove_EachFn)(void *);
+/* Function pointer type for par_each: takes one element + ctx, no result. */
+typedef void (*Prove_EachFn)(void *, void *ctx);
 
 /* Parallel each over a list.
  *
@@ -48,6 +48,6 @@ typedef void (*Prove_EachFn)(void *);
  * Returns void — no result collection.
  * Thread-safety is the caller's responsibility.
  */
-void prove_par_each(Prove_List *list, Prove_EachFn fn, int64_t num_workers);
+void prove_par_each(Prove_List *list, Prove_EachFn fn, void *ctx, int64_t num_workers);
 
 #endif /* PROVE_PAR_MAP_H */

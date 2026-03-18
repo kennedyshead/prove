@@ -260,7 +260,7 @@ def _resolve_type_expr_simple(
         return GenericInstance(type_expr.name, args)
 
     if isinstance(type_expr, ModifiedType):
-        mods = tuple(m.value for m in type_expr.modifiers)
+        mods = tuple((m.name, m.value) for m in type_expr.modifiers)
         return PrimitiveType(type_expr.name, mods)
 
     return ERROR_TY

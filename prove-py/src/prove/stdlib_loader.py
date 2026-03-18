@@ -738,7 +738,7 @@ def _resolve_type_expr(
                 args.append(_resolve_type_name(a.name))
             elif isinstance(a, ModifiedType):
                 base = _resolve_type_name(a.name)
-                mods = tuple(m.value for m in a.modifiers)
+                mods = tuple((m.name, m.value) for m in a.modifiers)
                 if isinstance(base, PrimitiveType):
                     args.append(PrimitiveType(base.name, modifiers=mods))
                 else:
@@ -750,7 +750,7 @@ def _resolve_type_expr(
         if type_expr.name == "List" and len(args) == 1:
             return ListType(args[0])
         if type_expr.name == "Array" and len(args) == 1:
-            mods = tuple(m.value for m in type_expr.modifiers)
+            mods = tuple((m.name, m.value) for m in type_expr.modifiers)
             if mods:
                 return ArrayType(args[0], modifiers=mods)
             return ArrayType(args[0])
@@ -760,7 +760,7 @@ def _resolve_type_expr(
 
     if isinstance(type_expr, ModifiedType):
         base = _resolve_type_name(type_expr.name)
-        mods = tuple(m.value for m in type_expr.modifiers)
+        mods = tuple((m.name, m.value) for m in type_expr.modifiers)
         if isinstance(base, PrimitiveType):
             return PrimitiveType(base.name, modifiers=mods)
         return base

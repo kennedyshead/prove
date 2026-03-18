@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class PrimitiveType:
     name: str
-    modifiers: tuple[str, ...] = ()
+    modifiers: tuple[tuple[str | None, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ class ListType:
 @dataclass(frozen=True)
 class ArrayType:
     element: Type = None  # type: ignore[assignment]
-    modifiers: tuple[str, ...] = ()
+    modifiers: tuple[tuple[str | None, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -219,8 +219,10 @@ def type_name(ty: Type) -> str:
     """Human-readable name for diagnostics."""
     if isinstance(ty, PrimitiveType):
         if ty.modifiers:
-            mods = " ".join(ty.modifiers)
-            return f"{ty.name}:[{mods}]"
+            parts = []
+            for mname, mval in ty.modifiers:
+                parts.append(f"{mname}:{mval}" if mname else mval)
+            return f"{ty.name}:[{' '.join(parts)}]"
         return ty.name
     if isinstance(ty, UnitType):
         return "Unit"
@@ -251,7 +253,10 @@ def type_name(ty: Type) -> str:
     if isinstance(ty, ArrayType):
         name = f"Array<{type_name(ty.element)}>"
         if ty.modifiers:
-            return f"{name}:[{', '.join(ty.modifiers)}]"
+            parts = []
+            for mname, mval in ty.modifiers:
+                parts.append(f"{mname}:{mval}" if mname else mval)
+            return f"{name}:[{', '.join(parts)}]"
         return name
     if isinstance(ty, ErrorType):
         return "<error>"
@@ -395,7 +400,13 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):
-        return expected.name == actual.name
+        if expected.name != actual.name:
+            return False
+        if expected.name == "Decimal":
+            es, as_ = get_scale(expected), get_scale(actual)
+            if es is not None and as_ is not None and es != as_:
+                return False
+        return True
     if isinstance(expected, UnitType):
         return True
     if isinstance(expected, RecordType) and isinstance(actual, RecordType):
@@ -488,31 +499,43 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
 def has_own_modifier(ty: Type) -> bool:
     """Check if a type has the Own (linear) ownership modifier."""
     if isinstance(ty, PrimitiveType):
-        return "Own" in ty.modifiers
+        return any(v == "Own" for (_, v) in ty.modifiers)
     if isinstance(ty, ArrayType):
-        return "Own" in ty.modifiers
+        return any(v == "Own" for (_, v) in ty.modifiers)
     return False
 
 
 def has_mutable_modifier(ty: Type) -> bool:
     """Check if a type has the Mutable modifier."""
     if isinstance(ty, PrimitiveType):
-        return "Mutable" in ty.modifiers
+        return any(v == "Mutable" for (_, v) in ty.modifiers)
     if isinstance(ty, ArrayType):
-        return "Mutable" in ty.modifiers
+        return any(v == "Mutable" for (_, v) in ty.modifiers)
     return False
 
 
 def get_ownership_kind(ty: Type) -> str:
     """Return the ownership kind: 'owned', 'mutable', or 'shared'."""
     if isinstance(ty, PrimitiveType):
-        if "Own" in ty.modifiers:
+        if any(v == "Own" for (_, v) in ty.modifiers):
             return "owned"
-        if "Mutable" in ty.modifiers:
+        if any(v == "Mutable" for (_, v) in ty.modifiers):
             return "mutable"
     if isinstance(ty, ArrayType):
-        if "Own" in ty.modifiers:
+        if any(v == "Own" for (_, v) in ty.modifiers):
             return "owned"
-        if "Mutable" in ty.modifiers:
+        if any(v == "Mutable" for (_, v) in ty.modifiers):
             return "mutable"
     return "shared"
+
+
+def get_scale(ty: Type) -> int | None:
+    """Return the Scale:N value for Decimal:[Scale:N], or None."""
+    if isinstance(ty, PrimitiveType) and ty.name == "Decimal":
+        for mname, mval in ty.modifiers:
+            if mname == "Scale":
+                try:
+                    return int(mval)
+                except ValueError:
+                    return None
+    return None

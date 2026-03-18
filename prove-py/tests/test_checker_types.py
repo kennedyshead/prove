@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from prove.types import (
     BOOLEAN,
+    DECIMAL,
     INTEGER,
     STRING,
     AlgebraicType,
@@ -12,6 +13,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     RefinementType,
+    get_scale,
     type_name,
     types_compatible,
 )
@@ -237,22 +239,22 @@ class TestModifiedTypeCompat:
 
     def test_mutable_primitive_compat_with_record(self):
         rec = RecordType("User", {"name": STRING})
-        prim = PrimitiveType("User", ("Mutable",))
+        prim = PrimitiveType("User", ((None, "Mutable"),))
         assert types_compatible(rec, prim)
 
     def test_record_compat_with_mutable_primitive(self):
         rec = RecordType("User", {"name": STRING})
-        prim = PrimitiveType("User", ("Mutable",))
+        prim = PrimitiveType("User", ((None, "Mutable"),))
         assert types_compatible(prim, rec)
 
     def test_mutable_primitive_compat_with_algebraic(self):
         alg = AlgebraicType("Shape", [])
-        prim = PrimitiveType("Shape", ("Mutable",))
+        prim = PrimitiveType("Shape", ((None, "Mutable"),))
         assert types_compatible(alg, prim)
 
     def test_name_mismatch_still_fails(self):
         rec = RecordType("User", {"name": STRING})
-        prim = PrimitiveType("Admin", ("Mutable",))
+        prim = PrimitiveType("Admin", ((None, "Mutable"),))
         assert not types_compatible(rec, prim)
 
     def test_no_modifiers_still_incompatible(self):
@@ -433,3 +435,96 @@ class TestEffectType:
         t1 = EffectType(INTEGER, frozenset({"IO"}))
         t2 = EffectType(BOOLEAN, frozenset({"IO"}))
         assert not types_compatible(t1, t2)
+
+
+# ── Scale:N enforcement ─────────────────────────────────────────
+
+
+class TestScaleEnforcement:
+    """Scale:N modifier enforcement (E407, E408)."""
+
+    def test_get_scale_with_scale(self):
+        ty = PrimitiveType("Decimal", (("Scale", "2"),))
+        assert get_scale(ty) == 2
+
+    def test_get_scale_without_scale(self):
+        assert get_scale(DECIMAL) is None
+
+    def test_get_scale_non_decimal(self):
+        assert get_scale(INTEGER) is None
+
+    def test_scale_types_compatible_same(self):
+        t1 = PrimitiveType("Decimal", (("Scale", "2"),))
+        t2 = PrimitiveType("Decimal", (("Scale", "2"),))
+        assert types_compatible(t1, t2)
+
+    def test_scale_types_incompatible_different(self):
+        t1 = PrimitiveType("Decimal", (("Scale", "2"),))
+        t2 = PrimitiveType("Decimal", (("Scale", "3"),))
+        assert not types_compatible(t1, t2)
+
+    def test_scale_compatible_with_plain_decimal(self):
+        """Decimal:[Scale:2] is compatible with plain Decimal (no scale)."""
+        t1 = PrimitiveType("Decimal", (("Scale", "2"),))
+        assert types_compatible(t1, DECIMAL)
+
+    def test_type_name_with_scale(self):
+        ty = PrimitiveType("Decimal", (("Scale", "2"),))
+        assert type_name(ty) == "Decimal:[Scale:2]"
+
+    def test_literal_exceeds_scale_e407(self):
+        check_fails(
+            "reads demo() Unit\n"
+            "from\n"
+            "    x as Decimal:[Scale:2] = 3.14159\n",
+            "E407",
+        )
+
+    def test_literal_within_scale_ok(self):
+        check(
+            "reads demo() Unit\n"
+            "from\n"
+            "    x as Decimal:[Scale:2] = 3.14\n",
+        )
+
+    def test_decimal_literal_one_place_scale_ok(self):
+        check(
+            "reads demo() Unit\n"
+            "from\n"
+            "    x as Decimal:[Scale:2] = 3.1\n",
+        )
+
+    def test_scale_mismatch_e408(self):
+        check_fails(
+            "reads demo() Unit\n"
+            "from\n"
+            "    a as Decimal:[Scale:3] = 1.123\n"
+            "    b as Decimal:[Scale:2] = a\n",
+            "E408",
+        )
+
+    def test_plain_decimal_no_scale_check(self):
+        check(
+            "reads demo() Unit\n"
+            "from\n"
+            "    x as Decimal = 3.14159\n",
+        )
+
+
+# ── Lambda capture ──────────────────────────────────────────────
+
+
+class TestLambdaCapture:
+    """Lambda closure capture (replaces E364 rejection)."""
+
+    def test_lambda_without_capture_still_works(self):
+        check(
+            "transforms result(xs List<Value>) List<Value>\n"
+            "from map(xs, |x| x)\n",
+        )
+
+    def test_sequential_lambda_with_capture_ok(self):
+        check(
+            "transforms result(xs List<Value>, factor Integer) List<Value>\n"
+            "from map(xs, |x| x * factor)\n",
+        )

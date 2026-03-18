@@ -111,12 +111,21 @@ from prove.types import (
     TypeVariable,
     UnitType,
     VariantInfo,
+    get_scale,
     has_mutable_modifier,
     has_own_modifier,
     numeric_widen,
     type_name,
     types_compatible,
 )
+
+
+def _count_decimal_places(literal: str) -> int:
+    """Count decimal places in a numeric literal string like '3.14159'."""
+    if "." in literal:
+        return len(literal.split(".")[1].rstrip("0") or "0")
+    return 0
+
 
 # Verbs considered pure (no IO side effects allowed)
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
@@ -328,6 +337,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._verification_status: dict[str, str] = {}
         # Strict verification chain checking (--strict enables W371)
         self._strict: bool = False
+        # Lambda capture tracking: id(LambdaExpr) -> list of captured var names
+        self._lambda_captures: dict[int, list[str]] = {}
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -2151,6 +2162,27 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             )
 
         if expected is not None:
+            # Scale:N enforcement: check decimal literal precision
+            exp_scale = get_scale(expected)
+            if exp_scale is not None and isinstance(vd.value, DecimalLit):
+                places = _count_decimal_places(vd.value.value)
+                if places > exp_scale:
+                    self._error(
+                        "E407",
+                        f"Scale:{exp_scale} requires at most {exp_scale} decimal "
+                        f"place{'s' if exp_scale != 1 else ''}, "
+                        f"but literal '{vd.value.value}' has {places}",
+                        vd.span,
+                    )
+            # Scale:N enforcement: check scale mismatch between Decimal types
+            act_scale = get_scale(inferred)
+            if exp_scale is not None and act_scale is not None and exp_scale != act_scale:
+                self._error(
+                    "E408",
+                    f"cannot assign Decimal:[Scale:{act_scale}] to "
+                    f"Decimal:[Scale:{exp_scale}] without explicit rounding",
+                    vd.span,
+                )
             if not types_compatible(expected, inferred):
                 # Allow StoreTable → store-backed lookup type assignment
                 expected_name = getattr(expected, "name", "")
@@ -2259,7 +2291,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(expr, RegexLit):
             return STRING  # regex patterns are strings at type level
         if isinstance(expr, RawStringLit):
-            return PrimitiveType("String", ("Reg",))
+            return PrimitiveType("String", ((None, "Reg"),))
         if isinstance(expr, PathLit):
             return STRING  # path literals are string-typed
         if isinstance(expr, TripleStringLit):
@@ -2702,8 +2734,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
             )
 
-        # Check for closure captures (not supported in v0.1)
-        self._check_lambda_captures(expr.body, param_names, expr.span)
+        # Collect closure captures (stored for emitter ctx struct generation)
+        captures: list[str] = []
+        self._collect_lambda_captures(expr.body, param_names, captures)
+        self._lambda_captures[id(expr)] = captures
 
         prev = self._inside_lambda
         self._inside_lambda = True
@@ -2714,31 +2748,28 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
 
-    def _check_lambda_captures(
+    def _collect_lambda_captures(
         self,
         expr: Expr,
         param_names: set[str],
-        span: Span,
+        captures: list[str],
     ) -> None:
-        """Detect closure captures in lambda body (not supported)."""
+        """Walk lambda body; collect names of captured enclosing-scope locals."""
         if isinstance(expr, IdentifierExpr):
-            if expr.name not in param_names:
-                # Check if it's a local variable from enclosing scope
+            if expr.name not in param_names and expr.name not in captures:
                 sym = self.symbols.lookup(expr.name)
                 if sym is not None and sym.kind == SymbolKind.VARIABLE:
-                    self._error(
-                        "E364",
-                        f"lambda captures variable '{expr.name}' (closures not supported)",
-                        span,
-                    )
+                    captures.append(expr.name)
         elif isinstance(expr, BinaryExpr):
-            self._check_lambda_captures(expr.left, param_names, span)
-            self._check_lambda_captures(expr.right, param_names, span)
+            self._collect_lambda_captures(expr.left, param_names, captures)
+            self._collect_lambda_captures(expr.right, param_names, captures)
         elif isinstance(expr, UnaryExpr):
-            self._check_lambda_captures(expr.operand, param_names, span)
+            self._collect_lambda_captures(expr.operand, param_names, captures)
         elif isinstance(expr, CallExpr):
             for arg in expr.args:
-                self._check_lambda_captures(arg, param_names, span)
+                self._collect_lambda_captures(arg, param_names, captures)
+        elif isinstance(expr, FieldExpr):
+            self._collect_lambda_captures(expr.obj, param_names, captures)
 
     def _infer_index(self, expr: IndexExpr) -> Type:
         obj_type = self._infer_expr(expr.obj)
@@ -3040,7 +3071,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 return ListType(args[0])
             # Special-case Array<T> → ArrayType
             if type_expr.name == "Array" and len(args) == 1:
-                mods = tuple(m.value for m in type_expr.modifiers)
+                mods = tuple((m.name, m.value) for m in type_expr.modifiers)
                 if mods:
                     return ArrayType(args[0], modifiers=mods)
                 return ArrayType(args[0])
@@ -3070,7 +3101,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._error_undefined_type(type_expr.name, type_expr.span)
                 return ERROR_TY
             self._used_types.add(type_expr.name)
-            mods = tuple(m.value for m in type_expr.modifiers)
+            mods = tuple((m.name, m.value) for m in type_expr.modifiers)
             return PrimitiveType(type_expr.name, mods)
 
         return ERROR_TY
