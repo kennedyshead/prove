@@ -68,6 +68,7 @@ By default, `check` runs **all** available analyses — coherence, refutation ch
 | `--no-challenges` | Skip refutation challenges from `ensures` contracts |
 | `--no-status` | Skip per-module completeness report (todo count vs implemented) |
 | `--no-intent` | Skip `project.intent` coverage verification |
+| `--nlp-status` | Report NLP backend and data store availability, then exit |
 
 When `path` is a `.prv` file, checks that single file. When `path` is a directory, finds `prove.toml` and checks all files in `src/`. When `path` is a `.md` file (with `--md`), checks all fenced Prove blocks.
 

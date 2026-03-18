@@ -511,9 +511,6 @@ Verification:
   ✓ 42 functions with ensures (property tests)
   ✓ 11 validators with near_miss (boundary tests)
   ⚠ 3 functions trusted
-  ✗ 1 unverified in chain → add ensures or trusted
-
-Coverage: 89%
 ```
 
 Functions outside any verification chain and with no callers that have `ensures` are fine without annotations — nobody depends on them contractually.
