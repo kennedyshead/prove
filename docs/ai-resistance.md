@@ -201,10 +201,10 @@ Active profiles:
 
 The compiler generates plausible-but-wrong alternative implementations using its mutation testing engine and requires the programmer to explain (via `why_not`) why they fail.
 
-Run `prove check --challenges` to see unaddressed challenges for functions with `ensures` contracts. Each challenge is a mutation of the function body that might violate the contract:
+Run `prove check` to see unaddressed challenges for functions with `ensures` contracts — refutation challenges run by default. Use `--no-challenges` to skip them. Each challenge is a mutation of the function body that might violate the contract:
 
 ```bash
-$ prove check --challenges
+$ prove check
 
   transforms sort — 3 challenges, 1 addressed:
     [+] swap + to - in comparison
@@ -235,7 +235,7 @@ from
 
 ## Coherence Checking
 
-Run [`prove check --coherence`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
+Run [`prove check`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)) — coherence checking runs by default (skip with `--no-coherence`). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
 
 ```prove
 module UserAuth
