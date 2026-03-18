@@ -19,7 +19,6 @@ on:
 jobs:
   build-stores:
     runs-on: ubuntu-latest
-    container: python:3.11
     steps:
       - name: Checkout
         uses: actions/checkout@v4
