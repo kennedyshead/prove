@@ -25,9 +25,7 @@ module Main
 
 main() Result<Unit, Error>!
 from
-    // Get arguments
     arguments as List<String> = process()
-    // Load config
     load as Result<String, Error> = file(PROVE_TOML)
     config as Config = config(load)
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
