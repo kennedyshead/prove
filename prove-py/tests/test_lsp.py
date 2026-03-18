@@ -9,9 +9,7 @@ from lsprotocol import types as lsp
 from prove.errors import Severity
 from prove.lsp import (
     _SEVERITY_MAP,
-    _ProjectIndexer,
     DocumentState,
-    IntentDocumentState,
     _analyze,
     _analyze_intent,
     _build_import_edit,
@@ -22,6 +20,7 @@ from prove.lsp import (
     _intent_completions,
     _is_e310,
     _is_intent_uri,
+    _ProjectIndexer,
     _types_display,
     completion,
     span_to_range,
@@ -250,11 +249,7 @@ class TestBuildImportEdit:
 
     def test_extend_existing_import(self):
         source = (
-            "module Main\n"
-            "  System outputs console\n"
-            "outputs run() Unit\n"
-            "from\n"
-            '    console("hi")\n'
+            'module Main\n  System outputs console\noutputs run() Unit\nfrom\n    console("hi")\n'
         )
         ds = self._make_ds(source)
         suggestion = ImportSuggestion(module="System", verb="outputs", name="file")
@@ -266,11 +261,7 @@ class TestBuildImportEdit:
 
     def test_already_imported_returns_none(self):
         source = (
-            "module Main\n"
-            "  System outputs console\n"
-            "outputs run() Unit\n"
-            "from\n"
-            '    console("hi")\n'
+            'module Main\n  System outputs console\noutputs run() Unit\nfrom\n    console("hi")\n'
         )
         ds = self._make_ds(source)
         suggestion = ImportSuggestion(module="System", verb="outputs", name="console")
@@ -286,10 +277,7 @@ class TestBuildImportEdit:
     def test_new_import_after_multiline_narrative(self):
         # Regression: import was inserted inside the narrative block
         source = (
-            "module Source\n"
-            '  narrative: """\n'
-            "  Reads all source files through dir inputs,\n"
-            '  """\n'
+            'module Source\n  narrative: """\n  Reads all source files through dir inputs,\n  """\n'
         )
         suggestion = ImportSuggestion(module="Config", verb="types", name="Config")
         edit = _build_import_edit_text(source, suggestion)
@@ -301,10 +289,7 @@ class TestBuildImportEdit:
     def test_new_stdlib_import_after_multiline_narrative(self):
         # Regression: stdlib import (e.g. Pattern reads text) inserted inside narrative
         source = (
-            "module Source\n"
-            '  narrative: """\n'
-            "  Reads all source files through dir inputs,\n"
-            '  """\n'
+            'module Source\n  narrative: """\n  Reads all source files through dir inputs,\n  """\n'
         )
         suggestion = ImportSuggestion(module="Pattern", verb="reads", name="text")
         edit = _build_import_edit_text(source, suggestion)
@@ -314,11 +299,7 @@ class TestBuildImportEdit:
 
     def test_extend_existing_import_different_verb(self):
         source = (
-            "module Main\n"
-            "  System outputs console\n"
-            "outputs run() Unit\n"
-            "from\n"
-            '    console("hi")\n'
+            'module Main\n  System outputs console\noutputs run() Unit\nfrom\n    console("hi")\n'
         )
         ds = self._make_ds(source)
         suggestion = ImportSuggestion(module="System", verb="inputs", name="file")
@@ -372,7 +353,7 @@ class TestCompletion:
         """Stdlib completions must work even when the file cannot parse."""
         _analyze("<test://broken>", "this is not valid prove code\n")
         labels = _complete_labels("<test://broken>")
-        assert any("console" in l for l in labels)
+        assert any("console" in label for label in labels)
 
     def test_stdlib_functions_with_valid_file(self):
         _analyze(
@@ -380,15 +361,13 @@ class TestCompletion:
             'module Main\n  narrative: """Test"""\n\nmain()\nfrom\n    console("hi")\n',
         )
         labels = _complete_labels("<test://valid>")
-        assert any("console" in l for l in labels)
+        assert any("console" in label for label in labels)
 
     def test_stdlib_completions_have_detail(self):
         """Stdlib items should show module name in label_details.description."""
         _analyze("<test://det>", "")
         result = _complete("<test://det>")
-        console_items = [
-            i for i in result.items if "console" in i.label and "System" in i.label
-        ]
+        console_items = [i for i in result.items if "console" in i.label and "System" in i.label]
         assert len(console_items) >= 1
         item = console_items[0]
         assert item.label_details is not None
@@ -406,7 +385,7 @@ class TestCompletion:
             "    a + b\n",
         )
         labels = _complete_labels("<test://sym>")
-        assert any("add" in l for l in labels)
+        assert any("add" in label for label in labels)
 
     def test_no_duplicate_verb_label_pairs(self):
         """Each (label, sort_text) pair should appear at most once."""
@@ -448,9 +427,7 @@ class TestCompletion:
         )
         result = _complete("file:///noimport.prv")
         # Find console with System prefix
-        console_items = [
-            i for i in result.items if "console" in i.label and "System" in i.label
-        ]
+        console_items = [i for i in result.items if "console" in i.label and "System" in i.label]
         # outputs is imported (shows with verb detail), others show "Auto-import"
         assert len(console_items) == 4
         # Check that outputs has verb detail (not Auto-import)
@@ -542,9 +519,7 @@ class TestCompletion:
         """Stdlib completions should show 'Auto-import' in detail, signature in docs."""
         _analyze("<test://sig>", "")
         result = _complete("<test://sig>")
-        console_items = [
-            i for i in result.items if "console" in i.label and "System" in i.label
-        ]
+        console_items = [i for i in result.items if "console" in i.label and "System" in i.label]
         assert len(console_items) >= 1
         item = console_items[0]
         # Detail should be "Auto-import"
@@ -581,7 +556,7 @@ class TestCompletion:
 class TestCompletionNoDuplicateSignature:
     def test_stdlib_completion_no_duplicate_in_label_and_detail(self):
         """Verify signature doesn't appear in both label AND detail (duplicate)."""
-        ds = DocumentState(source="module Main")
+        DocumentState(source="module Main")  # noqa: F841
         params = lsp.CompletionParams(
             text_document=lsp.TextDocumentIdentifier("test:///test.prv"),
             position=lsp.Position(line=0, character=0),
@@ -812,9 +787,7 @@ project Test
     handles something gracefully
 """
         ids = _analyze_intent("file:///test/test.intent", source)
-        assert any(
-            d.code == "W601" for d in ids.diagnostics
-        )
+        assert any(d.code == "W601" for d in ids.diagnostics)
 
     def test_w602_unreferenced_vocabulary(self):
         source = """\
@@ -927,7 +900,7 @@ class TestInlayHint:
         assert hints is None or not any(h.label == " Integer" for h in hints)
 
     def test_inlay_hint_no_module(self):
-        from prove.lsp import inlay_hint, _state
+        from prove.lsp import _state, inlay_hint
 
         uri = "file:///nonexistent.prv"
         _state.pop(uri, None)

@@ -23,7 +23,6 @@ from prove.intent_parser import parse_intent
 from prove.lexer import Lexer
 from prove.parser import Parser
 
-
 # ---------------------------------------------------------------------------
 # Fixtures: .intent source strings
 # ---------------------------------------------------------------------------

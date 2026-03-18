@@ -10,7 +10,7 @@ from prove.ast_nodes import (
     Expr,
     FieldExpr,
     IdentifierExpr,
-    IntegerLit,
+    IntegerLit,  # noqa: F841
     LambdaExpr,
     PathLit,
     RawStringLit,
@@ -98,7 +98,7 @@ class CallEmitterMixin:
 
         fpt = None
         if call_args:
-            actual_fpt = self._infer_expr_type(call_args[0])
+            actual_fpt = self._infer_expr_type(call_args[0])  # noqa: E501
             fpt = get_type_key(actual_fpt)
         if fpt is None:
             pts = sig.param_types
@@ -611,7 +611,7 @@ class CallEmitterMixin:
             name = expr.func.name
 
             # Optimization: detect console(string(float_expr)) pattern and replace with printf
-            # The Prove code "console(string(x))" becomes prove_println(prove_convert_string_float(x))
+            # The Prove code "console(string(x))" becomes prove_println(...)
             if name == "console" and len(expr.args) == 1:
                 arg_expr = expr.args[0]
                 # Check if the argument is a call to string(float)
@@ -728,13 +728,13 @@ class CallEmitterMixin:
                         row_var = args[1]
                         if hasattr(self, "_store_rows") and row_var in self._store_rows:
                             variant_name, vals_name = self._store_rows[row_var]
-                            return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
+                            return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"  # noqa: E501
                         # Row arg is the raw variable name — look up by expr
                         if isinstance(expr.args[1], IdentifierExpr):
                             rn = expr.args[1].name
                             if hasattr(self, "_store_rows") and rn in self._store_rows:
                                 variant_name, vals_name = self._store_rows[rn]
-                                return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"
+                                return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"  # noqa: E501
                     # Release mode: rewrite Array<Boolean> ops to BitArray
                     is_bitarray_set = False
                     if self._release_mode:
@@ -816,7 +816,7 @@ class CallEmitterMixin:
                         key = self._get_memo_key(cand, args)
                         idx = f"(({key}) % {table_size})"
                         hit = f"{table_name}[{idx}].valid && {table_name}[{idx}].key == {key}"
-                        miss = f"({table_name}[{idx}].key = {key}, {table_name}[{idx}].value = {call}, {table_name}[{idx}].valid = 1, {table_name}[{idx}].value)"
+                        miss = f"({table_name}[{idx}].key = {key}, {table_name}[{idx}].value = {call}, {table_name}[{idx}].valid = 1, {table_name}[{idx}].value)"  # noqa: E501
                         result = f"({hit}) ? {table_name}[{idx}].value : ({miss})"
                         return result
 
@@ -1027,7 +1027,7 @@ class CallEmitterMixin:
         # Determine result element type (may differ from input, e.g. Integer → String)
         fn_expr = expr.args[1]
         if isinstance(fn_expr, IdentifierExpr):
-            fn_sig = self._symbols.resolve_function_any(fn_expr.name, arity=1)
+            fn_sig = self._symbols.resolve_function_any(fn_expr.name, arity=1)  # noqa: F841
         elif isinstance(fn_expr, LambdaExpr):
             # Infer from lambda body
             saved = dict(self._locals)
@@ -1836,7 +1836,10 @@ class CallEmitterMixin:
         self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
 
         fn_name, ctx_arg = self._emit_hof_lambda(
-            callback, elem_type, "reduce", accum_type=accum_type,
+            callback,
+            elem_type,
+            "reduce",
+            accum_type=accum_type,
         )
         init_cast = self._hof_box(accum_tmp, accum_ct)
         result_tmp = self._tmp()

@@ -31,7 +31,7 @@ DOMAIN_PROFILES: dict[str, DomainProfile] = {
         preferred_types={"Float": "Decimal"},
         required_contracts=frozenset({"ensures"}),
         required_annotations=frozenset({"near_miss"}),
-        description="Financial domain: prefer Decimal over Float, require contracts and boundary cases",
+        description="Financial domain: prefer Decimal over Float, require contracts and boundary cases",  # noqa: E501
     ),
     "safety": DomainProfile(
         name="safety",

@@ -98,7 +98,7 @@ from prove.types import (
     UNIT,
     AlgebraicType,
     ArrayType,
-    BorrowType,
+    BorrowType,  # noqa: E501
     ErrorType,
     FunctionType,
     GenericInstance,
@@ -791,7 +791,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             ):
                 self._error(
                     "E316",
-                    f"'{fd.name}' shadows the built-in function '{fd.name}'. Choose a different name.",
+                    f"'{fd.name}' shadows the built-in function '{fd.name}'. Choose a different name.",  # noqa: E501
                     fd.span,
                 )
         return_type = self._resolve_type_expr(fd.return_type) if fd.return_type else UNIT
@@ -1389,7 +1389,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     if in_line_range and in_col_range:
                         self._warning(
                             "W330",
-                            f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "
+                            f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "  # noqa: E501
                             "Add contracts to catch this mutation.",
                             fd.span,
                         )
@@ -2044,7 +2044,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if len(stmt.arms) >= 3:
                     self._info(
                         "I367",
-                        "consider extracting match to a 'matches' verb function for better code flow",
+                        "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
                         stmt.span,
                     )
             elif isinstance(stmt, VarDecl):
@@ -2192,7 +2192,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if not (expected_name in self._store_lookup_types and actual_name == "StoreTable"):
                     self._error(
                         "E321",
-                        f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",
+                        f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",  # noqa: E501
                         vd.span,
                     )
             # Detect Value → concrete type coercion (runtime-checked)

@@ -995,7 +995,7 @@ def _format_type_def(td: TypeDef) -> str:
     # Handle LookupTypeDef (type X is Y at Z)
     elif LookupTypeDef and isinstance(td.body, LookupTypeDef):
         lines[0] += (
-            f" is {td.body.value_type.name} at {td.body.key_type.name if hasattr(td.body, 'key_type') else '??'}"
+            f" is {td.body.value_type.name} at {td.body.key_type.name if hasattr(td.body, 'key_type') else '??'}"  # noqa: E501
         )
         for entry in getattr(td.body, "entries", []):
             lines.append(f"  {entry.variant}")

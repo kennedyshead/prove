@@ -92,7 +92,7 @@ for _c in ("E340", "E341"):
 # Control flow E350, E352, E355-E357
 for _c in ("E350", "E352", "E355", "E356", "E357"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367), E368 par_* purity, E369 par_each async
+# Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367), E368 par_* purity
 _register_doc_range("E", 361, 366)
 DIAGNOSTIC_DOCS["E368"] = f"{_DOCS_BASE}#E368"
 DIAGNOSTIC_DOCS["E369"] = f"{_DOCS_BASE}#E369"
@@ -147,8 +147,23 @@ _register_doc_range("W", 390, 391)
 _register_doc_range("W", 501, 506)
 # Info
 for _c in (
-    "I201", "I300", "I301", "I302", "I303", "I304", "I310", "I311",
-    "I314", "I320", "I340", "I360", "I367", "I375", "I377", "I378", "I601",
+    "I201",
+    "I300",
+    "I301",
+    "I302",
+    "I303",
+    "I304",
+    "I310",
+    "I311",
+    "I314",
+    "I320",
+    "I340",
+    "I360",
+    "I367",
+    "I375",
+    "I377",
+    "I378",
+    "I601",
 ):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 

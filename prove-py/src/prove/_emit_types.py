@@ -98,7 +98,7 @@ class TypeEmitterMixin:
             _visit(ty)
 
         return ordered
-
+  # noqa: E501
     def _direct_imported_local_type_names(self) -> set[str]:
         """Names of types directly imported (not just transitively needed as field deps)."""
         _BUILTIN_NAMES = frozenset(
@@ -539,7 +539,7 @@ class TypeEmitterMixin:
                 entry = variant_to_entry.get(vname)
                 if entry and col_idx < len(entry.values):
                     raw = entry.values[col_idx]
-                    kind = entry.value_kinds[col_idx] if col_idx < len(entry.value_kinds) else "string"
+                    kind = entry.value_kinds[col_idx] if col_idx < len(entry.value_kinds) else "string"  # noqa: E501
                     if kind == "string":
                         escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
                         self._line(f'"{escaped}",')

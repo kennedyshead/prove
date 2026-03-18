@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from prove.ast_nodes import FunctionDef, SimpleType, WithConstraint
+from prove.ast_nodes import FunctionDef, SimpleType
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.types import (

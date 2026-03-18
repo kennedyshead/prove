@@ -98,7 +98,7 @@ def body_tokens(fd: FunctionDef) -> set[str]:
     """
     from prove.ast_nodes import CallExpr, IdentifierExpr
 
-    names: set[str] = {p.name for p in fd.params}
+    names: set[str] = {p.name for p in fd.params}  # noqa: E501
 
     def _collect(node: object) -> None:
         if node is None:
@@ -523,7 +523,7 @@ def _extract_fields_from_text(description: str) -> list[tuple[str, str]]:
     fields: list[tuple[str, str]] = []
 
     # Pattern: "a X paired with a Y"
-    m = re.search(r"(?:an?\s+)?(\w+(?:\s+\w+)?)\s+paired with\s+(?:an?\s+)?(\w+(?:\s+\w+)?)", desc_lower)
+    m = re.search(r"(?:an?\s+)?(\w+(?:\s+\w+)?)\s+paired with\s+(?:an?\s+)?(\w+(?:\s+\w+)?)", desc_lower)  # noqa: E501
     if m:
         fields.append((_to_snake_case(m.group(1).split()[-1]), "String"))
         fields.append((_to_snake_case(m.group(2).split()[-1]), "String"))
@@ -722,7 +722,7 @@ def infer_comptime(
             continue
 
         # "precomputed table of X" / "static table of X"
-        m = re.search(r"(?:precomputed|static|compile-time|built-in)\s+(?:table|map|list|set)\s+of\s+(\w+)", text_lower)
+        m = re.search(r"(?:precomputed|static|compile-time|built-in)\s+(?:table|map|list|set)\s+of\s+(\w+)", text_lower)  # noqa: E501
         if m:
             subject = m.group(1)
             name = f"{subject.upper()}_TABLE"
@@ -735,7 +735,7 @@ def infer_comptime(
             continue
 
         # "X computed at compile time" / "X is precomputed"
-        m = re.search(r"(\w+)\s+(?:computed at compile time|is precomputed|is static|is built-in)", text_lower)
+        m = re.search(r"(\w+)\s+(?:computed at compile time|is precomputed|is static|is built-in)", text_lower)  # noqa: E501
         if m:
             subject = m.group(1)
             name = subject.upper()

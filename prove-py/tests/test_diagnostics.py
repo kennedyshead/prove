@@ -11,7 +11,6 @@ from __future__ import annotations
 from prove.errors import Diagnostic
 from tests.helpers import check_all, check_info, check_warns
 
-
 # ── Helpers ─────────────────────────────────────────────────────────
 
 

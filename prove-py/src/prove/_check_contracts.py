@@ -98,7 +98,7 @@ def _substitute_result_in_expr(expr: Expr, new_name: str) -> Expr:
     if isinstance(expr, IdentifierExpr):
         if expr.name == "result":
             return IdentifierExpr(name=new_name, span=expr.span)
-        return expr
+        return expr  # noqa: E501
     if isinstance(expr, BinaryExpr):
         left = _substitute_result_in_expr(expr.left, new_name)
         right = _substitute_result_in_expr(expr.right, new_name)
@@ -131,8 +131,7 @@ class ContractCheckMixin:
             if not isinstance(raw_pt, StructType):
                 self._error(
                     "E431",
-                    f"`with` on parameter '{wc.param_name}' "
-                    f"which is not typed Struct",
+                    f"`with` on parameter '{wc.param_name}' which is not typed Struct",
                     wc.span,
                 )
                 continue
@@ -250,8 +249,7 @@ class ContractCheckMixin:
             # Temporarily define arm-bound variables in scope so that
             # know claims referencing them can be type-checked and proved.
             uses_arm_var = arm_bound_types and any(
-                _expr_references_name(know_expr, bname)
-                for bname in arm_bound_types
+                _expr_references_name(know_expr, bname) for bname in arm_bound_types
             )
             if uses_arm_var:
                 self.symbols.push_scope("know_arm")
@@ -347,8 +345,7 @@ class ContractCheckMixin:
             if resolved is None and sat_name not in self._invariant_networks:
                 self._error(
                     "E382",
-                    f"satisfies references undefined type or "
-                    f"invariant network '{sat_name}'",
+                    f"satisfies references undefined type or invariant network '{sat_name}'",
                     fd.span,
                 )
 
@@ -646,7 +643,7 @@ class ContractCheckMixin:
                 if len(stmt.arms) >= 3:
                     self._info(
                         "I367",
-                        "consider extracting match to a 'matches' verb function for better code flow",
+                        "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
                         stmt.span,
                     )
             elif isinstance(stmt, VarDecl):
@@ -764,9 +761,7 @@ class ContractCheckMixin:
 
     # ── Invariant network enforcement ───────────────────────────
 
-    def _check_invariant_constraints(
-        self, fd: FunctionDef, return_type: Type
-    ) -> None:
+    def _check_invariant_constraints(self, fd: FunctionDef, return_type: Type) -> None:
         """Type-check invariant network constraints for functions with `satisfies`.
 
         For each invariant network referenced by `satisfies`, the constraint
@@ -798,9 +793,8 @@ class ContractCheckMixin:
                     if sig is not None:
                         continue  # Known function reference — accepted
                 constraint_type = self._infer_expr(constraint)
-                if (
-                    not isinstance(constraint_type, ErrorType)
-                    and not types_compatible(BOOLEAN, constraint_type)
+                if not isinstance(constraint_type, ErrorType) and not types_compatible(
+                    BOOLEAN, constraint_type
                 ):
                     self._error(
                         "E396",
@@ -857,9 +851,7 @@ class ContractCheckMixin:
         if isinstance(expr, CallExpr):
             if isinstance(expr.func, IdentifierExpr):
                 names.append(expr.func.name)
-            elif isinstance(expr.func, FieldExpr) and isinstance(
-                expr.func.obj, IdentifierExpr
-            ):
+            elif isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, IdentifierExpr):
                 names.append(expr.func.field)
             for arg in expr.args:
                 self._collect_call_names_expr(arg, names)
@@ -914,9 +906,7 @@ class ContractCheckMixin:
                     f"temporal operation '{name}' appears before '{prev_name}'; "
                     f"declared order: {' -> '.join(self._temporal_order)}",
                     labels=[DiagnosticLabel(span=fd.span, message="")],
-                    notes=[
-                        "Reorder the calls to match the declared temporal sequence."
-                    ],
+                    notes=["Reorder the calls to match the declared temporal sequence."],
                 )
                 self.diagnostics.append(diag)
                 return  # Report first violation only
@@ -925,9 +915,7 @@ class ContractCheckMixin:
 
     # ── Prose coherence checks (W501-W506) ─────────────────────────────────
 
-    def _check_narrative_verb_coherence(
-        self, mod_decl: ModuleDecl, fns: list[FunctionDef]
-    ) -> None:
+    def _check_narrative_verb_coherence(self, mod_decl: ModuleDecl, fns: list[FunctionDef]) -> None:
         """W501: function verb not described in module narrative."""
         if mod_decl.narrative is None:
             return
@@ -950,9 +938,7 @@ class ContractCheckMixin:
                     )
                 )
 
-    def _check_narrative_flow_steps(
-        self, mod_decl: ModuleDecl, fns: list[FunctionDef]
-    ) -> None:
+    def _check_narrative_flow_steps(self, mod_decl: ModuleDecl, fns: list[FunctionDef]) -> None:
         """W343: narrative flow: step name is not a defined function."""
         if mod_decl.narrative is None:
             return
@@ -1039,9 +1025,7 @@ class ContractCheckMixin:
                 )
             )
 
-    def _check_why_not_names(
-        self, fd: FunctionDef, known_names: set[str]
-    ) -> None:
+    def _check_why_not_names(self, fd: FunctionDef, known_names: set[str]) -> None:
         """W505: why_not entry mentions no function/type name from current scope."""
         lower_known = {n.lower() for n in known_names}
         for entry in fd.why_not:
@@ -1055,7 +1039,7 @@ class ContractCheckMixin:
                         labels=[DiagnosticLabel(span=fd.span, message="")],
                         notes=[
                             f"entry: '{entry}'",
-                            "Reference a function name, type, or algorithm to anchor the rejection.",
+                            "Reference a function name, type, or algorithm to anchor the rejection.",  # noqa: E501
                         ],
                     )
                 )
@@ -1102,9 +1086,7 @@ class ContractCheckMixin:
 
     # ── Phase 4: callee-ensures propagation ──────────────────────────
 
-    def _collect_callee_ensures_facts(
-        self, body: list[Stmt | MatchExpr]
-    ) -> list[Expr]:
+    def _collect_callee_ensures_facts(self, body: list[Stmt | MatchExpr]) -> list[Expr]:
         """Scan function body for call-result bindings and collect callee ensures.
 
         Phase 4: callee-ensures propagation.
@@ -1132,9 +1114,7 @@ class ContractCheckMixin:
                 callee_name = func.field
             else:
                 continue
-            sig = self.symbols.resolve_function_any(
-                callee_name, arity=len(call.args)
-            )
+            sig = self.symbols.resolve_function_any(callee_name, arity=len(call.args))
             if sig is None or not sig.ensures:
                 continue
             for ens_expr in sig.ensures:
@@ -1180,14 +1160,8 @@ class ContractCheckMixin:
                     continue
                 if arm.pattern.name not in ("Some", "Ok", "Error", "None"):
                     continue
-                bindings = [
-                    f.name
-                    for f in arm.pattern.fields
-                    if isinstance(f, BindingPattern)
-                ]
-                proof_context.add_match_arm_binding(
-                    subj_name, arm.pattern.name, bindings
-                )
+                bindings = [f.name for f in arm.pattern.fields if isinstance(f, BindingPattern)]
+                proof_context.add_match_arm_binding(subj_name, arm.pattern.name, bindings)
 
     def _collect_arm_bound_types(self, proof_context: object) -> dict[str, Type]:
         """Phase 6: infer types for arm-bound variables.

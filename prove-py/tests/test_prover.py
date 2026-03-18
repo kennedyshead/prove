@@ -11,11 +11,29 @@ _DUMMY = Span("<test>", 1, 1, 1, 1)
 def _make_fd(**kwargs) -> FunctionDef:
     """Create a minimal FunctionDef for testing."""
     defaults: dict[str, object] = dict(
-        verb="transforms", name="f", params=[], return_type=None,
-        can_fail=False, ensures=[], requires=[],
-        explain=None, terminates=None, trusted=None, binary=False,
-        why_not=[], chosen=None, near_misses=[], know=[], assume=[],
-        believe=[], with_constraints=[], intent=None, satisfies=[], event_type=None, body=[], doc_comment=None,
+        verb="transforms",
+        name="f",
+        params=[],
+        return_type=None,
+        can_fail=False,
+        ensures=[],
+        requires=[],
+        explain=None,
+        terminates=None,
+        trusted=None,
+        binary=False,
+        why_not=[],
+        chosen=None,
+        near_misses=[],
+        know=[],
+        assume=[],
+        believe=[],
+        with_constraints=[],
+        intent=None,
+        satisfies=[],
+        event_type=None,
+        body=[],
+        doc_comment=None,  # noqa: E501
         span=_DUMMY,
     )
     defaults.update(kwargs)
@@ -129,7 +147,6 @@ class TestProofVerification:
         e393 = [d for d in checker.diagnostics if d.code == "E393"]
         assert not e393, "should not error E393 when ensures is present"
 
-
     def test_ensures_without_requires_warning(self):
         check_warns(
             "transforms add(a Integer, b Integer) Integer\n"
@@ -162,12 +179,7 @@ class TestAssumeAssertion:
         from prove.lexer import Lexer
         from prove.parser import Parser
 
-        source = (
-            "transforms safe(x Integer) Integer\n"
-            "    assume: x > 0\n"
-            "    from\n"
-            "        x\n"
-        )
+        source = "transforms safe(x Integer) Integer\n    assume: x > 0\n    from\n        x\n"
         tokens = Lexer(source, "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         checker = Checker()

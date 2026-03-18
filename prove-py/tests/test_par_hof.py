@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.helpers import check, check_fails, check_all
+from tests.helpers import check, check_all, check_fails
 
 
 class TestParMapChecker:
