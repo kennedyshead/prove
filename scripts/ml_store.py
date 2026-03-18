@@ -57,7 +57,9 @@ def write_bigrams_table(unigram_model: dict, top_k: int, out_path: Path) -> int:
     ]
     for i, (prev1, next_tok, count) in enumerate(rows):
         row_id = _row_id(i)
-        lines.append(f"    {row_id} | {_prv_str(prev1)} | {_prv_str(next_tok)} | {count}")
+        lines.append(
+            f"    {row_id} | {_prv_str(prev1)} | {_prv_str(next_tok)} | {count}"
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     (out_path.parent / "versions").mkdir(parents=True, exist_ok=True)
@@ -123,8 +125,13 @@ def write_docstring_table(docstring_index: dict, out_path: Path) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--top-k", type=int, default=5, dest="top_k",
-                        help="Max completions per context (default: 5)")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        dest="top_k",
+        help="Max completions per context (default: 5)",
+    )
     parser.add_argument("--data-dir", default="data")
     args = parser.parse_args()
 
@@ -133,6 +140,7 @@ def main() -> None:
     completions_model_path = data_dir / "completions_model.json"
     bigrams_model_path = data_dir / "bigrams_model.json"
     docstrings_model_path = data_dir / "docstring_index.json"
+    from_blocks_model_path = data_dir / "from_blocks_model.json"
 
     print(f"Loading {completions_model_path} ...")
     with open(completions_model_path, encoding="utf-8") as f:
@@ -145,13 +153,16 @@ def main() -> None:
     bigrams_out = _STORE_DIR / "bigrams" / "current.prv"
     completions_out = _STORE_DIR / "completions" / "current.prv"
     docstrings_out = _STORE_DIR / "docstrings" / "current.prv"
+    from_blocks_out = _STORE_DIR / "from_blocks" / "current.prv"
 
     print(f"Writing bigrams table → {bigrams_out}")
     n_bigram_rows = write_bigrams_table(unigram_model, args.top_k, bigrams_out)
     print(f"  {n_bigram_rows} rows")
 
     print(f"Writing completions table → {completions_out}")
-    n_completion_rows = write_completions_table(bigram_model, args.top_k, completions_out)
+    n_completion_rows = write_completions_table(
+        bigram_model, args.top_k, completions_out
+    )
     print(f"  {n_completion_rows} rows")
 
     if docstrings_model_path.exists():
@@ -164,10 +175,24 @@ def main() -> None:
     else:
         print(f"Skipping docstrings (no {docstrings_model_path})")
 
+    if from_blocks_model_path.exists():
+        print(f"Loading {from_blocks_model_path} ...")
+        with open(from_blocks_model_path, encoding="utf-8") as f:
+            from_block_model = json.load(f)
+        print(f"Writing from-blocks table → {from_blocks_out}")
+        n_from_rows = write_completions_table(
+            from_block_model, args.top_k, from_blocks_out
+        )
+        print(f"  {n_from_rows} rows")
+    else:
+        print(f"Skipping from-blocks (no {from_blocks_model_path})")
+
     # Verify the files are readable and look sane
     verify_paths = [bigrams_out, completions_out]
     if docstrings_out.exists():
         verify_paths.append(docstrings_out)
+    if from_blocks_out.exists():
+        verify_paths.append(from_blocks_out)
     for path in verify_paths:
         text = path.read_text(encoding="utf-8")
         row_lines = [l for l in text.splitlines() if l.strip().startswith("r")]
