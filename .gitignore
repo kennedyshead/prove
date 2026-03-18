@@ -20,6 +20,7 @@ conversations
 .hidden/
 MEMORY.md
 .pytest_cache
+.mypy_cache
 .claudeignore
 .envrc
 .venv
