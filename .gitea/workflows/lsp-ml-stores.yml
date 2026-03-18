@@ -17,8 +17,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-stores:
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,26 +41,8 @@ jobs:
           mkdir -p build/lsp-ml-stores
           cp -r src/prove/data/lsp build/lsp-ml-stores/
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: lsp-ml-stores
-          path: build/lsp-ml-stores/
-
-  create-release:
-    needs: build-stores
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: lsp-ml-stores
-          path: lsp-ml-stores
-
       - name: Create tarball
-        run: tar -czf lsp-ml-stores.tar.gz lsp-ml-stores/
+        run: tar -czf lsp-ml-stores.tar.gz -C build lsp-ml-stores/
 
       - name: Create or update release
         env:
@@ -67,7 +51,6 @@ jobs:
           VERSION=$(date +'%Y.%m.%d')
           TAG="lsp-stores-v${VERSION}"
           
-          # Create release via Gitea API
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
@@ -78,7 +61,6 @@ jobs:
               \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \\\`prove setup\\\` to download.\"
             }" || true)
           
-          # Upload attachment
           RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "")
           
           if [ -n "$RELEASE_ID" ]; then
