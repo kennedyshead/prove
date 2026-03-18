@@ -11,6 +11,9 @@ on:
 jobs:
   build-proof:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prove-py
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,19 +22,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: prove-py/pyproject.toml
 
       - name: Install dependencies
-        run: pip install -e "prove-py" -q --break-system-packages
-
-      - name: Build prove
-        run: pip install -e . -q --break-system-packages
+        run: pip install -e ".[dev]" -q --break-system-packages
 
       - name: Build proof project
-        run: prove build proof/
+        run: prove build ../proof/
 
       - name: Build all examples
         run: |
-          for dir in examples/*/; do
+          for dir in ../examples/*/; do
             if [ -d "$dir" ]; then
               echo "Building $dir..."
               prove build "$dir" || echo "Failed: $dir"
@@ -40,7 +42,7 @@ jobs:
 
       - name: Build all benchmarks
         run: |
-          for dir in benchmarks/*/; do
+          for dir in ../benchmarks/*/; do
             if [ -d "$dir" ]; then
               echo "Building $dir..."
               prove build "$dir" || echo "Failed: $dir"
