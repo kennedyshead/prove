@@ -216,26 +216,16 @@ class TestAsyncVerbs:
     """Test async verb (detached/attached/listens) enforcement."""
 
     def test_detached_parses(self):
-        check(
-            "detached fire(x Integer)\n"
-            "    from\n"
-            "        y as Integer = x + 1\n"
-        )
+        check("detached fire(x Integer)\n    from\n        y as Integer = x + 1\n")
 
     def test_attached_requires_return_type(self):
         check_fails(
-            "attached no_ret(x Integer)\n"
-            "    from\n"
-            "        x\n",
+            "attached no_ret(x Integer)\n    from\n        x\n",
             "E370",
         )
 
     def test_attached_with_return_type_passes(self):
-        check(
-            "attached get(x Integer) Integer\n"
-            "    from\n"
-            "        x\n"
-        )
+        check("attached get(x Integer) Integer\n    from\n        x\n")
 
     def test_detached_allows_io(self):
         check(
@@ -312,9 +302,7 @@ class TestAsyncVerbs:
 
     def test_detached_with_return_type_error(self):
         check_fails(
-            "detached fire(x Integer) Integer\n"
-            "    from\n"
-            "        x\n",
+            "detached fire(x Integer) Integer\n    from\n        x\n",
             "E374",
         )
 
@@ -382,6 +370,7 @@ class TestAsyncVerbs:
     def test_attached_with_ampersand_in_listens_ok(self):
         """attached& in listens body gives no I377 (standard await pattern)."""
         from tests.helpers import check_all
+
         diags = check_all(
             "module M\n"
             '  narrative: """Test"""\n'

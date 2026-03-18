@@ -136,7 +136,7 @@ class CEmitter(
         self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
         self._in_hof_inline = False  # True when emitting inline HOF loop body
         self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
-        self._fused_object_cache: tuple[str, str] | None = None  # (param, var) for CSE
+        self._fused_object_cache: tuple[str, str] | None = None  # type: ignore[assignment]  # (param, var) for CSE
         self._used_names: set[str] = set()  # collision tracking for _named_tmp()
         # Row-polymorphism monomorphisation state
         self._struct_templates: dict[tuple[str, str, int], FunctionDef] = {}
@@ -751,7 +751,7 @@ class CEmitter(
                     continue
                 consts_by_name = {c.name: c for c in stdlib_consts}
                 for item in imp.items:
-                    const = consts_by_name.get(item.name)
+                    const = consts_by_name.get(item.name)  # type: ignore[assignment]
                     if const is not None:
                         escaped = self._escape_c_string(const.raw_value)
                         self._line(f'#define {item.name} prove_string_from_cstr("{escaped}")')
@@ -1197,7 +1197,7 @@ class CEmitter(
         self._locals.clear()
         self._used_names.clear()
         for p, pt in zip(fd.params, param_types):
-            self._locals[p.name] = pt
+            self._locals[p.name] = pt  # type: ignore[assignment]
 
         self._line(f"static void {body_fn}(Prove_Coro *_coro) {{")
         self._indent += 1
@@ -1397,7 +1397,7 @@ class CEmitter(
         self._line("_listens_exit:;")
 
     def _emit_main(self, md: MainDef) -> None:
-        self._current_func = md
+        self._current_func = md  # type: ignore[assignment]
         self._current_func_return = UNIT
         self._in_main = True
         self._locals.clear()

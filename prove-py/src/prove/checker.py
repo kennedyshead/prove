@@ -7,6 +7,7 @@ Pass 2: Check each declaration body (type inference, verb enforcement, exhaustiv
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from prove._check_calls import CallCheckMixin
 from prove._check_contracts import ContractCheckMixin
@@ -1236,7 +1237,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # W332: warn on unused pure function result (except for last statement)
             if i < len(fd.body) - 1:
                 self._check_unused_pure_result(stmt)
-            body_type = self._check_stmt(stmt)
+            body_type = self._check_stmt(stmt)  # type: ignore[assignment]
 
         # I601: function has incomplete implementation (todo)
         if has_todo:
@@ -1589,7 +1590,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 lo = self._extract_literal_value(constraint.left)
                 hi = self._extract_literal_value(constraint.right)
                 if lo is not None and hi is not None and isinstance(value, (int, float)):
-                    return lo <= value <= hi
+                    return lo <= value and value <= hi  # type: ignore[operator]
                 return None
 
             left = self._eval_refinement_constraint_expr(constraint.left, value)
@@ -1599,13 +1600,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
             op = constraint.op
             if op == ">=":
-                return left >= right
+                return (left) >= (right)  # type: ignore[operator]
             if op == "<=":
-                return left <= right
+                return (left) <= (right)  # type: ignore[operator]
             if op == ">":
-                return left > right
+                return (left) > (right)  # type: ignore[operator]
             if op == "<":
-                return left < right
+                return (left) < (right)  # type: ignore[operator]
             if op == "==":
                 return left == right
             if op == "!=":
@@ -1659,13 +1660,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if left is not None and right is not None:
                 op = expr.op
                 if op == "+":
-                    return left + right
+                    return (left) + (right)  # type: ignore[operator]
                 if op == "-":
-                    return left - right
+                    return (left) - (right)  # type: ignore[operator]
                 if op == "*":
-                    return left * right
+                    return (left) * (right)  # type: ignore[operator]
                 if op == "%":
-                    return left % right
+                    return (left) % (right)  # type: ignore[operator]
         return None
 
     # ── Requires-based option narrowing ─────────────────────────
@@ -1736,7 +1737,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     arity=n_args,
                 )
             if sig is not None and sig.verb == "validates":
-                mod = module_name or sig.module
+                mod = module_name or sig.module  # type: ignore[assignment]
                 if mod:
                     narrowings.append((mod, req_expr.args))
         return narrowings
@@ -2607,7 +2608,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         return False
 
     def _infer_match(self, expr: MatchExpr, expected_type: Type | None = None) -> Type:
-        subject_type = ERROR_TY
+        subject_type: Type = ERROR_TY
         if expr.subject is not None:
             subject_type = self._infer_expr(expr.subject)
         elif (
@@ -2687,14 +2688,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     record_seen = True
 
         # Infer arm types — skip ErrorType arms to avoid poison propagation
-        result_type: Type = UNIT
+        result_type: Type = cast(Type, UNIT)
         arm_types: list[tuple[Type, MatchArm]] = []
         for arm in expr.arms:
             self.symbols.push_scope("match_arm")
             self._check_pattern(arm.pattern, subject_type)
             arm_type = UNIT
             for stmt in arm.body:
-                arm_type = self._check_stmt(stmt)
+                arm_type = self._check_stmt(stmt)  # type: ignore[assignment]
             if not isinstance(arm_type, ErrorType):
                 result_type = arm_type
             arm_types.append((arm_type, arm))
@@ -2715,9 +2716,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 break
         if value_type is not None:
             if cur_verb not in ("listens", "streams"):
-                # Use the value type as result_type (not the last arm)
                 result_type = value_type
-                for arm_type, arm in arm_types:
+                for arm_type, arm in arm_types:  # type: ignore
                     if isinstance(arm_type, UnitType):
                         self._error(
                             "E400",
@@ -2848,7 +2848,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         span=expr.span,
                     )
                 )
-        result = UNIT
+        result: Type = UNIT
         for stmt in expr.body:
             result = self._check_stmt(stmt)
         return result

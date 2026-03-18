@@ -1177,7 +1177,7 @@ class ContractCheckMixin:
         can be type-checked and proved.
         """
         bound: dict[str, Type] = {}
-        for subj_name, variant, bindings in proof_context.match_bindings:  # type: ignore[union-attr]
+        for subj_name, variant, bindings in proof_context.match_bindings:
             if not bindings:
                 continue
             subj_sym = self.symbols.lookup(subj_name)

@@ -77,6 +77,11 @@ def _is_compile_time_literal(expr: Expr | None) -> bool:
 
 
 class StmtEmitterMixin:
+    _locals: dict[str, Type]
+    _in_tail_loop: bool
+    _in_main: bool
+    _current_func: FunctionDef | None
+    _in_region_scope: bool
     # ── Value → concrete type coercion helpers ─────────────────────
 
     def _is_value_type(self, ty: Type) -> bool:
@@ -540,7 +545,7 @@ class StmtEmitterMixin:
                         # Validate before wrapping - on failure, return None
                         self._emit_refinement_validation_for_option(
                             f"({target_inner.decl}){raw_tmp}.value",
-                            target_inner_type,  # type: ignore[arg-type]
+                            target_inner_type,
                             tgt_ct.decl,
                             vd.name,
                         )
@@ -1054,7 +1059,7 @@ class StmtEmitterMixin:
                 return
         self._line(f"{val};")
 
-    def _emit_dispatch_call(self, var_name: str, call_args: list) -> None:  # type: ignore[type-arg]
+    def _emit_dispatch_call(self, var_name: str, call_args: list) -> None:
         """Emit if-else dispatch chain for a verb variable assigned from a dispatch lookup."""
         from prove.c_types import mangle_name
 
@@ -1350,7 +1355,7 @@ class StmtEmitterMixin:
             if not (isinstance(last_pat, VariantPattern) and last_pat.name == "Err"):
                 self._line("}")
 
-    def _emit_match_arm_body(self, body: list) -> None:  # type: ignore[type-arg]
+    def _emit_match_arm_body(self, body: list) -> None:
         """Emit match arm body, handling TailContinue and returns in tail loop."""
         for i, s in enumerate(body):
             is_last = i == len(body) - 1

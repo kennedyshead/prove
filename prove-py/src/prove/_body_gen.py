@@ -318,7 +318,7 @@ def generate_import_source(module: str, verb_groups: dict[str | None, list[str]]
     When verb is None, names are emitted without a verb prefix.
     """
     parts: list[str] = []
-    for verb, names in sorted(verb_groups.items(), key=lambda kv: (kv[0] or "")):
+    for verb, names in sorted(verb_groups.items(), key=lambda kv: kv[0] or ""):
         if verb:
             parts.append(f"{verb} {' '.join(sorted(names))}")
         else:

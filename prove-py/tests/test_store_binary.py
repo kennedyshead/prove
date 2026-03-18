@@ -192,10 +192,15 @@ class TestPdatToPrv:
     def test_generates_prv_source(self, tmp_path):
         """Generate .prv source from a PDAT binary."""
         path = tmp_path / "Color.dat"
-        write_pdat(path, "Color", ["String", "Integer"], [
-            ("Red", ["red", "1"]),
-            ("Blue", ["blue", "2"]),
-        ])
+        write_pdat(
+            path,
+            "Color",
+            ["String", "Integer"],
+            [
+                ("Red", ["red", "1"]),
+                ("Blue", ["blue", "2"]),
+            ],
+        )
 
         source = pdat_to_prv(path)
         assert "module Color" in source

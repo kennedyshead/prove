@@ -1,6 +1,6 @@
 """Pygments lexers for the Prove programming language and .intent files."""
 
-from pygments.lexer import RegexLexer, bygroups, words
+from pygments.lexer import RegexLexer, words
 from pygments.token import (
     Comment,
     Keyword,
@@ -52,7 +52,13 @@ class ProveLexer(RegexLexer):
             (
                 words(
                     (
-                        "creates", "inputs", "matches", "outputs", "reads", "transforms", "validates",
+                        "creates",
+                        "inputs",
+                        "matches",
+                        "outputs",
+                        "reads",
+                        "transforms",
+                        "validates",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
@@ -65,7 +71,12 @@ class ProveLexer(RegexLexer):
             (
                 words(
                     (
-                        "ensures", "explain", "requires", "terminates", "trusted", "when",
+                        "ensures",
+                        "explain",
+                        "requires",
+                        "terminates",
+                        "trusted",
+                        "when",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
@@ -195,14 +206,14 @@ class ProveLexer(RegexLexer):
         # Raw string state — regex internals
         "raw_string": [
             (r'"', String.Regex, "#pop"),
-            (r'\\[dDwWsStrnbBfv0\\.|(){}\[\]+*?^$/]', String.Escape),
-            (r'\[\^?\]?([^\]\\]|\\.|\[:\w+:\])*\]', Punctuation),
-            (r'[+*?]|\{[0-9]+(?:,[0-9]*)?\}', Operator),
-            (r'\(\?[=!:]|\(', Punctuation),
-            (r'\)', Punctuation),
-            (r'[\^$]', Operator),
-            (r'\|', Operator),
-            (r'\.', Operator),
+            (r"\\[dDwWsStrnbBfv0\\.|(){}\[\]+*?^$/]", String.Escape),
+            (r"\[\^?\]?([^\]\\]|\\.|\[:\w+:\])*\]", Punctuation),
+            (r"[+*?]|\{[0-9]+(?:,[0-9]*)?\}", Operator),
+            (r"\(\?[=!:]|\(", Punctuation),
+            (r"\)", Punctuation),
+            (r"[\^$]", Operator),
+            (r"\|", Operator),
+            (r"\.", Operator),
             (r'[^"\\.|()[\]{}+*?^$]+', String.Regex),
         ],
     }
@@ -226,8 +237,13 @@ class ProveIntentLexer(RegexLexer):
             (
                 words(
                     (
-                        "project", "purpose", "domain", "vocabulary",
-                        "module", "flow", "constraints",
+                        "project",
+                        "purpose",
+                        "domain",
+                        "vocabulary",
+                        "module",
+                        "flow",
+                        "constraints",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
@@ -238,8 +254,17 @@ class ProveIntentLexer(RegexLexer):
             (
                 words(
                     (
-                        "validates", "transforms", "reads", "creates", "matches",
-                        "inputs", "outputs", "streams", "listens", "detached", "attached",
+                        "validates",
+                        "transforms",
+                        "reads",
+                        "creates",
+                        "matches",
+                        "inputs",
+                        "outputs",
+                        "streams",
+                        "listens",
+                        "detached",
+                        "attached",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",

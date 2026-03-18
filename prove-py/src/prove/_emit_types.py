@@ -37,6 +37,8 @@ from prove.types import (
 
 
 class TypeEmitterMixin:
+    _locals: dict[str, Type]
+
     def _emit_type_forwards(self) -> None:
         for td in self._all_type_defs():
             cname = mangle_type_name(td.name)
@@ -98,7 +100,8 @@ class TypeEmitterMixin:
             _visit(ty)
 
         return ordered
-  # noqa: E501
+
+    # noqa: E501
     def _direct_imported_local_type_names(self) -> set[str]:
         """Names of types directly imported (not just transitively needed as field deps)."""
         _BUILTIN_NAMES = frozenset(
@@ -229,7 +232,7 @@ class TypeEmitterMixin:
             sig.module
             and sig.module in ("parse", "types")
             and sig.verb in ("creates", "validates")
-            and sig.name == "value"
+            and sig.name == "value"  # type: ignore[return-value]
         )
 
     def _scan_expr_for_record_value(self, expr: Expr) -> None:
@@ -517,8 +520,9 @@ class TypeEmitterMixin:
             # Use named column if available, otherwise fall back to type name
             named = (
                 body.column_names[col_idx]
-                if body.column_names and col_idx < len(body.column_names)
-                   and body.column_names[col_idx] is not None
+                if body.column_names
+                and col_idx < len(body.column_names)
+                and body.column_names[col_idx] is not None
                 else None
             )
             if named:
@@ -527,8 +531,7 @@ class TypeEmitterMixin:
                 array_name = f"{cname}_col_{col_type_name}"
                 # If there are duplicate type names, suffix with index
                 type_names = [
-                    vt2.name if hasattr(vt2, "name") else "Unknown"
-                    for vt2 in body.value_types
+                    vt2.name if hasattr(vt2, "name") else "Unknown" for vt2 in body.value_types
                 ]
                 if type_names.count(col_type_name) > 1:
                     array_name = f"{cname}_col_{col_type_name}_{col_idx}"
@@ -536,10 +539,12 @@ class TypeEmitterMixin:
             self._line(f"static {c_type} {array_name}[] = {{")
             self._indent += 1
             for vname in variant_names:
-                entry = variant_to_entry.get(vname)
+                entry = variant_to_entry.get(vname)  # type: ignore[assignment]
                 if entry and col_idx < len(entry.values):
                     raw = entry.values[col_idx]
-                    kind = entry.value_kinds[col_idx] if col_idx < len(entry.value_kinds) else "string"  # noqa: E501
+                    kind = (
+                        entry.value_kinds[col_idx] if col_idx < len(entry.value_kinds) else "string"
+                    )  # noqa: E501
                     if kind == "string":
                         escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
                         self._line(f'"{escaped}",')
@@ -571,7 +576,7 @@ class TypeEmitterMixin:
             # Build entries list
             reverse_entries: list[tuple[str, int]] = []
             for i, vname in enumerate(variant_names):
-                entry = variant_to_entry.get(vname)
+                entry = variant_to_entry.get(vname)  # type: ignore[assignment]
                 if entry and str_col_idx < len(entry.values):
                     reverse_entries.append((entry.values[str_col_idx], i))
             if use_sorted:
@@ -604,7 +609,7 @@ class TypeEmitterMixin:
             # Build entries list
             int_reverse_entries: list[tuple[str, int]] = []
             for i, vname in enumerate(variant_names):
-                entry = variant_to_entry.get(vname)
+                entry = variant_to_entry.get(vname)  # type: ignore[assignment]
                 if entry and int_col_idx < len(entry.values):
                     int_reverse_entries.append((entry.values[int_col_idx], i))
             if use_sorted:

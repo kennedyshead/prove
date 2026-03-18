@@ -197,9 +197,11 @@ def _write_lsp_stores(data_dir: Path, out_dir: Path, top_k: int = 5) -> None:
             prev2, prev1 = json.loads(key_json)
             top_tokens = [tok for tok, _count in entries[:top_k]]
             completion_str = "|".join(top_tokens)
-            lines.append(
-                f"    {_row_id(i)} | {_prv_str(prev2)} | {_prv_str(prev1)} | {_prv_str(completion_str)}"
+            row = (
+                f"    {_row_id(i)} | {_prv_str(prev2)}"
+                f" | {_prv_str(prev1)} | {_prv_str(completion_str)}"
             )
+            lines.append(row)
         comps_out.parent.mkdir(parents=True, exist_ok=True)
         (comps_out.parent / "versions").mkdir(parents=True, exist_ok=True)
         comps_out.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -258,11 +260,10 @@ def _write_lsp_stores(data_dir: Path, out_dir: Path, top_k: int = 5) -> None:
 
 def _create_tarball(source_dir: Path, out_path: Path) -> None:
     """Create a tar.gz archive of the lsp-ml-stores directory."""
-    import tarfile
-    import tempfile
-
     # Build version file
     import datetime
+    import tarfile
+    import tempfile
 
     version_file = source_dir / "VERSION.txt"
     version_file.write_text(
@@ -284,8 +285,16 @@ if __name__ == "__main__":
     import argparse
 
     _parser = argparse.ArgumentParser(description=__doc__)
-    _parser.add_argument("--package-only", action="store_true", help="Only write package data, skip tarball")
-    _parser.add_argument("--top-k", type=int, default=5, dest="top_k", help="Max completions per context (default: 5)")
+    _parser.add_argument(
+        "--package-only", action="store_true", help="Only write package data, skip tarball"
+    )
+    _parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        dest="top_k",
+        help="Max completions per context (default: 5)",
+    )
     _args = _parser.parse_args()
 
     build_verb_synonyms()

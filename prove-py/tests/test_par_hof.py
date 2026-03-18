@@ -223,11 +223,7 @@ class TestParEachChecker:
 
     def test_par_each_with_lambda(self):
         """par_each with lambda callback passes type check."""
-        check(
-            "outputs caller(xs List<Integer>) Unit\n"
-            "    from\n"
-            "        par_each(xs, |n| n)\n"
-        )
+        check("outputs caller(xs List<Integer>) Unit\n    from\n        par_each(xs, |n| n)\n")
 
     def test_par_each_infers_unit_return(self):
         """par_each returns Unit regardless of callback return type."""

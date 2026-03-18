@@ -14,7 +14,7 @@ def _expand_flags(flags: list[str], base: Path) -> list[str]:
     for flag in flags:
         for prefix in ("-I", "-L", "-Wl,-rpath,"):
             if flag.startswith(prefix):
-                p = os.path.expanduser(flag[len(prefix):])
+                p = os.path.expanduser(flag[len(prefix) :])
                 resolved = str((base / p).resolve()) if not os.path.isabs(p) else p
                 flag = prefix + resolved
                 break
@@ -80,8 +80,7 @@ _RESERVED_SRC_DIRS = frozenset({"stdlib", "runtime", ".prove_cache"})
 def discover_prv_files(root: Path) -> list[Path]:
     """Return sorted .prv source files under *root*, excluding reserved dirs."""
     return sorted(
-        p for p in root.rglob("*.prv")
-        if not (_RESERVED_SRC_DIRS & set(p.relative_to(root).parts))
+        p for p in root.rglob("*.prv") if not (_RESERVED_SRC_DIRS & set(p.relative_to(root).parts))
     )
 
 

@@ -194,7 +194,7 @@ class Mutator:
                     )
 
             elif isinstance(expr, BooleanLit):
-                new_value = not expr.value
+                new_value = not expr.value  # type: ignore[assignment]
                 self._mutant_counter += 1
                 mutant_id = f"M{self._mutant_counter:04d}"
 

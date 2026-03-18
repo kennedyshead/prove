@@ -2033,7 +2033,7 @@ def definition(params: lsp.DefinitionParams) -> lsp.Location | None:
             # Extract module name from "<stdlib:ModuleName>" and find actual path
             from prove.stdlib_loader import stdlib_prv_path
 
-            module_name = span_file[len("<stdlib:"):-1]
+            module_name = span_file[len("<stdlib:") : -1]
             prv_path = stdlib_prv_path(module_name)
             if prv_path is not None and prv_path.exists():
                 target_uri = prv_path.as_uri()

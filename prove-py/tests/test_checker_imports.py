@@ -23,16 +23,12 @@ class TestStdlibLoading:
     def test_io_import_resolves(self):
         """Importing from Io should resolve function types."""
         st = check(
-            "module Main\n"
-            "  Io outputs console\n"
-            "\n"
-            "main()\n"
-            "    from\n"
-            '        console("hello")\n'
+            'module Main\n  Io outputs console\n\nmain()\n    from\n        console("hello")\n'
         )
         # console should resolve without error
         sig = st.resolve_function_any("console")
         assert sig is not None
+
 
 class TestNamespacedCalls:
     """Test Module.function() syntax."""
@@ -68,7 +64,7 @@ class TestNamespacedCalls:
             "\n"
             "outputs run() Unit\n"
             "    from\n"
-            "        System.file(\"test.txt\")\n",
+            '        System.file("test.txt")\n',
             "E312",
         )
 
@@ -106,23 +102,13 @@ class TestImportVerbWarning:
     def test_w312_fires_for_wrong_verb(self):
         """Parse has creates/reads json but no 'transforms json'."""
         check_warns(
-            "module Main\n"
-            "  Parse transforms json\n"
-            "main() Unit\n"
-            "    from\n"
-            "        0\n",
+            "module Main\n  Parse transforms json\nmain() Unit\n    from\n        0\n",
             "W312",
         )
 
     def test_no_w312_for_correct_verb(self):
         """'creates json' matches, no warning expected."""
-        st = check(
-            "module Main\n"
-            "  Parse creates json\n"
-            "main() Unit\n"
-            "    from\n"
-            "        0\n"
-        )
+        st = check("module Main\n  Parse creates json\nmain() Unit\n    from\n        0\n")
         # No error or warning about verb mismatch
         assert st is not None
 
@@ -221,17 +207,23 @@ class TestRecordValueSerializable:
         assert types_compatible(value, user) is True
 
     def test_algebraic_not_serializable(self):
-        color = AlgebraicType("Color", [
-            VariantInfo("Red"),
-            VariantInfo("Green"),
-            VariantInfo("Blue"),
-        ])
+        color = AlgebraicType(
+            "Color",
+            [
+                VariantInfo("Red"),
+                VariantInfo("Green"),
+                VariantInfo("Blue"),
+            ],
+        )
         assert is_json_serializable(color) is False
 
     def test_record_with_function_field_not_serializable(self):
-        bad = RecordType("Bad", {
-            "fn": FunctionType([INTEGER], STRING),
-        })
+        bad = RecordType(
+            "Bad",
+            {
+                "fn": FunctionType([INTEGER], STRING),
+            },
+        )
         assert is_json_serializable(bad) is False
 
     def test_nested_record_serializable(self):
@@ -272,7 +264,7 @@ class TestConstantImport:
             "\n"
             "main()\n"
             "    from\n"
-            '        console(RED)\n'
+            "        console(RED)\n"
         )
         sym = st.lookup("RED")
         assert sym is not None
@@ -281,11 +273,6 @@ class TestConstantImport:
     def test_import_log_nonexistent_constant_errors(self):
         """import Log NONEXISTENT should produce E315."""
         check_fails(
-            "module Main\n"
-            "  Log NONEXISTENT\n"
-            "\n"
-            "main()\n"
-            "    from\n"
-            "        0\n",
+            "module Main\n  Log NONEXISTENT\n\nmain()\n    from\n        0\n",
             "E315",
         )

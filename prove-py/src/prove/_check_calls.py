@@ -43,6 +43,9 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 
 
 class CallCheckMixin:
+    _in_listens_worker_list: bool
+    _inside_async_call: bool
+
     def _infer_call(self, expr: CallExpr, expected_type: Type | None = None) -> Type:
         # Early intercept: store-backed row construction Color(Red, "red", 0xFF0000)
         # Must happen before arg inference since the variant name (Red) is not resolvable.

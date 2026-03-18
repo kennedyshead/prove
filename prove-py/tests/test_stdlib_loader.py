@@ -37,18 +37,14 @@ def test_stdlib_module_loads(module_name: str):
 def test_stdlib_module_has_module_decl(module_name: str):
     """Every stdlib file must contain a module declaration with the correct name."""
     module = _parse_stdlib_module(module_name)
-    assert module is not None, (
-        f"stdlib module '{module_name}' failed to parse"
-    )
+    assert module is not None, f"stdlib module '{module_name}' failed to parse"
 
     expected_name = _MODULE_DISPLAY_NAMES.get(module_name)
     assert expected_name is not None, (
         f"stdlib module '{module_name}' missing from _MODULE_DISPLAY_NAMES"
     )
 
-    mod_decls = [
-        d for d in module.declarations if isinstance(d, ModuleDecl)
-    ]
+    mod_decls = [d for d in module.declarations if isinstance(d, ModuleDecl)]
     assert mod_decls, (
         f"stdlib file '{_STDLIB_MODULES[module_name]}' "
         f"has no module declaration — expected 'module {expected_name}'"

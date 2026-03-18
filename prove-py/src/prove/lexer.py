@@ -241,7 +241,7 @@ class Lexer:
         self._advance()
         self._advance()
         self._advance()
-        text = []
+        text: list[str] = []
         while self.pos < len(self.source):
             if self.source[self.pos] == '"' and self._peek(1) == '"' and self._peek(2) == '"':
                 self._advance()

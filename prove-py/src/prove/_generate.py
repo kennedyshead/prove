@@ -38,9 +38,7 @@ def generate_module(
 
         lines.append(f"/// TODO: document {stub.name}")
 
-        params_str = ", ".join(
-            f"{pname} {ptype}" for pname, ptype in stub.params
-        )
+        params_str = ", ".join(f"{pname} {ptype}" for pname, ptype in stub.params)
         ret = f" {stub.return_type}" if stub.return_type != "Unit" else ""
         lines.append(f"{stub.verb} {stub.name}({params_str}){ret}")
 
@@ -55,9 +53,7 @@ def generate_stub_function(stub: FunctionStub) -> str:
     """Generate a single function stub (for incremental addition)."""
     lines: list[str] = []
     lines.append(f"/// TODO: document {stub.name}")
-    params_str = ", ".join(
-        f"{pname} {ptype}" for pname, ptype in stub.params
-    )
+    params_str = ", ".join(f"{pname} {ptype}" for pname, ptype in stub.params)
     ret = f" {stub.return_type}" if stub.return_type != "Unit" else ""
     lines.append(f"{stub.verb} {stub.name}({params_str}){ret}")
     lines.append("from")

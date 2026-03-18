@@ -34,8 +34,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    import sys
-
     prove_py = _REPO_ROOT / "prove-py"
     sys.path.insert(0, str(prove_py / "src"))
 

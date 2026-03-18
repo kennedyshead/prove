@@ -44,11 +44,13 @@ def main() -> None:
         description="Export syntax highlighting definitions to lexer projects.",
     )
     parser.add_argument(
-        "--build", action="store_true",
+        "--build",
+        action="store_true",
         help="Run build steps after generating (tree-sitter generate, pip install, go build).",
     )
     parser.add_argument(
-        "--target", choices=["treesitter", "pygments", "chroma"],
+        "--target",
+        choices=["treesitter", "pygments", "chroma"],
         help="Only export to a specific target (default: all).",
     )
     args = parser.parse_args()

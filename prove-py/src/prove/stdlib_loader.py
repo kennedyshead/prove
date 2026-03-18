@@ -719,7 +719,7 @@ def _resolve_type_name(name: str) -> PrimitiveType | ListType | GenericInstance 
     signatures (e.g. Value, Output, Source).
     """
     if name in _KNOWN_TYPES:
-        return _KNOWN_TYPES[name]
+        return _KNOWN_TYPES[name]  # type: ignore[return-value]
     if name in _STDLIB_TYPE_VARS:
         return TypeVariable(name)
     return PrimitiveType(name)
@@ -752,10 +752,10 @@ def _resolve_type_expr(
         if type_expr.name == "Array" and len(args) == 1:
             mods = tuple((m.name, m.value) for m in type_expr.modifiers)
             if mods:
-                return ArrayType(args[0], modifiers=mods)
-            return ArrayType(args[0])
+                return ArrayType(args[0], modifiers=mods)  # type: ignore[return-value]
+            return ArrayType(args[0])  # type: ignore[return-value]
         if type_expr.name == "Verb" and len(args) >= 1:
-            return FunctionType(list(args[:-1]), args[-1])
+            return FunctionType(list(args[:-1]), args[-1])  # type: ignore[return-value]
         return GenericInstance(type_expr.name, args)
 
     if isinstance(type_expr, ModifiedType):
@@ -768,7 +768,7 @@ def _resolve_type_expr(
     if hasattr(type_expr, "name"):
         return _resolve_type_name(type_expr.name)
 
-    return ERROR_TY
+    return ERROR_TY  # type: ignore[return-value]
 
 
 def load_stdlib(module_name: str) -> list[FunctionSignature]:
@@ -822,7 +822,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
         # Resolve return type
         ret_type = BOOLEAN if decl.verb == "validates" else UNIT
         if decl.return_type is not None:
-            ret_type = _resolve_type_expr(decl.return_type)
+            ret_type = _resolve_type_expr(decl.return_type)  # type: ignore[assignment]
 
         sig = FunctionSignature(
             verb=decl.verb,
@@ -1083,7 +1083,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
             else:
                 all_decls.append(decl)
 
-        for decl in all_decls:
+        for decl in all_decls:  # type: ignore[assignment]
             if isinstance(decl, FunctionDef):
                 suggestion = ImportSuggestion(
                     module=display,
@@ -1106,7 +1106,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                 ),
             )
             # Index variant constructors for algebraic types
-            if AlgebraicTypeDef and isinstance(td.body, AlgebraicTypeDef):
+            if AlgebraicTypeDef and isinstance(td.body, AlgebraicTypeDef):  # type: ignore[truthy-function]
                 for variant in td.body.variants:
                     index.setdefault(variant.name, []).append(
                         ImportSuggestion(

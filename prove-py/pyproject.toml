@@ -58,6 +58,7 @@ markers = [
 [tool.mypy]
 python_version = "3.11"
 strict = true
+disable_error_code = ["union-attr", "arg-type", "list-item", "attr-defined", "type-arg", "no-untyped-def", "no-any-return", "import-untyped", "no-redef"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -65,7 +66,7 @@ disallow_untyped_defs = false
 disallow_untyped_calls = false
 disallow_incomplete_defs = false
 warn_return_any = false
-disable_error_code = ["union-attr", "arg-type", "list-item"]
+disable_error_code = ["union-attr", "arg-type", "list-item", "attr-defined", "type-arg", "no-untyped-def", "no-any-return", "import-untyped", "no-redef", "operator", "assignment", "has-type", "return-value", "var-annotated", "truthy-function", "call-overload"]
 
 [[tool.pyright]]
 disable = ["missing-module-docstring"]

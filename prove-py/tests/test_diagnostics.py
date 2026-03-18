@@ -537,24 +537,12 @@ class TestI304:
     """I304 fires when a user-defined constant is never referenced."""
 
     def test_fires_for_unused_constant(self):
-        source = (
-            "module M\n"
-            "  PI as Float = 3.14\n"
-            "transforms f() Integer\n"
-            "from\n"
-            "    1\n"
-        )
+        source = "module M\n  PI as Float = 3.14\ntransforms f() Integer\nfrom\n    1\n"
         diags = check_info(source, "I304")
         assert len(diags) == 1
 
     def test_not_fired_when_constant_used(self):
-        source = (
-            "module M\n"
-            "  PI as Float = 3.14\n"
-            "transforms f() Float\n"
-            "from\n"
-            "    PI\n"
-        )
+        source = "module M\n  PI as Float = 3.14\ntransforms f() Float\nfrom\n    PI\n"
         diags = check_all(source)
         assert "I304" not in _codes(diags)
 
@@ -652,22 +640,13 @@ class TestI320:
 
     def test_transforms_two_stmts_no_contracts(self):
         """transforms with 2 statements and no contracts -> I320 fires."""
-        source = (
-            "transforms f(x Integer) Integer\n"
-            "from\n"
-            "    y as Integer = x + 1\n"
-            "    y * 2\n"
-        )
+        source = "transforms f(x Integer) Integer\nfrom\n    y as Integer = x + 1\n    y * 2\n"
         diags = check_info(source, "I320")
         assert len(diags) == 1
 
     def test_transforms_one_stmt_no_contracts(self):
         """transforms with 1 statement and no contracts -> no I320."""
-        source = (
-            "transforms f(x Integer) Integer\n"
-            "from\n"
-            "    x + 1\n"
-        )
+        source = "transforms f(x Integer) Integer\nfrom\n    x + 1\n"
         diags = check_all(source)
         assert "I320" not in _codes(diags)
 

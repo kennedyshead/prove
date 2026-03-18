@@ -230,9 +230,7 @@ def type_name(ty: Type) -> str:
         return ty.name
     if isinstance(ty, StructType):
         if ty.required_fields:
-            fields = ", ".join(
-                f"{n}: {type_name(t)}" for n, t in ty.required_fields.items()
-            )
+            fields = ", ".join(f"{n}: {type_name(t)}" for n, t in ty.required_fields.items())
             return f"Struct with {{{fields}}}"
         return "Struct"
     if isinstance(ty, AlgebraicType):
@@ -485,10 +483,7 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
     if isinstance(ty, ArrayType):
         return ArrayType(substitute_type_vars(ty.element, bindings))
     if isinstance(ty, StructType) and ty.required_fields:
-        new_fields = {
-            n: substitute_type_vars(t, bindings)
-            for n, t in ty.required_fields.items()
-        }
+        new_fields = {n: substitute_type_vars(t, bindings) for n, t in ty.required_fields.items()}
         return StructType(new_fields)
     return ty
 

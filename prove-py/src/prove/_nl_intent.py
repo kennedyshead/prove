@@ -18,29 +18,113 @@ if TYPE_CHECKING:
 # ── Verb synonym map ────────────────────────────────────────────
 # Canonical Prove verb → all recognized prose synonyms (including singular forms).
 VERB_SYNONYMS: dict[str, list[str]] = {
-    "transforms": ["transforms", "transform", "converts", "convert", "computes", "compute",
-                    "calculates", "calculate", "processes", "process", "produces", "produce",
-                    "updates", "update", "modifies", "modify"],
-    "validates":  ["validates", "validate", "checks", "check", "verifies", "verify",
-                    "ensures", "ensure", "guards", "guard"],
-    "reads":      ["reads", "read", "fetches", "fetch", "loads", "load",
-                    "retrieves", "retrieve", "queries", "query"],
-    "creates":    ["creates", "create", "makes", "make", "builds", "build",
-                    "constructs", "construct", "generates", "generate"],
-    "matches":    ["matches", "match", "compares", "compare", "classifies", "classify",
-                    "selects", "select"],
-    "outputs":    ["outputs", "output", "writes", "write", "prints", "print",
-                    "sends", "send", "emits", "emit", "logs", "log", "displays", "display"],
-    "inputs":     ["inputs", "input", "receives", "receive", "accepts", "accept",
-                    "parses", "parse", "takes", "take"],
-    "listens":    ["listens", "listen", "monitors", "monitor", "watches", "watch",
-                    "waits", "wait"],
-    "detached":   ["detached", "detach", "fires", "fire", "spawns", "spawn",
-                    "forks", "fork", "backgrounds", "background"],
-    "attached":   ["attached", "attach", "awaits", "await", "joins", "join",
-                    "child", "worker"],
-    "streams":    ["streams", "stream", "blocks", "block", "polls", "poll",
-                    "loops", "loop"],
+    "transforms": [
+        "transforms",
+        "transform",
+        "converts",
+        "convert",
+        "computes",
+        "compute",
+        "calculates",
+        "calculate",
+        "processes",
+        "process",
+        "produces",
+        "produce",
+        "updates",
+        "update",
+        "modifies",
+        "modify",
+    ],
+    "validates": [
+        "validates",
+        "validate",
+        "checks",
+        "check",
+        "verifies",
+        "verify",
+        "ensures",
+        "ensure",
+        "guards",
+        "guard",
+    ],
+    "reads": [
+        "reads",
+        "read",
+        "fetches",
+        "fetch",
+        "loads",
+        "load",
+        "retrieves",
+        "retrieve",
+        "queries",
+        "query",
+    ],
+    "creates": [
+        "creates",
+        "create",
+        "makes",
+        "make",
+        "builds",
+        "build",
+        "constructs",
+        "construct",
+        "generates",
+        "generate",
+    ],
+    "matches": [
+        "matches",
+        "match",
+        "compares",
+        "compare",
+        "classifies",
+        "classify",
+        "selects",
+        "select",
+    ],
+    "outputs": [
+        "outputs",
+        "output",
+        "writes",
+        "write",
+        "prints",
+        "print",
+        "sends",
+        "send",
+        "emits",
+        "emit",
+        "logs",
+        "log",
+        "displays",
+        "display",
+    ],
+    "inputs": [
+        "inputs",
+        "input",
+        "receives",
+        "receive",
+        "accepts",
+        "accept",
+        "parses",
+        "parse",
+        "takes",
+        "take",
+    ],
+    "listens": ["listens", "listen", "monitors", "monitor", "watches", "watch", "waits", "wait"],
+    "detached": [
+        "detached",
+        "detach",
+        "fires",
+        "fire",
+        "spawns",
+        "spawn",
+        "forks",
+        "fork",
+        "backgrounds",
+        "background",
+    ],
+    "attached": ["attached", "attach", "awaits", "await", "joins", "join", "child", "worker"],
+    "streams": ["streams", "stream", "blocks", "block", "polls", "poll", "loops", "loop"],
 }
 
 _HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {
@@ -49,9 +133,10 @@ _HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {
 
 try:
     from prove.nlp_store import load_verb_synonyms
+
     _SYNONYM_TO_VERB: dict[str, str] = {**_HARDCODED_SYNONYM_TO_VERB, **load_verb_synonyms()}
 except Exception:
-    _SYNONYM_TO_VERB: dict[str, str] = _HARDCODED_SYNONYM_TO_VERB  # type: ignore[no-redef]
+    _SYNONYM_TO_VERB: dict[str, str] = _HARDCODED_SYNONYM_TO_VERB
 
 
 def normalize_verb(word: str) -> str | None:
@@ -213,8 +298,9 @@ def _prose_overlaps_fallback(prose: str, tokens: set[str]) -> bool:
     Both prose words and token parts (split on ``_``) are reduced to their
     root form via ``_normalize_noun_fallback`` before comparison.
     """
-    prose_words = {_normalize_noun_fallback(w.lower())
-                   for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", prose)}
+    prose_words = {
+        _normalize_noun_fallback(w.lower()) for w in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", prose)
+    }
     token_roots: set[str] = set()
     for t in tokens:
         for part in split_name(t):
@@ -224,16 +310,66 @@ def _prose_overlaps_fallback(prose: str, tokens: set[str]) -> bool:
 
 # ── Noun extraction ──────────────────────────────────────────────
 
-_NOUN_STOPS = frozenset({
-    "the", "a", "an", "this", "that", "each", "every", "all", "some",
-    "is", "are", "was", "were", "be", "been", "being",
-    "has", "have", "had", "do", "does", "did",
-    "will", "would", "could", "should", "can", "may", "might",
-    "and", "or", "but", "not", "no", "nor",
-    "from", "into", "with", "for", "to", "of", "in", "on", "at", "by",
-    "it", "its", "them", "their", "they",
-    "module", "function", "type", "using", "against", "between",
-})
+_NOUN_STOPS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "this",
+        "that",
+        "each",
+        "every",
+        "all",
+        "some",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "has",
+        "have",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "can",
+        "may",
+        "might",
+        "and",
+        "or",
+        "but",
+        "not",
+        "no",
+        "nor",
+        "from",
+        "into",
+        "with",
+        "for",
+        "to",
+        "of",
+        "in",
+        "on",
+        "at",
+        "by",
+        "it",
+        "its",
+        "them",
+        "their",
+        "they",
+        "module",
+        "function",
+        "type",
+        "using",
+        "against",
+        "between",
+    }
+)
 
 
 def extract_nouns(text: str) -> list[str]:
@@ -274,6 +410,7 @@ def _extract_nouns_fallback(text: str) -> list[str]:
 
 
 # ── Stub generation ──────────────────────────────────────────────
+
 
 @dataclass
 class FunctionStub:
@@ -328,11 +465,15 @@ def pair_verbs_nouns(
                     conf = 0.9
                 else:
                     conf = 0.3
-            stubs.append(FunctionStub(
-                verb=verb, name=noun,
-                params=params, return_type=ret,
-                confidence=conf,
-            ))
+            stubs.append(
+                FunctionStub(
+                    verb=verb,
+                    name=noun,
+                    params=params,
+                    return_type=ret,
+                    confidence=conf,
+                )
+            )
     return sorted(stubs, key=lambda s: -s.confidence)
 
 
@@ -369,30 +510,51 @@ def implied_functions(
         doc_words = set(re.findall(r"[a-z]{3,}", entry["doc"].lower()))
         overlap = entry["matched_words"] & doc_words
         score = len(overlap) / max(len(words), 1)
-        results.append({
-            "module": entry["module"],
-            "name": entry["name"],
-            "verb": entry["verb"],
-            "doc": entry["doc"],
-            "score": round(score, 3),
-        })
+        results.append(
+            {
+                "module": entry["module"],
+                "name": entry["name"],
+                "verb": entry["verb"],
+                "doc": entry["doc"],
+                "score": round(score, 3),
+            }
+        )
 
     return sorted(results, key=lambda r: -r["score"])
 
 
 # ── Type body inference ──────────────────────────────────────────
 
-_RECORD_INDICATORS = frozenset({
-    "paired with", "has a", "contains", "consisting of", "with a",
-    "composed of", "made up of",
-})
-_ALGEBRAIC_INDICATORS = frozenset({
-    "either", "one of",
-})
-_REFINEMENT_INDICATORS = frozenset({
-    "where", "within", "bounded", "positive", "non-negative",
-    "at least", "at most", "greater than", "less than",
-})
+_RECORD_INDICATORS = frozenset(
+    {
+        "paired with",
+        "has a",
+        "contains",
+        "consisting of",
+        "with a",
+        "composed of",
+        "made up of",
+    }
+)
+_ALGEBRAIC_INDICATORS = frozenset(
+    {
+        "either",
+        "one of",
+    }
+)
+_REFINEMENT_INDICATORS = frozenset(
+    {
+        "where",
+        "within",
+        "bounded",
+        "positive",
+        "non-negative",
+        "at least",
+        "at most",
+        "greater than",
+        "less than",
+    }
+)
 
 
 @dataclass
@@ -415,7 +577,7 @@ def _infer_type_body_nlp(description: str) -> TypeBodyHint | None:
     from prove.nlp import _nlp_model
 
     assert _nlp_model is not None
-    doc = _nlp_model(description)  # type: ignore[operator]
+    doc = _nlp_model(description)
 
     # Look for conjunction patterns indicating algebraic types
     has_conj = any(tok.dep_ == "conj" for tok in doc)
@@ -523,7 +685,9 @@ def _extract_fields_from_text(description: str) -> list[tuple[str, str]]:
     fields: list[tuple[str, str]] = []
 
     # Pattern: "a X paired with a Y"
-    m = re.search(r"(?:an?\s+)?(\w+(?:\s+\w+)?)\s+paired with\s+(?:an?\s+)?(\w+(?:\s+\w+)?)", desc_lower)  # noqa: E501
+    m = re.search(
+        r"(?:an?\s+)?(\w+(?:\s+\w+)?)\s+paired with\s+(?:an?\s+)?(\w+(?:\s+\w+)?)", desc_lower
+    )  # noqa: E501
     if m:
         fields.append((_to_snake_case(m.group(1).split()[-1]), "String"))
         fields.append((_to_snake_case(m.group(2).split()[-1]), "String"))
@@ -616,8 +780,8 @@ def infer_stdlib_imports(
     seen: set[tuple[str, str]] = set()
 
     for match in stdlib_matches:
-        mod = match.module.capitalize()  # type: ignore[union-attr]
-        fn = match.function  # type: ignore[union-attr]
+        mod = match.module.capitalize()
+        fn = match.function
         key = (mod, fn.name)
         if key in seen:
             continue
@@ -652,7 +816,7 @@ def infer_constants(
     seen_names: set[str] = set()
 
     for c in constraints:
-        text = c.text if hasattr(c, "text") else str(c)  # type: ignore[union-attr]
+        text = c.text if hasattr(c, "text") and c.text else str(c)
         text_lower = text.lower()
 
         # "maximum N UNIT"
@@ -699,9 +863,15 @@ def infer_constants(
 
 # ── Comptime inference ───────────────────────────────────────────
 
-_COMPTIME_INDICATORS = frozenset({
-    "at compile time", "compile-time", "static", "precomputed", "built-in",
-})
+_COMPTIME_INDICATORS = frozenset(
+    {
+        "at compile time",
+        "compile-time",
+        "static",
+        "precomputed",
+        "built-in",
+    }
+)
 
 
 def infer_comptime(
@@ -715,35 +885,44 @@ def infer_comptime(
     results: list[tuple[str, str, str, str]] = []
 
     for c in constraints:
-        text = c.text if hasattr(c, "text") else str(c)  # type: ignore[union-attr]
+        text = c.text if hasattr(c, "text") and c.text else str(c)
         text_lower = text.lower()
 
         if not any(ind in text_lower for ind in _COMPTIME_INDICATORS):
             continue
 
         # "precomputed table of X" / "static table of X"
-        m = re.search(r"(?:precomputed|static|compile-time|built-in)\s+(?:table|map|list|set)\s+of\s+(\w+)", text_lower)  # noqa: E501
+        m = re.search(
+            r"(?:precomputed|static|compile-time|built-in)\s+(?:table|map|list|set)\s+of\s+(\w+)",
+            text_lower,
+        )  # noqa: E501
         if m:
             subject = m.group(1)
             name = f"{subject.upper()}_TABLE"
-            results.append((
-                name,
-                "Table<String, String>",
-                'Table.empty()',
-                f"Compile-time {subject} table (from constraint)",
-            ))
+            results.append(
+                (
+                    name,
+                    "Table<String, String>",
+                    "Table.empty()",
+                    f"Compile-time {subject} table (from constraint)",
+                )
+            )
             continue
 
         # "X computed at compile time" / "X is precomputed"
-        m = re.search(r"(\w+)\s+(?:computed at compile time|is precomputed|is static|is built-in)", text_lower)  # noqa: E501
+        m = re.search(
+            r"(\w+)\s+(?:computed at compile time|is precomputed|is static|is built-in)", text_lower
+        )  # noqa: E501
         if m:
             subject = m.group(1)
             name = subject.upper()
-            results.append((
-                name,
-                "String",
-                '""',
-                f"Compile-time {subject} (from constraint)",
-            ))
+            results.append(
+                (
+                    name,
+                    "String",
+                    '""',
+                    f"Compile-time {subject} (from constraint)",
+                )
+            )
 
     return results

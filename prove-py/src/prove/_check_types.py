@@ -310,7 +310,7 @@ class TypeCheckMixin:
     def _infer_match(self, expr: MatchExpr) -> Type:
         subject_type = ERROR_TY
         if expr.subject is not None:
-            subject_type = self._infer_expr(expr.subject)
+            subject_type = self._infer_expr(expr.subject)  # type: ignore[assignment]
 
         # W304: match on condition already guaranteed by requires
         if expr.subject is not None and isinstance(self._current_function, FunctionDef):
@@ -344,7 +344,7 @@ class TypeCheckMixin:
         if isinstance(resolved_subj, PrimitiveType):
             rt = self.symbols.resolve_type(resolved_subj.name)
             if isinstance(rt, RecordType):
-                resolved_subj = rt
+                resolved_subj = rt  # type: ignore[assignment]
         if isinstance(resolved_subj, RecordType):
             record_seen = False
             for arm in expr.arms:
@@ -638,8 +638,7 @@ class TypeCheckMixin:
 
                     exp_name = tn(expected)
                     col_type_names = [
-                        vt.name if hasattr(vt, "name") else str(vt)
-                        for vt in lookup.value_types
+                        vt.name if hasattr(vt, "name") else str(vt) for vt in lookup.value_types
                     ]
                     if col_type_names.count(exp_name) > 1:
                         has_names = lookup.column_names and any(

@@ -20,7 +20,10 @@ def _compiler_family(cc: str) -> str:
     """Return 'gcc', 'clang', or 'msvc'."""
     try:
         result = subprocess.run(
-            [cc, "--version"], capture_output=True, text=True, timeout=5,
+            [cc, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         output = result.stdout.lower()
         if "clang" in output:

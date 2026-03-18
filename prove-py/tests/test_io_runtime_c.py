@@ -280,7 +280,10 @@ class TestProcessChannel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="process_args",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="process_args",
             args=["foo", "bar"],
         )
         assert result.returncode == 0
@@ -303,7 +306,10 @@ class TestProcessChannel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="process_val",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="process_val",
             args=["--flag"],
         )
         assert result.returncode == 0

@@ -117,5 +117,6 @@ def check_and_format(source: str) -> str:
     checker = Checker()
     checker.check(module)
     return ProveFormatter(
-        symbols=checker.symbols, diagnostics=checker.diagnostics,
+        symbols=checker.symbols,
+        diagnostics=checker.diagnostics,
     ).format(module)

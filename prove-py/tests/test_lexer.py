@@ -37,11 +37,28 @@ class TestLexerBasic:
         assert result == [(TokenKind.IDENTIFIER, "my_var_123")]
 
     def test_keywords(self):
-        for kw in ["transforms", "inputs", "outputs", "validates",
-                    "main", "from", "type", "is", "as", "with", "use",
-                    "where", "match", "comptime", "valid",
-                    "module", "domain", "ensures", "requires",
-                    "when"]:
+        for kw in [
+            "transforms",
+            "inputs",
+            "outputs",
+            "validates",
+            "main",
+            "from",
+            "type",
+            "is",
+            "as",
+            "with",
+            "use",
+            "where",
+            "match",
+            "comptime",
+            "valid",
+            "module",
+            "domain",
+            "ensures",
+            "requires",
+            "when",
+        ]:
             result = lex(kw)
             assert len(result) == 1, f"keyword {kw} should lex to one token"
             assert result[0][1] == kw
@@ -71,9 +88,19 @@ class TestLexerBasic:
         assert result == [(TokenKind.CONSTANT_IDENTIFIER, "HTTP2")]
 
     def test_ai_resistance_keywords(self):
-        for kw in ["why_not", "chosen", "near_miss", "know", "assume",
-                    "believe", "intent", "narrative", "temporal",
-                    "satisfies", "invariant_network"]:
+        for kw in [
+            "why_not",
+            "chosen",
+            "near_miss",
+            "know",
+            "assume",
+            "believe",
+            "intent",
+            "narrative",
+            "temporal",
+            "satisfies",
+            "invariant_network",
+        ]:
             result = lex(kw)
             assert len(result) == 1, f"keyword {kw} should lex to one token"
 
@@ -154,8 +181,10 @@ class TestLexerLiterals:
         import pytest
 
         from prove.errors import CompileError
+
         with pytest.raises(CompileError):
             from prove.lexer import Lexer
+
             Lexer(r'"\d"').lex()
 
     def test_triple_string(self):
@@ -200,30 +229,48 @@ class TestLexerLiterals:
 
 class TestLexerOperators:
     def test_single_char_operators(self):
-        ops = [("+", TokenKind.PLUS), ("-", TokenKind.MINUS),
-               ("*", TokenKind.STAR), ("%", TokenKind.PERCENT),
-               ("<", TokenKind.LESS), (">", TokenKind.GREATER),
-               ("!", TokenKind.BANG), ("=", TokenKind.ASSIGN),
-               (".", TokenKind.DOT)]
+        ops = [
+            ("+", TokenKind.PLUS),
+            ("-", TokenKind.MINUS),
+            ("*", TokenKind.STAR),
+            ("%", TokenKind.PERCENT),
+            ("<", TokenKind.LESS),
+            (">", TokenKind.GREATER),
+            ("!", TokenKind.BANG),
+            ("=", TokenKind.ASSIGN),
+            (".", TokenKind.DOT),
+        ]
         for text, expected_kind in ops:
             result = lex(text)
             assert result[0][0] == expected_kind, f"operator {text}"
 
     def test_two_char_operators(self):
-        ops = [("==", TokenKind.EQUAL), ("!=", TokenKind.NOT_EQUAL),
-               ("<=", TokenKind.LESS_EQUAL), (">=", TokenKind.GREATER_EQUAL),
-               ("&&", TokenKind.AND), ("||", TokenKind.OR),
-               ("|>", TokenKind.PIPE_ARROW), ("=>", TokenKind.FAT_ARROW),
-               ("..", TokenKind.DOT_DOT), ("->", TokenKind.ARROW)]
+        ops = [
+            ("==", TokenKind.EQUAL),
+            ("!=", TokenKind.NOT_EQUAL),
+            ("<=", TokenKind.LESS_EQUAL),
+            (">=", TokenKind.GREATER_EQUAL),
+            ("&&", TokenKind.AND),
+            ("||", TokenKind.OR),
+            ("|>", TokenKind.PIPE_ARROW),
+            ("=>", TokenKind.FAT_ARROW),
+            ("..", TokenKind.DOT_DOT),
+            ("->", TokenKind.ARROW),
+        ]
         for text, expected_kind in ops:
             result = lex(text)
             assert result[0][0] == expected_kind, f"operator {text}"
 
     def test_punctuation(self):
-        ops = [("(", TokenKind.LPAREN), (")", TokenKind.RPAREN),
-               ("[", TokenKind.LBRACKET), ("]", TokenKind.RBRACKET),
-               (",", TokenKind.COMMA), (":", TokenKind.COLON),
-               ("|", TokenKind.PIPE)]
+        ops = [
+            ("(", TokenKind.LPAREN),
+            (")", TokenKind.RPAREN),
+            ("[", TokenKind.LBRACKET),
+            ("]", TokenKind.RBRACKET),
+            (",", TokenKind.COMMA),
+            (":", TokenKind.COLON),
+            ("|", TokenKind.PIPE),
+        ]
         for text, expected_kind in ops:
             result = lex(text)
             assert result[0][0] == expected_kind, f"punctuation {text}"
@@ -287,9 +334,16 @@ class TestLexerNewlines:
             # (the newline after 'b' is fine)
             op_idx = None
             for i, kind in enumerate(k):
-                if kind in (TokenKind.PLUS, TokenKind.MINUS, TokenKind.STAR,
-                            TokenKind.SLASH, TokenKind.EQUAL, TokenKind.NOT_EQUAL,
-                            TokenKind.AND, TokenKind.OR):
+                if kind in (
+                    TokenKind.PLUS,
+                    TokenKind.MINUS,
+                    TokenKind.STAR,
+                    TokenKind.SLASH,
+                    TokenKind.EQUAL,
+                    TokenKind.NOT_EQUAL,
+                    TokenKind.AND,
+                    TokenKind.OR,
+                ):
                     op_idx = i
                     break
             if op_idx is not None:
@@ -358,9 +412,9 @@ class TestLexerIntegration:
 
     def test_hello_world(self):
         source = (
-            '/// Hello from Prove!\n'
-            'main() Result<Unit, Error>!\n'
-            '    from\n'
+            "/// Hello from Prove!\n"
+            "main() Result<Unit, Error>!\n"
+            "    from\n"
             '        println("Hello from Prove!")\n'
         )
         tokens = Lexer(source).lex()

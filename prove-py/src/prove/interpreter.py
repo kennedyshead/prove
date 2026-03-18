@@ -319,27 +319,27 @@ class ComptimeInterpreter:
         if op == "+":
             if isinstance(left, str) or isinstance(right, str):
                 return str(left) + str(right)
-            return left + right
+            return (left) + (right)  # type: ignore[operator]
         if op == "-":
-            return left - right
+            return (left) - (right)  # type: ignore[operator]
         if op == "*":
-            return left * right
+            return (left) * (right)  # type: ignore[operator]
         if op == "/":
-            return left / right
+            return (left) / (right)  # type: ignore[operator]
         if op == "%":
-            return left % right
+            return (left) % (right)  # type: ignore[operator]
         if op == "==":
             return left == right
         if op == "!=":
             return left != right
         if op == "<":
-            return left < right
+            return (left) < (right)  # type: ignore[operator]
         if op == "<=":
-            return left <= right
+            return (left) <= (right)  # type: ignore[operator]
         if op == ">":
-            return left > right
+            return (left) > (right)  # type: ignore[operator]
         if op == ">=":
-            return left >= right
+            return (left) >= (right)  # type: ignore[operator]
         if op == "and":
             return left and right
         if op == "or":
@@ -376,9 +376,9 @@ class ComptimeInterpreter:
         if op == "not":
             return not operand
         if op == "-":
-            return -operand
+            return -(operand)  # type: ignore[operator]
         if op == "+":
-            return +operand
+            return +(operand)  # type: ignore[operator]
         raise CompileError(
             [
                 Diagnostic(

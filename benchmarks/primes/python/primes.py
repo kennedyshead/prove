@@ -1,7 +1,4 @@
-import math
-import sys
 import os
-import platform
 import socket
 
 

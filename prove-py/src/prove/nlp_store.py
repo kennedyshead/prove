@@ -108,7 +108,7 @@ def build_synonym_cache() -> Path:
     Requires NLTK with WordNet data.  Returns the path to the written file.
     Raises if WordNet is not available.
     """
-    from nltk.corpus import wordnet  # type: ignore[import-untyped]
+    from nltk.corpus import wordnet
 
     # Probe that data is actually downloaded
     wordnet.synsets("test")

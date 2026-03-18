@@ -48,7 +48,6 @@ def _collect_entry_imports(py_files: set[Path]) -> set[str]:
     return names
 
 
-
 def _find_third_party_packages(names: set[str]) -> dict[str, Path]:
     """Map package name → package root directory for non-stdlib packages.
 
@@ -178,7 +177,8 @@ def maybe_generate_bundle(
 
     pkg_names = ", ".join(sorted(packages))
     total_files = sum(
-        1 for p in packages.values()
+        1
+        for p in packages.values()
         for _, _, filenames in os.walk(p, followlinks=True)
         for fname in filenames
         if not fname.endswith(tuple(_SKIP_SUFFIXES))

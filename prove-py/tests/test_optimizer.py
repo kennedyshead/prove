@@ -480,9 +480,11 @@ class TestIteratorFusion:
             func=IdentifierExpr("filter", _SPAN),
             args=[
                 IdentifierExpr("xs", _SPAN),
-                LambdaExpr(params=["x"], body=BinaryExpr(
-                    IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN
-                ), span=_SPAN),
+                LambdaExpr(
+                    params=["x"],
+                    body=BinaryExpr(IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN),
+                    span=_SPAN,
+                ),
             ],
             span=_SPAN,
         )
@@ -491,9 +493,11 @@ class TestIteratorFusion:
             func=IdentifierExpr("map", _SPAN),
             args=[
                 inner,
-                LambdaExpr(params=["x"], body=BinaryExpr(
-                    IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN
-                ), span=_SPAN),
+                LambdaExpr(
+                    params=["x"],
+                    body=BinaryExpr(IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN),
+                    span=_SPAN,
+                ),
             ],
             span=_SPAN,
         )
@@ -523,9 +527,11 @@ class TestIteratorFusion:
             func=IdentifierExpr("map", _SPAN),
             args=[
                 IdentifierExpr("xs", _SPAN),
-                LambdaExpr(params=["x"], body=BinaryExpr(
-                    IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN
-                ), span=_SPAN),
+                LambdaExpr(
+                    params=["x"],
+                    body=BinaryExpr(IdentifierExpr("x", _SPAN), "*", IntegerLit("2", _SPAN), _SPAN),
+                    span=_SPAN,
+                ),
             ],
             span=_SPAN,
         )
@@ -534,9 +540,11 @@ class TestIteratorFusion:
             func=IdentifierExpr("filter", _SPAN),
             args=[
                 inner,
-                LambdaExpr(params=["x"], body=BinaryExpr(
-                    IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN
-                ), span=_SPAN),
+                LambdaExpr(
+                    params=["x"],
+                    body=BinaryExpr(IdentifierExpr("x", _SPAN), ">", IntegerLit("0", _SPAN), _SPAN),
+                    span=_SPAN,
+                ),
             ],
             span=_SPAN,
         )

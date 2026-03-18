@@ -44,8 +44,8 @@ class TestDomainProfiles:
     def test_unknown_domain_warns(self):
         check_warns(
             "module M\n"
-            "  domain: \"aerospace\"\n"
-            "  narrative: \"Test module.\"\n"
+            '  domain: "aerospace"\n'
+            '  narrative: "Test module."\n'
             "\n"
             "transforms id(x Integer) Integer\n"
             "    from\n"
@@ -56,8 +56,8 @@ class TestDomainProfiles:
     def test_finance_domain_float_warns(self):
         check_warns(
             "module M\n"
-            "  domain: \"finance\"\n"
-            "  narrative: \"Financial module.\"\n"
+            '  domain: "finance"\n'
+            '  narrative: "Financial module."\n'
             "\n"
             "transforms total(x Float) Float\n"
             "    from\n"
@@ -68,8 +68,8 @@ class TestDomainProfiles:
     def test_finance_domain_requires_ensures(self):
         check_warns(
             "module M\n"
-            "  domain: \"finance\"\n"
-            "  narrative: \"Financial module.\"\n"
+            '  domain: "finance"\n'
+            '  narrative: "Financial module."\n'
             "\n"
             "transforms total(x Decimal) Decimal\n"
             "    from\n"
@@ -80,8 +80,8 @@ class TestDomainProfiles:
     def test_finance_domain_requires_near_miss(self):
         check_warns(
             "module M\n"
-            "  domain: \"finance\"\n"
-            "  narrative: \"Financial module.\"\n"
+            '  domain: "finance"\n'
+            '  narrative: "Financial module."\n'
             "\n"
             "transforms total(x Decimal) Decimal\n"
             "    ensures total(1.0) == 1.0\n"
@@ -93,8 +93,8 @@ class TestDomainProfiles:
     def test_general_domain_no_warnings(self):
         tokens = Lexer(
             "module M\n"
-            "  domain: \"general\"\n"
-            "  narrative: \"Test module.\"\n"
+            '  domain: "general"\n'
+            '  narrative: "Test module."\n'
             "\n"
             "transforms id(x Integer) Integer\n"
             "    from\n"
@@ -110,11 +110,11 @@ class TestDomainProfiles:
     def test_trusted_functions_skip_domain_check(self):
         tokens = Lexer(
             "module M\n"
-            "  domain: \"safety\"\n"
-            "  narrative: \"Safety module.\"\n"
+            '  domain: "safety"\n'
+            '  narrative: "Safety module."\n'
             "\n"
             "transforms id(x Integer) Integer\n"
-            "    trusted \"bypass\"\n"
+            '    trusted "bypass"\n'
             "    from\n"
             "        x\n",
             "<test>",
@@ -130,7 +130,7 @@ class TestCoherenceChecking:
     def test_coherence_detects_drift(self):
         diags = _check_with_coherence(
             "module M\n"
-            "  narrative: \"Users authenticate with credentials and receive tokens.\"\n"
+            '  narrative: "Users authenticate with credentials and receive tokens."\n'
             "\n"
             "transforms calculate_tax(x Integer) Integer\n"
             "    from\n"
@@ -143,7 +143,7 @@ class TestCoherenceChecking:
     def test_coherence_no_drift(self):
         diags = _check_with_coherence(
             "module M\n"
-            "  narrative: \"Users authenticate with credentials and receive tokens.\"\n"
+            '  narrative: "Users authenticate with credentials and receive tokens."\n'
             "\n"
             "transforms authenticate(x Integer) Integer\n"
             "    from\n"
@@ -155,7 +155,7 @@ class TestCoherenceChecking:
     def test_coherence_not_checked_without_flag(self):
         tokens = Lexer(
             "module M\n"
-            "  narrative: \"Users authenticate.\"\n"
+            '  narrative: "Users authenticate."\n'
             "\n"
             "transforms calculate_tax(x Integer) Integer\n"
             "    from\n"
@@ -170,11 +170,7 @@ class TestCoherenceChecking:
 
     def test_coherence_no_narrative_skips(self):
         diags = _check_with_coherence(
-            "module M\n"
-            "\n"
-            "transforms foo(x Integer) Integer\n"
-            "    from\n"
-            "        x\n"
+            "module M\n\ntransforms foo(x Integer) Integer\n    from\n        x\n"
         )
         coherence_diags = [d for d in diags if d.code == "I340"]
         assert not coherence_diags
@@ -187,7 +183,7 @@ class TestRefutationChallenges:
 
         tokens = Lexer(
             "module M\n"
-            "  narrative: \"Math helpers.\"\n"
+            '  narrative: "Math helpers."\n'
             "\n"
             "transforms double(n Integer) Integer\n"
             "    ensures double(2) == 4\n"

@@ -23,8 +23,7 @@ def test_all_registry_codes_documented():
     doc_codes = _parse_doc_headings()
     missing = set(DIAGNOSTIC_DOCS.keys()) - doc_codes
     assert not missing, (
-        f"Codes in DIAGNOSTIC_DOCS but missing from diagnostics.md: "
-        f"{sorted(missing)}"
+        f"Codes in DIAGNOSTIC_DOCS but missing from diagnostics.md: {sorted(missing)}"
     )
 
 
@@ -33,6 +32,5 @@ def test_all_documented_codes_in_registry():
     doc_codes = _parse_doc_headings()
     missing = doc_codes - set(DIAGNOSTIC_DOCS.keys())
     assert not missing, (
-        f"Codes in diagnostics.md but missing from DIAGNOSTIC_DOCS: "
-        f"{sorted(missing)}"
+        f"Codes in diagnostics.md but missing from DIAGNOSTIC_DOCS: {sorted(missing)}"
     )

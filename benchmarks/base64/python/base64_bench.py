@@ -1,7 +1,6 @@
 import base64
 import sys
 import os
-import platform
 import socket
 
 

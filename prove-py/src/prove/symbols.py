@@ -99,9 +99,9 @@ def _types_structurally_equal(a: Type, b: Type) -> bool:
     if type(a) is not type(b):
         return False
     if isinstance(a, TypeVariable):
-        return a.name == b.name  # type: ignore[union-attr]
+        return a.name == b.name
     if isinstance(a, PrimitiveType):
-        return a.name == b.name  # type: ignore[union-attr]
+        return a.name == b.name
     if isinstance(a, UnitType):
         return True
     if isinstance(a, GenericInstance):
@@ -112,14 +112,13 @@ def _types_structurally_equal(a: Type, b: Type) -> bool:
             and all(_types_structurally_equal(x, y) for x, y in zip(a.args, b_gi.args))
         )
     if isinstance(a, (RecordType, AlgebraicType, RefinementType)):
-        return a.name == b.name  # type: ignore[union-attr]
+        return a.name == b.name
     if isinstance(a, FunctionType):
         b_fn: FunctionType = b  # type: ignore[assignment]
         return (
             len(a.param_types) == len(b_fn.param_types)
             and all(
-                _types_structurally_equal(x, y)
-                for x, y in zip(a.param_types, b_fn.param_types)
+                _types_structurally_equal(x, y) for x, y in zip(a.param_types, b_fn.param_types)
             )
             and _types_structurally_equal(a.return_type, b_fn.return_type)
         )
