@@ -40,21 +40,19 @@ jobs:
           cp -r src/prove/data/lsp build/lsp-ml-stores/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: lsp-ml-stores
           path: build/lsp-ml-stores/
-          retention-days: 30
 
   create-release:
     needs: build-stores
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: gitea.ref == 'refs/heads/main'
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: lsp-ml-stores
           path: lsp-ml-stores
