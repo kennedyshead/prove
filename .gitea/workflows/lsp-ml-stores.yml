@@ -23,28 +23,30 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    defaults:
+      run:
+        working-directory: prove-py
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install prove-py dependencies
-        run: |
-          pip install -e "prove-py[dev]" -q --break-system-packages
+        run: pip install -e ".[dev]" -q --break-system-packages
 
       - name: Extract ML data
-        run: python scripts/ml_extract.py
+        run: python ../scripts/ml_extract.py
 
       - name: Train ML models
-        run: python scripts/ml_train.py
+        run: python ../scripts/ml_train.py
 
       - name: Build stores
         run: |
-          cd prove-py && python scripts/build_stores.py --package-only
-          mkdir -p build/lsp-ml-stores
-          cp -r src/prove/data/lsp build/lsp-ml-stores/
+          python scripts/build_stores.py --package-only
+          mkdir -p ../build/lsp-ml-stores
+          cp -r src/prove/data/lsp ../build/lsp-ml-stores/
 
       - name: Create tarball
-        run: tar -czf lsp-ml-stores.tar.gz -C prove-py/build lsp-ml-stores/
+        run: tar -czf lsp-ml-stores.tar.gz -C .. lsp-ml-stores/
 
       - name: Create or update release
         env:
@@ -55,7 +57,7 @@ jobs:
           else
             TAG="lsp-stores-v$(date +'%Y.%m.%d')"
           fi
-          
+
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
@@ -63,11 +65,11 @@ jobs:
             -d "{
               \"tag_name\": \"$TAG\",
               \"name\": \"LSP ML Stores ${TAG#lsp-stores-v}\",
-              \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \\\`prove setup\\\` to download.\"
+              \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \`prove setup\` to download.\"
             }" || true)
-          
+
           RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "")
-          
+
           if [ -n "$RELEASE_ID" ]; then
             curl -s -X POST \
               -H "Authorization: token $GITEA_TOKEN" \
