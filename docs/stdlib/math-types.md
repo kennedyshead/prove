@@ -42,7 +42,7 @@ Functions with Integer/Float overloads dispatch based on argument type.
 | `reads` | `log(x Float) Float` | Natural logarithm |
 
 ```prove
-Math reads abs min max sqrt floor
+  Math reads abs min max sqrt floor
 
 reads distance(x Integer, y Integer) Integer
 from
@@ -145,7 +145,7 @@ The Types module also provides validators and unwrap functions for [`Result<Valu
 | `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
 
 ```prove
-Types creates integer float reads string code unwrap validates integer string ok value
+  Types creates integer float reads string code unwrap validates integer string ok value
 
 reads format_pair(label String, n Integer) String
 from

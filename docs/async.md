@@ -39,12 +39,9 @@ The verb (`detached`, `attached`, `listens`) declares intent at the function lev
 Spawns a coroutine and returns immediately. The caller does not wait for completion. Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type)). May call blocking IO freely since it runs independently.
 
 ```prove
-type Event is
-    Info(message String)
-  | Warning(message String)
 
 /// Log an event — fire and forget, caller moves on immediately.
-detached log(event Event)
+detached log(message String)
 from
     console(event.message)
 ```
@@ -149,8 +146,8 @@ The `streams` verb declares a **blocking loop** over an IO context. It runs unti
 
 The parameter carries the **loop context** — a value that holds whatever the loop needs each iteration (a file handle, a socket, a prompt string). The match arms execute IO using the context on every iteration. The `Exit` arm terminates the loop; all other arms loop back.
 
-```
-streams f(ctx Context)
+```prove
+streams read_and_write(ctx Context)
 from
     Exit     => ctx                   // terminates loop
     Active(…) =>                      // IO arm — runs each iteration

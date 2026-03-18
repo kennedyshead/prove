@@ -69,7 +69,7 @@ from
 
 ### Epistemic Checking (Basic)
 
-[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)). `know` claims are proven when possible via constant folding and algebraic identities — provably false claims are errors ([E356](diagnostics.md#e356-know-claim-is-provably-false)), unprovable claims fall back to runtime assertions ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)). `assume` inserts a runtime check. Remaining: generating adversarial tests for `believe`.
+[`know`, `assume`, and `believe`](contracts.md#epistemic-annotations) are parsed and type-checked — their expressions must be Boolean ([E384](diagnostics.md#e384-know-expression-must-be-boolean), [E385](diagnostics.md#e385-assume-expression-must-be-boolean), [E386](diagnostics.md#e386-believe-expression-must-be-boolean)). `believe` requires `ensures` to be present ([E393](diagnostics.md#e393-believe-without-ensures)). `know` claims are proven when possible via constant folding and algebraic identities — provably false claims are errors ([E356](diagnostics.md#e356-know-claim-is-provably-false)), unprovable claims fall back to runtime assertions ([W327](diagnostics.md#w327-know-claim-cannot-be-proven)). `assume` inserts a runtime check. `believe` generates adversarial property tests with 3× the normal rounds, biased toward edge cases that could falsify the belief.
 
 ```prove
 transforms process_order(order Order) Receipt
@@ -153,9 +153,9 @@ A module's `temporal:` declaration constrains the required call order for its op
 module Auth
   temporal: authenticate -> authorize -> access
 
-  inputs authenticate(creds Credentials) Token!
-  transforms authorize(token Token, resource Resource) Permission
-  inputs access(perm Permission, resource Resource) Data!
+inputs authenticate(creds Credentials) Token!
+transforms authorize(token Token, resource Resource) Permission
+inputs access(perm Permission, resource Resource) Data!
 ```
 
 **[W390](diagnostics.md#w390-temporal-operation-out-of-declared-order)** fires when a function body calls temporal operations in the wrong order.
@@ -179,6 +179,8 @@ from
 - **[E382](diagnostics.md#e382-satisfies-references-undefined-type)** — `satisfies` references an unknown invariant network.
 - **[E396](diagnostics.md#e396-invariant-constraint-must-be-boolean)** — a constraint expression in an `invariant_network` is not Boolean.
 - **[W391](diagnostics.md#w391-satisfies-invariant-without-ensures)** — a function declares `satisfies` but has no `ensures` clauses; without postconditions the invariant cannot be verified.
+
+Property-test generation for invariant constraints (asserting the invariant holds on every output) is planned for post-1.0.
 
 ## Domain Declarations
 
@@ -242,9 +244,9 @@ module UserAuth
   and the token is validated on each request.
   """
 
-  inputs login(creds Credentials) Session!
-  transforms validate(token Token) User
-  outputs expire(session Session)
+inputs login(creds Credentials) Session!
+transforms validate(token Token) User
+outputs expire(session Session)
   // I340: 'send_email' — vocabulary not found in narrative
 ```
 

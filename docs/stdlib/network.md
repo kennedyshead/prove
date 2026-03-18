@@ -65,18 +65,18 @@ Read and write data.
 Import only what your module uses. Verbs are declared per channel:
 
 ```prove
-// Client: connect and exchange messages
-Network inputs socket message outputs socket message
-Network types Socket
-Bytes creates hex reads hex
-Bytes types ByteArray
+  // Client: connect and exchange messages
+  Network inputs socket message outputs socket message
+  Network types Socket
+  Bytes creates hex reads hex
+  Bytes types ByteArray
 
-// Server: bind, accept, and echo
-Network inputs server accept message outputs socket message
-Network types Socket
-Bytes reads hex
-Bytes types ByteArray
-Log detached info
+  // Server: bind, accept, and echo
+  Network inputs server accept message outputs socket message
+  Network types Socket
+  Bytes reads hex
+  Bytes types ByteArray
+  Log detached info
 ```
 
 `Network types Socket` is required whenever you hold a `Socket` value. `Bytes` is needed
@@ -180,8 +180,8 @@ All network operations are failable (`!`). Use `!` at each call site to propagat
 match explicitly to handle individual failure cases:
 
 ```prove
-Network inputs socket outputs socket
-Network types Socket
+  Network inputs socket outputs socket
+  Network types Socket
 
 inputs safe_connect(host String, port Integer) Option<Socket>
 from

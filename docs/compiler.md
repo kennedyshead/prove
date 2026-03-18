@@ -226,10 +226,10 @@ Prove supports a pattern for programs that modify their own lookup data at runti
 A `[Lookup]` type with `runtime` declares a schema-typed table that gets its data from a Store at runtime instead of compiled-in `where` entries:
 
 ```prove
-type Color:[Lookup] is String | Integer
-  runtime
+  type Color:[Lookup] is String | Integer
+    runtime
 
-Store outputs store table inputs table
+  Store outputs store table inputs table
     validates store table types Store StoreTable
 
 db as Store = store("/tmp/my_store")!
@@ -248,7 +248,7 @@ See [Store-Backed Lookup](types.md#store-backed-lookup-runtime) for the full typ
 The `Store` module provides persistent storage for lookup tables with versioning, diffs, and merges. Tables are stored in a directory-based format with optimistic concurrency control.
 
 ```prove
-Store outputs store table inputs table version
+  Store outputs store table inputs table version
     validates store table merged transforms diff patch merge
     reads integrity merged
     types Store StoreTable TableDiff MergeResult Version
