@@ -6,17 +6,20 @@ module Main
   System outputs console
 
 transforms add(a Integer, b Integer) Integer
-  requires a > 0
-  requires b > 0
+  ensures result == a + b
+  requires a >= 0
+  requires b >= 0
 from
     a + b
 
 transforms double(n Integer) Integer
+  ensures result == n * 2
   requires n > 0
 from
     n * 2
 
 transforms abs(n Integer) Integer
+  ensures result > 0
   requires n > 0
 from
     n

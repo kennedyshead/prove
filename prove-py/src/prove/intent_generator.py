@@ -434,8 +434,15 @@ def _find_module_constraints(
 ) -> list[ConstraintDecl]:
     """Find constraints that reference vocabulary terms used by this module."""
     module_nouns = {i.noun.lower() for i in module.intents}
+
+    def _matches(word: str) -> bool:
+        w = word.lower()
+        # Prefix match handles singular/plural (e.g. "Credential" matches "credentials")
+        return w in module_nouns or any(n.startswith(w) or w.startswith(n) for n in module_nouns)
+
     return [
         c for c in constraints
-        if any(a.lower() in module_nouns or module_nouns & {w.lower() for w in c.text.split()}
-               for a in c.anchors) or not c.anchors
+        if any(_matches(a) for a in c.anchors)
+        or any(_matches(w) for w in c.text.split())
+        or not c.anchors
     ]

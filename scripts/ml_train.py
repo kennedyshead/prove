@@ -107,9 +107,9 @@ def build_docstring_index(records: list[dict]) -> dict[str, list[dict]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", default="data/completions_raw.json")
+    parser.add_argument("--input", default="build/completions_raw.json")
     parser.add_argument("--top-k", type=int, default=10, dest="top_k")
-    parser.add_argument("--output-dir", default="data")
+    parser.add_argument("--output-dir", default="build")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
