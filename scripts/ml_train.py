@@ -22,13 +22,38 @@ from pathlib import Path
 def load_ngrams(input_path: Path) -> list[dict]:
     with open(input_path, encoding="utf-8") as f:
         records = json.load(f)
-    return [r for r in records if r.get("kind") not in ("function_triple", "docstring_mapping")]
+    return [
+        r
+        for r in records
+        if r.get("kind") not in ("function_triple", "docstring_mapping", "from_block")
+    ]
 
 
 def load_docstring_records(input_path: Path) -> list[dict]:
     with open(input_path, encoding="utf-8") as f:
         records = json.load(f)
     return [r for r in records if r.get("kind") == "docstring_mapping"]
+
+
+def load_from_block_records(input_path: Path) -> list[dict]:
+    with open(input_path, encoding="utf-8") as f:
+        records = json.load(f)
+    return [r for r in records if r.get("kind") == "from_block"]
+
+
+def build_from_block_model(records: list[dict], top_k: int) -> dict[str, list[list]]:
+    """Build (prev2, prev1) → top-K next tokens for from-block context."""
+    counts: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    for r in records:
+        key = (r["prev2"], r["prev1"])
+        counts[key][r["next"]] += 1
+
+    model: dict[str, list[list]] = {}
+    for (prev2, prev1), counter in counts.items():
+        key_str = json.dumps([prev2, prev1])
+        top = counter.most_common(top_k)
+        model[key_str] = [[tok, cnt] for tok, cnt in top]
+    return model
 
 
 def build_bigram_model(ngrams: list[dict], top_k: int) -> dict[str, list[list]]:
@@ -99,6 +124,9 @@ def main() -> None:
     docstring_recs = load_docstring_records(input_path)
     print(f"  {len(docstring_recs)} docstring records")
 
+    from_block_recs = load_from_block_records(input_path)
+    print(f"  {len(from_block_recs)} from-block records")
+
     print("Building bigram model ...")
     bigram_model = build_bigram_model(ngrams, args.top_k)
     print(f"  {len(bigram_model)} contexts")
@@ -111,9 +139,14 @@ def main() -> None:
     docstring_index = build_docstring_index(docstring_recs)
     print(f"  {len(docstring_index)} keywords")
 
+    print("Building from-block model ...")
+    from_block_model = build_from_block_model(from_block_recs, args.top_k)
+    print(f"  {len(from_block_model)} contexts")
+
     completions_out = output_dir / "completions_model.json"
     bigrams_out = output_dir / "bigrams_model.json"
     docstrings_out = output_dir / "docstring_index.json"
+    from_blocks_out = output_dir / "from_blocks_model.json"
 
     with open(completions_out, "w", encoding="utf-8") as f:
         json.dump(bigram_model, f, indent=2)
@@ -127,6 +160,10 @@ def main() -> None:
         json.dump(docstring_index, f, indent=2)
     print(f"Wrote {docstrings_out}")
 
+    with open(from_blocks_out, "w", encoding="utf-8") as f:
+        json.dump(from_block_model, f, indent=2)
+    print(f"Wrote {from_blocks_out}")
+
     # Spot-check: show top completions for a few common contexts
     print("\nSpot-check (bigram):")
     for sample_key in [
@@ -137,6 +174,17 @@ def main() -> None:
     ]:
         if sample_key in bigram_model:
             top3 = bigram_model[sample_key][:3]
+            print(f"  {sample_key} → {top3}")
+
+    print("\nSpot-check (from-block):")
+    for sample_key in [
+        '["<START>", "<START>"]',
+        '["<START>", "from"]',
+        '["result", "as"]',
+        '["as", "="]',
+    ]:
+        if sample_key in from_block_model:
+            top3 = from_block_model[sample_key][:3]
             print(f"  {sample_key} → {top3}")
 
     print("\nSpot-check (unigram):")

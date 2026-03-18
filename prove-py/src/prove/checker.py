@@ -298,6 +298,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._user_constants: dict[str, Span] = {}
         # Requires-based narrowing: list of (module, args)
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
+        # Inferred types for untyped VarDecl nodes: (start_line, start_col) -> type_name
+        self.inlay_type_map: dict[tuple[int, int], str] = {}
         # Mutation survivors from previous --mutate runs
         self._survivors: list[dict] = []
         if project_dir:
@@ -2203,6 +2205,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = expected
         else:
             resolved = inferred
+            # Record inferred type for LSP inlay hints (untyped VarDecl only)
+            if not isinstance(resolved, ErrorType):
+                self.inlay_type_map[(vd.span.start_line, vd.span.start_col)] = type_name(resolved)
 
         # Static refinement check: reject invalid constants at compile time
         self._static_check_refinement(resolved, vd.value, vd.span)

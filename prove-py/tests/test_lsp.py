@@ -874,3 +874,81 @@ class TestIntentCodeActions:
         assert len(actions) == 2  # Auth and SessionManager
         assert any("auth.prv" in a.title for a in actions)
         assert any("sessionmanager.prv" in a.title for a in actions)
+
+
+class TestInlayHint:
+    def _make_params(self, uri: str) -> lsp.InlayHintParams:
+        return lsp.InlayHintParams(
+            text_document=lsp.TextDocumentIdentifier(uri=uri),
+            range=lsp.Range(
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=999, character=0),
+            ),
+        )
+
+    def test_inlay_hint_untyped_var(self):
+        from prove.lsp import inlay_hint
+
+        source = (
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    result as = a + b\n"
+            "    result\n"
+        )
+        uri = "file:///inlay_test.prv"
+        _analyze(uri, source)
+        hints = inlay_hint(self._make_params(uri))
+        assert hints is not None
+        assert any(h.label == " Integer" for h in hints)
+        # Hint is positioned after "result" (6 chars) on line 5 (0-indexed)
+        hint = next(h for h in hints if h.label == " Integer")
+        assert hint.position.line == 5
+        assert hint.position.character == 10  # 4 spaces indent + len("result")
+
+    def test_inlay_hint_typed_var_suppressed(self):
+        from prove.lsp import inlay_hint
+
+        source = (
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms id(a Integer) Integer\n"
+            "from\n"
+            "    result as Integer = a\n"
+            "    result\n"
+        )
+        uri = "file:///inlay_typed.prv"
+        _analyze(uri, source)
+        hints = inlay_hint(self._make_params(uri))
+        # Explicitly typed var should produce no hints
+        assert hints is None or not any(h.label == " Integer" for h in hints)
+
+    def test_inlay_hint_no_module(self):
+        from prove.lsp import inlay_hint, _state
+
+        uri = "file:///nonexistent.prv"
+        _state.pop(uri, None)
+        hints = inlay_hint(self._make_params(uri))
+        assert hints is None
+
+    def test_inlay_hint_kind_is_type(self):
+        from prove.lsp import inlay_hint
+
+        source = (
+            "module Main\n"
+            '  narrative: """Test"""\n'
+            "\n"
+            "transforms wrap(a Integer) Integer\n"
+            "from\n"
+            "    x as = a\n"
+            "    x\n"
+        )
+        uri = "file:///inlay_kind.prv"
+        _analyze(uri, source)
+        hints = inlay_hint(self._make_params(uri))
+        assert hints is not None
+        for h in hints:
+            assert h.kind == lsp.InlayHintKind.Type
