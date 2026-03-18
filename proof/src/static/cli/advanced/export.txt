@@ -1,0 +1,11 @@
+Usage: python -m prove advanced export [OPTIONS]
+
+  Export syntax highlighting data to companion lexer projects.
+
+Options:
+  -f, --format [treesitter|pygments|chroma]
+                                  Target format (default: all).
+  --build                         Run build steps after generating.
+  -w, --workspace PATH            Workspace root (default: parent of prove-
+                                  py).
+  --help                          Show this message and exit.

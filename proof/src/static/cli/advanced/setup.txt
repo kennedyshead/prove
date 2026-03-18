@@ -1,0 +1,10 @@
+Usage: python -m prove advanced setup [OPTIONS]
+
+  Set up Prove tools and data stores.
+
+  Downloads pre-trained LSP ML completion stores. For developers building the
+  stores from scratch, run: pip install 'prove[nlp]' && python
+  scripts/build_stores.py
+
+Options:
+  --help  Show this message and exit.

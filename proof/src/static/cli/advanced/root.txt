@@ -1,0 +1,16 @@
+Usage: python -m prove advanced [OPTIONS] COMMAND [ARGS]...
+
+  Advanced development and debugging tools.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  compiler   Convert between .prv lookup types and PDAT binary format.
+  export     Export syntax highlighting data to companion lexer projects.
+  generate   Generate function stubs from narrative or intent.
+  index      Rebuild the .prove_cache ML completion index.
+  intent     Work with .intent project declaration files.
+  setup      Set up Prove tools and data stores.
+  setup-nlp  Build NLP data stores from scratch (requires: pip install...
+  view       View the AST of a Prove source file.

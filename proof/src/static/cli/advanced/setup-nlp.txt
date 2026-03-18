@@ -1,0 +1,6 @@
+Usage: python -m prove advanced setup-nlp [OPTIONS]
+
+  Build NLP data stores from scratch (requires: pip install 'prove[nlp]').
+
+Options:
+  --help  Show this message and exit.
