@@ -531,7 +531,7 @@ class Parser:
                 self._expect(TokenKind.DOT)
                 field_tok = self._expect(TokenKind.IDENTIFIER)
                 field_type = self._parse_type_expr()
-                wc_span = self._span(wc_start, field_type.span if hasattr(field_type, "span") else wc_start)
+                wc_span = self._span(wc_start, field_type.span if hasattr(field_type, "span") else wc_start)  # noqa: E501
                 with_constraints.append(
                     WithConstraint(param_tok.value, field_tok.value, field_type, wc_span)
                 )
@@ -1112,7 +1112,7 @@ class Parser:
     # ── Type expressions ─────────────────────────────────────────
 
     def _parse_type_expr(self) -> TypeExpr:
-        """Parse a type expression: SimpleType, GenericType<A, B>, GenericType<A, B>:[mods], or ModifiedType:[mods]."""
+        """Parse a type expression: SimpleType, GenericType<A, B>, GenericType<A, B>:[mods], or ModifiedType:[mods]."""  # noqa: E501
         start = self._current().span
         name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
         name = name_tok.value

@@ -14,7 +14,7 @@ from pathlib import Path
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
 
-from prove._body_gen import GeneratedBody, generate_body, find_stdlib_matches
+from prove._body_gen import generate_body
 from prove._nl_intent import VERB_SYNONYMS as _VERB_PROSE_HINTS
 from prove.ast_nodes import (
     ConstantDef,
@@ -33,12 +33,15 @@ from prove.checker import Checker
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.formatter import ProveFormatter
 from prove.lexer import Lexer
+from prove.nlp_store import (
+    load_lsp_bigrams,
+    load_lsp_completions,
+    load_lsp_from_blocks,
+)
 from prove.parser import Parser
 from prove.stdlib_loader import (
-    _STDLIB_MODULES,
     ImportSuggestion,
     build_import_index,
-    load_stdlib,
 )
 from prove.symbols import FunctionSignature, SymbolKind, SymbolTable
 from prove.tokens import KEYWORDS, Token, TokenKind
@@ -82,7 +85,6 @@ def span_to_range(span: object) -> lsp.Range:
 
 def _types_display(sig: FunctionSignature) -> str:
     """Format a function signature for display."""
-    from prove.types import type_name
 
     params = ", ".join(f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types))
     ret = type_name(sig.return_type)
@@ -93,7 +95,6 @@ def _types_display(sig: FunctionSignature) -> str:
 
 def _sig_params_display(sig: FunctionSignature) -> str:
     """Format just the parameter list and return type: '(a: Integer, b: Integer) Integer'."""
-    from prove.types import type_name
 
     params = ", ".join(f"{n}: {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types))
     ret = type_name(sig.return_type)
@@ -880,7 +881,7 @@ def _build_local_import_index(
     index: dict[str, list[ImportSuggestion]] = {}
     for module_name, info in local_modules.items():
         # Index exported types
-        for type_name in info.types:
+        for type_name in info.types:  # noqa: F402
             index.setdefault(type_name, []).append(
                 ImportSuggestion(module=module_name, verb="types", name=type_name),
             )
@@ -1546,13 +1547,6 @@ def _ml_completions(
 # Uses prove.data package (via nlp_store.py) for pip-installed data.
 # Falls back gracefully if the store files are missing (e.g. dev mode).
 
-from prove.nlp_store import (
-    load_lsp_bigrams,
-    load_lsp_completions,
-    load_lsp_docstrings,
-    load_lsp_from_blocks,
-)
-
 
 def _global_model_complete(prev2: str, prev1: str, prefix: str = "", top_k: int = 5) -> list[str]:
     """Query global LSP ML model; falls back to unigram. Returns [] if model not loaded."""
@@ -1806,7 +1800,7 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
     # Built-in types (always available)
     from prove.types import BUILTINS as _TYPE_BUILTINS
 
-    for type_name in _TYPE_BUILTINS:
+    for type_name in _TYPE_BUILTINS:  # noqa: F402
         items.append(
             lsp.CompletionItem(
                 label=type_name,
@@ -2180,7 +2174,6 @@ def signature_help(params: lsp.SignatureHelpParams) -> lsp.SignatureHelp | None:
             break
 
     # Collect all matching overloads for this function name
-    from prove.types import type_name
 
     all_sigs: list[FunctionSignature] = []
     for (_v, fname), sigs in ds.symbols.all_functions().items():

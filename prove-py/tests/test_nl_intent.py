@@ -9,7 +9,6 @@ from prove._nl_intent import (
     body_tokens,
     extract_nouns,
     implied_verbs,
-    normalize_noun,
     normalize_verb,
     prose_overlaps,
     split_name,

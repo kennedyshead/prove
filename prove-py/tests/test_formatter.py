@@ -77,7 +77,7 @@ class TestFormatterBasic:
             "/// @generated\n"
             "validates credentials(value String)\n"
             "from\n"
-            "    value != \"\"\n"
+            '    value != ""\n'
         )
         assert _roundtrip(source) == source
 
@@ -97,11 +97,7 @@ class TestFormatterBasic:
 
     def test_short_signature_stays_inline(self):
         """Signatures <=90 cols remain on a single line."""
-        source = (
-            "transforms add(a Integer, b Integer) Integer\n"
-            "from\n"
-            "    a + b\n"
-        )
+        source = "transforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n"
         assert _roundtrip(source) == source
 
 
@@ -140,12 +136,7 @@ class TestFormatterTypes:
         assert " String " in result
 
     def test_binary_lookup_unnamed_columns_roundtrip(self):
-        source = (
-            "module M\n"
-            "\n"
-            "  binary TokenKind String Integer where\n"
-            '    First | "first" | 1\n'
-        )
+        source = 'module M\n\n  binary TokenKind String Integer where\n    First | "first" | 1\n'
         result = _roundtrip(source)
         # No name: prefix for unnamed columns
         assert "binary TokenKind String Integer where" in result
@@ -202,7 +193,7 @@ class TestFormatterStringInterpWrapping:
         source = (
             "outputs build_report(config_package_name String, config_package_version String) Unit\n"
             "from\n"
-            '    info(f"{config_package_name} {config_package_version} is now available in the build folder")\n'
+            '    info(f"{config_package_name} {config_package_version} is now available")\n'
         )
         result = _parse_format(source)
         # The call exceeds 90 chars with indent, so the f-string should be wrapped
@@ -216,22 +207,22 @@ class TestFormatterStringInterpWrapping:
         source = (
             "outputs report(package_name String, package_version String) Unit\n"
             "from\n"
-            '    info(f"{package_name} version {package_version} is now available in the build output folder area")\n'
+            '    info(f"{package_name} version {package_version} is now available in the output")\n'
         )
         result = _parse_format(source)
         body = result.split("from\n")[1]
         lines = body.split("\n")
         # Find the info(f" line
-        call_line = next(l for l in lines if "info(f" in l)
-        col_f = call_line.index("f\"")
+        call_line = next(line for line in lines if "info(f" in line)
+        col_f = call_line.index('f"')
         # Find expression lines in the body only
-        expr_lines = [l for l in lines if "package_name" in l or "package_version" in l]
+        expr_lines = [line for line in lines if "package_name" in line or "package_version" in line]
         for el in expr_lines:
             indent = len(el) - len(el.lstrip())
             # Expression should align after f" (col_f + 2)
             assert indent == col_f + 2
         # Find closing } lines
-        brace_lines = [l for l in lines if l.lstrip().startswith("}")]
+        brace_lines = [line for line in lines if line.lstrip().startswith("}")]
         for bl in brace_lines:
             indent = len(bl) - len(bl.lstrip())
             # } should align with f
@@ -297,9 +288,9 @@ class TestFormatterImports:
         assert _roundtrip(source) == source
 
     def test_import_verb_order(self):
-        """Verb groups are sorted: types > reads > creates > validates > transforms > inputs > outputs."""
-        source = "module Foo\n  Table transforms add validates has types Table Value reads get creates new\n"
-        expected = "module Foo\n  Table types Table Value reads get creates new validates has transforms add\n"
+        """Verb groups are sorted: types > reads > creates > validates > transforms > inputs > outputs."""  # noqa: E501
+        source = "module Foo\n  Table transforms add validates has types Table Value reads get creates new\n"  # noqa: E501
+        expected = "module Foo\n  Table types Table Value reads get creates new validates has transforms add\n"  # noqa: E501
         assert _roundtrip(source) == expected
 
     def test_import_multiline_over_line_length(self):
@@ -314,7 +305,7 @@ class TestFormatterImports:
         # First line: module declaration
         assert lines[0] == "module Foo"
         # Import should be multi-line with indented continuation
-        import_lines = [l for l in lines[1:] if l.strip()]
+        import_lines = [ln for ln in lines[1:] if ln.strip()]
         assert len(import_lines) > 1
         # First import line starts with module name
         assert import_lines[0].strip().startswith("Pattern")

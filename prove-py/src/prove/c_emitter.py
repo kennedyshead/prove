@@ -98,7 +98,7 @@ class CEmitter(
         module: Module,
         symbols: SymbolTable,
         memo_info: "MemoizationInfo | None" = None,
-        escape_info: "EscapeInfo | None" = None,
+        escape_info: "EscapeInfo | None" = None,  # noqa: E501
         *,
         optimize: bool = False,
     ) -> None:
@@ -163,6 +163,7 @@ class CEmitter(
     def _module_reads_console(self) -> bool:
         """Return True if the module declares 'System inputs console'."""
         from prove.ast_nodes import ModuleDecl
+
         for decl in self._module.declarations:
             if isinstance(decl, ModuleDecl):
                 for imp in decl.imports:
@@ -297,7 +298,12 @@ class CEmitter(
         )
 
         _STRING_NODES = (
-            StringLit, StringInterp, TripleStringLit, PathLit, RawStringLit, RegexLit,
+            StringLit,
+            StringInterp,
+            TripleStringLit,
+            PathLit,
+            RawStringLit,
+            RegexLit,
         )
 
         # Check function signatures for String types
@@ -324,10 +330,7 @@ class CEmitter(
             if isinstance(expr, MatchExpr):
                 if expr.subject and _has_string_node(expr.subject):
                     return True
-                return any(
-                    any(_has_string_stmt(s) for s in arm.body)
-                    for arm in expr.arms
-                )
+                return any(any(_has_string_stmt(s) for s in arm.body) for arm in expr.arms)
             if isinstance(expr, FailPropExpr):
                 return _has_string_node(expr.expr)
             if isinstance(expr, UnaryExpr):
@@ -421,7 +424,9 @@ class CEmitter(
                 if not found_coro:
                     for inner in decl.body:
                         if isinstance(inner, FunctionDef) and inner.verb in (
-                            "detached", "attached", "listens",
+                            "detached",
+                            "attached",
+                            "listens",
                         ):
                             self._needed_headers.add("prove_coro.h")
                             found_coro = True
@@ -555,8 +560,13 @@ class CEmitter(
         )
 
         _REGION_NODES = (
-            StringLit, TripleStringLit, RawStringLit, PathLit,
-            RegexLit, StringInterp, ListLiteral,
+            StringLit,
+            TripleStringLit,
+            RawStringLit,
+            PathLit,
+            RegexLit,
+            StringInterp,
+            ListLiteral,
         )
 
         def _expr_alloc(expr: Any) -> bool:
@@ -602,9 +612,7 @@ class CEmitter(
             if isinstance(stmt, TailContinue):
                 return any(_expr_alloc(e) for _, e in stmt.assignments)
             if isinstance(stmt, WhileLoop):
-                return _expr_alloc(stmt.break_cond) or any(
-                    _stmt_alloc(s) for s in stmt.body
-                )
+                return _expr_alloc(stmt.break_cond) or any(_stmt_alloc(s) for s in stmt.body)
             if isinstance(stmt, CommentStmt):
                 return False
             if isinstance(stmt, MatchExpr):
@@ -746,9 +754,7 @@ class CEmitter(
                     const = consts_by_name.get(item.name)
                     if const is not None:
                         escaped = self._escape_c_string(const.raw_value)
-                        self._line(
-                            f'#define {item.name} prove_string_from_cstr("{escaped}")'
-                        )
+                        self._line(f'#define {item.name} prove_string_from_cstr("{escaped}")')
                         any_emitted = True
 
         if any_emitted:
@@ -873,9 +879,7 @@ class CEmitter(
                 continue
             # Streams verb: void return, no coroutine
             if decl.verb == "streams":
-                sig = self._symbols.resolve_function(
-                    decl.verb, decl.name, len(decl.params)
-                )
+                sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
                 mangled = mangle_name(decl.verb, decl.name, sig.param_types)
@@ -889,9 +893,7 @@ class CEmitter(
                 continue
             # Async verbs get special forward declarations
             if decl.verb in ("detached", "attached", "listens"):
-                sig = self._symbols.resolve_function(
-                    decl.verb, decl.name, len(decl.params)
-                )
+                sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
                 mangled = mangle_name(decl.verb, decl.name, sig.param_types)
@@ -902,7 +904,11 @@ class CEmitter(
                 if decl.verb == "attached":
                     ret_ct = map_type(sig.return_type)
                     ret_decl = ret_ct.decl
-                    param_str = ", ".join(["Prove_Coro *_caller"] + params) if params else "Prove_Coro *_caller"
+                    param_str = (
+                        ", ".join(["Prove_Coro *_caller"] + params)
+                        if params
+                        else "Prove_Coro *_caller"
+                    )  # noqa: E501
                     self._line(f"{ret_decl} {mangled}({param_str});")
                 elif decl.verb == "listens":
                     param_str = ", ".join(params) if params else "void"
@@ -1062,9 +1068,7 @@ class CEmitter(
         self._line("}")
         self._line("")
 
-    def _request_struct_specialisation(
-        self, fd: FunctionDef, concrete_types: list[Type]
-    ) -> str:
+    def _request_struct_specialisation(self, fd: FunctionDef, concrete_types: list[Type]) -> str:
         """Request a monomorphised copy of a Struct-polymorphic function.
 
         Returns the mangled name for the specialisation.
@@ -1077,9 +1081,7 @@ class CEmitter(
         self._struct_specialisation_queue.append((fd, concrete_types))
         return mangled
 
-    def _emit_struct_specialisation(
-        self, fd: FunctionDef, concrete_types: list[Type]
-    ) -> None:
+    def _emit_struct_specialisation(self, fd: FunctionDef, concrete_types: list[Type]) -> None:
         """Emit a monomorphised copy of a Struct-polymorphic function."""
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         if not sig:
@@ -1172,6 +1174,7 @@ class CEmitter(
                     param_types.append(s.param_types[idx])
                     continue
             from prove.types import INTEGER
+
             param_types.append(INTEGER)
 
         mangled = mangle_name(fd.verb, fd.name, param_types)
@@ -1222,9 +1225,7 @@ class CEmitter(
                         result_val = self._emit_expr(e)
                         ret_ct = map_type(ret_type)
                         self._line(f"{ret_ct.decl} _result_val = {result_val};")
-                        self._line(
-                            f"{ret_ct.decl} *_result_ptr = malloc(sizeof({ret_ct.decl}));"
-                        )
+                        self._line(f"{ret_ct.decl} *_result_ptr = malloc(sizeof({ret_ct.decl}));")
                         self._line("*_result_ptr = _result_val;")
                         self._line("_coro->result = _result_ptr;")
                     else:
@@ -1238,9 +1239,10 @@ class CEmitter(
 
         # ── Public entry point ───────────────────────────────────
         if fd.verb == "detached":
-            params_str = ", ".join(
-                f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
-            ) or "void"
+            params_str = (
+                ", ".join(f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types))
+                or "void"
+            )
             self._line(f"void {mangled}({params_str}) {{")
             self._indent += 1
             self._line(f"{args_struct} *_a = malloc(sizeof({args_struct}));")
@@ -1286,9 +1288,7 @@ class CEmitter(
 
         elif fd.verb == "listens":
             # Listens manages its own coroutine — no _coro param needed
-            params_list = [
-                f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)
-            ]
+            params_list = [f"{map_type(pt).decl} {p.name}" for p, pt in zip(fd.params, param_types)]
             params_str = ", ".join(params_list) if params_list else "void"
             self._line(f"void {mangled}({params_str}) {{")
             self._indent += 1
@@ -1312,9 +1312,7 @@ class CEmitter(
         param_types: list[Type] = []
         for p in fd.params:
             if sig:
-                idx = next(
-                    (i for i, n in enumerate(sig.param_names) if n == p.name), None
-                )
+                idx = next((i for i, n in enumerate(sig.param_names) if n == p.name), None)
                 if idx is not None and idx < len(sig.param_types):
                     param_types.append(sig.param_types[idx])
                     continue
@@ -1373,9 +1371,7 @@ class CEmitter(
             # Iterate workers (pre-started coroutines in the list)
             self._line(f"for (int _i = 0; _i < {workers_param}->length; _i++) {{")
             self._indent += 1
-            self._line(
-                f"Prove_Coro *_child = (Prove_Coro*)prove_list_get({workers_param}, _i);"
-            )
+            self._line(f"Prove_Coro *_child = (Prove_Coro*)prove_list_get({workers_param}, _i);")
             # Resume worker until done
             self._line("while (!prove_coro_done(_child)) {")
             self._indent += 1
@@ -1432,7 +1428,7 @@ class CEmitter(
     def _resolve_prim_type(self, ty: Type) -> Type:
         """Resolve PrimitiveType to its actual type if it's a user-defined name.
 
-        Handles cases like User:[Mutable] being stored as PrimitiveType("User", ((None, "Mutable"),))
+        Handles cases like User:[Mutable] being stored as PrimitiveType("User", ...)
         when it should be RecordType("User", ...).
         """
         if isinstance(ty, PrimitiveType):
@@ -1549,10 +1545,11 @@ class CEmitter(
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
-            narrowed_types = [
-                self._narrow_for_requires(a, t)
-                for a, t in zip(expr.args, actual_types)
-            ] if actual_types else []
+            narrowed_types = (
+                [self._narrow_for_requires(a, t) for a, t in zip(expr.args, actual_types)]
+                if actual_types
+                else []
+            )
             sig = self._symbols.resolve_function(None, name, n)
             if sig is None:
                 sig = self._symbols.resolve_function_any(
@@ -1563,12 +1560,14 @@ class CEmitter(
                 # Re-resolve with narrowed types if initial sig doesn't match
                 from prove.types import TypeVariable as TV
                 from prove.types import types_compatible
+
                 if sig.param_types and not all(
                     isinstance(p, TV) or types_compatible(p, a)
                     for p, a in zip(sig.param_types, narrowed_types)
                 ):
                     better = self._symbols.resolve_function_any(
-                        name, narrowed_types,
+                        name,
+                        narrowed_types,
                     )
                     if better is not None:
                         sig = better

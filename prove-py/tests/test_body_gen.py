@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from prove._body_gen import (
-    GeneratedBody,
-    GeneratedStmt,
-    StdlibMatch,
     add_generated_marker,
     find_stdlib_matches,
     generate_body,

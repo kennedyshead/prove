@@ -21,7 +21,10 @@ class TestSHA256:
         """)
         result = compile_and_run(runtime_dir, tmp_path, code, name="sha256_empty")
         assert result.returncode == 0
-        assert result.stdout.strip() == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        assert (
+            result.stdout.strip()
+            == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        )  # noqa: E501
 
     def test_sha256_hello(self, tmp_path, runtime_dir):
         # SHA-256("hello") = 2cf24dba...
@@ -37,7 +40,10 @@ class TestSHA256:
         """)
         result = compile_and_run(runtime_dir, tmp_path, code, name="sha256_hello")
         assert result.returncode == 0
-        assert result.stdout.strip() == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        assert (
+            result.stdout.strip()
+            == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        )
 
     def test_sha256_bytes_output(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\
@@ -91,8 +97,10 @@ class TestSHA512:
         """)
         result = compile_and_run(runtime_dir, tmp_path, code, name="sha512_empty")
         assert result.returncode == 0
-        expected = ("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce"
-                    "47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e")
+        expected = (
+            "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce"
+            "47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+        )
         assert result.stdout.strip() == expected
 
     def test_sha512_hello(self, tmp_path, runtime_dir):
@@ -108,8 +116,10 @@ class TestSHA512:
         """)
         result = compile_and_run(runtime_dir, tmp_path, code, name="sha512_hello")
         assert result.returncode == 0
-        expected = ("9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca7"
-                    "2323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043")
+        expected = (
+            "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca7"
+            "2323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"
+        )
         assert result.stdout.strip() == expected
 
     def test_sha512_bytes_length(self, tmp_path, runtime_dir):

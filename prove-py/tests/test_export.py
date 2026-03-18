@@ -17,7 +17,6 @@ from prove.export import (
     replace_sentinel_section,
 )
 
-
 # ── Canonical lists ────────────────────────────────────────────────
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.helpers import check, check_fails, check_info, check_warns
+from tests.helpers import check, check_fails, check_info
 
 
 class TestVerbEnforcement:

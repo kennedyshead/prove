@@ -98,7 +98,7 @@ class StringLit:
     value: str
     span: Span
 
-
+  # noqa: E501
 @dataclass(frozen=True)
 class BooleanLit:
     value: bool
@@ -387,7 +387,7 @@ class TodoStmt:
     span: Span
 
 
-Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, WhileLoop, CommentStmt, TodoStmt]
+Stmt = Union[VarDecl, Assignment, FieldAssignment, ExprStmt, TailLoop, TailContinue, WhileLoop, CommentStmt, TodoStmt]  # noqa: E501
 
 
 # ── Function parts ───────────────────────────────────────────────

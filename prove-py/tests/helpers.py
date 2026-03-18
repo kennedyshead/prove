@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from prove.ast_nodes import Module
 from prove.checker import Checker
 from prove.errors import Diagnostic
 from prove.lexer import Lexer
 from prove.parser import Parser
 from prove.symbols import SymbolTable
-from prove.ast_nodes import Module
 
 
 def parse_check(source: str) -> tuple[Module, SymbolTable]:

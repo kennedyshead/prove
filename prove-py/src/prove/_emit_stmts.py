@@ -98,7 +98,7 @@ class StmtEmitterMixin:
 
         Returns None if no coercion is needed (target is also Value).
         """
-        if self._is_value_type(target_ty):
+        if self._is_value_type(target_ty):  # noqa: E501
             return None
         if isinstance(target_ty, GenericInstance) and target_ty.base_name == "Table":
             return f"prove_value_as_object({raw_expr})"
@@ -526,7 +526,7 @@ class StmtEmitterMixin:
                     )
                     self._line(
                         f"if (!prove_result_is_err({cv_tmp})) "
-                        f"{vd.name} = prove_option_some((Prove_Value*)(intptr_t)prove_result_unwrap_int({cv_tmp}));"
+                        f"{vd.name} = prove_option_some((Prove_Value*)(intptr_t)prove_result_unwrap_int({cv_tmp}));"  # noqa: E501
                     )
                     self._line(f"else {vd.name} = prove_option_none();")
                 else:
@@ -681,7 +681,7 @@ class StmtEmitterMixin:
                         self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*){val});")
                     else:
                         self._line(
-                            f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});"
+                            f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});"  # noqa: E501
                         )
             else:
                 # Value → concrete coercion (e.g. Prove_Value* → Prove_Table*)
@@ -747,7 +747,7 @@ class StmtEmitterMixin:
             if not io_ctx:
                 self._line("#ifndef PROVE_RELEASE")
             self._line(
-                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
             self._line('prove_panic("constraint failed: value does not match pattern");')
@@ -761,7 +761,7 @@ class StmtEmitterMixin:
             if not io_ctx:
                 self._line("#ifndef PROVE_RELEASE")
             self._line(
-                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
             self._line('prove_panic("constraint failed: value does not match pattern");')
@@ -893,7 +893,7 @@ class StmtEmitterMixin:
             self._needed_headers.add("prove_pattern.h")
             escaped_pattern = constraint.pattern.replace("\\", "\\\\")
             self._line(
-                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
             # Return None for Option type - silent failure
@@ -908,7 +908,7 @@ class StmtEmitterMixin:
             self._needed_headers.add("prove_pattern.h")
             escaped_pattern = constraint.value.replace("\\", "\\\\")
             self._line(
-                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'
+                f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
             # Return None for Option type - silent failure

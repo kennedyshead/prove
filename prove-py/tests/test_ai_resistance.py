@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from prove.checker import Checker
-from prove.domains import DomainProfile, get_domain_profile
+from prove.domains import get_domain_profile
+from prove.errors import Diagnostic
 from prove.lexer import Lexer
 from prove.parser import Parser
-from prove.errors import Diagnostic
 from tests.helpers import check_warns
 
 

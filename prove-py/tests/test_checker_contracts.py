@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from prove.ast_nodes import BinaryExpr, BooleanLit, IntegerLit, IdentifierExpr, UnaryExpr
+from prove.ast_nodes import BinaryExpr, BooleanLit, IdentifierExpr, IntegerLit, UnaryExpr
 from prove.prover import ClaimProver, ProofContext
 from prove.source import Span
-from tests.helpers import check, check_all, check_coherence_ok, check_coherence_warns, check_fails, check_warns
+from tests.helpers import (
+    check,
+    check_all,
+    check_coherence_ok,
+    check_coherence_warns,
+    check_fails,
+    check_warns,
+)
 
 
 class TestContractChecking:

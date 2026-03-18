@@ -101,7 +101,9 @@ class TestParserTypes:
         assert decl.body.base_type.name == "Integer"
 
     def test_generic_type(self):
-        decl = parse_module_type("  type Result<Value, Error> is Ok(value Value) | Err(error Error)\n")
+        decl = parse_module_type(
+            "  type Result<Value, Error> is Ok(value Value) | Err(error Error)\n"
+        )  # noqa: E501
         assert isinstance(decl, TypeDef)
         assert decl.name == "Result"
         assert decl.type_params == ["Value", "Error"]

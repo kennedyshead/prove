@@ -98,7 +98,7 @@ class ExprEmitterMixin:
             return f'prove_string_from_cstr("{escaped}")'
 
         if isinstance(expr, RawStringLit):
-            escaped = self._escape_c_string(expr.value)
+            escaped = self._escape_c_string(expr.value)  # noqa: E501
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
             if self._use_region_allocation():
@@ -1068,7 +1068,7 @@ class ExprEmitterMixin:
         # Use region allocation if inside a function with escape analysis
         if self._use_region_allocation():
             self._line(
-                f"Prove_List *{tmp} = prove_list_new_region({self._get_region_ptr()}, {len(expr.elements)});"
+                f"Prove_List *{tmp} = prove_list_new_region({self._get_region_ptr()}, {len(expr.elements)});"  # noqa: E501
             )
         else:
             self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")

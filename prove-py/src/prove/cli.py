@@ -84,7 +84,7 @@ def _print_refutation_challenges(project_dir: Path) -> None:
                 continue  # All challenges addressed
 
             click.echo(
-                f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:"
+                f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:"  # noqa: E501
             )
             for i, mutant in enumerate(result.mutants):
                 marker = "+" if i < fn_addressed else "-"
@@ -98,7 +98,7 @@ def _print_refutation_challenges(project_dir: Path) -> None:
 
 def _compile_project(
     project_path: Path,
-    *,
+    *,  # noqa: E501
     coherence: bool = False,
 ) -> tuple[bool, int, int, int, int, dict]:
     """Lex, parse, and check all .prv files under src/.
@@ -391,7 +391,6 @@ def _warn_no_nlp() -> None:
     if _nlp_warned:
         return
     _nlp_warned = True
-    import prove.nlp as nlp_mod
 
     pass
 
@@ -1305,7 +1304,6 @@ def _download_lsp_ml_stores() -> bool:
     import tarfile
     import tempfile
     import urllib.request
-    import zipfile
 
     click.echo("Downloading pre-trained LSP ML stores...")
 
@@ -1387,8 +1385,8 @@ def setup_nlp() -> None:
 
     click.echo("Building NLP data stores from scratch...")
     try:
-        import spacy  # noqa: F401
         import nltk  # noqa: F401
+        import spacy  # noqa: F401
     except ImportError:
         click.echo("  NLP deps not installed. Run: pip install 'prove[nlp]'")
         return

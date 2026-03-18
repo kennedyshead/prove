@@ -74,9 +74,7 @@ class CallCheckMixin:
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             # Try specific resolution first
-            sig = self.symbols.resolve_function(
-                None, name, arg_count
-            )
+            sig = self.symbols.resolve_function(None, name, arg_count)
             # Also try with verb from current function context
             if (
                 sig is None
@@ -175,9 +173,7 @@ class CallCheckMixin:
                     cb_arg = expr.args[cb_idx]
                     if isinstance(cb_arg, IdentifierExpr):
                         cb_arity = 2 if name == "par_reduce" else 1
-                        cb_sig = self.symbols.resolve_function_any(
-                            cb_arg.name, arity=cb_arity
-                        )
+                        cb_sig = self.symbols.resolve_function_any(cb_arg.name, arity=cb_arity)
                         if cb_sig and cb_sig.verb and cb_sig.verb not in _PURE_VERBS:
                             self._error(
                                 "E368",
@@ -192,11 +188,11 @@ class CallCheckMixin:
                 if cb_idx < len(expr.args):
                     cb_arg = expr.args[cb_idx]
                     if isinstance(cb_arg, IdentifierExpr):
-                        cb_sig = self.symbols.resolve_function_any(
-                            cb_arg.name, arity=1
-                        )
-                        if cb_sig and cb_sig.verb and cb_sig.verb in (
-                            "detached", "attached", "listens"
+                        cb_sig = self.symbols.resolve_function_any(cb_arg.name, arity=1)
+                        if (
+                            cb_sig
+                            and cb_sig.verb
+                            and cb_sig.verb in ("detached", "attached", "listens")
                         ):
                             self._error(
                                 "E369",
@@ -255,12 +251,10 @@ class CallCheckMixin:
                     arg_span = expr.args[i].span if i < len(expr.args) else expr.span
                     # E434: specific message for Struct field mismatch
                     if isinstance(expected, StructType) and isinstance(actual, RecordType):
-                        missing = [
-                            f for f in expected.required_fields
-                            if f not in actual.fields
-                        ]
+                        missing = [f for f in expected.required_fields if f not in actual.fields]
                         wrong = [
-                            f for f in expected.required_fields
+                            f
+                            for f in expected.required_fields
                             if f in actual.fields
                             and not types_compatible(expected.required_fields[f], actual.fields[f])
                         ]
@@ -329,16 +323,15 @@ class CallCheckMixin:
                                 f"registered function '{elem_name}' is not an `attached` verb",
                                 elem.span,
                             )
-                        elif (
-                            sig.event_type is not None
-                            and isinstance(sig.event_type, AlgebraicType)
+                        elif sig.event_type is not None and isinstance(
+                            sig.event_type, AlgebraicType
                         ):
                             # E404: return type must match a variant of event_type
-                            variant_names = {
-                                v.name for v in sig.event_type.variants
-                            }
+                            variant_names = {v.name for v in sig.event_type.variants}
                             ret_name = type_name(elem_sig.return_type)
-                            if ret_name not in variant_names and ret_name != type_name(sig.event_type):
+                            if ret_name not in variant_names and ret_name != type_name(
+                                sig.event_type
+                            ):  # noqa: E501
                                 self._error(
                                     "E404",
                                     f"return type of '{elem_name}' does not match "
@@ -372,7 +365,8 @@ class CallCheckMixin:
             # Resolve generic type variables in return type
             if sig.module and arg_types:
                 bindings = resolve_type_vars(
-                    sig.param_types, arg_types,
+                    sig.param_types,
+                    arg_types,
                 )
                 if bindings:
                     ret = substitute_type_vars(ret, bindings)
@@ -450,9 +444,7 @@ class CallCheckMixin:
             # Mark import as used
             self._used_imports.add((module_name.lower(), func_name))
             # Resolve the function normally by name
-            sig = self.symbols.resolve_function(
-                None, func_name, arg_count
-            )
+            sig = self.symbols.resolve_function(None, func_name, arg_count)
             cur = self._current_function
             if sig is None and cur and isinstance(cur, FunctionDef):
                 sig = self.symbols.resolve_function(
@@ -480,7 +472,8 @@ class CallCheckMixin:
             # Resolve generic type variables in return type
             if arg_types:
                 bindings = resolve_type_vars(
-                    sig.param_types, arg_types,
+                    sig.param_types,
+                    arg_types,
                 )
                 if bindings:
                     ret = substitute_type_vars(ret, bindings)
@@ -561,8 +554,7 @@ class CallCheckMixin:
             if field_type is None:
                 self._error(
                     "E433",
-                    f"field '{expr.field}' not declared in `with` constraints "
-                    f"for Struct parameter",
+                    f"field '{expr.field}' not declared in `with` constraints for Struct parameter",
                     expr.span,
                 )
                 return ERROR_TY
@@ -608,8 +600,7 @@ class CallCheckMixin:
                         return self._resolve_type_expr(lookup.value_types[i])
                 self._error(
                     "E340",
-                    f"no named column '{field}' on binary lookup "
-                    f"'{expr.obj.type_name}'",
+                    f"no named column '{field}' on binary lookup '{expr.obj.type_name}'",
                     expr.span,
                 )
                 return ERROR_TY

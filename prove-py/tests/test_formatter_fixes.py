@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from tests.helpers import check_and_format
 
-
 # ── I301: unreachable match arm — formatter removes ─────────────────
 
 
