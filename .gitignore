@@ -24,5 +24,3 @@ MEMORY.md
 .claudeignore
 .envrc
 .venv
-.prove_cache
-proof/src/python_src/prove_bundle_data.h

@@ -7,7 +7,7 @@ module Main
   System inputs process file outputs console
   List reads value length transforms slice
   Config types Config transforms config
-  Commands outputs build check format lsp new test view
+  Commands outputs build check format lsp new test
 
   type CliMap:[Lookup] is String | Verb
     "build" | build
@@ -16,10 +16,9 @@ module Main
     "lsp" | lsp
     "new" | new
     "test" | test
-    "view" | view
 
   HELP_TXT as String = comptime
-      read("static/help.txt")
+      read("static/cli/root.txt")
 
   PROVE_TOML as String = "prove.toml"
 

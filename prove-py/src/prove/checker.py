@@ -2851,6 +2851,25 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         result: Type = UNIT
         for stmt in expr.body:
             result = self._check_stmt(stmt)
+        # Evaluate now to catch runtime errors (e.g. read() on a missing file)
+        from prove.errors import CompileError
+        from prove.interpreter import ComptimeInterpreter
+
+        source_file = expr.span.file if expr.span and expr.span.file else ""
+        if source_file.startswith("file://"):
+            from urllib.parse import unquote, urlparse
+
+            source_file = unquote(urlparse(source_file).path)
+        source_dir = Path(source_file).parent if source_file else Path(".")
+        try:
+            ComptimeInterpreter(module_source_dir=source_dir).evaluate(expr)
+        except CompileError as exc:
+            for diag in exc.diagnostics:
+                self._error(diag.code, diag.message, expr.span)
+        except Exception as exc:
+            self._error(
+                "E417", f"comptime evaluation failed: {type(exc).__name__}: {exc}", expr.span
+            )
         return result
 
     # ── Pattern checking ────────────────────────────────────────
