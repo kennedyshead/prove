@@ -185,7 +185,7 @@ def _is_cache_stale(project_dir: Path) -> bool:
 
 
 def _update_project_cache(project_dir: Path) -> None:
-    """Rebuild .prove_cache and .prove/ stores when stale."""
+    """Rebuild .prove/cache and .prove/ stores when stale."""
     if not _is_cache_stale(project_dir):
         return
     try:
@@ -942,7 +942,7 @@ def lsp() -> None:
 @advanced.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 def index(path: str) -> None:
-    """Rebuild the .prove_cache ML completion index."""
+    """Rebuild the .prove/cache ML completion index."""
     from prove.lsp import _ProjectIndexer
 
     config_path = find_config(Path(path))
@@ -950,7 +950,7 @@ def index(path: str) -> None:
     click.echo("indexing...")
     indexer = _ProjectIndexer(project_dir)
     indexer.index_all_files()
-    click.echo(f"indexed {len(indexer._file_ngrams)} files -> {project_dir / '.prove_cache'}")
+    click.echo(f"indexed {len(indexer._file_ngrams)} files -> {project_dir / '.prove' / 'cache'}")
 
 
 def _generate_from_intent(target: Path, dry_run: bool) -> None:

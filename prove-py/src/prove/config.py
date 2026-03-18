@@ -74,7 +74,7 @@ class ProveConfig:
 
 # Directories under src/ that contain shared resources (stdlib .prv files,
 # C runtime) rather than user source code.  Exclude from .prv discovery.
-_RESERVED_SRC_DIRS = frozenset({"stdlib", "runtime", ".prove_cache"})
+_RESERVED_SRC_DIRS = frozenset({"stdlib", "runtime", ".prove"})
 
 
 def discover_prv_files(root: Path) -> list[Path]:

@@ -170,14 +170,14 @@ class _ProjectIndexer:
     Maintains per-file ngram and symbol contributions so a single-file save
     only requires re-parsing that file, not the whole project.
 
-    Cache is written to <project-root>/.prove_cache/ as PDAT binary files.
+    Cache is written to <project-root>/.prove/cache/ as PDAT binary files.
     """
 
     _CACHE_VERSION = 2  # bump when extraction logic or PDAT schema changes
 
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
-        self.cache_dir = project_root / ".prove_cache"
+        self.cache_dir = project_root / ".prove" / "cache"
         # Per-file contributions (enables incremental patch_file)
         self._file_ngrams: dict[str, list[tuple[str, str, str]]] = {}
         self._file_symbols: dict[str, list[dict]] = {}
@@ -450,7 +450,7 @@ class _ProjectIndexer:
             return False
 
     def save(self) -> None:
-        """Write in-memory tables to .prove_cache/ as PDAT binary files."""
+        """Write in-memory tables to .prove/cache/ as PDAT binary files."""
         try:
             self._write_bigrams_cache()
             self._write_completions_cache()

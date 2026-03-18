@@ -620,7 +620,7 @@ class TestProjectIndexerCacheValidity:
     """Tests for _ProjectIndexer.is_cache_valid()."""
 
     def test_no_cache_dir(self, tmp_path: Path):
-        """is_cache_valid returns False when .prove_cache doesn't exist."""
+        """is_cache_valid returns False when .prove/cache doesn't exist."""
         (tmp_path / "prove.toml").write_text("[package]\nname = 'test'\n")
         (tmp_path / "main.prv").write_text("module Main\n")
         indexer = _ProjectIndexer(tmp_path)
