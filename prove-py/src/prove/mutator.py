@@ -488,22 +488,22 @@ def run_mutation_tests(
     from prove.testing import TestGenerator, run_tests
 
     result = MutationTestResult()
-    all_mutants: list[tuple[Module, SymbolTable, Mutant]] = []
+    all_mutants: list[tuple[Module, Module, SymbolTable, Mutant]] = []
 
     for module, symbols in modules:
         mutator = Mutator(module)
         mutation_result = mutator.generate_mutants(max_mutants=max_mutants)
         for mutant in mutation_result.mutants:
-            all_mutants.append((mutant.module, symbols, mutant))
+            all_mutants.append((module, mutant.module, symbols, mutant))
 
     result.total_mutants = len(all_mutants)
 
     if not all_mutants:
         return result
 
-    for mutant_module, symbols, mutant in all_mutants:
+    for orig_module, mutant_module, symbols, mutant in all_mutants:
         try:
-            test_gen = TestGenerator(mutant_module, symbols, property_rounds=property_rounds)
+            test_gen = TestGenerator(orig_module, symbols, property_rounds=property_rounds)
             suite = test_gen.generate()
 
             if not suite.cases:
@@ -514,7 +514,7 @@ def run_mutation_tests(
                 project_dir, [(mutant_module, symbols)], property_rounds=property_rounds
             )
 
-            if test_result.tests_failed > 0:
+            if test_result.tests_failed > 0 or not test_result.ok:
                 result.killed_mutants += 1
             else:
                 result.survived_mutants += 1
