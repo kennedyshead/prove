@@ -393,11 +393,7 @@ def _warn_no_nlp() -> None:
     _nlp_warned = True
     import prove.nlp as nlp_mod
 
-    if not nlp_mod.has_nlp_backend():
-        click.echo(
-            "info: NLP not available \u2014 run `prove setup` for improved narrative analysis.",
-            err=True,
-        )
+    pass
 
 
 def _print_nlp_status() -> None:
@@ -1301,7 +1297,6 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(source, nl=False)
 
 
-@main.command()
 def _download_lsp_ml_stores() -> bool:
     """Download pre-trained LSP ML stores from GitHub releases.
 
@@ -1355,6 +1350,7 @@ def _download_lsp_ml_stores() -> bool:
         return False
 
 
+@advanced.command()
 def setup() -> None:
     """Set up Prove tools and data stores.
 

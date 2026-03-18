@@ -34,13 +34,6 @@ if __name__ == "__main__":
     config.build.debug = debug
     config.build.mutate = not no_mutate
 
-    if not nlp_mod.has_nlp_backend():
-        _ = sys.stderr.write(
-            (
-                "info: NLP not available \u2014 run `prove setup` for improved"
-                " narrative analysis.\n"
-            )
-        )
     result = build_project(project_dir, config, debug=debug)
 
     for diag in result.diagnostics:
