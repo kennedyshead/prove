@@ -1,0 +1,48 @@
+name: Proof Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e "prove-py" -q --break-system-packages
+
+      - name: Build prove
+        run: pip install -e . -q --break-system-packages
+
+      - name: Build proof project
+        run: prove build proof/
+
+      - name: Build all examples
+        run: |
+          for dir in examples/*/; do
+            if [ -d "$dir" ]; then
+              echo "Building $dir..."
+              prove build "$dir" || echo "Failed: $dir"
+            fi
+          done
+
+      - name: Build all benchmarks
+        run: |
+          for dir in benchmarks/*/; do
+            if [ -d "$dir" ]; then
+              echo "Building $dir..."
+              prove build "$dir" || echo "Failed: $dir"
+            fi
+          done
