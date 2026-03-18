@@ -18,10 +18,17 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "prove-py" / "src"))
 
-from prove.ast_nodes import FunctionDef, GenericType, ModifiedType, ModuleDecl, SimpleType, TypeExpr
+from prove.ast_nodes import (
+    FunctionDef,
+    GenericType,
+    ModifiedType,
+    ModuleDecl,
+    SimpleType,
+    TypeExpr,
+)
 from prove.lexer import Lexer
 from prove.parser import Parser
-from prove.tokens import TokenKind
+from prove.tokens import Token, TokenKind
 
 # Token kinds to skip entirely — structural noise with no completion value
 _SKIP_KINDS = frozenset(
@@ -38,6 +45,8 @@ _SKIP_KINDS = frozenset(
 _SOURCE_DIRS = [
     Path("prove-py/src/prove/stdlib"),
     Path("examples"),
+    Path("proof"),
+    Path("benchmarks"),
     Path("prove-py/tests/fixtures"),
 ]
 
@@ -61,30 +70,64 @@ def _type_expr_to_str(te: TypeExpr) -> str:
     return str(te)
 
 
-def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict], list[dict]]:
-    """Return (ngram_records, triple_records, docstring_records) for one .prv file."""
+def _extract_from_block_tokens(fd: FunctionDef, all_tokens: list[Token]) -> list[Token]:
+    """Extract tokens from a function's `from` block body."""
+    if not fd.body:
+        return []
+
+    from_kind = TokenKind.FROM
+    from_idx = None
+    for i, tok in enumerate(all_tokens):
+        if tok.kind == from_kind:
+            if fd.span.start_line <= tok.span.start_line <= fd.span.end_line:
+                from_idx = i
+                break
+
+    if from_idx is None:
+        return []
+
+    body_start = all_tokens[from_idx].span.start_line
+    body_end = fd.span.end_line
+
+    return [
+        t
+        for t in all_tokens[from_idx + 1 :]
+        if t.kind not in _SKIP_KINDS and body_start < t.span.start_line <= body_end
+    ]
+
+
+def extract_file(
+    path: Path, rel_path: str
+) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
+    """Return (ngram_records, triple_records, docstring_records, from_block_records) for one .prv file."""
     try:
         source = path.read_text(encoding="utf-8")
     except OSError as exc:
         print(f"  skip {rel_path}: {exc}", file=sys.stderr)
-        return [], [], []
+        return [], [], [], []
 
     try:
         tokens = Lexer(source, str(path)).lex()
     except Exception as exc:
         print(f"  lex error {rel_path}: {exc}", file=sys.stderr)
-        return [], [], []
+        return [], [], [], []
 
     # Filter tokens to meaningful ones
-    filtered = [
-        t for t in tokens if t.kind not in _SKIP_KINDS
-    ]
+    filtered = [t for t in tokens if t.kind not in _SKIP_KINDS]
 
     # Build ngram records
     ngrams: list[dict] = []
     for i, tok in enumerate(filtered):
-        prev2 = _token_text(filtered[i - 2].kind, filtered[i - 2].value) if i >= 2 else "<START>"
-        prev1 = _token_text(filtered[i - 1].kind, filtered[i - 1].value) if i >= 1 else "<START>"
+        prev2 = (
+            _token_text(filtered[i - 2].kind, filtered[i - 2].value)
+            if i >= 2
+            else "<START>"
+        )
+        prev1 = (
+            _token_text(filtered[i - 1].kind, filtered[i - 1].value)
+            if i >= 1
+            else "<START>"
+        )
         next_tok = _token_text(tok.kind, tok.value)
         ngrams.append(
             {
@@ -99,6 +142,7 @@ def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict], lis
     # Build FunctionDef triples and docstring mappings via Parser
     triples: list[dict] = []
     docstrings: list[dict] = []
+    from_block_records: list[dict] = []
     try:
         module = Parser(tokens, str(path)).parse()
 
@@ -123,9 +167,7 @@ def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict], lis
 
         for fd in all_funcs:
             first_param_type = (
-                _type_expr_to_str(fd.params[0].type_expr)
-                if fd.params
-                else None
+                _type_expr_to_str(fd.params[0].type_expr) if fd.params else None
             )
             return_type = (
                 _type_expr_to_str(fd.return_type)
@@ -158,10 +200,36 @@ def extract_file(path: Path, rel_path: str) -> tuple[list[dict], list[dict], lis
                         "file": rel_path,
                     }
                 )
+
+            # Extract from-block token sequences
+            from_tokens = _extract_from_block_tokens(fd, tokens)
+            for i, tok in enumerate(from_tokens):
+                prev2 = (
+                    _token_text(from_tokens[i - 2].kind, from_tokens[i - 2].value)
+                    if i >= 2
+                    else "<START>"
+                )
+                prev1 = (
+                    _token_text(from_tokens[i - 1].kind, from_tokens[i - 1].value)
+                    if i >= 1
+                    else "<START>"
+                )
+                next_tok = _token_text(tok.kind, tok.value)
+                from_block_records.append(
+                    {
+                        "kind": "from_block",
+                        "prev2": prev2,
+                        "prev1": prev1,
+                        "next": next_tok,
+                        "verb": fd.verb,
+                        "file": rel_path,
+                        "line": tok.span.start_line,
+                    }
+                )
     except Exception as exc:
         print(f"  parse error {rel_path}: {exc}", file=sys.stderr)
 
-    return ngrams, triples, docstrings
+    return ngrams, triples, docstrings, from_block_records
 
 
 def collect_prv_files(repo_root: Path) -> list[tuple[Path, str]]:
@@ -197,16 +265,22 @@ def main() -> None:
     total_ngrams = 0
     total_triples = 0
     total_docstrings = 0
+    total_from_blocks = 0
 
     for abs_path, rel_path in files:
-        ngrams, triples, docstrings = extract_file(abs_path, rel_path)
+        ngrams, triples, docstrings, from_blocks = extract_file(abs_path, rel_path)
         all_records.extend(ngrams)
         all_records.extend(triples)
         all_records.extend(docstrings)
+        all_records.extend(from_blocks)
         total_ngrams += len(ngrams)
         total_triples += len(triples)
         total_docstrings += len(docstrings)
-        print(f"  {rel_path}: {len(ngrams)} ngrams, {len(triples)} triples, {len(docstrings)} docstrings")
+        total_from_blocks += len(from_blocks)
+        print(
+            f"  {rel_path}: {len(ngrams)} ngrams, {len(triples)} triples, "
+            f"{len(docstrings)} docstrings, {len(from_blocks)} from-block"
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -214,7 +288,8 @@ def main() -> None:
 
     print(
         f"\nWrote {len(all_records)} records "
-        f"({total_ngrams} ngrams + {total_triples} triples + {total_docstrings} docstrings) "
+        f"({total_ngrams} ngrams + {total_triples} triples + "
+        f"{total_docstrings} docstrings + {total_from_blocks} from-block) "
         f"→ {output_path}"
     )
 

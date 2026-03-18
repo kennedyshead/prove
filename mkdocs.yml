@@ -7,6 +7,9 @@ copyright: Copyright © 2026 Magnus Knutas
 nav:
   - Home: index.md
   - Tutorial: tutorial.md
+  - Tutorials:
+      - Editor Setup: tutorials/editor-setup/index.md
+      - Neovim: tutorials/editor-setup/neovim.md
   - Language:
       - Syntax: syntax.md
       - Functions & Verbs: functions.md

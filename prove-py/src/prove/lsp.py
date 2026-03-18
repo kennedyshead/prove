@@ -14,6 +14,7 @@ from pathlib import Path
 from lsprotocol import types as lsp
 from pygls.lsp.server import LanguageServer
 
+from prove._body_gen import GeneratedBody, generate_body, find_stdlib_matches
 from prove._nl_intent import VERB_SYNONYMS as _VERB_PROSE_HINTS
 from prove.ast_nodes import (
     ConstantDef,
@@ -21,19 +22,27 @@ from prove.ast_nodes import (
     ImportDecl,
     ImportItem,
     MainDef,
+    MatchExpr,
     Module,
     ModuleDecl,
     TypeDef,
+    VarDecl,
+    WhileLoop,
 )
 from prove.checker import Checker
 from prove.errors import CompileError, Diagnostic, Severity
 from prove.formatter import ProveFormatter
 from prove.lexer import Lexer
 from prove.parser import Parser
-from prove.stdlib_loader import ImportSuggestion, build_import_index
+from prove.stdlib_loader import (
+    _STDLIB_MODULES,
+    ImportSuggestion,
+    build_import_index,
+    load_stdlib,
+)
 from prove.symbols import FunctionSignature, SymbolKind, SymbolTable
 from prove.tokens import KEYWORDS, Token, TokenKind
-from prove.types import BUILTIN_FUNCTIONS
+from prove.types import BUILTIN_FUNCTIONS, type_name
 
 # ── Conversion helpers ────────────────────────────────────────────
 
@@ -108,6 +117,7 @@ class DocumentState:
     local_import_index: dict[str, list[ImportSuggestion]] = field(
         default_factory=dict,
     )
+    inlay_type_map: dict[tuple[int, int], str] = field(default_factory=dict)
 
 
 # ── Project Indexer (Phase 4) ────────────────────────────────────────────
@@ -953,6 +963,7 @@ def _analyze(uri: str, source: str) -> DocumentState:
         ds.symbols = symbols
         ds.local_import_index = _build_local_import_index(local_modules)
         ds.prove_diagnostics = checker.diagnostics
+        ds.inlay_type_map = checker.inlay_type_map
         diags.extend(_compile_diag(d) for d in checker.diagnostics)
     except Exception:
         import traceback
@@ -1189,6 +1200,236 @@ def _prose_completions(
                 items.append(_text(phrase, "alternative", "1"))
 
     return items
+
+
+# ── From-block body generation (Phase 6) ───────────────────────────────
+
+
+def _find_fd_at_cursor(source: str, position: lsp.Position) -> FunctionDef | None:
+    """Return the FunctionDef whose span contains the given 0-indexed position."""
+    lines = source.splitlines()
+    line_idx = position.line
+    col = position.character
+    truncated_lines = lines[:line_idx]
+    if line_idx < len(lines):
+        truncated_lines.append(lines[line_idx][:col])
+    truncated = "\n".join(truncated_lines)
+
+    try:
+        tokens = Lexer(truncated, "<completion>").lex()
+        module = Parser(tokens, "<completion>").parse()
+    except Exception:
+        return None
+
+    target = line_idx + 1
+    for decl in module.declarations:
+        if isinstance(decl, FunctionDef):
+            if decl.span.start_line <= target <= decl.span.end_line:
+                return decl
+    return None
+
+
+def _is_in_from_block(source: str, position: lsp.Position) -> bool:
+    """True if the cursor is inside a `from` block (after the `from` keyword line)."""
+    lines = source.splitlines()
+    line_idx = position.line
+    if line_idx >= len(lines):
+        return False
+
+    current_indent = len(lines[line_idx]) - len(lines[line_idx].lstrip())
+    if current_indent <= 0:
+        return False
+
+    for i in range(line_idx - 1, -1, -1):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent < current_indent and stripped == "from":
+            return True
+        if indent < current_indent:
+            return False
+    return False
+
+
+def _generate_from_block_snippet(
+    fd: FunctionDef,
+    module: Module | None,
+) -> str:
+    """Generate a complete `from` block body for a function definition."""
+    param_names = [p.name for p in fd.params]
+    nouns = [p.name for p in fd.params]
+
+    body = generate_body(
+        verb=fd.verb or "transforms",
+        name=fd.name,
+        nouns=nouns,
+        param_names=param_names,
+        declaration_text=fd.doc_comment or None,
+    )
+
+    if not body.stmts:
+        return "    todo"
+
+    lines: list[str] = []
+    for stmt in body.stmts:
+        lines.append(f"    {stmt.code}")
+
+    return "\n".join(lines)
+
+
+def _from_block_completions(
+    source: str,
+    position: lsp.Position,
+    ds: DocumentState | None,
+) -> list[lsp.CompletionItem]:
+    """Return body-generation completions when inside a `from` block.
+
+    Uses the enclosing function's signature to generate the full from-block
+    via the body generation engine.
+    """
+    if not _is_in_from_block(source, position):
+        return []
+
+    fd = _find_fd_at_cursor(source, position)
+    if fd is None:
+        return []
+
+    snippet = _generate_from_block_snippet(fd, ds.module if ds else None)
+    if not snippet.strip():
+        return []
+
+    lines = snippet.splitlines()
+    if len(lines) == 1:
+        return [
+            lsp.CompletionItem(
+                label=lines[0].strip(),
+                kind=lsp.CompletionItemKind.Snippet,
+                detail="generated body",
+                insert_text=snippet,
+                insert_text_format=lsp.InsertTextFormat.Snippet,
+                sort_text="\x00gen_body",
+                label_details=lsp.CompletionItemLabelDetails(description="generated"),
+            )
+        ]
+
+    return [
+        lsp.CompletionItem(
+            label=f"from... ({len(lines)} lines)",
+            kind=lsp.CompletionItemKind.Snippet,
+            detail=f"Generate {fd.verb} {fd.name} body",
+            insert_text=snippet + "\n",
+            insert_text_format=lsp.InsertTextFormat.Snippet,
+            sort_text="\x00gen_body",
+            label_details=lsp.CompletionItemLabelDetails(description="generated"),
+        )
+    ]
+
+
+# ── From-block n-gram model (Phase 6) ────────────────────────────────
+
+
+def _load_from_block_model() -> None:
+    """Load from-block n-gram model from data/lsp-ml-store/from-blocks/."""
+    global _from_block_model
+    if _from_block_model is not None:
+        return
+
+    _from_block_model = {}
+    from_path = _GLOBAL_MODEL_DIR / "from_blocks" / "current.prv"
+    if not from_path.exists():
+        return
+
+    try:
+        for line in from_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line.startswith("r") or "|" not in line:
+                continue
+            parts = [p.strip() for p in line.split("|")[1:]]
+            if len(parts) >= 3:
+                prev2, prev1, top = str(parts[0]), str(parts[1]), str(parts[2])
+                toks = [t for t in top.split("|") if t]
+                _from_block_model[(prev2, prev1)] = toks
+    except Exception:
+        pass
+
+
+_from_block_model: dict[tuple[str, str], list[str]] | None = None
+
+
+def _from_block_ngram_complete(
+    source: str,
+    position: lsp.Position,
+    top_k: int = 5,
+) -> list[str]:
+    """Return n-gram completions for from-block token sequences."""
+    _load_from_block_model()
+    if _from_block_model is None:
+        return []
+
+    context = _extract_context_tokens(source, position, n=2)
+    prev2, prev1 = context[0], context[1]
+
+    lines = source.splitlines()
+    line_idx = position.line
+    col = position.character
+    prefix = ""
+    if line_idx < len(lines):
+        text = lines[line_idx][:col]
+        m = re.search(r"[\w<>_]+$", text)
+        if m:
+            prefix = m.group()
+
+    results: list[str] = []
+    for tok in _from_block_model.get((prev2, prev1), []):
+        if not prefix or tok.startswith(prefix):
+            results.append(tok)
+        if len(results) >= top_k:
+            break
+
+    if not results:
+        for tok in _from_block_model.get(("<START>", prev1), []):
+            if not prefix or tok.startswith(prefix):
+                results.append(tok)
+            if len(results) >= top_k:
+                break
+
+    return results
+
+
+def _from_block_ngram_completions(
+    source: str,
+    position: lsp.Position,
+) -> list[lsp.CompletionItem]:
+    """Return multi-token snippet completions from the from-block n-gram model."""
+    if not _is_in_from_block(source, position):
+        return []
+
+    tokens = _from_block_ngram_complete(source, position)
+    if not tokens:
+        return []
+
+    items: list[lsp.CompletionItem] = []
+    for tok in tokens:
+        if tok.startswith("<") or tok.startswith('"'):
+            continue
+        try:
+            float(tok)
+            continue
+        except ValueError:
+            pass
+
+        items.append(
+            lsp.CompletionItem(
+                label=tok,
+                kind=lsp.CompletionItemKind.Text,
+                detail="from-block ml",
+                sort_text="\x00from_ml",
+                label_details=lsp.CompletionItemLabelDetails(description="ml"),
+            )
+        )
+    return items[:10]
 
 
 def _ml_completions(
@@ -1841,6 +2082,20 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     )
                 )
 
+    # Phase 5b — from-block body generation (highest priority when in `from` block)
+    source = ds.source if ds else ""
+    from_items = _from_block_completions(source, params.position, ds)
+    if from_items:
+        # Also add n-gram suggestions for partial tokens
+        ngram_items = _from_block_ngram_completions(source, params.position)
+        combined = from_items + ngram_items
+        seen_combo: dict[tuple[str, str], lsp.CompletionItem] = {}
+        for item in combined:
+            key = (item.label, item.sort_text or item.label)
+            if key not in seen_combo or item.detail:
+                seen_combo[key] = item
+        return lsp.CompletionList(is_incomplete=False, items=list(seen_combo.values()))
+
     # Phase 5a — prose-mode completions (suppress ML n-gram items in prose context)
     if ds is not None and ds.module is not None:
         prose_kind, prose_fd = _prose_context(ds.source, params.position, ds.module)
@@ -2380,6 +2635,57 @@ def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
             )
 
     return actions if actions else None
+
+
+# ── Inlay hints ──────────────────────────────────────────────────
+
+
+def _collect_var_decls(stmts: list) -> list[VarDecl]:
+    """Recursively collect VarDecl nodes from a statement/expression list."""
+    result: list[VarDecl] = []
+    for stmt in stmts:
+        if isinstance(stmt, VarDecl):
+            result.append(stmt)
+        elif isinstance(stmt, MatchExpr):
+            for arm in stmt.arms:
+                result.extend(_collect_var_decls(arm.body))
+        elif isinstance(stmt, WhileLoop):
+            result.extend(_collect_var_decls(stmt.body))
+    return result
+
+
+@server.feature(
+    lsp.TEXT_DOCUMENT_INLAY_HINT,
+    lsp.InlayHintOptions(),
+)
+def inlay_hint(params: lsp.InlayHintParams) -> list[lsp.InlayHint] | None:
+    uri = params.text_document.uri
+    ds = _state.get(uri)
+    if ds is None or ds.module is None or not ds.inlay_type_map:
+        return None
+
+    hints: list[lsp.InlayHint] = []
+    for decl in ds.module.declarations:
+        body = getattr(decl, "body", None)
+        if not body:
+            continue
+        for vd in _collect_var_decls(body):
+            if vd.type_expr is not None:
+                continue
+            ty = ds.inlay_type_map.get((vd.span.start_line, vd.span.start_col))
+            if ty is None:
+                continue
+            hints.append(
+                lsp.InlayHint(
+                    position=lsp.Position(
+                        line=vd.span.start_line - 1,
+                        character=vd.span.start_col - 1 + len(vd.name),
+                    ),
+                    label=f" {ty}",
+                    kind=lsp.InlayHintKind.Type,
+                )
+            )
+    return hints or None
 
 
 # ── Entry point ──────────────────────────────────────────────────
