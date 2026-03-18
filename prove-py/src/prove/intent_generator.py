@@ -236,7 +236,8 @@ def generate_module_source(
     for intent in module.intents:
         # Infer parameters from vocabulary and stdlib
         param_names, param_types, return_type = _infer_params_from_vocab(
-            intent, project.vocabulary,
+            intent,
+            project.vocabulary,
         )
 
         # Build the function
@@ -365,9 +366,7 @@ def check_intent_coverage(
 
         # Check function coverage
         for intent in module.intents:
-            fn = existing_fns.get(intent.noun) or normalized_fns.get(
-                normalize_noun(intent.noun)
-            )
+            fn = existing_fns.get(intent.noun) or normalized_fns.get(normalize_noun(intent.noun))
             if fn is None:
                 status = "missing"
             elif any(isinstance(s, TodoStmt) for s in fn.body):
@@ -375,41 +374,47 @@ def check_intent_coverage(
             else:
                 status = "implemented"
 
-            statuses.append({
-                "module": module.name,
-                "verb": intent.verb,
-                "noun": intent.noun,
-                "status": status,
-                "raw_line": intent.raw_line,
-                "kind": "function",
-            })
+            statuses.append(
+                {
+                    "module": module.name,
+                    "verb": intent.verb,
+                    "noun": intent.noun,
+                    "status": status,
+                    "raw_line": intent.raw_line,
+                    "kind": "function",
+                }
+            )
 
         # Check vocabulary type coverage
         vocab_types = _find_vocab_references(module, project.vocabulary)
         for vt in vocab_types:
             type_status = "implemented" if vt.name in existing_types else "missing"
-            statuses.append({
-                "module": module.name,
-                "verb": "",
-                "noun": vt.name,
-                "status": type_status,
-                "raw_line": f"{vt.name} is {vt.description}",
-                "kind": "type",
-            })
+            statuses.append(
+                {
+                    "module": module.name,
+                    "verb": "",
+                    "noun": vt.name,
+                    "status": type_status,
+                    "raw_line": f"{vt.name} is {vt.description}",
+                    "kind": "type",
+                }
+            )
 
         # Check inferred constant coverage
         module_constraints = _find_module_constraints(module, project.constraints)
         constants = infer_constants(module_constraints)
         for const_name, const_type, const_value, const_doc in constants:
             const_status = "implemented" if const_name in existing_constants else "missing"
-            statuses.append({
-                "module": module.name,
-                "verb": "",
-                "noun": const_name,
-                "status": const_status,
-                "raw_line": f"{const_name} as {const_type} = {const_value}",
-                "kind": "constant",
-            })
+            statuses.append(
+                {
+                    "module": module.name,
+                    "verb": "",
+                    "noun": const_name,
+                    "status": const_status,
+                    "raw_line": f"{const_name} as {const_type} = {const_value}",
+                    "kind": "constant",
+                }
+            )
 
     return statuses
 
@@ -419,13 +424,8 @@ def _find_vocab_references(
     vocabulary: list[VocabularyEntry],
 ) -> list[VocabularyEntry]:
     """Find vocabulary entries referenced by a module's verb phrases."""
-    module_text = " ".join(
-        f"{i.verb} {i.noun} {i.context}" for i in module.intents
-    ).lower()
-    return [
-        v for v in vocabulary
-        if v.name.lower() in module_text
-    ]
+    module_text = " ".join(f"{i.verb} {i.noun} {i.context}" for i in module.intents).lower()
+    return [v for v in vocabulary if v.name.lower() in module_text]
 
 
 def _find_module_constraints(
@@ -441,7 +441,8 @@ def _find_module_constraints(
         return w in module_nouns or any(n.startswith(w) or w.startswith(n) for n in module_nouns)
 
     return [
-        c for c in constraints
+        c
+        for c in constraints
         if any(_matches(a) for a in c.anchors)
         or any(_matches(w) for w in c.text.split())
         or not c.anchors

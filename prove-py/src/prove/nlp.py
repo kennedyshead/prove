@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from prove._body_gen import StdlibMatch
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 _spacy_checked: bool = False
 _spacy_available: bool = False
-_nlp_model: object | None = None  # spacy.Language when loaded
+_nlp_model: Any | None = None  # spacy.Language when loaded
 
 _wordnet_checked: bool = False
 _wordnet_available: bool = False
@@ -39,7 +39,7 @@ def _ensure_spacy() -> bool:
         return _spacy_available
     _spacy_checked = True
     try:
-        import spacy  # type: ignore[import-untyped]
+        import spacy
 
         try:
             _nlp_model = spacy.load("en_core_web_sm")
@@ -50,8 +50,15 @@ def _ensure_spacy() -> bool:
             import sys
 
             subprocess.run(
-                [sys.executable, "-m", "spacy", "download", "en_core_web_sm",
-                 "--break-system-packages", "--quiet"],
+                [
+                    sys.executable,
+                    "-m",
+                    "spacy",
+                    "download",
+                    "en_core_web_sm",
+                    "--break-system-packages",
+                    "--quiet",
+                ],
                 check=True,
                 capture_output=True,
             )
@@ -73,7 +80,7 @@ def _ensure_wordnet() -> bool:
         return _wordnet_available
     _wordnet_checked = True
     try:
-        from nltk.corpus import wordnet  # type: ignore[import-untyped]
+        from nltk.corpus import wordnet
 
         # Probe that data is actually downloaded
         wordnet.synsets("test")
@@ -109,7 +116,7 @@ def lemmatize(word: str) -> str:
     """
     if _ensure_spacy():
         assert _nlp_model is not None
-        doc = _nlp_model(word.lower())  # type: ignore[operator]
+        doc = _nlp_model(word.lower())
         if doc and doc[0].lemma_:
             return doc[0].lemma_
     # Fallback — use _fallback variant to avoid recursion
@@ -136,7 +143,7 @@ def extract_parts(text: str) -> ExtractedParts:
     """
     if _ensure_spacy():
         assert _nlp_model is not None
-        doc = _nlp_model(text)  # type: ignore[operator]
+        doc = _nlp_model(text)
         nouns: list[str] = []
         verbs: list[str] = []
         seen_nouns: set[str] = set()
@@ -170,7 +177,7 @@ def synonyms(word: str, pos: str = "v") -> set[str]:
     Falls back to the synonym cache PDAT, then to ``VERB_SYNONYMS``.
     """
     if _ensure_wordnet():
-        from nltk.corpus import wordnet  # type: ignore[import-untyped]
+        from nltk.corpus import wordnet
 
         result: set[str] = set()
         for synset in wordnet.synsets(word, pos=pos):
@@ -207,13 +214,13 @@ def text_similarity(a: str, b: str) -> float:
     """
     if _ensure_spacy():
         assert _nlp_model is not None
-        doc_a = _nlp_model(a)  # type: ignore[operator]
-        doc_b = _nlp_model(b)  # type: ignore[operator]
+        doc_a = _nlp_model(a)
+        doc_b = _nlp_model(b)
         # Only use spaCy similarity when model has word vectors and
         # both docs are non-empty — en_core_web_sm has no vectors.
-        has_vectors = getattr(_nlp_model.vocab, "vectors_length", 0) > 0  # type: ignore[union-attr]
+        has_vectors = getattr(_nlp_model.vocab, "vectors_length", 0) > 0
         if has_vectors and len(doc_a) > 0 and len(doc_b) > 0:
-            sim = doc_a.similarity(doc_b)  # type: ignore[union-attr]
+            sim = doc_a.similarity(doc_b)
             return max(0.0, min(1.0, float(sim)))
 
     # Fallback: Jaccard on normalized words — use _fallback to avoid recursion
@@ -247,7 +254,7 @@ def parse_intent_phrase(text: str) -> ParsedPhrase:
     """
     if _ensure_spacy():
         assert _nlp_model is not None
-        doc = _nlp_model(text)  # type: ignore[operator]
+        doc = _nlp_model(text)
         action: str | None = None
         obj: str | None = None
         modifiers: list[str] = []
@@ -325,27 +332,28 @@ def match_stdlib_function(
     has_vectors = (
         _ensure_spacy()
         and _nlp_model is not None
-        and getattr(_nlp_model.vocab, "vectors_length", 0) > 0  # type: ignore[union-attr]
+        and getattr(_nlp_model.vocab, "vectors_length", 0) > 0
     )
     if has_vectors and matches:
         assert _nlp_model is not None
-        query_doc = _nlp_model(query)  # type: ignore[operator]
+        query_doc = _nlp_model(query)
         enhanced: list[_StdlibMatch] = []
         for m in matches:
-            # Build a description from the function
             desc = f"{m.function.verb} {m.function.name}"
             if m.function.doc_comment:
                 desc = m.function.doc_comment
-            fn_doc = _nlp_model(desc)  # type: ignore[operator]
-            sim = query_doc.similarity(fn_doc)  # type: ignore[union-attr]
+            fn_doc = _nlp_model(desc)
+            sim = query_doc.similarity(fn_doc)
             # Blend original score with similarity
             blended = (m.score * 0.6) + (max(0.0, float(sim)) * 0.4)
-            enhanced.append(_StdlibMatch(
-                module=m.module,
-                function=m.function,
-                overlap=m.overlap,
-                score=round(blended, 3),
-            ))
+            enhanced.append(
+                _StdlibMatch(
+                    module=m.module,
+                    function=m.function,
+                    overlap=m.overlap,
+                    score=round(blended, 3),
+                )
+            )
         return sorted(enhanced, key=lambda m: -m.score)
 
     return matches

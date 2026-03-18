@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate /tmp/1.json for the kostya/benchmarks JSON test."""
+
 import json
 import random
 

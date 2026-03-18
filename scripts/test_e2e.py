@@ -349,9 +349,7 @@ def main() -> int:
         for future in as_completed(futures):
             completed += 1
             try:
-                kind, name, results, expected_failures, expected_diags = (
-                    future.result()
-                )
+                kind, name, results, expected_failures, expected_diags = future.result()
                 collected[name] = (kind, results, expected_failures, expected_diags)
                 print(f"  [{completed}/{total}] {name}")
             except Exception as e:

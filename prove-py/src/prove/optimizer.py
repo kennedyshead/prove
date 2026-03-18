@@ -265,10 +265,7 @@ class Optimizer:
                     for inner in last.expr.arms
                 )
         if isinstance(last, MatchExpr):
-            return any(
-                inner.body and self._is_tail_call_in_arm(name, inner)
-                for inner in last.arms
-            )
+            return any(inner.body and self._is_tail_call_in_arm(name, inner) for inner in last.arms)
         return False
 
     def _is_tail_call(self, name: str, expr: Expr) -> bool:
@@ -535,7 +532,7 @@ class Optimizer:
                     if isinstance(result, int):
                         return IntegerLit(value=str(result), span=expr.span)
                     elif isinstance(result, float):
-                        return FloatLit(value=str(result) + "f", span=expr.span)
+                        return FloatLit(value=str(result) + "f", span=expr.span)  # type: ignore[return-value]
                     elif isinstance(result, bool):
                         return BooleanLit(value=result, span=expr.span)
                     elif isinstance(result, str):
@@ -1106,7 +1103,13 @@ class Optimizer:
     def _is_inline_candidate(self, fd: FunctionDef) -> bool:
         """Check if a function is eligible for inlining."""
         _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
-        if fd.binary or fd.with_constraints or fd.terminates is not None or fd.requires or fd.ensures:  # noqa: E501
+        if (
+            fd.binary
+            or fd.with_constraints
+            or fd.terminates is not None
+            or fd.requires
+            or fd.ensures
+        ):  # noqa: E501
             return False
         if self._calls_self(fd.name, fd.body):
             return False
@@ -1437,9 +1440,7 @@ class Optimizer:
             and isinstance(arm.body[-1], ExprStmt)
             and isinstance(arm.body[-1].expr, IdentifierExpr)
         )
-        rec_arm = next(
-            arm for arm in m.arms if arm.body and isinstance(arm.body[-1], TailContinue)
-        )
+        rec_arm = next(arm for arm in m.arms if arm.body and isinstance(arm.body[-1], TailContinue))
         rec_tc: TailContinue = rec_arm.body[-1]  # type: ignore[assignment]
 
         # Map formal params to actual args
@@ -1454,7 +1455,7 @@ class Optimizer:
         #                  emit as ExprStmt, no fresh var needed, pass actual arg through
         #   induction   — everything else: genuine value change, needs a fresh loop var
         constant_params: set[str] = set()
-        effect_params: set[str] = set()   # inner_p → CallExpr whose first arg == IdentExpr(inner_p)
+        effect_params: set[str] = set()  # inner_p → CallExpr whose first arg == IdentExpr(inner_p)
         induction_params: list[str] = []
         for inner_p, new_val in rec_tc.assignments:
             if isinstance(new_val, IdentifierExpr) and new_val.name == inner_p:
@@ -1536,14 +1537,12 @@ class Optimizer:
         # VarDecl for each induction param (initialized to the actual arg)
         prepend: list[Any] = []
         for p in induction_params:
-            prepend.append(
-                VarDecl(name=fresh[p], type_expr=None, value=param_to_arg[p], span=span)
-            )
+            prepend.append(VarDecl(name=fresh[p], type_expr=None, value=param_to_arg[p], span=span))
 
         while_loop = WhileLoop(break_cond=break_cond, body=loop_body, span=span)
 
         # Result of the inlined call is the "result param" named in the base arm's ExprStmt
-        result_param_name: str = base_arm.body[-1].expr.name  # type: ignore[union-attr]
+        result_param_name: str = base_arm.body[-1].expr.name
         if result_param_name in fresh:
             result_expr: Any = IdentifierExpr(name=fresh[result_param_name], span=span)
         else:
@@ -1657,7 +1656,11 @@ class Optimizer:
 
         # Build the folded expression
         folded = self._build_folded_expr(
-            counter_param, acc_param, step_expr, delta_expr, tl.span,
+            counter_param,
+            acc_param,
+            step_expr,
+            delta_expr,
+            tl.span,
         )
         if folded is None:
             return None
@@ -1669,7 +1672,8 @@ class Optimizer:
         return [new_match]
 
     def _classify_loop_arms(
-        self, arms: list[MatchArm],
+        self,
+        arms: list[MatchArm],
     ) -> tuple[MatchArm | None, MatchArm | None]:
         """Identify which arm is the base case and which is the recursive case."""
         # The recursive arm is the one containing a TailContinue
@@ -1741,7 +1745,9 @@ class Optimizer:
         return None
 
     def _extract_decrement_step(
-        self, param: str, expr: Expr | None,
+        self,
+        param: str,
+        expr: Expr | None,
     ) -> Expr | None:
         """Check if expr is `param - step` where step is a positive integer literal."""
         if expr is None:
@@ -1763,7 +1769,9 @@ class Optimizer:
         return None
 
     def _extract_accumulator_delta(
-        self, param: str, expr: Expr | None,
+        self,
+        param: str,
+        expr: Expr | None,
     ) -> Expr | None:
         """Check if expr is `param + delta` or `param - delta`.
 
@@ -2012,9 +2020,7 @@ class Optimizer:
             ):
                 # Don't merge if current match already has a wildcard arm —
                 # it's exhaustive, so subsequent matches are independent.
-                has_wildcard = any(
-                    isinstance(arm.pattern, WildcardPattern) for arm in stmt.arms
-                )
+                has_wildcard = any(isinstance(arm.pattern, WildcardPattern) for arm in stmt.arms)
                 if has_wildcard:
                     result.append(stmt)
                     i += 1
@@ -2035,8 +2041,7 @@ class Optimizer:
                         # Stop merging if the next match has a wildcard —
                         # it must run as a separate dispatch.
                         next_has_wildcard = any(
-                            isinstance(arm.pattern, WildcardPattern)
-                            for arm in next_stmt.arms
+                            isinstance(arm.pattern, WildcardPattern) for arm in next_stmt.arms
                         )
                         if next_has_wildcard:
                             break

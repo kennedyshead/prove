@@ -71,16 +71,16 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
 
         # Top-level keywords
         if stripped.startswith("project "):
-            project_name = stripped[len("project "):].strip()
+            project_name = stripped[len("project ") :].strip()
             section = "project"
             continue
 
         if stripped.startswith("purpose:"):
-            purpose = stripped[len("purpose:"):].strip()
+            purpose = stripped[len("purpose:") :].strip()
             continue
 
         if stripped.startswith("domain:"):
-            domain = stripped[len("domain:"):].strip()
+            domain = stripped[len("domain:") :].strip()
             continue
 
         if stripped == "vocabulary":
@@ -101,7 +101,7 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
             if current_flow is not None:
                 flows.append(current_flow)
                 current_flow = None
-            mod_name = stripped[len("module "):].strip()
+            mod_name = stripped[len("module ") :].strip()
             current_module = IntentModule(name=mod_name)
             section = "module"
             continue
@@ -136,11 +136,13 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
                 vocabulary.append(VocabularyEntry(name=name, description=desc))
                 vocab_names.add(name)
             else:
-                diags.append(IntentDiagnostic(
-                    line=lineno,
-                    message="vocabulary entry should use 'Name is description' format",
-                    code="W601",
-                ))
+                diags.append(
+                    IntentDiagnostic(
+                        line=lineno,
+                        message="vocabulary entry should use 'Name is description' format",
+                        code="W601",
+                    )
+                )
             continue
 
         if section == "module" and current_module is not None and indent >= 2:
@@ -179,15 +181,23 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
         flows.append(current_flow)
 
     if project_name is None:
-        diags.append(IntentDiagnostic(
-            line=1, message="missing 'project' declaration", severity="error",
-        ))
+        diags.append(
+            IntentDiagnostic(
+                line=1,
+                message="missing 'project' declaration",
+                severity="error",
+            )
+        )
         return result
 
     if purpose is None:
-        diags.append(IntentDiagnostic(
-            line=1, message="missing 'purpose:' declaration", severity="error",
-        ))
+        diags.append(
+            IntentDiagnostic(
+                line=1,
+                message="missing 'purpose:' declaration",
+                severity="error",
+            )
+        )
         return result
 
     result.project = IntentProject(
@@ -203,7 +213,9 @@ def parse_intent(source: str, filename: str = "<intent>") -> ParseResult:
 
 
 def _parse_verb_phrase(
-    text: str, lineno: int, diags: list[IntentDiagnostic],
+    text: str,
+    lineno: int,
+    diags: list[IntentDiagnostic],
 ) -> VerbPhrase | None:
     """Parse a verb phrase line into a VerbPhrase node."""
     from prove.nlp import has_nlp_backend
@@ -234,11 +246,13 @@ def _parse_verb_phrase(
 
     canonical = normalize_verb(words[0])
     if canonical is None:
-        diags.append(IntentDiagnostic(
-            line=lineno,
-            message=f"unrecognized verb '{words[0]}' in intent",
-            code="W601",
-        ))
+        diags.append(
+            IntentDiagnostic(
+                line=lineno,
+                message=f"unrecognized verb '{words[0]}' in intent",
+                code="W601",
+            )
+        )
         return None
 
     noun = words[1] if len(words) > 1 else canonical
@@ -248,7 +262,9 @@ def _parse_verb_phrase(
 
 
 def _parse_flow_step(
-    text: str, lineno: int, diags: list[IntentDiagnostic],
+    text: str,
+    lineno: int,
+    diags: list[IntentDiagnostic],
 ) -> FlowStep | None:
     """Parse a flow step: Module verb phrase."""
     words = text.split()

@@ -164,8 +164,7 @@ class TestCLI:
         ts_dir = tmp_path / "tree-sitter-prove"
         ts_dir.mkdir()
         (ts_dir / "grammar.js").write_text(
-            "// PROVE-EXPORT-BEGIN: verbs\n"
-            "// PROVE-EXPORT-END: verbs\n"
+            "// PROVE-EXPORT-BEGIN: verbs\n// PROVE-EXPORT-END: verbs\n"
         )
         result = runner.invoke(
             main,

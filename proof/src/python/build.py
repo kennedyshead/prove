@@ -11,7 +11,6 @@ inject the following variables into __main__ before running this script:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 # pylint: disable=invalid-name
@@ -25,7 +24,6 @@ if __name__ == "__main__":
     from prove._build_runner import mutate
     from prove.builder import build_project
     from prove.config import load_config
-    import prove.nlp as nlp_mod
 
     project_dir: Path = Path(path)
     config = load_config(project_dir / "prove.toml")

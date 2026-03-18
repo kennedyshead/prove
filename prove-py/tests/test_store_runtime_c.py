@@ -9,7 +9,8 @@ from tests.runtime_helpers import compile_and_run
 
 class TestStoreCreate:
     def test_create_and_validate(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             #include "prove_store.h"
             #include <stdio.h>
             int main(void) {
@@ -22,7 +23,9 @@ class TestStoreCreate:
                 printf("bad_validates=%%d\\n", prove_store_validates(bad) ? 1 : 0);
                 return 0;
             }
-        """ % (str(tmp_path), str(tmp_path)))
+        """
+            % (str(tmp_path), str(tmp_path))
+        )
         result = compile_and_run(runtime_dir, tmp_path, code, name="store_create")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
@@ -72,7 +75,8 @@ class TestTableNewAndVariants:
 
 class TestTableSaveAndLoad:
     def test_save_load_roundtrip(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             #include "prove_store.h"
             #include <stdio.h>
             int main(void) {
@@ -121,7 +125,9 @@ class TestTableSaveAndLoad:
                 printf("loaded_v1_c1=%%s\\n", loaded->values[1][1]->data);
                 return 0;
             }
-        """ % str(tmp_path))
+        """
+            % str(tmp_path)
+        )
         result = compile_and_run(runtime_dir, tmp_path, code, name="tbl_save")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
@@ -140,7 +146,8 @@ class TestTableSaveAndLoad:
 
 class TestOptimisticConcurrency:
     def test_stale_version_rejected(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             #include "prove_store.h"
             #include <stdio.h>
             int main(void) {
@@ -178,7 +185,9 @@ class TestOptimisticConcurrency:
                 }
                 return 0;
             }
-        """ % str(tmp_path))
+        """
+            % str(tmp_path)
+        )
         result = compile_and_run(runtime_dir, tmp_path, code, name="stale")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
@@ -325,7 +334,8 @@ class TestIntegrity:
 
 class TestVersionsAndRollback:
     def test_versions_and_rollback(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             #include "prove_store.h"
             #include <stdio.h>
             int main(void) {
@@ -362,7 +372,9 @@ class TestVersionsAndRollback:
                 printf("rolled_ver=%%lld\\n", (long long)rolled->version);
                 return 0;
             }
-        """ % str(tmp_path))
+        """
+            % str(tmp_path)
+        )
         result = compile_and_run(runtime_dir, tmp_path, code, name="versions")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
@@ -845,7 +857,8 @@ class TestConflictAccessors:
 
 class TestLookupCompile:
     def test_lookup_output_input(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
+        code = textwrap.dedent(
+            """\
             #include "prove_store.h"
             #include <stdio.h>
             int main(void) {
@@ -878,7 +891,9 @@ class TestLookupCompile:
                 printf("entries=%%lld\\n", (long long)prove_list_len(entries));
                 return 0;
             }
-        """ % (str(tmp_path), str(tmp_path)))
+        """
+            % (str(tmp_path), str(tmp_path))
+        )
         result = compile_and_run(runtime_dir, tmp_path, code, name="lookup")
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")

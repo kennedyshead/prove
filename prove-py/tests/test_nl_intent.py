@@ -93,41 +93,25 @@ class TestProseOverlaps:
 
 class TestBodyTokens:
     def test_extracts_param_names(self) -> None:
-        fd = _parse_fd(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "from\n"
-            "    a + b\n"
-        )
+        fd = _parse_fd("transforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n")
         tokens = body_tokens(fd)
         assert "a" in tokens
         assert "b" in tokens
 
     def test_extracts_called_functions(self) -> None:
-        fd = _parse_fd(
-            "transforms double(n Integer) Integer\n"
-            "from\n"
-            "    add(n, n)\n"
-        )
+        fd = _parse_fd("transforms double(n Integer) Integer\nfrom\n    add(n, n)\n")
         tokens = body_tokens(fd)
         assert "n" in tokens
         assert "add" in tokens
 
     def test_empty_body(self) -> None:
-        fd = _parse_fd(
-            "transforms identity(x Integer) Integer\n"
-            "from\n"
-            "    x\n"
-        )
+        fd = _parse_fd("transforms identity(x Integer) Integer\nfrom\n    x\n")
         tokens = body_tokens(fd)
         # At minimum, param name is present
         assert "x" in tokens
 
     def test_no_params(self) -> None:
-        fd = _parse_fd(
-            "creates zero() Integer\n"
-            "from\n"
-            "    0\n"
-        )
+        fd = _parse_fd("creates zero() Integer\nfrom\n    0\n")
         tokens = body_tokens(fd)
         # No params, no calls — may be empty or contain literal-related names
         assert isinstance(tokens, set)

@@ -58,11 +58,7 @@ class TestTestGenerator:
 
     def test_strip_main(self):
         c_code = (
-            "void foo(void) {}\n"
-            "int main(int argc, char **argv) {\n"
-            "    foo();\n"
-            "    return 0;\n"
-            "}\n"
+            "void foo(void) {}\nint main(int argc, char **argv) {\n    foo();\n    return 0;\n}\n"
         )
         result = TestGenerator._strip_main(c_code)
         assert "int main(" not in result
@@ -92,7 +88,9 @@ class TestRunTests:
         source = (examples_dir / "src" / "main.prv").read_text()
         module, symbols = _parse_check(source)
         result = run_tests(
-            examples_dir, [(module, symbols)], property_rounds=50,
+            examples_dir,
+            [(module, symbols)],
+            property_rounds=50,
         )
         assert result.ok, f"Tests failed: {result.output} {result.c_error}"
         assert result.tests_run > 0

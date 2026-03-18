@@ -18,7 +18,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "prove-py" / "src"))
 
-from prove.ast_nodes import (
+from prove.ast_nodes import (  # noqa: E402
     FunctionDef,
     GenericType,
     ModifiedType,
@@ -26,9 +26,9 @@ from prove.ast_nodes import (
     SimpleType,
     TypeExpr,
 )
-from prove.lexer import Lexer
-from prove.parser import Parser
-from prove.tokens import Token, TokenKind
+from prove.lexer import Lexer  # noqa: E402
+from prove.parser import Parser  # noqa: E402
+from prove.tokens import Token, TokenKind  # noqa: E402
 
 # Token kinds to skip entirely — structural noise with no completion value
 _SKIP_KINDS = frozenset(

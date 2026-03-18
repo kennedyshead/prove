@@ -57,6 +57,8 @@ from prove.types import (
 
 
 class ExprEmitterMixin:
+    _locals: dict[str, Type]
+
     def _emit_expr(self, expr: Expr) -> str:
         if isinstance(expr, IntegerLit):
             return f"{expr.value}L"
@@ -276,12 +278,8 @@ class ExprEmitterMixin:
             if not isinstance(req, BinaryExpr):
                 continue
             # Match patterns: param != 0, param > 0, 0 != param, 0 < param
-            left_is_name = (
-                isinstance(req.left, IdentifierExpr) and req.left.name == name
-            )
-            right_is_name = (
-                isinstance(req.right, IdentifierExpr) and req.right.name == name
-            )
+            left_is_name = isinstance(req.left, IdentifierExpr) and req.left.name == name
+            right_is_name = isinstance(req.right, IdentifierExpr) and req.right.name == name
             if req.op in ("!=", ">") and left_is_name:
                 if isinstance(req.right, IntegerLit) and req.right.value == "0":
                     return True
@@ -477,10 +475,7 @@ class ExprEmitterMixin:
             err_str = self._named_tmp("error")
             self._line(f"Prove_String *{err_str} = (Prove_String*){tmp}.error;")
             self._line(
-                f"fprintf(stderr,"
-                f' "error: %.*s\\n",'
-                f" (int){err_str}->length,"
-                f" {err_str}->data);"
+                f'fprintf(stderr, "error: %.*s\\n", (int){err_str}->length, {err_str}->data);'
             )
             self._line("prove_runtime_cleanup();")
             self._line("return 1;")
@@ -534,6 +529,7 @@ class ExprEmitterMixin:
                 args = [self._emit_expr(a) for a in inner.args]
                 args_str = ", ".join(["_coro"] + args)
                 from prove.c_types import mangle_name
+
                 if sig.param_types:
                     mangled = mangle_name(sig.verb, fname, sig.param_types)
                 else:
@@ -551,16 +547,14 @@ class ExprEmitterMixin:
         from prove.ast_nodes import ListLiteral
         from prove.c_types import mangle_name
 
-        fname = call.func.name  # type: ignore[attr-defined]
+        fname = call.func.name
         mangled = mangle_name(sig.verb, fname, sig.param_types)
 
         # Build worker list: each attached call becomes a pre-started coro
         if call.args and isinstance(call.args[0], ListLiteral):
             workers = call.args[0]
             list_tmp = self._tmp()
-            self._line(
-                f"Prove_List *{list_tmp} = prove_list_new({len(workers.elements)});"
-            )
+            self._line(f"Prove_List *{list_tmp} = prove_list_new({len(workers.elements)});")
             for elem in workers.elements:
                 if isinstance(elem, _CE) and isinstance(elem.func, _IE):
                     worker_sig = self._symbols.resolve_function_any(elem.func.name)
@@ -572,9 +566,7 @@ class ExprEmitterMixin:
                         body_fn = f"_{w_mangled}_body"
                         a_tmp = self._tmp()
                         c_tmp = self._tmp()
-                        self._line(
-                            f"{args_struct} *{a_tmp} = malloc(sizeof({args_struct}));"
-                        )
+                        self._line(f"{args_struct} *{a_tmp} = malloc(sizeof({args_struct}));")
                         for j, arg in enumerate(elem.args):
                             pname = worker_sig.param_names[j]
                             val = self._emit_expr(arg)
@@ -625,9 +617,10 @@ class ExprEmitterMixin:
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
             # listens uses _ev (received event from queue)
-            if (
-                self._current_func is not None
-                and self._current_func.verb in ("matches", "streams", "listens")
+            if self._current_func is not None and self._current_func.verb in (
+                "matches",
+                "streams",
+                "listens",
             ):
                 if self._current_func.verb == "listens":
                     subj_name = "_ev"
@@ -1116,9 +1109,7 @@ class ExprEmitterMixin:
             if lookup.is_binary and lookup.value_types:
                 for entry in lookup.entries:
                     if str_value in entry.values:
-                        col_idx = self._binary_column_index(
-                            lookup, self._expected_emit_type
-                        )
+                        col_idx = self._binary_column_index(lookup, self._expected_emit_type)
                         val = entry.values[col_idx]
                         kind = entry.value_kinds[col_idx]
                         if kind == "string":
@@ -1228,9 +1219,7 @@ class ExprEmitterMixin:
         from prove.ast_nodes import LookupTypeDef
 
         assert isinstance(lookup, LookupTypeDef)
-        type_names = [
-            vt.name if hasattr(vt, "name") else "" for vt in lookup.value_types
-        ]
+        type_names = [vt.name if hasattr(vt, "name") else "" for vt in lookup.value_types]
         has_dups = type_names.count(type_name) > 1
         for col_idx, vt in enumerate(lookup.value_types):
             col_type = vt.name if hasattr(vt, "name") else ""
@@ -1238,8 +1227,9 @@ class ExprEmitterMixin:
                 # Use named column if available
                 named = (
                     lookup.column_names[col_idx]
-                    if lookup.column_names and col_idx < len(lookup.column_names)
-                       and lookup.column_names[col_idx] is not None
+                    if lookup.column_names
+                    and col_idx < len(lookup.column_names)
+                    and lookup.column_names[col_idx] is not None
                     else None
                 )
                 if named:
@@ -1286,8 +1276,7 @@ class ExprEmitterMixin:
                     if col_name == expr.column_type:
                         named = (
                             lookup.column_names[i]
-                            if i < len(lookup.column_names)
-                               and lookup.column_names[i] is not None
+                            if i < len(lookup.column_names) and lookup.column_names[i] is not None
                             else None
                         )
                         if named:
@@ -1383,9 +1372,7 @@ class ExprEmitterMixin:
         # the concrete type (Prove_String*, int64_t, …) — cast, don't access
         # as Prove_Value struct.
         is_resolved_value = (
-            not is_true_value
-            and subj_expr is not None
-            and self._c_returns_value_ptr(subj_expr)
+            not is_true_value and subj_expr is not None and self._c_returns_value_ptr(subj_expr)
         )
         if pat.kind == "boolean" or val in ("true", "false"):
             if is_true_value:

@@ -37,7 +37,10 @@ class TestParEachSequential:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="seq",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="seq",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -62,7 +65,10 @@ class TestParEachSequential:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="empty",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="empty",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -99,7 +105,10 @@ class TestParEachParallel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="par4",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="par4",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -134,7 +143,10 @@ class TestParEachParallel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="auto",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="auto",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0

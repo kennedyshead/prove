@@ -11,9 +11,7 @@ from tests.helpers import check_info
 
 class TestTodoParsing:
     def test_bare_todo(self) -> None:
-        tokens = Lexer(
-            "transforms stub(x Integer) Integer\nfrom\n    todo\n", "<test>"
-        ).lex()
+        tokens = Lexer("transforms stub(x Integer) Integer\nfrom\n    todo\n", "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         fd = module.declarations[0]
         assert isinstance(fd, FunctionDef)
@@ -34,11 +32,7 @@ class TestTodoParsing:
 
     def test_todo_among_other_stmts(self) -> None:
         tokens = Lexer(
-            "transforms stub(x Integer) Integer\n"
-            "from\n"
-            "    y as Integer = x + 1\n"
-            "    todo\n"
-            "    y\n",
+            "transforms stub(x Integer) Integer\nfrom\n    y as Integer = x + 1\n    todo\n    y\n",
             "<test>",
         ).lex()
         module = Parser(tokens, "<test>").parse()
@@ -50,17 +44,13 @@ class TestTodoParsing:
 class TestTodoChecker:
     def test_i601_emitted(self) -> None:
         check_info(
-            "transforms stub(x Integer) Integer\n"
-            "from\n"
-            "    todo\n",
+            "transforms stub(x Integer) Integer\nfrom\n    todo\n",
             "I601",
         )
 
     def test_no_i601_without_todo(self) -> None:
         tokens = Lexer(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "from\n"
-            "    a + b\n",
+            "transforms add(a Integer, b Integer) Integer\nfrom\n    a + b\n",
             "<test>",
         ).lex()
         module = Parser(tokens, "<test>").parse()

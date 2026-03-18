@@ -33,7 +33,10 @@ class TestParMapSequential:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="seq",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="seq",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -58,7 +61,10 @@ class TestParMapSequential:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="empty",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="empty",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -92,7 +98,10 @@ class TestParMapParallel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="par2",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="par2",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -125,7 +134,10 @@ class TestParMapParallel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="par4",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="par4",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0
@@ -156,7 +168,10 @@ class TestParMapParallel:
             }
         """)
         result = compile_and_run(
-            runtime_dir, tmp_path, code, name="excess",
+            runtime_dir,
+            tmp_path,
+            code,
+            name="excess",
             extra_flags=["-lpthread"],
         )
         assert result.returncode == 0

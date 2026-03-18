@@ -112,7 +112,7 @@ class TestParserWith:
         fd = parse_decl(
             "transforms greeting(entity Struct) String\n"
             "  with entity.name String\n"
-            "  ensures result != \"\"\n"
+            '  ensures result != ""\n'
             "  from\n"
             "    entity.name\n"
         )
@@ -121,11 +121,7 @@ class TestParserWith:
         assert len(fd.ensures) == 1
 
     def test_no_with_constraints_default(self):
-        fd = parse_decl(
-            "transforms identity(x Integer) Integer\n"
-            "  from\n"
-            "    x\n"
-        )
+        fd = parse_decl("transforms identity(x Integer) Integer\n  from\n    x\n")
         assert isinstance(fd, FunctionDef)
         assert fd.with_constraints == []
 
@@ -151,7 +147,7 @@ class TestCheckerStruct:
             "transforms greeting(entity Struct) String\n"
             "  with other.name String\n"
             "  from\n"
-            "    \"hello\"\n",
+            '    "hello"\n',
             "E430",
         )
 

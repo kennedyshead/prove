@@ -41,8 +41,17 @@ class TestLoadVerbSynonyms:
     def test_all_canonical_verbs_present(self) -> None:
         result = load_verb_synonyms()
         expected_verbs = {
-            "transforms", "validates", "reads", "creates", "matches",
-            "outputs", "inputs", "listens", "detached", "attached", "streams",
+            "transforms",
+            "validates",
+            "reads",
+            "creates",
+            "matches",
+            "outputs",
+            "inputs",
+            "listens",
+            "detached",
+            "attached",
+            "streams",
         }
         actual_verbs = set(result.values())
         assert expected_verbs == actual_verbs
@@ -211,9 +220,14 @@ class TestSynonymCache:
 
     def test_caches_result(self, tmp_path) -> None:
         dat = tmp_path / "synonym_cache.dat"
-        write_pdat(dat, "SynonymCache", ["String"], [
-            ("test", ["example|sample"]),
-        ])
+        write_pdat(
+            dat,
+            "SynonymCache",
+            ["String"],
+            [
+                ("test", ["example|sample"]),
+            ],
+        )
 
         import prove.nlp_store as store_mod
 
@@ -238,9 +252,14 @@ class TestSynonymCache:
 
     def test_empty_synonym_list(self, tmp_path) -> None:
         dat = tmp_path / "synonym_cache.dat"
-        write_pdat(dat, "SynonymCache", ["String"], [
-            ("lonely", [""]),
-        ])
+        write_pdat(
+            dat,
+            "SynonymCache",
+            ["String"],
+            [
+                ("lonely", [""]),
+            ],
+        )
 
         import prove.nlp_store as store_mod
 
@@ -299,9 +318,14 @@ class TestSimilarityMatrix:
         prove_dir = tmp_path / ".prove"
         prove_dir.mkdir()
         dat = prove_dir / "similarity_matrix.dat"
-        write_pdat(dat, "SimilarityMatrix", ["String"], [
-            ("a.x|b.y", ["0.5"]),
-        ])
+        write_pdat(
+            dat,
+            "SimilarityMatrix",
+            ["String"],
+            [
+                ("a.x|b.y", ["0.5"]),
+            ],
+        )
 
         _reset()
         first = load_similarity_matrix(tmp_path)
@@ -354,7 +378,5 @@ class TestSemanticFeatures:
         build_semantic_features(tmp_path)
         result = load_semantic_features(tmp_path)
         # At least some entries should have keywords
-        has_keywords = any(
-            entry["keywords"].strip() for entry in result.values()
-        )
+        has_keywords = any(entry["keywords"].strip() for entry in result.values())
         assert has_keywords

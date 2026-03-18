@@ -531,7 +531,9 @@ class Parser:
                 self._expect(TokenKind.DOT)
                 field_tok = self._expect(TokenKind.IDENTIFIER)
                 field_type = self._parse_type_expr()
-                wc_span = self._span(wc_start, field_type.span if hasattr(field_type, "span") else wc_start)  # noqa: E501
+                wc_span = self._span(
+                    wc_start, field_type.span if hasattr(field_type, "span") else wc_start
+                )  # noqa: E501
                 with_constraints.append(
                     WithConstraint(param_tok.value, field_tok.value, field_type, wc_span)
                 )
@@ -815,7 +817,7 @@ class Parser:
         if is_lookup:
             body = self._parse_lookup_type_body()
         else:
-            body = self._parse_type_body()
+            body = self._parse_type_body()  # type: ignore[assignment]
 
         end = self._current().span
         span = self._span(start, end)
@@ -1915,7 +1917,7 @@ class Parser:
         if self._at(TokenKind.COMPTIME):
             value = self._parse_comptime_expr()
         else:
-            value = self._parse_expression(0)
+            value = self._parse_expression(0)  # type: ignore[assignment]
 
         end = self._current().span
         return ConstantDef(
@@ -2299,7 +2301,7 @@ class Parser:
 
         if tok.kind == TokenKind.FLOAT_LIT:
             self._advance()
-            return FloatLit(tok.value, tok.span)
+            return FloatLit(tok.value, tok.span)  # type: ignore[return-value]
 
         if tok.kind in (TokenKind.STRING_LIT, TokenKind.INTERP_START):
             return self._parse_string_or_interp()
@@ -2446,7 +2448,7 @@ class Parser:
         args = None
         if self._at(TokenKind.LPAREN):
             self._advance()
-            args = []
+            args: list[Expr] = []
             while not self._at(TokenKind.RPAREN) and not self._at(TokenKind.EOF):
                 if args:
                     self._expect(TokenKind.COMMA)

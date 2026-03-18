@@ -859,7 +859,7 @@ def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     if target.is_dir() and len(prv_files) > 1:
         from prove.module_resolver import build_module_registry
 
-        local_modules = build_module_registry(prv_files)
+        local_modules = build_module_registry(prv_files)  # type: ignore[assignment]
 
     changed = 0
     checked = 0

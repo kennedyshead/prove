@@ -1,6 +1,4 @@
-import sys
 import os
-import platform
 import socket
 from pathlib import Path
 

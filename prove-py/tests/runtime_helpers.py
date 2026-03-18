@@ -27,10 +27,17 @@ def compile_and_run(
 
     runtime_c = sorted(runtime_dir.glob("*.c"))
     cmd = [
-        cc, "-O0", "-Wall", "-Wextra", "-Wno-unused-parameter",
-        "-I", str(runtime_dir),
-        str(src), *[str(f) for f in runtime_c],
-        "-o", str(binary),
+        cc,
+        "-O0",
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-I",
+        str(runtime_dir),
+        str(src),
+        *[str(f) for f in runtime_c],
+        "-o",
+        str(binary),
         "-lm",
     ]
     if extra_flags:

@@ -53,7 +53,7 @@ class TestVerificationChainW370:
             "        n\n"
             "\n"
             "transforms caller(n Integer) Integer\n"
-            "    trusted \"externally verified\"\n"
+            '    trusted "externally verified"\n'
             "    from\n"
             "        helper(n)\n"
         )
@@ -131,8 +131,7 @@ class TestVerificationChainW371:
         checker.check(module)
         w371 = [d for d in checker.diagnostics if d.code == "W371"]
         assert w371, (
-            f"Expected W371 but got: "
-            f"{[f'{d.code}: {d.message}' for d in checker.diagnostics]}"
+            f"Expected W371 but got: {[f'{d.code}: {d.message}' for d in checker.diagnostics]}"
         )
 
 
@@ -165,12 +164,7 @@ class TestVerificationStatus:
         from prove.lexer import Lexer
         from prove.parser import Parser
 
-        source = (
-            "transforms f(n Integer) Integer\n"
-            '    trusted "external"\n'
-            "    from\n"
-            "        n\n"
-        )
+        source = 'transforms f(n Integer) Integer\n    trusted "external"\n    from\n        n\n'
         tokens = Lexer(source, "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         checker = Checker()
@@ -183,11 +177,7 @@ class TestVerificationStatus:
         from prove.lexer import Lexer
         from prove.parser import Parser
 
-        source = (
-            "transforms f(n Integer) Integer\n"
-            "    from\n"
-            "        n\n"
-        )
+        source = "transforms f(n Integer) Integer\n    from\n        n\n"
         tokens = Lexer(source, "<test>").lex()
         module = Parser(tokens, "<test>").parse()
         checker = Checker()

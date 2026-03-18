@@ -15,9 +15,9 @@ class TestMatchExhaustiveness:
             "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            Red => \"red\"\n"
-            "            Green => \"green\"\n"
-            "            Blue => \"blue\"\n"
+            '            Red => "red"\n'
+            '            Green => "green"\n'
+            '            Blue => "blue"\n'
         )
 
     def test_non_exhaustive_match(self):
@@ -27,8 +27,8 @@ class TestMatchExhaustiveness:
             "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            Red => \"red\"\n"
-            "            Green => \"green\"\n",
+            '            Red => "red"\n'
+            '            Green => "green"\n',
             "E371",
         )
 
@@ -39,8 +39,8 @@ class TestMatchExhaustiveness:
             "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            Red => \"red\"\n"
-            "            _ => \"other\"\n"
+            '            Red => "red"\n'
+            '            _ => "other"\n'
         )
 
     def test_unknown_variant_error(self):
@@ -50,9 +50,9 @@ class TestMatchExhaustiveness:
             "matches bad(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            Red => \"red\"\n"
-            "            Green => \"green\"\n"
-            "            Purple => \"purple\"\n",
+            '            Red => "red"\n'
+            '            Green => "green"\n'
+            '            Purple => "purple"\n',
             "E370",
         )
 
@@ -63,8 +63,8 @@ class TestMatchExhaustiveness:
             "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            _ => \"any\"\n"
-            "            Red => \"red\"\n",
+            '            _ => "any"\n'
+            '            Red => "red"\n',
             "I301",
         )
 
@@ -75,7 +75,7 @@ class TestRequiresRedundantMatch:
     def test_match_on_requires_condition(self):
         check_warns(
             "module M\n"
-            "  narrative: \"t\"\n"
+            '  narrative: "t"\n'
             "matches abs_val(n Integer) Integer\n"
             "  requires n >= 0\n"
             "from\n"
@@ -113,9 +113,9 @@ class TestMatchesVerbRelaxation:
         check(
             "matches greet(name String) String\n"
             "    from\n"
-            "        match name == \"world\"\n"
-            "            true => \"Hello, world!\"\n"
-            "            false => \"Hello!\"\n"
+            '        match name == "world"\n'
+            '            true => "Hello, world!"\n'
+            '            false => "Hello!"\n'
         )
 
     def test_matches_integer_first_param(self):
@@ -124,8 +124,8 @@ class TestMatchesVerbRelaxation:
             "matches classify(n Integer) String\n"
             "    from\n"
             "        match n > 0\n"
-            "            true => \"positive\"\n"
-            "            false => \"non-positive\"\n"
+            '            true => "positive"\n'
+            '            false => "non-positive"\n'
         )
 
     def test_matches_algebraic_first_param(self):
@@ -145,27 +145,21 @@ class TestMatchesVerbRelaxation:
     def test_matches_boolean_first_param_rejected(self):
         """matches verb rejects Boolean as first parameter."""
         check_fails(
-            "matches bad(flag Boolean) String\n"
-            "    from\n"
-            "        \"nope\"\n",
+            'matches bad(flag Boolean) String\n    from\n        "nope"\n',
             "E365",
         )
 
     def test_matches_decimal_first_param_rejected(self):
         """matches verb rejects Decimal as first parameter."""
         check_fails(
-            "matches bad(x Decimal) String\n"
-            "    from\n"
-            "        \"nope\"\n",
+            'matches bad(x Decimal) String\n    from\n        "nope"\n',
             "E365",
         )
 
     def test_matches_no_params_rejected(self):
         """matches verb still requires at least one parameter."""
         check_fails(
-            "matches bad() String\n"
-            "    from\n"
-            "        \"nope\"\n",
+            'matches bad() String\n    from\n        "nope"\n',
             "E365",
         )
 
@@ -189,7 +183,7 @@ class TestGenericPatternMatching:
             "matches handle(r Result<String, Error>) String\n"
             "    from\n"
             "        match r\n"
-            '            Some(value) => value\n'
+            "            Some(value) => value\n"
             '            _ => "error"\n',
             "E372",
         )
@@ -200,7 +194,7 @@ class TestGenericPatternMatching:
             "matches handle(o Option<String>) String\n"
             "    from\n"
             "        match o\n"
-            '            Ok(value) => value\n'
+            "            Ok(value) => value\n"
             '            _ => "error"\n',
             "E372",
         )
@@ -211,7 +205,7 @@ class TestGenericPatternMatching:
             "matches handle(r Result<String, Error>) String\n"
             "    from\n"
             "        match r\n"
-            '            Ok(value) => value\n',
+            "            Ok(value) => value\n",
             "E373",
         )
 
@@ -221,7 +215,7 @@ class TestGenericPatternMatching:
             "matches handle(o Option<String>) String\n"
             "    from\n"
             "        match o\n"
-            '            Some(value) => value\n',
+            "            Some(value) => value\n",
             "E373",
         )
 
@@ -257,10 +251,10 @@ class TestMatchRestriction:
             "transforms bad(d Dir) String\n"
             "    from\n"
             "        match d\n"
-            "            North => \"n\"\n"
-            "            South => \"s\"\n"
-            "            East => \"e\"\n"
-            "            West => \"w\"\n",
+            '            North => "n"\n'
+            '            South => "s"\n'
+            '            East => "e"\n'
+            '            West => "w"\n',
             "I367",
         )
 
@@ -272,9 +266,9 @@ class TestMatchRestriction:
             "matches name(c Color) String\n"
             "    from\n"
             "        match c\n"
-            "            Red => \"red\"\n"
-            "            Green => \"green\"\n"
-            "            Blue => \"blue\"\n"
+            '            Red => "red"\n'
+            '            Green => "green"\n'
+            '            Blue => "blue"\n'
         )
 
     def test_match_in_validates_info(self):
@@ -402,7 +396,7 @@ class TestMatchArmTypeMismatch:
             "    from\n"
             "        match c\n"
             '            A => "hello"\n'
-            '            B =>\n'
+            "            B =>\n"
             '                info("log")&\n',
             "E400",
         )

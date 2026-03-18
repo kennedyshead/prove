@@ -116,13 +116,10 @@ def build_module_registry(
                 info.types[td.name] = resolved
 
                 # Register variant constructors for algebraic types
-                if isinstance(td.body, AlgebraicTypeDef) and isinstance(
-                    resolved, AlgebraicType
-                ):
+                if isinstance(td.body, AlgebraicTypeDef) and isinstance(resolved, AlgebraicType):
                     for v in td.body.variants:
                         vfield_types = [
-                            _resolve_type_expr_simple(f.type_expr, type_registry)
-                            for f in v.fields
+                            _resolve_type_expr_simple(f.type_expr, type_registry) for f in v.fields
                         ]
                         vsig = FunctionSignature(
                             verb=None,
@@ -155,9 +152,7 @@ def build_module_registry(
                     continue  # stdlib or unknown module — skip
                 for item in imp.items:
                     # Type imports: explicit "types" verb or bare CamelCase name
-                    if item.verb == "types" or (
-                        item.verb is None and item.name[:1].isupper()
-                    ):
+                    if item.verb == "types" or (item.verb is None and item.name[:1].isupper()):
                         if item.name not in info.types:
                             imported_type = sibling.types.get(item.name)
                             if imported_type is not None:
@@ -166,9 +161,9 @@ def build_module_registry(
                                 changed = True
 
     # --- Phase 3: Build function signatures ---
-    for module_name, (_mod_decl, type_registry, module) in phase_data.items():
+    for module_name, (_mod_decl, type_registry, module) in phase_data.items():  # type: ignore[assignment]
         info = registry[module_name]
-        for decl in module.declarations:  # type: ignore[union-attr]
+        for decl in module.declarations:
             if isinstance(decl, FunctionDef):
                 param_types = [
                     _resolve_type_expr_simple(p.type_expr, type_registry) for p in decl.params

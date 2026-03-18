@@ -11,7 +11,7 @@ Coordinate = namedtuple("Coordinate", "x y z")
 
 def calc(text):
     jobj = json.loads(text)
-    l = len(jobj["coordinates"])
+    count = len(jobj["coordinates"])
     x = 0
     y = 0
     z = 0
@@ -21,7 +21,7 @@ def calc(text):
         y += coord["y"]
         z += coord["z"]
 
-    return Coordinate(x / l, y / l, z / l)
+    return Coordinate(x / count, y / count, z / count)
 
 
 def notify(msg):

@@ -81,6 +81,7 @@ project Minimal
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _check_prv_source(source: str) -> tuple[list, bool]:
     """Parse and check .prv source.
 
@@ -128,7 +129,9 @@ def _generate_and_check(intent_source: str) -> dict:
     result = parse_intent(intent_source)
     if result.project is None:
         return {
-            "parse_ok": False, "files": [], "all_ok": False,
+            "parse_ok": False,
+            "files": [],
+            "all_ok": False,
             "all_parse_ok": False,
         }
 
@@ -155,15 +158,14 @@ def _format_errors(info: dict) -> str:
         if not prv_parse_ok:
             parts.append(f"{filename}: PARSE ERROR")
         elif errors:
-            parts.append(
-                f"{filename}: {[f'{e.code}: {e.message}' for e in errors]}"
-            )
+            parts.append(f"{filename}: {[f'{e.code}: {e.message}' for e in errors]}")
     return " | ".join(parts)
 
 
 # ---------------------------------------------------------------------------
 # Tests: Intent parsing
 # ---------------------------------------------------------------------------
+
 
 class TestIntentParsing:
     """Verify intent parsing produces expected structures."""
@@ -196,6 +198,7 @@ class TestIntentParsing:
 # ---------------------------------------------------------------------------
 # Tests: Code generation structure
 # ---------------------------------------------------------------------------
+
 
 class TestIntentGeneration:
     """Verify generation produces expected file structure."""
@@ -275,6 +278,7 @@ class TestIntentGeneration:
 # Tests: Checker validation (single-module, no cross-module imports)
 # ---------------------------------------------------------------------------
 
+
 class TestIntentE2EChecker:
     """Verify generated .prv passes through the checker."""
 
@@ -321,6 +325,7 @@ class TestIntentE2EChecker:
 # Tests: Multi-module (use import placement — known limitation)
 # ---------------------------------------------------------------------------
 
+
 class TestIntentE2EMultiModule:
     """Multi-module generation tests.
 
@@ -342,6 +347,7 @@ class TestIntentE2EMultiModule:
 # ---------------------------------------------------------------------------
 # Tests: With/without NLP backends
 # ---------------------------------------------------------------------------
+
 
 class TestIntentE2ENLP:
     """Verify pipeline works with NLP backends mocked on/off."""
@@ -367,15 +373,14 @@ class TestIntentE2ENLP:
             info_on = _generate_and_check(SIMPLE_INTENT)
 
         assert len(info_off["files"]) == len(info_on["files"])
-        for (f_off, _, _, _), (f_on, _, _, _) in zip(
-            info_off["files"], info_on["files"]
-        ):
+        for (f_off, _, _, _), (f_on, _, _, _) in zip(info_off["files"], info_on["files"]):
             assert f_off == f_on
 
 
 # ---------------------------------------------------------------------------
 # Tests: Negative / breakage (prove the checker catches real errors)
 # ---------------------------------------------------------------------------
+
 
 class TestIntentE2ENegative:
     """Verify the checker actually catches errors in generated code."""
@@ -409,9 +414,7 @@ class TestIntentE2ENegative:
         corrupt = "\n".join(truncated)
         errors, parse_ok = _check_prv_source(corrupt)
         # Either parse fails or checker finds errors
-        assert not parse_ok or len(errors) > 0, (
-            "Missing from-block should fail parse or check"
-        )
+        assert not parse_ok or len(errors) > 0, "Missing from-block should fail parse or check"
 
     def test_bad_type_fails_check(self) -> None:
         """Nonexistent type in generated .prv triggers checker errors."""
@@ -556,9 +559,7 @@ class TestIntentE2EImportPlacement:
         # Should have indented use, not at column 0
         for line in auth_source.split("\n"):
             if "use SessionManager" in line:
-                assert line.startswith("  "), (
-                    f"use-import should be indented, got: {line!r}"
-                )
+                assert line.startswith("  "), f"use-import should be indented, got: {line!r}"
                 break
         else:
             assert False, "use SessionManager not found in auth.prv"
@@ -571,7 +572,10 @@ class TestIntentRoundTrip:
         """examples/intent_demo/src/project.intent round-trips cleanly."""
         intent_path = (
             Path(__file__).resolve().parents[1]
-            / "examples" / "intent_demo" / "src" / "project.intent"
+            / "examples"
+            / "intent_demo"
+            / "src"
+            / "project.intent"
         )
         if not intent_path.exists():
             return  # skip if example not present
@@ -592,9 +596,7 @@ class TestIntentRoundTrip:
 
         assert len(statuses) > 0
         for status in statuses:
-            assert status["status"] in ("implemented", "todo"), (
-                f"Unexpected status: {status}"
-            )
+            assert status["status"] in ("implemented", "todo"), f"Unexpected status: {status}"
 
     def test_intent_coverage_missing_for_empty_dir(self) -> None:
         """Coverage check with no .prv files reports 'missing'."""

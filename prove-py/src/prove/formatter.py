@@ -96,7 +96,6 @@ def _escape_string(value: str) -> str:
     return value.translate(str.maketrans(_STRING_ESCAPE_MAP))
 
 
-
 # Operator precedence table (higher binds tighter)
 _PRECEDENCE: dict[str, int] = {
     "||": 1,

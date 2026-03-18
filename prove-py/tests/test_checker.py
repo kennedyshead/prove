@@ -335,7 +335,7 @@ class TestShadowing:
         """Stdlib modules may redefine builtins with same types (they provide them)."""
         check(
             "module Math\n"
-            "    narrative: \"math stdlib\"\n"
+            '    narrative: "math stdlib"\n'
             "\n"
             "transforms clamp(value Integer, minimum Integer, maximum Integer) Integer\n"
             "    from\n"
@@ -817,23 +817,14 @@ class TestBinaryLookup:
     def test_e397_binary_function_body_non_stdlib(self):
         """E397: binary function body in non-stdlib module."""
         check_fails(
-            "module M\n"
-            "\n"
-            "transforms demo() Integer\n"
-            "    binary\n",
+            "module M\n\ntransforms demo() Integer\n    binary\n",
             "E397",
         )
 
     def test_e397_binary_type_body_non_stdlib(self):
         """E397: binary type body in non-stdlib module."""
         check_fails(
-            "module M\n"
-            "\n"
-            "  type OpaqueHandle is binary\n"
-            "\n"
-            "main()\n"
-            "    from\n"
-            "        0\n",
+            "module M\n\n  type OpaqueHandle is binary\n\nmain()\n    from\n        0\n",
             "E397",
         )
 
@@ -1089,25 +1080,17 @@ class TestDivisionByZero:
     def test_literal_zero_divisor_error(self):
         """E357 fires for x / 0."""
         check_fails(
-            "transforms half(x Integer) Integer\n"
-            "    from\n"
-            "        x / 0\n",
+            "transforms half(x Integer) Integer\n    from\n        x / 0\n",
             "E357",
         )
 
     def test_literal_zero_modulo_error(self):
         """E357 fires for x % 0."""
         check_fails(
-            "transforms mod(x Integer) Integer\n"
-            "    from\n"
-            "        x % 0\n",
+            "transforms mod(x Integer) Integer\n    from\n        x % 0\n",
             "E357",
         )
 
     def test_nonzero_literal_ok(self):
         """x / 2 does not trigger E357."""
-        check(
-            "transforms half(x Integer) Integer\n"
-            "    from\n"
-            "        x / 2\n"
-        )
+        check("transforms half(x Integer) Integer\n    from\n        x / 2\n")

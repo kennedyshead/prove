@@ -47,7 +47,7 @@ class TestFixI301:
             '          _ => "other"\n'
         )
         result = check_and_format(source)
-        assert 'Red =>' in result
+        assert "Red =>" in result
         assert '_ => "other"' in result
 
     def test_removes_multiple_unreachable_arms(self):
@@ -163,13 +163,7 @@ class TestFixI303:
 
     def test_removes_unused_type(self):
         source = (
-            "module M\n"
-            "  type Unused is\n"
-            "    x Integer\n"
-            "\n"
-            "transforms one() Integer\n"
-            "from\n"
-            "    1\n"
+            "module M\n  type Unused is\n    x Integer\n\ntransforms one() Integer\nfrom\n    1\n"
         )
         result = check_and_format(source)
         assert "Unused" not in result
@@ -214,27 +208,13 @@ class TestFixI304:
     """Formatter removes unused constant definitions."""
 
     def test_removes_unused_constant(self):
-        source = (
-            "module M\n"
-            "  PI as Float = 3.14\n"
-            "\n"
-            "transforms one() Integer\n"
-            "from\n"
-            "    1\n"
-        )
+        source = "module M\n  PI as Float = 3.14\n\ntransforms one() Integer\nfrom\n    1\n"
         result = check_and_format(source)
         assert "PI" not in result
         assert "transforms one() Integer" in result
 
     def test_keeps_used_constant(self):
-        source = (
-            "module M\n"
-            "  PI as Float = 3.14\n"
-            "\n"
-            "transforms f() Float\n"
-            "from\n"
-            "    PI\n"
-        )
+        source = "module M\n  PI as Float = 3.14\n\ntransforms f() Float\nfrom\n    PI\n"
         result = check_and_format(source)
         assert "PI as Float = 3.14" in result
 
@@ -309,21 +289,13 @@ class TestFixI360:
     """Formatter strips explicit Boolean return type from validates."""
 
     def test_strips_boolean_return(self):
-        source = (
-            "validates is_positive(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates is_positive(x Integer) Boolean\nfrom\n    x > 0\n"
         result = check_and_format(source)
         assert "validates is_positive(x Integer)\n" in result
         assert "Boolean" not in result
 
     def test_preserves_non_validates_return(self):
-        source = (
-            "transforms double(x Integer) Integer\n"
-            "from\n"
-            "    x * 2\n"
-        )
+        source = "transforms double(x Integer) Integer\nfrom\n    x * 2\n"
         result = check_and_format(source)
         assert "Integer" in result
 
@@ -362,11 +334,7 @@ class TestFixRoundtrip:
         assert first == second
 
     def test_roundtrip_i360(self):
-        source = (
-            "validates is_positive(x Integer) Boolean\n"
-            "from\n"
-            "    x > 0\n"
-        )
+        source = "validates is_positive(x Integer) Boolean\nfrom\n    x > 0\n"
         first = check_and_format(source)
         second = check_and_format(first)
         assert first == second

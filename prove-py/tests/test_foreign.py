@@ -35,10 +35,10 @@ def _emit(source: str) -> str:
 class TestForeignParser:
     def test_foreign_block_parses(self):
         source = (
-            'module Math\n'
+            "module Math\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '    pow(base Float, exp Float) Float\n'
+            "    sqrt(x Float) Float\n"
+            "    pow(base Float, exp Float) Float\n"
         )
         module = _parse(source)
         mod_decl = module.declarations[0]
@@ -55,11 +55,11 @@ class TestForeignParser:
 
     def test_multiple_foreign_blocks(self):
         source = (
-            'module Sys\n'
+            "module Sys\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
+            "    sqrt(x Float) Float\n"
             '  foreign "libpthread"\n'
-            '    pthread_self() Integer\n'
+            "    pthread_self() Integer\n"
         )
         module = _parse(source)
         mod_decl = module.declarations[0]
@@ -69,11 +69,7 @@ class TestForeignParser:
         assert mod_decl.foreign_blocks[1].library == "libpthread"
 
     def test_empty_foreign_block(self):
-        source = (
-            'module Empty\n'
-            '  foreign "libtest"\n'
-            '\n'
-        )
+        source = 'module Empty\n  foreign "libtest"\n\n'
         module = _parse(source)
         mod_decl = module.declarations[0]
         assert isinstance(mod_decl, ModuleDecl)
@@ -81,11 +77,7 @@ class TestForeignParser:
         assert mod_decl.foreign_blocks[0].functions == []
 
     def test_foreign_with_no_return_type(self):
-        source = (
-            'module Sys\n'
-            '  foreign "libc"\n'
-            '    abort()\n'
-        )
+        source = 'module Sys\n  foreign "libc"\n    abort()\n'
         module = _parse(source)
         fb = module.declarations[0].foreign_blocks[0]
         assert fb.functions[0].name == "abort"
@@ -97,11 +89,7 @@ class TestForeignParser:
 
 class TestForeignChecker:
     def test_foreign_functions_registered(self):
-        source = (
-            'module Math\n'
-            '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-        )
+        source = 'module Math\n  foreign "libm"\n    sqrt(x Float) Float\n'
         _module, symbols, checker = _check(source)
         assert not checker.has_errors()
         sig = symbols.resolve_function(None, "sqrt", 1)
@@ -110,13 +98,13 @@ class TestForeignChecker:
 
     def test_foreign_callable_from_function(self):
         source = (
-            'module Math\n'
+            "module Math\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '\n'
-            'transforms root(x Float) Float\n'
-            '    from\n'
-            '        sqrt(x)\n'
+            "    sqrt(x Float) Float\n"
+            "\n"
+            "transforms root(x Float) Float\n"
+            "    from\n"
+            "        sqrt(x)\n"
         )
         _module, _symbols, checker = _check(source)
         assert not checker.has_errors()
@@ -128,13 +116,13 @@ class TestForeignChecker:
 class TestForeignEmitter:
     def test_direct_call_no_mangling(self):
         source = (
-            'module Math\n'
+            "module Math\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '\n'
-            'transforms root(x Float) Float\n'
-            '    from\n'
-            '        sqrt(x)\n'
+            "    sqrt(x Float) Float\n"
+            "\n"
+            "transforms root(x Float) Float\n"
+            "    from\n"
+            "        sqrt(x)\n"
         )
         c_code = _emit(source)
         # sqrt should appear as a direct C call, not prv_sqrt or prv_None_sqrt
@@ -142,21 +130,17 @@ class TestForeignEmitter:
         assert "prv_" not in c_code or "prv_transforms_root" in c_code
 
     def test_math_header_included(self):
-        source = (
-            'module Math\n'
-            '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-        )
+        source = 'module Math\n  foreign "libm"\n    sqrt(x Float) Float\n'
         c_code = _emit(source)
         assert "#include <math.h>" in c_code
 
     def test_multiple_libs_headers(self):
         source = (
-            'module Sys\n'
+            "module Sys\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
+            "    sqrt(x Float) Float\n"
             '  foreign "libpthread"\n'
-            '    pthread_self() Integer\n'
+            "    pthread_self() Integer\n"
         )
         c_code = _emit(source)
         assert "#include <math.h>" in c_code
@@ -171,11 +155,11 @@ class TestForeignFormatter:
         from prove.formatter import ProveFormatter
 
         source = (
-            'module Math\n'
-            '\n'
+            "module Math\n"
+            "\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '    pow(base Float, exp Float) Float\n'
+            "    sqrt(x Float) Float\n"
+            "    pow(base Float, exp Float) Float\n"
         )
         module = _parse(source)
         formatter = ProveFormatter()
@@ -186,13 +170,13 @@ class TestForeignFormatter:
         from prove.formatter import ProveFormatter
 
         source = (
-            'module Sys\n'
-            '\n'
+            "module Sys\n"
+            "\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '\n'
+            "    sqrt(x Float) Float\n"
+            "\n"
             '  foreign "libpthread"\n'
-            '    pthread_self() Integer\n'
+            "    pthread_self() Integer\n"
         )
         module = _parse(source)
         formatter = ProveFormatter()
@@ -203,13 +187,13 @@ class TestForeignFormatter:
         from prove.formatter import ProveFormatter
 
         source = (
-            'module Math\n'
+            "module Math\n"
             '  foreign "libm"\n'
-            '    sqrt(x Float) Float\n'
-            '\n'
-            'transforms root(x Float) Float\n'
-            'from\n'
-            '    sqrt(x)\n'
+            "    sqrt(x Float) Float\n"
+            "\n"
+            "transforms root(x Float) Float\n"
+            "from\n"
+            "    sqrt(x)\n"
         )
         module, symbols, checker = _check(source)
         assert not checker.has_errors()
@@ -227,9 +211,9 @@ class TestForeignConfig:
         from prove.config import load_config
 
         toml_content = (
-            '[package]\n'
+            "[package]\n"
             'name = "test"\n'
-            '[build]\n'
+            "[build]\n"
             'c_flags = ["-I/usr/local/include"]\n'
             'link_flags = ["-L/usr/local/lib"]\n'
         )
@@ -242,10 +226,7 @@ class TestForeignConfig:
     def test_default_empty_flags(self, tmp_path):
         from prove.config import load_config
 
-        toml_content = (
-            '[package]\n'
-            'name = "test"\n'
-        )
+        toml_content = '[package]\nname = "test"\n'
         config_path = tmp_path / "prove.toml"
         config_path.write_text(toml_content)
         config = load_config(config_path)
@@ -258,20 +239,12 @@ class TestForeignConfig:
 
 class TestForeignHeaders:
     def test_python3_header_included(self):
-        source = (
-            'module PyBind\n'
-            '  foreign "libpython3"\n'
-            '    pyinit() Integer\n'
-        )
+        source = 'module PyBind\n  foreign "libpython3"\n    pyinit() Integer\n'
         c_code = _emit(source)
         assert "#include <Python.h>" in c_code
 
     def test_jvm_header_included(self):
-        source = (
-            'module JvmBind\n'
-            '  foreign "libjvm"\n'
-            '    createvm() Integer\n'
-        )
+        source = 'module JvmBind\n  foreign "libjvm"\n    createvm() Integer\n'
         c_code = _emit(source)
         assert "#include <jni.h>" in c_code
 

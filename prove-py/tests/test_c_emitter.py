@@ -695,11 +695,7 @@ class TestRegionCleanup:
     """Test that prove_region_exit is emitted before return statements."""
 
     def test_pure_function_region_elided(self):
-        source = (
-            "transforms double(x Integer) Integer\n"
-            "    from\n"
-            "        x * 2\n"
-        )
+        source = "transforms double(x Integer) Integer\n    from\n        x * 2\n"
         c_code = _emit(source)
         # Pure numeric function should not emit region enter/exit
         fn_start = c_code.index("prv_transforms_double")
@@ -709,11 +705,7 @@ class TestRegionCleanup:
         assert "prove_region_exit" not in fn_code
 
     def test_allocating_function_region_exit_before_return(self):
-        source = (
-            'transforms greet(name String) String\n'
-            '    from\n'
-            '        "hello " + name\n'
-        )
+        source = 'transforms greet(name String) String\n    from\n        "hello " + name\n'
         c_code = _emit(source)
         fn_start = c_code.index("prv_transforms_greet")
         fn_code = c_code[fn_start:]
@@ -726,13 +718,13 @@ class TestRegionCleanup:
     def test_failable_error_prop_region_exit(self):
         """Error propagation should exit region before returning error when region is active."""
         source = (
-            'inputs risky() String!\n'
-            '    from\n'
+            "inputs risky() String!\n"
+            "    from\n"
             '        "hello"\n'
-            '\n'
-            'inputs caller() String!\n'
-            '    from\n'
-            '        x as String = risky()!\n'
+            "\n"
+            "inputs caller() String!\n"
+            "    from\n"
+            "        x as String = risky()!\n"
             '        "got: " + x\n'
         )
         c_code = _emit(source)
@@ -811,11 +803,7 @@ class TestDivisionGuards:
 
     def test_variable_divisor_gets_guard(self):
         """Division by a variable emits a panic guard."""
-        source = (
-            "transforms divide(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a / b\n"
-        )
+        source = "transforms divide(a Integer, b Integer) Integer\n    from\n        a / b\n"
         c_code = _emit(source)
         assert 'prove_panic("division by zero")' in c_code
 
@@ -832,21 +820,13 @@ class TestDivisionGuards:
 
     def test_literal_divisor_no_guard(self):
         """Division by a literal does not emit a runtime guard."""
-        source = (
-            "transforms half(x Integer) Integer\n"
-            "    from\n"
-            "        x / 2\n"
-        )
+        source = "transforms half(x Integer) Integer\n    from\n        x / 2\n"
         c_code = _emit(source)
         assert 'prove_panic("division by zero")' not in c_code
 
     def test_division_guard_behind_prove_release(self):
         """Variable divisor guard is wrapped in #ifndef PROVE_RELEASE."""
-        source = (
-            "transforms divide(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a / b\n"
-        )
+        source = "transforms divide(a Integer, b Integer) Integer\n    from\n        a / b\n"
         c_code = _emit(source)
         assert "#ifndef PROVE_RELEASE" in c_code
 

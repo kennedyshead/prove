@@ -70,9 +70,7 @@ class ProofContext:
     def assumptions(self) -> list[Expr]:
         return self._assumptions
 
-    def add_match_arm_binding(
-        self, subject: str, variant: str, bindings: list[str]
-    ) -> None:
+    def add_match_arm_binding(self, subject: str, variant: str, bindings: list[str]) -> None:
         """Record that ``subject`` was structurally matched as ``variant``.
 
         ``bindings`` are the variable names bound in the arm pattern.
@@ -391,13 +389,13 @@ class ClaimProver:
             if op == "!=":
                 return left_val != right_val
             if op == ">":
-                return left_val > right_val
+                return (left_val) > (right_val)  # type: ignore[operator]
             if op == ">=":
-                return left_val >= right_val
+                return (left_val) >= (right_val)  # type: ignore[operator]
             if op == "<":
-                return left_val < right_val
+                return (left_val) < (right_val)  # type: ignore[operator]
             if op == "<=":
-                return left_val <= right_val
+                return (left_val) <= (right_val)  # type: ignore[operator]
 
         # Algebraic identity: x == x → true
         if op == "==" and self._exprs_structurally_equal(expr.left, expr.right):
@@ -524,19 +522,19 @@ class ClaimProver:
 
         # Now reason: if refinement says x >= 1, and claim is x > 0, then true
         if ref_op == ">=" and isinstance(ref_val, (int, float)):
-            if op == ">=" and bound_val <= ref_val:
+            if op == ">=" and (bound_val) <= ref_val:  # type: ignore[operator]
                 return True
-            if op == ">" and bound_val < ref_val:
+            if op == ">" and (bound_val) < ref_val:  # type: ignore[operator]
                 return True
-            if op == "!=" and bound_val < ref_val:
+            if op == "!=" and (bound_val) < ref_val:  # type: ignore[operator]
                 return True
 
         if ref_op == ">" and isinstance(ref_val, (int, float)):
-            if op == ">=" and bound_val <= ref_val:
+            if op == ">=" and (bound_val) <= ref_val:  # type: ignore[operator]
                 return True
-            if op == ">" and bound_val <= ref_val:
+            if op == ">" and (bound_val) <= ref_val:  # type: ignore[operator]
                 return True
-            if op == "!=" and bound_val <= ref_val:
+            if op == "!=" and (bound_val) <= ref_val:  # type: ignore[operator]
                 return True
 
         if ref_op == "!=" and ref_val == bound_val:
@@ -545,19 +543,17 @@ class ClaimProver:
 
         return None
 
-    def _extract_refinement_bound(
-        self, constraint: Expr
-    ) -> tuple[str | None, int | float | None]:
+    def _extract_refinement_bound(self, constraint: Expr) -> tuple[str | None, int | float | None]:
         """Extract the operator and bound from a refinement constraint."""
         if isinstance(constraint, BinaryExpr):
             # self >= 0 → (">=", 0)
             if isinstance(constraint.left, IdentifierExpr) and constraint.left.name == "self":
                 val = self._eval_const(constraint.right)
-                return (constraint.op, val)
+                return (constraint.op, val)  # type: ignore[return-value]
             # Range: 1..65535 → (">=", 1)
             if constraint.op == "..":
                 val = self._eval_const(constraint.left)
-                return (">=", val)
+                return (">=", val)  # type: ignore[return-value]
         return (None, None)
 
     # ── Assumption-based reasoning ───────────────────────────────────
@@ -571,9 +567,7 @@ class ClaimProver:
                 return True
         return False
 
-    def _prove_from_assumption_implication(
-        self, left: Expr, op: str, right: Expr
-    ) -> bool | None:
+    def _prove_from_assumption_implication(self, left: Expr, op: str, right: Expr) -> bool | None:
         """Prove a comparison by deriving it from known assumptions.
 
         Handles integer equivalences:
@@ -598,9 +592,7 @@ class ClaimProver:
             if self._exprs_structurally_equal(assumption.left, left):
                 a_bound = self._eval_const(assumption.right)
                 if a_bound is not None and claim_bound is not None:
-                    if isinstance(a_bound, (int, float)) and isinstance(
-                        claim_bound, (int, float)
-                    ):
+                    if isinstance(a_bound, (int, float)) and isinstance(claim_bound, (int, float)):
                         result = self._implication_check(a_op, a_bound, op, claim_bound)
                         if result is not None:
                             return result
@@ -610,12 +602,12 @@ class ClaimProver:
                 a_bound = self._eval_const(assumption.left)
                 if a_bound is not None and claim_bound is not None:
                     flipped = _flip_op(a_op)
-                    if flipped is not None and isinstance(a_bound, (int, float)) and isinstance(
-                        claim_bound, (int, float)
+                    if (
+                        flipped is not None
+                        and isinstance(a_bound, (int, float))
+                        and isinstance(claim_bound, (int, float))
                     ):
-                        result = self._implication_check(
-                            flipped, a_bound, op, claim_bound
-                        )
+                        result = self._implication_check(flipped, a_bound, op, claim_bound)
                         if result is not None:
                             return result
 
@@ -695,9 +687,7 @@ class ClaimProver:
 
     # ── Arithmetic reasoning ─────────────────────────────────────────
 
-    def _prove_arithmetic(
-        self, left: Expr, op: str, right: Expr
-    ) -> bool | None:
+    def _prove_arithmetic(self, left: Expr, op: str, right: Expr) -> bool | None:
         """Prove comparisons using arithmetic properties.
 
         Handles:
@@ -776,7 +766,6 @@ class ClaimProver:
             return True
         return None
 
-
     def _prove_from_match_bindings(self, expr: BinaryExpr) -> bool | None:
         """Prove structural variant claims using match arm binding facts.
 
@@ -823,18 +812,14 @@ class ClaimProver:
                 # the structural arm fact is consistent — confirm it.
                 if self._prove_from_assumptions(expr):
                     return True
-                assump_result = self._prove_from_assumption_implication(
-                    left, op, right
-                )
+                assump_result = self._prove_from_assumption_implication(left, op, right)
                 if assump_result is not None:
                     return assump_result
             # Ok arm present → subject can be non-Error
             elif null_name == "Error" and variant == "Ok" and op == "!=":
                 if self._prove_from_assumptions(expr):
                     return True
-                assump_result = self._prove_from_assumption_implication(
-                    left, op, right
-                )
+                assump_result = self._prove_from_assumption_implication(left, op, right)
                 if assump_result is not None:
                     return assump_result
 

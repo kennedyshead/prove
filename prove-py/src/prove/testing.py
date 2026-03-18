@@ -348,7 +348,7 @@ class TestGenerator:
             if fd.verb == "validates":
                 check_c = "_result"
             else:
-                check_c = self._ensures_to_c(ens, "_result")
+                check_c = self._ensures_to_c(ens, "_result")  # type: ignore[assignment]
             if check_c:
                 lines.append(f"    if (!({check_c})) {{")
                 lines.append(f'        _test_fail("{name}", "ensures[{i}] violated");')

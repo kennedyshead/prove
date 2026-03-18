@@ -30,10 +30,7 @@ class TestContractChecking:
 
     def test_ensures_non_boolean_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    ensures result + 1\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    ensures result + 1\n    from\n        a\n",
             "E380",
         )
 
@@ -47,44 +44,25 @@ class TestContractChecking:
 
     def test_requires_non_boolean_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    requires a + 1\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    requires a + 1\n    from\n        a\n",
             "E381",
         )
 
     def test_know_boolean_ok(self):
-        check(
-            "transforms safe(a Integer) Integer\n"
-            "    know: a > 0\n"
-            "    from\n"
-            "        a\n"
-        )
+        check("transforms safe(a Integer) Integer\n    know: a > 0\n    from\n        a\n")
 
     def test_know_non_boolean_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    know: a + 1\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    know: a + 1\n    from\n        a\n",
             "E384",
         )
 
     def test_assume_boolean_ok(self):
-        check(
-            "transforms safe(a Integer) Integer\n"
-            "    assume: a > 0\n"
-            "    from\n"
-            "        a\n"
-        )
+        check("transforms safe(a Integer) Integer\n    assume: a > 0\n    from\n        a\n")
 
     def test_assume_non_boolean_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    assume: a + 1\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    assume: a + 1\n    from\n        a\n",
             "E385",
         )
 
@@ -103,19 +81,13 @@ class TestContractChecking:
 
     def test_believe_non_boolean_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    believe: result + 1\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    believe: result + 1\n    from\n        a\n",
             "E386",
         )
 
     def test_satisfies_undefined_type_error(self):
         check_fails(
-            "transforms bad(a Integer) Integer\n"
-            "    satisfies Nonexistent\n"
-            "    from\n"
-            "        a\n",
+            "transforms bad(a Integer) Integer\n    satisfies Nonexistent\n    from\n        a\n",
             "E382",
         )
 
@@ -132,7 +104,7 @@ class TestContractChecking:
     def test_intent_without_contracts_warning(self):
         check_warns(
             "transforms add(a Integer, b Integer) Integer\n"
-            "    intent: \"add two numbers\"\n"
+            '    intent: "add two numbers"\n'
             "    from\n"
             "        a + b\n",
             "W311",
@@ -145,38 +117,22 @@ class TestNearMissTypeChecking:
     def test_near_miss_expected_type_mismatch(self):
         """near_miss 1 => false on Integer-returning function → E383."""
         check_fails(
-            "transforms f(n Integer) Integer\n"
-            "    near_miss 1 => false\n"
-            "    from\n"
-            "        n\n",
+            "transforms f(n Integer) Integer\n    near_miss 1 => false\n    from\n        n\n",
             "E383",
         )
 
     def test_near_miss_expected_type_ok(self):
         """near_miss 1 => 42 on Integer-returning function → passes."""
-        check(
-            "transforms f(n Integer) Integer\n"
-            "    near_miss 1 => 42\n"
-            "    from\n"
-            "        n\n"
-        )
+        check("transforms f(n Integer) Integer\n    near_miss 1 => 42\n    from\n        n\n")
 
     def test_near_miss_validates_boolean_ok(self):
         """near_miss 0 => false on validates function → passes (returns Boolean)."""
-        check(
-            "validates f(n Integer)\n"
-            "    near_miss 0 => false\n"
-            "    from\n"
-            "        n > 0\n"
-        )
+        check("validates f(n Integer)\n    near_miss 0 => false\n    from\n        n > 0\n")
 
     def test_near_miss_string_mismatch(self):
         """near_miss 1 => 'hello' on Integer-returning function → E383."""
         check_fails(
-            "transforms f(n Integer) Integer\n"
-            '    near_miss 1 => "hello"\n'
-            "    from\n"
-            "        n\n",
+            'transforms f(n Integer) Integer\n    near_miss 1 => "hello"\n    from\n        n\n',
             "E383",
         )
 
@@ -236,12 +192,7 @@ class TestEnsuresWithoutResult:
 
     def test_ensures_validates_no_result_ok(self):
         """validates ensures without result is OK — validates checks input conditions."""
-        check(
-            "validates positive(n Integer)\n"
-            "    ensures n > 0\n"
-            "    from\n"
-            "        n > 0\n"
-        )
+        check("validates positive(n Integer)\n    ensures n > 0\n    from\n        n > 0\n")
 
     def test_ensures_valid_expr_no_result_ok(self):
         """ensures valid expr without result is OK — validation postconditions."""
@@ -663,30 +614,19 @@ class TestKnowClaimProving:
 
     def test_know_provably_true_no_warning(self):
         """know 2 + 2 == 4 should produce no diagnostic."""
-        check(
-            "transforms id(n Integer) Integer\n"
-            "    know: 2 + 2 == 4\n"
-            "    from\n"
-            "        n\n"
-        )
+        check("transforms id(n Integer) Integer\n    know: 2 + 2 == 4\n    from\n        n\n")
 
     def test_know_provably_false_error(self):
         """know 2 + 2 == 5 should emit E356."""
         check_fails(
-            "transforms id(n Integer) Integer\n"
-            "    know: 2 + 2 == 5\n"
-            "    from\n"
-            "        n\n",
+            "transforms id(n Integer) Integer\n    know: 2 + 2 == 5\n    from\n        n\n",
             "E356",
         )
 
     def test_know_indeterminate_warning(self):
         """know n > 0 (runtime variable) should emit W327."""
         check_warns(
-            "transforms id(n Integer) Integer\n"
-            "    know: n > 0\n"
-            "    from\n"
-            "        n\n",
+            "transforms id(n Integer) Integer\n    know: n > 0\n    from\n        n\n",
             "W327",
         )
 
@@ -745,12 +685,7 @@ class TestKnowClaimProving:
 
     def test_know_arithmetic_x_plus_1_gt_x(self):
         """know n + 1 > n should be provable via arithmetic reasoning."""
-        check(
-            "transforms inc(n Integer) Integer\n"
-            "    know: n + 1 > n\n"
-            "    from\n"
-            "        n + 1\n"
-        )
+        check("transforms inc(n Integer) Integer\n    know: n + 1 > n\n    from\n        n + 1\n")
 
     def test_know_requires_ne_zero(self):
         """know b != 0 with requires b != 0 should be provable."""
@@ -862,13 +797,12 @@ class TestMatchArmNarrowing:
     def test_prove_ne_none_from_some_arm_and_assumption(self):
         """subj != None provable when Some arm exists + requires subj != None."""
         from prove.ast_nodes import TypeIdentifierExpr
+
         ctx = ProofContext()
         span = _span()
         # Add requires: opt != None as assumption
         none_expr = TypeIdentifierExpr(name="None", span=span)
-        ne_none = BinaryExpr(
-            left=_ident("opt"), op="!=", right=none_expr, span=span
-        )
+        ne_none = BinaryExpr(left=_ident("opt"), op="!=", right=none_expr, span=span)
         ctx.add(ne_none)
         # Record the Some arm binding
         ctx.add_match_arm_binding("opt", "Some", ["x"])
@@ -879,12 +813,11 @@ class TestMatchArmNarrowing:
     def test_no_match_binding_still_indeterminate(self):
         """Without a match binding, opt != None remains indeterminate."""
         from prove.ast_nodes import TypeIdentifierExpr
+
         ctx = ProofContext()
         span = _span()
         none_expr = TypeIdentifierExpr(name="None", span=span)
-        ne_none = BinaryExpr(
-            left=_ident("opt"), op="!=", right=none_expr, span=span
-        )
+        ne_none = BinaryExpr(left=_ident("opt"), op="!=", right=none_expr, span=span)
         prover = ClaimProver(context=ctx)
         # No assumption, no binding → indeterminate
         assert prover.prove_claim(ne_none) is None
@@ -924,10 +857,7 @@ class TestArmBoundKnow:
     def test_know_not_arm_bound_still_w327(self) -> None:
         """know referencing non-arm-bound variable still emits W327."""
         check_warns(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "    know: a > 0\n"
-            "from\n"
-            "    a + b\n",
+            "transforms add(a Integer, b Integer) Integer\n    know: a > 0\nfrom\n    a + b\n",
             "W327",
         )
 
@@ -949,120 +879,120 @@ class TestProseCoherence:
 
     def test_w501_verb_not_in_narrative(self) -> None:
         check_coherence_warns(
-            'module Calc\n'
+            "module Calc\n"
             '  narrative: """Reads numbers from input."""\n'
-            'transforms add(a Integer, b Integer) Integer\n'
-            'from\n'
-            '    a + b\n',
+            "transforms add(a Integer, b Integer) Integer\n"
+            "from\n"
+            "    a + b\n",
             "W501",
         )
 
     def test_w501_verb_matches_narrative(self) -> None:
         # "validates" is in narrative — no W501
         check_coherence_ok(
-            'module Auth\n'
+            "module Auth\n"
             '  narrative: """Validates user credentials."""\n'
-            'validates credential(user String) Boolean\n'
-            'from\n'
-            '    true\n',
+            "validates credential(user String) Boolean\n"
+            "from\n"
+            "    true\n",
         )
 
     def test_w501_synonym_in_narrative(self) -> None:
         # "converts" is a synonym for "transforms" — no W501
         check_coherence_ok(
-            'module Converter\n'
+            "module Converter\n"
             '  narrative: """Converts passwords into hashes."""\n'
-            'transforms hash_password(password String) String\n'
-            'from\n'
-            '    password\n',
+            "transforms hash_password(password String) String\n"
+            "from\n"
+            "    password\n",
         )
 
     def test_w501_singular_verb_in_narrative(self) -> None:
         # "check" (singular) is a synonym for "validates" — no W501
         check_coherence_ok(
-            'module Auth\n'
+            "module Auth\n"
             '  narrative: """Check user credentials."""\n'
-            'validates credential(user String) Boolean\n'
-            'from\n'
-            '    true\n',
+            "validates credential(user String) Boolean\n"
+            "from\n"
+            "    true\n",
         )
 
     def test_w503_chosen_without_why_not(self) -> None:
         check_coherence_warns(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort for stability"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
             "W503",
         )
 
     def test_w503_chosen_with_why_not_ok(self) -> None:
         check_coherence_ok(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort for stability"\n'
             '    why_not: "quick_sort is unstable"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
         )
 
     def test_w505_why_not_vague(self) -> None:
         check_coherence_warns(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort"\n'
             '    why_not: "it was too slow"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
             "W505",
         )
 
     def test_w502_explain_no_body_overlap(self) -> None:
         check_coherence_warns(
-            'transforms compute(numbers List<Integer>) Integer\n'
-            '    explain\n'
-            '        perform the quick sort algorithm\n'
-            'from\n'
-            '    numbers\n',
+            "transforms compute(numbers List<Integer>) Integer\n"
+            "    explain\n"
+            "        perform the quick sort algorithm\n"
+            "from\n"
+            "    numbers\n",
             "W502",
         )
 
     def test_w502_explain_matches_body(self) -> None:
         # "sum the numbers" overlaps with param name "numbers" — no W502
         check_coherence_ok(
-            'transforms compute(numbers List<Integer>) List<Integer>\n'
-            '    explain\n'
-            '        sum the numbers\n'
-            'from\n'
-            '    numbers\n',
+            "transforms compute(numbers List<Integer>) List<Integer>\n"
+            "    explain\n"
+            "        sum the numbers\n"
+            "from\n"
+            "    numbers\n",
         )
 
     def test_w504_chosen_no_body_overlap(self) -> None:
         check_coherence_warns(
-            'transforms compute(numbers List<Integer>) Integer\n'
+            "transforms compute(numbers List<Integer>) Integer\n"
             '    chosen: "recursive approach"\n'
             '    why_not: "compute iteratively"\n'
-            'from\n'
-            '    numbers\n',
+            "from\n"
+            "    numbers\n",
             "W504",
         )
 
     def test_w504_chosen_matches_body(self) -> None:
         # "numbers" in chosen text overlaps with param — no W504
         check_coherence_ok(
-            'transforms compute(numbers List<Integer>) List<Integer>\n'
+            "transforms compute(numbers List<Integer>) List<Integer>\n"
             '    chosen: "iterate over numbers"\n'
             '    why_not: "compute recursively"\n'
-            'from\n'
-            '    numbers\n',
+            "from\n"
+            "    numbers\n",
         )
 
     def test_w505_why_not_with_known_name(self) -> None:
         # "sort" is the function name itself — anchor present, no W505
         check_coherence_ok(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort"\n'
             '    why_not: "quick_sort is unstable for equal elements"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
         )
 
 
@@ -1072,63 +1002,63 @@ class TestCounterfactualChecks:
     def test_w503_always_active(self) -> None:
         """W503 fires without --coherence flag."""
         check_warns(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort for stability"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
             "W503",
         )
 
     def test_w503_ok_with_why_not(self) -> None:
         """No W503 when why_not is present alongside chosen."""
         check(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort"\n'
             '    why_not: "items-based quick sort is unstable"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
         )
 
     def test_w504_always_active(self) -> None:
         """W504 fires without --coherence flag."""
         check_warns(
-            'transforms compute(numbers List<Integer>) Integer\n'
+            "transforms compute(numbers List<Integer>) Integer\n"
             '    chosen: "recursive approach"\n'
             '    why_not: "compute iteratively"\n'
-            'from\n'
-            '    numbers\n',
+            "from\n"
+            "    numbers\n",
             "W504",
         )
 
     def test_w505_always_active(self) -> None:
         """W505 fires without --coherence flag."""
         check_warns(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge sort"\n'
             '    why_not: "it was too slow"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
             "W505",
         )
 
     def test_w505_ok_when_anchored(self) -> None:
         """No W505 when why_not references a known name (param or type)."""
         check(
-            'transforms sort(items List<Integer>) List<Integer>\n'
+            "transforms sort(items List<Integer>) List<Integer>\n"
             '    chosen: "merge items"\n'
             '    why_not: "items-based bubble sort is unstable"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
         )
 
     def test_w506_why_not_contradicts_body(self) -> None:
         """W506 fires when why_not rejects a function that the body actually calls."""
         check_warns(
-            'transforms find(items List<Integer>, key Integer) Integer\n'
+            "transforms find(items List<Integer>, key Integer) Integer\n"
             '    why_not: "linear_search is O(n) and too slow"\n'
             '    chosen: "use first element"\n'
-            'from\n'
-            '    linear_search(items, key)\n',
+            "from\n"
+            "    linear_search(items, key)\n",
             "W506",
         )
 
@@ -1136,19 +1066,19 @@ class TestCounterfactualChecks:
         """No W506 when why_not mentions a different function than what body uses."""
         # Why_not mentions "items" (a param, not collected as a call), no call contradiction
         check(
-            'transforms find(items List<Integer>, key Integer) Integer\n'
+            "transforms find(items List<Integer>, key Integer) Integer\n"
             '    why_not: "items-based approach has overhead"\n'
             '    chosen: "use direct indexing"\n'
-            'from\n'
-            '    items[0]\n',
+            "from\n"
+            "    items[0]\n",
         )
 
     def test_w506_not_fired_with_no_body_calls(self) -> None:
         """No W506 when function body has no function calls."""
         check(
-            'transforms identity(items List<Integer>) List<Integer>\n'
+            "transforms identity(items List<Integer>) List<Integer>\n"
             '    why_not: "sort the items first"\n'
             '    chosen: "return items unchanged"\n'
-            'from\n'
-            '    items\n',
+            "from\n"
+            "    items\n",
         )

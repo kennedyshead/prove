@@ -73,8 +73,12 @@ class TestPairVerbsNouns:
 class TestGenerateModule:
     def test_basic_module(self) -> None:
         stubs = [
-            FunctionStub(verb="validates", name="credential",
-                         params=[("user", "String")], return_type="Boolean"),
+            FunctionStub(
+                verb="validates",
+                name="credential",
+                params=[("user", "String")],
+                return_type="Boolean",
+            ),
         ]
         result = generate_module("Auth", "Validates user credentials.", stubs)
         assert "module Auth" in result
@@ -93,16 +97,16 @@ class TestGenerateModule:
     def test_domain_and_imports(self) -> None:
         stubs = [FunctionStub(verb="creates", name="session")]
         result = generate_module(
-            "Auth", "Creates sessions.", stubs,
-            domain="Security", imports=["Hash"]
+            "Auth", "Creates sessions.", stubs, domain="Security", imports=["Hash"]
         )
         assert "domain: Security" in result
         assert "use Hash" in result
 
     def test_unit_return_omitted(self) -> None:
         stubs = [
-            FunctionStub(verb="outputs", name="data",
-                         params=[("value", "String")], return_type="Unit"),
+            FunctionStub(
+                verb="outputs", name="data", params=[("value", "String")], return_type="Unit"
+            ),
         ]
         result = generate_module("IO", "Outputs data.", stubs)
         assert "outputs data(value String)" in result
@@ -112,8 +116,10 @@ class TestGenerateModule:
 class TestGenerateStubFunction:
     def test_single_stub(self) -> None:
         stub = FunctionStub(
-            verb="transforms", name="password",
-            params=[("plaintext", "String")], return_type="String",
+            verb="transforms",
+            name="password",
+            params=[("plaintext", "String")],
+            return_type="String",
         )
         result = generate_stub_function(stub)
         assert "/// TODO: document password" in result
@@ -129,12 +135,20 @@ class TestImpliedFunctions:
     def test_basic_lookup(self) -> None:
         index = {
             "hash": [
-                {"module": "Hash", "name": "sha256", "verb": "creates",
-                 "doc": "Hash a byte array to SHA-256 digest"},
+                {
+                    "module": "Hash",
+                    "name": "sha256",
+                    "verb": "creates",
+                    "doc": "Hash a byte array to SHA-256 digest",
+                },
             ],
             "byte": [
-                {"module": "Hash", "name": "sha256", "verb": "creates",
-                 "doc": "Hash a byte array to SHA-256 digest"},
+                {
+                    "module": "Hash",
+                    "name": "sha256",
+                    "verb": "creates",
+                    "doc": "Hash a byte array to SHA-256 digest",
+                },
             ],
         }
         results = implied_functions("hash a byte array", index)
@@ -146,14 +160,26 @@ class TestImpliedFunctions:
     def test_multiple_matches_sorted_by_score(self) -> None:
         index = {
             "hash": [
-                {"module": "Hash", "name": "sha256", "verb": "creates",
-                 "doc": "Hash a byte array to SHA-256 digest"},
-                {"module": "Hash", "name": "sha512", "verb": "creates",
-                 "doc": "Hash a byte array to SHA-512 digest"},
+                {
+                    "module": "Hash",
+                    "name": "sha256",
+                    "verb": "creates",
+                    "doc": "Hash a byte array to SHA-256 digest",
+                },
+                {
+                    "module": "Hash",
+                    "name": "sha512",
+                    "verb": "creates",
+                    "doc": "Hash a byte array to SHA-512 digest",
+                },
             ],
             "split": [
-                {"module": "Text", "name": "split", "verb": "transforms",
-                 "doc": "Split a string by a separator"},
+                {
+                    "module": "Text",
+                    "name": "split",
+                    "verb": "transforms",
+                    "doc": "Split a string by a separator",
+                },
             ],
         }
         results = implied_functions("hash data", index)

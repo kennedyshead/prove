@@ -62,6 +62,9 @@ def _has_object_call(expr: Expr, param_name: str) -> bool:
 
 
 class CallEmitterMixin:
+    _locals: dict[str, Type]
+    _in_hof_inline: bool
+
     def _resolve_stdlib_c_name(
         self,
         sig: FunctionSignature,
@@ -1022,7 +1025,7 @@ class CallEmitterMixin:
         # Infer element type from the list
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         # Determine result element type (may differ from input, e.g. Integer → String)
         fn_expr = expr.args[1]
@@ -1048,7 +1051,7 @@ class CallEmitterMixin:
         coll_type = self._infer_expr_type(expr.args[0])
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "map")
         return f"prove_par_map({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1061,7 +1064,7 @@ class CallEmitterMixin:
         coll_type = self._infer_expr_type(expr.args[0])
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_par_filter({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1075,7 +1078,7 @@ class CallEmitterMixin:
         coll_type = self._infer_expr_type(expr.args[0])
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         accum_type = self._infer_expr_type(expr.args[1])
         accum_ct = map_type(accum_type)
@@ -1106,7 +1109,7 @@ class CallEmitterMixin:
         coll_type = self._infer_expr_type(expr.args[0])
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "each")
         return f"prove_par_each({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1122,7 +1125,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         lam = expr.args[1]
@@ -1182,7 +1185,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
+            elem_type = coll_type.element  # type: ignore[assignment]
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
@@ -1235,7 +1238,7 @@ class CallEmitterMixin:
 
             elem_type = INTEGER
             if isinstance(list_type, ListType):
-                elem_type = list_type.element
+                elem_type = list_type.element  # type: ignore[assignment]
             elem_ct = map_type(elem_type)
 
             accum_type = self._infer_expr_type(expr.args[1])
@@ -1279,7 +1282,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
 
         accum_type = self._infer_expr_type(expr.args[1])
         accum_ct = map_type(accum_type)
@@ -1361,8 +1364,8 @@ class CallEmitterMixin:
                         owned.add(arg.field)
                     _walk(arg)
             elif hasattr(node, "left"):
-                _walk(node.left)  # type: ignore[attr-defined]
-                _walk(node.right)  # type: ignore[attr-defined]
+                _walk(node.left)
+                _walk(node.right)
             elif isinstance(node, FieldExpr):
                 _walk(node.obj)
 
@@ -1862,7 +1865,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -1903,7 +1906,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -1947,7 +1950,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -1986,7 +1989,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -2025,7 +2028,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         accum_type = self._infer_expr_type(expr.args[2])
@@ -2095,7 +2098,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         accum_type = self._infer_expr_type(expr.args[2])
@@ -2165,7 +2168,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         # Parse triples: (name, init, lambda)
@@ -2234,7 +2237,7 @@ class CallEmitterMixin:
             if obj_cache_var and len(lam.params) >= 2:
                 self._fused_object_cache = (lam.params[1], obj_cache_var)
             body_code = self._emit_expr(lam.body)
-            self._fused_object_cache = saved_obj_cache
+            self._fused_object_cache = saved_obj_cache  # type: ignore[assignment]
             self._locals = saved
             self._line(f"{accum_tmps[k]} = {body_code};")
             self._indent -= 1
@@ -2253,7 +2256,11 @@ class CallEmitterMixin:
     def _emit_fused_multi_reduce_ref(self, expr: CallExpr) -> str:
         """Return a previously-computed accumulator from a fused multi-reduce."""
         if expr.args and isinstance(expr.args[0], IntegerLit):
-            idx = expr.args[0].value
+            idx_str = expr.args[0].value
+            try:
+                idx = int(idx_str)
+            except ValueError:
+                return "0 /* fused reduce ref error */"
             if idx < len(self._fused_reduce_results):
                 return self._fused_reduce_results[idx]
         return "0 /* fused reduce ref error */"
@@ -2283,7 +2290,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         idx = self._named_tmp("i")
@@ -2317,7 +2324,7 @@ class CallEmitterMixin:
 
         elem_type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element
+            elem_type = list_type.element  # type: ignore[assignment]
         elem_ct = map_type(elem_type)
 
         idx = self._named_tmp("i")

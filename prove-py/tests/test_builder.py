@@ -42,5 +42,6 @@ class TestBuildHello:
 class TestBuildErrors:
     def test_no_prv_files(self, tmp_path, needs_cc):
         from prove.config import ProveConfig
+
         result = build_project(tmp_path, ProveConfig())
         assert not result.ok

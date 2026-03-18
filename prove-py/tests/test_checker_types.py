@@ -24,20 +24,12 @@ class TestTypeResolution:
     """Test that types resolve correctly."""
 
     def test_builtin_types_resolve(self):
-        st = check(
-            "transforms identity(x Integer) Integer\n"
-            "    from\n"
-            "        x\n"
-        )
+        st = check("transforms identity(x Integer) Integer\n    from\n        x\n")
         ty = st.resolve_type("Integer")
         assert ty == INTEGER
 
     def test_string_type_resolves(self):
-        st = check(
-            "transforms greet(name String) String\n"
-            "    from\n"
-            "        name\n"
-        )
+        st = check("transforms greet(name String) String\n    from\n        name\n")
         ty = st.resolve_type("String")
         assert ty == STRING
 
@@ -59,33 +51,19 @@ class TestTypeResolution:
 
     def test_undefined_type_error(self):
         check_fails(
-            "transforms bad(x Nonexistent) Integer\n"
-            "    from\n"
-            "        0\n",
+            "transforms bad(x Nonexistent) Integer\n    from\n        0\n",
             "E300",
         )
 
     def test_generic_type_resolves(self):
-        check(
-            "transforms wrap(x Integer) List<Integer>\n"
-            "    from\n"
-            "        [x]\n"
-        )
+        check("transforms wrap(x Integer) List<Integer>\n    from\n        [x]\n")
 
     def test_modified_type_resolves(self):
-        check(
-            "transforms small(x Integer:[16 Unsigned]) Integer\n"
-            "    from\n"
-            "        x\n"
-        )
+        check("transforms small(x Integer:[16 Unsigned]) Integer\n    from\n        x\n")
 
     def test_duplicate_type_error(self):
         check_fails(
-            "module M\n"
-            "  type Foo is\n"
-            "    x Integer\n"
-            "  type Foo is\n"
-            "    y String\n",
+            "module M\n  type Foo is\n    x Integer\n  type Foo is\n    y String\n",
             "E301",
         )
 
@@ -116,8 +94,7 @@ class TestTypeResolution:
 
     def test_where_constraint_rejects_function_calls(self):
         check_fails(
-            "module M\n"
-            '  type Sku is String where matched(r"^[A-Z]+")\n',
+            'module M\n  type Sku is String where matched(r"^[A-Z]+")\n',
             "E352",
         )
 
@@ -152,84 +129,44 @@ class TestTypeChecking:
     """Test type inference and checking."""
 
     def test_integer_literal(self):
-        check(
-            "transforms num() Integer\n"
-            "    from\n"
-            "        42\n"
-        )
+        check("transforms num() Integer\n    from\n        42\n")
 
     def test_decimal_literal(self):
-        check(
-            "transforms dec() Decimal\n"
-            "    from\n"
-            "        3.14\n"
-        )
+        check("transforms dec() Decimal\n    from\n        3.14\n")
 
     def test_string_literal(self):
-        check(
-            "transforms greeting() String\n"
-            "    from\n"
-            "        \"hello\"\n"
-        )
+        check('transforms greeting() String\n    from\n        "hello"\n')
 
     def test_boolean_literal(self):
-        check(
-            "transforms flag() Boolean\n"
-            "    from\n"
-            "        true\n"
-        )
+        check("transforms flag() Boolean\n    from\n        true\n")
 
     def test_binary_arithmetic(self):
-        check(
-            "transforms add(a Integer, b Integer) Integer\n"
-            "    from\n"
-            "        a + b\n"
-        )
+        check("transforms add(a Integer, b Integer) Integer\n    from\n        a + b\n")
 
     def test_binary_comparison(self):
-        check(
-            "transforms bigger(a Integer, b Integer) Boolean\n"
-            "    from\n"
-            "        a > b\n"
-        )
+        check("transforms bigger(a Integer, b Integer) Boolean\n    from\n        a > b\n")
 
     def test_binary_logical(self):
-        check(
-            "transforms both(a Boolean, b Boolean) Boolean\n"
-            "    from\n"
-            "        a && b\n"
-        )
+        check("transforms both(a Boolean, b Boolean) Boolean\n    from\n        a && b\n")
 
     def test_type_mismatch_binary(self):
         check_fails(
-            "transforms bad(a Integer, b String) Integer\n"
-            "    from\n"
-            "        a + b\n",
+            "transforms bad(a Integer, b String) Integer\n    from\n        a + b\n",
             "E320",
         )
 
     def test_type_mismatch_var_decl(self):
         check_fails(
-            "transforms bad() Integer\n"
-            "    from\n"
-            "        x as String = 42\n"
-            "        0\n",
+            "transforms bad() Integer\n    from\n        x as String = 42\n        0\n",
             "E321",
         )
 
     def test_var_decl_inference(self):
-        check(
-            "transforms compute() Integer\n"
-            "    from\n"
-            "        x as Integer = 42\n"
-            "        x\n"
-        )
+        check("transforms compute() Integer\n    from\n        x as Integer = 42\n        x\n")
 
     def test_return_type_mismatch(self):
         check_fails(
-            "transforms bad() String\n"
-            "    from\n"
-            "        42\n",
+            "transforms bad() String\n    from\n        42\n",
             "E322",
         )
 
@@ -366,18 +303,12 @@ class TestStaticRefinementChecking:
 
     def test_constant_refinement_rejected(self):
         check_fails(
-            "module M\n"
-            "  type Positive is Integer where >= 0\n"
-            "  BAD as Positive = -5\n",
+            "module M\n  type Positive is Integer where >= 0\n  BAD as Positive = -5\n",
             "E355",
         )
 
     def test_constant_refinement_accepted(self):
-        check(
-            "module M\n"
-            "  type Positive is Integer where >= 0\n"
-            "  GOOD as Positive = 100\n"
-        )
+        check("module M\n  type Positive is Integer where >= 0\n  GOOD as Positive = 100\n")
 
     def test_non_literal_skips_static_check(self):
         """Non-literal values should not trigger static refinement errors."""
@@ -474,24 +405,18 @@ class TestScaleEnforcement:
 
     def test_literal_exceeds_scale_e407(self):
         check_fails(
-            "reads demo() Unit\n"
-            "from\n"
-            "    x as Decimal:[Scale:2] = 3.14159\n",
+            "reads demo() Unit\nfrom\n    x as Decimal:[Scale:2] = 3.14159\n",
             "E407",
         )
 
     def test_literal_within_scale_ok(self):
         check(
-            "reads demo() Unit\n"
-            "from\n"
-            "    x as Decimal:[Scale:2] = 3.14\n",
+            "reads demo() Unit\nfrom\n    x as Decimal:[Scale:2] = 3.14\n",
         )
 
     def test_decimal_literal_one_place_scale_ok(self):
         check(
-            "reads demo() Unit\n"
-            "from\n"
-            "    x as Decimal:[Scale:2] = 3.1\n",
+            "reads demo() Unit\nfrom\n    x as Decimal:[Scale:2] = 3.1\n",
         )
 
     def test_scale_mismatch_e408(self):
@@ -505,9 +430,7 @@ class TestScaleEnforcement:
 
     def test_plain_decimal_no_scale_check(self):
         check(
-            "reads demo() Unit\n"
-            "from\n"
-            "    x as Decimal = 3.14159\n",
+            "reads demo() Unit\nfrom\n    x as Decimal = 3.14159\n",
         )
 
 
@@ -519,8 +442,7 @@ class TestLambdaCapture:
 
     def test_lambda_without_capture_still_works(self):
         check(
-            "transforms result(xs List<Value>) List<Value>\n"
-            "from map(xs, |x| x)\n",
+            "transforms result(xs List<Value>) List<Value>\nfrom map(xs, |x| x)\n",
         )
 
     def test_sequential_lambda_with_capture_ok(self):

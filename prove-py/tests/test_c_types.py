@@ -73,10 +73,13 @@ class TestMapType:
         assert ct.is_pointer is False
 
     def test_algebraic_type(self):
-        ty = AlgebraicType("Shape", [
-            VariantInfo("Circle", {"radius": FLOAT}),
-            VariantInfo("Square", {"side": FLOAT}),
-        ])
+        ty = AlgebraicType(
+            "Shape",
+            [
+                VariantInfo("Circle", {"radius": FLOAT}),
+                VariantInfo("Square", {"side": FLOAT}),
+            ],
+        )
         ct = map_type(ty)
         assert ct.decl == "Prove_Shape"
 
