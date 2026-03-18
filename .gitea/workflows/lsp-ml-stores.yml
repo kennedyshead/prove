@@ -25,7 +25,7 @@ jobs:
 
       - name: Install prove-py dependencies
         run: |
-          pip install -e "prove-py[dev]" -q
+          pip install -e "prove-py[dev]" -q --break-system-packages
 
       - name: Extract ML data
         run: python scripts/ml_extract.py
