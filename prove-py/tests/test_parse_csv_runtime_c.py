@@ -49,7 +49,7 @@ class TestCsvParse:
                 prove_runtime_init();
                 Prove_String *src = prove_string_from_cstr(
                     "name,desc\\n\\\"hello, world\\\",test\\n"
-                );  # noqa: E501
+                );
                 Prove_Result r = prove_parse_csv(src);
                 if (prove_result_is_err(r)) return 1;
                 Prove_List *rows = (Prove_List *)prove_result_unwrap_ptr(r);

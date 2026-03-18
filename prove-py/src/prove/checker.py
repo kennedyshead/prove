@@ -946,6 +946,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             kind=SymbolKind.CONSTANT,
                             resolved_type=resolved,
                             span=item.span,
+                            is_imported=True,
                         )
                     )
                 else:
@@ -967,6 +968,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         resolved_type=resolved,
                         span=item.span,
                         verb=item.verb,
+                        is_imported=True,
                     )
                 )
                 self.symbols.define_type(item.name, resolved)
@@ -1000,6 +1002,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             resolved_type=ft,
                             span=item.span,
                             verb=sig.verb,
+                            is_imported=True,
                         )
                     )
                     self.symbols.define_function(sig)
@@ -1037,6 +1040,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             resolved_type=resolved,
                             span=item.span,
                             verb=item.verb,
+                            is_imported=True,
                         )
                     )
                     # Register variant constructors for algebraic types
@@ -1067,6 +1071,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             resolved_type=ft,
                             span=item.span,
                             verb=sig.verb,
+                            is_imported=True,
                         )
                     )
                     self.symbols.define_function(sig)
