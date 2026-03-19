@@ -877,7 +877,7 @@ class CEmitter(
             # Struct-polymorphic templates: skip forward decl
             if self._is_struct_polymorphic(decl):
                 continue
-            # Streams verb: void return, no coroutine
+            # Streams verb: void return (or Prove_Result if failable), no coroutine
             if decl.verb == "streams":
                 sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
@@ -888,7 +888,8 @@ class CEmitter(
                     ct = map_type(pt)
                     params.append(f"{ct.decl} {p.name}")
                 param_str = ", ".join(params) if params else "void"
-                self._line(f"void {mangled}({param_str});")
+                ret_decl = "Prove_Result" if sig.can_fail else "void"
+                self._line(f"{ret_decl} {mangled}({param_str});")
                 any_emitted = True
                 continue
             # Async verbs get special forward declarations
@@ -1331,8 +1332,12 @@ class CEmitter(
             params.append(f"{ct.decl} {p.name}")
         param_str = ", ".join(params) if params else "void"
 
-        self._line(f"void {mangled}({param_str}) {{")
+        ret_decl = "Prove_Result" if sig.can_fail else "void"
+        self._line(f"{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
+
+        if sig.can_fail:
+            self._line("Prove_Result _streams_err = prove_result_ok();")
 
         if self._needs_region_scope(fd):
             self._line("prove_region_enter(prove_global_region());")
@@ -1357,6 +1362,8 @@ class CEmitter(
         if self._in_region_scope:
             self._line("prove_region_exit(prove_global_region());")
             self._in_region_scope = False
+        if sig.can_fail:
+            self._line("return _streams_err;")
         self._indent -= 1
         self._line("}")
         self._line("")
