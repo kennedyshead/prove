@@ -5,17 +5,18 @@ PyRun_SimpleString.
 """
 
 from __future__ import annotations
+from typing import cast
 
 # pylint: disable=invalid-name
 
-path: str = ""
-md: bool = False  # Also check ```prove blocks in .md files.
-strict: bool = False  # Treat warnings as errors.
-no_coherence: bool = False  # Skip vocabulary consistency check.
-no_challenges: bool = False  # Skip refutation challenges.in
-no_status: bool = False  # Skip module completeness report.
-no_intent: bool = False  # Skip intent coverage check.
-nlp_status: bool = False  # Report NLP backend and store availability.
+path: str = cast(str, globals().get("path", "."))
+md: bool = cast(bool, globals().get("md", False))
+strict: bool = cast(bool, globals().get("strict", False))
+no_coherence: bool = cast(bool, globals().get("no_coherence", False))
+no_challenges: bool = cast(bool, globals().get("no_challenges", False))
+no_status: bool = cast(bool, globals().get("no_status", False))
+no_intent: bool = cast(bool, globals().get("no_intent", False))
+nlp_status: bool = cast(bool, globals().get("nlp_status", False))
 
 
 if __name__ == "__main__":

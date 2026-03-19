@@ -5,13 +5,14 @@ PyRun_SimpleString.
 """
 
 from __future__ import annotations
+from typing import cast
 
 # pylint: disable=invalid-name
 
-path: str = ""
-status: bool = False
-stdin: bool = False
-md: bool = False
+path: str = cast(str, globals().get("path", "."))
+status: bool = cast(bool, globals().get("status", False))
+stdin: bool = cast(bool, globals().get("stdin", False))
+md: bool = cast(bool, globals().get("md", False))
 
 if __name__ == "__main__":
     from prove._format_runner import run_format

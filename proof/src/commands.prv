@@ -13,6 +13,7 @@ module Commands
   Source types SourceFile inputs source
   Build outputs pybuild
   Check outputs pycheck
+  Test outputs pytest
   FormatCmd outputs pyformat
   Lsp outputs pylsp
   New outputs pynew
@@ -125,8 +126,9 @@ from
     match contains(arguments, "--help")
         true => console(HELP_TEST_TEXT)
         _ =>
+            pytest(config, ".", 1000)
             info(f"{
                    config.package.name
                  } {
                    config.package.version
-                 }has X tests and Y failed")&
+                 } has X tests and Y failed")&

@@ -64,6 +64,14 @@ void py_set_string(Prove_String *name, Prove_String *value) {
   Py_DECREF(val);
 }
 
+void py_set_integer(Prove_String *name, int64_t value) {
+  PyObject *main_module = PyImport_AddModule("__main__");
+  PyObject *main_dict = PyModule_GetDict(main_module);
+  PyObject *val = PyLong_FromLongLong(value);
+  PyDict_SetItemString(main_dict, name->data, val);
+  Py_DECREF(val);
+}
+
 void py_set_bool(Prove_String *name, bool value) {
   PyObject *main_module = PyImport_AddModule("__main__");
   PyObject *main_dict = PyModule_GetDict(main_module);
