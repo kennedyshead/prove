@@ -29,13 +29,16 @@ _FOREIGN_PKG_CONFIG: dict[str, str] = {
 }
 
 
-def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
+def _resolve_foreign_flags(
+    library: str, *, standalone: bool = False
+) -> tuple[list[str], list[str]]:
     """Resolve compiler and linker flags for a foreign library.
 
     Returns (c_flags, link_flags).  Resolution order:
       1. Environment variables (PROVE_<LIB>_CFLAGS / PROVE_<LIB>_LDFLAGS)
-      2. pkg-config when a mapping exists
-      3. Plain -l<name> fallback
+      2. Standalone static link (when standalone=True and library is known)
+      3. pkg-config when a mapping exists
+      4. Plain -l<name> fallback
 
     For libpython3 the env vars are PROVE_PYTHON_CFLAGS and PROVE_PYTHON_LDFLAGS.
     """
@@ -56,7 +59,11 @@ def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
         l_flags = ldflags_env.split() if ldflags_env else []
         return c_flags, l_flags
 
-    # Step 2: Try pkg-config
+    # Step 2: Standalone static linking
+    if standalone and library == "libpython3":
+        return _resolve_python_static()
+
+    # Step 3: Try pkg-config
     pc_name = _FOREIGN_PKG_CONFIG.get(library)
     if pc_name:
         try:
@@ -74,9 +81,113 @@ def _resolve_foreign_flags(library: str) -> tuple[list[str], list[str]]:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-    # Step 3: Fallback — plain -l<name>
+    # Step 4: Fallback — plain -l<name>
     name = library[3:] if library.startswith("lib") else library
     return [], [f"-l{name}"]
+
+
+def _resolve_python_static() -> tuple[list[str], list[str]]:
+    """Return flags to statically link libpython3 for a standalone binary.
+
+    Finds libpython3.x.a via sysconfig, then pulls transitive link deps from
+    python3-config --ldflags --embed (stripping -lpython* since we supply the
+    archive directly).  Falls back to dynamic linking if the static archive
+    cannot be found.
+    """
+    import subprocess
+    import sys
+    import sysconfig
+
+    c_flags: list[str] = []
+    link_flags: list[str] = []
+
+    # Include flags (same as dynamic)
+    try:
+        result = subprocess.run(
+            ["python3-config", "--includes"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            c_flags.extend(result.stdout.strip().split())
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # Locate the static archive: libpython3.x.a
+    version = sysconfig.get_config_var("VERSION") or ""  # e.g. "3.12"
+    static_lib: Path | None = None
+    for config_key in ("LIBPL", "LIBDIR"):
+        d = sysconfig.get_config_var(config_key)
+        if d:
+            candidate = Path(d) / f"libpython{version}.a"
+            if candidate.exists():
+                static_lib = candidate
+                break
+
+    if static_lib is None:
+        # Could not find static archive — warn and fall back to dynamic
+        print(
+            f"standalone: libpython{version}.a not found; "
+            "falling back to dynamic linking. "
+            "Install a Python build with static libraries to produce a truly standalone binary."
+        )
+        try:
+            result = subprocess.run(
+                ["pkg-config", "--cflags", "--libs", "python3-embed"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                flags = result.stdout.strip().split()
+                c_flags.extend(f for f in flags if f.startswith("-I"))
+                link_flags.extend(f for f in flags if not f.startswith("-I"))
+                return c_flags, link_flags
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        link_flags.append("-lpython3")
+        return c_flags, link_flags
+
+    print(f"standalone: linking libpython{version} statically ({static_lib})")
+
+    # Pull transitive deps from python3-config --ldflags --embed,
+    # dropping -lpython* since we supply the archive directly.
+    search_dirs: list[str] = []
+    extra_libs: list[str] = []
+    try:
+        result = subprocess.run(
+            ["python3-config", "--ldflags", "--embed"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            for flag in result.stdout.strip().split():
+                if flag.startswith("-lpython"):
+                    continue  # replaced by static archive
+                if flag.startswith("-L"):
+                    search_dirs.append(flag)
+                else:
+                    extra_libs.append(flag)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # Order: -L dirs first, then the archive (by path), then transitive libs
+    link_flags.extend(search_dirs)
+    link_flags.append(str(static_lib))
+    link_flags.extend(extra_libs)
+
+    # Platform-specific transitive requirements
+    if sys.platform == "darwin":
+        if not any("-framework" in f for f in link_flags):
+            link_flags += ["-framework", "CoreFoundation"]
+    else:
+        for lib in ("-ldl", "-lutil"):
+            if lib not in link_flags:
+                link_flags.append(lib)
+
+    return c_flags, link_flags
 
 
 def _find_llvm_profdata() -> str | None:
@@ -191,6 +302,7 @@ def build_project(
     user_module_count = len(modules_and_symbols)
     _compile_pure_stdlib(modules_and_symbols, all_diags)
 
+    standalone = not (debug or config.build.debug)
     return _build_c(
         project_dir,
         config,
@@ -198,6 +310,7 @@ def build_project(
         all_diags,
         debug=debug,
         user_module_count=user_module_count,
+        standalone=standalone,
     )
 
 
@@ -247,6 +360,7 @@ def _build_c(
     *,
     debug: bool = False,
     user_module_count: int | None = None,
+    standalone: bool = False,
 ) -> BuildResult:
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
@@ -349,7 +463,7 @@ def _build_c(
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 for fb in decl.foreign_blocks:
-                    cf, lf = _resolve_foreign_flags(fb.library)
+                    cf, lf = _resolve_foreign_flags(fb.library, standalone=standalone)
                     extra_flags.extend(cf)
                     link_flags.extend(lf)
                 # Add stdlib-required linker flags

@@ -104,4 +104,44 @@ Prove_List *prove_array_to_list(Prove_Array *arr);
 Prove_Array *prove_array_from_list(Prove_List *list, int64_t elem_size,
                                     void (*unbox_fn)(void *elem, void *out));
 
+/* ── First / Last (returns Option) ───────────────────────────── */
+
+Prove_Option prove_array_first_bool(Prove_Array *arr);
+Prove_Option prove_array_first_int(Prove_Array *arr);
+Prove_Option prove_array_first_float(Prove_Array *arr);
+
+Prove_Option prove_array_last_bool(Prove_Array *arr);
+Prove_Option prove_array_last_int(Prove_Array *arr);
+Prove_Option prove_array_last_float(Prove_Array *arr);
+
+/* ── Empty ────────────────────────────────────────────────────── */
+
+bool prove_array_empty(Prove_Array *arr);
+
+/* ── Contains ─────────────────────────────────────────────────── */
+
+bool prove_array_contains_bool(Prove_Array *arr, bool value);
+bool prove_array_contains_int(Prove_Array *arr, int64_t value);
+
+/* ── Index (find position of element) ────────────────────────── */
+
+Prove_Option prove_array_index_int(Prove_Array *arr, int64_t value);
+
+/* ── Slice ────────────────────────────────────────────────────── */
+
+Prove_Array *prove_array_slice_bool(Prove_Array *arr, int64_t start, int64_t end);
+Prove_Array *prove_array_slice_int(Prove_Array *arr, int64_t start, int64_t end);
+Prove_Array *prove_array_slice_float(Prove_Array *arr, int64_t start, int64_t end);
+
+/* ── Reverse ──────────────────────────────────────────────────── */
+
+Prove_Array *prove_array_reverse_bool(Prove_Array *arr);
+Prove_Array *prove_array_reverse_int(Prove_Array *arr);
+Prove_Array *prove_array_reverse_float(Prove_Array *arr);
+
+/* ── Sort ─────────────────────────────────────────────────────── */
+
+Prove_Array *prove_array_sort_int(Prove_Array *arr);
+Prove_Array *prove_array_sort_float(Prove_Array *arr);
+
 #endif /* PROVE_ARRAY_H */

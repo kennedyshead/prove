@@ -2540,6 +2540,30 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     )
                 )
 
+        # The inner expression must be a failable (Result-returning) call
+        if not isinstance(inner, ErrorType) and not (
+            isinstance(inner, GenericInstance) and inner.base_name == "Result"
+        ):
+            self.diagnostics.append(
+                Diagnostic(
+                    severity=Severity.ERROR,
+                    code="E351",
+                    message="! applied to non-failable expression",
+                    labels=[
+                        DiagnosticLabel(
+                            span=expr.span,
+                            message="this expression cannot fail; remove the !",
+                        )
+                    ],
+                    suggestions=[
+                        Suggestion(
+                            message="remove the ! operator",
+                            replacement="remove '!'",
+                        )
+                    ],
+                )
+            )
+
         # The inner expression should be Result-like; return its success type
         if isinstance(inner, GenericInstance) and inner.base_name == "Result":
             if inner.args:
