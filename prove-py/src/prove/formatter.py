@@ -556,7 +556,8 @@ class ProveFormatter:
             else:
                 group_strings.append(" ".join(names))
 
-        line = f"{imp.module} {' '.join(group_strings)}"
+        prefix = f".{imp.module}" if getattr(imp, "local", False) else imp.module
+        line = f"{prefix} {' '.join(group_strings)}"
         # If within line length, use single line
         if len(line) <= self.MAX_LINE_LENGTH:
             return line
@@ -565,7 +566,7 @@ class ProveFormatter:
         lines = []
         for i, gs in enumerate(group_strings):
             if i == 0:
-                lines.append(f"{imp.module} {gs}")
+                lines.append(f"{prefix} {gs}")
             else:
                 lines.append(f"  {gs}")
 

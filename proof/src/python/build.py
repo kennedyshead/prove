@@ -1,12 +1,7 @@
 """Compile a Prove project via the Python bootstrap compiler.
 
 This script is embedded as a comptime string in build.prv and executed via
-PyRun_SimpleString. The caller (py_set_string/py_set_bool wrappers) must
-inject the following variables into __main__ before running this script:
-
-  path      (str)  — project directory
-  debug     (bool) — enable debug build
-  no_mutate (bool) — skip mutation testing
+PyRun_SimpleString.
 """
 
 from __future__ import annotations
@@ -15,7 +10,6 @@ from pathlib import Path
 
 # pylint: disable=invalid-name
 
-# Injected by pybuild() via py_set_string / py_set_bool
 path: str = ""
 debug: bool = False
 no_mutate: bool = False

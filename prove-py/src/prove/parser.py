@@ -389,7 +389,7 @@ class Parser:
             end.end_line,
             end.end_col,
         )
-        if self.diagnostics:
+        if any(d.severity == Severity.ERROR for d in self.diagnostics):
             raise CompileError(self.diagnostics)
         return Module(declarations=declarations, span=span)
 
@@ -666,7 +666,19 @@ class Parser:
         params: list[Param] = []
         while not self._at(TokenKind.RPAREN) and not self._at(TokenKind.EOF):
             if params:
-                self._expect(TokenKind.COMMA)
+                comma_tok = self._expect(TokenKind.COMMA)
+                if self._at(TokenKind.RPAREN):
+                    self.diagnostics.append(
+                        Diagnostic(
+                            severity=Severity.NOTE,
+                            code="I210",
+                            message="trailing comma in parameter list",
+                            labels=[
+                                DiagnosticLabel(span=comma_tok.span, message="remove this comma")
+                            ],
+                        )
+                    )
+                    break
             param = self._parse_param()
             params.append(param)
         self._expect(TokenKind.RPAREN)
@@ -1355,6 +1367,14 @@ class Parser:
                     # Import: ModuleName verb_group (, verb_group)*
                     module_tok = self._advance()
                     imports.append(self._parse_import(module_tok))
+                elif self._at(TokenKind.DOT) and self._peek(1).kind == TokenKind.TYPE_IDENTIFIER:
+                    # Local import: .ModuleName verb_group — forces local module resolution
+                    self._advance()  # consume '.'
+                    module_tok = self._advance()
+                    imp = self._parse_import(module_tok)
+                    from prove.ast_nodes import ImportDecl as _ImportDecl
+
+                    imports.append(_ImportDecl(imp.module, imp.items, imp.span, local=True))
                 elif self._current().kind in _VERBS:
                     body.append(self._parse_function_def(None))
                 elif self._at(TokenKind.MAIN):

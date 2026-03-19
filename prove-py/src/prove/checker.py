@@ -894,6 +894,19 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib
 
+        # .ModuleName prefix forces local-only resolution
+        if getattr(imp, "local", False):
+            if self._local_modules and imp.module in self._local_modules:
+                self._register_local_import(imp)
+            else:
+                self._module_imports.setdefault(imp.module, set())
+                self._info(
+                    "I314",
+                    f"unknown local module '{imp.module}'",
+                    imp.span,
+                )
+            return
+
         # Try loading real signatures from stdlib
         is_known = is_stdlib_module(imp.module)
         if not is_known:
@@ -907,6 +920,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._info(
                 "I314",
                 f"unknown module '{imp.module}'",
+                imp.span,
+            )
+            return
+
+        # Ambiguity check: local module shadows stdlib module
+        if self._local_modules and imp.module in self._local_modules:
+            self._error(
+                "E316",
+                f"module '{imp.module}' is ambiguous: a local module and a stdlib module share "
+                f"this name. Use '.{imp.module}' to import the local module.",
                 imp.span,
             )
             return
@@ -2987,8 +3010,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             f"duplicate match arm for variant '{arm.pattern.name}'",
                             arm.pattern.span,
                         )
-                    if not arm.pattern.fields:
-                        covered.add(arm.pattern.name)
+                    covered.add(arm.pattern.name)
                 else:
                     self._error("E370", f"unknown variant '{arm.pattern.name}'", arm.pattern.span)
             elif isinstance(arm.pattern, WildcardPattern):
@@ -3040,8 +3062,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             f"duplicate match arm for variant '{arm.pattern.name}'",
                             arm.pattern.span,
                         )
-                    if not arm.pattern.fields:
-                        covered.add(arm.pattern.name)
+                    covered.add(arm.pattern.name)
             elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                 has_wildcard = True
 

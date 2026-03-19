@@ -575,6 +575,7 @@ class ImportDecl:
     module: str
     items: list[ImportItem]
     span: Span
+    local: bool = False  # True when prefixed with `.` to force local module resolution
 
 
 @dataclass(frozen=True)

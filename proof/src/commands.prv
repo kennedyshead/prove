@@ -13,6 +13,7 @@ module Commands
   Source types SourceFile inputs source
   Build outputs pybuild
   Check outputs pycheck
+  FormatCmd outputs pyformat
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -56,13 +57,13 @@ from
     match contains(arguments, "--help")
         true => console(HELP_CHECK_TEXT)
         _ =>
-            md as Boolean = contains(arguments, "md")
-            strict as Boolean = contains(arguments, "strict")
-            no_coherence as Boolean = contains(arguments, "no_coherence")
-            no_challenges as Boolean = contains(arguments, "no_challenges")
-            no_status as Boolean = contains(arguments, "no_status")
-            no_intent as Boolean = contains(arguments, "no_intent")
-            nlp_status as Boolean = contains(arguments, "nlp_status")
+            md as Boolean = contains(arguments, "--md")
+            strict as Boolean = contains(arguments, "--strict")
+            no_coherence as Boolean = contains(arguments, "--no-coherence")
+            no_challenges as Boolean = contains(arguments, "--no-challenges")
+            no_status as Boolean = contains(arguments, "--no-status")
+            no_intent as Boolean = contains(arguments, "--no-intent")
+            nlp_status as Boolean = contains(arguments, "--nlp--status")
             pycheck(config,
                     ".",
                     md,
@@ -84,6 +85,10 @@ from
     match contains(arguments, "--help")
         true => console(HELP_FORMAT_TEXT)
         _ =>
+            md as Boolean = contains(arguments, "--md")
+            status as Boolean = contains(arguments, "--status")
+            stdin as Boolean = contains(arguments, "--stdin")
+            pyformat(config, ".", md, status, stdin)
             info(f"{
                    config.package.name
                  } {
