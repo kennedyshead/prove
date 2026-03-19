@@ -9,14 +9,6 @@ module Main
   Config types Config transforms config
   Commands outputs build check format lsp new test
 
-  type CliMap:[Lookup] is String | Verb
-    "build" | build
-    "check" | check
-    "format" | format
-    "lsp" | lsp
-    "new" | new
-    "test" | test
-
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
 
@@ -30,7 +22,10 @@ from
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
     command as Option<String> = value(1, arguments)
     match command
-        Some(command) =>
-            verb as Verb = CliMap:command
-            verb(sub_arguments, config)
+        Some("build") => build(sub_arguments, config)!
+        Some("check") => check(sub_arguments, config)!
+        Some("format") => format(sub_arguments, config)!
+        Some("lsp") => lsp(sub_arguments, config)!
+        Some("new") => new(sub_arguments, config)!
+        Some("test") => test(sub_arguments, config)!
         _ => console(HELP_TXT)

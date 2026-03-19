@@ -1227,7 +1227,21 @@ class StmtEmitterMixin:
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name == "Some":
                     keyword = "if" if first else "} else if"
-                    self._line(f"{keyword} ({subj}.tag == 1) {{")
+                    cond = f"{subj}.tag == 1"
+                    if arm.pattern.fields and isinstance(arm.pattern.fields[0], LiteralPattern):
+                        inner_ty = subj_type.args[0] if subj_type.args else STRING
+                        inner_ct = map_type(inner_ty)
+                        cast = (
+                            f"({inner_ct.decl})"
+                            if inner_ct.is_pointer
+                            else f"({inner_ct.decl})(intptr_t)"
+                        )
+                        unwrapped = f"{cast}{subj}.value"
+                        inner_cond = self._emit_literal_cond(
+                            unwrapped, arm.pattern.fields[0], inner_ty
+                        )
+                        cond = f"{cond} && {inner_cond}"
+                    self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
                     if arm.pattern.fields and isinstance(
                         arm.pattern.fields[0],

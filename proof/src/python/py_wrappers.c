@@ -12,9 +12,7 @@
  *   - Run `python proof/scripts/bundle_prove.py` before building to generate
  *     prove_bundle_data.h (compile fails with #error if it is missing)
  */
-#include "prove_list.h"
 #include "prove_string.h"
-#include "prove_table.h"
 #include <Python.h>
 #include <stdbool.h>
 #include <stdint.h>

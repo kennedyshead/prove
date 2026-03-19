@@ -1,0 +1,44 @@
+module Check
+  narrative: """
+  Handles the source check.
+
+  outputs the command to python for a pycheck
+  """
+  Config types Config
+  System validates dir
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+    py_set_bool(name String, value Boolean) Unit
+
+  PYTHON_CHECK as String = comptime
+      read("python/check.py")
+
+outputs pycheck(
+    config Config,
+    path String,
+    md Boolean,
+    strict Boolean,
+    no_coherence Boolean,
+    no_challenges Boolean,
+    no_status Boolean,
+    no_intent Boolean,
+    nlp_status Boolean
+) Integer
+  requires valid dir(path)
+from
+    py_initialize()
+    py_set_string("path", path)
+    py_set_bool("md", md)
+    py_set_bool("strict", strict)
+    py_set_bool("no_coherence", no_coherence)
+    py_set_bool("no_challenges", no_challenges)
+    py_set_bool("no_status", no_status)
+    py_set_bool("no_intent", no_intent)
+    py_set_bool("nlp_status", nlp_status)
+    result as Integer = py_run_string(PYTHON_CHECK)
+    py_finalize()
+    result
