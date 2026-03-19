@@ -26,4 +26,4 @@ main() Result<Unit, Error>!
 from
     listener as Socket = server("0.0.0.0", 9000)!
     console("echo server on :9000")
-    serve(Accept(listener))
+    serve(Accept(listener))!

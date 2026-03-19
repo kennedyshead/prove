@@ -2168,15 +2168,24 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # W372: failable call result silently discarded — no ! and no binding
             if (
                 isinstance(stmt.expr, CallExpr)
-                and not isinstance(stmt.expr, FailPropExpr)
                 and isinstance(ty, GenericInstance)
                 and ty.base_name == "Result"
             ):
-                self._warning(
-                    "W372",
-                    "failable call result discarded — use ! to propagate or match to handle",
-                    stmt.expr.span,
-                )
+                # 'streams' verb functions handle errors internally via event loops;
+                # discarding their result is intentional.
+                _skip = False
+                if isinstance(stmt.expr.func, IdentifierExpr):
+                    _sig = self.symbols.resolve_function_any(
+                        stmt.expr.func.name, arity=len(stmt.expr.args)
+                    )
+                    if _sig is not None and _sig.verb == "streams":
+                        _skip = True
+                if not _skip:
+                    self._warning(
+                        "W372",
+                        "failable call result discarded — use ! to propagate or match to handle",
+                        stmt.expr.span,
+                    )
             return ty
         if isinstance(stmt, MatchExpr):
             return self._infer_match(stmt)

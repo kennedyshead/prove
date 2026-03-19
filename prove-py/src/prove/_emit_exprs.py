@@ -482,8 +482,15 @@ class ExprEmitterMixin:
             self._indent -= 1
             self._line("}")
         elif self._in_streams_loop:
-            # streams functions are void — break out of the loop on error
-            self._line(f"if (prove_result_is_err({tmp})) goto _streams_exit;")
+            if self._current_func is not None and getattr(self._current_func, "can_fail", False):
+                # failable streams: save error for return, then exit loop
+                self._line(
+                    f"if (prove_result_is_err({tmp}))"
+                    f" {{ _streams_err = {tmp}; goto _streams_exit; }}"
+                )
+            else:
+                # non-failable streams: just exit loop on error
+                self._line(f"if (prove_result_is_err({tmp})) goto _streams_exit;")
         else:
             if self._in_region_scope:
                 self._line(f"if (prove_result_is_err({tmp})) {{")
