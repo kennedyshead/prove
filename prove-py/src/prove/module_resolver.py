@@ -128,7 +128,7 @@ def build_module_registry(
                             param_types=vfield_types,
                             return_type=resolved,
                             can_fail=False,
-                            span=_DUMMY,
+                            span=v.span,
                             module=module_name.lower(),
                             requires=[],
                         )
@@ -180,7 +180,7 @@ def build_module_registry(
                     param_types=param_types,
                     return_type=return_type,
                     can_fail=decl.can_fail,
-                    span=_DUMMY,
+                    span=decl.span,
                     module=module_name.lower(),
                     requires=decl.requires,
                 )
