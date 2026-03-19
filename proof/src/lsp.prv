@@ -1,0 +1,23 @@
+module Lsp
+  narrative: """
+  Handles the lsp.
+
+  outputs the command to python for a pylsp
+  """
+  System validates dir
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+
+  PYTHON_LSP as String = comptime
+      read("python/lsp.py")
+
+outputs pylsp() Integer
+  requires valid dir(path)
+from
+    py_initialize()
+    result as Integer = py_run_string(PYTHON_LSP)
+    py_finalize()
+    result

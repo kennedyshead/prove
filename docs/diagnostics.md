@@ -119,19 +119,21 @@ A qualified call references a module that has no import declaration. If the modu
 
 An import declaration names a function or type that does not exist in the specified module (stdlib or local).
 
-### E316 — Name shadows builtin function
+### E316 — Ambiguous module name (local shadows stdlib)
 
-A user-defined function or parameter has the same name as a built-in function (`len`, `map`, `filter`, `reduce`, `each`).
+A local module and a stdlib module share the same name. The compiler refuses to silently pick one — use a `.` prefix on the import to explicitly request the local module:
 
 ```prove
-transforms len(xs List<Integer>) Integer
-from
-    0
+// Error: Format exists both as a local file and in the stdlib
+module Report
+  Format validates length  // E316
 
-transforms length(xs List<Integer>) Integer
-from
-    0
+// Fix: prefix with '.' to force local resolution
+module Report
+  .Format validates length  // OK — uses local Format.prv
 ```
+
+See [Local imports](syntax.md#local-imports-modulename) for details and caveats.
 
 ### E317 — Name shadows builtin type
 
@@ -1017,7 +1019,9 @@ A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is as
 
 ### I314 — Unknown module in import
 
-An import references a module that is not part of the standard library. The formatter removes the import line.
+An import references a module that is neither part of the standard library nor a known local (sibling) module. The formatter removes the import line.
+
+If the module is a local file and its name collides with a stdlib module, use `.ModuleName` to disambiguate (see [E316](#e316-ambiguous-module-name-local-shadows-stdlib)).
 
 ### I320 — Function without contracts
 

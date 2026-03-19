@@ -39,6 +39,20 @@ module InventoryService
 
 A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity — see [Functions & Verbs](verbs.md#verb-dispatched-identity) for details.
 
+### Local imports (`.ModuleName`)
+
+Prefix an import with `.` to force resolution against local (sibling) modules only, bypassing the stdlib:
+
+```prove
+module Report
+  .Format validates length transforms pad  // uses local Format.prv, not stdlib Format
+  Text validates length
+```
+
+This is useful when you need a project-specific module that happens to share a name with a stdlib module. Without the `.` prefix, the compiler raises **E316** because the name is ambiguous — it refuses to silently pick one over the other.
+
+> **Not recommended for stdlib names.** Overriding a stdlib module name makes the code harder to read and prevents future callers from importing the stdlib module under the same name in the same project. Prefer a distinct name for the local module when possible (e.g. `ReportFormat` instead of `Format`).
+
 ## Foreign Blocks (C FFI)
 
 Modules can declare `foreign` blocks to bind C functions. Each block names a C library and lists the functions it provides with their parameter types and return types:

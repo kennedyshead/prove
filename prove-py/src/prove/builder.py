@@ -128,7 +128,7 @@ def _resolve_python_static() -> tuple[list[str], list[str]]:
     if static_lib is None:
         # Could not find static archive — warn and fall back to dynamic
         print(
-            f"standalone: libpython{version}.a not found; "
+            f"libpython{version}.a not found; "
             "falling back to dynamic linking. "
             "Install a Python build with static libraries to produce a truly standalone binary."
         )
@@ -149,7 +149,7 @@ def _resolve_python_static() -> tuple[list[str], list[str]]:
         link_flags.append("-lpython3")
         return c_flags, link_flags
 
-    print(f"standalone: linking libpython{version} statically ({static_lib})")
+    print(f"linking libpython{version} statically ({static_lib})")
 
     # Pull transitive deps from python3-config --ldflags --embed,
     # dropping -lpython* since we supply the archive directly.
@@ -420,7 +420,7 @@ def _build_c(
     # Auto-bundle Python packages if the project embeds libpython3
     from prove._python_bundle import maybe_generate_bundle
 
-    maybe_generate_bundle(modules_and_symbols, comptime_deps, gen_dir)
+    maybe_generate_bundle(modules_and_symbols, comptime_deps, gen_dir, standalone=standalone)
 
     # Run pre-build commands (e.g. generating C headers from scripts)
     if config.build.pre_build:

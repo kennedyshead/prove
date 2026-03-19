@@ -14,6 +14,7 @@ module Commands
   Build outputs pybuild
   Check outputs pycheck
   FormatCmd outputs pyformat
+  Lsp outputs pylsp
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -100,7 +101,9 @@ outputs lsp(arguments List<String>, config Config)!
 from
     match contains(arguments, "--help")
         true => console(HELP_LSP_TEXT)
-        _ => info(f"{config.package.name} {config.package.version} - lsp")&
+        _ =>
+            pylsp()
+            Unit
 
 /// Run the new command
 outputs new(arguments List<String>, config Config)!
