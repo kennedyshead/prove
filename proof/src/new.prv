@@ -1,0 +1,23 @@
+module New
+  narrative: """
+  Creates a new scaffold project.
+  
+  outputs the command to python for a pynew  
+  """
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+
+  PYTHON_NEW as String = comptime
+      read("python/new.py")
+
+outputs pynew(name String) Integer
+from
+    py_initialize()
+    py_set_string("name", name)
+    result as Integer = py_run_string(PYTHON_NEW)
+    py_finalize()
+    result

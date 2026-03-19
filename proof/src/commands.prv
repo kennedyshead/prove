@@ -15,6 +15,8 @@ module Commands
   Check outputs pycheck
   FormatCmd outputs pyformat
   Lsp outputs pylsp
+  New outputs pynew
+  Sequence reads get
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -83,6 +85,7 @@ from
 /// Run the format command
 outputs format(arguments List<String>, config Config)!
 from
+    info("Running format")&
     match contains(arguments, "--help")
         true => console(HELP_FORMAT_TEXT)
         _ =>
@@ -106,11 +109,15 @@ from
             Unit
 
 /// Run the new command
-outputs new(arguments List<String>, config Config)!
+outputs new(arguments List<String>)!
 from
     match contains(arguments, "--help")
         true => console(HELP_NEW_TEXT)
-        _ => info(f"{config.package.name} {config.package.version}")&
+        _ =>
+            name as String = get(arguments, 0)
+            info(f"Creating a new project {name}")&
+            pynew(name)
+            info(f"Created {name}")&
 
 /// Run the test command
 outputs test(arguments List<String>, config Config)!
