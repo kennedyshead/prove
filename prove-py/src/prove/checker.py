@@ -2164,7 +2164,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._infer_expr(stmt.value)
             return UNIT
         if isinstance(stmt, ExprStmt):
-            return self._infer_expr(stmt.expr)
+            ty = self._infer_expr(stmt.expr)
+            # W372: failable call result silently discarded — no ! and no binding
+            if (
+                isinstance(stmt.expr, CallExpr)
+                and not isinstance(stmt.expr, FailPropExpr)
+                and isinstance(ty, GenericInstance)
+                and ty.base_name == "Result"
+            ):
+                self._warning(
+                    "W372",
+                    "failable call result discarded — use ! to propagate or match to handle",
+                    stmt.expr.span,
+                )
+            return ty
         if isinstance(stmt, MatchExpr):
             return self._infer_match(stmt)
         if isinstance(stmt, TodoStmt):

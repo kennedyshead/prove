@@ -277,9 +277,23 @@ Prove_List *prove_io_dir_inputs(Prove_String *path) {
 }
 
 Prove_Result prove_io_dir_outputs(Prove_String *path) {
-    if (mkdir(path->data, 0755) != 0 && errno != EEXIST) {
-        Prove_String *msg = prove_string_from_cstr(strerror(errno));
-        return prove_result_err(msg);
+    char buf[4096];
+    size_t len = (size_t)path->length;
+    if (len >= sizeof(buf)) {
+        return prove_result_err(prove_string_from_cstr("path too long"));
+    }
+    memcpy(buf, path->data, len);
+    buf[len] = '\0';
+    for (size_t i = 1; i <= len; i++) {
+        if (i == len || buf[i] == '/') {
+            char saved = buf[i];
+            buf[i] = '\0';
+            if (mkdir(buf, 0755) != 0 && errno != EEXIST) {
+                Prove_String *msg = prove_string_from_cstr(strerror(errno));
+                return prove_result_err(msg);
+            }
+            buf[i] = saved;
+        }
     }
     return prove_result_ok();
 }
@@ -315,6 +329,14 @@ bool prove_io_process_validates(Prove_String *value) {
         }
     }
     return false;
+}
+
+Prove_String *prove_io_process_cwd(void) {
+    char buf[4096];
+    if (getcwd(buf, sizeof(buf)) == NULL) {
+        return prove_string_from_cstr("");
+    }
+    return prove_string_from_cstr(buf);
 }
 
 /* ── File handle streaming ───────────────────────────────────── */

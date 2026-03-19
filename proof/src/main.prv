@@ -5,9 +5,8 @@ module Main
   It means we actually understand the code we write and its different structures.
   Also outputs advanced commands taht are more for development of the compiler.
   """
-  System inputs process file outputs console
+  System inputs process outputs console
   Sequence reads value length transforms slice
-  Config types Config transforms config
   Commands outputs build check format lsp new test
 
   HELP_TXT as String = comptime
@@ -16,26 +15,24 @@ module Main
   HELP_ADVANCED_TEXT as String = comptime
       read("static/cli/advanced/root.txt")
 
-  PROVE_TOML as String = "prove.toml"
-
-outputs advanced(arguments List<String>, config Config)!
+outputs advanced(arguments List<String>)!
 from
     match value(1, arguments)
-        _ => console(HELP_ADVANCED_TEXT)
+        _ =>
+            console(HELP_ADVANCED_TEXT)
+            Unit
 
 main() Result<Unit, Error>!
 from
     arguments as List<String> = process()
-    load as Result<String, Error> = file(PROVE_TOML)
-    config as Config = config(load)
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
     command as Option<String> = value(1, arguments)
     match command
-        Some("advanced") => advanced(sub_arguments, config)!
-        Some("build") => build(sub_arguments, config)!
-        Some("check") => check(sub_arguments, config)!
-        Some("format") => format(sub_arguments, config)!
-        Some("lsp") => lsp(sub_arguments, config)!
+        Some("advanced") => advanced(sub_arguments)!
+        Some("build") => build(sub_arguments)!
+        Some("check") => check(sub_arguments)!
+        Some("format") => format(sub_arguments)!
+        Some("lsp") => lsp(sub_arguments)!
         Some("new") => new(sub_arguments)!
-        Some("test") => test(sub_arguments, config)!
+        Some("test") => test(sub_arguments)!
         _ => console(HELP_TXT)

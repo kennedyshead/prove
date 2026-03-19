@@ -2001,13 +2001,9 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
     if from_items:
         # Also add n-gram suggestions for partial tokens
         ngram_items = _from_block_ngram_completions(source, params.position)
-        combined = from_items + ngram_items
-        seen_combo: dict[tuple[str, str], lsp.CompletionItem] = {}
-        for item in combined:
-            key = (item.label, item.sort_text or item.label)
-            if key not in seen_combo or item.detail:
-                seen_combo[key] = item
-        return lsp.CompletionList(is_incomplete=False, items=list(seen_combo.values()))
+        # Prepend generated items but keep stdlib/symbol items so imported
+        # and auto-import function suggestions remain visible.
+        items = from_items + ngram_items + items
 
     # Phase 5a — prose-mode completions (suppress ML n-gram items in prose context)
     if ds is not None and ds.module is not None:

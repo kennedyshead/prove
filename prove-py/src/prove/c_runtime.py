@@ -242,6 +242,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_file_close_handle",
         "prove_file_open_append",
         "prove_file_writeln_handle",
+        "prove_io_process_cwd",
     ],
     "prove_parse": [
         "prove_value_null",

@@ -688,6 +688,12 @@ class CallEmitterMixin:
             # Binary bridge: stdlib binary functions → C runtime
             n_args = len(expr.args)
             sig = self._symbols.resolve_function(None, name, n_args)
+            # When verb=None lookup is ambiguous, prefer the overload whose verb
+            # matches the current enclosing function (e.g. 'outputs dir' vs 'inputs dir').
+            if sig is None:
+                current_verb = getattr(self._current_func, "verb", None)
+                if current_verb:
+                    sig = self._symbols.resolve_function(current_verb, name, n_args)
             # Type-based disambiguation for overloaded stdlib functions
             if expr.args:
                 from prove.types import types_compatible
