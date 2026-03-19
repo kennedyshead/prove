@@ -7,12 +7,13 @@ PyRun_SimpleString.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 # pylint: disable=invalid-name
 
-path: str = ""
-debug: bool = False
-no_mutate: bool = False
+path: str = cast(str, globals().get("path", "."))
+debug: bool = cast(bool, globals().get("debug", False))
+no_mutate: bool = cast(bool, globals().get("no_mutate", False))
 
 if __name__ == "__main__":
     from prove._build_runner import mutate

@@ -175,12 +175,17 @@ def _find_used_files(entry_files: set[Path]) -> dict[str, Path]:
             dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
             for fname in sorted(filenames):
                 f = Path(dirpath) / fname
-                if f.suffix in _SKIP_SUFFIXES or f.suffix == ".py":
+                if f.suffix in _SKIP_SUFFIXES or (f.suffix == ".py" and f.name != "__init__.py"):
                     continue
                 try:
-                    result[str(f.resolve().relative_to(parent_dir))] = f
+                    arc = str(f.resolve().relative_to(parent_dir))
                 except ValueError:
-                    pass
+                    # Symlink resolved outside parent_dir; use logical path instead
+                    try:
+                        arc = str(f.relative_to(parent_dir))
+                    except ValueError:
+                        continue
+                result[arc] = f
 
     return result
 

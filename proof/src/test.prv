@@ -1,0 +1,29 @@
+module Test
+  narrative: """
+  Handles the source check.
+
+  outputs the command to python for a pytest
+  """
+  Config types Config
+  System validates dir
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+    py_set_integer(name String, value Integer) Unit
+
+  PYTHON_TEST as String = comptime
+      read("python/test.py")
+
+outputs pytest(config Config, path String, property_rounds Integer) Integer
+  requires valid dir(path)
+from
+    py_initialize()
+    py_set_string("path", path)
+    // TODO: map property_rounds
+    py_set_integer("property_rounds ", property_rounds)
+    result as Integer = py_run_string(PYTHON_TEST)
+    py_finalize()
+    result
