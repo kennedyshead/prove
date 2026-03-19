@@ -12,6 +12,7 @@ module Commands
   System outputs console
   Source types SourceFile inputs source
   Build outputs pybuild
+  Check outputs pycheck
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -34,6 +35,7 @@ module Commands
 /// Run the build command
 outputs build(arguments List<String>, config Config)!
 from
+    info("Running build")&
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
         _ =>
@@ -50,9 +52,26 @@ from
 /// Run the check command
 outputs check(arguments List<String>, config Config)!
 from
+    info("Running check")&
     match contains(arguments, "--help")
         true => console(HELP_CHECK_TEXT)
         _ =>
+            md as Boolean = contains(arguments, "md")
+            strict as Boolean = contains(arguments, "strict")
+            no_coherence as Boolean = contains(arguments, "no_coherence")
+            no_challenges as Boolean = contains(arguments, "no_challenges")
+            no_status as Boolean = contains(arguments, "no_status")
+            no_intent as Boolean = contains(arguments, "no_intent")
+            nlp_status as Boolean = contains(arguments, "nlp_status")
+            pycheck(config,
+                    ".",
+                    md,
+                    strict,
+                    no_coherence,
+                    no_challenges,
+                    no_status,
+                    no_intent,
+                    nlp_status)
             info(f"{
                    config.package.name
                  } {

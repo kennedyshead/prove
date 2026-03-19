@@ -1254,23 +1254,11 @@
       "members": [
         {
           "type": "STRING",
-          "value": "attached"
-        },
-        {
-          "type": "STRING",
           "value": "creates"
         },
         {
           "type": "STRING",
-          "value": "detached"
-        },
-        {
-          "type": "STRING",
           "value": "inputs"
-        },
-        {
-          "type": "STRING",
-          "value": "listens"
         },
         {
           "type": "STRING",
@@ -1283,10 +1271,6 @@
         {
           "type": "STRING",
           "value": "reads"
-        },
-        {
-          "type": "STRING",
-          "value": "streams"
         },
         {
           "type": "STRING",

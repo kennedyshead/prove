@@ -3,169 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 
 from prove import __version__
-from prove.config import discover_prv_files, find_config, load_config
-from prove.errors import CompileError, Diagnostic, DiagnosticRenderer, Severity
+from prove.config import discover_prv_files, find_config
+from prove.errors import CompileError, DiagnosticRenderer
 from prove.lexer import Lexer
 from prove.parser import Parser
-
-if TYPE_CHECKING:
-    from prove.ast_nodes import Module
-    from prove.symbols import SymbolTable
-
-
-def _collect_verification_stats(module: Module) -> dict[str, int]:
-    """Collect verification statistics from a module."""
-    from prove.ast_nodes import FunctionDef, MainDef
-
-    stats = {
-        "ensures_count": 0,
-        "near_miss_count": 0,
-        "trusted_count": 0,
-    }
-
-    for decl in module.declarations:
-        if isinstance(decl, FunctionDef):
-            if decl.ensures:
-                stats["ensures_count"] += 1
-            if decl.near_misses:
-                stats["near_miss_count"] += 1
-            if decl.trusted is not None:
-                stats["trusted_count"] += 1
-        elif isinstance(decl, MainDef):
-            pass  # MainDef doesn't have ensures/near_miss/trusted
-
-    return stats
-
-
-def _print_refutation_challenges(project_dir: Path) -> None:
-    """Generate and display refutation challenges from ensures contracts."""
-    from prove.ast_nodes import FunctionDef
-    from prove.mutator import Mutator
-
-    src_dir = project_dir / "src"
-    if not src_dir.is_dir():
-        src_dir = project_dir
-
-    prv_files = discover_prv_files(src_dir)
-    total_challenges = 0
-    addressed = 0
-
-    for prv_file in prv_files:
-        try:
-            source = prv_file.read_text()
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
-        except Exception:
-            continue
-
-        # Only challenge functions with ensures contracts
-        for decl in module.declarations:
-            if not isinstance(decl, FunctionDef):
-                continue
-            if not decl.ensures:
-                continue
-
-            mutator = Mutator(module, seed=42)
-            result = mutator.generate_mutants(max_mutants=5)
-            if not result.mutants:
-                continue
-
-            fn_challenges = len(result.mutants)
-            fn_addressed = len(decl.why_not)
-            total_challenges += fn_challenges
-            addressed += min(fn_addressed, fn_challenges)
-
-            if fn_addressed >= fn_challenges:
-                continue  # All challenges addressed
-
-            click.echo(
-                f"\n  {decl.verb} {decl.name} — {fn_challenges} challenges, {fn_addressed} addressed:"  # noqa: E501
-            )
-            for i, mutant in enumerate(result.mutants):
-                marker = "+" if i < fn_addressed else "-"
-                click.echo(f"    [{marker}] {mutant.description}")
-
-    if total_challenges > 0:
-        click.echo(f"\nrefutation: {addressed}/{total_challenges} challenges addressed")
-    else:
-        click.echo("\nrefutation: no functions with ensures contracts found")
-
-
-def _compile_project(
-    project_path: Path,
-    *,  # noqa: E501
-    coherence: bool = False,
-) -> tuple[bool, int, int, int, int, dict]:
-    """Lex, parse, and check all .prv files under src/.
-
-    Returns (ok, checked, errors, warnings, format_issues, stats) tuple.
-    """
-    from prove.checker import Checker
-    from prove.formatter import ProveFormatter
-
-    src_dir = project_path / "src"
-    if not src_dir.is_dir():
-        src_dir = project_path  # fallback to project root
-
-    prv_files = discover_prv_files(src_dir)
-    if not prv_files:
-        click.echo("warning: no .prv files found", err=True)
-        return True, 0, 0, 0, 0, {"ensures_count": 0, "near_miss_count": 0, "trusted_count": 0}
-
-    # Build local module registry for cross-file imports
-    from prove.module_resolver import build_module_registry
-
-    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
-
-    renderer = DiagnosticRenderer(color=True)
-    checked = 0
-    errors = 0
-    warnings = 0
-    format_issues = 0
-    total_stats = {"ensures_count": 0, "near_miss_count": 0, "trusted_count": 0}
-
-    for prv_file in prv_files:
-        source = prv_file.read_text()
-        filename = str(prv_file)
-
-        try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
-        except CompileError as e:
-            errors += 1
-            for diag in e.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-            continue
-
-        checked += 1
-        checker = Checker(local_modules=local_modules, project_dir=project_path)
-        checker._coherence = coherence
-        symbols = checker.check(module)
-
-        module_stats = _collect_verification_stats(module)
-        for key in total_stats:
-            total_stats[key] += module_stats[key]
-
-        for diag in checker.diagnostics:
-            click.echo(renderer.render(diag), err=True)
-            if diag.severity == Severity.ERROR:
-                errors += 1
-            elif diag.severity == Severity.WARNING:
-                warnings += 1
-
-        formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
-        formatted = formatter.format(module)
-        if formatted != source:
-            format_issues += 1
-            click.echo(f"format: {filename}", err=True)
-            click.echo(_format_excerpt(filename, source, formatted), err=True)
-
-    return errors == 0, checked, errors, warnings, format_issues, total_stats
 
 
 def _is_cache_stale(project_dir: Path) -> bool:
@@ -225,7 +70,6 @@ def advanced() -> None:
 )
 def build(path: str, no_mutate: bool, debug: bool | None) -> None:
     """Compile a Prove project."""
-    _warn_no_nlp()
     from prove._build_runner import run_build
 
     exit_code = run_build(path, debug=debug, no_mutate=no_mutate)
@@ -235,133 +79,6 @@ def build(path: str, no_mutate: bool, debug: bool | None) -> None:
         config_path = find_config(Path(path))
         _update_project_cache(config_path.parent)
     raise SystemExit(exit_code)
-
-
-def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, int]:
-    """Lex, parse, and check a single .prv file.
-
-    Returns (errors, warnings, format_issues) tuple.
-    """
-    from prove.checker import Checker
-    from prove.formatter import ProveFormatter
-
-    source = filepath.read_text()
-    filename = str(filepath)
-    renderer = DiagnosticRenderer(color=True)
-
-    try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
-    except CompileError as e:
-        for diag in e.diagnostics:
-            click.echo(renderer.render(diag), err=True)
-        return len(e.diagnostics), 0, 0
-
-    checker = Checker()
-    checker._coherence = coherence
-    symbols = checker.check(module)
-
-    errors = 0
-    warnings = 0
-    for diag in checker.diagnostics:
-        click.echo(renderer.render(diag), err=True)
-        if diag.severity == Severity.ERROR:
-            errors += 1
-        elif diag.severity == Severity.WARNING:
-            warnings += 1
-
-    formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
-    formatted = formatter.format(module)
-    format_issues = 0
-    if formatted != source:
-        format_issues = 1
-        click.echo(f"format: {filename}", err=True)
-        click.echo(_format_excerpt(filename, source, formatted), err=True)
-
-    return errors, warnings, format_issues
-
-
-def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
-    """Check all ```prove blocks in a markdown file.
-
-    Returns (checked_blocks, error_count, warning_count).
-    """
-    import re
-
-    from prove.checker import Checker
-
-    text = md_file.read_text()
-    fence_re = re.compile(r"```prove\s*\n(.*?)```", re.DOTALL)
-    renderer = DiagnosticRenderer(color=True)
-    blocks = 0
-    errors = 0
-    warnings = 0
-
-    for match in fence_re.finditer(text):
-        code = match.group(1)
-        block_line = text[: match.start()].count("\n") + 2
-        filename = f"{md_file}:{block_line}"
-        blocks += 1
-
-        try:
-            tokens = Lexer(code, filename).lex()
-            module = Parser(tokens, filename).parse()
-        except CompileError as e:
-            for diag in e.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-                errors += 1
-            continue
-
-        checker = Checker()
-        checker.check(module)
-        for diag in checker.diagnostics:
-            click.echo(renderer.render(diag), err=True)
-            if diag.severity == Severity.ERROR:
-                errors += 1
-            elif diag.severity == Severity.WARNING:
-                warnings += 1
-
-    return blocks, errors, warnings
-
-
-def _print_verification_stats(stats: dict) -> None:
-    """Print verification statistics after check."""
-    ensures = stats.get("ensures_count", 0)
-    near_miss = stats.get("near_miss_count", 0)
-    trusted = stats.get("trusted_count", 0)
-
-    if ensures == 0 and near_miss == 0 and trusted == 0:
-        return
-
-    click.echo("")
-    click.echo("Verification:")
-    if ensures > 0:
-        click.echo(f"  \u2713 {ensures} functions with ensures (property tests)")
-    if near_miss > 0:
-        click.echo(f"  \u2713 {near_miss} validators with near_miss (boundary tests)")
-    if trusted > 0:
-        click.echo(f"  \u26a0 {trusted} functions trusted")
-
-
-def _check_summary(
-    name: str, files: int, errors: int, warnings: int, format_issues: int, md_blocks: int = 0
-) -> str:
-    """Build a unified check summary line."""
-    parts = [f"{files} file(s)"]
-    if md_blocks:
-        parts[0] += f", {md_blocks} md block(s)"
-
-    counts: list[str] = []
-    if errors:
-        counts.append(f"{errors} error(s)")
-    if warnings:
-        counts.append(f"{warnings} warning(s)")
-    if format_issues:
-        counts.append(f"{format_issues} formatting issue(s)")
-
-    if counts:
-        return f"checked {name} — {', '.join(parts)}, {', '.join(counts)}"
-    return f"checked {name} — {', '.join(parts)}, no issues"
 
 
 def _apply_nlp_override(enabled: bool) -> None:
@@ -380,60 +97,6 @@ def _apply_nlp_override(enabled: bool) -> None:
         nlp_mod._nlp_model = None
         nlp_mod._wordnet_checked = True
         nlp_mod._wordnet_available = False
-
-
-_nlp_warned = False
-
-
-def _warn_no_nlp() -> None:
-    """Print a one-line info to stderr when NLP is not available (once per process)."""
-    global _nlp_warned
-    if _nlp_warned:
-        return
-    _nlp_warned = True
-
-    pass
-
-
-def _print_nlp_status() -> None:
-    """Print NLP backend and PDAT store availability."""
-    from prove.nlp import has_spacy, has_wordnet
-    from prove.nlp_store import _data_path
-
-    click.echo("NLP status:")
-
-    # Backends
-    spacy_ok = has_spacy()
-    wordnet_ok = has_wordnet()
-    click.echo(f"  spaCy:   {'available' if spacy_ok else 'not available'}")
-    click.echo(f"  WordNet: {'available' if wordnet_ok else 'not available'}")
-
-    # PDAT stores
-    click.echo("  Stores:")
-    stores = [
-        "verb_synonyms.dat",
-        "synonym_cache.dat",
-    ]
-    for name in stores:
-        p = _data_path(name)
-        exists = p.is_file()
-        click.echo(f"    {name}: {'found' if exists else 'missing'}")
-
-    # Project-local stores (check cwd)
-    cwd = Path.cwd()
-    project_stores = [
-        "stdlib_index.dat",
-        "similarity_matrix.dat",
-        "semantic_features.dat",
-    ]
-    prove_dir = cwd / ".prove"
-    if prove_dir.is_dir():
-        for name in project_stores:
-            p = prove_dir / name
-            exists = p.is_file()
-            click.echo(f"    .prove/{name}: {'found' if exists else 'missing'}")
-    else:
-        click.echo("    .prove/ directory: not found")
 
 
 @main.command()
@@ -456,159 +119,25 @@ def check(
     nlp_status: bool,
 ) -> None:
     """Type-check, lint, and verify a Prove project or a single .prv file."""
-    _warn_no_nlp()
-    if nlp_status:
-        _print_nlp_status()
-        return
+    from prove._check_runner import run_check
 
-    target = Path(path)
-
-    if target.is_file() and target.suffix == ".prv":
-        click.echo(f"checking {target.name}...")
-        errors, warnings, fmt = _check_file(target, coherence=not no_coherence)
-        if strict:
-            errors += warnings
-            warnings = 0
-        click.echo(_check_summary(target.name, 1, errors, warnings, fmt))
-        if errors:
-            raise SystemExit(1)
-        return
-
-    if target.is_file() and target.suffix == ".md":
-        click.echo(f"checking {target.name}...")
-        blocks, errors, warnings = _check_md_prove_blocks(target)
-        if strict:
-            errors += warnings
-            warnings = 0
-        click.echo(_check_summary(target.name, 1, errors, warnings, 0, md_blocks=blocks))
-        if errors:
-            raise SystemExit(1)
-        return
-
-    try:
-        config_path = find_config(target)
-        config = load_config(config_path)
-        click.echo(f"checking {config.package.name}...")
-        project_dir = config_path.parent
-        ok, checked, errors, warnings, format_issues, stats = _compile_project(
-            project_dir,
-            coherence=not no_coherence,
-        )
-
-        if not no_challenges:
-            _print_refutation_challenges(project_dir)
-
-        md_blocks = 0
-        md_errors = 0
-        md_warnings = 0
-        if md and target.is_dir():
-            for md_file in sorted(target.rglob("*.md")):
-                b, e, w = _check_md_prove_blocks(md_file)
-                md_blocks += b
-                md_errors += e
-                md_warnings += w
-            errors += md_errors
-            warnings += md_warnings
-
-        if strict:
-            errors += warnings
-            warnings = 0
-
-        click.echo(
-            _check_summary(
-                config.package.name, checked, errors, warnings, format_issues, md_blocks=md_blocks
-            )
-        )
-        _print_verification_stats(stats)
-
-        if not no_status:
-            _print_completeness_status(project_dir)
-
-        if not no_intent:
-            _check_intent_coverage(project_dir)
-
-        _update_project_cache(project_dir)
-        if errors:
-            raise SystemExit(1)
-    except FileNotFoundError:
-        click.echo("error: no prove.toml found", err=True)
-        raise SystemExit(1)
-
-
-def _check_intent_coverage(project_dir: Path) -> None:
-    """Check project.intent declarations against implemented code."""
-    from prove.intent_generator import check_intent_coverage
-    from prove.intent_parser import parse_intent
-
-    intent_path = project_dir / "project.intent"
-    if not intent_path.exists():
-        click.echo("  no project.intent found — skipping intent check")
-        return
-
-    source = intent_path.read_text(encoding="utf-8")
-    result = parse_intent(source, str(intent_path))
-    if result.project is None:
-        click.echo("  error parsing project.intent", err=True)
-        return
-
-    src_dir = project_dir / "src"
-    source_dir = src_dir if src_dir.is_dir() else project_dir
-    statuses = check_intent_coverage(result.project, source_dir)
-    click.echo("\nIntent coverage:")
-    for s in statuses:
-        icon = {"implemented": "+", "todo": "~", "missing": "-"}.get(s["status"], "?")
-        click.echo(f"  [{icon}] {s['module']}.{s['noun']} — {s['status']}")
-    impl = sum(1 for s in statuses if s["status"] == "implemented")
-    click.echo(f"  {impl}/{len(statuses)} declarations implemented")
-
-
-def _print_completeness_status(project_dir: Path) -> None:
-    """Print per-module completeness showing todo counts."""
-    from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
-
-    src_dir = project_dir / "src"
-    if not src_dir.is_dir():
-        src_dir = project_dir
-
-    prv_files = discover_prv_files(src_dir)
-    if not prv_files:
-        return
-
-    click.echo("\nCompleteness:")
-    for prv_file in prv_files:
+    exit_code = run_check(
+        path,
+        md=md,
+        strict=strict,
+        no_coherence=no_coherence,
+        no_challenges=no_challenges,
+        no_status=no_status,
+        no_intent=no_intent,
+        nlp_status=nlp_status,
+    )
+    if exit_code == 0:
         try:
-            source = prv_file.read_text()
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
-        except Exception:
-            continue
-
-        mod_name = prv_file.stem
-        for decl in module.declarations:
-            if isinstance(decl, ModuleDecl):
-                mod_name = decl.name
-                break
-
-        fns = [d for d in module.declarations if isinstance(d, FunctionDef)]
-        if not fns:
-            continue
-
-        todo_fns = []
-        complete_fns = []
-        for fn in fns:
-            if any(isinstance(s, TodoStmt) for s in fn.body):
-                todo_fns.append(fn)
-            else:
-                complete_fns.append(fn)
-
-        total = len(fns)
-        done = len(complete_fns)
-        pct = 100 * done // total if total else 0
-        click.echo(f"  Module {mod_name}: {done}/{total} functions complete ({pct}%)")
-        for fn in fns:
-            has_todo = any(isinstance(s, TodoStmt) for s in fn.body)
-            marker = "[todo]" if has_todo else "[complete]"
-            click.echo(f"    - {fn.verb} {fn.name}     {marker}")
+            config_path = find_config(Path(path))
+            _update_project_cache(config_path.parent)
+        except FileNotFoundError:
+            pass
+    raise SystemExit(exit_code)
 
 
 @main.command()
@@ -616,206 +145,18 @@ def _print_completeness_status(project_dir: Path) -> None:
 @click.option("--property-rounds", type=int, default=None, help="Override property test rounds.")
 def test(path: str, property_rounds: int | None) -> None:
     """Run tests for a Prove project."""
-    _warn_no_nlp()
-    from prove.checker import Checker
-    from prove.testing import run_tests
+    from prove._test_runner import run_test
 
-    try:
-        config_path = find_config(Path(path))
-        config = load_config(config_path)
-        rounds = property_rounds or config.test.property_rounds
-        project_dir = config_path.parent
-        click.echo(f"testing {config.package.name} (property rounds: {rounds})...")
-
-        # Parse and check all modules
-        src_dir = project_dir / "src"
-        if not src_dir.is_dir():
-            src_dir = project_dir
-
-        prv_files = discover_prv_files(src_dir)
-        if not prv_files:
-            click.echo("warning: no .prv files found", err=True)
-            return
-
-        # Build local module registry for cross-file imports
-        from prove.module_resolver import build_module_registry
-
-        local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
-
-        renderer = DiagnosticRenderer(color=True)
-        modules = []
-        had_errors = False
-
-        for prv_file in prv_files:
-            source = prv_file.read_text()
-            filename = str(prv_file)
-            try:
-                tokens = Lexer(source, filename).lex()
-                module = Parser(tokens, filename).parse()
-            except CompileError as e:
-                had_errors = True
-                for diag in e.diagnostics:
-                    click.echo(renderer.render(diag), err=True)
-                continue
-
-            checker = Checker(local_modules=local_modules)
-            symbols = checker.check(module)
-            for diag in checker.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-                if diag.severity == Severity.ERROR:
-                    had_errors = True
-
-            if not checker.has_errors():
-                modules.append((module, symbols))
-
-        if had_errors:
-            raise SystemExit(1)
-
-        result = run_tests(
-            project_dir,
-            modules,
-            property_rounds=rounds,
-        )
-
-        if result.output:
-            click.echo(result.output)
-
-        if result.c_error:
-            click.echo(f"error: {result.c_error}", err=True)
-            raise SystemExit(1)
-
-        if result.test_details:
-            click.echo("\nTested functions:")
-            for tc in result.test_details:
-                type_labels = {
-                    "property": "property-based",
-                    "near_miss": "near-miss case",
-                    "boundary": "boundary values",
-                    "believe": "adversarial",
-                }
-                type_label = type_labels.get(tc.test_type, tc.test_type)
-                verb_display = f"[{tc.verb}] " if tc.verb else ""
-                click.echo(f"  • {verb_display}{tc.function_name} ({type_label})")
-            click.echo(f"  rounds per test: {rounds}")
-            click.echo("")
-
-        if result.ok:
-            click.echo(
-                f"tested {config.package.name} — {result.tests_passed}/{result.tests_run} passed"
-            )
-        else:
-            click.echo(
-                f"tested {config.package.name} — "
-                f"{result.tests_passed}/{result.tests_run} passed, "
-                f"{result.tests_failed} failed",
-                err=True,
-            )
-            raise SystemExit(1)
-    except FileNotFoundError:
-        click.echo("error: no prove.toml found", err=True)
-        raise SystemExit(1)
+    raise SystemExit(run_test(path, property_rounds=property_rounds))
 
 
 @main.command()
 @click.argument("name")
 def new(name: str) -> None:
     """Create a new Prove project."""
-    from prove.project import scaffold
+    from prove._new_runner import run_new
 
-    try:
-        project_dir = scaffold(name)
-        _update_project_cache(project_dir)
-        click.echo(f"created project '{name}' at {project_dir}")
-    except FileExistsError as e:
-        click.echo(f"error: {e}", err=True)
-        raise SystemExit(1)
-
-
-def _format_source(source: str, filename: str) -> str | None:
-    """Parse and format Prove source. Returns None on parse failure."""
-    try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
-    except CompileError:
-        return None
-    from prove.formatter import ProveFormatter
-
-    symbols, diagnostics = _try_check(source, filename)
-    return ProveFormatter(symbols=symbols, diagnostics=diagnostics).format(module)
-
-
-def _format_md_prove_blocks(text: str) -> str:
-    """Format all ```prove fenced code blocks in markdown text."""
-    import re
-
-    def _replace_block(match: re.Match[str]) -> str:
-        opener = match.group(1)
-        code = match.group(2)
-        closer = match.group(3)
-        formatted = _format_source(code, "<md-block>")
-        if formatted is None:
-            return match.group(0)
-        return opener + formatted + closer
-
-    return re.sub(r"(```prove\s*\n)(.*?)(```)", _replace_block, text, flags=re.DOTALL)
-
-
-def _format_excerpt(filename: str, original: str, formatted: str) -> str:
-    """Return a short excerpt showing the first formatting difference."""
-    orig_lines = original.splitlines()
-    fmt_lines = formatted.splitlines()
-    # Find first differing line
-    first_diff = 0
-    for i, (a, b) in enumerate(zip(orig_lines, fmt_lines)):
-        if a != b:
-            first_diff = i
-            break
-    else:
-        # Lengths differ — difference starts after the shorter one
-        first_diff = min(len(orig_lines), len(fmt_lines))
-
-    context = 2
-    start = max(0, first_diff - context)
-    end = min(len(orig_lines), first_diff + context + 1)
-
-    lines: list[str] = []
-    lines.append(f"  --> {filename}:{first_diff + 1}")
-    lines.append("  got:")
-    for i in range(start, end):
-        marker = ">" if i == first_diff else " "
-        lines.append(f"  {marker} {i + 1:4d} | {orig_lines[i]}")
-    # Show what it should be
-    end_fmt = min(len(fmt_lines), first_diff + context + 1)
-    start_fmt = max(0, first_diff - context)
-    lines.append("  expected:")
-    for i in range(start_fmt, end_fmt):
-        marker = ">" if i == first_diff else " "
-        lines.append(f"  {marker} {i + 1:4d} | {fmt_lines[i]}")
-    return "\n".join(lines)
-
-
-def _try_check(
-    source: str,
-    filename: str,
-    local_modules: dict[str, object] | None = None,
-) -> tuple[SymbolTable | None, list[Diagnostic]]:
-    """Run checker on source, returning symbols and diagnostics.
-
-    Returns the symbol table even when the checker finds errors, because
-    function signatures (registered in pass 1) are still useful for type
-    inference.  Returns (None, []) only if parsing fails.
-    """
-    from prove.checker import Checker
-
-    try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
-    except CompileError:
-        return None, []
-
-    checker = Checker(local_modules=local_modules)
-    checker.check(module)
-    return checker.symbols, checker.diagnostics
+    raise SystemExit(run_new(name))
 
 
 @main.command(name="format")
@@ -825,110 +166,9 @@ def _try_check(
 @click.option("--md", is_flag=True, help="Also format ```prove blocks in .md files.")
 def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
     """Format Prove source files."""
-    import sys
+    from prove._format_runner import run_format
 
-    from prove.formatter import ProveFormatter
-
-    if use_stdin:
-        source = sys.stdin.read()
-        try:
-            tokens = Lexer(source, "<stdin>").lex()
-            module = Parser(tokens, "<stdin>").parse()
-        except CompileError as e:
-            renderer = DiagnosticRenderer(color=True)
-            for diag in e.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-            raise SystemExit(1)
-        symbols, diagnostics = _try_check(source, "<stdin>")
-        formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
-        formatted = formatter.format(module)
-        if status:
-            if formatted != source:
-                raise SystemExit(1)
-        else:
-            sys.stdout.write(formatted)
-        return
-
-    target = Path(path)
-
-    # --- .prv files ---
-    prv_files = discover_prv_files(target) if target.is_dir() else [target]
-
-    # Build local module registry for cross-file type inference
-    local_modules: dict[str, object] | None = None
-    if target.is_dir() and len(prv_files) > 1:
-        from prove.module_resolver import build_module_registry
-
-        local_modules = build_module_registry(prv_files)  # type: ignore[assignment]
-
-    changed = 0
-    checked = 0
-    skipped = 0
-    changed_files: list[tuple[Path, str]] = []  # (path, formatted_source)
-    for prv_file in prv_files:
-        source = prv_file.read_text()
-        filename = str(prv_file)
-        try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
-        except CompileError as e:
-            skipped += 1
-            renderer = DiagnosticRenderer(color=True)
-            for diag in e.diagnostics:
-                click.echo(renderer.render(diag), err=True)
-            continue
-
-        checked += 1
-        symbols, diagnostics = _try_check(source, filename, local_modules=local_modules)
-        formatter = ProveFormatter(symbols=symbols, diagnostics=diagnostics)
-        formatted = formatter.format(module)
-        if formatted != source:
-            changed += 1
-            if status:
-                click.echo(f"would reformat {filename}")
-            else:
-                prv_file.write_text(formatted)
-                changed_files.append((prv_file, formatted))
-                click.echo(f"formatted {filename}")
-
-    # --- .md files (only with --md) ---
-    if md and target.is_dir():
-        for md_file in sorted(target.rglob("*.md")):
-            original = md_file.read_text()
-            result = _format_md_prove_blocks(original)
-            checked += 1
-            if result != original:
-                changed += 1
-                filename = str(md_file)
-                if status:
-                    click.echo(f"would reformat {filename}")
-                else:
-                    md_file.write_text(result)
-                    click.echo(f"formatted {filename}")
-
-    # --- summary ---
-    parts = [f"{checked} file(s) checked"]
-    if skipped:
-        parts.append(f"{skipped} skipped (parse errors)")
-    if changed:
-        verb = "would reformat" if status else "reformatted"
-        click.echo(f"{changed} file(s) {verb}, {', '.join(parts)}.")
-    else:
-        click.echo(f"{', '.join(parts)}, all already formatted.")
-
-    # Update cache for changed .prv files
-    if changed_files and not status:
-        try:
-            from prove.lsp import _ProjectIndexer
-
-            root = _ProjectIndexer._find_root(target)
-            indexer = _ProjectIndexer(root)
-            indexer.index_all_files()
-        except Exception:
-            pass
-
-    if status and changed:
-        raise SystemExit(1)
+    raise SystemExit(run_format(path, status=status, use_stdin=use_stdin, md=md))
 
 
 @main.command()
@@ -937,6 +177,7 @@ def lsp() -> None:
     from prove.lsp import main as lsp_main
 
     lsp_main()
+    raise SystemExit(0)
 
 
 @advanced.command()
@@ -1092,7 +333,6 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
 @click.option("--nlp/--no-nlp", default=None, help="Force NLP backend on/off.")
 def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
     """Generate function stubs from narrative or intent."""
-    _warn_no_nlp()
     if nlp is not None:
         _apply_nlp_override(nlp)
 
@@ -1117,7 +357,6 @@ def intent(
     path: str, status: bool, drift: bool, gen: bool, dry_run: bool, nlp: bool | None
 ) -> None:
     """Work with .intent project declaration files."""
-    _warn_no_nlp()
     if nlp is not None:
         _apply_nlp_override(nlp)
 

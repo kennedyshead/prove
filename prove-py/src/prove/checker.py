@@ -2981,13 +2981,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name in variant_names:
-                    if arm.pattern.name in covered:
-                        self._warn(
+                    if arm.pattern.name in covered and not arm.pattern.fields:
+                        self._warning(
                             "W305",
                             f"duplicate match arm for variant '{arm.pattern.name}'",
                             arm.pattern.span,
                         )
-                    covered.add(arm.pattern.name)
+                    if not arm.pattern.fields:
+                        covered.add(arm.pattern.name)
                 else:
                     self._error("E370", f"unknown variant '{arm.pattern.name}'", arm.pattern.span)
             elif isinstance(arm.pattern, WildcardPattern):
@@ -3033,13 +3034,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         for arm in expr.arms:
             if isinstance(arm.pattern, VariantPattern):
                 if arm.pattern.name in required:
-                    if arm.pattern.name in covered:
-                        self._warn(
+                    if arm.pattern.name in covered and not arm.pattern.fields:
+                        self._warning(
                             "W305",
                             f"duplicate match arm for variant '{arm.pattern.name}'",
                             arm.pattern.span,
                         )
-                    covered.add(arm.pattern.name)
+                    if not arm.pattern.fields:
+                        covered.add(arm.pattern.name)
             elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                 has_wildcard = True
 

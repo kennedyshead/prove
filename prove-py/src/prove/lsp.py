@@ -1019,6 +1019,36 @@ def _extract_context_tokens(source: str, position: lsp.Position, n: int = 2) -> 
     return result
 
 
+def _extract_row_context_tokens(source: str, position: lsp.Position, n: int = 2) -> list[str]:
+    """Return the last n non-whitespace tokens from the current row only (before cursor).
+
+    Unlike _extract_context_tokens, this never crosses line boundaries — the
+    entire current row is available as context. Returns '<START>' sentinels
+    when fewer than n tokens exist on the row.
+    """
+    lines = source.splitlines()
+    line_idx = position.line
+    col = position.character
+
+    if line_idx >= len(lines):
+        return ["<START>"] * n
+
+    row_text = lines[line_idx][:col]
+
+    try:
+        tokens = Lexer(row_text, "<completion>").lex()
+    except Exception:
+        return ["<START>"] * n
+
+    filtered = [t for t in tokens if t.kind not in _INDEXER_SKIP_KINDS]
+    result: list[str] = []
+    for tok in filtered[-n:]:
+        result.append(_tok_text(tok.kind, tok.value))
+    while len(result) < n:
+        result.insert(0, "<START>")
+    return result
+
+
 # ── Prose context detection (Phase 5a) ───────────────────────────────────
 
 _PROSE_BLOCK_KEYWORDS = frozenset({"intent", "chosen", "why_not"})
@@ -1342,8 +1372,13 @@ def _from_block_ngram_complete(
     except Exception:
         return []
 
-    context = _extract_context_tokens(source, position, n=2)
-    prev2, prev1 = context[0], context[1]
+    row_context = _extract_row_context_tokens(source, position, n=2)
+    if row_context[1] != "<START>":
+        # Current row has tokens — use them for tightest context
+        prev2, prev1 = row_context[0], row_context[1]
+    else:
+        context = _extract_context_tokens(source, position, n=2)
+        prev2, prev1 = context[0], context[1]
 
     lines = source.splitlines()
     line_idx = position.line
@@ -1419,8 +1454,13 @@ def _ml_completions(
     if _project_indexer is None:
         return []
 
-    context = _extract_context_tokens(source, position, n=2)
-    prev2, prev1 = context[0], context[1]
+    row_context = _extract_row_context_tokens(source, position, n=2)
+    if row_context[1] != "<START>":
+        # Current row has tokens — use them for tightest context
+        prev2, prev1 = row_context[0], row_context[1]
+    else:
+        context = _extract_context_tokens(source, position, n=2)
+        prev2, prev1 = context[0], context[1]
 
     # Extract current partial word as prefix filter
     lines = source.splitlines()

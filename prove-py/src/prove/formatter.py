@@ -832,6 +832,12 @@ class ProveFormatter:
                     break
                 col += len(arg_strs[i]) + 2  # skip past this arg + ", "
 
+            # Fall back to per-argument multiline: args aligned under the first
+            if len(arg_strs) > 1:
+                cont = " " * (len(func) + 1)
+                sep = ",\n" + cont
+                return f"{func}({sep.join(arg_strs)}){suffix}"
+
         return result
 
     def _format_lambda(self, expr: LambdaExpr) -> str:
