@@ -36,6 +36,6 @@ from
         Some("check") => check(sub_arguments, config)!
         Some("format") => format(sub_arguments, config)!
         Some("lsp") => lsp(sub_arguments, config)!
-        Some("new") => new(sub_arguments, config)!
+        Some("new") => new(sub_arguments)!
         Some("test") => test(sub_arguments, config)!
         _ => console(HELP_TXT)
