@@ -58,6 +58,7 @@ bool         prove_io_dir_validates(Prove_String *path);
 void         prove_io_init_args(int argc, char **argv);
 Prove_List  *prove_io_process_inputs(void);
 bool         prove_io_process_validates(Prove_String *value);
+Prove_String *prove_io_process_cwd(void);
 
 /* ── File handle streaming ───────────────────────────────────── */
 

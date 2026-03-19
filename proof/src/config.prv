@@ -1,6 +1,7 @@
 module Config
-  narrative: """Handles config parsing and transforms it to a Config type"""
+  narrative: """Inputs a prove.toml and transforms it to a Config type"""
   Parse creates toml validates toml
+  System inputs file
 
   type Package is
     name String
@@ -30,8 +31,15 @@ module Config
     test Test
     style Style
 
+  PROVE_TOML as String = "prove.toml"
+
+inputs config() Config
+from
+    load as Result<String, Error> = file(PROVE_TOML)
+    _config(load)
+
 /// Parse the toml data to Config struct
-transforms config(data Result<String, Error>) Config
+transforms _config(data Result<String, Error>) Config
   requires valid toml(data)
 from
     Config(toml(data))

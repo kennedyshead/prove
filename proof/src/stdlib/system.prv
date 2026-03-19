@@ -88,3 +88,7 @@ binary
 /// Write a line to an open file handle
 outputs line(handle File, data String)
 binary
+
+/// Get the current working directory
+inputs cwd() String
+binary

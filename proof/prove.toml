@@ -6,9 +6,9 @@ license = ""
 
 [build]
 target = "native"
-mutate = true 
+mutate = true
 debug = false
-ccache = true
+ccache = false
 c_sources = ["src/python/py_wrappers.c"]
 
 [optimize]
@@ -23,3 +23,4 @@ property_rounds = 1000
 
 [style]
 line_length = 90
+

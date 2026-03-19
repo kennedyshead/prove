@@ -112,6 +112,7 @@ _register_module(
         ("outputs", "close"): "prove_file_close_handle",
         ("creates", "writer"): "prove_file_open_append",
         ("outputs", "line"): "prove_file_writeln_handle",
+        ("inputs", "cwd"): "prove_io_process_cwd",
     },
     overloads={
         ("inputs", "console", "Integer"): "prove_readexactly",

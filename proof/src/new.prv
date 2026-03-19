@@ -4,20 +4,30 @@ module New
   
   outputs the command to python for a pynew  
   """
+  System inputs cwd outputs dir file
+  Path transforms join
+  Types validates string
 
-  foreign "libpython3"
-    py_initialize() Unit
-    py_finalize() Unit
-    py_run_string(code String) Integer
-    py_set_string(name String, value String) Unit
+  MAIN_PRV as String = comptime
+      read("static/scaffold/src/main.prv.txt")
 
-  PYTHON_NEW as String = comptime
-      read("python/new.py")
+  GITIGNORE as String = comptime
+      read("static/scaffold/.gitignore")
 
-outputs pynew(name String) Integer
+  PROVE_TOML as String = comptime
+      read("static/scaffold/prove.toml")
+
+  PROJECT_INTENT as String = comptime
+      read("static/scaffold/project.intent")
+
+outputs new_project(name String)!
+  requires valid string(name)
 from
-    py_initialize()
-    py_set_string("name", name)
-    result as Integer = py_run_string(PYTHON_NEW)
-    py_finalize()
-    result
+    path as String = cwd()
+    project_dir as String = join(path, name)
+    src_dir as String = join(project_dir, "src")
+    dir(src_dir)!
+    file(join(src_dir, "main.prv"), MAIN_PRV)!
+    file(join(project_dir, ".gitignore"), GITIGNORE)!
+    file(join(project_dir, "project.intent"), PROJECT_INTENT)!
+    file(join(project_dir, "prove.toml"), PROVE_TOML)!
