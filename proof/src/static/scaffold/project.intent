@@ -1,0 +1,6 @@
+project new project
+  purpose: A new Prove project
+
+  module Main
+    outputs greeting to console
+
