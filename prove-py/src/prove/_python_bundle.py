@@ -3,10 +3,13 @@
 When the compiler detects a module that uses `foreign "libpython3"` and has
 comptime-read `.py` files, this module:
   1. Scans those .py entry points for Python imports (transitively via AST)
-  2. Resolves each import to its installed location via importlib
+  2. Resolves each import to its exact .py file via importlib
   3. Skips stdlib packages (only bundles third-party site-packages)
-  4. Zips all .py files from the found packages
+  4. Zips only the reachable files (not entire package trees)
   5. Writes prove_bundle_data.h as a C byte array into the build gen dir
+
+When standalone=True, also bundles all transitively-imported stdlib .py files
+so the binary runs without a Python installation.
 
 The generated header is then #included by py_wrappers.c, which writes the
 zip to a temp file and prepends it to sys.path at runtime.
@@ -21,87 +24,243 @@ import os
 import zipfile
 from pathlib import Path
 
-
-def _parse_imports(py_file: Path) -> set[str]:
-    """Return top-level package names imported by a single .py file."""
-    try:
-        tree = ast.parse(py_file.read_text(encoding="utf-8"))
-    except (SyntaxError, OSError):
-        return set()
-
-    names: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                names.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and node.level == 0:
-                names.add(node.module.split(".")[0])
-    return names
-
-
-def _collect_entry_imports(py_files: set[Path]) -> set[str]:
-    """Collect all top-level package names imported by the entry .py files."""
-    names: set[str] = set()
-    for f in py_files:
-        names.update(_parse_imports(f))
-    return names
-
-
-def _find_third_party_packages(names: set[str]) -> dict[str, Path]:
-    """Map package name → package root directory for non-stdlib packages.
-
-    Skips stdlib modules (via sys.stdlib_module_names) and built-ins.
-    Includes editable installs whose source lives outside site-packages.
-    """
-    import sys
-
-    stdlib_names: frozenset[str] = getattr(sys, "stdlib_module_names", frozenset())
-    result: dict[str, Path] = {}
-
-    for name in sorted(names):
-        if name in stdlib_names or name in sys.builtin_module_names:
-            continue
-        try:
-            spec = importlib.util.find_spec(name)
-        except (ModuleNotFoundError, ValueError):
-            continue
-        if spec is None or not spec.submodule_search_locations:
-            continue
-
-        pkg_path = Path(next(iter(spec.submodule_search_locations))).resolve()
-        result[name] = pkg_path
-
-    return result
-
-
+_MAX_SCAN_BYTES = 2 * 1024 * 1024  # skip files larger than 2 MB (huge generated data files)
 _SKIP_SUFFIXES = frozenset({".pyc", ".pyo"})
 _SKIP_DIRS = frozenset({"__pycache__"})
 
 
-def _zip_packages(packages: dict[str, Path]) -> bytes:
-    """Create a zip archive containing all package data from the given packages.
+def _parse_imports(py_file: Path, package: str | None = None) -> set[str]:
+    """Return dotted module names imported by a single .py file.
 
-    Includes .py source files AND package data files (e.g. .prv stdlib sources
-    read via importlib.resources). Skips compiled bytecode and __pycache__.
+    Returns both bare module names (`import foo.bar`) and from-import targets
+    (`from foo import bar` yields `foo` and `foo.bar` — bar may be a submodule).
+    When `package` is provided, relative imports are resolved against it so that
+    intra-package imports (e.g. `from . import converters`) are followed.
+    Files over _MAX_SCAN_BYTES are skipped (machine-generated data files).
+    """
+    try:
+        if py_file.stat().st_size > _MAX_SCAN_BYTES:
+            return set()
+        tree = ast.parse(py_file.read_text(encoding="utf-8", errors="replace"))
+    except (SyntaxError, OSError):
+        return set()
 
-    Uses os.walk with followlinks=True so that symlinked sub-packages (e.g.
-    prove/runtime -> proof/src/runtime) are included in the archive.
+    names: set[str] = set()
+    pkg_parts = package.split(".") if package else []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                names.add(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                if node.module:
+                    names.add(node.module)
+                    # 'from foo import bar' — bar may be a submodule
+                    for alias in node.names:
+                        names.add(f"{node.module}.{alias.name}")
+            elif pkg_parts and node.level <= len(pkg_parts):
+                # Resolve relative import: level=1 → current package, level=2 → parent, …
+                base_parts = pkg_parts[: len(pkg_parts) - (node.level - 1)]
+                if node.module:
+                    base_parts = base_parts + node.module.split(".")
+                base = ".".join(base_parts)
+                if base:
+                    names.add(base)
+                    for alias in node.names:
+                        names.add(f"{base}.{alias.name}")
+    return names
 
-    The archive uses paths relative to each package's parent so that
-    `import prove` works after adding the zip to sys.path.
+
+def _find_used_files(entry_files: set[Path]) -> dict[str, Path]:
+    """Transitively resolve third-party files reachable via imports.
+
+    Starts from entry .py files and follows the import graph file-by-file,
+    only including modules that are actually imported.  Returns
+    {archive_path: fs_path} where archive_path is relative to the top-level
+    package's site-packages parent so the zip is directly importable.
+
+    Non-py package data files (e.g. .prv, .json loaded via importlib.resources)
+    are included for every top-level package touched.
+    """
+    import sys
+
+    stdlib_names: frozenset[str] = getattr(sys, "stdlib_module_names", frozenset())
+
+    result: dict[str, Path] = {}  # archive_path -> fs_path
+    pkg_parents: dict[str, Path] = {}  # top pkg name -> site-packages dir
+    visited: set[str] = set()  # dotted module names already resolved
+    # Each entry: (file_path, package_name_or_None)
+    # package_name is used to resolve relative imports; None for unknown entry files.
+    scan_queue: list[tuple[Path, str | None]] = [(f, None) for f in entry_files]
+
+    def _pkg_parent(top: str) -> Path | None:
+        if top in pkg_parents:
+            return pkg_parents[top]
+        try:
+            spec = importlib.util.find_spec(top)
+        except (ModuleNotFoundError, ValueError):
+            return None
+        if spec and spec.submodule_search_locations:
+            parent = Path(next(iter(spec.submodule_search_locations))).resolve().parent
+            pkg_parents[top] = parent
+            return parent
+        return None
+
+    def _register(module_name: str, origin: Path) -> None:
+        top = module_name.split(".")[0]
+        parent = _pkg_parent(top)
+        if parent:
+            try:
+                result[str(origin.resolve().relative_to(parent))] = origin
+            except ValueError:
+                pass
+
+    while scan_queue:
+        files_this_round = list(scan_queue)
+        scan_queue = []
+
+        for f, file_package in files_this_round:
+            for module_name in _parse_imports(f, package=file_package):
+                top = module_name.split(".")[0]
+                if top in stdlib_names or top in sys.builtin_module_names:
+                    continue
+                if module_name in visited:
+                    continue
+                visited.add(module_name)
+
+                try:
+                    spec = importlib.util.find_spec(module_name)
+                except Exception:
+                    # Covers ModuleNotFoundError, ValueError, AssertionError, and
+                    # platform-specific modules (e.g. click._winconsole on non-Windows)
+                    # that raise unconditionally on import.
+                    continue
+                if spec is None or not spec.origin or not spec.origin.endswith(".py"):
+                    continue
+
+                origin = Path(spec.origin)
+                _register(module_name, origin)
+                # Compute the package name for this file so its relative imports resolve.
+                # __init__.py files ARE the package; regular files belong to the parent package.
+                if origin.name == "__init__.py":
+                    child_package: str | None = module_name
+                else:
+                    parent = ".".join(module_name.split(".")[:-1])
+                    child_package = parent or None
+                scan_queue.append((origin, child_package))
+
+                # Ensure all parent package __init__.py files are present
+                parts = module_name.split(".")
+                for i in range(1, len(parts)):
+                    parent_name = ".".join(parts[:i])
+                    if parent_name in visited:
+                        continue
+                    visited.add(parent_name)
+                    try:
+                        pspec = importlib.util.find_spec(parent_name)
+                    except (ModuleNotFoundError, ValueError):
+                        continue
+                    if pspec and pspec.origin and pspec.origin.endswith(".py"):
+                        porigin = Path(pspec.origin)
+                        _register(parent_name, porigin)
+                        # Parent __init__.py — package name is the module name itself
+                        scan_queue.append((porigin, parent_name))
+
+    # Include non-py package data for every top-level package we touched
+    for pkg_name, parent_dir in pkg_parents.items():
+        pkg_dir = parent_dir / pkg_name
+        if not pkg_dir.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(pkg_dir, followlinks=True):
+            dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
+            for fname in sorted(filenames):
+                f = Path(dirpath) / fname
+                if f.suffix in _SKIP_SUFFIXES or f.suffix == ".py":
+                    continue
+                try:
+                    result[str(f.resolve().relative_to(parent_dir))] = f
+                except ValueError:
+                    pass
+
+    return result
+
+
+def _find_stdlib_modules(
+    entry_files: set[Path],
+    bundled_files: dict[str, Path],
+) -> dict[str, Path]:
+    """Transitively find stdlib .py modules imported by entry files and bundled files.
+
+    Returns a dict of {archive_path: fs_path} where archive_path is relative
+    to the stdlib directory (so `import pathlib` extracts as `pathlib.py` at the
+    root of the zip, making it importable after zip is on sys.path).
+    """
+    import sys
+    import sysconfig
+
+    stdlib_dir = Path(sysconfig.get_path("stdlib"))
+    stdlib_names: frozenset[str] = getattr(sys, "stdlib_module_names", frozenset())
+
+    scan_queue: list[Path] = list(entry_files)
+    scan_queue.extend(p for p in bundled_files.values() if p.suffix == ".py")
+
+    visited: set[str] = set()
+    result: dict[str, Path] = {}
+
+    while scan_queue:
+        f = scan_queue.pop()
+        for name in _parse_imports(f):
+            top = name.split(".")[0]
+            if top in visited or top not in stdlib_names:
+                continue
+            visited.add(top)
+            try:
+                spec = importlib.util.find_spec(top)
+            except (ModuleNotFoundError, ValueError):
+                continue
+            if spec is None:
+                continue
+            if spec.submodule_search_locations:
+                # Package (directory) — e.g. email, xml, importlib
+                pkg_dir = Path(next(iter(spec.submodule_search_locations)))
+                for py_file in sorted(pkg_dir.rglob("*.py")):
+                    if "__pycache__" in py_file.parts:
+                        continue
+                    try:
+                        arc = str(py_file.relative_to(stdlib_dir))
+                    except ValueError:
+                        arc = py_file.name
+                    result[arc] = py_file
+                    scan_queue.append(py_file)
+            elif spec.origin and spec.origin.endswith(".py"):
+                origin = Path(spec.origin)
+                try:
+                    arc = str(origin.relative_to(stdlib_dir))
+                except ValueError:
+                    arc = origin.name
+                result[arc] = origin
+                scan_queue.append(origin)
+
+    return result
+
+
+def _zip_files(
+    files: dict[str, Path],
+    stdlib_files: dict[str, Path] | None = None,
+) -> bytes:
+    """Zip the given files at their archive paths.
+
+    files: {archive_path: fs_path} for third-party packages
+    stdlib_files: {archive_path: fs_path} for stdlib modules (standalone mode)
     """
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for _name, pkg_root in sorted(packages.items()):
-            parent = pkg_root.parent
-            for dirpath, dirnames, filenames in os.walk(pkg_root, followlinks=True):
-                dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
-                for fname in sorted(filenames):
-                    f = Path(dirpath) / fname
-                    if f.suffix in _SKIP_SUFFIXES:
-                        continue
-                    zf.write(f, str(f.relative_to(parent)))
+        for arc_path, fs_path in sorted(files.items()):
+            if fs_path.is_file():
+                zf.write(fs_path, arc_path)
+        if stdlib_files:
+            for arc_path, fs_path in sorted(stdlib_files.items()):
+                zf.write(fs_path, arc_path)
     return buf.getvalue()
 
 
@@ -130,13 +289,18 @@ def maybe_generate_bundle(
     modules_and_symbols: list,
     comptime_deps: set[Path],
     gen_dir: Path,
+    *,
+    standalone: bool = False,
 ) -> bool:
     """Generate prove_bundle_data.h if the project embeds Python.
 
     Returns True if the header was written, False if the project does not
     use foreign libpython3 (no-op for projects that don't embed Python).
 
-    Raises SystemExit with a clear message if no bundleable packages are found
+    When standalone=True, also bundles all transitively-imported Python stdlib
+    .py files so the binary runs without a Python installation on the target.
+
+    Raises SystemExit with a clear message if no bundleable files are found
     so the error surfaces before C compilation rather than as a runtime crash.
     """
     from prove.ast_nodes import ModuleDecl
@@ -156,32 +320,37 @@ def maybe_generate_bundle(
     if not py_entry_files:
         return False
 
-    import_names = _collect_entry_imports(py_entry_files)
-    packages = _find_third_party_packages(import_names)
+    files = _find_used_files(py_entry_files)
 
-    if not packages:
+    if not files:
         raise SystemExit(
-            "error: foreign libpython3 detected but no bundleable packages found.\n"
+            "error: foreign libpython3 detected but no bundleable files found.\n"
             "       Make sure the required packages are installed in the active venv.\n"
-            f"       Scanned imports: {sorted(import_names)}"
+            f"       Entry files scanned: {sorted(str(p) for p in py_entry_files)}"
         )
 
-    # If all found packages live inside a zip (i.e. we are already running from
-    # a bundle), skip regeneration — the binary already has the bundle baked in.
-    if all(not pkg_path.is_dir() for pkg_path in packages.values()):
+    # If all resolved files are inside a zip already (running from a bundle),
+    # skip regeneration — the binary already has the bundle baked in.
+    if all(not fs_path.is_file() for fs_path in files.values()):
         return False
 
-    data = _zip_packages(packages)
+    # Do NOT bundle stdlib .py files into the zip.  The statically-linked
+    # Python interpreter already has its stdlib prefix baked in and will find
+    # os/sys/glob/pathlib/etc. from the system.  Putting stdlib files in the
+    # zip prepends them onto sys.path *after* Py_Initialize() has already
+    # imported some stdlib modules from the system path, causing version
+    # mismatches (e.g. glob.py from the zip lacks symbols that the
+    # already-loaded pathlib expects from the system glob).
+    data = _zip_files(files)
     out_path = gen_dir / "prove_bundle_data.h"
     _write_c_header(data, out_path)
 
-    pkg_names = ", ".join(sorted(packages))
-    total_files = sum(
-        1
-        for p in packages.values()
-        for _, _, filenames in os.walk(p, followlinks=True)
-        for fname in filenames
-        if not fname.endswith(tuple(_SKIP_SUFFIXES))
+    py_count = sum(1 for p in files if p.endswith(".py"))
+    data_count = len(files) - py_count
+    data_note = f" + {data_count} data files" if data_count else ""
+    libpython_note = " + libpython3 (static)" if standalone else ""
+    print(
+        f"bundled python packages → {py_count} source files{data_note},"
+        f" {len(data):,} bytes{libpython_note}"
     )
-    print(f"bundled python packages [{pkg_names}] → {total_files} files, {len(data):,} bytes")
     return True
