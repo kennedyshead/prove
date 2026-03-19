@@ -54,4 +54,18 @@ Prove_List *prove_list_ops_range(int64_t start, int64_t end);
 
 Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step);
 
+/* ── Get (unchecked indexed access) ─────────────────────────── */
+
+int64_t      prove_list_ops_get_int(Prove_List *list, int64_t idx);
+Prove_String *prove_list_ops_get_str(Prove_List *list, int64_t idx);
+double       prove_list_ops_get_float(Prove_List *list, int64_t idx);
+void        *prove_list_ops_get_value(Prove_List *list, int64_t idx);
+
+/* ── Get safe (bounds-checked, returns Option) ───────────────── */
+
+Prove_Option prove_list_ops_get_safe_int(Prove_List *list, int64_t idx);
+Prove_Option prove_list_ops_get_safe_str(Prove_List *list, int64_t idx);
+Prove_Option prove_list_ops_get_safe_float(Prove_List *list, int64_t idx);
+Prove_Option prove_list_ops_get_safe_value(Prove_List *list, int64_t idx);
+
 #endif /* PROVE_LIST_OPS_H */

@@ -13,16 +13,92 @@ binary
 reads first(items List<Value>) Option<Value>
 binary
 
+/// Get the first element of an array
+reads first(arr Array<Integer>) Option<Integer>
+binary
+
+/// Get the first element of an array
+reads first(arr Array<Boolean>) Option<Boolean>
+binary
+
+/// Get the first element of an array
+reads first(arr Array<Decimal>) Option<Decimal>
+binary
+
 /// Get the last element of a sequence
 reads last(items List<Value>) Option<Value>
+binary
+
+/// Get the last element of an array
+reads last(arr Array<Integer>) Option<Integer>
+binary
+
+/// Get the last element of an array
+reads last(arr Array<Boolean>) Option<Boolean>
+binary
+
+/// Get the last element of an array
+reads last(arr Array<Decimal>) Option<Decimal>
 binary
 
 /// Get the element at a position in a sequence, or None if out of bounds
 reads value(position Integer, items List<Value>) Option<Value>
 binary
 
+/// Get element at index (unchecked)
+reads get(items List<Integer>, idx Integer) Integer
+binary
+
+/// Get element at index (unchecked)
+reads get(items List<String>, idx Integer) String
+binary
+
+/// Get element at index (unchecked)
+reads get(items List<Float>, idx Integer) Float
+binary
+
+/// Get element at index (unchecked)
+reads get(items List<Decimal>, idx Integer) Decimal
+binary
+
+/// Get element at index (unchecked)
+reads get(items List<Value>, idx Integer) Value
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(items List<Integer>, idx Integer) Option<Integer>
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(items List<String>, idx Integer) Option<String>
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(items List<Float>, idx Integer) Option<Float>
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(items List<Decimal>, idx Integer) Option<Decimal>
+binary
+
+/// Get element at index, or None if out of bounds
+reads get_safe(items List<Value>, idx Integer) Option<Value>
+binary
+
 /// Check if a sequence is empty
 validates empty(items List<Value>)
+binary
+
+/// Check if an array is empty
+validates empty(arr Array<Integer>)
+binary
+
+/// Check if an array is empty
+validates empty(arr Array<Boolean>)
+binary
+
+/// Check if an array is empty
+validates empty(arr Array<Decimal>)
 binary
 
 /// Check if an integer is in a sequence
@@ -33,6 +109,14 @@ binary
 validates contains(items List<String>, value String)
 binary
 
+/// Check if an integer is in an array
+validates contains(arr Array<Integer>, value Integer)
+binary
+
+/// Check if a boolean is in an array
+validates contains(arr Array<Boolean>, value Boolean)
+binary
+
 /// Find the index of an integer in a sequence
 reads index(items List<Integer>, value Integer) Option<Integer>
 binary
@@ -41,12 +125,40 @@ binary
 reads index(items List<String>, value String) Option<Integer>
 binary
 
+/// Find the index of an integer in an array
+reads index(arr Array<Integer>, value Integer) Option<Integer>
+binary
+
 /// Get a slice of a sequence from start to end (exclusive)
 transforms slice(items List<Value>, start Integer, end Integer) List<Value>
 binary
 
+/// Get a slice of an array from start to end (exclusive)
+transforms slice(arr Array<Integer>, start Integer, end Integer) Array<Integer>
+binary
+
+/// Get a slice of an array from start to end (exclusive)
+transforms slice(arr Array<Boolean>, start Integer, end Integer) Array<Boolean>
+binary
+
+/// Get a slice of an array from start to end (exclusive)
+transforms slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
+binary
+
 /// Reverse a sequence
 transforms reverse(items List<Value>) List<Value>
+binary
+
+/// Reverse an array
+transforms reverse(arr Array<Integer>) Array<Integer>
+binary
+
+/// Reverse an array
+transforms reverse(arr Array<Boolean>) Array<Boolean>
+binary
+
+/// Reverse an array
+transforms reverse(arr Array<Decimal>) Array<Decimal>
 binary
 
 /// Sort a sequence of integers
@@ -55,6 +167,54 @@ binary
 
 /// Sort a sequence of strings
 transforms sort(items List<String>) List<String>
+binary
+
+/// Sort an array of integers
+transforms sort(arr Array<Integer>) Array<Integer>
+binary
+
+/// Sort an array of decimals
+transforms sort(arr Array<Decimal>) Array<Decimal>
+binary
+
+/// Apply function to every element, returning a new sequence
+transforms map(items List<Integer>, f Function<Integer, Integer>) List<Integer>
+binary
+
+/// Apply function to every element, returning a new sequence
+transforms map(items List<String>, f Function<String, String>) List<String>
+binary
+
+/// Accumulate elements with function, starting from initial value
+reads reduce(
+    items List<Integer>,
+    init Integer,
+    f Function<Integer, Integer, Integer>
+) Integer
+binary
+
+/// Accumulate elements with function, starting from initial value
+reads reduce(
+    items List<String>,
+    init String,
+    f Function<String, String, String>
+) String
+binary
+
+/// Run function for each element; returns Unit
+outputs each(items List<Integer>, f Function<Integer, Unit>)
+binary
+
+/// Run function for each element; returns Unit
+outputs each(items List<String>, f Function<String, Unit>)
+binary
+
+/// Keep elements matching predicate
+creates filter(items List<Integer>, p Function<Integer, Boolean>) List<Integer>
+binary
+
+/// Keep elements matching predicate
+creates filter(items List<String>, p Function<String, Boolean>) List<String>
 binary
 
 /// Create a sequence of integers from start to end (exclusive)
