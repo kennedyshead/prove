@@ -121,13 +121,15 @@ These commands live under `prove advanced` and are intended for development, deb
 
 ### `prove advanced setup`
 
-Download pre-trained LSP ML completion stores.
+Re-download ML stores to `~/.prove/`.
 
 ```bash
 prove advanced setup
 ```
 
-Downloads the pre-trained ML stores used by the LSP for code completion. For developers building the stores from scratch, run `pip install 'prove[nlp]'` and then `python scripts/build_stores.py`.
+ML stores are downloaded automatically to `~/.prove/` on first use — you do not need to run this command. Use it if your stores are corrupted or you want a clean reinstall.
+
+For developers building stores from scratch (requires NLP deps): `pip install 'prove[nlp]'` then `python scripts/build_stores.py`.
 
 ---
 

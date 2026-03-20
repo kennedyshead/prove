@@ -66,6 +66,7 @@ def _format_excerpt(filename: str, original: str, formatted: str) -> str:
 def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, int]:
     """Lex, parse, and check a single .prv file. Returns (errors, warnings, format_issues)."""
     from prove.checker import Checker
+    from prove.config import discover_prv_files
     from prove.errors import CompileError, DiagnosticRenderer, Severity
     from prove.formatter import ProveFormatter
     from prove.lexer import Lexer
@@ -83,7 +84,31 @@ def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, in
             sys.stderr.write(renderer.render(diag) + "\n")
         return len(e.diagnostics), 0, 0
 
-    checker = Checker()
+    # Discover sibling modules (including subdirectories) for cross-file imports
+    local_modules = None
+    project_dir = None
+    try:
+        from prove.config import find_config
+
+        config_path = find_config(filepath)
+        project_dir = config_path.parent
+        src_dir = project_dir / "src"
+        if not src_dir.is_dir():
+            src_dir = project_dir
+        prv_files = discover_prv_files(src_dir)
+        if len(prv_files) > 1:
+            from prove.module_resolver import build_module_registry
+
+            local_modules = build_module_registry(prv_files)
+    except FileNotFoundError:
+        # No prove.toml found — try immediate parent for siblings
+        prv_files = discover_prv_files(filepath.parent)
+        if len(prv_files) > 1:
+            from prove.module_resolver import build_module_registry
+
+            local_modules = build_module_registry(prv_files)
+
+    checker = Checker(local_modules=local_modules, project_dir=project_dir)
     checker._coherence = coherence
     symbols = checker.check(module)
 

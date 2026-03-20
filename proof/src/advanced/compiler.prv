@@ -1,0 +1,42 @@
+module Compiler
+  narrative: """
+  Handles the compiler.
+
+  outputs the command to python for a pycompiler
+  """
+  System outputs console
+  Sequence validates contains
+  Parse reads object creates arguments
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+
+  type ArgValues is
+    mode String
+    output Option<String>
+
+  type CompilerArguments is
+    args List<String>
+    kwargs ArgValues
+
+  PYTHON_COMPILER as String = comptime
+      read("../python/compiler.py")
+
+outputs pycompiler(arguments List<String>) Integer
+  requires contains(arguments, "--file")
+from
+    args as CompilerArguments = CompilerArguments(object(arguments(arguments)))
+    py_initialize()
+    py_set_string("file", args.args[-1])
+    py_set_string("mode", args.kwargs.mode)
+    match args.kwargs.output
+        Some(output) =>
+            console(f"Output path set to {output}")
+            py_set_string("output", output)
+        _ => console("No output path given")
+    result as Integer = py_run_string(PYTHON_COMPILER)
+    py_finalize()
+    result

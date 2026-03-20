@@ -88,7 +88,7 @@ def _apply_nlp_override(enabled: bool) -> None:
     if enabled:
         if not nlp_mod.has_nlp_backend():
             click.echo("error: --nlp requested but no NLP backend available", err=True)
-            click.echo("  run: prove setup", err=True)
+            click.echo("  run: pip install 'prove[nlp]'", err=True)
             raise SystemExit(1)
     else:
         # Disable by marking both backends as checked but unavailable
@@ -535,85 +535,25 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(source, nl=False)
 
 
-def _download_lsp_ml_stores() -> bool:
-    """Download pre-trained LSP ML stores from GitHub releases.
-
-    Returns True if successful, False otherwise.
-    """
-    import tarfile
-    import tempfile
-    import urllib.request
-
-    click.echo("Downloading pre-trained LSP ML stores...")
-
-    # Find the latest release asset URL
-    api_url = "https://api.github.com/repos/kennedyshead/prove/releases/latest"
-    try:
-        with urllib.request.urlopen(api_url, timeout=10) as response:
-            import json
-
-            release = json.loads(response.read().decode())
-
-        asset_url = None
-        for asset in release.get("assets", []):
-            if asset.get("name") == "lsp-ml-stores.tar.gz":
-                asset_url = asset.get("browser_download_url")
-                break
-
-        if not asset_url:
-            click.echo("  No pre-trained stores found in latest release.")
-            return False
-
-        # Download and extract
-        click.echo(f"  Downloading {asset_url}...")
-        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
-            tmp_path = tmp.name
-
-        urllib.request.urlretrieve(asset_url, tmp_path)
-
-        # Extract to data/
-        data_dir = Path(__file__).resolve().parent.parent / "data"
-        data_dir.mkdir(parents=True, exist_ok=True)
-
-        with tarfile.open(tmp_path, "r:gz") as tar:
-            tar.extractall(data_dir)
-
-        Path(tmp_path).unlink()
-        click.echo("  Pre-trained stores installed.")
-        return True
-
-    except Exception as e:
-        click.echo(f"  Download failed: {e}", err=True)
-        return False
-
-
 @advanced.command()
 def setup() -> None:
-    """Set up Prove tools and data stores.
+    """Re-download ML stores to ~/.prove/.
 
-    Downloads pre-trained LSP ML completion stores. For developers building
-    the stores from scratch, run: pip install 'prove[nlp]' && python scripts/build_stores.py
+    Downloads pre-trained LSP ML completion stores from the latest release.
+    Stores are also downloaded automatically on first use — run this if
+    something is wrong with your stores and you want a clean reinstall.
+
+    For developers building stores from scratch:
+        pip install 'prove[nlp]' && python scripts/build_stores.py
     """
-    # Download pre-trained LSP ML stores (no NLP deps needed)
-    _download_lsp_ml_stores()
+    from prove.nlp_store import download_stores
 
-    # Try building NLP stores if deps are available (optional)
-    click.echo("\nBuilding NLP data stores (optional)...")
-    try:
-        import importlib.util
-
-        script = Path(__file__).parent.parent / "scripts" / "build_stores.py"
-        if script.exists():
-            spec = importlib.util.spec_from_file_location("build_stores", script)
-            if spec and spec.loader:
-                build = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(build)
-                build.build_lsp_ml_stores(package_only=True)
-                click.echo("  NLP stores updated.")
-    except Exception:
-        pass
-
-    click.echo("\nSetup complete.")
+    ok = download_stores()
+    if ok:
+        click.echo("Setup complete.")
+    else:
+        click.echo("Setup failed — check your internet connection.", err=True)
+        raise SystemExit(1)
 
 
 @advanced.command("setup-nlp")

@@ -307,11 +307,11 @@ class TestFormatterImports:
         # Import should be multi-line with indented continuation
         import_lines = [ln for ln in lines[1:] if ln.strip()]
         assert len(import_lines) > 1
-        # First import line starts with module name
-        assert import_lines[0].strip().startswith("Pattern")
-        # Continuation lines are further indented
+        # First import line is just the module name
+        assert import_lines[0].strip() == "Pattern"
+        # Verb group lines are indented: 2 (module) + 2 (group)
         for cont_line in import_lines[1:]:
-            assert cont_line.startswith("    ")  # 2 (module) + 2 (continuation)
+            assert cont_line.startswith("    ")  # 2 (module) + 2 (group indent)
 
 
 class TestFormatterConstants:

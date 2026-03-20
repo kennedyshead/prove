@@ -272,6 +272,42 @@ def _extract_call_targets(
     return targets
 
 
+def _match_arms_have_fail_prop(match_expr: MatchExpr) -> bool:
+    """Return True if any arm body contains a FailPropExpr (failable call).
+
+    A match with failable calls cannot be extracted to a 'matches' verb
+    (which must be pure), so I367 must not be suggested.
+    """
+
+    def _expr_has_fail(expr: Expr) -> bool:
+        if isinstance(expr, FailPropExpr):
+            return True
+        if isinstance(expr, CallExpr):
+            return any(_expr_has_fail(a) for a in expr.args)
+        if isinstance(expr, BinaryExpr):
+            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return _expr_has_fail(expr.operand)
+        if isinstance(expr, PipeExpr):
+            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+        if isinstance(expr, LambdaExpr):
+            return _expr_has_fail(expr.body)
+        if isinstance(expr, AsyncCallExpr):
+            return _expr_has_fail(expr.expr)
+        return False
+
+    def _stmt_has_fail(stmt: Stmt | MatchExpr) -> bool:
+        if isinstance(stmt, ExprStmt):
+            return _expr_has_fail(stmt.expr)
+        if isinstance(stmt, VarDecl) and stmt.value is not None:
+            return _expr_has_fail(stmt.value)
+        if isinstance(stmt, Assignment):
+            return _expr_has_fail(stmt.value)
+        return False
+
+    return any(_stmt_has_fail(stmt) for arm in match_expr.arms for stmt in arm.body)
+
+
 class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     """Semantic analyzer for a single module."""
 
@@ -1721,15 +1757,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 func_name = req_expr.name
                 args = req_expr.args
                 n_args = len(args)
-                sig = self.symbols.resolve_function(
+                # Infer arg types for accurate overload resolution among validates
+                arg_types = [self._infer_expr(a) for a in args]
+                sig = self.symbols.resolve_function_by_types(
                     "validates",
                     func_name,
-                    n_args,
+                    arg_types,
                 )
                 if sig is None:
-                    sig = self.symbols.resolve_function_any(
+                    sig = self.symbols.resolve_function(
+                        "validates",
                         func_name,
-                        arity=n_args,
+                        n_args,
                     )
                 if sig is not None and sig.verb == "validates":
                     mod = sig.module or "_local"
@@ -1749,15 +1788,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             else:
                 continue
             n_args = len(req_expr.args)
-            sig = self.symbols.resolve_function(
+            # Infer arg types for accurate overload resolution among validates
+            arg_types = [self._infer_expr(a) for a in req_expr.args]
+            sig = self.symbols.resolve_function_by_types(
                 "validates",
                 func_name_,
-                n_args,
+                arg_types,
             )
             if sig is None:
-                sig = self.symbols.resolve_function_any(
+                sig = self.symbols.resolve_function(
+                    "validates",
                     func_name_,
-                    arity=n_args,
+                    n_args,
                 )
             if sig is not None and sig.verb == "validates":
                 mod = module_name or sig.module  # type: ignore[assignment]
@@ -2070,7 +2112,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                if len(stmt.arms) >= 3:
+                if len(stmt.arms) >= 3 and not _match_arms_have_fail_prop(stmt):
                     self._info(
                         "I367",
                         "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
@@ -2088,7 +2130,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            if len(expr.arms) >= 3:
+            if len(expr.arms) >= 3 and not _match_arms_have_fail_prop(expr):
                 self._info(
                     "I367",
                     "consider extracting match to a 'matches' verb function for better code flow",
@@ -2391,7 +2433,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return self._infer_index(expr)
         if isinstance(expr, ValidExpr):
             n = len(expr.args) if expr.args is not None else 0
-            sig = self.symbols.resolve_function("validates", expr.name, n)
+            # Use type-aware resolution among validates overloads
+            if expr.args is not None:
+                varg_types = [self._infer_expr(a) for a in expr.args]
+                sig = self.symbols.resolve_function_by_types(
+                    "validates",
+                    expr.name,
+                    varg_types,
+                )
+            else:
+                sig = None
+            if sig is None:
+                sig = self.symbols.resolve_function("validates", expr.name, n)
             if sig is None:
                 sig = self.symbols.resolve_function_any(expr.name, arity=n)
             if sig and sig.module:
@@ -2975,6 +3028,40 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             elif isinstance(subject_type, GenericInstance):
                 # Handle Result<Value, Error> and Option<Value> variant patterns
                 self._check_generic_variant_pattern(pattern, subject_type)
+            elif isinstance(subject_type, RecordType) and pattern.name == subject_type.name:
+                pass  # Record type match — handled elsewhere
+            elif (
+                pattern.name in ("Some", "None")
+                and isinstance(subject_type, PrimitiveType)
+                and subject_type.name
+                in (
+                    "Integer",
+                    "Boolean",
+                    "Decimal",
+                    "Float",
+                    "Byte",
+                    "Unit",
+                    "Character",
+                )
+            ):
+                self._error(
+                    "E371",
+                    f"cannot match variant '{pattern.name}' on value type "
+                    f"'{type_name(subject_type)}'",
+                    pattern.span,
+                )
+            elif pattern.name not in ("Some", "None"):
+                # Non-Option variant on a non-algebraic type
+                self._error(
+                    "E371",
+                    f"cannot match variant '{pattern.name}' on type '{type_name(subject_type)}'",
+                    pattern.span,
+                )
+            else:
+                # Some/None on a pointer type (e.g. String) — null check
+                if pattern.name == "Some" and pattern.fields:
+                    for sub in pattern.fields:
+                        self._check_pattern(sub, subject_type)
         elif isinstance(pattern, WildcardPattern):
             pass  # matches everything
         elif isinstance(pattern, LiteralPattern):

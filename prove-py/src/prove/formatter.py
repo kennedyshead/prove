@@ -562,15 +562,26 @@ class ProveFormatter:
         if len(line) <= self.MAX_LINE_LENGTH:
             return line
 
-        # Over line length: multi-line format with indented continuation
-        lines = []
-        for i, gs in enumerate(group_strings):
-            if i == 0:
-                lines.append(f"{prefix} {gs}")
-            else:
-                lines.append(f"  {gs}")
+        # Over line length: module name on its own line, one verb group per continuation
+        # line; names within a group wrap with deeper indent if needed.
+        GROUP_INDENT = "  "  # 2 spaces (becomes 4 in module context)
+        CONT_INDENT = "    "  # 4 spaces (becomes 6 in module context)
+        result_lines = [prefix]
 
-        return "\n".join(lines)
+        for verb, names in sorted_groups:
+            line_start = f"{GROUP_INDENT}{verb}" if verb else GROUP_INDENT
+
+            current_line = line_start
+            for name in names:
+                candidate = current_line + " " + name
+                if len(candidate) <= self.MAX_LINE_LENGTH:
+                    current_line = candidate
+                else:
+                    result_lines.append(current_line)
+                    current_line = CONT_INDENT + name
+            result_lines.append(current_line)
+
+        return "\n".join(result_lines)
 
     def _split_item_names(self, names: list[str], max_len: int) -> list[str]:
         """Split a list of item names across multiple lines if needed."""

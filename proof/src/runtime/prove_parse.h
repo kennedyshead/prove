@@ -116,6 +116,10 @@ Prove_ByteArray *prove_parse_base64_decode(Prove_String *encoded);
 Prove_String    *prove_parse_base64_encode(Prove_ByteArray *data);
 bool             prove_parse_base64_validates(Prove_String *encoded);
 
+/* ── CLI arguments ─────────────────────────────────────────── */
+
+Prove_Value *prove_parse_arguments(Prove_List *args);
+
 /* ── CSV ───────────────────────────────────────────────────── */
 
 Prove_Result     prove_parse_csv(Prove_String *source);

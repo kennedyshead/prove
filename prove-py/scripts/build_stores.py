@@ -10,20 +10,37 @@ from __future__ import annotations
 from pathlib import Path
 
 from prove._nl_intent import VERB_SYNONYMS
-from prove.store_binary import write_pdat
+from prove.store_binary import read_pdat, write_pdat
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "src" / "prove" / "data"
 
 
 def build_verb_synonyms() -> None:
-    """Write verb_synonyms.dat from the VERB_SYNONYMS dict."""
-    variants: list[tuple[str, list[str]]] = []
-    for canonical, syns in VERB_SYNONYMS.items():
-        for syn in syns:
-            variants.append((syn, [canonical]))
+    """Write verb_synonyms.dat, expanded with spaCy word vectors if available.
 
-    out = DATA_DIR / "verb_synonyms.dat"
-    write_pdat(out, "VerbSynonyms", ["String"], variants)
+    When spaCy and a vector model are available, additional synonyms are
+    discovered via word-vector similarity and merged with the hardcoded list.
+    Falls back to the hardcoded VERB_SYNONYMS when spaCy is not available.
+    """
+    try:
+        from prove.nlp_store import build_verb_synonyms_spacy as _build_spacy
+
+        out = _build_spacy(out_path=DATA_DIR / "verb_synonyms.dat")
+        data = read_pdat(out)
+        hardcoded = sum(len(v) for v in VERB_SYNONYMS.values())
+        expanded = len(data["variants"])
+        print(f"wrote {out} ({expanded} entries, +{expanded - hardcoded} spaCy-expanded)")
+        return
+    except Exception as e:
+        reason = str(e).split("\n")[0].strip() or type(e).__name__
+        print(f"spaCy expansion unavailable ({reason}), using hardcoded synonyms")
+
+    variants: list[tuple[str, list[str]]] = [
+        (syn, [canonical]) for canonical, syns in VERB_SYNONYMS.items() for syn in syns
+    ]
+    out_path = DATA_DIR / "verb_synonyms.dat"
+    write_pdat(out_path, "VerbSynonyms", ["String"], variants)
+    out = out_path
     print(f"wrote {out} ({len(variants)} entries)")
 
 
@@ -39,9 +56,7 @@ def build_synonym_cache() -> None:
         return
 
     try:
-        out = _build()
-        from prove.store_binary import read_pdat
-
+        out = _build(out_path=DATA_DIR / "synonym_cache.dat")
         data = read_pdat(out)
         print(f"wrote {out} ({len(data['variants'])} entries)")
     except Exception as e:
@@ -147,8 +162,19 @@ def build_lsp_ml_stores(
     _write_lsp_stores(data_dir, package_lsp_dir, top_k=top_k)
 
     if not package_only:
+        import shutil
+
         # Write to build/ for download
         _write_lsp_stores(data_dir, build_dir / "lsp-ml-stores", top_k=top_k)
+
+        # Bundle PDAT files (verb_synonyms.dat, synonym_cache.dat) into the tarball
+        package_data_dir = repo_root / "prove-py" / "src" / "prove" / "data"
+        pdat_out = build_dir / "lsp-ml-stores" / "pdat"
+        pdat_out.mkdir(parents=True, exist_ok=True)
+        for dat in ("verb_synonyms.dat", "synonym_cache.dat"):
+            src = package_data_dir / dat
+            if src.exists():
+                shutil.copy2(src, pdat_out / dat)
 
         # Create tarball for distribution
         _create_tarball(build_dir / "lsp-ml-stores", build_dir / "lsp-ml-stores.tar.gz")

@@ -822,9 +822,12 @@ def _resolve_local_modules(uri: str) -> dict | None:
     """Discover sibling .prv files and build a local module registry.
 
     Returns None if the URI is not a file:// path or has no siblings.
+    Searches the project src/ directory (including subdirectories) when a
+    prove.toml is found, falling back to the file's parent directory.
     """
     from pathlib import Path
 
+    from prove.config import discover_prv_files
     from prove.module_resolver import build_module_registry
 
     # Convert file:// URI to a local path
@@ -838,9 +841,19 @@ def _resolve_local_modules(uri: str) -> dict | None:
     if not file_path.exists():
         return None
 
-    # Look for sibling .prv files in the same directory
-    parent = file_path.parent
-    prv_files = sorted(parent.glob("*.prv"))
+    # Try to find project root for subdirectory discovery
+    try:
+        from prove.config import find_config
+
+        config_path = find_config(file_path)
+        src_dir = config_path.parent / "src"
+        if not src_dir.is_dir():
+            src_dir = config_path.parent
+        prv_files = discover_prv_files(src_dir)
+    except (FileNotFoundError, Exception):
+        # Fallback: look for .prv files in parent directory (including subdirs)
+        prv_files = discover_prv_files(file_path.parent)
+
     if len(prv_files) <= 1:
         return None
 

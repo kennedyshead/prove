@@ -26,36 +26,122 @@ _similarity_matrix: dict[str, dict[str, float]] | None = None
 # ── Data file resolution ─────────────────────────────────────────
 
 
+def prove_home() -> Path:
+    """Return the user-level Prove home directory (``~/.prove/``)."""
+    return Path.home() / ".prove"
+
+
 def _data_path(filename: str) -> Path:
-    """Return path to a file in the ``prove.data`` package."""
-    ref = importlib.resources.files("prove.data").joinpath(filename)
-    # resources.files() may return a Traversable; as_posix for Path compat
-    return Path(str(ref))
+    """Return path for a Prove data file inside ``~/.prove/``."""
+    return prove_home() / filename
+
+
+# ── Store download / bootstrap ───────────────────────────────────
+
+_stores_ensured: bool = False
+
+
+def download_stores() -> bool:
+    """Download and install ML stores to ``~/.prove/``.
+
+    Returns True on success, False if the download fails (e.g. offline).
+    Raises no exceptions — all errors are caught and reported to stderr.
+    """
+    import json
+    import shutil
+    import sys
+    import tarfile
+    import tempfile
+    import urllib.request
+
+    home = prove_home()
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "cache").mkdir(exist_ok=True)
+
+    print("prove: downloading ML stores to ~/.prove/ ...", file=sys.stderr)
+
+    api_url = "https://code.botwork.se/api/v1/repos/Botwork/prove/releases/latest"
+    try:
+        req = urllib.request.Request(api_url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            release = json.loads(resp.read().decode())
+
+        asset_url = next(
+            (
+                a["browser_download_url"]
+                for a in release.get("assets", [])
+                if a.get("name") == "lsp-ml-stores.tar.gz"
+            ),
+            None,
+        )
+        if not asset_url:
+            print("prove: no lsp-ml-stores.tar.gz in latest release", file=sys.stderr)
+            return False
+
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        urllib.request.urlretrieve(asset_url, tmp_path)
+
+        with tempfile.TemporaryDirectory() as extract_tmp:
+            extract_path = Path(extract_tmp)
+            with tarfile.open(tmp_path, "r:gz") as tar:
+                tar.extractall(extract_path)
+
+            extracted_lsp = extract_path / "lsp-ml-stores" / "lsp"
+            if extracted_lsp.exists():
+                lsp_dest = home / "lsp"
+                if lsp_dest.exists():
+                    shutil.rmtree(lsp_dest)
+                shutil.copytree(str(extracted_lsp), str(lsp_dest))
+
+            extracted_pdat = extract_path / "lsp-ml-stores" / "pdat"
+            if extracted_pdat.exists():
+                for dat_file in extracted_pdat.glob("*.dat"):
+                    shutil.copy2(dat_file, home / dat_file.name)
+
+        tmp_path.unlink(missing_ok=True)
+        print("prove: stores installed.", file=sys.stderr)
+        return True
+
+    except Exception as exc:
+        print(f"prove: store download failed: {exc}", file=sys.stderr)
+        return False
+
+
+def _ensure_stores() -> None:
+    """Create ~/.prove/ and download stores on first use if absent."""
+    global _stores_ensured
+    if _stores_ensured:
+        return
+    _stores_ensured = True
+
+    if not (prove_home() / "verb_synonyms.dat").exists():
+        download_stores()
 
 
 # ── Verb synonym store ───────────────────────────────────────────
 
 
 def load_verb_synonyms() -> dict[str, str]:
-    """Load synonym → canonical verb map from PDAT.
+    """Load synonym → canonical verb map from ``~/.prove/verb_synonyms.dat``.
 
     Returns a dict like ``{"transform": "transforms", ...}``.
-    Falls back to the hardcoded ``_SYNONYM_TO_VERB`` if the PDAT is missing.
+    Downloads the store on first use if ``~/.prove/`` is absent.
     """
     global _verb_map
     if _verb_map is not None:
         return _verb_map
 
+    _ensure_stores()
     dat = _data_path("verb_synonyms.dat")
     if dat.is_file():
         data = read_pdat(dat)
         _verb_map = {variant: values[0] for variant, values in data["variants"]}
-        return _verb_map
+    else:
+        # Fallback to hardcoded synonyms when PDAT is missing
+        from prove._nl_intent import VERB_SYNONYMS
 
-    # Fallback: build from the hardcoded dict
-    from prove._nl_intent import VERB_SYNONYMS
-
-    _verb_map = {syn: verb for verb, syns in VERB_SYNONYMS.items() for syn in syns}
+        _verb_map = {syn: verb for verb, syns in VERB_SYNONYMS.items() for syn in syns}
     return _verb_map
 
 
@@ -80,15 +166,12 @@ def load_verb_groups() -> dict[str, list[str]]:
 
 
 def load_synonym_cache() -> dict[str, list[str]]:
-    """Load WordNet-expanded synonym cache from PDAT.
-
-    Returns a dict like ``{"transform": ["convert", "change", ...], ...}``.
-    Falls back to empty dict if the PDAT is missing.
-    """
+    """Load WordNet-expanded synonym cache from ``~/.prove/synonym_cache.dat``."""
     global _synonym_cache
     if _synonym_cache is not None:
         return _synonym_cache
 
+    _ensure_stores()
     dat = _data_path("synonym_cache.dat")
     if dat.is_file():
         data = read_pdat(dat)
@@ -96,13 +179,66 @@ def load_synonym_cache() -> dict[str, list[str]]:
             variant: values[0].split("|") if values[0] else []
             for variant, values in data["variants"]
         }
-        return _synonym_cache
-
-    _synonym_cache = {}
+    else:
+        _synonym_cache = {}
     return _synonym_cache
 
 
-def build_synonym_cache() -> Path:
+def build_verb_synonyms_spacy(out_path: Path | None = None) -> Path:
+    """Expand VERB_SYNONYMS with spaCy word vectors and write ``verb_synonyms.dat``.
+
+    Uses ``en_core_web_lg`` (or ``en_core_web_md``) word vectors to find
+    additional synonyms for each canonical Prove verb beyond the hardcoded list.
+    Falls back gracefully to the hardcoded list if no model with vectors is found.
+    Returns the path to the written file.
+
+    Requires spaCy and a model with vectors (``python -m spacy download en_core_web_lg``).
+    """
+    import numpy as np
+    import spacy
+
+    from prove._nl_intent import VERB_SYNONYMS
+
+    # Try models in order of preference (larger = better vectors)
+    nlp = None
+    for model_name in ("en_core_web_lg", "en_core_web_md"):
+        try:
+            candidate = spacy.load(model_name)
+            if candidate.vocab.vectors.shape[0] > 0:
+                nlp = candidate
+                break
+        except Exception:
+            pass
+
+    # Start with the hardcoded synonyms as the baseline
+    expanded: dict[str, str] = {syn: verb for verb, syns in VERB_SYNONYMS.items() for syn in syns}
+
+    if nlp is not None:
+        vocab = nlp.vocab
+        for canonical, seed_syns in VERB_SYNONYMS.items():
+            seed_tokens = [vocab[s] for s in seed_syns if vocab[s].has_vector]
+            if not seed_tokens:
+                continue
+            mean_vec = np.mean([t.vector for t in seed_tokens], axis=0).reshape(1, -1)
+            keys, _, scores = vocab.vectors.most_similar(mean_vec, n=30)
+            for key_id, score in zip(keys[0], scores[0]):
+                if score < 0.65:
+                    continue
+                word = vocab.strings[key_id].lower()
+                # Only single-word alphabetic tokens not already mapped
+                if word.isalpha() and word not in expanded:
+                    expanded[word] = canonical
+
+    variants: list[tuple[str, list[str]]] = [
+        (syn, [verb]) for syn, verb in sorted(expanded.items())
+    ]
+    if out_path is None:
+        out_path = Path(str(importlib.resources.files("prove.data").joinpath("verb_synonyms.dat")))
+    write_pdat(out_path, "VerbSynonyms", ["String"], variants)
+    return out_path
+
+
+def build_synonym_cache(out_path: Path | None = None) -> Path:
     """Build ``synonym_cache.dat`` with WordNet-expanded synonyms.
 
     Requires NLTK with WordNet data.  Returns the path to the written file.
@@ -170,9 +306,10 @@ def build_synonym_cache() -> Path:
         if syns_set:
             variants.append((word.lower(), ["|".join(sorted(syns_set))]))
 
-    out = _data_path("synonym_cache.dat")
-    write_pdat(out, "SynonymCache", ["String"], variants)
-    return out
+    if out_path is None:
+        out_path = Path(str(importlib.resources.files("prove.data").joinpath("synonym_cache.dat")))
+    write_pdat(out_path, "SynonymCache", ["String"], variants)
+    return out_path
 
 
 # ── Similarity matrix store ─────────────────────────────────────
@@ -430,7 +567,7 @@ _lsp_from_blocks: dict[tuple[str, str], list[str]] | None = None
 
 
 def load_lsp_bigrams() -> dict[str, list[tuple[str, int]]]:
-    """Load global bigram model from prove.data.
+    """Load global bigram model from ``~/.prove/lsp/bigrams/current.prv``.
 
     Returns ``{prev1: [(next_token, count), ...]}``.
     """
@@ -438,6 +575,7 @@ def load_lsp_bigrams() -> dict[str, list[tuple[str, int]]]:
     if _lsp_bigrams is not None:
         return _lsp_bigrams
 
+    _ensure_stores()
     _lsp_bigrams = {}
     bigram_path = _data_path("lsp/bigrams/current.prv")
     if not bigram_path.exists():
@@ -464,7 +602,7 @@ def load_lsp_bigrams() -> dict[str, list[tuple[str, int]]]:
 
 
 def load_lsp_completions() -> dict[tuple[str, str], list[str]]:
-    """Load global completion model from prove.data.
+    """Load global completion model from ``~/.prove/lsp/completions/current.prv``.
 
     Returns ``{(prev2, prev1): [top_tokens...]}``.
     """
@@ -472,6 +610,7 @@ def load_lsp_completions() -> dict[tuple[str, str], list[str]]:
     if _lsp_completions is not None:
         return _lsp_completions
 
+    _ensure_stores()
     _lsp_completions = {}
     comp_path = _data_path("lsp/completions/current.prv")
     if not comp_path.exists():
@@ -496,7 +635,7 @@ def load_lsp_completions() -> dict[tuple[str, str], list[str]]:
 
 
 def load_lsp_docstrings() -> dict[str, list[dict]]:
-    """Load global docstring index from prove.data.
+    """Load global docstring index from ``~/.prove/lsp/docstrings/current.prv``.
 
     Returns ``{keyword: [{module, name, verb, doc}, ...]}``.
     """
@@ -504,6 +643,7 @@ def load_lsp_docstrings() -> dict[str, list[dict]]:
     if _lsp_docstrings is not None:
         return _lsp_docstrings
 
+    _ensure_stores()
     _lsp_docstrings = defaultdict(list)
     doc_path = _data_path("lsp/docstrings/current.prv")
     if not doc_path.exists():
@@ -531,7 +671,7 @@ def load_lsp_docstrings() -> dict[str, list[dict]]:
 
 
 def load_lsp_from_blocks() -> dict[tuple[str, str], list[str]]:
-    """Load from-block n-gram model from prove.data.
+    """Load from-block n-gram model from ``~/.prove/lsp/from_blocks/current.prv``.
 
     Returns ``{(prev2, prev1): [top_tokens...]}``.
     """
@@ -539,6 +679,7 @@ def load_lsp_from_blocks() -> dict[tuple[str, str], list[str]]:
     if _lsp_from_blocks is not None:
         return _lsp_from_blocks
 
+    _ensure_stores()
     _lsp_from_blocks = {}
     fb_path = _data_path("lsp/from_blocks/current.prv")
     if not fb_path.exists():

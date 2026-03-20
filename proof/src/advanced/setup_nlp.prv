@@ -1,0 +1,21 @@
+module SetupNlp
+  narrative: """
+  Handles the setup_nlp.
+
+  outputs the command to python for a pysetupnlp
+  """
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+
+  PYTHON_SETUP_NLP as String = comptime
+      read("../python/setup_nlp.py")
+
+outputs pysetupnlp() Integer
+from
+    py_initialize()
+    result as Integer = py_run_string(PYTHON_SETUP_NLP)
+    py_finalize()
+    result

@@ -18,10 +18,9 @@ This guide covers setting up Prove in Neovim with syntax highlighting (tree-sitt
 
 ```bash
 pip install -e ".[dev]"
-prove advanced setup
 ```
 
-The `prove advanced setup` command downloads pre-trained ML stores for the LSP.
+ML completion stores are downloaded automatically to `~/.prove/` the first time the LSP starts.
 
 ---
 
@@ -229,11 +228,7 @@ which prove-lsp
 prove-lsp --version
 ```
 
-If not found, run:
-
-```bash
-prove advanced setup
-```
+If not found, check that your pip install location is on `$PATH` (e.g. `~/.local/bin` for user installs). If ML completions are missing or broken, run `prove advanced setup` to force a re-download of the stores.
 
 ### No syntax highlighting
 

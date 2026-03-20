@@ -23,8 +23,6 @@ dev = [
     "pytest-cov>=4.0",
     "ruff>=0.4",
     "mypy>=1.0",
-    "spacy>=3.7",
-    "nltk>=3.8",
 ]
 
 [project.scripts]

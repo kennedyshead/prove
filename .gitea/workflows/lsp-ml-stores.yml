@@ -16,6 +16,7 @@ on:
       - 'scripts/ml_train.py'
       - 'scripts/ml_store.py'
       - 'prove-py/scripts/build_stores.py'
+      - 'prove-py/src/prove/_nl_intent.py'
   workflow_dispatch:
 
 jobs:
@@ -31,7 +32,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install prove-py dependencies
-        run: pip install -e ".[dev]" -q --break-system-packages
+        run: pip install -e ".[dev,nlp]" -q --break-system-packages
+
+      - name: Download spaCy model
+        run: python -m spacy download en_core_web_lg -q
 
       - name: Extract ML data
         run: python ../scripts/ml_extract.py
@@ -39,40 +43,65 @@ jobs:
       - name: Train ML models
         run: python ../scripts/ml_train.py
 
-      - name: Build stores
+      - name: Build stores and tarball
         run: |
-          python scripts/build_stores.py --package-only
-          mkdir -p ../build/lsp-ml-stores
-          cp -r src/prove/data/lsp ../build/lsp-ml-stores/
-
-      - name: Create tarball
-        run: tar -czf lsp-ml-stores.tar.gz -C ../build lsp-ml-stores/
+          python scripts/build_stores.py
+          cp ../build/lsp-ml-stores.tar.gz ./lsp-ml-stores.tar.gz
 
       - name: Create or update release
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$GITEA_REF" == refs/tags/* ]]; then
+            TAG="${GITEA_REF#refs/tags/}"
           else
             TAG="lsp-stores-v$(date +'%Y.%m.%d')"
           fi
 
-          RESPONSE=$(curl -s -X POST \
+          API="${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}"
+          AUTH="-H \"Authorization: token $GITEA_TOKEN\""
+
+          # Try to create the release; on conflict (tag already exists) fetch the existing one
+          CREATE=$(curl -sf -X POST \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
-            "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}/releases" \
+            "$API/releases" \
             -d "{
               \"tag_name\": \"$TAG\",
               \"name\": \"LSP ML Stores ${TAG#lsp-stores-v}\",
-              \"body\": \"Pre-trained LSP completion stores. Extract to prove/data/ or run \`prove setup\` to download.\"
-            }" || true)
+              \"body\": \"Pre-trained LSP completion stores. Run \`prove advanced setup\` to install.\"
+            }") && RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") \
+          || RELEASE_ID=$(curl -sf \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "$API/releases/tags/$TAG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
-          RELEASE_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "")
-
-          if [ -n "$RELEASE_ID" ]; then
-            curl -s -X POST \
-              -H "Authorization: token $GITEA_TOKEN" \
-              -F "attachment=@lsp-ml-stores.tar.gz" \
-              "${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}/releases/$RELEASE_ID/attachments"
+          if [ -z "$RELEASE_ID" ]; then
+            echo "ERROR: could not get release ID for tag $TAG" >&2
+            exit 1
           fi
+
+          echo "Release ID: $RELEASE_ID"
+
+          # Delete existing attachment with the same name (idempotent re-runs)
+          EXISTING_ASSET_ID=$(curl -sf \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "$API/releases/$RELEASE_ID/assets" \
+            | python3 -c "
+import sys,json
+assets = json.load(sys.stdin)
+match = next((a['id'] for a in assets if a['name'] == 'lsp-ml-stores.tar.gz'), None)
+print(match or '')
+")
+          if [ -n "$EXISTING_ASSET_ID" ]; then
+            curl -sf -X DELETE \
+              -H "Authorization: token $GITEA_TOKEN" \
+              "$API/releases/$RELEASE_ID/assets/$EXISTING_ASSET_ID"
+            echo "Deleted old asset $EXISTING_ASSET_ID"
+          fi
+
+          # Upload the new tarball
+          curl -f -X POST \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -F "attachment=@lsp-ml-stores.tar.gz" \
+            "$API/releases/$RELEASE_ID/assets"
+          echo "Asset uploaded."
