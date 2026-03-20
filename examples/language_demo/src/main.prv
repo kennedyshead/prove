@@ -1,7 +1,8 @@
 module Main
   narrative: """Demonstrates Language module NLP operations."""
   System outputs console
-  Language reads words sentences distance similarity soundex metaphone bigrams keywords
+  Language
+    reads words sentences distance similarity soundex metaphone bigrams keywords
     transforms stem root normalize without_stopwords
   Parse reads text
   Text transforms join

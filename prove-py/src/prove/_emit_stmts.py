@@ -1484,6 +1484,24 @@ class StmtEmitterMixin:
                 self._emit_match_arm_body(arm.body)
                 self._indent -= 1
                 self._line("}")
+            elif isinstance(arm.pattern, VariantPattern):
+                # Some/None on pointer type — emit as null check
+                if arm.pattern.name == "Some":
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({subj} != NULL) {{")
+                    self._indent += 1
+                    if arm.pattern.fields and isinstance(arm.pattern.fields[0], BindingPattern):
+                        if subj_type:
+                            bct = map_type(subj_type)
+                            self._line(f"{bct.decl} {arm.pattern.fields[0].name} = {subj};")
+                    self._emit_match_arm_body(arm.body)
+                    self._indent -= 1
+                elif arm.pattern.name == "None":
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({subj} == NULL) {{")
+                    self._indent += 1
+                    self._emit_match_arm_body(arm.body)
+                    self._indent -= 1
             elif isinstance(arm.pattern, LiteralPattern):
                 cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
                 keyword = "if" if first else "} else if"

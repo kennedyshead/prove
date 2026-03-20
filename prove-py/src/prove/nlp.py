@@ -200,6 +200,13 @@ def synonyms(word: str, pos: str = "v") -> set[str]:
         for canonical, syns in groups.items():
             if word.lower() in syns or word.lower() == canonical:
                 return set(syns)
+
+        # Last resort: hardcoded verb synonyms
+        from prove._nl_intent import VERB_SYNONYMS
+
+        for canonical, syns in VERB_SYNONYMS.items():
+            if word.lower() in (s.lower() for s in syns) or word.lower() == canonical:
+                return set(syns)
     return set()
 
 

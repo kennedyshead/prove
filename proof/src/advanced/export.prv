@@ -1,0 +1,37 @@
+module Export
+  narrative: """
+  Handles the export.
+
+  outputs the command to python for a pyexport
+  """
+  System outputs console
+  Types validates boolean
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+    py_set_bool(name String, value Boolean) Unit
+
+  PYTHON_EXPORT as String = comptime
+      read("../python/export.py")
+
+outputs pyexport(fmt Option<String>, build Boolean, workspace_path Option<String>) Integer
+  requires valid boolean(build)
+from
+    py_initialize()
+    match fmt
+        Some(fmt) =>
+            console(f"Sets format to {fmt}")
+            py_set_string("fmt", fmt)
+        _ => console("No format given as argument")
+    match workspace_path
+        Some(workspace_path) =>
+            console(f"Sets working directory to {workspace_path}")
+            py_set_string("workspace_path", workspace_path)
+        _ => console("No working directory given as argument")
+    py_set_bool("build", build)
+    result as Integer = py_run_string(PYTHON_EXPORT)
+    py_finalize()
+    result

@@ -215,6 +215,12 @@ class ContractCheckMixin:
                     # Mark import as used
                     if sig.module:
                         self._used_imports.add((sig.module, func_name))
+                # Infer each arg before _infer_expr(req_expr) so E310 diagnostics
+                # for undefined names land before ValidExpr's per-arg rollback
+                # snapshot, making them immune to suppression.  All params must be
+                # in scope for `requires` (unlike `ensures` where body vars may not).
+                for arg in req_expr.args:
+                    self._infer_expr(arg)
             req_type = self._infer_expr(req_expr)
             if not isinstance(req_type, ErrorType) and not types_compatible(BOOLEAN, req_type):
                 self._error(
@@ -632,6 +638,40 @@ class ContractCheckMixin:
 
     # ── Match restriction (I367) ────────────────────────────────
 
+    @staticmethod
+    def _match_arms_have_fail_prop(match_expr: MatchExpr) -> bool:
+        """Return True if any arm body contains a FailPropExpr (failable call).
+
+        A match with failable calls cannot be extracted to a 'matches' verb
+        (which must be pure), so I367 must not be suggested.
+        """
+
+        def _expr_has_fail(expr: Expr) -> bool:
+            if isinstance(expr, FailPropExpr):
+                return True
+            if isinstance(expr, CallExpr):
+                return any(_expr_has_fail(a) for a in expr.args)
+            if isinstance(expr, BinaryExpr):
+                return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+            if isinstance(expr, UnaryExpr):
+                return _expr_has_fail(expr.operand)
+            if isinstance(expr, PipeExpr):
+                return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+            if isinstance(expr, LambdaExpr):
+                return _expr_has_fail(expr.body)
+            return False
+
+        def _stmt_has_fail(stmt: Stmt) -> bool:
+            if isinstance(stmt, ExprStmt):
+                return _expr_has_fail(stmt.expr)
+            if isinstance(stmt, VarDecl) and stmt.value is not None:
+                return _expr_has_fail(stmt.value)
+            if isinstance(stmt, Assignment):
+                return _expr_has_fail(stmt.value)
+            return False
+
+        return any(_stmt_has_fail(stmt) for arm in match_expr.arms for stmt in arm.body)
+
     def _check_match_restriction(
         self,
         body: list[Stmt | MatchExpr],
@@ -640,7 +680,7 @@ class ContractCheckMixin:
         """I367: suggest extracting match to a 'matches' verb function."""
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                if len(stmt.arms) >= 3:
+                if len(stmt.arms) >= 3 and not self._match_arms_have_fail_prop(stmt):
                     self._info(
                         "I367",
                         "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
@@ -658,7 +698,7 @@ class ContractCheckMixin:
     def _check_match_in_expr(self, expr: Expr) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            if len(expr.arms) >= 3:
+            if len(expr.arms) >= 3 and not self._match_arms_have_fail_prop(expr):
                 self._info(
                     "I367",
                     "consider extracting match to a 'matches' verb function for better code flow",

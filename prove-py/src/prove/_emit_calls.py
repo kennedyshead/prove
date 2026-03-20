@@ -513,6 +513,10 @@ class CallEmitterMixin:
                 f'prove_string_from_cstr("{fname}"), '
                 f"{table_expr});"
             )
+            # Option<T> fields: pass the Prove_Option directly (absent = None)
+            if isinstance(ftype, GenericInstance) and ftype.base_name == "Option":
+                field_args.append(opt_tmp)
+                continue
             self._line(
                 f"if ({opt_tmp}.tag == 0) prove_panic("
                 f'"Tried to map non existent value '

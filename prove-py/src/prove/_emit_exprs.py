@@ -120,6 +120,9 @@ class ExprEmitterMixin:
             return self._emit_list_literal(expr)
 
         if isinstance(expr, IdentifierExpr):
+            # Local variables/parameters take priority over stdlib functions
+            if expr.name in self._locals:
+                return expr.name
             # Check if this identifier is an outputs function with no args (zero-arg call)
             sig = self._symbols.resolve_function("outputs", expr.name, 0)
             if sig is None:

@@ -97,6 +97,12 @@ VERB_SYNONYMS: dict[str, list[str]] = {
         "log",
         "displays",
         "display",
+        "saves",
+        "save",
+        "stores",
+        "store",
+        "persists",
+        "persist",
     ],
     "inputs": [
         "inputs",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tests.helpers import check, check_fails, check_info, check_warns
+from tests.helpers import check, check_all, check_fails, check_info, check_warns
 
 
 class TestMatchExhaustiveness:
@@ -370,6 +370,22 @@ class TestMatchRestriction:
             "            true => 1\n"
             "            false => 0\n"
         )
+
+    def test_match_with_failable_arms_no_i367(self):
+        """match with failable calls in arms must NOT suggest I367 (can't extract to matches)."""
+        # dispatch() calls itself recursively with !, giving each arm a FailPropExpr.
+        # The match has 4 arms (>= 3) but I367 must be suppressed.
+        diags = check_all(
+            "module M\n"
+            "outputs dispatch(n Integer)!\n"
+            "    from\n"
+            "        match n\n"
+            "            1 => dispatch(n)!\n"
+            "            2 => dispatch(n)!\n"
+            "            3 => dispatch(n)!\n"
+            "            _ => dispatch(n)!\n"
+        )
+        assert "I367" not in [d.code for d in diags]
 
     def test_match_in_main_ok(self):
         """match in main is exempt from I367."""

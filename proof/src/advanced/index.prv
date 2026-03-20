@@ -1,0 +1,25 @@
+module Index
+  narrative: """
+  Handles the index.
+
+  outputs the command to python for a pyindex
+  """
+  System validates dir
+
+  foreign "libpython3"
+    py_initialize() Unit
+    py_finalize() Unit
+    py_run_string(code String) Integer
+    py_set_string(name String, value String) Unit
+
+  PYTHON_INDEX as String = comptime
+      read("../python/index.py")
+
+outputs pyindex(path String) Integer
+  requires valid dir(path)
+from
+    py_initialize()
+    py_set_string("path", path)
+    result as Integer = py_run_string(PYTHON_INDEX)
+    py_finalize()
+    result

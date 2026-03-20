@@ -27,10 +27,7 @@ All editors require:
 
 2. **Install tree-sitter parser** (see editor-specific guide)
 
-3. **Install prove-lsp** (optional but recommended):
-   ```bash
-   prove advanced setup
-   ```
+3. **Start the LSP** — `prove lsp` starts automatically when you open a `.prv` file. ML completion stores are downloaded to `~/.prove/` on first use.
 
 ## Requirements
 

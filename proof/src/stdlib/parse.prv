@@ -109,6 +109,10 @@ binary
 validates base64(encoded String)
 binary
 
+/// Parse command line arguments into a Value with args and kwargs
+creates arguments(args List<String>) Value
+binary
+
 /// Parse a CSV string into rows of fields
 creates csv(source String) Result<List<List<String>>, String>
 binary

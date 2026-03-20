@@ -265,6 +265,28 @@ class Parser:
             self._advance()
         return tok
 
+    def _expect_name(self) -> Token:
+        """Expect an identifier or a keyword used as a name (soft keywords).
+
+        Reserved keywords like ``intent``, ``requires``, ``ensures`` etc. are
+        valid as function or parameter names.  Accept any token whose value
+        looks like an identifier (starts with a letter or underscore), except
+        boolean literals and structural EOF.
+        """
+        tok = self._current()
+        if tok.kind == TokenKind.IDENTIFIER:
+            return self._advance()
+        if (
+            tok.kind not in (TokenKind.BOOLEAN_LIT, TokenKind.EOF)
+            and tok.value
+            and (tok.value[0].isalpha() or tok.value[0] == "_")
+        ):
+            # Re-tag as IDENTIFIER so the rest of the parser sees a plain name
+            ident = Token(TokenKind.IDENTIFIER, tok.value, tok.span)
+            self._advance()
+            return ident
+        return self._expect(TokenKind.IDENTIFIER)
+
     def _skip_newlines(self) -> None:
         while self._at(TokenKind.NEWLINE):
             self._advance()
@@ -441,7 +463,7 @@ class Parser:
         verb_tok = self._advance()
         verb = verb_tok.value
 
-        name_tok = self._expect(TokenKind.IDENTIFIER)
+        name_tok = self._expect_name()
         name = name_tok.value
 
         params = self._parse_param_list()
@@ -686,7 +708,7 @@ class Parser:
 
     def _parse_param(self) -> Param:
         start = self._current().span
-        name_tok = self._expect(TokenKind.IDENTIFIER)
+        name_tok = self._expect_name()
         type_expr = self._parse_type_expr()
         constraint = None
         if self._at(TokenKind.WHERE):
@@ -1204,7 +1226,13 @@ class Parser:
 
         items: list[ImportItem] = []
         seen_verbs: set[str | None] = set()
-        while True:
+        _name_kinds = {
+            TokenKind.IDENTIFIER,
+            TokenKind.TYPE_IDENTIFIER,
+            TokenKind.CONSTANT_IDENTIFIER,
+        }
+        # Parse same-line groups only when there are tokens available on this line.
+        while self._current().kind in _IMPORT_VERBS or self._current().kind in _name_kinds:
             group = self._parse_import_group(seen_verbs)
             items.extend(group)
             # Accept optional comma for backwards compat, but don't require it.
@@ -1222,6 +1250,30 @@ class Parser:
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
+                # Deeper INDENT: name-continuation for the previous verb group
+                if self._at(TokenKind.INDENT):
+                    self._advance()  # consume INDENT
+                    last_verb = items[-1].verb if items else None
+                    while (
+                        self._at(TokenKind.IDENTIFIER)
+                        or self._at(TokenKind.TYPE_IDENTIFIER)
+                        or self._at(TokenKind.CONSTANT_IDENTIFIER)
+                    ):
+                        name_tok = self._advance()
+                        if self._at(TokenKind.LESS):
+                            self._advance()
+                            depth = 1
+                            while depth > 0 and not self._at(TokenKind.EOF):
+                                if self._at(TokenKind.LESS):
+                                    depth += 1
+                                elif self._at(TokenKind.GREATER):
+                                    depth -= 1
+                                self._advance()
+                        items.append(ImportItem(last_verb, name_tok.value, name_tok.span))
+                    self._skip_newlines()
+                    if self._at(TokenKind.DEDENT):
+                        self._advance()
+                    continue
                 group = self._parse_import_group(seen_verbs)
                 items.extend(group)
             if self._at(TokenKind.DEDENT):

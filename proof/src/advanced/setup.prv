@@ -1,8 +1,8 @@
-module Lsp
+module Setup
   narrative: """
-  Handles the lsp.
+  Handles the setup.
 
-  outputs the command to python for a pylsp
+  outputs the command to python for a pysetup
   """
 
   foreign "libpython3"
@@ -11,9 +11,9 @@ module Lsp
     py_run_string(code String) Integer
 
   PYTHON_LSP as String = comptime
-      read("python/lsp.py")
+      read("../python/setup.py")
 
-outputs pylsp() Integer
+outputs pysetup() Integer
 from
     py_initialize()
     result as Integer = py_run_string(PYTHON_LSP)

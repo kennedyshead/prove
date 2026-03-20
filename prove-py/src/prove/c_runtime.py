@@ -274,6 +274,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_validates_toml",
         "prove_creates_value",
         "prove_validates_value",
+        "prove_parse_arguments",
     ],
     "prove_parse_csv": [
         "prove_parse_csv",

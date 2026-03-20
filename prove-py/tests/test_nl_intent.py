@@ -43,6 +43,8 @@ class TestImpliedVerbs:
 
     def test_outputs(self) -> None:
         assert "outputs" in implied_verbs("Sends the result to the client.")
+        assert "outputs" in implied_verbs("Saves built binary to disk.")
+        assert "outputs" in implied_verbs("Stores the result to the cache.")
 
     def test_multiple_verbs(self) -> None:
         text = "This module validates credentials and creates session tokens."
