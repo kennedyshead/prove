@@ -4,7 +4,6 @@ module Check
 
   outputs the command to python for a pycheck
   """
-  Config types Config
   System validates dir
 
   foreign "libpython3"
@@ -18,7 +17,6 @@ module Check
       read("python/check.py")
 
 outputs pycheck(
-    config Config,
     path String,
     md Boolean,
     strict Boolean,

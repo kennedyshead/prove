@@ -1122,7 +1122,12 @@ class CEmitter(
         # including params, but recursive calls or stdlib functions that
         # return their input may also release them.  The entry retain
         # ensures the outer scope's reference stays alive.
+        # Skip Verb/FunctionType params — function pointers, not heap objects.
         for p, pt in zip(fd.params, param_types):
+            if isinstance(pt, PrimitiveType) and pt.name == "Verb":
+                continue
+            if isinstance(pt, FunctionType):
+                continue
             ct = map_type(pt)
             if ct.is_pointer:
                 self._line(f"prove_retain({p.name});")

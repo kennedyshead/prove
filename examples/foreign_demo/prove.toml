@@ -8,6 +8,7 @@ license = ""
 target = "native"
 mutate = true
 debug = false
+ccache = true
 c_sources = ["src/py_wrappers.c"]
 link_flags = []
 

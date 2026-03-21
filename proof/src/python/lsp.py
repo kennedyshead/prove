@@ -5,7 +5,11 @@ PyRun_SimpleString.
 """
 
 from __future__ import annotations
+import warnings
 
+warnings.filterwarnings(
+    "ignore", message="nltk.app.wordfreq not loaded", category=UserWarning
+)
 if __name__ == "__main__":
     from prove.lsp import main as lsp_main
 

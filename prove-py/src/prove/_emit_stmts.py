@@ -46,6 +46,7 @@ from prove.types import (
     UNIT,
     AlgebraicType,
     ArrayType,
+    FunctionType,
     GenericInstance,
     ListType,
     PrimitiveType,
@@ -360,6 +361,11 @@ class StmtEmitterMixin:
         """Emit prove_release for all pointer locals except skip_var."""
         for name, ty in self._locals.items():
             if name == skip_var:
+                continue
+            # Skip Verb/FunctionType — function pointers, not heap objects
+            if isinstance(ty, PrimitiveType) and ty.name == "Verb":
+                continue
+            if isinstance(ty, FunctionType):
                 continue
             ct = map_type(ty)
             if ct.is_pointer and not self._can_elide_retain(name):

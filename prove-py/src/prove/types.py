@@ -395,6 +395,13 @@ def types_compatible(expected: Type, actual: Type) -> bool:
                     return False
             return True
         return False
+    # Bare Verb is compatible with any FunctionType (unparameterised callable)
+    if (
+        isinstance(expected, PrimitiveType)
+        and expected.name == "Verb"
+        and isinstance(actual, FunctionType)
+    ):
+        return True
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, PrimitiveType) and isinstance(actual, PrimitiveType):

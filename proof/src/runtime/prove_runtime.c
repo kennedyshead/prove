@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#ifdef __GLIBC__
+#if defined(__GLIBC__) || defined(__APPLE__)
   #include <execinfo.h>
 #endif
 
@@ -26,26 +26,44 @@ static void _safe_write(const char *s) {
     (void)write(STDERR_FILENO, s, len);
 }
 
+static const char *_signal_name(int sig) {
+    switch (sig) {
+        case SIGSEGV: return "SIGSEGV — null pointer dereference or invalid memory access";
+        case SIGABRT: return "SIGABRT — aborted (assertion failure or panic)";
+        case SIGFPE:  return "SIGFPE — arithmetic error (division by zero)";
+        case SIGILL:  return "SIGILL — illegal instruction";
+        default:      return NULL;
+    }
+}
+
 static void prove_backtrace_handler(int sig) {
     _safe_write("\n========================================\n");
-    _safe_write("Prove runtime error (signal ");
-    /* Write signal number — async-signal-safe int-to-string */
-    char numbuf[16];
-    int idx = 0;
-    int s = sig < 0 ? -sig : sig;
-    if (sig < 0) numbuf[idx++] = '-';
-    char tmp[16];
-    int tlen = 0;
-    do { tmp[tlen++] = '0' + (s % 10); s /= 10; } while (s > 0);
-    for (int i = tlen - 1; i >= 0; i--) numbuf[idx++] = tmp[i];
-    (void)write(STDERR_FILENO, numbuf, (size_t)idx);
-    _safe_write("):\n");
-    _safe_write("========================================\n");
+    _safe_write("Prove runtime error: ");
+    const char *name = _signal_name(sig);
+    if (name) {
+        _safe_write(name);
+    } else {
+        _safe_write("signal ");
+        char numbuf[16];
+        int idx = 0;
+        int s = sig < 0 ? -sig : sig;
+        if (sig < 0) numbuf[idx++] = '-';
+        char tmp[16];
+        int tlen = 0;
+        do { tmp[tlen++] = '0' + (s % 10); s /= 10; } while (s > 0);
+        for (int i = tlen - 1; i >= 0; i--) numbuf[idx++] = tmp[i];
+        (void)write(STDERR_FILENO, numbuf, (size_t)idx);
+    }
+    _safe_write("\n========================================\n");
 
-#ifdef __GLIBC__
+#if defined(__GLIBC__)
     void *buffer[MAX_BACKTRACE];
     int n = backtrace(buffer, MAX_BACKTRACE);
-    /* backtrace_symbols_fd is async-signal-safe (writes directly, no malloc) */
+    backtrace_symbols_fd(buffer, n, STDERR_FILENO);
+#elif defined(__APPLE__)
+    /* macOS: use backtrace() from <execinfo.h> (available in libSystem) */
+    void *buffer[MAX_BACKTRACE];
+    int n = backtrace(buffer, MAX_BACKTRACE);
     backtrace_symbols_fd(buffer, n, STDERR_FILENO);
 #endif
 
