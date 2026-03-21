@@ -47,7 +47,6 @@ from
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
     command as Option<String> = value(1, arguments)
     match command
-        Some("advanced") => advanced(sub_arguments)!
         Some("build") => safe_build(arguments)
         Some("check") => check(sub_arguments)!
         Some("format") => format(sub_arguments)!
