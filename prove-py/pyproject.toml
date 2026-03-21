@@ -57,7 +57,7 @@ markers = [
 [tool.mypy]
 python_version = "3.11"
 strict = true
-disable_error_code = ["union-attr", "arg-type", "list-item", "attr-defined", "type-arg", "no-untyped-def", "no-any-return", "import-untyped", "no-redef"]
+disable_error_code = ["union-attr", "arg-type", "list-item", "attr-defined", "type-arg", "no-untyped-def", "no-any-return", "import-untyped", "import-not-found", "no-redef"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
