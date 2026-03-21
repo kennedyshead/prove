@@ -103,7 +103,13 @@ uninstall:
 		'$(DESTDIR)$(INCLUDEDIR)'/tree_sitter/$(LANGUAGE_NAME).h \
 		'$(DESTDIR)$(PCLIBDIR)'/$(LANGUAGE_NAME).pc
 
+NVIM_TS_DIR := $(HOME)/.local/share/nvim/lazy/nvim-treesitter
+
 neovim: parser/prove.$(SOEXT)
+	@mkdir -p $(NVIM_TS_DIR)/queries/prove
+	cp queries/prove/highlights.scm $(NVIM_TS_DIR)/queries/prove/highlights.scm
+	cp queries/prove/locals.scm $(NVIM_TS_DIR)/queries/prove/locals.scm
+	cp queries/prove/tags.scm $(NVIM_TS_DIR)/queries/prove/tags.scm
 
 parser/prove.$(SOEXT): $(PARSER)
 	@mkdir -p parser

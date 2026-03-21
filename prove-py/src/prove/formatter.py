@@ -526,6 +526,7 @@ class ProveFormatter:
         "detached": 8,
         "streams": 9,
         "listens": 10,
+        "constants": 11,
     }
 
     def _format_import_decl(self, imp: ImportDecl) -> str | None:

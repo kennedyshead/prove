@@ -1142,7 +1142,7 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
     if _import_index is not None:
         return _import_index
 
-    from prove.ast_nodes import AlgebraicTypeDef, FunctionDef, ModuleDecl
+    from prove.ast_nodes import AlgebraicTypeDef, ConstantDef, FunctionDef, ModuleDecl
 
     index: dict[str, list[ImportSuggestion]] = {}
     for key, _filename in _STDLIB_MODULES.items():
@@ -1156,10 +1156,12 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
         # Collect all declarations, including those inside ModuleDecl
         all_decls: list[object] = []
         all_types: list[TypeDef] = []
+        all_constants: list[ConstantDef] = []
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 all_decls.extend(decl.body)
                 all_types.extend(decl.types)
+                all_constants.extend(decl.constants)
             else:
                 all_decls.append(decl)
 
@@ -1195,6 +1197,15 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
                             name=variant.name,
                         ),
                     )
+
+        for cd in all_constants:
+            index.setdefault(cd.name, []).append(
+                ImportSuggestion(
+                    module=display,
+                    verb="constants",
+                    name=cd.name,
+                ),
+            )
 
     _import_index = index
     return _import_index

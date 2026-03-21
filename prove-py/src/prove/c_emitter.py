@@ -612,8 +612,10 @@ class CEmitter(
                 return any(_expr_alloc(arm.body) for arm in expr.arms)
             if isinstance(expr, FailPropExpr):
                 return _expr_alloc(expr.expr)
-            if isinstance(expr, (ValidExpr, ComptimeExpr)):
-                return _expr_alloc(expr.expr)
+            if isinstance(expr, ValidExpr):
+                return expr.args is not None and any(_expr_alloc(a) for a in expr.args)
+            if isinstance(expr, ComptimeExpr):
+                return any(_stmt_alloc(s) for s in expr.body)
             if isinstance(expr, LambdaExpr):
                 return any(_stmt_alloc(s) for s in expr.body)
             if isinstance(expr, AsyncCallExpr):
@@ -765,23 +767,91 @@ class CEmitter(
                     self._line(f"#define {name} {self._emit_expr(val)}")
                 any_emitted = True
 
-            # Emit #defines for imported stdlib constants
+            # Emit #defines for imported constants (stdlib and local)
             from prove.stdlib_loader import load_stdlib_constants
 
             for imp in decl.imports:
-                stdlib_consts = load_stdlib_constants(imp.module)
-                if not stdlib_consts:
+                # Check for constant imports (explicit verb or ALL_CAPS names)
+                const_items = [
+                    item
+                    for item in imp.items
+                    if item.verb == "constants"
+                    or (
+                        item.verb is None
+                        and len(item.name) >= 2
+                        and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
+                    )
+                ]
+                if not const_items:
                     continue
+
+                # Try stdlib constants first
+                stdlib_consts = load_stdlib_constants(imp.module)
                 consts_by_name = {c.name: c for c in stdlib_consts}
-                for item in imp.items:
-                    const = consts_by_name.get(item.name)  # type: ignore[assignment]
-                    if const is not None:
-                        escaped = self._escape_c_string(const.raw_value)
+
+                for item in const_items:
+                    stdlib_const = consts_by_name.get(item.name)
+                    if stdlib_const is not None:
+                        escaped = self._escape_c_string(stdlib_const.raw_value)
                         self._line(f'#define {item.name} prove_string_from_cstr("{escaped}")')
+                        any_emitted = True
+                        continue
+
+                    # Try local module constants
+                    local_const = self._resolve_local_constant(imp.module, item.name)
+                    if local_const is not None:
+                        self._line(f"#define {item.name} {local_const}")
                         any_emitted = True
 
         if any_emitted:
             self._line("")
+
+    def _resolve_local_constant(self, module_name: str, const_name: str) -> str | None:
+        """Resolve a constant from a sibling local module, returning C code."""
+        from pathlib import Path
+
+        source_file = self._module.span.file
+        if not source_file:
+            return None
+        src_dir = Path(source_file).parent
+
+        # Find the sibling module file (case-insensitive match)
+        target = None
+        for prv in src_dir.glob("*.prv"):
+            if prv.stem.lower() == module_name.lower():
+                target = prv
+                break
+        if target is None:
+            return None
+
+        try:
+            from prove.lexer import Lexer as _Lexer
+            from prove.parser import Parser as _Parser
+
+            tokens = _Lexer(target.read_text(), str(target)).lex()
+            mod = _Parser(tokens, str(target)).parse()
+        except Exception:
+            return None
+
+        for decl in mod.declarations:
+            if not isinstance(decl, ModuleDecl):
+                continue
+            for cd in decl.constants:
+                if cd.name != const_name:
+                    continue
+                val = cd.value
+                if isinstance(val, StringLit):
+                    return f'prove_string_from_cstr("{self._escape_c_string(val.value)}")'
+                if isinstance(val, IntegerLit):
+                    return f"{val.value}L"
+                if isinstance(val, BooleanLit):
+                    return "true" if val.value else "false"
+                if isinstance(val, ComptimeExpr):
+                    result = self._eval_comptime(cd, val)
+                    if result is not None:
+                        return self._comptime_result_to_c(result)
+                return None
+        return None
 
     def _eval_comptime(self, const: ConstantDef, expr: ComptimeExpr) -> object | None:
         """Evaluate a comptime expression and return the result."""

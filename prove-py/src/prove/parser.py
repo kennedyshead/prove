@@ -126,7 +126,7 @@ _VERBS = frozenset(
     }
 )
 
-_IMPORT_VERBS = _VERBS | {TokenKind.TYPES}
+_IMPORT_VERBS = _VERBS | {TokenKind.TYPES, TokenKind.CONSTANTS}
 
 _OP_STRINGS: dict[TokenKind, str] = {
     TokenKind.PLUS: "+",

@@ -65,7 +65,7 @@ module Commands
       read("static/cli/advanced/view.txt")
 
 /// Run the build command
-outputs build(arguments List<String>)!
+outputs build(arguments List<String>)
 from
     info("Running build")&
     match contains(arguments, "--help")

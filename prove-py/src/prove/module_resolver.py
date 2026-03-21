@@ -46,6 +46,7 @@ class LocalModuleInfo:
     name: str
     types: dict[str, Type] = field(default_factory=dict)
     functions: list[FunctionSignature] = field(default_factory=list)
+    constants: list[str] = field(default_factory=list)
 
 
 def build_module_registry(
@@ -133,6 +134,9 @@ def build_module_registry(
                             requires=[],
                         )
                         info.functions.append(vsig)
+
+        for cd in mod_decl.constants:
+            info.constants.append(cd.name)
 
         registry[module_name] = info
         phase_data[module_name] = (mod_decl, type_registry, module)
