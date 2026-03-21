@@ -44,6 +44,7 @@ nav:
       - Roadmap: roadmap.md
       - FAQ: faq.md
       - Security: SECURITY.md
+      - Self-Hosted Runner: self-hosted-runner.md
 
 theme:
   name: material

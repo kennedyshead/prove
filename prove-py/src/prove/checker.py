@@ -1486,7 +1486,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     self._warning("W300", f"unused variable '{sym.name}'", sym.span)
                 elif sym.used and not sym.used_outside_match and len(sym.match_arm_ids) == 1:
                     self._info(
-                        "I301",
+                        "I305",
                         f"'{sym.name}' is initialized at function scope but "
                         f"only used inside a single match arm; consider "
                         f"moving it into the arm where it is used",
@@ -1567,7 +1567,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ft = self._resolve_type_expr(f.type_expr)
                 if isinstance(ft, UnitType):
                     self._error(
-                        "E399",
+                        "E435",
                         f"field '{f.name}' has type Unit, which has no "
                         f"runtime representation and cannot be used as "
                         f"a struct field",

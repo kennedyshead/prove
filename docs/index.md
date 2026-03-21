@@ -44,25 +44,28 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 **Requirements:** Python 3.11+, gcc or clang
 
 ```bash
-# Clone 
-git clone https://code.botwork.se/Botwork/prove && cd prove 
+# Clone
+git clone https://code.botwork.se/Botwork/prove && cd prove
 
 # Install
 pip install -e ".[dev]"
 
+# Build the proof binary (one-time)
+python -m prove build proof/
+
 # Create a project
-prove new hello
+proof new hello
 
 # Build and run
 cd hello
-prove build
+proof build
 ./build/hello
 
 # Type-check only
-prove check
+proof check
 
 # Run auto-generated tests
-prove test
+proof test
 ```
 
 ---
