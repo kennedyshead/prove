@@ -7,7 +7,6 @@ Options:
   --help     Show this message and exit.
 
 Commands:
-  advanced  Advanced development and debugging tools.
   build     Compile a Prove project.
   check     Type-check, lint, and verify a Prove project or a single .prv...
   format    Format Prove source files.
