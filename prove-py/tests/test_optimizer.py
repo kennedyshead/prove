@@ -24,7 +24,6 @@ from prove.ast_nodes import (
     Stmt,
     TailContinue,
     TailLoop,
-    VarDecl,
     WildcardPattern,
 )
 from prove.optimizer import Optimizer
@@ -623,57 +622,6 @@ class TestIteratorFusion:
         stmt = new_fd.body[0]
         assert isinstance(stmt.expr, CallExpr)
         assert stmt.expr.func.name == "map"  # unchanged
-
-
-# ── Copy Elision tests ───────────────────────────────────────────
-
-
-class TestCopyElision:
-    def test_single_use_var_marked(self):
-        """A variable used exactly once should be marked for elision."""
-        body = [
-            VarDecl(
-                name="tmp",
-                type_expr=SimpleType("Integer", _SPAN),
-                value=IntegerLit("42", _SPAN),
-                span=_SPAN,
-            ),
-            ExprStmt(IdentifierExpr("tmp", _SPAN), _SPAN),
-        ]
-        fd = _make_func("test_elision", body=body)
-        module = _make_module(fd)
-        symbols = SymbolTable()
-        opt = Optimizer(module, symbols)
-        opt.optimize()
-
-        assert "tmp" in opt.get_elision_candidates()
-
-    def test_multi_use_var_not_marked(self):
-        """A variable used more than once should NOT be marked for elision."""
-        body = [
-            VarDecl(
-                name="tmp",
-                type_expr=SimpleType("Integer", _SPAN),
-                value=IntegerLit("42", _SPAN),
-                span=_SPAN,
-            ),
-            ExprStmt(
-                BinaryExpr(
-                    IdentifierExpr("tmp", _SPAN),
-                    "+",
-                    IdentifierExpr("tmp", _SPAN),
-                    _SPAN,
-                ),
-                _SPAN,
-            ),
-        ]
-        fd = _make_func("test_no_elision", body=body)
-        module = _make_module(fd)
-        symbols = SymbolTable()
-        opt = Optimizer(module, symbols)
-        opt.optimize()
-
-        assert "tmp" not in opt.get_elision_candidates()
 
 
 # ── Trivial Loop Folding tests ────────────────────────────────────

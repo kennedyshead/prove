@@ -11,7 +11,6 @@ Generates small code modifications (mutants) from Prove source code:
 from __future__ import annotations
 
 import json
-import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -67,9 +66,8 @@ class Mutator:
         "||": ["&&"],
     }
 
-    def __init__(self, module: Module, seed: int | None = None) -> None:
+    def __init__(self, module: Module) -> None:
         self._module = module
-        self._rng = random.Random(seed)
         self._mutant_counter = 0
 
     def generate_mutants(

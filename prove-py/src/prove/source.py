@@ -33,19 +33,3 @@ class SourceFile:
         if 1 <= n <= len(self.lines):
             return self.lines[n - 1]
         return ""
-
-    def span_text(self, span: Span) -> str:
-        """Extract the text covered by a span."""
-        if span.start_line == span.end_line:
-            line = self.line_at(span.start_line)
-            return line[span.start_col - 1 : span.end_col]
-        parts = []
-        for ln in range(span.start_line, span.end_line + 1):
-            line = self.line_at(ln)
-            if ln == span.start_line:
-                parts.append(line[span.start_col - 1 :])
-            elif ln == span.end_line:
-                parts.append(line[: span.end_col])
-            else:
-                parts.append(line)
-        return "\n".join(parts)

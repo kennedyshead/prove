@@ -292,13 +292,6 @@ def generate_treesitter(lists: dict, workspace: Path) -> bool:
 # ── Pygments generator ─────────────────────────────────────────────
 
 
-def _pygments_words(items: list[str], indent: int = 20) -> str:
-    """Format a Pygments words() tuple."""
-    pad = " " * indent
-    lines = [f'{pad}"{item}",' for item in items]
-    return "\n".join(lines) + "\n"
-
-
 def _pygments_verbs(lists: dict) -> str:
     """Generate Pygments verbs section."""
     items = lists["verbs"]

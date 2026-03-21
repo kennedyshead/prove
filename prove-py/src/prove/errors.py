@@ -34,7 +34,6 @@ class DiagnosticLabel:
 
     span: Span
     message: str
-    style: str = "primary"  # "primary" or "secondary"
 
 
 @dataclass(frozen=True)

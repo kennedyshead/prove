@@ -939,23 +939,6 @@ def stdlib_prv_path(module_name: str) -> Path | None:
     return stdlib_dir / prv_rel
 
 
-def stdlib_pure_prv_path(module_name: str) -> Path | None:
-    """Return the .prv Path for a pure (non-binary) stdlib module.
-
-    Returns None if the module is binary (has C implementations) or unknown.
-    """
-    key = module_name.lower()
-    prv_rel = _STDLIB_MODULES.get(key)
-    if prv_rel is None:
-        return None
-    # Check if any functions have binary C mappings
-    for mod, _verb, _func in _BINARY_C_MAP:
-        if mod == key:
-            return None  # has binary implementations
-    stdlib_dir = Path(__file__).parent / "stdlib"
-    return stdlib_dir / prv_rel
-
-
 def load_stdlib_prv_source(module_name: str) -> str | None:
     """Return the .prv source text for a pure (non-binary) stdlib module.
 
@@ -980,11 +963,6 @@ def load_stdlib_prv_source(module_name: str) -> str | None:
 def is_stdlib_module(module_name: str) -> bool:
     """Return True if module_name is a known stdlib module."""
     return module_name.lower() in _STDLIB_MODULES
-
-
-def available_modules() -> list[str]:
-    """Return names of all available stdlib modules."""
-    return list(_STDLIB_MODULES.keys())
 
 
 # ── Auto-import support ──────────────────────────────────────────
@@ -1209,9 +1187,3 @@ def build_import_index() -> dict[str, list[ImportSuggestion]]:
 
     _import_index = index
     return _import_index
-
-
-def _reset_import_index() -> None:
-    """Clear the cached import index (used by tests)."""
-    global _import_index
-    _import_index = None

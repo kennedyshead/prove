@@ -22,7 +22,6 @@ from prove.nlp import (
     lemmatize,
     match_stdlib_function,
     parse_intent_phrase,
-    synonyms,
     text_similarity,
 )
 
@@ -115,43 +114,6 @@ class TestExtractParts:
 
 
 # ── Synonyms ─────────────────────────────────────────────────────
-
-
-class TestSynonyms:
-    def test_verb_synonyms_fallback(self) -> None:
-        result = synonyms("transform", pos="v")
-        assert isinstance(result, set)
-        # Should include at least the word itself or related words
-        assert len(result) >= 1
-
-    def test_unknown_word_fallback(self) -> None:
-        result = synonyms("xyzzy", pos="v")
-        assert isinstance(result, set)
-        assert len(result) == 0
-
-    def test_noun_synonyms_fallback_empty(self) -> None:
-        # Fallback only has verb synonyms
-        result = synonyms("password", pos="n")
-        assert isinstance(result, set)
-
-    @pytest.mark.skipif(
-        not has_wordnet(),
-        reason="NLTK WordNet not available",
-    )
-    def test_wordnet_verb_synonyms(self) -> None:
-        result = synonyms("create", pos="v")
-        assert isinstance(result, set)
-        assert len(result) >= 2  # WordNet has rich synonym sets
-
-    @pytest.mark.skipif(
-        not has_wordnet(),
-        reason="NLTK WordNet not available",
-    )
-    def test_wordnet_noun_synonyms(self) -> None:
-        result = synonyms("password", pos="n")
-        assert isinstance(result, set)
-        # WordNet has noun synonyms
-        assert len(result) >= 1
 
 
 # ── Text similarity ──────────────────────────────────────────────
@@ -284,12 +246,6 @@ class TestFallbackMode:
             result = extract_parts("validate email address")
             assert isinstance(result, ExtractedParts)
             assert len(result.nouns) >= 1
-
-    def test_synonyms_fallback(self) -> None:
-        with self._patch_nlp_unavailable():
-            result = synonyms("transform", pos="v")
-            assert isinstance(result, set)
-            assert len(result) >= 1
 
     def test_text_similarity_fallback(self) -> None:
         with self._patch_nlp_unavailable():

@@ -59,17 +59,11 @@ class TestConfig:
 
 
 @dataclass
-class StyleConfig:
-    line_length: int = 90
-
-
-@dataclass
 class ProveConfig:
     package: PackageConfig = field(default_factory=PackageConfig)
     build: BuildConfig = field(default_factory=BuildConfig)
     optimize: OptimizeConfig = field(default_factory=OptimizeConfig)
     test: TestConfig = field(default_factory=TestConfig)
-    style: StyleConfig = field(default_factory=StyleConfig)
 
 
 # Directories under src/ that contain shared resources (stdlib .prv files,
@@ -147,12 +141,6 @@ def load_config(path: Path) -> ProveConfig:
         tst = data["test"]
         config.test = TestConfig(
             property_rounds=tst.get("property_rounds", 1000),
-        )
-
-    if "style" in data:
-        sty = data["style"]
-        config.style = StyleConfig(
-            line_length=sty.get("line_length", 90),
         )
 
     return config

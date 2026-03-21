@@ -90,9 +90,6 @@ class RuntimeDeps:
     def __init__(self) -> None:
         self._libs: set[str] = set()
 
-    def add_lib(self, lib: str) -> None:
-        self._libs.add(lib)
-
     def add_module(self, module: str) -> None:
         """Add all runtime libs needed for a stdlib module."""
         normalized = module.lower()
@@ -113,27 +110,14 @@ class EscapeInfo:
 
     def __init__(self) -> None:
         self._escapes: set[tuple[str, str]] = set()  # (func_name, var_name)
-        self._noescape_calls: set[tuple[str, str]] = set()  # (func_name, call_name)
 
     def mark_escapes(self, func_name: str, var_name: str) -> None:
         """Mark that a variable escapes in a function."""
         self._escapes.add((func_name, var_name))
 
-    def mark_noescape_call(self, func_name: str, call_name: str) -> None:
-        """Mark that a call doesn't cause escape (pure function)."""
-        self._noescape_calls.add((func_name, call_name))
-
     def escapes(self, func_name: str, var_name: str) -> bool:
         """Check if a variable escapes in a function. Conservative: defaults to True."""
         return (func_name, var_name) in self._escapes
-
-    def is_noescape_call(self, func_name: str, call_name: str) -> bool:
-        """Check if a call is known to be pure/non-escaping."""
-        return (func_name, call_name) in self._noescape_calls
-
-    def get_escaping_vars(self, func_name: str) -> set[str]:
-        """Get all escaping variables in a function."""
-        return {v for f, v in self._escapes if f == func_name}
 
 
 class Optimizer:
@@ -170,14 +154,6 @@ class Optimizer:
     def get_runtime_deps(self) -> RuntimeDeps:
         """Return runtime dependencies discovered during optimization."""
         return self._runtime_deps
-
-    def get_elision_candidates(self) -> set[str]:
-        """Return variable names eligible for move-instead-of-copy."""
-        return {var for _, var in self._elision_candidates}
-
-    def is_elision_candidate(self, func_name: str, var_name: str) -> bool:
-        """Check if a variable is an elision candidate in a specific function."""
-        return (func_name, var_name) in self._elision_candidates
 
     def get_escape_info(self) -> EscapeInfo:
         """Return escape analysis information."""

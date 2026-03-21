@@ -116,17 +116,6 @@ class ProofVerifier:
             )
         )
 
-    def _warning(self, code: str, message: str, span: Span) -> None:
-        self.diagnostics.append(
-            Diagnostic(
-                severity=Severity.WARNING,
-                code=code,
-                message=message,
-                labels=[DiagnosticLabel(span=span, message="")],
-                doc_url=DIAGNOSTIC_DOCS.get(code),
-            )
-        )
-
     def _check_ensures_explain(self, fd: FunctionDef) -> None:
         """W323: ensures without explain block (warning, not error).
 

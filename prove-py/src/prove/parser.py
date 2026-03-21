@@ -1078,16 +1078,6 @@ class Parser:
             )
         return self._parse_expression(0)
 
-    def _type_expr_to_variant(self, te: TypeExpr) -> Variant:
-        """Convert a parsed type expression back into a Variant node."""
-        if isinstance(te, SimpleType):
-            return Variant(te.name, [], te.span)
-        if isinstance(te, GenericType):
-            # This is actually a variant with fields like Variant(field Type)
-            # But GenericType uses <>, not (). So this is a unit variant.
-            return Variant(te.name, [], te.span)
-        return Variant("unknown", [], te.span)
-
     def _parse_variant(self) -> Variant:
         """Parse a single algebraic variant."""
         start = self._current().span

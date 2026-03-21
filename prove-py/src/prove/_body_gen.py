@@ -33,7 +33,6 @@ class GeneratedStmt:
 
     code: str
     is_todo: bool = False
-    stdlib_call: StdlibMatch | None = None
     explanation: str | None = None
 
 
@@ -227,7 +226,6 @@ def generate_body(
         body.stmts.append(
             GeneratedStmt(
                 code=f"result as {ret_str} = {call_code}",
-                stdlib_call=best,
                 explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
             )
         )
@@ -236,7 +234,6 @@ def generate_body(
         body.stmts.append(
             GeneratedStmt(
                 code=call_code,
-                stdlib_call=best,
                 explanation=_simplify_doc(fn.doc_comment) if fn.doc_comment else None,
             )
         )
