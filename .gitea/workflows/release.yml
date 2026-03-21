@@ -37,14 +37,22 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]" -q --break-system-packages
 
-      - name: Run full test suite
+      - name: Run all checks
         run: |
-          python -m pytest tests/ -v --tb=short -n auto
-          ruff check src/ tests/
-          mypy src/
-
-      - name: Run e2e tests
-        run: python ../scripts/test_e2e.py
+          ruff check src/ tests/ &
+          RUFF_PID=$!
+          mypy src/ &
+          MYPY_PID=$!
+          python -m pytest tests/ -v --tb=short -n auto &
+          PYTEST_PID=$!
+          python ../scripts/test_e2e.py &
+          E2E_PID=$!
+          FAIL=0
+          wait $RUFF_PID   || { echo "ruff failed";   FAIL=1; }
+          wait $MYPY_PID   || { echo "mypy failed";   FAIL=1; }
+          wait $PYTEST_PID || { echo "pytest failed";  FAIL=1; }
+          wait $E2E_PID    || { echo "e2e failed";     FAIL=1; }
+          exit $FAIL
 
       - name: Build proof project
         run: prove build ../proof/

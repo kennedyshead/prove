@@ -1,0 +1,52 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prove-py
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: prove-py/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev,nlp]" -q --break-system-packages
+          pip install build -q --break-system-packages
+          python -m spacy download en_core_web_lg -q
+
+      - name: Build all
+        run: |
+          # Proof binary
+          prove build ../proof/ &
+          PROOF_PID=$!
+
+          # Python wheel
+          python -m build --wheel --outdir ../build/wheel . &
+          WHEEL_PID=$!
+
+          # NLP stores
+          (python ../scripts/ml_extract.py && python ../scripts/ml_train.py && python scripts/build_stores.py) &
+          NLP_PID=$!
+
+          FAIL=0
+          wait $PROOF_PID || { echo "Failed: proof binary";  FAIL=1; }
+          wait $WHEEL_PID || { echo "Failed: python wheel";  FAIL=1; }
+          wait $NLP_PID   || { echo "Failed: NLP stores";    FAIL=1; }
+          exit $FAIL

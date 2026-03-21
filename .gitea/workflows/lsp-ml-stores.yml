@@ -2,21 +2,8 @@ name: Build LSP ML Stores
 
 on:
   push:
-    branches:
-      - main
     tags:
-      - 'lsp-stores-*'
-    paths:
-      - 'prove-py/src/prove/stdlib/**/*.prv'
-      - 'examples/**/*.prv'
-      - 'proof/**/*.prv'
-      - 'benchmarks/**/*.prv'
-      - 'prove-py/tests/fixtures/**/*.prv'
-      - 'scripts/ml_extract.py'
-      - 'scripts/ml_train.py'
-      - 'scripts/ml_store.py'
-      - 'prove-py/scripts/build_stores.py'
-      - 'prove-py/src/prove/_nl_intent.py'
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -48,38 +35,34 @@ jobs:
           python scripts/build_stores.py
           cp ../build/lsp-ml-stores.tar.gz ./lsp-ml-stores.tar.gz
 
-      - name: Create or update release
+      - name: Upload to release
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
-          if [[ "$GITEA_REF" == refs/tags/* ]]; then
-            TAG="${GITEA_REF#refs/tags/}"
-          else
-            TAG="lsp-stores-v$(date +'%Y.%m.%d')"
-          fi
-
+          TAG="${GITHUB_REF#refs/tags/}"
           API="${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}"
-          AUTH="-H \"Authorization: token $GITEA_TOKEN\""
 
-          # Try to create the release; on conflict (tag already exists) fetch the existing one
-          CREATE=$(curl -sf -X POST \
+          # Fetch existing release (created by release.yml) or create one
+          RELEASE_ID=$(curl -sf \
             -H "Authorization: token $GITEA_TOKEN" \
-            -H "Content-Type: application/json" \
-            "$API/releases" \
-            -d "{
-              \"tag_name\": \"$TAG\",
-              \"name\": \"LSP ML Stores ${TAG#lsp-stores-v}\",
-              \"body\": \"Pre-trained LSP completion stores. Run \`prove advanced setup\` to install.\"
-            }") && RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") \
-          || RELEASE_ID=$(curl -sf \
-            -H "Authorization: token $GITEA_TOKEN" \
-            "$API/releases/tags/$TAG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+            "$API/releases/tags/$TAG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") \
+          || {
+            CREATE=$(curl -sf -X POST \
+              -H "Authorization: token $GITEA_TOKEN" \
+              -H "Content-Type: application/json" \
+              "$API/releases" \
+              -d "{
+                \"tag_name\": \"$TAG\",
+                \"name\": \"Prove ${TAG#v}\",
+                \"body\": \"Release ${TAG#v}\"
+              }")
+            RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          }
 
           if [ -z "$RELEASE_ID" ]; then
             echo "ERROR: could not get release ID for tag $TAG" >&2
             exit 1
           fi
-
           echo "Release ID: $RELEASE_ID"
 
           # Delete existing attachment with the same name (idempotent re-runs)
@@ -87,11 +70,11 @@ jobs:
             -H "Authorization: token $GITEA_TOKEN" \
             "$API/releases/$RELEASE_ID/assets" \
             | python3 -c "
-import sys,json
-assets = json.load(sys.stdin)
-match = next((a['id'] for a in assets if a['name'] == 'lsp-ml-stores.tar.gz'), None)
-print(match or '')
-")
+          import sys,json
+          assets = json.load(sys.stdin)
+          match = next((a['id'] for a in assets if a['name'] == 'lsp-ml-stores.tar.gz'), None)
+          print(match or '')
+          ")
           if [ -n "$EXISTING_ASSET_ID" ]; then
             curl -sf -X DELETE \
               -H "Authorization: token $GITEA_TOKEN" \
