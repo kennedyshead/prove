@@ -25,7 +25,6 @@ module Main
 inputs read_message() ByteArray!
 from
     header as String = console()
-    sep as String = console()
     n as Integer = integer(trim(slice(header, 16, length(header))))!
     console(n)
 

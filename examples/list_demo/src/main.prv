@@ -16,15 +16,15 @@ from
     console(f"Length: {length(numbers)}")
     console(f"Empty: {empty(numbers)}")
     // First and last
-    first_num as Integer = unwrap(first(numbers))
-    last_num as Integer = unwrap(last(numbers))
+    first_num as Integer = unwrap(first(numbers), 0)
+    last_num as Integer = unwrap(last(numbers), 6)
     console(f"First: {first_num}, Last: {last_num}")
     // Contains
     has_three as Boolean = contains(numbers, 3)
     has_ten as Boolean = contains(numbers, 10)
     console(f"Contains 3: {has_three}, Contains 10: {has_ten}")
     // Index
-    idx as Integer = unwrap(index(numbers, 4))
+    idx as Integer = unwrap(index(numbers, 4), 4)
     console(f"Index of 4: {idx}")
     // Slice
     slice_result as List<Integer> = slice(numbers, 1, 3)

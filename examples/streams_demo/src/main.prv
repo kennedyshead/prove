@@ -1,5 +1,5 @@
 module Main
-  narrative: """Demonstrates the streams verb — blocking stdin echo loop."""
+  narrative: """Demonstrates the streams verb — blocking stdin echo loop. streams repl"""
   System inputs console outputs console
 
   type Command is Active(prompt String)

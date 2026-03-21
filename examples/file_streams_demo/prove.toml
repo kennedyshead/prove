@@ -6,6 +6,8 @@ license = ""
 
 [build]
 target = "native"
+mutate = true
+debug = false
 
 [optimize]
 enabled = true
