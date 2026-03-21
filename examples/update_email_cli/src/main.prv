@@ -4,6 +4,7 @@ module Example
 
   Inputs email from console, transforms user json to User struct enusres i in matches ensure_user.
   Updates the email an save the user to user.json through file output
+  Expected to fail: check, build.
   """
   System inputs console file outputs console
   Parse types Value reads json object creates json value validates json
@@ -36,7 +37,7 @@ from
 
 /// test2
 matches ensure_user(raw String) User
-  ensures valid json(json_data)
+  ensures valid json(raw)
   requires valid string(raw)
   explain
       if raw argument is more than an empty string
