@@ -439,8 +439,6 @@ _register_module(
         ("validates", "value", "Option<String>"): "prove_error_some_str",
         ("validates", "unit", "Option<Integer>"): "prove_error_none_int",
         ("validates", "unit", "Option<String>"): "prove_error_none_str",
-        ("transforms", "unwrap", "Option<Integer>"): "prove_error_unwrap_int",
-        ("transforms", "unwrap", "Option<String>"): "prove_error_unwrap_str",
         ("reads", "unwrap", "Option<Integer>"): "prove_error_unwrap_or_int",
         ("reads", "unwrap", "Option<String>"): "prove_error_unwrap_or_str",
     },

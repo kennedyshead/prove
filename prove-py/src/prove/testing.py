@@ -191,7 +191,12 @@ class TestGenerator:
 
         param_types = sig.param_types
         ret_type = sig.return_type
-        mangled = mangle_name(fd.verb, fd.name, param_types)
+        mangled = mangle_name(
+            fd.verb,
+            fd.name,
+            param_types,
+            module=sig.module if sig.module and sig.module != "main" else None,
+        )
 
         # validates functions implicitly return Boolean
         from prove.types import BOOLEAN

@@ -130,7 +130,3 @@ binary
 /// Unwrap an Option or return a default string
 reads unwrap(option Option<String>, default String) String
 binary
-
-/// Unwrap an Option, returning the inner value
-transforms unwrap(option Option<Value>) Value
-binary

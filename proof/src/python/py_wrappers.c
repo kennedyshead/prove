@@ -53,10 +53,45 @@ void py_initialize(void) {
 void py_finalize(void) { Py_Finalize(); }
 
 int64_t py_run_string(Prove_String *code) {
-  return (int64_t)PyRun_SimpleString(code->data);
+  int64_t rc = (int64_t)PyRun_SimpleString(code->data);
+  if (rc != 0 && PyErr_Occurred()) {
+    /* Check for SystemExit before calling PyErr_Print, because
+     * PyErr_Print handles SystemExit by calling exit() directly,
+     * which crashes the Prove runtime during cleanup (bus error). */
+    PyObject *exc_type, *exc_value, *exc_tb;
+    PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
+    if (exc_type && PyErr_GivenExceptionMatches(exc_type, PyExc_SystemExit)) {
+      /* Extract the exit code and return it without calling exit() */
+      int64_t exit_code = 1;
+      if (exc_value) {
+        PyErr_NormalizeException(&exc_type, &exc_value, &exc_tb);
+        PyObject *code_attr = PyObject_GetAttrString(exc_value, "code");
+        if (code_attr && PyLong_Check(code_attr)) {
+          exit_code = (int64_t)PyLong_AsLongLong(code_attr);
+        }
+        Py_XDECREF(code_attr);
+      }
+      Py_XDECREF(exc_type);
+      Py_XDECREF(exc_value);
+      Py_XDECREF(exc_tb);
+      return exit_code;
+    }
+    /* Not SystemExit — restore and print the error normally */
+    PyErr_Restore(exc_type, exc_value, exc_tb);
+    PyErr_Print();
+  }
+  return rc;
 }
 
 void py_set_string(Prove_String *name, Prove_String *value) {
+  if (!value) {
+    /* NULL value — set Python variable to None instead of crashing */
+    PyObject *main_module = PyImport_AddModule("__main__");
+    PyObject *main_dict = PyModule_GetDict(main_module);
+    Py_INCREF(Py_None);
+    PyDict_SetItemString(main_dict, name->data, Py_None);
+    return;
+  }
   PyObject *main_module = PyImport_AddModule("__main__");
   PyObject *main_dict = PyModule_GetDict(main_module);
   PyObject *val = PyUnicode_FromStringAndSize(value->data, value->length);

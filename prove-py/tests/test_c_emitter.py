@@ -861,7 +861,7 @@ class TestRefinementProveRelease:
         c_code = _emit(source)
         assert "prove_panic" in c_code
         # Find the function body and verify no #ifndef wrapping
-        fn_start = c_code.index("prv_inputs_read_nz")
+        fn_start = c_code.index("prv_m_inputs_read_nz")
         fn_body = c_code[fn_start:]
         # The guard should be present without PROVE_RELEASE wrapping
         panic_idx = fn_body.index("prove_panic")
@@ -880,7 +880,7 @@ class TestRefinementProveRelease:
             "        p\n"
         )
         c_code = _emit(source)
-        fn_start = c_code.index("prv_transforms_default_port")
+        fn_start = c_code.index("prv_m_transforms_default_port")
         fn_body = c_code[fn_start:]
         # Literal 443 is statically verified by checker (E355) — no runtime guard
         assert "prove_panic" not in fn_body
@@ -896,7 +896,7 @@ class TestRefinementProveRelease:
             "        p\n"
         )
         c_code = _emit(source)
-        fn_start = c_code.index("prv_transforms_use_port")
+        fn_start = c_code.index("prv_m_transforms_use_port")
         fn_body = c_code[fn_start:]
         # Variable source — runtime guard required
         assert "prove_panic" in fn_body

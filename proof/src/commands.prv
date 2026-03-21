@@ -20,6 +20,7 @@ module Commands
   New outputs new_project
   Sequence reads get
   Compiler outputs pycompiler
+  Export outputs pyexport
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -67,12 +68,12 @@ module Commands
 outputs build(arguments List<String>)!
 from
     info("Running build")&
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
         _ =>
             debug as Boolean = contains(arguments, "--debug")
             no_mutate as Boolean = contains(arguments, "--no-mutate")
+            config as Config = config()
             source as List<SourceFile> = source(config)
             pybuild(config, cwd(), debug, no_mutate, source)
             info(f"{
@@ -85,7 +86,6 @@ from
 outputs check(arguments List<String>)!
 from
     info("Running check")&
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_CHECK_TEXT)
         _ =>
@@ -96,6 +96,7 @@ from
             no_status as Boolean = contains(arguments, "--no-status")
             no_intent as Boolean = contains(arguments, "--no-intent")
             nlp_status as Boolean = contains(arguments, "--nlp--status")
+            config as Config = config()
             pycheck(config,
                     cwd(),
                     md,
@@ -115,13 +116,13 @@ from
 outputs format(arguments List<String>)!
 from
     info("Running format")&
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_FORMAT_TEXT)
         _ =>
             md as Boolean = contains(arguments, "--md")
             status as Boolean = contains(arguments, "--status")
             stdin as Boolean = contains(arguments, "--stdin")
+            config as Config = config()
             pyformat(config, cwd(), md, status, stdin)
             info(f"{
                    config.package.name
@@ -152,10 +153,10 @@ from
 /// Run the test command
 outputs test(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_TEST_TEXT)
         _ =>
+            config as Config = config()
             pytest(config, cwd(), 1000)
             info(f"{
                    config.package.name
@@ -175,15 +176,15 @@ from
 /// Run export command
 outputs export(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_EXPORT_TEXT)
-        _ => info("Ran export")&
+        _ =>
+            pyexport(arguments)
+            info("Ran export")&
 
 /// Run generate command
 outputs generate(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_GENERATE_TEXT)
         _ => info("Ran generate")&
@@ -191,7 +192,6 @@ from
 /// Run index command
 outputs index(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_INDEX_TEXT)
         _ => info("Ran index")&
@@ -199,7 +199,6 @@ from
 /// Run intent command
 outputs intent(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_INTENT_TEXT)
         _ => info("Ran intent")&
@@ -207,7 +206,6 @@ from
 /// Run setup command
 outputs setup(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_SETUP_TEXT)
         _ => info("Ran setup")&
@@ -215,7 +213,6 @@ from
 /// Run setup_nlp command
 outputs setup_nlp(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_SETUP_NLP_TEXT)
         _ => info("Ran setup_nlp")&
@@ -223,7 +220,6 @@ from
 /// Run view command
 outputs view(arguments List<String>)!
 from
-    config as Config = config()
     match contains(arguments, "--help")
         true => console(HELP_VIEW_TEXT)
         _ => info("Ran view")&

@@ -27,6 +27,8 @@ class Symbol:
     mutable: bool = False
     used: bool = False
     is_imported: bool = False
+    used_outside_match: bool = False  # True if referenced outside any match arm
+    match_arm_ids: set[int] = field(default_factory=set)  # unique arm IDs where used
 
 
 @dataclass

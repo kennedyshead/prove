@@ -71,7 +71,10 @@ class CallEmitterMixin:
         call_args: list[Expr] | None = None,
         verb_override: str | None = None,
     ) -> str | None:
-        """Resolve a stdlib function signature to its C runtime name."""
+        """Resolve a stdlib function signature to its C runtime name.
+
+        Also ensures the corresponding header is added to _needed_headers.
+        """
         if not sig.module:
             return None
         from prove.stdlib_loader import binary_c_name
@@ -97,6 +100,7 @@ class CallEmitterMixin:
                 combined = f"{fpt}_{spt}_{tpt}"
                 result = binary_c_name(sig.module, verb, sig.name, combined)
                 if result:
+                    self._ensure_header_for_c_func(result)
                     return result
 
         fpt = None
@@ -119,7 +123,48 @@ class CallEmitterMixin:
             if spt is not None:
                 combined = f"{fpt}_{spt}" if fpt else spt
                 result = binary_c_name(sig.module, verb, sig.name, combined)
+        if result:
+            self._ensure_header_for_c_func(result)
         return result
+
+    def _ensure_header_for_c_func(self, c_func: str) -> None:
+        """Add the runtime header for a C function based on its name prefix."""
+        # C runtime functions follow the pattern prove_<module>_<func>.
+        # Extract the module part to determine the header.
+        if not c_func.startswith("prove_"):
+            return
+        rest = c_func[6:]  # strip "prove_"
+        # Known runtime module prefixes → headers
+        _PREFIX_HEADERS = {
+            "error": "prove_error.h",
+            "convert": "prove_convert.h",
+            "parse": "prove_parse.h",
+            "table": "prove_table.h",
+            "hash_crypto": "prove_hash_crypto.h",
+            "hash": "prove_hash.h",
+            "string": "prove_string.h",
+            "list_ops": "prove_list_ops.h",
+            "list": "prove_list.h",
+            "array": "prove_array.h",
+            "math": "prove_math.h",
+            "option": "prove_option.h",
+            "result": "prove_result.h",
+            "format": "prove_format.h",
+            "path": "prove_path.h",
+            "pattern": "prove_pattern.h",
+            "random": "prove_random.h",
+            "time": "prove_time.h",
+            "bytes": "prove_bytes.h",
+            "character": "prove_character.h",
+            "text": "prove_text.h",
+            "network": "prove_network.h",
+            "language": "prove_language.h",
+        }
+        # Try longest prefix first (hash_crypto before hash)
+        for prefix in sorted(_PREFIX_HEADERS, key=len, reverse=True):
+            if rest.startswith(prefix + "_") or rest == prefix:
+                self._needed_headers.add(_PREFIX_HEADERS[prefix])
+                return
 
     def _is_requires_narrowed(
         self,
@@ -381,6 +426,9 @@ class CallEmitterMixin:
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option" and arg_ty.args:
                 inner_ct = map_type(arg_ty.args[0])
                 if inner_ct.decl == param_ct.decl:
+                    # Use a temp to avoid double-evaluation of the expression
+                    opt_tmp = self._tmp()
+                    self._line(f"Prove_Option {opt_tmp} = {arg_str};")
                     # Only unwrap if Some (tag == 1), otherwise use default value
                     if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
                         default_val = "NULL"
@@ -388,7 +436,7 @@ class CallEmitterMixin:
                     else:
                         default_val = "0"
                         cast = f"({param_ct.decl})(intptr_t)"
-                    result[i] = f"({arg_str}.tag == 1 ? {cast}{arg_str}.value : {default_val})"
+                    result[i] = f"({opt_tmp}.tag == 1 ? {cast}{opt_tmp}.value : {default_val})"
                     continue
             # Result<Value, Error> → Value: unwrap
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result" and arg_ty.args:
@@ -662,14 +710,25 @@ class CallEmitterMixin:
                 return f"prove_list_len({', '.join(args)})"
 
             # unwrap(Option<Value>) → prove_option_unwrap with typed cast
+            # Only use runtime unwrap if there's no user-defined unwrap function
             if name == "unwrap" and len(args) == 1 and expr.args:
                 arg_ty = self._infer_expr_type(expr.args[0])
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option":
-                    inner_ty = arg_ty.args[0] if arg_ty.args else INTEGER
-                    inner_ct = map_type(inner_ty)
-                    if inner_ct.is_pointer:
-                        return f"({inner_ct.decl})prove_option_unwrap({args[0]})"
-                    return f"({inner_ct.decl})(intptr_t)prove_option_unwrap({args[0]})"
+                    from prove.stdlib_loader import is_stdlib_module
+
+                    user_sig = self._symbols.resolve_function_any("unwrap", arity=1)
+                    has_user_unwrap = (
+                        user_sig is not None
+                        and user_sig.module is not None
+                        and not is_stdlib_module(user_sig.module)
+                        and not is_stdlib_module(user_sig.module.capitalize())
+                    )
+                    if not has_user_unwrap:
+                        inner_ty = arg_ty.args[0] if arg_ty.args else INTEGER
+                        inner_ct = map_type(inner_ty)
+                        if inner_ct.is_pointer:
+                            return f"({inner_ct.decl})prove_option_unwrap({args[0]})"
+                        return f"({inner_ct.decl})(intptr_t)prove_option_unwrap({args[0]})"
                 # Result unwrap
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result":
                     if arg_ty.args:
@@ -687,6 +746,9 @@ class CallEmitterMixin:
 
             # Foreign (C FFI) functions — emit direct C call, no mangling
             if name in self._foreign_names:
+                sig = self._symbols.resolve_function(None, name, len(expr.args))
+                if sig:
+                    args = self._coerce_call_args(args, expr.args, sig)
                 return f"{name}({', '.join(args)})"
 
             # Binary bridge: stdlib binary functions → C runtime
@@ -807,7 +869,9 @@ class CallEmitterMixin:
                         return f"{mangled}({', '.join(args)})"
 
                 args = self._coerce_call_args(args, expr.args, sig)
-                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                mangled = mangle_name(
+                    sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
+                )
                 call = f"{mangled}({', '.join(args)})"
 
                 # Only memoize functions returning Integer or Boolean
@@ -822,7 +886,8 @@ class CallEmitterMixin:
                     and self._memo_info
                     and self._memo_info.is_candidate(sig.verb, sig.name)
                 ):
-                    table_name = f"_memo_{sig.verb}_{sig.name}"
+                    mod_prefix = f"{self._module_name}_" if self._module_name else ""
+                    table_name = f"_memo_{mod_prefix}{sig.verb}_{sig.name}"
                     table_size = 32
                     cand = self._memo_info.get_candidate(sig.verb, sig.name)
                     if cand:
@@ -975,7 +1040,9 @@ class CallEmitterMixin:
                         if isinstance(expr.args[i], LambdaExpr):
                             args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
-                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                mangled = mangle_name(
+                    sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
+                )
                 call_str = f"{mangled}({', '.join(args)})"
                 call_str = self._maybe_unwrap_option(
                     call_str,
@@ -1171,14 +1238,48 @@ class CallEmitterMixin:
                         if c_name:
                             body_code = f"{c_name}({param})"
                     elif fn_sig.verb is not None:
-                        mangled = mangle_name(fn_sig.verb, fn_sig.name, fn_sig.param_types)
+                        mangled = mangle_name(
+                            fn_sig.verb,
+                            fn_sig.name,
+                            fn_sig.param_types,
+                            module=self._sig_module(fn_sig),
+                        )
                         body_code = f"{mangled}({param})"
             self._locals = saved_locals
             self._line(f"{body_code};")
             self._indent -= 1
             self._line("}")
             return "(void)0"
-        # Non-lambda: fall back to prove_list_each
+        # Non-lambda IdentifierExpr: inline loop with resolved function call
+        if isinstance(lam, IdentifierExpr):
+            fn_sig = self._symbols.resolve_function_any(lam.name, arity=1)
+            if fn_sig is None:
+                fn_sig = self._symbols.resolve_function(None, lam.name, 1)
+            if fn_sig:
+                if fn_sig.module:
+                    c_fn = self._resolve_stdlib_c_name(fn_sig)
+                    if c_fn is None:
+                        c_fn = mangle_name(
+                            fn_sig.verb,
+                            fn_sig.name,
+                            fn_sig.param_types,
+                            module=self._sig_module(fn_sig),
+                        )
+                else:
+                    c_fn = mangle_name(fn_sig.verb, fn_sig.name, fn_sig.param_types)
+                if c_fn:
+                    param = self._named_tmp("x")
+                    idx = self._named_tmp("i")
+                    self._line("")
+                    self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+                    self._indent += 1
+                    elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+                    self._line(f"{elem_ct.decl} {param} = {elem_get};")
+                    self._line(f"{c_fn}({param});")
+                    self._indent -= 1
+                    self._line("}")
+                    return "(void)0"
+        # Fall back to prove_list_each with callback wrapper
         self._needed_headers.add("prove_hof.h")
         fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "each")
         return f"prove_list_each({list_arg}, {fn_name}, {ctx_arg})"
@@ -1452,7 +1553,9 @@ class CallEmitterMixin:
             # valid error → wrap validates function as filter predicate
             sig = self._symbols.resolve_function_any(expr.name)
             pt = list(sig.param_types) if sig else None
-            fn = mangle_name("validates", expr.name, pt)
+            fn = mangle_name(
+                "validates", expr.name, pt, module=self._sig_module(sig) if sig else None
+            )
             wrapper = f"_lambda_{self._tmp_counter}"
             self._tmp_counter += 1
             elem_ct = map_type(elem_type)
@@ -2413,7 +2516,10 @@ class CallEmitterMixin:
             fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
             if fn_sig:
                 c_name = mangle_name(
-                    fn_sig.verb, expr.name, list(fn_sig.param_types) if fn_sig.param_types else None
+                    fn_sig.verb,
+                    expr.name,
+                    list(fn_sig.param_types) if fn_sig.param_types else None,
+                    module=self._sig_module(fn_sig),
                 )
                 return f"{c_name}({arg_var})"
         # Fallback: emit as regular call

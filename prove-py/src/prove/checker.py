@@ -378,6 +378,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._strict: bool = False
         # Lambda capture tracking: id(LambdaExpr) -> list of captured var names
         self._lambda_captures: dict[int, list[str]] = {}
+        # Current module name (set from ModuleDecl) for function signature tagging
+        self._module_name: str | None = None
+        # Match arm depth: >0 when checking statements inside a match arm body
+        self._match_arm_depth: int = 0
+        # Unique ID for the current match arm (incremented per arm)
+        self._match_arm_id: int = 0
 
     # ── Public API ──────────────────────────────────────────────
 
@@ -412,6 +418,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 from prove.stdlib_loader import is_stdlib_module
 
                 self._is_stdlib = is_stdlib_module(decl.name)
+                if not self._is_stdlib and decl.name.lower() != "main":
+                    self._module_name = decl.name.lower()
                 for imp in decl.imports:
                     self._register_import(imp)
                 for td in decl.types:
@@ -844,6 +852,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return_type=return_type,
             can_fail=fd.can_fail,
             span=fd.span,
+            module=self._module_name,
             requires=fd.requires,
             doc_comment=fd.doc_comment,
             event_type=resolved_event_type,
@@ -1469,6 +1478,21 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         else:
             self._verification_status[fd.name] = "unverified"
 
+        # W300: warn about unused local variables
+        # I301: variable initialized outside its used scope
+        for sym in self.symbols.current_scope.all_symbols():
+            if sym.kind == SymbolKind.VARIABLE and not sym.name.startswith("_"):
+                if not sym.used:
+                    self._warning("W300", f"unused variable '{sym.name}'", sym.span)
+                elif sym.used and not sym.used_outside_match and len(sym.match_arm_ids) == 1:
+                    self._info(
+                        "I301",
+                        f"'{sym.name}' is initialized at function scope but "
+                        f"only used inside a single match arm; consider "
+                        f"moving it into the arm where it is used",
+                        sym.span,
+                    )
+
         self.symbols.pop_scope()
         self._current_function = None
         self._requires_narrowings = []
@@ -1540,7 +1564,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         body = td.body
         if isinstance(body, RecordTypeDef):
             for f in body.fields:
-                self._resolve_type_expr(f.type_expr)
+                ft = self._resolve_type_expr(f.type_expr)
+                if isinstance(ft, UnitType):
+                    self._error(
+                        "E399",
+                        f"field '{f.name}' has type Unit, which has no "
+                        f"runtime representation and cannot be used as "
+                        f"a struct field",
+                        f.span,
+                    )
                 if f.constraint is not None:
                     self._check_where_constraint(f.constraint)
         elif isinstance(body, AlgebraicTypeDef):
@@ -2511,6 +2543,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self.diagnostics.append(diag)
             return ERROR_TY
         sym.used = True
+        if self._match_arm_depth == 0:
+            sym.used_outside_match = True
+        else:
+            sym.match_arm_ids.add(self._match_arm_id)
         # Check for use-after-move error
         self._check_moved_var(expr.name, expr.span)
         return sym.resolved_type
@@ -2816,8 +2852,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self.symbols.push_scope("match_arm")
             self._check_pattern(arm.pattern, subject_type)
             arm_type = UNIT
+            self._match_arm_id += 1
+            self._match_arm_depth += 1
             for stmt in arm.body:
                 arm_type = self._check_stmt(stmt)  # type: ignore[assignment]
+            self._match_arm_depth -= 1
             if not isinstance(arm_type, ErrorType):
                 result_type = arm_type
             arm_types.append((arm_type, arm))
