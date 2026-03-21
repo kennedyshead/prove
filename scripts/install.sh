@@ -7,6 +7,7 @@
 set -eu
 
 GITEA_API="https://code.botwork.se/api/v1/repos/Botwork/prove"
+GITEA_REPO="https://code.botwork.se/Botwork/prove"
 VERSION=""
 PREFIX="${HOME}/.local/bin"
 
@@ -61,7 +62,7 @@ echo "Installing proof $VERSION..."
 
 # Download tarball
 TARBALL="proof-${VERSION}-${PLATFORM}.tar.gz"
-DOWNLOAD_URL="${GITEA_API}/releases/download/${VERSION}/${TARBALL}"
+DOWNLOAD_URL="${GITEA_REPO}/releases/download/${VERSION}/${TARBALL}"
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
