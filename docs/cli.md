@@ -6,33 +6,28 @@ keywords: Prove CLI, prove command, compiler commands, build, test, format
 
 # CLI Reference
 
-Prove ships a single `prove` command with subcommands for building, checking, testing, formatting, and debugging.
+Prove has two CLIs:
+
+- **`proof`** — the compiled binary (built from `.prv` source). Handles build, check, format, test, new, and lsp.
+- **`prove`** (Python) — development and tooling commands: compiler, export, generate, index, intent, setup, view.
 
 **Requirements:** Python 3.11+, gcc or clang
 
 ---
 
-## `prove new <name>`
+## Build Commands (`proof`)
 
-Create a new Prove project with scaffolding.
+These commands are handled by the compiled `proof` binary. Build it once with `python -m prove build proof/`, then use `./proof/dist/proof` (or install it to your `PATH`).
 
-```bash
-prove new hello
-```
-
-Creates a directory with `prove.toml`, `src/main.prv`, and a `.gitignore`. Automatically builds the stdlib index and ML completion cache.
-
----
-
-## `prove build [path]`
+### `proof build [path]`
 
 Compile a Prove project to a native binary.
 
 ```bash
-prove build
-prove build path/to/project
-prove build --no-mutate
-prove build --debug
+proof build
+proof build path/to/project
+proof build --no-mutate
+proof build --debug
 ```
 
 Runs the full pipeline: lex, parse, check, prove, emit C, compile with gcc/clang. Mutation testing runs by default.
@@ -46,16 +41,16 @@ The project directory must contain a `prove.toml`. The output binary and interme
 
 ---
 
-## `prove check [path]`
+### `proof check [path]`
 
 Type-check, lint, and verify a Prove project.
 
 ```bash
-prove check
-prove check src/main.prv
-prove check docs/tutorial.md --md
-prove check --no-intent          # skip intent coverage
-prove check --no-challenges      # skip refutation challenges
+proof check
+proof check src/main.prv
+proof check docs/tutorial.md --md
+proof check --no-intent          # skip intent coverage
+proof check --no-challenges      # skip refutation challenges
 ```
 
 By default, `check` runs **all** available analyses — coherence, refutation challenges, completeness status, and intent coverage. Each analysis auto-skips silently when its data is absent (no `project.intent`, no narrative, no `ensures` contracts, no `todo` stubs). Use `--no-*` flags to opt out explicitly.
@@ -76,13 +71,13 @@ Reports type errors, warnings, and formatting issues in a unified summary. Forma
 
 ---
 
-## `prove test [path]`
+### `proof test [path]`
 
 Run contract-based tests generated from `ensures`, `believe`, and `near_miss` annotations.
 
 ```bash
-prove test
-prove test --property-rounds 5000
+proof test
+proof test --property-rounds 5000
 ```
 
 | Flag | Description |
@@ -93,16 +88,16 @@ The compiler parses and checks the source, generates a C test harness from the c
 
 ---
 
-## `prove format [path]`
+### `proof format [path]`
 
 Format Prove source files.
 
 ```bash
-prove format
-prove format src/main.prv
-prove format --status
-prove format --stdin < src/main.prv
-prove format docs/ --md
+proof format
+proof format src/main.prv
+proof format --status
+proof format --stdin < src/main.prv
+proof format docs/ --md
 ```
 
 | Flag | Description |
@@ -115,16 +110,40 @@ Reformats all `.prv` files recursively under the given path. Files with parse er
 
 ---
 
-## Advanced Commands
+### `proof new <name>`
 
-These commands live under `prove advanced` and are intended for development, debugging, and tooling workflows.
+Create a new Prove project with scaffolding.
 
-### `prove advanced setup`
+```bash
+proof new hello
+```
+
+Creates a directory with `prove.toml`, `src/main.prv`, and a `.gitignore`. Automatically builds the stdlib index and ML completion cache.
+
+---
+
+### `proof lsp`
+
+Start the Prove language server (LSP protocol).
+
+```bash
+proof lsp
+```
+
+Used by editor integrations (VS Code, Neovim, etc.) for diagnostics, completions, and hover information. Communicates over stdio.
+
+---
+
+## Development Commands (`prove`)
+
+These commands are part of the Python CLI (`python -m prove` or `prove`). They handle tooling, code generation, and data export.
+
+### `prove setup`
 
 Re-download ML stores to `~/.prove/`.
 
 ```bash
-prove advanced setup
+prove setup
 ```
 
 ML stores are downloaded automatically to `~/.prove/` on first use — you do not need to run this command. Use it if your stores are corrupted or you want a clean reinstall.
@@ -133,7 +152,7 @@ For developers building stores from scratch (requires NLP deps): `pip install 'p
 
 ---
 
-### `prove advanced generate <file>`
+### `prove generate <file>`
 
 Generate function stubs from narrative or intent. Auto-detects the file type:
 
@@ -141,10 +160,10 @@ Generate function stubs from narrative or intent. Auto-detects the file type:
 - **`.intent`** — generate `.prv` files from a project intent file
 
 ```bash
-prove advanced generate src/auth.prv              # generate stubs from narrative
-prove advanced generate src/auth.prv --update     # re-generate @generated functions with todos
-prove advanced generate project.intent            # generate .prv files from intent
-prove advanced generate project.intent --dry-run  # preview without writing
+prove generate src/auth.prv              # generate stubs from narrative
+prove generate src/auth.prv --update     # re-generate @generated functions with todos
+prove generate project.intent            # generate .prv files from intent
+prove generate project.intent --dry-run  # preview without writing
 ```
 
 | Flag | Description |
@@ -160,15 +179,15 @@ For `.prv` files, the generator extracts verbs and nouns from the module's `narr
 
 Functions already present in the file are skipped.
 
-### `prove advanced intent [file.intent]`
+### `prove intent [file.intent]`
 
 Work with `.intent` project declaration files.
 
 ```bash
-prove advanced intent                             # show status of all declarations
-prove advanced intent --drift                     # show only mismatches
-prove advanced intent --generate                  # generate .prv files from intent
-prove advanced intent --generate --dry-run        # preview without writing
+prove intent                             # show status of all declarations
+prove intent --drift                     # show only mismatches
+prove intent --generate                  # generate .prv files from intent
+prove intent --generate --dry-run        # preview without writing
 ```
 
 | Flag | Description |
@@ -181,26 +200,26 @@ prove advanced intent --generate --dry-run        # preview without writing
 
 The `.intent` file is a human-readable project declaration that describes modules, vocabulary, data flow, and constraints. The toolchain generates `.prv` source files from it and verifies the code stays aligned.
 
-Intent coverage is checked automatically by `prove check` (skip with `--no-intent`).
+Intent coverage is checked automatically by `proof check` (skip with `--no-intent`).
 
-### `prove advanced view <file>`
+### `prove view <file>`
 
 Display the AST of a `.prv` file for debugging.
 
 ```bash
-prove advanced view src/main.prv
+prove view src/main.prv
 ```
 
 Prints a human-readable, indented representation of the parsed AST.
 
-### `prove advanced compiler <file>`
+### `prove compiler <file>`
 
 Convert between `.prv` lookup types and PDAT binary format.
 
 ```bash
-prove advanced compiler --load src/data.prv
-prove advanced compiler --dump Data.dat
-prove advanced compiler --dump Data.dat -o data.prv
+prove compiler --load src/data.prv
+prove compiler --dump Data.dat
+prove compiler --dump Data.dat -o data.prv
 ```
 
 | Flag | Description |
@@ -213,36 +232,22 @@ When neither `--load` nor `--dump` is given, the mode is auto-detected from the 
 
 The PDAT binary format matches the C runtime (`prove_store.c`) exactly — files produced by this command are interchangeable with the Store runtime at execution time.
 
-### `prove advanced index [path]`
+### `prove index [path]`
 
 Rebuild the `.prove_cache` ML completion index.
 
 ```bash
-prove advanced index
+prove index
 ```
 
-### `prove advanced export`
+### `prove export`
 
 Export syntax highlighting data to companion lexer projects (tree-sitter, Pygments, Chroma).
 
 ```bash
-prove advanced export
-prove advanced export -f treesitter --build
+prove export
+prove export -f treesitter --build
 ```
-
----
-
----
-
-## `prove lsp`
-
-Start the Prove language server (LSP protocol).
-
-```bash
-prove lsp
-```
-
-Used by editor integrations (VS Code, Neovim, etc.) for diagnostics, completions, and hover information. Communicates over stdio.
 
 ---
 

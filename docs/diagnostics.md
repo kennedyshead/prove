@@ -704,9 +704,48 @@ Code accesses a field on a `Struct` parameter that was not declared via a `with`
 
 A concrete record passed to a `Struct` parameter does not have all the fields required by the `with` constraints, or one of its fields has an incompatible type.
 
+### E435 — Unit type used as struct field
+
+A struct field has type `Unit`, which has no runtime representation in C and cannot be stored in a struct. Use a concrete type instead.
+
+```prove
+type Config is
+    name String
+    debug Unit    // error: Unit has no runtime representation
+```
+
+Fix: use the intended type (`Boolean`, `Option<String>`, etc.).
+
 ---
 
 ## Warnings
+
+### W300 — Unused local variable
+
+A variable is declared inside a function but never referenced. Remove it or prefix with `_` to suppress.
+
+```prove
+outputs export(arguments List<String>)!
+from
+    config as Config = config()   // warning: unused variable 'config'
+    console("done")
+```
+
+### W361 — `unwrap()` may panic at runtime
+
+A call to the stdlib `unwrap()` function on an `Option` or `Result` will panic at runtime if the value is `None` or `Err`. Use `match` to handle both cases, or provide a default with the two-argument form `unwrap(option, default)`.
+
+```prove
+// warning: unwrap() will panic if the Option is None
+name as String = unwrap(value(0, arguments))
+
+// safe alternatives:
+name as String = unwrap(value(0, arguments), "default")
+
+name as String = match value(0, arguments)
+    Some(n) => n
+    _ => "default"
+```
 
 ### W304 — Match condition guaranteed by requires
 
@@ -1008,6 +1047,21 @@ A user-defined type is declared but never referenced. The formatter removes it.
 ### I304 — Unused constant definition
 
 A user-defined constant is declared but never referenced. The formatter removes it.
+
+### I305 — Variable initialized outside its used scope
+
+A variable is declared at function scope but only used inside a single match arm. Moving it into that arm avoids unnecessary initialization when the other arms execute.
+
+```prove
+outputs build(arguments List<String>)!
+from
+    config as Config = config()   // info: only used in the _ arm below
+    match contains(arguments, "--help")
+        true => console(HELP_TEXT)
+        _ => pybuild(config, cwd())
+```
+
+Fix: move the declaration into the arm where it's used.
 
 ### I310 — Implicitly typed variable
 

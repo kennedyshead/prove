@@ -46,10 +46,10 @@ Let's break this down:
 Try running it:
 
 ```bash
-prove new hello
+proof new hello
 cd hello
 # Edit src/main.prv to add the double function, then:
-prove build
+proof build
 ./build/hello
 ```
 
