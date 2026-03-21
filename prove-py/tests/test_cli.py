@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from click.testing import CliRunner
 
@@ -52,112 +50,30 @@ class TestCLI:
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
         assert "Prove" in result.output
-        assert "build" in result.output
-        assert "check" in result.output
-        assert "test" in result.output
-        assert "new" in result.output
-        assert "format" in result.output
-        assert "lsp" in result.output
-        assert "advanced" in result.output
+        assert "compiler" in result.output
+        assert "export" in result.output
+        assert "generate" in result.output
+        assert "setup" in result.output
+        assert "view" in result.output
 
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
         assert "0.1.0" in result.output
 
-    def test_new_creates_project(self, runner, tmp_path):
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(main, ["new", "hello"])
-            assert result.exit_code == 0
-            assert "created project 'hello'" in result.output
-
-            project = Path("hello")
-            assert (project / "prove.toml").exists()
-            assert (project / "src" / "main.prv").exists()
-            assert (project / ".gitignore").exists()
-            assert (project / "project.intent").exists()
-            assert (project / ".prove").is_dir()
-
-            # Verify prove.toml content
-            toml_text = (project / "prove.toml").read_text()
-            assert 'name = "hello"' in toml_text
-
-            # Verify main.prv content
-            prv_text = (project / "src" / "main.prv").read_text()
-            assert "Hello from Prove!" in prv_text
-
-    def test_new_existing_dir_fails(self, runner, tmp_path):
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            Path("hello").mkdir()
-            result = runner.invoke(main, ["new", "hello"])
-            assert result.exit_code == 1
-            assert "already exists" in result.output
-
-    def test_build_with_project(self, runner, tmp_project, needs_cc):
-        result = runner.invoke(main, ["build", str(tmp_project)])
-        assert result.exit_code == 0
-        assert "building testproj" in result.output
-
-    def test_build_mutate_flag(self, runner, tmp_project, needs_cc):
-        result = runner.invoke(main, ["build", str(tmp_project)])
-        assert result.exit_code == 0
-        assert "mutation testing" in result.output
-        assert "mutation score" in result.output or "no mutants" in result.output
-
-    def test_build_no_mutate_flag(self, runner, tmp_project, needs_cc):
-        result = runner.invoke(main, ["build", str(tmp_project), "--no-mutate"])
-        assert result.exit_code == 0
-        assert "mutation testing" not in result.output
-
-    def test_check_with_project(self, runner, tmp_project):
-        result = runner.invoke(main, ["check", str(tmp_project)])
-        assert result.exit_code == 0
-        assert "checking testproj" in result.output
-
-    def test_test_with_project(self, runner, tmp_project):
-        result = runner.invoke(main, ["test", str(tmp_project)])
-        assert result.exit_code == 0
-        assert "testing testproj" in result.output
-        assert "property rounds: 500" in result.output
-
-    def test_test_override_rounds(self, runner, tmp_project):
-        result = runner.invoke(main, ["test", str(tmp_project), "--property-rounds", "100"])
-        assert result.exit_code == 0
-        assert "property rounds: 100" in result.output
-
-    def test_format_check(self, runner, tmp_project):
-        result = runner.invoke(main, ["format", "--status", str(tmp_project)])
-        # Should either pass (exit 0) or find formatting differences (exit 1)
-        assert result.exit_code in (0, 1)
-
-    def test_format_help(self, runner):
-        result = runner.invoke(main, ["format", "--help"])
-        assert result.exit_code == 0
-        assert "--status" in result.output
-        assert "--stdin" in result.output
-
-    def test_lsp_help(self, runner):
-        result = runner.invoke(main, ["lsp", "--help"])
-        assert result.exit_code == 0
-
     def test_view_command(self, runner, tmp_project):
         prv_file = tmp_project / "src" / "main.prv"
-        result = runner.invoke(main, ["advanced", "view", str(prv_file)])
+        result = runner.invoke(main, ["view", str(prv_file)])
         assert result.exit_code == 0
         assert "Module" in result.output
 
     def test_export_help(self, runner):
-        result = runner.invoke(main, ["advanced", "export", "--help"])
+        result = runner.invoke(main, ["export", "--help"])
         assert result.exit_code == 0
         assert "--format" in result.output or "-f" in result.output
         assert "treesitter" in result.output
         assert "pygments" in result.output
         assert "chroma" in result.output
-
-    def test_advanced_in_help(self, runner):
-        result = runner.invoke(main, ["--help"])
-        assert result.exit_code == 0
-        assert "advanced" in result.output
 
     def test_export_runs(self, runner, tmp_path):
         # Create minimal workspace with stub grammar.js containing sentinels
@@ -168,7 +84,7 @@ class TestCLI:
         )
         result = runner.invoke(
             main,
-            ["advanced", "export", "-f", "treesitter", "-w", str(tmp_path)],
+            ["export", "-f", "treesitter", "-w", str(tmp_path)],
         )
         # Should succeed (tree-sitter-prove exists in workspace)
         assert result.exit_code == 0
