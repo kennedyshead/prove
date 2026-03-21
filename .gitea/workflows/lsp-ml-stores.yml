@@ -18,11 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install prove-py dependencies
-        run: pip install -e ".[dev,nlp]" -q --break-system-packages
-
-      - name: Download spaCy model
-        run: python -m spacy download en_core_web_lg -q
+      - name: Create venv and install
+        run: |
+          python3 -m venv ../.venv
+          source ../.venv/bin/activate
+          pip install -e ".[dev,nlp]" -q
+          python -m spacy download en_core_web_lg -q
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Extract ML data
         run: python ../scripts/ml_extract.py
