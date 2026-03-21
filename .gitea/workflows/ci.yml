@@ -30,6 +30,9 @@ jobs:
           pip install -e ".[dev]" -q
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
+      - name: Build proof binary
+        run: prove build ../proof/
+
       - name: Run all checks
         run: |
           ruff check src/ tests/ &

@@ -11,9 +11,20 @@ import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
+EXAMPLES_DIR = (Path(__file__).parent.parent / "examples").resolve()
 
-PROVE_CLI = [sys.executable, "-m", "prove"]
+
+def _find_prove_cli() -> list[str]:
+    """Find the prove CLI: prefer the compiled proof binary, fall back to python -m prove."""
+    # Check for compiled binary in proof/dist/proof
+    proof_bin = (Path(__file__).parent.parent / "proof" / "dist" / "proof").resolve()
+    if proof_bin.exists() and os.access(proof_bin, os.X_OK):
+        return [str(proof_bin)]
+    # Fall back to python -m prove (only has advanced/setup commands)
+    return [sys.executable, "-m", "prove"]
+
+
+PROVE_CLI = _find_prove_cli()
 
 
 def parse_intent_directives(prv_file: Path) -> set[str]:
