@@ -290,6 +290,120 @@ def _write_c_header(data: bytes, out_path: Path) -> None:
     out_path.write_text("".join(lines))
 
 
+def _discover_venv_paths() -> list[str]:
+    """Find additional Python paths from the project virtualenv.
+
+    The embedded Python in proof doesn't activate the venv, so its sys.path
+    lacks the venv's site-packages and any .pth-added directories (e.g. editable
+    installs).  This function locates the venv and reconstructs those paths.
+    """
+    import glob as _glob
+
+    venv_dir: str | None = os.environ.get("VIRTUAL_ENV")
+    if not venv_dir:
+        # Walk up from cwd looking for .venv
+        d = Path.cwd()
+        for _ in range(5):
+            candidate = d / ".venv"
+            if candidate.is_dir():
+                venv_dir = str(candidate)
+                break
+            d = d.parent
+    if not venv_dir:
+        return []
+
+    paths: list[str] = []
+    # Find site-packages directories in the venv
+    for sp_str in _glob.glob(os.path.join(venv_dir, "lib", "python*", "site-packages")):
+        sp = Path(sp_str)
+        if not sp.is_dir():
+            continue
+        paths.append(str(sp))
+        # Process .pth files — these add paths for editable installs
+        for pth in sp.glob("*.pth"):
+            for line in pth.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("import "):
+                    continue
+                p = Path(line)
+                if not p.is_absolute():
+                    p = sp / p
+                if p.is_dir():
+                    paths.append(str(p.resolve()))
+    return paths
+
+
+def _find_files_on_disk(entry_files: set[Path]) -> dict[str, Path]:
+    """Locate third-party packages on the real filesystem when running from a bundle.
+
+    Uses importlib.machinery.PathFinder with an augmented search path (venv
+    site-packages + .pth paths) to bypass sys.modules and find packages
+    installed on disk.  Returns {archive_path: fs_path} in the same format
+    as _find_used_files().
+    """
+    import sys
+    from importlib.machinery import PathFinder
+
+    stdlib_names: frozenset[str] = getattr(sys, "stdlib_module_names", frozenset())
+    search_path = [p for p in sys.path if not _is_bundle_zip(p)]
+    search_path.extend(_discover_venv_paths())
+
+    # Collect top-level package names imported by the entry files
+    top_packages: set[str] = set()
+    for f in entry_files:
+        for name in _parse_imports(f):
+            top = name.split(".")[0]
+            if top not in stdlib_names and top not in sys.builtin_module_names:
+                top_packages.add(top)
+
+    result: dict[str, Path] = {}
+    for pkg_name in sorted(top_packages):
+        spec = PathFinder.find_spec(pkg_name, search_path)
+        if not spec or not spec.submodule_search_locations:
+            continue
+        pkg_dir = Path(next(iter(spec.submodule_search_locations))).resolve()
+        if not pkg_dir.is_dir():
+            continue
+        parent = pkg_dir.parent
+        for dirpath, dirnames, filenames in os.walk(pkg_dir, followlinks=True):
+            dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
+            for fname in sorted(filenames):
+                f = Path(dirpath) / fname
+                if f.suffix in _SKIP_SUFFIXES:
+                    continue
+                try:
+                    arc = str(f.resolve().relative_to(parent))
+                except ValueError:
+                    try:
+                        arc = str(f.relative_to(parent))
+                    except ValueError:
+                        continue
+                result[arc] = f
+
+    return result
+
+
+def _is_bundle_zip(path_entry: str) -> bool:
+    """True if a sys.path entry is a prove bundle zip."""
+    return path_entry.endswith(".zip") and "prove_bundle" in path_entry
+
+
+def _find_existing_bundle_zip() -> Path | None:
+    """Find the bundle zip on sys.path when running from an already-bundled binary.
+
+    py_wrappers.c writes the bundle to /tmp/prove_bundle_XXXXXX.zip and prepends
+    it to sys.path.  We look for that zip so we can re-emit it into the new build.
+    """
+    import sys
+
+    for entry in sys.path:
+        if _is_bundle_zip(entry):
+            p = Path(entry)
+            if p.is_file():
+                return p
+    return None
+
+
 def maybe_generate_bundle(
     modules_and_symbols: list,
     comptime_deps: set[Path],
@@ -327,17 +441,50 @@ def maybe_generate_bundle(
 
     files = _find_used_files(py_entry_files)
 
+    # If all resolved files are inside a zip (running from a bundled binary),
+    # the bundle zip shadows the real installed package.  Augment sys.path
+    # with the venv's paths, remove the bundle zip, and clear cached prove
+    # modules so _find_used_files resolves from the real filesystem.
+    if files and all(not fs_path.is_file() for fs_path in files.values()):
+        import sys
+
+        stdlib_names: frozenset[str] = getattr(sys, "stdlib_module_names", frozenset())
+        original_path = sys.path[:]
+        saved_modules: dict[str, object] = {}
+        # Clear all non-stdlib modules so find_spec searches the real
+        # filesystem instead of returning cached zip-based specs.
+        for key in list(sys.modules):
+            top = key.split(".")[0]
+            if top not in stdlib_names and top not in sys.builtin_module_names:
+                saved_modules[key] = sys.modules.pop(key)
+
+        sys.path = [p for p in sys.path if not _is_bundle_zip(p)]
+        sys.path.extend(_discover_venv_paths())
+        importlib.invalidate_caches()
+        try:
+            files = _find_used_files(py_entry_files)
+        finally:
+            sys.path = original_path
+            sys.modules.update(saved_modules)
+            importlib.invalidate_caches()
+
+    # Last resort: copy the existing bundle zip from the running binary
+    if files and all(not fs_path.is_file() for fs_path in files.values()):
+        existing_zip = _find_existing_bundle_zip()
+        if existing_zip is None:
+            return False
+        data = existing_zip.read_bytes()
+        out_path = gen_dir / "prove_bundle_data.h"
+        _write_c_header(data, out_path)
+        print(f"re-bundled python packages from existing bundle → {len(data):,} bytes")
+        return True
+
     if not files:
         raise SystemExit(
             "error: foreign libpython3 detected but no bundleable files found.\n"
             "       Make sure the required packages are installed in the active venv.\n"
             f"       Entry files scanned: {sorted(str(p) for p in py_entry_files)}"
         )
-
-    # If all resolved files are inside a zip already (running from a bundle),
-    # skip regeneration — the binary already has the bundle baked in.
-    if all(not fs_path.is_file() for fs_path in files.values()):
-        return False
 
     # Do NOT bundle stdlib .py files into the zip.  The statically-linked
     # Python interpreter already has its stdlib prefix baked in and will find
