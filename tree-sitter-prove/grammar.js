@@ -136,8 +136,17 @@ module.exports = grammar({
     )),
 
     import_group: $ => choice(
-      prec.left(seq('types', repeat1($.type_identifier))),
-      prec.right(seq($.verb, repeat1($.identifier))),
+      prec.left(seq(alias('types', $.import_verb), repeat1($.type_identifier))),
+      prec.left(seq(alias('constants', $.import_verb), repeat1($.constant_identifier))),
+      prec.right(seq($.import_verb, repeat1($.identifier))),
+    ),
+
+    import_verb: $ => choice(
+      $.verb,
+      'detached',
+      'attached',
+      'listens',
+      'streams',
     ),
 
     // ─── Type Definitions ──────────────────────────────────────

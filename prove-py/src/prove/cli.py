@@ -1,8 +1,8 @@
 """Prove compiler CLI.
 
 Root commands are development tools (compiler, export, generate, index, intent,
-setup, setup-nlp, view).  Build/check/format/test/new/lsp are handled by the
-compiled ``proof`` binary and are no longer part of the Python CLI.
+setup, setup-nlp, view).  build/check/format/test are available as Python
+fallbacks when optimize.enabled=false (no compiled ``proof`` binary needed).
 """
 
 from __future__ import annotations
@@ -39,6 +39,128 @@ def _apply_nlp_override(enabled: bool) -> None:
 @click.version_option(__version__, prog_name="prove")
 def main() -> None:
     """The Prove programming language compiler."""
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--debug", is_flag=True, help="Debug build (no optimizations, keeps .c files).")
+@click.option("--no-mutate", is_flag=True, help="Don't rewrite source files during format.")
+def build(path: str, debug: bool, no_mutate: bool) -> None:
+    """Compile project to native binary (Python fallback)."""
+    from prove.builder import build_project
+    from prove.config import load_config
+    from prove.errors import DiagnosticRenderer
+
+    project_dir = Path(path).resolve()
+    config = load_config(project_dir / "prove.toml")
+    result = build_project(project_dir, config, debug=debug)
+
+    renderer = DiagnosticRenderer(color=True)
+    for diag in result.diagnostics:
+        click.echo(renderer.render(diag), err=True)
+
+    if result.ok:
+        click.echo(f"built {result.binary}")
+    else:
+        if result.c_error:
+            click.echo(result.c_error, err=True)
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--md", is_flag=True, help="Markdown output.")
+@click.option("--strict", is_flag=True, help="Treat warnings as errors.")
+@click.option("--no-intent", is_flag=True, help="Skip intent coverage check.")
+def check(path: str, md: bool, strict: bool, no_intent: bool) -> None:
+    """Type-check and lint project (Python fallback)."""
+    from prove.checker import Checker
+    from prove.errors import DiagnosticRenderer
+    from prove.module_resolver import build_module_registry
+
+    project_dir = Path(path).resolve()
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = sorted(src_dir.glob("*.prv"))
+    if not prv_files:
+        click.echo("no .prv files found", err=True)
+        raise SystemExit(1)
+
+    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
+    renderer = DiagnosticRenderer(color=not md)
+    has_errors = False
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        try:
+            tokens = Lexer(source, str(prv_file)).lex()
+            module = Parser(tokens, str(prv_file)).parse()
+        except CompileError as e:
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            has_errors = True
+            continue
+
+        checker = Checker(local_modules=local_modules)
+        checker.check(module)
+        for diag in checker.diagnostics:
+            click.echo(renderer.render(diag), err=True)
+        if checker.has_errors():
+            has_errors = True
+
+    if has_errors:
+        raise SystemExit(1)
+    click.echo(f"checked {len(prv_files)} file(s) — no errors")
+
+
+@main.command("format")
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--status", is_flag=True, help="Check only, don't rewrite.")
+def format_cmd(path: str, status: bool) -> None:
+    """Format .prv source files (Python fallback)."""
+    from prove.checker import Checker
+    from prove.formatter import ProveFormatter
+    from prove.module_resolver import build_module_registry
+
+    project_dir = Path(path).resolve()
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = sorted(src_dir.glob("*.prv"))
+    if not prv_files:
+        click.echo("no .prv files found", err=True)
+        raise SystemExit(1)
+
+    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
+    changed = 0
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        try:
+            tokens = Lexer(source, str(prv_file)).lex()
+            module = Parser(tokens, str(prv_file)).parse()
+        except CompileError:
+            continue
+
+        checker = Checker(local_modules=local_modules)
+        symbols = checker.check(module)
+        formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
+        formatted = formatter.format(module)
+
+        if formatted != source:
+            changed += 1
+            if status:
+                click.echo(f"  needs format: {prv_file}")
+            else:
+                prv_file.write_text(formatted)
+                click.echo(f"  formatted: {prv_file}")
+
+    if status and changed:
+        raise SystemExit(1)
+    click.echo(f"{len(prv_files)} file(s) checked, {changed} formatted")
 
 
 @main.command()

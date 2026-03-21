@@ -18,7 +18,6 @@
   "reads"
   "transforms"
   "validates"
-  "types"
 ] @keyword.function
 ; PROVE-EXPORT-END: verbs
 
@@ -245,9 +244,9 @@
 (import_declaration
   (type_identifier) @module)
 
-; Verb in import groups
+; Verb in import groups (includes types, constants, detached, attached, etc.)
 (import_group
-  (verb) @keyword.function
+  (import_verb) @keyword.function
   (#set! "priority" 101))
 
 ; Function names in import groups

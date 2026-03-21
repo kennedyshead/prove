@@ -79,6 +79,7 @@ _KEYWORD_KINDS = frozenset(
         TokenKind.DOMAIN,
         TokenKind.BINARY,
         TokenKind.TYPES,
+        TokenKind.CONSTANTS,
         TokenKind.FOREIGN,
     }
 )

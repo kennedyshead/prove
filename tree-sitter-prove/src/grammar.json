@@ -447,14 +447,44 @@
             "type": "SEQ",
             "members": [
               {
-                "type": "STRING",
-                "value": "types"
+                "type": "ALIAS",
+                "content": {
+                  "type": "STRING",
+                  "value": "types"
+                },
+                "named": true,
+                "value": "import_verb"
               },
               {
                 "type": "REPEAT1",
                 "content": {
                   "type": "SYMBOL",
                   "name": "type_identifier"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "PREC_LEFT",
+          "value": 0,
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "ALIAS",
+                "content": {
+                  "type": "STRING",
+                  "value": "constants"
+                },
+                "named": true,
+                "value": "import_verb"
+              },
+              {
+                "type": "REPEAT1",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "constant_identifier"
                 }
               }
             ]
@@ -468,7 +498,7 @@
             "members": [
               {
                 "type": "SYMBOL",
-                "name": "verb"
+                "name": "import_verb"
               },
               {
                 "type": "REPEAT1",
@@ -479,6 +509,31 @@
               }
             ]
           }
+        }
+      ]
+    },
+    "import_verb": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "verb"
+        },
+        {
+          "type": "STRING",
+          "value": "detached"
+        },
+        {
+          "type": "STRING",
+          "value": "attached"
+        },
+        {
+          "type": "STRING",
+          "value": "listens"
+        },
+        {
+          "type": "STRING",
+          "value": "streams"
         }
       ]
     },

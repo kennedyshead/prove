@@ -40,6 +40,7 @@ class TokenKind(Enum):
     VALID = auto()
     MODULE = auto()
     DOMAIN = auto()
+    CONSTANTS = auto()
 
     # FFI
     FOREIGN = auto()
@@ -166,6 +167,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "valid": TokenKind.VALID,
     "module": TokenKind.MODULE,
     "domain": TokenKind.DOMAIN,
+    "constants": TokenKind.CONSTANTS,
     "ensures": TokenKind.ENSURES,
     "requires": TokenKind.REQUIRES,
     "when": TokenKind.WHEN,

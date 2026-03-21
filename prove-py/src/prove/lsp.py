@@ -910,6 +910,16 @@ def _build_local_import_index(
                 ),
             )
 
+        # Index exported constants
+        for const_name in info.constants:
+            index.setdefault(const_name, []).append(
+                ImportSuggestion(
+                    module=module_name,
+                    verb="constants",
+                    name=const_name,
+                ),
+            )
+
     return index
 
 
@@ -2337,6 +2347,7 @@ _IMPORT_VERBS = {
     "creates",
     "matches",
     "types",
+    "constants",
 }
 
 
@@ -2495,14 +2506,18 @@ def _build_import_edit(
             ImportItem(suggestion.verb, suggestion.name, imp.span),
         ]
         new_decl = ImportDecl(imp.module, new_items, imp.span)
-        new_line = f"  {ProveFormatter()._format_import_decl(new_decl)}"
+        formatted = ProveFormatter()._format_import_decl(new_decl)
+        # Add module-level indent (2 spaces) to each line of the formatted import
+        new_line = "\n".join(f"  {line}" for line in formatted.split("\n"))
 
         source_lines = ds.source.splitlines()
-        line_text = source_lines[imp_line] if imp_line < len(source_lines) else ""
+        # Use the full span of the import (may be multi-line)
+        end_line = imp.span.end_line - 1  # 0-indexed
+        end_line_text = source_lines[end_line] if end_line < len(source_lines) else ""
         return lsp.TextEdit(
             range=lsp.Range(
                 start=lsp.Position(line=imp_line, character=0),
-                end=lsp.Position(line=imp_line, character=len(line_text)),
+                end=lsp.Position(line=end_line, character=len(end_line_text)),
             ),
             new_text=new_line,
         )

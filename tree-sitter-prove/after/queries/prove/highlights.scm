@@ -187,12 +187,6 @@
 (doc_comment) @comment.documentation
 (line_comment) @comment
 
-; ─── Proof Obligations ──────────────────────────────────────
-
-(proof_obligation
-  (identifier) @label
-  (proof_text) @string.documentation)
-
 ; ─── Near-miss annotations ──────────────────────────────────
 
 (near_miss_annotation
@@ -217,6 +211,9 @@
 (import_declaration
   (import_group
     (type_identifier) @module))
+
+(import_group
+  (import_verb) @keyword.function)
 
 (import_group
   (identifier) @function)

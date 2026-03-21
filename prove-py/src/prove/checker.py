@@ -1001,9 +1001,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         stdlib_consts_by_name = {c.name: c for c in stdlib_consts}
 
         for item in imp.items:
-            # Constant imports (ALL_CAPS names like RED, BOLD, RESET)
-            is_const_name = len(item.name) >= 2 and all(
-                c.isupper() or c.isdigit() or c == "_" for c in item.name
+            # Constant imports (explicit 'constants' verb or ALL_CAPS names)
+            is_const_name = item.verb == "constants" or (
+                len(item.name) >= 2
+                and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
             )
             if is_const_name:
                 const = stdlib_consts_by_name.get(item.name)
@@ -1096,6 +1097,32 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             ).append(item.span)
 
         for item in imp.items:
+            # Constant imports (explicit 'constants' verb or ALL_CAPS names)
+            is_const_import = item.verb == "constants" or (
+                item.verb is None
+                and len(item.name) >= 2
+                and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
+            )
+            if is_const_import:
+                if hasattr(local_info, "constants") and item.name in local_info.constants:
+                    resolved = PrimitiveType("String")
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.CONSTANT,
+                            resolved_type=resolved,
+                            span=item.span,
+                            is_imported=True,
+                        )
+                    )
+                else:
+                    self._error(
+                        "E315",
+                        f"constant '{item.name}' not found in module '{imp.module}'",
+                        item.span,
+                    )
+                continue
+
             # Type imports (verb="types" or bare CamelCase with no verb)
             is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
             if is_type_import:
