@@ -584,24 +584,6 @@ class ProveFormatter:
 
         return "\n".join(result_lines)
 
-    def _split_item_names(self, names: list[str], max_len: int) -> list[str]:
-        """Split a list of item names across multiple lines if needed."""
-        if not names:
-            return []
-        lines = []
-        current = ""
-        for name in names:
-            if not current:
-                current = name
-            elif len(current) + len(name) + 1 <= max_len:
-                current += f" {name}"
-            else:
-                lines.append(current)
-                current = name
-        if current:
-            lines.append(current)
-        return lines
-
     # ── Module declarations ────────────────────────────────────
 
     def _format_module_decl(self, mod: ModuleDecl) -> str:

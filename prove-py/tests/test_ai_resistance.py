@@ -192,6 +192,6 @@ class TestRefutationChallenges:
             "<test>",
         ).lex()
         module = Parser(tokens, "<test>").parse()
-        mutator = Mutator(module, seed=42)
+        mutator = Mutator(module)
         result = mutator.generate_mutants(max_mutants=5)
         assert len(result.mutants) > 0, "Expected at least one mutant for function with ensures"

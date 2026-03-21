@@ -72,10 +72,6 @@ class Scope:
             return self.parent.lookup(name)
         return None
 
-    def lookup_local(self, name: str) -> Symbol | None:
-        """Look up a name in this scope only (not parents)."""
-        return self._symbols.get(name)
-
     def all_symbols(self) -> list[Symbol]:
         """Return all symbols defined in this scope."""
         return list(self._symbols.values())

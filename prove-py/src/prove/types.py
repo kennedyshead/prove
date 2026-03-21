@@ -509,21 +509,6 @@ def has_mutable_modifier(ty: Type) -> bool:
     return False
 
 
-def get_ownership_kind(ty: Type) -> str:
-    """Return the ownership kind: 'owned', 'mutable', or 'shared'."""
-    if isinstance(ty, PrimitiveType):
-        if any(v == "Own" for (_, v) in ty.modifiers):
-            return "owned"
-        if any(v == "Mutable" for (_, v) in ty.modifiers):
-            return "mutable"
-    if isinstance(ty, ArrayType):
-        if any(v == "Own" for (_, v) in ty.modifiers):
-            return "owned"
-        if any(v == "Mutable" for (_, v) in ty.modifiers):
-            return "mutable"
-    return "shared"
-
-
 def get_scale(ty: Type) -> int | None:
     """Return the Scale:N value for Decimal:[Scale:N], or None."""
     if isinstance(ty, PrimitiveType) and ty.name == "Decimal":

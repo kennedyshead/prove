@@ -562,7 +562,6 @@ def load_stdlib_index(
 
 _lsp_bigrams: dict[str, list[tuple[str, int]]] | None = None
 _lsp_completions: dict[tuple[str, str], list[str]] | None = None
-_lsp_docstrings: dict[str, list[dict]] | None = None
 _lsp_from_blocks: dict[tuple[str, str], list[str]] | None = None
 
 
@@ -634,42 +633,6 @@ def load_lsp_completions() -> dict[tuple[str, str], list[str]]:
     return _lsp_completions
 
 
-def load_lsp_docstrings() -> dict[str, list[dict]]:
-    """Load global docstring index from ``~/.prove/lsp/docstrings/current.prv``.
-
-    Returns ``{keyword: [{module, name, verb, doc}, ...]}``.
-    """
-    global _lsp_docstrings
-    if _lsp_docstrings is not None:
-        return _lsp_docstrings
-
-    _ensure_stores()
-    _lsp_docstrings = defaultdict(list)
-    doc_path = _data_path("lsp/docstrings/current.prv")
-    if not doc_path.exists():
-        return _lsp_docstrings
-
-    try:
-        for line in doc_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line.startswith("r") or "|" not in line:
-                continue
-            parts = [p.strip() for p in line.split("|")[1:]]
-            if len(parts) >= 5:
-                keyword = _strip_quotes(parts[0])
-                entry = {
-                    "module": _strip_quotes(parts[1]),
-                    "name": _strip_quotes(parts[2]),
-                    "verb": _strip_quotes(parts[3]),
-                    "doc": _strip_quotes(parts[4]),
-                }
-                _lsp_docstrings[keyword].append(entry)
-    except Exception:
-        pass
-
-    return _lsp_docstrings
-
-
 def load_lsp_from_blocks() -> dict[tuple[str, str], list[str]]:
     """Load from-block n-gram model from ``~/.prove/lsp/from_blocks/current.prv``.
 
@@ -716,12 +679,11 @@ def _strip_quotes(s: str) -> str:
 def _reset() -> None:
     """Clear all cached store data.  For testing only."""
     global _verb_map, _verb_groups, _synonym_cache, _similarity_matrix
-    global _lsp_bigrams, _lsp_completions, _lsp_docstrings, _lsp_from_blocks
+    global _lsp_bigrams, _lsp_completions, _lsp_from_blocks
     _verb_map = None
     _verb_groups = None
     _synonym_cache = None
     _similarity_matrix = None
     _lsp_bigrams = None
     _lsp_completions = None
-    _lsp_docstrings = None
     _lsp_from_blocks = None

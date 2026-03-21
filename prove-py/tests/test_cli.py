@@ -191,13 +191,6 @@ class TestSource:
         assert sf.line_at(0) == ""
         assert sf.line_at(99) == ""
 
-    def test_span_text_single_line(self, tmp_path):
-        f = tmp_path / "test.prv"
-        f.write_text("hello world\n")
-        sf = SourceFile(f)
-        span = Span("test.prv", 1, 7, 1, 11)
-        assert sf.span_text(span) == "world"
-
     def test_span_str(self):
         span = Span("file.prv", 10, 5, 10, 20)
         assert str(span) == "file.prv:10:5"

@@ -340,7 +340,7 @@ def _print_refutation_challenges(project_dir: Path) -> None:
             if not decl.ensures:
                 continue
 
-            mutator = Mutator(module, seed=42)
+            mutator = Mutator(module)
             result = mutator.generate_mutants(max_mutants=5)
             if not result.mutants:
                 continue

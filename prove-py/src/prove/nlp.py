@@ -170,46 +170,6 @@ def extract_parts(text: str) -> ExtractedParts:
 # ── Synonym lookup ───────────────────────────────────────────────
 
 
-def synonyms(word: str, pos: str = "v") -> set[str]:
-    """Return synonyms of *word* via WordNet.
-
-    *pos* is ``"v"`` for verbs, ``"n"`` for nouns (WordNet POS codes).
-    Falls back to the synonym cache PDAT, then to ``VERB_SYNONYMS``.
-    """
-    if _ensure_wordnet():
-        from nltk.corpus import wordnet
-
-        result: set[str] = set()
-        for synset in wordnet.synsets(word, pos=pos):
-            for lemma in synset.lemmas():
-                result.add(lemma.name().replace("_", " ").lower())
-        return result
-
-    # Try pre-computed synonym cache (richer than hardcoded table)
-    from prove.nlp_store import load_synonym_cache
-
-    cache = load_synonym_cache()
-    if word.lower() in cache:
-        return set(cache[word.lower()])
-
-    # Fallback: use the PDAT-backed synonym groups
-    from prove.nlp_store import load_verb_groups
-
-    if pos == "v":
-        groups = load_verb_groups()
-        for canonical, syns in groups.items():
-            if word.lower() in syns or word.lower() == canonical:
-                return set(syns)
-
-        # Last resort: hardcoded verb synonyms
-        from prove._nl_intent import VERB_SYNONYMS
-
-        for canonical, syns in VERB_SYNONYMS.items():
-            if word.lower() in (s.lower() for s in syns) or word.lower() == canonical:
-                return set(syns)
-    return set()
-
-
 # ── Text similarity ──────────────────────────────────────────────
 
 
