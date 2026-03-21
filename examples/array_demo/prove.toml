@@ -12,6 +12,10 @@ ccache = true
 
 [optimize]
 enabled = true
+pgo = false
+strip = true
+tune_host = false
+gc_sections = true
 pgo = true
 strip = true
 tune_host = true
