@@ -122,10 +122,10 @@ _register_doc_range("E", 407, 408)
 DIAGNOSTIC_DOCS["E409"] = f"{_DOCS_BASE}#E409"
 # Comptime execution E410-E422
 _register_doc_range("E", 410, 422)
-# Row polymorphism E430-E434
-_register_doc_range("E", 430, 434)
+# Row polymorphism E430-E435
+_register_doc_range("E", 430, 435)
 # Warnings
-for _c in ("W304", "W311", "W312", "W313"):
+for _c in ("W300", "W304", "W311", "W312", "W313"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Warnings — contracts W321-W328
 _register_doc_range("W", 321, 328)
@@ -137,8 +137,9 @@ DIAGNOSTIC_DOCS["W332"] = f"{_DOCS_BASE}#W332"
 _register_doc_range("W", 340, 343)
 # Warning — duplicate binary column type W350
 DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
-# Warning — own/borrow overlap W360
+# Warning — own/borrow overlap W360, unwrap panic W361
 DIAGNOSTIC_DOCS["W360"] = f"{_DOCS_BASE}#W360"
+DIAGNOSTIC_DOCS["W361"] = f"{_DOCS_BASE}#W361"
 # Warning — verification chain W370-W372
 _register_doc_range("W", 370, 372)
 # Warning — temporal/satisfies W390-W391
@@ -153,6 +154,7 @@ for _c in (
     "I302",
     "I303",
     "I304",
+    "I305",
     "I310",
     "I311",
     "I314",

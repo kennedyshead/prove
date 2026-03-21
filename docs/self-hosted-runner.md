@@ -28,10 +28,10 @@ act_runner register \
   --instance https://code.botwork.se \
   --token YOUR_REGISTRATION_TOKEN \
   --name macos-arm64-runner \
-  --labels self-hosted-macos-arm64
+  --labels macos-runner
 ```
 
-The label `self-hosted-macos-arm64` must match the `runs-on` value in the workflow matrix.
+The label `macos-runner` must match the `runs-on` value in the workflow matrix.
 
 ## Run as a Service
 
@@ -99,6 +99,6 @@ pyenv global 3.11
 Once the runner is verified, uncomment the macOS matrix entry in `.gitea/workflows/release.yml`:
 
 ```yaml
-- os: self-hosted-macos-arm64
+- os: macos-runner
   platform: macos-aarch64
 ```

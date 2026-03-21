@@ -13,9 +13,8 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux-x86_64
-          # Uncomment when self-hosted macOS runner is registered:
-          # - os: self-hosted-macos-arm64
-          #   platform: macos-aarch64
+          - os: macos-runner
+            platform: macos-aarch64
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -40,7 +39,7 @@ jobs:
 
       - name: Run full test suite
         run: |
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=short -n auto
           ruff check src/ tests/
           mypy src/
 
