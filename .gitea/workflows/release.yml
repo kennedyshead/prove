@@ -40,6 +40,9 @@ jobs:
           pip install -e ".[dev]" -q
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
+      - name: Build proof binary
+        run: prove build ../proof/
+
       - name: Run all checks
         run: |
           ruff check src/ tests/ &
@@ -56,9 +59,6 @@ jobs:
           wait $PYTEST_PID || { echo "pytest failed";  FAIL=1; }
           wait $E2E_PID    || { echo "e2e failed";     FAIL=1; }
           exit $FAIL
-
-      - name: Build proof project
-        run: prove build ../proof/
 
       - name: Package binary
         run: |
