@@ -7,6 +7,7 @@ Run from the prove-py directory:
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from prove._nl_intent import VERB_SYNONYMS
@@ -302,7 +303,7 @@ def _create_tarball(source_dir: Path, out_path: Path) -> None:
     with tarfile.open(tmp_path, "w:gz") as tar:
         tar.add(source_dir, arcname="lsp-ml-stores")
 
-    tmp_path.rename(out_path)
+    shutil.move(str(tmp_path), str(out_path))
     size_kb = out_path.stat().st_size // 1024
     print(f"wrote {out_path} ({size_kb} KB)")
 
