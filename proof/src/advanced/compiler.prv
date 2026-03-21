@@ -3,10 +3,13 @@ module Compiler
   Handles the compiler.
 
   outputs the command to python for a pycompiler
+  unwrap the file argument
+  matches the mode to load/dump
   """
   System outputs console
-  Sequence validates contains
+  Sequence reads last
   Parse reads object creates arguments
+  Types reads unwrap
 
   foreign "libpython3"
     py_initialize() Unit
@@ -14,25 +17,31 @@ module Compiler
     py_run_string(code String) Integer
     py_set_string(name String, value String) Unit
 
-  type ArgValues is
-    mode String
+  type KwargValues is
+    dump Option<String>
+    load Option<String>
     output Option<String>
 
   type CompilerArguments is
     args List<String>
-    kwargs ArgValues
+    kwargs KwargValues
 
   PYTHON_COMPILER as String = comptime
       read("../python/compiler.py")
 
-outputs pycompiler(arguments List<String>) Integer
-  requires contains(arguments, "--file")
+matches mode(load Option<String>) String
 from
-    args as CompilerArguments = CompilerArguments(object(arguments(arguments)))
+    Some => "load"
+    _ => "dump"
+
+outputs pycompiler(args List<String>) Integer
+  requires len(args) > 0
+from
+    arguments as CompilerArguments = CompilerArguments(object(arguments(args)))
     py_initialize()
-    py_set_string("file", args.args[-1])
-    py_set_string("mode", args.kwargs.mode)
-    match args.kwargs.output
+    py_set_string("file", unwrap(last(arguments.args), ""))
+    py_set_string("mode", mode(arguments.kwargs.load))
+    match arguments.kwargs.output
         Some(output) =>
             console(f"Output path set to {output}")
             py_set_string("output", output)

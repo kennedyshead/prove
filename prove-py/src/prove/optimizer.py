@@ -1046,6 +1046,9 @@ class Optimizer:
             else:
                 self._find_called_in_expr(expr.func, called)
             for arg in expr.args:
+                # Bare identifiers as arguments may be HOF references
+                if isinstance(arg, IdentifierExpr):
+                    called.add(arg.name)
                 self._find_called_in_expr(arg, called)
         elif isinstance(expr, FieldExpr):
             self._find_called_in_expr(expr.obj, called)
@@ -1877,6 +1880,16 @@ class Optimizer:
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         if sig is None or not sig.param_types:
             return
+
+        # Skip memoization if any parameter is a struct type (Option, Result, record)
+        # — these can't be cast to uint64_t for hashing.
+        for pt in sig.param_types:
+            from prove.types import GenericInstance, RecordType
+
+            if isinstance(pt, GenericInstance) and pt.base_name in ("Option", "Result"):
+                return
+            if isinstance(pt, RecordType):
+                return
 
         param_type_strs = tuple(self._type_key(pt) for pt in sig.param_types)
 

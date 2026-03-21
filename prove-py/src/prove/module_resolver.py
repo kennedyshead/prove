@@ -129,7 +129,7 @@ def build_module_registry(
                             return_type=resolved,
                             can_fail=False,
                             span=v.span,
-                            module=module_name.lower(),
+                            module=module_name.lower() if module_name.lower() != "main" else None,
                             requires=[],
                         )
                         info.functions.append(vsig)
@@ -181,7 +181,7 @@ def build_module_registry(
                     return_type=return_type,
                     can_fail=decl.can_fail,
                     span=decl.span,
-                    module=module_name.lower(),
+                    module=module_name.lower() if module_name.lower() != "main" else None,
                     requires=decl.requires,
                 )
                 info.functions.append(sig)

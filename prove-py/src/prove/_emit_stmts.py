@@ -38,7 +38,7 @@ from prove.ast_nodes import (
     WhileLoop,
     WildcardPattern,
 )
-from prove.c_types import CType, mangle_type_name, map_type
+from prove.c_types import CType, mangle_type_name, map_type, safe_c_name
 from prove.types import (
     ERROR_TY,
     INTEGER,
@@ -399,6 +399,9 @@ class StmtEmitterMixin:
             self._line(f'prove_panic("TODO: {msg}");')
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
+        # C-safe variable name (escapes C keywords like 'default')
+        cn = safe_c_name(vd.name)
+
         # Dispatch lookup assignment: skip C var, record for lazy dispatch at call site
         from prove.ast_nodes import LookupAccessExpr
         from prove.types import PrimitiveType
@@ -425,16 +428,16 @@ class StmtEmitterMixin:
                     return
                 # Otherwise it's a table load — emit as Prove_StoreTable*
                 self._needed_headers.add("prove_store.h")
-                self._line(f"Prove_StoreTable *{vd.name} = {val};")
+                self._line(f"Prove_StoreTable *{cn} = {val};")
                 # Initialize column schema from lookup type if table is empty
                 lookup = self._lookup_tables.get(type_name_str)
                 if lookup and lookup.value_types:
                     col_count = len(lookup.value_types)
-                    self._line(f"if ({vd.name}->column_count == 0) {{")
+                    self._line(f"if ({cn}->column_count == 0) {{")
                     self._indent += 1
-                    self._line(f"{vd.name}->column_count = {col_count};")
+                    self._line(f"{cn}->column_count = {col_count};")
                     self._line(
-                        f"{vd.name}->column_names = (Prove_String **)calloc("
+                        f"{cn}->column_names = (Prove_String **)calloc("
                         f"{col_count}, sizeof(Prove_String *));"
                     )
                     for i, vt in enumerate(lookup.value_types):
@@ -519,7 +522,7 @@ class StmtEmitterMixin:
                 tgt_ct = map_type(target_ty)
                 raw_tmp = self._tmp()
                 self._line(f"{raw_ct.decl} {raw_tmp} = {self._emit_expr(vd.value)};")
-                self._line(f"{tgt_ct.decl} {vd.name};")
+                self._line(f"{tgt_ct.decl} {cn};")
                 self._line(f"if ({raw_tmp}.tag == 1) {{")
                 self._indent += 1
                 if value_inner.decl == "Prove_String*" and target_inner.decl == "int64_t":
@@ -531,9 +534,9 @@ class StmtEmitterMixin:
                     )
                     self._line(
                         f"if (!prove_result_is_err({cv_tmp})) "
-                        f"{vd.name} = prove_option_some((Prove_Value*)(intptr_t)prove_result_unwrap_int({cv_tmp}));"  # noqa: E501
+                        f"{cn} = prove_option_some((Prove_Value*)(intptr_t)prove_result_unwrap_int({cv_tmp}));"  # noqa: E501
                     )
-                    self._line(f"else {vd.name} = prove_option_none();")
+                    self._line(f"else {cn} = prove_option_none();")
                 else:
                     # Generic fallback: cast the value
                     # Check if inner type has refinement constraint
@@ -550,11 +553,11 @@ class StmtEmitterMixin:
                             vd.name,
                         )
                     else:
-                        self._line(f"{vd.name} = prove_option_some({raw_tmp}.value);")
+                        self._line(f"{cn} = prove_option_some({raw_tmp}.value);")
                 self._indent -= 1
                 self._line("} else {")
                 self._indent += 1
-                self._line(f"{vd.name} = prove_option_none();")
+                self._line(f"{cn} = prove_option_none();")
                 self._indent -= 1
                 self._line("}")
                 self._locals[vd.name] = target_ty
@@ -646,19 +649,19 @@ class StmtEmitterMixin:
                     f"Prove_Value* {val_tmp} = (Prove_Value*)prove_result_unwrap_ptr({tmp});"
                 )
                 coercion_call = self._value_coercion_expr(val_tmp, target_ty)
-                self._line(f"{ct.decl} {vd.name} = {coercion_call};")
+                self._line(f"{ct.decl} {cn} = {coercion_call};")
             elif isinstance(target_ty, RecordType):
-                self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
+                self._line(f"{ct.decl} {cn} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             elif ct.is_pointer:
-                self._line(f"{ct.decl} {vd.name} = ({ct.decl})prove_result_unwrap_ptr({tmp});")
+                self._line(f"{ct.decl} {cn} = ({ct.decl})prove_result_unwrap_ptr({tmp});")
             elif ct.decl == "double":
-                self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_double({tmp});")
+                self._line(f"{ct.decl} {cn} = prove_result_unwrap_double({tmp});")
             elif isinstance(target_ty, GenericInstance) and not ct.is_pointer:
                 # Struct-like GenericInstance (Option<Value>, etc.)
-                self._line(f"{ct.decl} {vd.name} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
+                self._line(f"{ct.decl} {cn} = *(({ct.decl}*)prove_result_unwrap_ptr({tmp}));")
             else:
                 # For integer types
-                self._line(f"{ct.decl} {vd.name} = prove_result_unwrap_int({tmp});")
+                self._line(f"{ct.decl} {cn} = prove_result_unwrap_int({tmp});")
         else:
             # Wrap bare value in Option if annotation is Option<Value> but value is Value
             if (
@@ -683,10 +686,10 @@ class StmtEmitterMixin:
                 else:
                     inner_ct = map_type(target_ty.args[0]) if target_ty.args else map_type(INTEGER)
                     if inner_ct.is_pointer:
-                        self._line(f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*){val});")
+                        self._line(f"{ct.decl} {cn} = prove_option_some((Prove_Value*){val});")
                     else:
                         self._line(
-                            f"{ct.decl} {vd.name} = prove_option_some((Prove_Value*)(intptr_t){val});"  # noqa: E501
+                            f"{ct.decl} {cn} = prove_option_some((Prove_Value*)(intptr_t){val});"  # noqa: E501
                         )
             else:
                 # Value → concrete coercion (e.g. Prove_Value* → Prove_Table*)
@@ -696,17 +699,17 @@ class StmtEmitterMixin:
                     and not self._is_value_type(target_ty)
                     and (coerce := self._value_coercion_expr(val, target_ty)) is not None
                 ):
-                    self._line(f"{ct.decl} {vd.name} = {coerce};")
+                    self._line(f"{ct.decl} {cn} = {coerce};")
                 elif ct.is_pointer and val_ct.decl != ct.decl:
-                    self._line(f"{ct.decl} {vd.name} = ({ct.decl}){val};")
+                    self._line(f"{ct.decl} {cn} = ({ct.decl}){val};")
                 else:
                     # Scale:N rounding for non-literal Decimal assignments
                     scale = get_scale(target_ty)
                     if scale is not None and not _is_compile_time_literal(vd.value):
                         self._needed_headers.add("prove_math.h")
-                        self._line(f"{ct.decl} {vd.name} = prove_decimal_round({val}, {scale});")
+                        self._line(f"{ct.decl} {cn} = prove_decimal_round({val}, {scale});")
                     else:
-                        self._line(f"{ct.decl} {vd.name} = {val};")
+                        self._line(f"{ct.decl} {cn} = {val};")
 
         # Validate refinement type constraints
         # Skip validation for GenericInstance (Option<Value>) because validation is already
@@ -729,10 +732,10 @@ class StmtEmitterMixin:
                     vd.value.func.name, arity=len(vd.value.args)
                 )
                 if call_sig and call_sig.verb == "inputs":
-                    self._line(f"if (!{vd.name}) goto _streams_exit;")
+                    self._line(f"if (!{cn}) goto _streams_exit;")
         # Retain pointer types (skip for non-escaping vars in release mode)
         if ct.is_pointer and not self._can_elide_retain(vd.name):
-            self._line(f"prove_retain({vd.name});")
+            self._line(f"prove_retain({cn});")
 
     def _emit_refinement_validation(self, var_name: str, target_ty: RefinementType) -> None:
         """Emit runtime validation for refinement type constraints.
@@ -1077,7 +1080,9 @@ class StmtEmitterMixin:
             if sig is None:
                 sig = self._symbols.resolve_function_any(func_id)
             c_func = (
-                mangle_name(sig.verb, sig.name, sig.param_types) if sig and sig.verb else func_id
+                mangle_name(sig.verb, sig.name, sig.param_types, module=self._sig_module(sig))
+                if sig and sig.verb
+                else func_id
             )
             escaped = key_val.replace("\\", "\\\\").replace('"', '\\"')
             kw = "if" if first else "} else if"

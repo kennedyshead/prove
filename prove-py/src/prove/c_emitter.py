@@ -48,7 +48,7 @@ from prove.ast_nodes import (
     UnaryExpr,
     VarDecl,
 )
-from prove.c_types import mangle_name, map_type
+from prove.c_types import mangle_name, map_type, safe_c_name
 from prove.errors import Diagnostic, Severity
 from prove.optimizer import EscapeInfo, MemoizationInfo
 from prove.symbols import SymbolTable
@@ -143,7 +143,29 @@ class CEmitter(
         self._struct_specialisations: dict[tuple, str] = {}
         self._struct_specialisation_queue: list[tuple[FunctionDef, list[Type]]] = []
         self._lambda_captures: dict[int, list[str]] = {}
+        # Module name for namespaced mangling (user modules only, not stdlib)
+        self._module_name: str | None = None
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                from prove.stdlib_loader import is_stdlib_module
+
+                if not is_stdlib_module(decl.name) and decl.name.lower() != "main":
+                    self._module_name = decl.name.lower()
+                break
         self._collect_foreign_info()
+
+    def _sig_module(self, sig) -> str | None:
+        """Return module name for mangling, or None for stdlib/Main modules."""
+        if not sig.module:
+            return None
+        from prove.stdlib_loader import is_stdlib_module
+
+        # Stdlib modules are compiled without module prefix
+        if is_stdlib_module(sig.module) or is_stdlib_module(sig.module.capitalize()):
+            return None
+        if sig.module == "main":
+            return None
+        return sig.module
 
     def _collect_foreign_info(self) -> None:
         """Scan module for foreign blocks and collect function names + libraries."""
@@ -672,7 +694,8 @@ class CEmitter(
         self._line("")
 
         for cand in candidates:
-            table_name = f"_memo_{cand.verb}_{cand.name}"
+            mod_prefix = f"{self._module_name}_" if self._module_name else ""
+            table_name = f"_memo_{mod_prefix}{cand.verb}_{cand.name}"
             table_size = 32
 
             self._line(f"/* {table_name}: {cand.param_count} params, {cand.body_size} stmts */")
@@ -849,7 +872,9 @@ class CEmitter(
                         for sig in sigs:
                             if sig.name in self._foreign_names:
                                 continue
-                            mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                            mangled = mangle_name(
+                                sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
+                            )
                             if mangled in seen:
                                 continue
                             seen.add(mangled)
@@ -882,11 +907,13 @@ class CEmitter(
                 sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
-                mangled = mangle_name(decl.verb, decl.name, sig.param_types)
+                mangled = mangle_name(
+                    decl.verb, decl.name, sig.param_types, module=self._module_name
+                )
                 params: list[str] = []
                 for p, pt in zip(decl.params, sig.param_types):
                     ct = map_type(pt)
-                    params.append(f"{ct.decl} {p.name}")
+                    params.append(f"{ct.decl} {safe_c_name(p.name)}")
                 param_str = ", ".join(params) if params else "void"
                 ret_decl = "Prove_Result" if sig.can_fail else "void"
                 self._line(f"{ret_decl} {mangled}({param_str});")
@@ -897,11 +924,13 @@ class CEmitter(
                 sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
-                mangled = mangle_name(decl.verb, decl.name, sig.param_types)
+                mangled = mangle_name(
+                    decl.verb, decl.name, sig.param_types, module=self._module_name
+                )
                 params: list[str] = []
                 for p, pt in zip(decl.params, sig.param_types):
                     ct = map_type(pt)
-                    params.append(f"{ct.decl} {p.name}")
+                    params.append(f"{ct.decl} {safe_c_name(p.name)}")
                 if decl.verb == "attached":
                     ret_ct = map_type(sig.return_type)
                     ret_decl = ret_ct.decl
@@ -935,11 +964,12 @@ class CEmitter(
                 decl.verb,
                 decl.name,
                 sig.param_types,
+                module=self._module_name,
             )
             params = []
             for p, pt in zip(decl.params, sig.param_types):
                 ct = map_type(pt)
-                params.append(f"{ct.decl} {p.name}")
+                params.append(f"{ct.decl} {safe_c_name(p.name)}")
             param_str = ", ".join(params) if params else "void"
             self._line(f"{ret_decl} {mangled}({param_str});")
             any_emitted = True
@@ -1006,12 +1036,12 @@ class CEmitter(
         if fd.can_fail:
             ret_decl = "Prove_Result"
 
-        mangled = mangle_name(fd.verb, fd.name, param_types)
+        mangled = mangle_name(fd.verb, fd.name, param_types, module=self._module_name)
 
         params: list[str] = []
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
-            params.append(f"{ct.decl} {p.name}")
+            params.append(f"{ct.decl} {safe_c_name(p.name)}")
         param_str = ", ".join(params) if params else "void"
 
         self._line(f"{ret_decl} {mangled}({param_str}) {{")
@@ -1077,7 +1107,7 @@ class CEmitter(
         key = (fd.verb, fd.name, tuple(concrete_types))
         if key in self._struct_specialisations:
             return self._struct_specialisations[key]
-        mangled = mangle_name(fd.verb, fd.name, concrete_types)
+        mangled = mangle_name(fd.verb, fd.name, concrete_types, module=self._module_name)
         self._struct_specialisations[key] = mangled
         self._struct_specialisation_queue.append((fd, concrete_types))
         return mangled
@@ -1100,13 +1130,13 @@ class CEmitter(
         if fd.can_fail:
             ret_decl = "Prove_Result"
 
-        mangled = mangle_name(fd.verb, fd.name, concrete_types)
+        mangled = mangle_name(fd.verb, fd.name, concrete_types, module=self._module_name)
 
         # Build params and forward declaration
         params: list[str] = []
         for p, pt in zip(fd.params, concrete_types):
             ct = map_type(pt)
-            params.append(f"{ct.decl} {p.name}")
+            params.append(f"{ct.decl} {safe_c_name(p.name)}")
         param_str = ", ".join(params) if params else "void"
 
         # Forward declaration for the specialisation
@@ -1178,7 +1208,7 @@ class CEmitter(
 
             param_types.append(INTEGER)
 
-        mangled = mangle_name(fd.verb, fd.name, param_types)
+        mangled = mangle_name(fd.verb, fd.name, param_types, module=self._module_name)
         args_struct = f"_{mangled}_args"
         body_fn = f"_{mangled}_body"
 
@@ -1187,7 +1217,7 @@ class CEmitter(
         self._indent += 1
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
-            self._line(f"{ct.decl} {p.name};")
+            self._line(f"{ct.decl} {safe_c_name(p.name)};")
         self._indent -= 1
         self._line(f"}} {args_struct};")
         self._line("")
@@ -1206,7 +1236,8 @@ class CEmitter(
         # Expose params as local variables
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
-            self._line(f"{ct.decl} {p.name} = _a->{p.name};")
+            cn = safe_c_name(p.name)
+            self._line(f"{ct.decl} {cn} = _a->{cn};")
 
         if fd.verb == "listens":
             self._emit_listens_body(fd, param_types)
@@ -1324,12 +1355,12 @@ class CEmitter(
         self._current_func = fd
         self._current_requires = fd.requires
 
-        mangled = mangle_name(fd.verb, fd.name, param_types)
+        mangled = mangle_name(fd.verb, fd.name, param_types, module=self._module_name)
 
         params: list[str] = []
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
-            params.append(f"{ct.decl} {p.name}")
+            params.append(f"{ct.decl} {safe_c_name(p.name)}")
         param_str = ", ".join(params) if params else "void"
 
         ret_decl = "Prove_Result" if sig.can_fail else "void"

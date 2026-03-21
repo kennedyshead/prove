@@ -179,15 +179,85 @@ def map_type(ty: Type) -> CType:
     return CType("int64_t", is_pointer=False, header=None)
 
 
-def mangle_name(verb: str | None, name: str, param_types: list[Type] | None = None) -> str:
+# C/C23 reserved words that cannot be used as identifiers in generated code.
+_C_KEYWORDS = frozenset(
+    {
+        "auto",
+        "break",
+        "case",
+        "char",
+        "const",
+        "continue",
+        "default",
+        "do",
+        "double",
+        "else",
+        "enum",
+        "extern",
+        "float",
+        "for",
+        "goto",
+        "if",
+        "inline",
+        "int",
+        "long",
+        "register",
+        "restrict",
+        "return",
+        "short",
+        "signed",
+        "sizeof",
+        "static",
+        "struct",
+        "switch",
+        "typedef",
+        "union",
+        "unsigned",
+        "void",
+        "volatile",
+        "while",
+        "_Bool",
+        "_Complex",
+        "_Imaginary",
+        "_Alignas",
+        "_Alignof",
+        "_Atomic",
+        "_Generic",
+        "_Noreturn",
+        "_Static_assert",
+        "_Thread_local",
+    }
+)
+
+
+def safe_c_name(name: str) -> str:
+    """Escape a Prove identifier that collides with a C keyword."""
+    if name in _C_KEYWORDS:
+        return f"_{name}"
+    return name
+
+
+def mangle_name(
+    verb: str | None,
+    name: str,
+    param_types: list[Type] | None = None,
+    *,
+    module: str | None = None,
+) -> str:
     """Mangle a function name for C with ``prv_`` prefix.
 
     e.g. ("transforms", "add", [Integer, Integer]) -> "prv_transforms_add_Integer_Integer"
+
+    When *module* is given the module name is included after ``prv_`` to
+    disambiguate functions with the same verb/name/params in different
+    modules (e.g. ``prv_compiler_matches_unwrap_Option``).
 
     The prefix prevents collisions with C standard library and system
     functions (e.g. ``file``, ``read``, ``close``).
     """
     parts: list[str] = ["prv"]
+    if module:
+        parts.append(module)
     if verb:
         parts.append(verb)
     parts.append(name)

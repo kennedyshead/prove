@@ -39,7 +39,7 @@ from prove.ast_nodes import (
     VariantPattern,
     WildcardPattern,
 )
-from prove.c_types import mangle_name, mangle_type_name, map_type
+from prove.c_types import mangle_name, mangle_type_name, map_type, safe_c_name
 from prove.type_inference import BUILTIN_MAP
 from prove.types import (
     ERROR_TY,
@@ -122,7 +122,7 @@ class ExprEmitterMixin:
         if isinstance(expr, IdentifierExpr):
             # Local variables/parameters take priority over stdlib functions
             if expr.name in self._locals:
-                return expr.name
+                return safe_c_name(expr.name)
             # Check if this identifier is an outputs function with no args (zero-arg call)
             sig = self._symbols.resolve_function("outputs", expr.name, 0)
             if sig is None:
@@ -131,7 +131,7 @@ class ExprEmitterMixin:
                 c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     return f"{c_name}()"
-            return expr.name
+            return safe_c_name(expr.name)
 
         if isinstance(expr, TypeIdentifierExpr):
             if expr.name == "Unit":
@@ -192,7 +192,9 @@ class ExprEmitterMixin:
                     if c_name:
                         return f"{c_name}({args_c})"
                 pt = list(sig.param_types) if sig else None
-                fn = mangle_name("validates", expr.name, pt)
+                fn = mangle_name(
+                    "validates", expr.name, pt, module=self._sig_module(sig) if sig else None
+                )
                 return f"{fn}({args_c})"
             # valid error -> function reference (used as HOF predicate)
             if sig and sig.module:
@@ -200,7 +202,9 @@ class ExprEmitterMixin:
                 if c_name:
                     return c_name
             pt = list(sig.param_types) if sig else None
-            return mangle_name("validates", expr.name, pt)
+            return mangle_name(
+                "validates", expr.name, pt, module=self._sig_module(sig) if sig else None
+            )
 
         if isinstance(expr, ComptimeExpr):
             result = self._eval_comptime(type("const", (), {"span": expr.span})(), expr)
@@ -419,7 +423,9 @@ class ExprEmitterMixin:
                 if c_name:
                     return f"{c_name}({left})"
             if sig and sig.verb is not None:
-                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                mangled = mangle_name(
+                    sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
+                )
                 return f"{mangled}({left})"
             return f"{name}({left})"
 
@@ -458,7 +464,9 @@ class ExprEmitterMixin:
                 if c_name:
                     return f"{c_name}({', '.join(all_args)})"
             if sig and sig.verb is not None:
-                mangled = mangle_name(sig.verb, sig.name, sig.param_types)
+                mangled = mangle_name(
+                    sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
+                )
                 return f"{mangled}({', '.join(all_args)})"
             return f"{name}({', '.join(all_args)})"
 
@@ -541,7 +549,9 @@ class ExprEmitterMixin:
                 from prove.c_types import mangle_name
 
                 if sig.param_types:
-                    mangled = mangle_name(sig.verb, fname, sig.param_types)
+                    mangled = mangle_name(
+                        sig.verb, fname, sig.param_types, module=self._sig_module(sig)
+                    )
                 else:
                     mangled = fname
                 return f"{mangled}({args_str})"
@@ -558,7 +568,7 @@ class ExprEmitterMixin:
         from prove.c_types import mangle_name
 
         fname = call.func.name
-        mangled = mangle_name(sig.verb, fname, sig.param_types)
+        mangled = mangle_name(sig.verb, fname, sig.param_types, module=self._sig_module(sig))
 
         # Build worker list: each attached call becomes a pre-started coro
         if call.args and isinstance(call.args[0], ListLiteral):
@@ -570,7 +580,10 @@ class ExprEmitterMixin:
                     worker_sig = self._symbols.resolve_function_any(elem.func.name)
                     if worker_sig and worker_sig.verb == "attached":
                         w_mangled = mangle_name(
-                            worker_sig.verb, elem.func.name, worker_sig.param_types
+                            worker_sig.verb,
+                            elem.func.name,
+                            worker_sig.param_types,
+                            module=self._sig_module(worker_sig),
                         )
                         args_struct = f"_{w_mangled}_args"
                         body_fn = f"_{w_mangled}_body"
@@ -981,11 +994,46 @@ class ExprEmitterMixin:
 
     def _infer_match_result_type(self, m: MatchExpr) -> Type:
         """Infer the result type of a match expression."""
+        if m.subject is not None:
+            subj_type = self._infer_expr_type(m.subject)
+        elif (
+            self._current_func is not None
+            and self._current_func.verb in ("matches", "streams")
+            and self._current_func.params
+        ):
+            # Implicit subject: resolve from first parameter
+            subj_type = self._infer_expr_type(
+                IdentifierExpr(self._current_func.params[0].name, m.span)
+            )
+        else:
+            subj_type = None
         for arm in m.arms:
             if arm.body:
                 last = arm.body[-1]
                 if isinstance(last, ExprStmt):
+                    # Temporarily register pattern bindings so identifier
+                    # inference resolves the inner type, not the subject type.
+                    saved = dict(self._locals)
+                    pat = arm.pattern
+                    if (
+                        isinstance(pat, VariantPattern)
+                        and isinstance(subj_type, GenericInstance)
+                        and subj_type.args
+                        and pat.fields
+                        and isinstance(pat.fields[0], BindingPattern)
+                    ):
+                        if pat.name == "Some" and subj_type.base_name == "Option":
+                            self._locals[pat.fields[0].name] = subj_type.args[0]
+                        elif pat.name == "Ok" and subj_type.base_name == "Result":
+                            self._locals[pat.fields[0].name] = subj_type.args[0]
+                        elif (
+                            pat.name == "Err"
+                            and subj_type.base_name == "Result"
+                            and len(subj_type.args) > 1
+                        ):
+                            self._locals[pat.fields[0].name] = subj_type.args[1]
                     ty = self._infer_expr_type(last.expr)
+                    self._locals = saved
                     if not isinstance(ty, ErrorType):
                         return ty
         return UNIT
