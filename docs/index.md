@@ -39,20 +39,42 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
 ---
 
+## Install
+
+=== "Binary (recommended)"
+
+    Install the latest `proof` binary:
+
+    ```bash
+    curl -sSf https://code.botwork.se/Botwork/prove/raw/branch/main/scripts/install.sh | sh
+    ```
+
+    This detects your platform (Linux x86_64, macOS aarch64), downloads the binary, and installs it to `~/.local/bin/`.
+
+    Options: `--version v1.1.0` for a specific release, `--prefix /usr/local/bin` for a custom location.
+
+=== "Python (pip)"
+
+    ```bash
+    pip install prove
+    ```
+
+=== "From source"
+
+    **Requirements:** Python 3.11+, gcc or clang
+
+    ```bash
+    git clone https://code.botwork.se/Botwork/prove && cd prove
+    pip install -e prove-py/[dev]
+    ```
+
+All releases and platform binaries are available on the [releases page](https://code.botwork.se/Botwork/prove/releases).
+
+---
+
 ## Quick Start
 
-**Requirements:** Python 3.11+, gcc or clang
-
 ```bash
-# Clone
-git clone https://code.botwork.se/Botwork/prove && cd prove
-
-# Install
-pip install -e ".[dev]"
-
-# Build the proof binary (one-time)
-python -m prove build proof/
-
 # Create a project
 proof new hello
 

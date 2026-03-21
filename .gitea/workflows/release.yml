@@ -17,7 +17,7 @@ jobs:
             platform: macos-aarch64
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: read
+      contents: write
     defaults:
       run:
         working-directory: prove-py
@@ -60,21 +60,62 @@ jobs:
           wait $E2E_PID    || { echo "e2e failed";     FAIL=1; }
           exit $FAIL
 
-      - name: Package binary
+      - name: Package and upload binary
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
           TARBALL="proof-${TAG}-${{ matrix.platform }}.tar.gz"
+          API="${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}"
+
           tar -czf "$TARBALL" -C ../proof/dist proof
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: proof-${{ matrix.platform }}
-          path: prove-py/${{ env.TARBALL }}
-          retention-days: 5
+          # Create or fetch release
+          RELEASE_ID=$(curl -sf \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "$API/releases/tags/$TAG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") \
+          || {
+            CREATE=$(curl -sf -X POST \
+              -H "Authorization: token $GITEA_TOKEN" \
+              -H "Content-Type: application/json" \
+              "$API/releases" \
+              -d "{
+                \"tag_name\": \"$TAG\",
+                \"name\": \"Prove $VERSION\",
+                \"body\": \"Release $VERSION\n\nInstall: \`curl -sSf https://code.botwork.se/Botwork/prove/raw/branch/main/scripts/install.sh | sh\`\"
+              }")
+            RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          }
 
-  release:
+          if [ -z "$RELEASE_ID" ]; then
+            echo "ERROR: could not get release ID for tag $TAG" >&2
+            exit 1
+          fi
+
+          # Delete existing asset with same name (idempotent re-runs)
+          EXISTING=$(curl -sf \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "$API/releases/$RELEASE_ID/assets" \
+            | python3 -c "
+          import sys,json
+          assets = json.load(sys.stdin)
+          match = next((a['id'] for a in assets if a['name'] == '$TARBALL'), None)
+          print(match or '')
+          ")
+          if [ -n "$EXISTING" ]; then
+            curl -sf -X DELETE \
+              -H "Authorization: token $GITEA_TOKEN" \
+              "$API/releases/$RELEASE_ID/assets/$EXISTING"
+          fi
+
+          curl -f -X POST \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -F "attachment=@$TARBALL" \
+            "$API/releases/$RELEASE_ID/assets"
+          echo "Uploaded: $TARBALL"
+
+  wheel:
     needs: [build]
     runs-on: ubuntu-latest
     permissions:
@@ -88,54 +129,24 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Build Python wheel
+      - name: Build and upload wheel
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
           python3 -m venv .venv
           . .venv/bin/activate
           pip install build -q
-          python -m build prove-py/ --wheel --outdir artifacts/wheel
+          python -m build prove-py/ --wheel --outdir dist/
 
-      - name: Create release and upload assets
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG#v}"
           API="${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}"
-
-          # Create or fetch release
-          CREATE=$(curl -sf -X POST \
-            -H "Authorization: token $GITEA_TOKEN" \
-            -H "Content-Type: application/json" \
-            "$API/releases" \
-            -d "{
-              \"tag_name\": \"$TAG\",
-              \"name\": \"Prove $VERSION\",
-              \"body\": \"Release $VERSION\n\nInstall: \`curl -sSf https://code.botwork.se/Botwork/prove/raw/branch/main/scripts/install.sh | sh\`\"
-            }") && RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])") \
-          || RELEASE_ID=$(curl -sf \
+          RELEASE_ID=$(curl -sf \
             -H "Authorization: token $GITEA_TOKEN" \
             "$API/releases/tags/$TAG" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
-          if [ -z "$RELEASE_ID" ]; then
-            echo "ERROR: could not get release ID for tag $TAG" >&2
-            exit 1
-          fi
-          echo "Release ID: $RELEASE_ID"
-
-          # Upload helper: delete existing asset then upload new one
-          upload_asset() {
-            local FILE="$1"
-            local NAME
-            NAME=$(basename "$FILE")
-
-            # Delete existing asset with same name (idempotent re-runs)
-            EXISTING_ASSET_ID=$(curl -sf \
+          for WHEEL in dist/*.whl; do
+            NAME=$(basename "$WHEEL")
+            EXISTING=$(curl -sf \
               -H "Authorization: token $GITEA_TOKEN" \
               "$API/releases/$RELEASE_ID/assets" \
               | python3 -c "
@@ -144,28 +155,14 @@ jobs:
           match = next((a['id'] for a in assets if a['name'] == '$NAME'), None)
           print(match or '')
           ")
-            if [ -n "$EXISTING_ASSET_ID" ]; then
+            if [ -n "$EXISTING" ]; then
               curl -sf -X DELETE \
                 -H "Authorization: token $GITEA_TOKEN" \
-                "$API/releases/$RELEASE_ID/assets/$EXISTING_ASSET_ID"
-              echo "Deleted old asset $EXISTING_ASSET_ID"
+                "$API/releases/$RELEASE_ID/assets/$EXISTING"
             fi
-
             curl -f -X POST \
               -H "Authorization: token $GITEA_TOKEN" \
-              -F "attachment=@$FILE" \
+              -F "attachment=@$WHEEL" \
               "$API/releases/$RELEASE_ID/assets"
             echo "Uploaded: $NAME"
-          }
-
-          # Upload platform tarballs
-          for TARBALL in artifacts/proof-*/proof-*.tar.gz; do
-            [ -f "$TARBALL" ] && upload_asset "$TARBALL"
           done
-
-          # Upload wheel
-          for WHEEL in artifacts/wheel/*.whl; do
-            [ -f "$WHEEL" ] && upload_asset "$WHEEL"
-          done
-
-          echo "All assets uploaded."
