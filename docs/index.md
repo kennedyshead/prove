@@ -53,12 +53,6 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
     Options: `--version v1.1.0` for a specific release, `--prefix /usr/local/bin` for a custom location.
 
-=== "Python (pip)"
-
-    ```bash
-    pip install prove
-    ```
-
 === "From source"
 
     **Requirements:** Python 3.11+, gcc or clang
