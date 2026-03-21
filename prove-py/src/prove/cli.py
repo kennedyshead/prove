@@ -1,4 +1,9 @@
-"""Prove compiler CLI."""
+"""Prove compiler CLI.
+
+Root commands are development tools (compiler, export, generate, index, intent,
+setup, setup-nlp, view).  Build/check/format/test/new/lsp are handled by the
+compiled ``proof`` binary and are no longer part of the Python CLI.
+"""
 
 from __future__ import annotations
 
@@ -7,78 +12,9 @@ from pathlib import Path
 import click
 
 from prove import __version__
-from prove.config import discover_prv_files, find_config
 from prove.errors import CompileError, DiagnosticRenderer
 from prove.lexer import Lexer
 from prove.parser import Parser
-
-
-def _is_cache_stale(project_dir: Path) -> bool:
-    """Check if .prove/ stores need rebuilding."""
-    cache_dir = project_dir / ".prove"
-    index_file = cache_dir / "stdlib_index.dat"
-    if not index_file.exists():
-        return True
-    index_mtime = index_file.stat().st_mtime
-    src_dir = project_dir / "src"
-    if not src_dir.is_dir():
-        src_dir = project_dir
-    for prv in discover_prv_files(src_dir):
-        if prv.stat().st_mtime > index_mtime:
-            return True
-    return False
-
-
-def _update_project_cache(project_dir: Path) -> None:
-    """Rebuild .prove/cache and .prove/ stores when stale."""
-    if not _is_cache_stale(project_dir):
-        return
-    try:
-        from prove.lsp import _ProjectIndexer
-
-        indexer = _ProjectIndexer(project_dir)
-        indexer.index_all_files()
-    except Exception:
-        pass  # cache update is always non-fatal
-    try:
-        from prove.nlp_store import build_stdlib_index
-
-        build_stdlib_index(project_dir)
-    except Exception:
-        pass  # store generation is always non-fatal
-
-
-@click.group()
-@click.version_option(__version__, prog_name="prove")
-def main() -> None:
-    """The Prove programming language compiler."""
-
-
-@main.group()
-def advanced() -> None:
-    """Advanced development and debugging tools."""
-
-
-@main.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--no-mutate", is_flag=True, help="Disable mutation testing.")
-@click.option(
-    "--debug",
-    is_flag=True,
-    default=None,
-    help="Compile with debug symbols (-g) and no optimization.",
-)
-def build(path: str, no_mutate: bool, debug: bool | None) -> None:
-    """Compile a Prove project."""
-    from prove._build_runner import run_build
-
-    exit_code = run_build(path, debug=debug, no_mutate=no_mutate)
-    if exit_code == 0:
-        from prove.config import find_config
-
-        config_path = find_config(Path(path))
-        _update_project_cache(config_path.parent)
-    raise SystemExit(exit_code)
 
 
 def _apply_nlp_override(enabled: bool) -> None:
@@ -99,91 +35,17 @@ def _apply_nlp_override(enabled: bool) -> None:
         nlp_mod._wordnet_available = False
 
 
-@main.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--md", is_flag=True, help="Also check ```prove blocks in .md files.")
-@click.option("--strict", is_flag=True, help="Treat warnings as errors.")
-@click.option("--no-coherence", is_flag=True, help="Skip vocabulary consistency check.")
-@click.option("--no-challenges", is_flag=True, help="Skip refutation challenges.")
-@click.option("--no-status", is_flag=True, help="Skip module completeness report.")
-@click.option("--no-intent", is_flag=True, help="Skip intent coverage check.")
-@click.option("--nlp-status", is_flag=True, help="Report NLP backend and store availability.")
-def check(
-    path: str,
-    md: bool,
-    strict: bool,
-    no_coherence: bool,
-    no_challenges: bool,
-    no_status: bool,
-    no_intent: bool,
-    nlp_status: bool,
-) -> None:
-    """Type-check, lint, and verify a Prove project or a single .prv file."""
-    from prove._check_runner import run_check
-
-    exit_code = run_check(
-        path,
-        md=md,
-        strict=strict,
-        no_coherence=no_coherence,
-        no_challenges=no_challenges,
-        no_status=no_status,
-        no_intent=no_intent,
-        nlp_status=nlp_status,
-    )
-    if exit_code == 0:
-        try:
-            config_path = find_config(Path(path))
-            _update_project_cache(config_path.parent)
-        except FileNotFoundError:
-            pass
-    raise SystemExit(exit_code)
+@click.group()
+@click.version_option(__version__, prog_name="prove")
+def main() -> None:
+    """The Prove programming language compiler."""
 
 
 @main.command()
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--property-rounds", type=int, default=None, help="Override property test rounds.")
-def test(path: str, property_rounds: int | None) -> None:
-    """Run tests for a Prove project."""
-    from prove._test_runner import run_test
-
-    raise SystemExit(run_test(path, property_rounds=property_rounds))
-
-
-@main.command()
-@click.argument("name")
-def new(name: str) -> None:
-    """Create a new Prove project."""
-    from prove._new_runner import run_new
-
-    raise SystemExit(run_new(name))
-
-
-@main.command(name="format")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--status", is_flag=True, help="Show formatting status without modifying files.")
-@click.option("--stdin", "use_stdin", is_flag=True, help="Read from stdin, write to stdout.")
-@click.option("--md", is_flag=True, help="Also format ```prove blocks in .md files.")
-def format_cmd(path: str, status: bool, use_stdin: bool, md: bool) -> None:
-    """Format Prove source files."""
-    from prove._format_runner import run_format
-
-    raise SystemExit(run_format(path, status=status, use_stdin=use_stdin, md=md))
-
-
-@main.command()
-def lsp() -> None:
-    """Start the Prove language server."""
-    from prove.lsp import main as lsp_main
-
-    lsp_main()
-    raise SystemExit(0)
-
-
-@advanced.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 def index(path: str) -> None:
     """Rebuild the .prove/cache ML completion index."""
+    from prove.config import find_config
     from prove.lsp import _ProjectIndexer
 
     config_path = find_config(Path(path))
@@ -326,7 +188,7 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
     )
 
 
-@advanced.command()
+@main.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--update", is_flag=True, help="Regenerate @generated functions with todos.")
 @click.option("--dry-run", is_flag=True, help="Preview without writing.")
@@ -346,7 +208,7 @@ def generate(path: str, update: bool, dry_run: bool, nlp: bool | None) -> None:
         raise SystemExit(1)
 
 
-@advanced.command()
+@main.command()
 @click.argument("path", default="project.intent", type=click.Path(exists=True))
 @click.option("--status", is_flag=True, help="Show completeness report.")
 @click.option("--drift", is_flag=True, help="Show only mismatches between intent and code.")
@@ -414,7 +276,7 @@ def intent(
     click.echo(f"\n  {impl}/{total} declarations implemented")
 
 
-@advanced.command("export")
+@main.command("export")
 @click.option(
     "-f",
     "--format",
@@ -473,7 +335,7 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
                 build_chroma(workspace)
 
 
-@advanced.command()
+@main.command()
 @click.argument("file", type=click.Path(exists=True))
 def view(file: str) -> None:
     """View the AST of a Prove source file."""
@@ -492,7 +354,7 @@ def view(file: str) -> None:
     _dump_ast(module, 0)
 
 
-@advanced.command()
+@main.command()
 @click.argument("file", type=click.Path(exists=True))
 @click.option("--load", "mode", flag_value="load", help="Compile .prv lookup to PDAT binary.")
 @click.option("--dump", "mode", flag_value="dump", help="Dump PDAT binary to .prv source.")
@@ -535,7 +397,7 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(source, nl=False)
 
 
-@advanced.command()
+@main.command()
 def setup() -> None:
     """Re-download ML stores to ~/.prove/.
 
@@ -556,7 +418,7 @@ def setup() -> None:
         raise SystemExit(1)
 
 
-@advanced.command("setup-nlp")
+@main.command("setup-nlp")
 def setup_nlp() -> None:
     """Build NLP data stores from scratch (requires: pip install 'prove[nlp]')."""
     import importlib.util
