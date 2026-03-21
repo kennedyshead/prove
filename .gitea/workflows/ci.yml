@@ -22,11 +22,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: prove-py/pyproject.toml
 
-      - name: Install dependencies
-        run: pip install -e ".[dev]" -q --break-system-packages
+      - name: Create venv and install
+        run: |
+          python3 -m venv ../.venv
+          source ../.venv/bin/activate
+          pip install -e ".[dev]" -q
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run all checks
         run: |
