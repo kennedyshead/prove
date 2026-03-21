@@ -6,11 +6,17 @@ license = ""
 
 [build]
 target = "native"
-optimize = true
 mutate = true
 debug = false
 c_sources = ["src/py_wrappers.c"]
 link_flags = []
+
+[optimize]
+enabled = true
+pgo = false
+strip = true
+tune_host = false
+gc_sections = true
 
 [test]
 property_rounds = 500

@@ -6,9 +6,15 @@ license = ""
 
 [build]
 target = "native"
-optimize = true
 mutate = true
 debug = false
+
+[optimize]
+enabled = true
+pgo = false
+strip = true
+tune_host = false
+gc_sections = true
 
 [test]
 property_rounds = 1000
