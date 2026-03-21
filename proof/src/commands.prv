@@ -19,8 +19,6 @@ module Commands
   Lsp outputs pylsp
   New outputs new_project
   Sequence reads get
-  Compiler outputs pycompiler
-  Export outputs pyexport
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -40,30 +38,6 @@ module Commands
   HELP_TEST_TEXT as String = comptime
       read("static/cli/test.txt")
 
-  HELP_COMPILER_TEXT as String = comptime
-      read("static/cli/advanced/compiler.txt")
-
-  HELP_EXPORT_TEXT as String = comptime
-      read("static/cli/advanced/export.txt")
-
-  HELP_GENERATE_TEXT as String = comptime
-      read("static/cli/advanced/generate.txt")
-
-  HELP_INDEX_TEXT as String = comptime
-      read("static/cli/advanced/index.txt")
-
-  HELP_INTENT_TEXT as String = comptime
-      read("static/cli/advanced/intent.txt")
-
-  HELP_SETUP_TEXT as String = comptime
-      read("static/cli/advanced/setup.txt")
-
-  HELP_SETUP_NLP_TEXT as String = comptime
-      read("static/cli/advanced/setup-nlp.txt")
-
-  HELP_VIEW_TEXT as String = comptime
-      read("static/cli/advanced/view.txt")
-
 /// Run the build command
 outputs build(arguments List<String>)
 from
@@ -75,7 +49,7 @@ from
             no_mutate as Boolean = contains(arguments, "--no-mutate")
             config as Config = config()
             source as List<SourceFile> = source(config)
-            pybuild(config, cwd(), debug, no_mutate, source)
+            pybuild(cwd(), debug, no_mutate, source)
             info(f"{
                    config.package.name
                  } {
@@ -96,9 +70,7 @@ from
             no_status as Boolean = contains(arguments, "--no-status")
             no_intent as Boolean = contains(arguments, "--no-intent")
             nlp_status as Boolean = contains(arguments, "--nlp--status")
-            config as Config = config()
-            pycheck(config,
-                    cwd(),
+            pycheck(cwd(),
                     md,
                     strict,
                     no_coherence,
@@ -106,11 +78,7 @@ from
                     no_status,
                     no_intent,
                     nlp_status)
-            info(f"{
-                   config.package.name
-                 } {
-                   config.package.version
-                 } has X file(s) with Y error(s)")&
+            Unit
 
 /// Run the format command
 outputs format(arguments List<String>)!
@@ -157,69 +125,9 @@ from
         true => console(HELP_TEST_TEXT)
         _ =>
             config as Config = config()
-            pytest(config, cwd(), 1000)
+            pytest(config, cwd())
             info(f"{
                    config.package.name
                  } {
                    config.package.version
                  } has X tests and Y failed")&
-
-/// Run compiler command
-outputs compiler(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_COMPILER_TEXT)
-        _ =>
-            pycompiler(arguments)
-            info("Ran compiler")&
-
-/// Run export command
-outputs export(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_EXPORT_TEXT)
-        _ =>
-            pyexport(arguments)
-            info("Ran export")&
-
-/// Run generate command
-outputs generate(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_GENERATE_TEXT)
-        _ => info("Ran generate")&
-
-/// Run index command
-outputs index(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_INDEX_TEXT)
-        _ => info("Ran index")&
-
-/// Run intent command
-outputs intent(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_INTENT_TEXT)
-        _ => info("Ran intent")&
-
-/// Run setup command
-outputs setup(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_SETUP_TEXT)
-        _ => info("Ran setup")&
-
-/// Run setup_nlp command
-outputs setup_nlp(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_SETUP_NLP_TEXT)
-        _ => info("Ran setup_nlp")&
-
-/// Run view command
-outputs view(arguments List<String>)!
-from
-    match contains(arguments, "--help")
-        true => console(HELP_VIEW_TEXT)
-        _ => info("Ran view")&

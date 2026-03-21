@@ -8,7 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import cast
+import warnings
 
+warnings.filterwarnings(
+    "ignore", message="nltk.app.wordfreq not loaded", category=UserWarning
+)
 # pylint: disable=invalid-name
 
 path: str = cast(str, globals().get("path", "."))

@@ -160,6 +160,7 @@ class TestGenerator:
         # Main
         lines.append("int main(int argc, char **argv) {")
         lines.append("    (void)argc; (void)argv;")
+        lines.append("    prove_runtime_init();")
         for tc in suite.cases:
             lines.append(f"    {tc.name}();")
         lines.append("")
@@ -168,6 +169,7 @@ class TestGenerator:
             '%d failed\\n", _tests_run, _tests_passed, '
             "_tests_failed);"
         )
+        lines.append("    prove_runtime_cleanup();")
         lines.append("    return _tests_failed > 0 ? 1 : 0;")
         lines.append("}")
         lines.append("")

@@ -868,6 +868,41 @@ class CallEmitterMixin:
                         mangled = self._request_struct_specialisation(template_fd, concrete_types)
                         return f"{mangled}({', '.join(args)})"
 
+                # Resolve function reference args for Verb parameters.
+                # When the target function's return type is non-void, emit a
+                # void-returning thunk so the call-through cast is ABI-safe.
+                from prove.types import UnitType
+
+                for i, pt in enumerate(sig.param_types):
+                    if i < len(expr.args) and isinstance(expr.args[i], IdentifierExpr):
+                        is_verb_param = (
+                            isinstance(pt, PrimitiveType) and pt.name == "Verb"
+                        ) or isinstance(pt, FunctionType)
+                        if is_verb_param:
+                            ref_name = expr.args[i].name
+                            if ref_name not in self._locals:
+                                ref_sig = self._symbols.resolve_function_any(ref_name)
+                                if ref_sig is not None:
+                                    ref_mangled = mangle_name(
+                                        ref_sig.verb,
+                                        ref_sig.name,
+                                        ref_sig.param_types,
+                                        module=self._sig_module(ref_sig),
+                                    )
+                                    # Non-void C return (including failable
+                                    # functions that return Prove_Result):
+                                    # emit a void thunk wrapper to avoid ABI
+                                    # mismatch at the void-cast call-through.
+                                    needs_thunk = (
+                                        not isinstance(ref_sig.return_type, UnitType)
+                                        or ref_sig.can_fail
+                                    )
+                                    if needs_thunk:
+                                        thunk = self._emit_verb_thunk(ref_mangled, ref_sig)
+                                        args[i] = f"(void*){thunk}"
+                                    else:
+                                        args[i] = f"(void*){ref_mangled}"
+
                 args = self._coerce_call_args(args, expr.args, sig)
                 mangled = mangle_name(
                     sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
@@ -899,6 +934,18 @@ class CallEmitterMixin:
                         return result
 
                 return call
+
+            # Call through Verb-typed parameter: cast void* to function pointer.
+            # All Verb thunks are normalised to void return (see _emit_verb_thunk),
+            # so the cast here is always void-returning.
+            local_ty = self._locals.get(name)
+            if local_ty is not None and (
+                (isinstance(local_ty, PrimitiveType) and local_ty.name == "Verb")
+                or isinstance(local_ty, FunctionType)
+            ):
+                arg_c_types = [map_type(self._infer_expr_type(a)).decl for a in expr.args]
+                cast = f"void (*)({', '.join(arg_c_types)})" if arg_c_types else "void (*)(void)"
+                return f"(({cast}){name})({', '.join(args)})"
 
             # Variant constructor or unknown — use name directly
             return f"{name}({', '.join(args)})"
@@ -1440,6 +1487,34 @@ class CallEmitterMixin:
         lam += "}\n"
         self._lambdas.append(lam)
         return name
+
+    def _emit_verb_thunk(self, target: str, sig: FunctionSignature) -> str:
+        """Emit a void-returning thunk that calls *target* and discards its result.
+
+        This is needed when a non-void function is passed as a bare Verb
+        parameter: the call-through site uses a ``void (*)(...)`` cast, so
+        the actual target must also be void-returning to avoid ABI mismatches
+        (e.g. hidden sret pointer on ARM64).
+        """
+        thunk_name = f"_verb_thunk_{self._tmp_counter}"
+        self._tmp_counter += 1
+
+        param_cts = [map_type(pt) for pt in sig.param_types]
+        c_params = []
+        call_args = []
+        for i, ct in enumerate(param_cts):
+            pname = f"_a{i}"
+            c_params.append(f"{ct.decl} {pname}")
+            call_args.append(pname)
+
+        param_str = ", ".join(c_params) if c_params else "void"
+        call_str = f"{target}({', '.join(call_args)})"
+
+        thunk = f"static void {thunk_name}({param_str}) {{\n"
+        thunk += f"    (void){call_str};\n"
+        thunk += "}\n"
+        self._lambdas.append(thunk)
+        return thunk_name
 
     def _lambda_owned_field_retains(
         self,

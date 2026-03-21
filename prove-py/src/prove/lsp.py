@@ -2083,33 +2083,197 @@ def definition(params: lsp.DefinitionParams) -> lsp.Location | None:
             range=span_to_range(sym.span),
         )
 
+    # Local variables inside function bodies take priority (VarDecl, params)
+    if ds.module is not None:
+        loc = _find_local_var_definition(word, params.position, ds)
+        if loc is not None:
+            return loc
+
     # For imported symbols (or fallback), resolve via FunctionSignature which
     # carries the actual declaration span in the source file.
     sig = ds.symbols.resolve_function_any(word)
     if sig is not None and sig.span.file not in ("<builtin>", "<stdlib>"):
-        span_file = sig.span.file
-        if span_file.startswith("<stdlib:"):
-            # Extract module name from "<stdlib:ModuleName>" and find actual path
-            from prove.stdlib_loader import stdlib_prv_path
+        loc = _resolve_sig_location(sig, uri)
+        if loc is not None:
+            return loc
 
-            module_name = span_file[len("<stdlib:") : -1]
-            prv_path = stdlib_prv_path(module_name)
-            if prv_path is not None and prv_path.exists():
-                target_uri = prv_path.as_uri()
-                return lsp.Location(
-                    uri=target_uri,
-                    range=span_to_range(sig.span),
-                )
-        else:
-            # Local module — span_file is the actual file path
-            from pathlib import Path
+    # Imported constants and types: find the definition in the source module
+    if sym is not None and sym.is_imported:
+        loc = _resolve_imported_symbol(word, uri, ds)
+        if loc is not None:
+            return loc
 
-            target_uri = Path(span_file).as_uri()
+    return None
+
+
+def _resolve_sig_location(sig: FunctionSignature, current_uri: str) -> lsp.Location | None:
+    """Build an LSP Location from a FunctionSignature's span."""
+    from pathlib import Path
+
+    span_file = sig.span.file
+    if span_file.startswith("<stdlib:"):
+        from prove.stdlib_loader import stdlib_prv_path
+
+        module_name = span_file[len("<stdlib:") : -1]
+        prv_path = stdlib_prv_path(module_name)
+        if prv_path is not None and prv_path.exists():
+            return lsp.Location(uri=prv_path.as_uri(), range=span_to_range(sig.span))
+    else:
+        return lsp.Location(uri=Path(span_file).as_uri(), range=span_to_range(sig.span))
+    return None
+
+
+def _resolve_imported_symbol(name: str, uri: str, ds: DocumentState) -> lsp.Location | None:
+    """Find the definition of an imported constant or type in sibling modules."""
+    from pathlib import Path
+
+    if uri.startswith("file://"):
+        file_path = Path(uri[7:])
+    elif uri.startswith("/"):
+        file_path = Path(uri)
+    else:
+        return None
+
+    parent = file_path.parent
+
+    # Find which module the symbol is imported from by checking import declarations
+    if ds.module is None:
+        return None
+
+    from prove.ast_nodes import ModuleDecl
+
+    source_module: str | None = None
+    for decl in ds.module.declarations:
+        if isinstance(decl, ModuleDecl):
+            for imp in decl.imports:
+                for item in imp.items:
+                    if item.name == name:
+                        source_module = imp.module
+                        break
+                if source_module:
+                    break
+            break
+
+    if source_module is None:
+        return None
+
+    # Check stdlib first
+    from prove.stdlib_loader import is_stdlib_module, stdlib_prv_path
+
+    if is_stdlib_module(source_module):
+        prv_path = stdlib_prv_path(source_module)
+        if prv_path is not None and prv_path.exists():
+            loc = _find_name_in_file(name, prv_path)
+            if loc is not None:
+                return loc
+
+    # Look for a local module file: <module_name>.prv (lowercased)
+    for prv_file in parent.glob("*.prv"):
+        stem = prv_file.stem
+        # Module names are CamelCase; file stems may be lower or mixed
+        if stem.lower() == source_module.lower() or stem == source_module:
+            loc = _find_name_in_file(name, prv_file)
+            if loc is not None:
+                return loc
+
+    return None
+
+
+def _find_name_in_file(name: str, file_path: Path) -> lsp.Location | None:
+    """Search a .prv file for a constant or type definition by name."""
+    import re
+
+    try:
+        source = file_path.read_text()
+    except OSError:
+        return None
+
+    for i, line in enumerate(source.splitlines()):
+        # Match constant: `NAME as Type = ...` or `NAME = ...`
+        if re.match(rf"\s*{re.escape(name)}\s+as\s+", line) or re.match(
+            rf"\s*{re.escape(name)}\s*=\s*", line
+        ):
+            col = line.index(name)
             return lsp.Location(
-                uri=target_uri,
-                range=span_to_range(sig.span),
+                uri=file_path.as_uri(),
+                range=lsp.Range(
+                    start=lsp.Position(line=i, character=col),
+                    end=lsp.Position(line=i, character=col + len(name)),
+                ),
             )
+        # Match type definition (record/algebraic)
+        if re.match(rf"\s*{re.escape(name)}\s*$", line) or re.match(
+            rf"\s*{re.escape(name)}\s", line
+        ):
+            # Check if next line looks like a type body (field definitions)
+            lines = source.splitlines()
+            if i + 1 < len(lines) and re.match(r"\s+\w+\s+\w+", lines[i + 1]):
+                col = line.index(name)
+                return lsp.Location(
+                    uri=file_path.as_uri(),
+                    range=lsp.Range(
+                        start=lsp.Position(line=i, character=col),
+                        end=lsp.Position(line=i, character=col + len(name)),
+                    ),
+                )
 
+    return None
+
+
+def _find_local_var_definition(
+    name: str, position: lsp.Position, ds: DocumentState
+) -> lsp.Location | None:
+    """Find a local variable definition in the AST near the cursor position."""
+    from prove.ast_nodes import FunctionDef, MainDef
+
+    if ds.module is None:
+        return None
+
+    # Recover the URI from the state cache
+    uri = ""
+    for cached_uri, cached_ds in _state.items():
+        if cached_ds is ds:
+            uri = cached_uri
+            break
+
+    # Find the function containing the cursor
+    cursor_line = position.line + 1  # 1-indexed
+    for decl in ds.module.declarations:
+        if not isinstance(decl, (FunctionDef, MainDef)):
+            continue
+        if decl.span.start_line <= cursor_line <= decl.span.end_line:
+            # Search this function's body for VarDecl (including nested match arms)
+            found = _search_body_for_var(name, decl.body)
+            if found is not None:
+                return lsp.Location(uri=uri, range=span_to_range(found.span))
+            # Also check function parameters (FunctionDef only)
+            if isinstance(decl, FunctionDef):
+                for param in decl.params:
+                    if param.name == name:
+                        return lsp.Location(uri=uri, range=span_to_range(param.span))
+            break
+
+    return None
+
+
+def _search_body_for_var(name: str, body: list) -> VarDecl | None:
+    """Recursively search a statement list for a VarDecl with the given name."""
+    from prove.ast_nodes import ExprStmt, MatchExpr, VarDecl
+
+    for stmt in body:
+        if isinstance(stmt, VarDecl) and stmt.name == name:
+            return stmt
+        # Recurse into match arms
+        if isinstance(stmt, MatchExpr):
+            for arm in stmt.arms:
+                result = _search_body_for_var(name, arm.body)
+                if result is not None:
+                    return result
+        if isinstance(stmt, ExprStmt) and isinstance(stmt.expr, MatchExpr):
+            for arm in stmt.expr.arms:
+                result = _search_body_for_var(name, arm.body)
+                if result is not None:
+                    return result
     return None
 
 

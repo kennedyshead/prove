@@ -5,41 +5,23 @@ module Main
   the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
   Also outputs advanced commands that are more for development of the compiler.
-  safe build makes sure that prove.toml exist
+  secures config makes sure that prove.toml exist
   """
   System inputs process outputs console
   Sequence reads value length transforms slice
   Config types Config inputs config constants PROVE_TOML
-  Commands
-    outputs new compiler export generate index setup setup_nlp view check format lsp test
-      build
+  Commands outputs new check format lsp test build
   System validates file
   Log detached error
 
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
 
-  HELP_ADVANCED_TEXT as String = comptime
-      read("static/cli/advanced/root.txt")
-
-outputs advanced(arguments List<String>)!
-from
-    sub_arguments as List<String> = slice(arguments, 1, length(arguments))
-    match value(0, arguments)
-        Some("compiler") => compiler(sub_arguments)!
-        Some("export") => export(sub_arguments)!
-        Some("generate") => generate(sub_arguments)!
-        Some("index") => index(sub_arguments)!
-        Some("setup") => setup(sub_arguments)!
-        Some("setup-nlp") => setup_nlp(sub_arguments)!
-        Some("view") => view(sub_arguments)!
-        _ => console(HELP_ADVANCED_TEXT)
-
-outputs safe_build(arguments List<String>)
+outputs secures_config(arguments List<String>, verb Verb)
 from
     match valid file(PROVE_TOML)
-        true => build(arguments)
-    _ => error(f"{PROVE_TOML} is not found, run prove new for a scaffold project")&
+        true => verb(arguments)
+        _ => error(f"{PROVE_TOML} is not found, run prove new for a scaffold project")&
 
 main() Result<Unit, Error>!
 from
@@ -47,12 +29,12 @@ from
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
     command as Option<String> = value(1, arguments)
     match command
-        Some("build") => safe_build(arguments)
+        Some("build") => secures_config(arguments, build)
         Some("check") => check(sub_arguments)!
         Some("format") => format(sub_arguments)!
         Some("lsp") => lsp(sub_arguments)!
         Some("new") => new(sub_arguments)!
-        Some("test") => test(sub_arguments)!
+        Some("test") => secures_config(sub_arguments, test)
         Some("--version") =>
             config as Config = config()
             console(f"proof the prove cli tool {config.package.version}")

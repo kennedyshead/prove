@@ -1,9 +1,0 @@
-Usage: python -m prove advanced generate [OPTIONS] PATH
-
-  Generate function stubs from narrative or intent.
-
-Options:
-  --update          Regenerate @generated functions with todos.
-  --dry-run         Preview without writing.
-  --nlp / --no-nlp  Force NLP backend on/off.
-  --help            Show this message and exit.

@@ -8,6 +8,7 @@ license = ""
 target = "native"
 mutate = true
 debug = false
+ccache = true
 
 [optimize]
 enabled = true

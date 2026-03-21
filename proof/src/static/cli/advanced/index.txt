@@ -1,6 +1,0 @@
-Usage: python -m prove advanced index [OPTIONS] [PATH]
-
-  Rebuild the .prove_cache ML completion index.
-
-Options:
-  --help  Show this message and exit.

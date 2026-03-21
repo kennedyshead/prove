@@ -17,13 +17,13 @@ module Test
   PYTHON_TEST as String = comptime
       read("python/test.py")
 
-outputs pytest(config Config, path String, property_rounds Integer) Integer
+outputs pytest(config Config, path String) Integer
   requires valid dir(path)
 from
     py_initialize()
     py_set_string("path", path)
     // TODO: map property_rounds
-    py_set_integer("property_rounds ", property_rounds)
+    py_set_integer("property_rounds", config.test.property_rounds)
     result as Integer = py_run_string(PYTHON_TEST)
     py_finalize()
     result
