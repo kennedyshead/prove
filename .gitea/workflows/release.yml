@@ -41,7 +41,7 @@ jobs:
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Build proof binary
-        run: prove build ../proof/
+        run: python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))"
 
       - name: Run all checks
         run: |

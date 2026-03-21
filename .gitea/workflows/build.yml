@@ -34,7 +34,7 @@ jobs:
       - name: Build all
         run: |
           # Proof binary
-          prove build ../proof/ &
+          python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))" &
           PROOF_PID=$!
 
           # Python wheel
