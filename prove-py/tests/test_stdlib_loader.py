@@ -23,13 +23,27 @@ _CANONICAL = [k for k in _STDLIB_MODULES if k not in _ALIAS_KEYS]
 
 @pytest.mark.parametrize("module_name", _CANONICAL)
 def test_stdlib_module_loads(module_name: str):
-    """Every registered stdlib module must load with at least one signature or constant."""
+    """Every registered stdlib module must load with at least one signature, constant, or type."""
     sigs = load_stdlib(module_name)
     consts = load_stdlib_constants(module_name)
-    assert sigs or consts, (
+    # Type-only modules (e.g. UI) have no functions or constants but export types
+    has_types = False
+    module = _parse_stdlib_module(module_name)
+    if module:
+        from prove.ast_nodes import TypeDef
+
+        has_types = any(
+            isinstance(d, TypeDef)
+            or (
+                isinstance(d, ModuleDecl)
+                and (any(isinstance(b, TypeDef) for b in d.body) or bool(getattr(d, "types", [])))
+            )
+            for d in module.declarations
+        )
+    assert sigs or consts or has_types, (
         f"stdlib module '{module_name}' "
         f"(file: {_STDLIB_MODULES[module_name]}) "
-        f"returned no signatures or constants — file missing or unparseable"
+        f"returned no signatures, constants, or types — file missing or unparseable"
     )
 
 

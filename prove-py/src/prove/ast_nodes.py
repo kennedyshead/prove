@@ -537,6 +537,8 @@ class FunctionDef:
     intent: str | None
     satisfies: list[str]
     event_type: TypeExpr | None
+    state_init: Expr | None
+    state_type: TypeExpr | None
     body: list[Stmt | MatchExpr]
     doc_comment: str | None
     span: Span

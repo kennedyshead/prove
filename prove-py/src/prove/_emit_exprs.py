@@ -555,7 +555,7 @@ class ExprEmitterMixin:
                 else:
                     mangled = fname
                 return f"{mangled}({args_str})"
-            if sig and sig.verb == "listens":
+            if sig and sig.verb in ("listens", "renders"):
                 return self._emit_listens_call(inner, sig)
         # Detached or bare: emit the inner expression directly
         return self._emit_expr(inner)
@@ -639,13 +639,14 @@ class ExprEmitterMixin:
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
-            # listens uses _ev (received event from queue)
+            # listens/renders uses _ev (received event from queue)
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
                 "streams",
                 "listens",
+                "renders",
             ):
-                if self._current_func.verb == "listens":
+                if self._current_func.verb in ("listens", "renders"):
                     subj_name = "_ev"
                 elif self._current_func.params:
                     subj_name = self._current_func.params[0].name

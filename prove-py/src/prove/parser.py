@@ -123,6 +123,7 @@ _VERBS = frozenset(
         TokenKind.ATTACHED,
         TokenKind.LISTENS,
         TokenKind.STREAMS,
+        TokenKind.RENDERS,
     }
 )
 
@@ -487,6 +488,8 @@ class Parser:
         intent = None
         satisfies: list[str] = []
         event_type_expr: TypeExpr | None = None
+        state_init_expr: Expr | None = None
+        state_type_expr: TypeExpr | None = None
 
         # Skip INDENT if annotations/from are indented under the function
         in_indent = False
@@ -569,6 +572,12 @@ class Parser:
             elif self._at(TokenKind.EVENT_TYPE):
                 self._advance()
                 event_type_expr = self._parse_type_expr()
+            elif self._at(TokenKind.STATE_INIT):
+                self._advance()
+                state_init_expr = self._parse_expression(0)
+            elif self._at(TokenKind.STATE_TYPE):
+                self._advance()
+                state_type_expr = self._parse_type_expr()
             elif self._at(TokenKind.COMMENT):
                 self._advance()  # skip comments between annotations
             elif self._at(TokenKind.DEDENT):
@@ -595,8 +604,8 @@ class Parser:
         if in_indent and self._at(TokenKind.DEDENT):
             self._advance()
 
-        # listens/streams body must be a single MatchExpr with an Exit() arm
-        if verb in ("listens", "streams") and not is_binary:
+        # listens/streams/renders body must be a single MatchExpr with an Exit() arm
+        if verb in ("listens", "streams", "renders") and not is_binary:
             self._validate_listens_body(body, verb_tok.span)
 
         end = self._current().span
@@ -623,16 +632,18 @@ class Parser:
             intent=intent,
             satisfies=satisfies,
             event_type=event_type_expr,
+            state_init=state_init_expr,
+            state_type=state_type_expr,
             body=body,
             doc_comment=doc_comment,
             span=span,
         )
 
     def _validate_listens_body(self, body: list, span: Span) -> None:
-        """Validate that a listens/streams body has a single MatchExpr with an Exit() arm."""
+        """Validate listens/streams/renders body: single MatchExpr with Exit arm."""
         if len(body) != 1 or not isinstance(body[0], MatchExpr):
             self._error(
-                "`listens`/`streams` body must be a single match expression",
+                "`listens`/`streams`/`renders` body must be a single match expression",
                 span,
                 "E150",
             )
@@ -644,7 +655,7 @@ class Parser:
         )
         if not has_exit:
             self._error(
-                "`listens`/`streams` match must have an `Exit()` arm",
+                "`listens`/`streams`/`renders` match must have an `Exit()` arm",
                 span,
                 "E151",
             )
@@ -1314,7 +1325,12 @@ class Parser:
     def _parse_module_decl(self) -> ModuleDecl:
         start = self._current().span
         self._advance()  # 'module'
-        name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+        # Module name can be TYPE_IDENTIFIER (e.g. System) or
+        # CONSTANT_IDENTIFIER (e.g. UI — all-caps short names)
+        if self._at(TokenKind.CONSTANT_IDENTIFIER):
+            name_tok = self._advance()
+        else:
+            name_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
         self._skip_newlines()
 
         narrative = None
@@ -1400,7 +1416,18 @@ class Parser:
                 elif self._at(TokenKind.TYPE):
                     types.append(self._parse_type_def(None))
                 elif self._at(TokenKind.CONSTANT_IDENTIFIER):
-                    constants.append(self._parse_constant_def())
+                    # Disambiguate: if next token is a verb or type name, it's a module import
+                    # (e.g., "UI types Key Color" where UI is all-caps)
+                    next_tok = self._peek(1)
+                    if next_tok.kind in _IMPORT_VERBS or next_tok.kind in (
+                        TokenKind.TYPE_IDENTIFIER,
+                        TokenKind.IDENTIFIER,
+                        TokenKind.CONSTANT_IDENTIFIER,
+                    ):
+                        module_tok = self._advance()
+                        imports.append(self._parse_import(module_tok))
+                    else:
+                        constants.append(self._parse_constant_def())
                 elif self._at(TokenKind.INVARIANT_NETWORK):
                     invariants.append(self._parse_invariant_network())
                 elif self._at(TokenKind.FOREIGN):
@@ -1775,7 +1802,7 @@ class Parser:
                 self._skip_newlines()
                 if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
                     break
-                if not self._at(TokenKind.TYPE_IDENTIFIER):
+                if not self._at_any(TokenKind.TYPE_IDENTIFIER, TokenKind.CONSTANT_IDENTIFIER):
                     break
                 entry = self._parse_binary_entry_row(num_columns)
                 entries.append(entry)
@@ -1787,7 +1814,11 @@ class Parser:
     def _parse_binary_entry_row(self, num_columns: int) -> LookupEntry:
         """Parse: Variant | val1 | val2 | ..."""
         start = self._current().span
-        variant_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
+        # Variant can be TYPE_IDENTIFIER (e.g. Escape) or CONSTANT_IDENTIFIER (e.g. F1)
+        if self._at(TokenKind.CONSTANT_IDENTIFIER):
+            variant_tok = self._advance()
+        else:
+            variant_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
 
         _LIT_KINDS = {
             TokenKind.STRING_LIT: "string",
@@ -1799,6 +1830,7 @@ class Parser:
             **_LIT_KINDS,
             TokenKind.IDENTIFIER: "identifier",
             TokenKind.TYPE_IDENTIFIER: "identifier",
+            TokenKind.CONSTANT_IDENTIFIER: "identifier",
         }
         values: list[str] = []
         value_kinds: list[str] = []
@@ -1849,6 +1881,7 @@ class Parser:
             **_LIT_KINDS,
             TokenKind.IDENTIFIER: "identifier",
             TokenKind.TYPE_IDENTIFIER: "identifier",
+            TokenKind.CONSTANT_IDENTIFIER: "identifier",
         }
 
         entries: list[LookupEntry] = []

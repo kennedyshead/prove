@@ -30,6 +30,7 @@ nav:
       - Bytes & Hash: stdlib/bytes-hash.md
       - Network: stdlib/network.md
       - Language: stdlib/language.md
+      - UI & Terminal: stdlib/ui-terminal.md
   - Compiler:
       - CLI Reference: cli.md
       - Compiler Features: compiler.md

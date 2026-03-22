@@ -106,6 +106,8 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     },
     "network": {"prove_network", "prove_bytes"},
     "language": {"prove_language"},
+    "ui": set(),
+    "terminal": {"prove_terminal"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -566,6 +568,19 @@ _RUNTIME_FUNCTIONS = {
         "prove_language_token_start",
         "prove_language_token_end",
         "prove_language_token_kind",
+    ],
+    "prove_terminal": [
+        "prove_terminal_validates",
+        "prove_terminal_raw",
+        "prove_terminal_cooked",
+        "prove_terminal_write",
+        "prove_terminal_write_at",
+        "prove_terminal_clear",
+        "prove_terminal_cursor",
+        "prove_terminal_size",
+        "prove_terminal_read_key",
+        "prove_terminal_init",
+        "prove_terminal_cleanup",
     ],
 }
 

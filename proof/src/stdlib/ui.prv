@@ -1,0 +1,73 @@
+module UI
+  narrative: """Base UI module providing shared types for Terminal and Graphic backends.
+    The renders verb is a language-level verb, not defined here.
+    Extend TerminalAppEvent or GraphicAppEvent for your app's event type."""
+
+  /// Bidirectional keyboard mapping.
+  /// Resolve by variant (Key:Escape), by name (Key:"escape"),
+  /// or by keycode (Key:27). Keycodes above 1000 are virtual codes
+  /// for non-printable keys; printable characters use ASCII directly.
+  type Key:[Lookup] is String Integer where
+      Escape | "escape" | 27
+      Enter | "enter" | 13
+      Tab | "tab" | 9
+      Backspace | "backspace" | 8
+      Space | "space" | 32
+      ArrowUp | "up" | 1001
+      ArrowDown | "down" | 1002
+      ArrowLeft | "left" | 1003
+      ArrowRight | "right" | 1004
+      Home | "home" | 1010
+      End | "end" | 1011
+      PageUp | "pageup" | 1012
+      PageDown | "pagedown" | 1013
+      Delete | "delete" | 1014
+      Insert | "insert" | 1015
+      F1 | "f1" | 1101
+      F2 | "f2" | 1102
+      F3 | "f3" | 1103
+      F4 | "f4" | 1104
+      F5 | "f5" | 1105
+      F6 | "f6" | 1106
+      F7 | "f7" | 1107
+      F8 | "f8" | 1108
+      F9 | "f9" | 1109
+      F10 | "f10" | 1110
+      F11 | "f11" | 1111
+      F12 | "f12" | 1112
+
+  /// Bidirectional color mapping.
+  /// Resolve by variant (Color:Red), by name (Color:"red"),
+  /// by ANSI SGR code (Color:31), or by hex (Color:"#FF0000").
+  /// Each backend maps to native encoding automatically.
+  type Color:[Lookup] is String Integer String where
+      Default | "default" | 0 | "#000000"
+      Black | "black" | 30 | "#000000"
+      Red | "red" | 31 | "#FF0000"
+      Green | "green" | 32 | "#00FF00"
+      Yellow | "yellow" | 33 | "#FFFF00"
+      Blue | "blue" | 34 | "#0000FF"
+      Magenta | "magenta" | 35 | "#FF00FF"
+      Cyan | "cyan" | 36 | "#00FFFF"
+      White | "white" | 37 | "#FFFFFF"
+
+  /// Base UI event type. Abstract — not directly usable as algebraic type.
+  /// Extend via TerminalAppEvent or GraphicAppEvent to select a backend,
+  /// then extend further with your own custom events.
+  type AppEvent is
+    Draw(state Value)
+    | Tick(state Value)
+    | KeyDown(key Key)
+    | KeyUp(key Key)
+    | MouseDown(button Integer, x Integer, y Integer)
+    | MouseUp(button Integer, x Integer, y Integer)
+    | Scroll(dx Integer, dy Integer)
+    | MousePos(x Integer, y Integer)
+    | Resize(width Integer, height Integer)
+    | Exit(state Value)
+
+  /// Screen position in the UI coordinate space.
+  /// Character cells for TUI, pixels for GUI.
+  type Position is
+    x Integer
+    y Integer

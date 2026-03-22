@@ -690,6 +690,30 @@ _register_module(
     },
 )
 
+_register_module(
+    "ui",
+    display="UI",
+    prv_file="ui.prv",
+)
+
+_register_module(
+    "terminal",
+    display="Terminal",
+    prv_file="terminal.prv",
+    c_map={
+        ("validates", "terminal"): "prove_terminal_validates",
+        ("outputs", "raw"): "prove_terminal_raw",
+        ("outputs", "cooked"): "prove_terminal_cooked",
+        ("outputs", "terminal"): "prove_terminal_write",
+        ("outputs", "clear"): "prove_terminal_clear",
+        ("outputs", "cursor"): "prove_terminal_cursor",
+        ("reads", "size"): "prove_terminal_size",
+    },
+    overloads={
+        ("outputs", "terminal", "Integer"): "prove_terminal_write_at",
+    },
+)
+
 
 def binary_c_name(
     module: str,

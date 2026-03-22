@@ -1,0 +1,73 @@
+module TodoApp
+  narrative: """Interactive terminal todo list with keyboard navigation.
+    Expected to fail: check, check_md, check_strict, build, build_debug."""
+  Terminal outputs terminal clear cursor raw cooked reads size types TerminalAppEvent
+
+  type TodoItem is
+    text String
+    done Boolean
+
+  type TodoState is
+    items List<TodoItem>
+    selected Integer
+
+  type TodoEvent is TerminalAppEvent
+    ToggleDone
+    | AddItem
+    | RemoveItem
+
+  renders interface(registered_attached_verbs List<Attached>)
+    event_type TodoEvent
+    state_init TodoState(
+        [TodoItem("Learn Prove", false), TodoItem("Build a TUI app", false), TodoItem("Ship it", false)],
+        0)
+  from
+      Draw(state) =>
+          clear()
+          terminal(0, 0, "=== Todo List ===")
+          terminal(0, 1, "j/k: navigate | space: toggle | a: add | d: delete | ESC: quit")
+          terminal(0, 2, "")
+          pos as Integer = 3
+          each item, index in state.items
+              prefix as String = match index == state.selected
+                  true => "> "
+                  false => "  "
+              check as String = match item.done
+                  true => "[x]"
+                  false => "[ ]"
+              terminal(0, pos, f"{prefix}{check} {item.text}")
+              pos = pos + 1
+      Tick(state) => Draw(state)
+      ToggleDone =>
+          item as TodoItem = state.items[state.selected]
+          state.items = state.items.set(state.selected, TodoItem(item.text, !item.done))
+          Draw(state)
+      RemoveItem =>
+          state.items = state.items.remove(state.selected)
+          state.selected = Math.max(0, state.selected - 1)
+          Draw(state)
+      Exit(state) =>
+          cooked()
+          Unit
+
+  attached on_key() TodoEvent
+    event_type KeyDown
+    state_type TodoState
+  from
+      match event
+          Key:Escape => Exit
+          Key:"k" =>
+              state.selected = Math.max(0, state.selected - 1)
+              Draw(state)
+          Key:"j" =>
+              state.selected = Math.min(state.items.length - 1, state.selected + 1)
+              Draw(state)
+          Key:Space => ToggleDone
+          Key:"a" => AddItem
+          Key:"d" => RemoveItem
+          _ => Tick(state)
+
+  main()
+  from
+      raw()
+      interface([on_key])

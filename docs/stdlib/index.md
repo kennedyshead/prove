@@ -1,12 +1,12 @@
 ---
 title: Standard Library Overview - Prove Programming Language
-description: Overview of the Prove standard library — 19 modules with consistent design patterns, verb families, and channel dispatch.
+description: Overview of the Prove standard library — 21 modules with consistent design patterns, verb families, and channel dispatch.
 keywords: Prove stdlib, standard library, design pattern, verb families, channel dispatch
 ---
 
 # Standard Library
 
-The Prove standard library is a set of 19 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 21 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -20,7 +20,7 @@ Verbs define what a function does. The compiler enforces their guarantees:
 |--------|-------|------------|
 | **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no side effects. Safe to memoize, parallelize |
 | **IO** | `inputs`, `outputs`, `streams` | Reads/writes to external world |
-| **Async** | `detached`, `attached`, `listens` | Concurrent execution via coroutines |
+| **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via coroutines |
 
 See [Functions & Verbs](../verbs.md) for the full reference.
 
@@ -70,3 +70,5 @@ These types need no import:
 | **[Log](log.md)** | Complete | ANSI color constants and structured logging with `detached` verb |
 | **[Network](network.md)** | Complete | TCP sockets: `socket`, `server`, `accept`, `message` channels with `Socket` type; pairs with `streams` for accept loops |
 | **[Language](language.md)** | Complete | Natural language processing: tokenization, stemming, edit distance, phonetic codes, n-grams, stopwords, frequency analysis |
+| **[UI](ui-terminal.md#ui)** | Complete | Base UI types: `AppEvent` algebraic event type, `Key:[Lookup]`, `Color:[Lookup]`, `Position` struct |
+| **[Terminal](ui-terminal.md#terminal)** | Complete | TUI primitives via ANSI escape codes: raw/cooked mode, cursor control, clear, terminal size, `TerminalAppEvent` |

@@ -13,10 +13,11 @@ Prove provides structured concurrency via cooperative coroutines. Async verbs fo
 | `detached` | Spawn and move on — fire-and-forget | No return type. Body runs concurrently; caller does not wait |
 | `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. May call blocking IO (runs in its own coroutine stack) |
 | `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. No return type |
+| `renders` | Event-driven UI loop — like `listens` with mutable state | `event_type` + `state_init` annotations. `List<Attached>` first param. Match with `Exit` arm |
 
 **Key rules:**
-- `listens` bodies must not call blocking `inputs`/`outputs` functions directly — they run cooperatively and blocking would stall the yield cycle
-- `listens` arms can call `attached` functions via `&` to perform IO safely in a child coroutine
+- `listens`/`renders` bodies must not call blocking `inputs`/`outputs` functions directly — they run cooperatively and blocking would stall the yield cycle
+- `listens`/`renders` arms can call `attached` functions via `&` to perform IO safely in a child coroutine
 - `detached` and `attached` may call blocking IO freely since they have their own coroutine stacks
 - Concurrency is cooperative — no threads, no data races
 - Runtime backed by `prove_coro` stackful coroutines (`ucontext_t` on POSIX, sequential fallback on Windows)

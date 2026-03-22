@@ -23,7 +23,7 @@ var (
 				// Section keywords
 				{`\b(project|purpose|domain|vocabulary|module|flow|constraints)\b`, chroma.Keyword, nil},
 				// Verb keywords
-				{`\b(validates|transforms|reads|creates|matches|inputs|outputs|streams|listens|detached|attached)\b`, chroma.KeywordDeclaration, nil},
+				{`\b(validates|transforms|reads|creates|matches|inputs|outputs|streams|listens|renders|detached|attached)\b`, chroma.KeywordDeclaration, nil},
 				// "is" keyword
 				{`\bis\b`, chroma.Keyword, nil},
 				// Flow arrow
@@ -95,7 +95,7 @@ var (
 				// PROVE-EXPORT-END: keywords
 
 				// PROVE-EXPORT-BEGIN: ai-keywords
-				{`\b(assume|believe|chosen|intent|invariant_network|know|narrative|near_miss|satisfies|temporal|why_not)\b`, chroma.KeywordNamespace, nil},
+				{`\b(assume|believe|chosen|event_type|intent|invariant_network|know|narrative|near_miss|satisfies|state_init|state_type|temporal|why_not)\b`, chroma.KeywordNamespace, nil},
 				// PROVE-EXPORT-END: ai-keywords
 
 				// PROVE-EXPORT-BEGIN: literals

@@ -66,7 +66,7 @@ class CallCheckMixin:
             and isinstance(expr.args[0], ListLiteral)
         ):
             peek_sig = self.symbols.resolve_function_any(expr.func.name)
-            if peek_sig and peek_sig.verb == "listens":
+            if peek_sig and peek_sig.verb in ("listens", "renders"):
                 self._in_listens_worker_list = True
 
         # Determine function name and resolve
@@ -119,7 +119,7 @@ class CallCheckMixin:
                 self._used_imports.add((sig.module, name))
 
             # Check calls to async functions without &
-            if sig.verb in ("detached", "attached", "listens"):
+            if sig.verb in ("detached", "attached", "listens", "renders"):
                 if self._in_listens_worker_list and sig.verb == "attached":
                     # Attached calls inside listens worker list are worker
                     # registrations, not coroutine invocations — no & needed.
@@ -195,7 +195,7 @@ class CallCheckMixin:
                         if (
                             cb_sig
                             and cb_sig.verb
-                            and cb_sig.verb in ("detached", "attached", "listens")
+                            and cb_sig.verb in ("detached", "attached", "listens", "renders")
                         ):
                             self._error(
                                 "E369",
@@ -305,8 +305,8 @@ class CallCheckMixin:
             # Ownership tracking: mark variables as moved if passed to Own parameters
             self._track_moved_args(expr.args, sig.param_types)
 
-            # E403/E404: validate registered workers for listens call
-            if sig.verb == "listens" and expr.args:
+            # E403/E404: validate registered workers for listens/renders call
+            if sig.verb in ("listens", "renders") and expr.args:
                 first_arg = expr.args[0]
                 if isinstance(first_arg, ListLiteral):
                     for elem in first_arg.elements:
