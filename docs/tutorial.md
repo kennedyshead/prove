@@ -14,6 +14,10 @@ This tutorial walks you through Prove's core concepts step by step. By the end, 
 - gcc or clang
 - A text editor
 
+**Optional** (for GUI applications using the Graphic module):
+
+- SDL2 (`brew install sdl2` on macOS, `apt install libsdl2-dev` on Linux)
+
 Install Prove:
 
 ```bash

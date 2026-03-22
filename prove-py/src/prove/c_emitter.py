@@ -343,6 +343,7 @@ class CEmitter(
         "Network": "prove_network.h",
         "Store": "prove_store.h",
         "Language": "prove_language.h",
+        "Graphic": "prove_gui.h",
     }
 
     def _module_uses_strings(self) -> bool:
@@ -495,8 +496,14 @@ class CEmitter(
                     self._needed_headers.add("prove_coro.h")
                     found_coro = True
                 if decl.verb == "renders":
-                    self._needed_headers.add("prove_terminal.h")
                     self._needed_headers.add("prove_event.h")
+                    rsig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
+                    if rsig and rsig.event_type and isinstance(rsig.event_type, AlgebraicType):
+                        vnames = {v.name for v in rsig.event_type.variants}
+                        if "Visible" in vnames and "Focused" in vnames:
+                            self._needed_headers.add("prove_gui.h")
+                        else:
+                            self._needed_headers.add("prove_terminal.h")
 
     @staticmethod
     def _expr_uses_hof(expr: Expr) -> bool:
@@ -1696,10 +1703,21 @@ class CEmitter(
         # Initialize the event queue
         self._line("Prove_EventNodeQueue *_eq = prove_event_queue_new();")
 
-        # Initialize terminal backend
-        self._line("prove_terminal_init(_eq);")
-
         event_type = sig.event_type if sig else None
+
+        # Detect backend from event type chain.
+        # GraphicAppEvent adds Visible/Hidden/Focused variants;
+        # if those are present, it's a GUI app.
+        is_graphic = False
+        if event_type and isinstance(event_type, AlgebraicType):
+            variant_names = {v.name for v in event_type.variants}
+            is_graphic = "Visible" in variant_names and "Focused" in variant_names
+
+        # Initialize backend
+        if is_graphic:
+            self._line("prove_gui_init(_eq);")
+        else:
+            self._line("prove_terminal_init(_eq);")
 
         # Collect registered listens translators from module declarations
         listeners: list[tuple[str, str, int]] = []  # (mangled_name, event_name, tag_idx)
@@ -1729,67 +1747,114 @@ class CEmitter(
             ct = map_type(event_type)
             self._line(f"prove_event_queue_send(_eq, {ct.decl}_TAG_DRAW, NULL);")
 
-        # Blocking event loop — receive events from queue, dispatch via match
-        self._line("while (1) {")
-        self._indent += 1
-        self._line("Prove_EventNode *_node = prove_event_queue_recv(_eq, NULL);")
-        self._line("if (!_node) break;")
-
         if event_type:
             ct = map_type(event_type)
-            self._line(f"{ct.decl} _ev;")
-
-            # Dispatch raw events to registered listeners
-            if listeners:
-                first_listener = True
-                for l_mangled, evt_name, tag_idx in listeners:
-                    keyword = "if" if first_listener else "} else if"
-                    self._line(f"{keyword} (_node->tag == {tag_idx}) {{")
-                    self._indent += 1
-                    # Extract payload for this event type (KeyDown → int64_t key)
-                    self._line("int64_t _key = _node->payload ? *(int64_t*)_node->payload : 0;")
-                    self._line("if (_node->payload) free(_node->payload);")
-                    self._line("free(_node);")
-                    self._line(f"_ev = {l_mangled}(_key, &state);")
-                    self._indent -= 1
-                    first_listener = False
-                # Fallthrough for non-listener events
-                self._line("} else {")
-                self._indent += 1
-                self._line("_ev.tag = _node->tag;")
-                self._line("if (_node->payload) {")
-                self._indent += 1
-                self._line(f"_ev = *({ct.decl}*)_node->payload;")
-                self._line("free(_node->payload);")
-                self._indent -= 1
-                self._line("}")
-                self._line("free(_node);")
-                self._indent -= 1
-                self._line("}")
-            else:
-                # No listeners — handle events directly
-                self._line("_ev.tag = _node->tag;")
-                self._line("if (_node->payload) {")
-                self._indent += 1
-                self._line(f"_ev = *({ct.decl}*)_node->payload;")
-                self._line("free(_node->payload);")
-                self._indent -= 1
-                self._line("}")
-                self._line("free(_node);")
-
             self._locals["_ev"] = event_type
+
+        if is_graphic:
+            # GUI: immediate-mode loop. Every frame:
+            # 1. Pump SDL events (queues Prove events)
+            # 2. Drain ALL queued events (state mutations, exit)
+            # 3. Always dispatch Draw (render widgets)
+            self._line("while (1) {")
+            self._indent += 1
+            self._line("prove_gui_frame_begin();")
+
+            # Drain all queued events (state changes, exit)
+            self._line("{")
+            self._indent += 1
+            self._line("Prove_EventNode *_node;")
+            self._line("while ((_node = _eq->head) != NULL) {")
+            self._indent += 1
+            self._line("_eq->head = _node->next;")
+            self._line("if (!_eq->head) _eq->tail = NULL;")
+            self._line("_eq->count--;")
+            self._line("int _tag = _node->tag;")
+            self._line("if (_node->payload) free(_node->payload);")
+            self._line("free(_node);")
+
+            # Only process Exit events from the drain (state mutations
+            # happen via self-dispatch which is already handled)
+            if event_type:
+                exit_tag = f"{ct.decl}_TAG_EXIT"
+                self._line(f"if (_tag == {exit_tag}) goto _renders_exit;")
+
+            self._indent -= 1
+            self._line("}")
+            self._indent -= 1
+            self._line("}")
+
+            # Always dispatch Draw — immediate-mode renders every frame
+            if event_type:
+                self._line(f"{ct.decl} _ev;")
+                self._line(f"_ev.tag = {ct.decl}_TAG_DRAW;")
+        else:
+            # TUI: blocking event-driven loop
+            self._line("while (1) {")
+            self._indent += 1
+
+            if event_type:
+                self._line(f"{ct.decl} _ev;")
+
+            self._line("Prove_EventNode *_node = prove_event_queue_recv(_eq, NULL);")
+            self._line("if (!_node) break;")
+
+            if event_type:
+                # Dispatch raw events to registered listeners
+                if listeners:
+                    first_listener = True
+                    for l_mangled, evt_name, tag_idx in listeners:
+                        keyword = "if" if first_listener else "} else if"
+                        self._line(f"{keyword} (_node->tag == {tag_idx}) {{")
+                        self._indent += 1
+                        self._line("int64_t _key = _node->payload ? *(int64_t*)_node->payload : 0;")
+                        self._line("if (_node->payload) free(_node->payload);")
+                        self._line("free(_node);")
+                        self._line(f"_ev = {l_mangled}(_key, &state);")
+                        self._indent -= 1
+                        first_listener = False
+                    self._line("} else {")
+                    self._indent += 1
+                    self._line("_ev.tag = _node->tag;")
+                    self._line("if (_node->payload) {")
+                    self._indent += 1
+                    self._line(f"_ev = *({ct.decl}*)_node->payload;")
+                    self._line("free(_node->payload);")
+                    self._indent -= 1
+                    self._line("}")
+                    self._line("free(_node);")
+                    self._indent -= 1
+                    self._line("}")
+                else:
+                    self._line("_ev.tag = _node->tag;")
+                    self._line("if (_node->payload) {")
+                    self._indent += 1
+                    self._line(f"_ev = *({ct.decl}*)_node->payload;")
+                    self._line("free(_node->payload);")
+                    self._indent -= 1
+                    self._line("}")
+                    self._line("free(_node);")
 
         # Dispatch
         self._in_renders_loop = True
         for stmt in fd.body:
             self._emit_stmt(stmt)
         self._in_renders_loop = False
+
+        if is_graphic:
+            # End Nuklear window + render frame
+            self._line("prove_gui_window_end();")
+            self._line("prove_gui_frame_end();")
+
         self._indent -= 1
         self._line("}")
         self._line("_renders_exit:;")
 
         # Cleanup
-        self._line("prove_terminal_cleanup();")
+        if is_graphic:
+            self._line("prove_gui_cleanup();")
+        else:
+            self._line("prove_terminal_cleanup();")
         self._line("prove_event_queue_free(_eq);")
 
         if self._in_region_scope:

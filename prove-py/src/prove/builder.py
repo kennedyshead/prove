@@ -467,12 +467,15 @@ def _build_c(
                     extra_flags.extend(cf)
                     link_flags.extend(lf)
                 # Add stdlib-required linker flags
-                from prove.stdlib_loader import stdlib_link_flags
+                from prove.stdlib_loader import stdlib_c_flags, stdlib_link_flags
 
                 for imp in decl.imports:
                     for flag in stdlib_link_flags(imp.module):
                         if flag not in link_flags:
                             link_flags.append(flag)
+                    for flag in stdlib_c_flags(imp.module):
+                        if flag not in extra_flags:
+                            extra_flags.append(flag)
 
     # Release mode: enable PROVE_RELEASE define for runtime check elision
     if config.optimize.enabled and not debug:

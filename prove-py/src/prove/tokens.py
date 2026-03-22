@@ -108,6 +108,10 @@ class TokenKind(Enum):
     DOT_DOT = auto()
     DOT = auto()
     ASSIGN = auto()
+    PLUS_ASSIGN = auto()
+    MINUS_ASSIGN = auto()
+    STAR_ASSIGN = auto()
+    SLASH_ASSIGN = auto()
     ARROW = auto()
 
     # Punctuation

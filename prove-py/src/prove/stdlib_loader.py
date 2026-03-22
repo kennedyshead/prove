@@ -44,6 +44,7 @@ _BINARY_C_MAP: dict[tuple[str, str | None, str], str] = {}
 _BINARY_C_OVERLOADS: dict[tuple[str, str | None, str, str], str] = {}
 _STDLIB_MODULES: dict[str, str] = {}
 _STDLIB_LINK_FLAGS: dict[str, list[str]] = {}
+_STDLIB_C_FLAGS: dict[str, list[str]] = {}
 _MODULE_DISPLAY_NAMES: dict[str, str] = {}
 
 
@@ -55,6 +56,8 @@ def _register_module(
     c_map: dict[tuple[str, str], str] | None = None,
     overloads: dict[tuple[str, str, str], str] | None = None,
     link_flags: list[str] | None = None,
+    c_flags: list[str] | None = None,
+    pkg_config: str | None = None,
     aliases: list[str] | None = None,
 ) -> None:
     """Register a stdlib module with all its metadata in one block."""
@@ -70,8 +73,31 @@ def _register_module(
         for (verb, func, type_name), c_name in overloads.items():
             _BINARY_C_OVERLOADS[(key, verb, func, type_name)] = c_name
 
+    # Resolve flags via pkg-config if specified
+    if pkg_config:
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["pkg-config", "--cflags", "--libs", pkg_config],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                flags = result.stdout.strip().split()
+                pc_c = [f for f in flags if f.startswith(("-I", "-D"))]
+                pc_l = [f for f in flags if not f.startswith(("-I", "-D"))]
+                c_flags = (c_flags or []) + pc_c
+                link_flags = (link_flags or []) + pc_l
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
     if link_flags:
         _STDLIB_LINK_FLAGS[key] = link_flags
+
+    if c_flags:
+        _STDLIB_C_FLAGS[key] = c_flags
 
     # Register aliases (e.g. "io" for "inputoutput")
     if aliases:
@@ -734,7 +760,8 @@ _register_module(
         ("outputs", "progress"): "prove_gui_progress",
         ("outputs", "quit"): "prove_gui_quit",
     },
-    link_flags=["-lSDL2", "-framework", "OpenGL"],
+    pkg_config="sdl2",
+    link_flags=["-framework", "OpenGL"],
 )
 
 
@@ -1037,6 +1064,11 @@ def load_stdlib_types(module_name: str) -> dict[str, Type]:
 def stdlib_link_flags(module_name: str) -> list[str]:
     """Return linker flags required by a stdlib module."""
     return _STDLIB_LINK_FLAGS.get(module_name.lower(), [])
+
+
+def stdlib_c_flags(module_name: str) -> list[str]:
+    """Return compiler flags (include paths, defines) required by a stdlib module."""
+    return _STDLIB_C_FLAGS.get(module_name.lower(), [])
 
 
 def stdlib_prv_path(module_name: str) -> Path | None:

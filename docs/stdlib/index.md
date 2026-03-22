@@ -72,3 +72,4 @@ These types need no import:
 | **[Language](language.md)** | Complete | Natural language processing: tokenization, stemming, edit distance, phonetic codes, n-grams, stopwords, frequency analysis |
 | **[UI](ui-terminal.md#ui)** | Complete | Base UI types: `AppEvent` algebraic event type, `Key:[Lookup]`, `Color:[Lookup]`, `Position` struct |
 | **[Terminal](ui-terminal.md#terminal)** | Complete | TUI primitives via ANSI escape codes: raw/cooked mode, cursor control, clear, terminal size, `TerminalAppEvent` |
+| **[Graphic](ui-terminal.md#graphic)** | Complete | GUI primitives via SDL2 + Nuklear: window, button, label, checkbox, slider, progress, text input. Requires [SDL2](ui-terminal.md#graphic) |

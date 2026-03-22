@@ -5,6 +5,8 @@ module TodoApp
   """
   Graphic types GraphicAppEvent outputs window button text_input checkbox
   UI types Key
+  Types reads string
+  Text reads length
 
   type TodoItem is
     text String
@@ -18,13 +20,12 @@ module TodoApp
     | AddItem
     | RemoveItem(index Integer)
 
-transforms checkbox(item TodoItem) TodoState
+outputs checkbox(item TodoItem, index Integer) TodoState
 from
     done as Boolean = checkbox(item.text, item.done)
-    match button(f"Delete##{index}")
+    match button(f"Delete##{string(index)}")
         true => RemoveItem(index)
-        false => Unit
-    state.new_text = new_text
+        false => Tick(Unit)
 
 renders interface(registered_attached_verbs List<Attached>)
   event_type TodoApp
@@ -39,7 +40,7 @@ from
                 each(state.items, checkbox)
                 Draw(state)
     AddItem =>
-        match state.new_text.length > 0
+        match length(state.new_text) > 0
             true =>
                 state.items = state.items.append(TodoItem(state.new_text, false))
                 state.new_text = ""
@@ -55,10 +56,10 @@ listens on_key() TodoApp
   event_type KeyDown
   state_type TodoState
 from
-    Key:Escape => Exit
-    Key:Enter => AddItem
+    Key:Escape => Exit(state)
+    Key:Enter => AddItem()
     _ => Tick(state)
 
 main()
 from
-    interface([on_key])
+    interface([on_key])&
