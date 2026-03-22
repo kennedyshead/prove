@@ -1552,6 +1552,15 @@ class CEmitter(
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
+        # Initialize state from state_init annotation
+        if fd.state_init is not None:
+            state_type = self._infer_expr_type(fd.state_init)
+            if state_type:
+                sct = map_type(state_type)
+                state_val = self._emit_expr(fd.state_init)
+                self._line(f"{sct.decl} state = {state_val};")
+                self._locals["state"] = state_type
+
         # Initialize the event queue
         self._line("Prove_EventNodeQueue *_eq = prove_event_queue_new();")
 
@@ -1559,6 +1568,11 @@ class CEmitter(
         self._line("prove_terminal_init(_eq);")
 
         event_type = sig.event_type if sig else None
+
+        # Send initial Draw event to render the first frame
+        if event_type:
+            ct = map_type(event_type)
+            self._line(f"prove_event_queue_send(_eq, {ct.decl}_TAG_DRAW, NULL);")
 
         # Blocking event loop — receive events from queue, dispatch via match
         self._line("while (1) {")
@@ -1613,9 +1627,12 @@ class CEmitter(
         self._string_literal_cache.clear()
         self._current_requires = []
 
+        self._line("const char *__prove_binary_path = NULL;")
+        self._line("")
         self._line("int main(int argc, char **argv) {")
         self._indent += 1
 
+        self._line("__prove_binary_path = argv[0];")
         self._line("prove_runtime_init();")
         self._line("prove_io_init_args(argc, argv);")
 

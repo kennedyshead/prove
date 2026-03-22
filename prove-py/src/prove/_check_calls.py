@@ -19,10 +19,12 @@ from prove.types import (
     ATTACHED,
     ERROR_TY,
     AlgebraicType,
+    ArrayType,
     BorrowType,
     ErrorType,
     FunctionType,
     GenericInstance,
+    ListType,
     PrimitiveType,
     RecordType,
     RefinementType,
@@ -320,16 +322,19 @@ class CallCheckMixin:
                         elem_sig = self.symbols.resolve_function_any(elem_name)
                         if elem_sig is None:
                             continue  # E311 will catch undefined
-                        if elem_sig.verb != "attached":
+                        # renders registers listens verbs; listens registers attached verbs
+                        expected_verb = "listens" if sig.verb == "renders" else "attached"
+                        if elem_sig.verb != expected_verb:
                             self._error(
                                 "E403",
-                                f"registered function '{elem_name}' is not an `attached` verb",
+                                f"registered function '{elem_name}' "
+                                f"is not a `{expected_verb}` verb",
                                 elem.span,
                             )
                         elif sig.event_type is not None and isinstance(
                             sig.event_type, AlgebraicType
                         ):
-                            # E404: return type must match a variant of event_type
+                            # E404: return type must match event_type or one of its variants
                             variant_names = {v.name for v in sig.event_type.variants}
                             ret_name = type_name(elem_sig.return_type)
                             if ret_name not in variant_names and ret_name != type_name(
@@ -610,7 +615,7 @@ class CallCheckMixin:
 
         # Allow field access on GenericInstance, AlgebraicType, etc. without error
         # (duck typing / deferred check for generics)
-        if isinstance(obj_type, (GenericInstance, TypeVariable)):
+        if isinstance(obj_type, (GenericInstance, TypeVariable, ListType, ArrayType)):
             return ERROR_TY
 
         self._error(

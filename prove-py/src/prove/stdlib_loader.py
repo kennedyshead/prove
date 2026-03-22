@@ -23,12 +23,16 @@ from prove.types import (
     STRING,
     STRUCT,
     UNIT,
+    AlgebraicType,
     ArrayType,
     FunctionType,
     GenericInstance,
     ListType,
     PrimitiveType,
+    RecordType,
+    Type,
     TypeVariable,
+    VariantInfo,
 )
 
 _DUMMY = Span("<stdlib>", 0, 0, 0, 0)
@@ -239,6 +243,8 @@ _register_module(
         ("validates", "empty"): "prove_list_ops_empty",
         ("transforms", "slice"): "prove_list_ops_slice",
         ("transforms", "reverse"): "prove_list_ops_reverse",
+        ("transforms", "set"): "prove_list_ops_set",
+        ("transforms", "remove"): "prove_list_ops_remove",
         ("creates", "range"): "prove_list_ops_range",
     },
     overloads={
@@ -710,8 +716,25 @@ _register_module(
         ("reads", "size"): "prove_terminal_size",
     },
     overloads={
-        ("outputs", "terminal", "Integer"): "prove_terminal_write_at",
+        ("outputs", "terminal", "Integer_Integer_String"): "prove_terminal_write_at",
     },
+)
+
+_register_module(
+    "graphic",
+    display="Graphic",
+    prv_file="graphic.prv",
+    c_map={
+        ("outputs", "window"): "prove_gui_window",
+        ("outputs", "button"): "prove_gui_button",
+        ("outputs", "label"): "prove_gui_label",
+        ("outputs", "text_input"): "prove_gui_text_input",
+        ("outputs", "checkbox"): "prove_gui_checkbox",
+        ("outputs", "slider"): "prove_gui_slider",
+        ("outputs", "progress"): "prove_gui_progress",
+        ("outputs", "quit"): "prove_gui_quit",
+    },
+    link_flags=["-lSDL2", "-framework", "OpenGL"],
 )
 
 
@@ -943,6 +966,72 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 
     _cache[normalized] = sigs
     return sigs
+
+
+_type_cache: dict[str, dict[str, Type]] = {}
+
+
+def load_stdlib_types(module_name: str) -> dict[str, Type]:
+    """Load type definitions from a stdlib module.
+
+    Returns a dict mapping type name -> resolved Type (AlgebraicType, RecordType, etc.).
+    """
+    normalized = module_name.lower()
+    if normalized in _type_cache:
+        return _type_cache[normalized]
+
+    module = _parse_stdlib_module(normalized)
+    if module is None:
+        _type_cache[normalized] = {}
+        return {}
+
+    from prove.ast_nodes import (
+        AlgebraicTypeDef,
+        LookupTypeDef,
+        ModuleDecl,
+        RecordTypeDef,
+    )
+
+    # Pre-load dependency module types (UI is the base for event types)
+    dep_types: dict[str, Type] = {}
+    for dep_module in ("ui",):
+        if dep_module != normalized:
+            dep_types.update(load_stdlib_types(dep_module))
+
+    types: dict[str, Type] = {}
+    all_type_defs = []
+    for decl in module.declarations:
+        if isinstance(decl, ModuleDecl):
+            all_type_defs.extend(decl.types)
+
+    for td in all_type_defs:
+        body = td.body
+        if isinstance(body, AlgebraicTypeDef):
+            variants: list[VariantInfo] = []
+            for v in body.variants:
+                # Check if variant name is a base type (inheritance)
+                base = types.get(v.name) or dep_types.get(v.name)
+                if base is not None and isinstance(base, AlgebraicType) and not v.fields:
+                    variants.extend(base.variants)
+                    continue
+                vfields: dict[str, Type] = {}
+                for f in v.fields:
+                    vfields[f.name] = _resolve_type_expr(f.type_expr)
+                variants.append(VariantInfo(v.name, vfields))
+            types[td.name] = AlgebraicType(td.name, variants, [])
+        elif isinstance(body, RecordTypeDef):
+            fields: dict[str, Type] = {}
+            for f in body.fields:
+                fields[f.name] = _resolve_type_expr(f.type_expr)
+            types[td.name] = RecordType(td.name, fields, [])
+        elif isinstance(body, LookupTypeDef):
+            # Lookup types are opaque to the type system
+            types[td.name] = PrimitiveType(td.name)
+        else:
+            types[td.name] = PrimitiveType(td.name)
+
+    _type_cache[normalized] = types
+    return types
 
 
 def stdlib_link_flags(module_name: str) -> list[str]:

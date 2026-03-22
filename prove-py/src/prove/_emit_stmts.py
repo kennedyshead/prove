@@ -1160,6 +1160,13 @@ class StmtEmitterMixin:
                                 if i < len(field_names):
                                     fname = field_names[i]
                                     ft = variant_info.fields[fname]
+                                    # In renders/listens, don't rebind state —
+                                    # the outer state variable is the mutable
+                                    # render state managed by the event loop.
+                                    if (
+                                        self._in_renders_loop or self._in_listens_loop
+                                    ) and sub_pat.name in self._locals:
+                                        continue
                                     fct = map_type(ft)
                                     self._locals[sub_pat.name] = ft
                                     self._line(

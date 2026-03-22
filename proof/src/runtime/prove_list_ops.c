@@ -257,3 +257,30 @@ Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) 
     result->length = idx;
     return result;
 }
+
+/* ── Set (copy-on-write) ─────────────────────────────────────── */
+
+Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value) {
+    if (!list || idx < 0 || idx >= list->length) return list;
+    Prove_List *result = prove_list_new(list->length);
+    for (int64_t i = 0; i < list->length; i++) {
+        result->data[i] = (i == idx) ? value : list->data[i];
+    }
+    result->length = list->length;
+    return result;
+}
+
+/* ── Remove (copy-on-write) ──────────────────────────────────── */
+
+Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx) {
+    if (!list || idx < 0 || idx >= list->length) return list;
+    Prove_List *result = prove_list_new(list->length - 1);
+    int64_t j = 0;
+    for (int64_t i = 0; i < list->length; i++) {
+        if (i != idx) {
+            result->data[j++] = list->data[i];
+        }
+    }
+    result->length = j;
+    return result;
+}

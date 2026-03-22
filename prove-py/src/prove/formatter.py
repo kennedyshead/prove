@@ -48,6 +48,7 @@ from prove.ast_nodes import (
     ListLiteral,
     LiteralPattern,
     LookupAccessExpr,
+    LookupPattern,
     LookupTypeDef,
     MainDef,
     MatchArm,
@@ -288,7 +289,7 @@ class ProveFormatter:
             lines.append(f"  terminates: {self._format_expr(fd.terminates)}")
         if fd.trusted is not None:
             if fd.trusted:
-                lines.append(f'  trusted "{fd.trusted}"')
+                lines.append(f'  trusted: "{fd.trusted}"')
             else:
                 lines.append("  trusted")
         for text in fd.why_not:
@@ -938,6 +939,10 @@ class ProveFormatter:
             return pat.value
         if isinstance(pat, BindingPattern):
             return pat.name
+        if isinstance(pat, LookupPattern):
+            if pat.value_kind == "string":
+                return f'{pat.type_name}:"{_escape_string(pat.lookup_value)}"'
+            return f"{pat.type_name}:{pat.lookup_value}"
         return "???"
 
     # ── Type expression formatting ─────────────────────────────

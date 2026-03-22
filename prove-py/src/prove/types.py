@@ -149,6 +149,7 @@ CHARACTER = PrimitiveType("Character")
 BYTE = PrimitiveType("Byte")
 UNIT = UnitType()
 ATTACHED = PrimitiveType("Attached")
+LISTENS = PrimitiveType("Listens")
 STRUCT = StructType()
 ERROR_TY = ErrorType()
 
@@ -399,6 +400,13 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if (
         isinstance(expected, PrimitiveType)
         and expected.name == "Verb"
+        and isinstance(actual, FunctionType)
+    ):
+        return True
+    # Attached/Listens are compatible with any FunctionType (verb references)
+    if (
+        isinstance(expected, PrimitiveType)
+        and expected.name in ("Attached", "Listens")
         and isinstance(actual, FunctionType)
     ):
         return True

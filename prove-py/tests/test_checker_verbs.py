@@ -306,17 +306,17 @@ class TestAsyncVerbs:
             "E374",
         )
 
-    def test_listens_with_return_type_error(self):
-        check_fails(
+    def test_listens_with_return_type_ok(self):
+        """listens verb must declare a return type (the event type)."""
+        check(
             "module M\n"
             '  narrative: """Test"""\n'
-            "  type Ev is Done | Exit\n"
-            "listens loop(workers List<Attached>) Integer\n"
+            "  type Ev is Done | Exit(state Value)\n"
+            "listens loop(workers List<Attached>) Ev\n"
             "    event_type Ev\n"
             "    from\n"
-            "        Exit => loop\n"
-            "        Done => loop\n",
-            "E374",
+            "        Exit(state) => Unit\n"
+            "        Done => Unit\n",
         )
 
     def test_ampersand_on_pure_fn_info(self):
@@ -433,14 +433,15 @@ class TestAsyncVerbs:
         )
 
     def test_event_type_must_be_algebraic(self):
-        """event_type referencing non-algebraic type gives E401."""
+        """event_type referencing non-algebraic type gives E401 for renders."""
         check_fails(
             "module M\n"
             '  narrative: """Test"""\n'
-            "listens loop(workers List<Attached>)\n"
+            "renders loop(workers List<Listens>)\n"
             "    event_type Integer\n"
+            "    state_init 0\n"
             "    from\n"
-            "        Exit => loop\n",
+            "        Exit(state) => Unit\n",
             "E401",
         )
 

@@ -25,7 +25,8 @@ def compile_and_run(
     cc = compiler or find_c_compiler()
     assert cc is not None
 
-    runtime_c = sorted(runtime_dir.glob("*.c"))
+    # Exclude prove_gui.c — it requires SDL2 and separate link flags
+    runtime_c = sorted(f for f in runtime_dir.glob("*.c") if f.name != "prove_gui.c")
     cmd = [
         cc,
         "-O0",

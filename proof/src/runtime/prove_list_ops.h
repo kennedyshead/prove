@@ -61,6 +61,14 @@ Prove_String *prove_list_ops_get_str(Prove_List *list, int64_t idx);
 double       prove_list_ops_get_float(Prove_List *list, int64_t idx);
 void        *prove_list_ops_get_value(Prove_List *list, int64_t idx);
 
+/* ── Set (copy-on-write: returns new list with element replaced) ── */
+
+Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value);
+
+/* ── Remove (copy-on-write: returns new list with element removed) ── */
+
+Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx);
+
 /* ── Get safe (bounds-checked, returns Option) ───────────────── */
 
 Prove_Option prove_list_ops_get_safe_int(Prove_List *list, int64_t idx);

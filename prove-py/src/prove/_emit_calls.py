@@ -24,6 +24,7 @@ from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
     INTEGER,
+    AlgebraicType,
     ArrayType,
     FunctionType,
     GenericInstance,
@@ -810,6 +811,17 @@ class CallEmitterMixin:
                             if hasattr(self, "_store_rows") and rn in self._store_rows:
                                 variant_name, vals_name = self._store_rows[rn]
                                 return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"  # noqa: E501
+                    # Heap-allocate struct args for list ops that take void*
+                    if c_name == "prove_list_ops_set" and len(args) >= 3:
+                        val_type = (
+                            self._infer_expr_type(expr.args[2]) if len(expr.args) > 2 else None
+                        )
+                        if val_type and isinstance(val_type, (RecordType, AlgebraicType)):
+                            vct = map_type(val_type)
+                            heap_tmp = self._tmp()
+                            self._line(f"{vct.decl} *{heap_tmp} = malloc(sizeof({vct.decl}));")
+                            self._line(f"*{heap_tmp} = {args[2]};")
+                            args[2] = f"(void*){heap_tmp}"
                     # Release mode: rewrite Array<Boolean> ops to BitArray
                     is_bitarray_set = False
                     if self._release_mode:
@@ -1009,6 +1021,19 @@ class CallEmitterMixin:
             elif len(args) < len(getattr(resolved, "fields", {})):
                 for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
                     args.append(self._default_for_type(ftype))
+            # In renders/listens loop, variant calls are event self-dispatches
+            # (e.g. Draw(state) enqueues a Draw event on the event queue)
+            if self._in_renders_loop or self._in_listens_loop:
+                sig = self._symbols.resolve_function(None, name, len(expr.args))
+                if sig and isinstance(sig.return_type, AlgebraicType):
+                    evt_cname = map_type(sig.return_type).decl
+                    tag = f"{evt_cname}_TAG_{name.upper()}"
+                    if self._in_renders_loop:
+                        self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
+                    else:
+                        # In listens coroutine — set result tag for renders to consume
+                        self._line(f"_ev.tag = {tag};")
+                    return "(void)0"
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
