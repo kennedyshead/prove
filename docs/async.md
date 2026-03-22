@@ -133,6 +133,52 @@ from
 
 ---
 
+## `renders` — Event-Driven UI Loop
+
+The `renders` verb declares an event-driven UI loop with mutable state. It follows the same pattern as `listens` but adds a state singleton that persists across frames.
+
+**Signature pattern:**
+
+```prove
+renders name(workers List<Attached>)
+    event_type MyAppEvent
+    state_init MyState(initial_value)
+from
+    Draw(state)  => ...    // render the frame
+    Tick(state)  => Draw(state)
+    Exit(state)  => Unit   // terminate
+```
+
+**Annotations:**
+
+- `event_type` — the algebraic event type (must extend `TerminalAppEvent` or `GraphicAppEvent`, not bare `AppEvent`)
+- `state_init` — initial state value; type is inferred (e.g. `state_init MyState(0)` → state type is `MyState`)
+
+**Annotations on `attached` callbacks:**
+
+- `event_type` — which event this callback handles (e.g. `KeyDown`)
+- `state_type` — the state type to access (must match the parent `renders` state)
+
+**Implicit bindings:**
+
+- `state` — mutable application state singleton, available in `renders` and `attached` bodies where `state_init`/`state_type` is declared
+- `event` — the received event, available in `attached` bodies
+
+**Key rules:**
+
+- First parameter must be `List<Attached>`
+- `from` block must be a single implicit match with an `Exit` arm
+- No return type — `renders` always returns `Unit`
+- Backend resolved from `event_type` type chain (`TerminalAppEvent` → TUI, `GraphicAppEvent` → GUI)
+- `state` is a singleton created once by `state_init` — mutable, fields updated in place (exclusive to renders state)
+- `Draw(state)` is the render event — user code describes the frame here
+- `Tick(state)` is the runtime heartbeat — default handler triggers `Draw(state)`
+- `Exit` terminates the loop
+
+See [UI & Terminal](stdlib/ui-terminal.md) for the full type reference and example.
+
+---
+
 ## Streams — Blocking IO Loop
 
 The `streams` verb declares a **blocking loop** over an IO context. It runs until an `Exit` arm is matched, an error propagates via `!`, or the IO source is exhausted (e.g. stdin EOF). It is the synchronous counterpart to `listens` in the async family.
@@ -217,8 +263,8 @@ from
 | E402 | `listens` first parameter must be `List<Attached>` | Error |
 | E403 | Registered function is not an `attached` verb | Error |
 | E404 | Attached return type doesn't match event variant | Error |
-| E405 | `event_type` on non-`listens` verb | Error |
-| E406 | `listens` missing `event_type` annotation | Error |
+| E405 | `event_type` on non-`listens`/`renders` verb | Error |
+| E406 | `listens`/`renders` missing `event_type` annotation | Error |
 | [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee | Info |
 | [I377](diagnostics.md#i377-attached-call-runs-synchronously-outside-listens) | `attached&` outside `listens` — runs synchronously | Info |
