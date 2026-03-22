@@ -2194,13 +2194,40 @@ class Parser:
         if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind == TokenKind.ASSIGN:
             return self._parse_assignment()
 
+        # Compound assignment: identifier '+=' expr  →  identifier = identifier + expr
+        _COMPOUND_OPS = {
+            TokenKind.PLUS_ASSIGN: "+",
+            TokenKind.MINUS_ASSIGN: "-",
+            TokenKind.STAR_ASSIGN: "*",
+            TokenKind.SLASH_ASSIGN: "/",
+        }
+        if self._at(TokenKind.IDENTIFIER) and self._peek(1).kind in _COMPOUND_OPS:
+            start = self._current().span
+            name_tok = self._advance()
+            op = _COMPOUND_OPS[self._advance().kind]  # consume +=/-=/etc.
+            rhs = self._parse_expression(0)
+            desugared = BinaryExpr(
+                IdentifierExpr(name_tok.value, name_tok.span),
+                op,
+                rhs,
+                self._span(start, rhs.span),
+            )
+            return Assignment(name_tok.value, desugared, self._span(start, rhs.span))
+
         # Field assignment: expr.field = expr
-        # Parse as expression first, then check for trailing '='
+        # Parse as expression first, then check for trailing '=' or '+=' etc.
         expr = self._parse_expression(0)
         if isinstance(expr, FieldExpr) and self._at(TokenKind.ASSIGN):
             self._advance()  # '='
             value = self._parse_expression(0)
             return FieldAssignment(expr.obj, expr.field, value, self._span(expr.span, value.span))
+
+        # Field compound assignment: expr.field '+=' expr
+        if isinstance(expr, FieldExpr) and self._current().kind in _COMPOUND_OPS:
+            op = _COMPOUND_OPS[self._advance().kind]
+            rhs = self._parse_expression(0)
+            desugared = BinaryExpr(expr, op, rhs, self._span(expr.span, rhs.span))
+            return FieldAssignment(expr.obj, expr.field, desugared, self._span(expr.span, rhs.span))
 
         return ExprStmt(expr, expr.span)
 

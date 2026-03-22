@@ -609,6 +609,26 @@ class Lexer:
                 self._advance()
                 self._emit(TokenKind.NOT_EQUAL, "!=", start_line, start_col)
                 return
+            if two == "+=":
+                self._advance()
+                self._advance()
+                self._emit(TokenKind.PLUS_ASSIGN, "+=", start_line, start_col)
+                return
+            if two == "-=":
+                self._advance()
+                self._advance()
+                self._emit(TokenKind.MINUS_ASSIGN, "-=", start_line, start_col)
+                return
+            if two == "*=":
+                self._advance()
+                self._advance()
+                self._emit(TokenKind.STAR_ASSIGN, "*=", start_line, start_col)
+                return
+            if two == "/=":
+                self._advance()
+                self._advance()
+                self._emit(TokenKind.SLASH_ASSIGN, "/=", start_line, start_col)
+                return
             if two == "<=":
                 self._advance()
                 self._advance()

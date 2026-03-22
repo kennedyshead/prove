@@ -2,24 +2,26 @@ module Counter
   narrative: """
     GUI counter with increment button.
     renders app
-    Expected to fail: check, check_md, check_strict, build, build_debug.
   """
-  Graphic outputs window button label
+  Graphic types GraphicAppEvent outputs window button label
+  Types reads string
 
   type CounterState is
     count Integer
 
   type CounterApp is GraphicAppEvent
 
-renders app(registered_attached_verbs List<Attached>)
+renders app(registered_attached_verbs List<Listens>)
   event_type CounterApp
   state_init CounterState(0)
 from
     Draw(state) =>
         window("Counter", 400, 300)
-        label(f"Count: {state.count}")
+        label(f"Count: {string(state.count)}")
         match button("Increment")
-            true => Draw(CounterState(state.count + 1))
+            true =>
+                state.count = state.count + 1
+                Draw(state)
             false => Draw(state)
     Tick(state) => Draw(state)
     Exit(state) => Unit

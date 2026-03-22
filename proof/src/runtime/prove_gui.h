@@ -29,6 +29,9 @@ double prove_gui_slider(Prove_String *label, double min, double max, double valu
 /* Render a progress bar (current out of max). */
 void prove_gui_progress(int64_t current, int64_t max);
 
+/* End the current Nuklear window (must be called after all widget calls). */
+void prove_gui_window_end(void);
+
 /* Programmatically close the window and exit the render loop. */
 void prove_gui_quit(void);
 

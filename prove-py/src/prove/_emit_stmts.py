@@ -1591,9 +1591,21 @@ class StmtEmitterMixin:
                     self._emit_match_arm_body(arm.body)
                     self._indent -= 1
             elif isinstance(arm.pattern, LiteralPattern):
-                cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
-                keyword = "if" if first else "} else if"
-                self._line(f"{keyword} ({cond}) {{")
+                # For boolean matches (true/false), the second arm should use
+                # plain `else` to avoid re-evaluating the subject expression
+                # (important for side-effectful subjects like GUI widget calls).
+                is_bool_complement = (
+                    not first
+                    and arm.pattern.value in ("true", "false")
+                    and isinstance(subj_type, PrimitiveType)
+                    and subj_type.name == "Boolean"
+                )
+                if is_bool_complement:
+                    self._line("} else {")
+                else:
+                    cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({cond}) {{")
                 self._indent += 1
                 self._emit_match_arm_body(arm.body)
                 self._indent -= 1

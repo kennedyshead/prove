@@ -1,14 +1,19 @@
 ---
-title: UI & Terminal - Prove Standard Library
-description: UI base types and Terminal TUI primitives for building interactive terminal applications in Prove.
-keywords: Prove UI, Terminal, TUI, ANSI, renders verb, AppEvent, Key, Color
+title: UI, Terminal & Graphic - Prove Standard Library
+description: UI base types, Terminal TUI primitives, and Graphic GUI widgets for building interactive applications in Prove.
+keywords: Prove UI, Terminal, Graphic, TUI, GUI, ANSI, SDL2, Nuklear, renders verb, listens verb, AppEvent, Key, Color
 ---
 
-# UI & Terminal
+# UI, Terminal & Graphic
 
 ## UI
 
-The `UI` module provides base types shared by all UI backends (Terminal and future Graphic).
+The `UI` module provides base types shared by all UI backends (Terminal and Graphic).
+
+Two backends extend `AppEvent`:
+
+- **Terminal** — TUI via ANSI escape codes. Zero external dependencies.
+- **Graphic** — GUI via SDL2 + Nuklear. **Requires SDL2** (`brew install sdl2` on macOS, `apt install libsdl2-dev` on Linux). Resolved automatically via `pkg-config`.
 
 ### Types
 
@@ -46,6 +51,64 @@ Screen position struct with `x` (column) and `y` (row) fields.
 
 ---
 
+## The `renders` and `listens` Verbs
+
+`renders` and `listens` are language-level async verbs for building event-driven UI applications.
+
+### `renders` — event loop with state
+
+Owns the event loop, manages mutable state, dispatches events to match arms.
+
+```prove
+renders app(listeners List<Listens>)
+  event_type MyEvent
+  state_init MyState(initial_value)
+from
+    Draw(state) => // render UI
+    Exit(state) => Unit
+```
+
+**Annotations:**
+
+- `event_type` — algebraic event type (must extend `TerminalAppEvent` or `GraphicAppEvent`)
+- `state_init` — initial state value (type inferred)
+
+**Rules:**
+
+- First parameter must be `List<Listens>` (registered event translators)
+- Body must be a single match expression with an `Exit` arm
+- No return type — `renders` always returns `Unit`
+- Backend auto-detected: `TerminalAppEvent` chain = TUI, `GraphicAppEvent` chain = GUI
+
+**Self-dispatch:** Calling a variant name inside a match arm (e.g. `Draw(state)`) re-enqueues that event. This is how state mutations trigger redraws.
+
+### `listens` — event translator
+
+Translates raw platform events (e.g. `KeyDown`) into app-specific events. Called inline by `renders` when a matching raw event arrives.
+
+```prove
+listens on_key(attached_verbs List<Attached>) MyEvent
+  event_type KeyDown
+  state_type MyState
+from
+    Key:Escape => Exit(state)
+    Key:"k" => Draw(state)
+    _ => Tick(state)
+```
+
+**Annotations:**
+
+- `event_type` — which raw event type this listener handles (e.g. `KeyDown`)
+- `state_type` — type of the renders state (gives read/write access to `state`)
+
+**Rules:**
+
+- Return type is the app event type (what gets dispatched in `renders`)
+- Match arms use `LookupPattern` for key matching: `Key:Escape`, `Key:"k"`, `Key:Space`
+- State mutations in `listens` are propagated back to `renders`
+
+---
+
 ## Terminal
 
 TUI primitives via ANSI escape codes. Zero external dependencies.
@@ -58,7 +121,7 @@ Extends `AppEvent` for the terminal backend. Use as the base type for your app's
 
 ```prove
 type MyAppEvent is TerminalAppEvent
-  CustomEvent(data String)
+  | CustomEvent
 ```
 
 ### Functions
@@ -74,73 +137,172 @@ type MyAppEvent is TerminalAppEvent
 | `outputs` | `cursor` | `(x Integer, y Integer)` | Move cursor to position |
 | `reads` | `size` | `() Position` | Get terminal dimensions (cols, rows) |
 
-### The `renders` Verb
+### Example: Terminal Todo List
 
-`renders` is a language-level verb (like `listens`) for building event-driven UI applications.
+A full interactive TUI application with keyboard navigation, state management, and event translation.
 
 ```prove
-renders interface(registered_attached_verbs List<Attached>)
-  event_type MyAppEvent
-  state_init MyState(0)
+module TodoApp
+  Terminal types TerminalAppEvent outputs terminal clear raw cooked
+  Math reads max min
+  UI types Key
+  Sequence transforms set remove
+
+  type TodoItem is
+    text String
+    done Boolean
+    pos Integer
+
+  type TodoState is
+    items List<TodoItem>
+    selected Integer
+
+  type TodoEvent is TerminalAppEvent
+    | ToggleDone
+    | AddItem
+    | RemoveItem
+
+transforms checkboxes(item TodoItem, state TodoState) String
+  trusted: "For now"
+from
+    prefix as String = match item.pos == state.selected
+        true => "> "
+        false => "  "
+    check as String = match item.done
+        true => "[x]"
+        false => "[ ]"
+    f"{prefix}{check} {item.text}"
+
+renders interface(registered_listens_verbs List<Listens>)
+  event_type TodoEvent
+  state_init TodoState([TodoItem("Learn Prove", false, 0),
+          TodoItem("Build a TUI app", false, 1),
+          TodoItem("Ship it", false, 2)], 0)
 from
     Draw(state) =>
         clear()
-        terminal(0, 0, f"Count: {state.count}")
-    Exit(state) => Unit
+        terminal(0, 0, "=== Todo List ===")
+        terminal(0, 1, "j/k: navigate | space: toggle | d: delete | ESC: quit")
+        terminal(0, 2, "")
+        each(state.items, |item| terminal(0, item.pos + 3, checkboxes(item, state)))
+    Tick(state) => Draw(state)
+    ToggleDone =>
+        item as TodoItem = state.items[state.selected]
+        state.items = set(state.items, state.selected,
+            TodoItem(item.text, !item.done, item.pos))
+        Draw(state)
+    RemoveItem =>
+        state.items = remove(state.items, state.selected)
+        state.selected = max(0, state.selected - 1)
+        Draw(state)
+    Exit(state) =>
+        cooked()
+        Unit
+    _ => Unit
+
+listens on_key(attached_verbs List<Attached>) TodoEvent
+  event_type KeyDown
+  state_type TodoState
+from
+    Key:Escape => Exit(state)
+    Key:"k" =>
+        state.selected = max(0, state.selected - 1)
+        Draw(state)
+    Key:"j" =>
+        state.selected = min(state.items.length - 1, state.selected + 1)
+        Draw(state)
+    Key:Space => ToggleDone()
+    Key:"d" => RemoveItem()
+    _ => Tick(state)
+
+main()
+from
+    raw()
+    interface([on_key])&
 ```
 
-**Annotations:**
+```bash
+prove build examples/terminal_todo/
+./examples/terminal_todo/dist/terminal_todo
+```
 
-- `event_type` — the algebraic event type (must extend `TerminalAppEvent`)
-- `state_init` — initial state value (type inferred)
-- `state_type` (on `attached`) — declares which state to access
+---
 
-**Implicit bindings:**
+## Graphic
 
-- `state` — mutable application state singleton
-- `event` — the received event (in `attached` callbacks)
+GUI primitives via SDL2 + Nuklear immediate-mode rendering. Continuous vsync-paced rendering at ~60fps.
 
-**Rules:**
+**Prerequisites:** SDL2 must be installed. The compiler resolves paths via `pkg-config`.
 
-- First parameter must be `List<Attached>`
-- Body must be a single match expression with an `Exit` arm
-- No return type — `renders` always returns `Unit`
-- Backend resolved from `event_type` type chain
+```bash
+# macOS
+brew install sdl2
 
-### Example
+# Linux (Debian/Ubuntu)
+apt install libsdl2-dev
+```
+
+### Types
+
+#### `GraphicAppEvent`
+
+Extends `AppEvent` with GUI-specific platform events:
+
+```prove
+type GraphicAppEvent is AppEvent
+  Visible(state Value)
+  | Hidden(state Value)
+  | Focused(state Value)
+```
+
+### Functions
+
+| Verb | Name | Signature | Description |
+|------|------|-----------|-------------|
+| `outputs` | `window` | `(title String, width Integer, height Integer)` | Create/begin a named window. Call once per frame before widgets |
+| `outputs` | `button` | `(label String) Boolean` | Clickable button. Returns true on click frame |
+| `outputs` | `label` | `(text String)` | Static text label |
+| `outputs` | `text_input` | `(label String, value String) String` | Editable text field. Returns current contents |
+| `outputs` | `checkbox` | `(label String, checked Boolean) Boolean` | Checkbox. Returns current state |
+| `outputs` | `slider` | `(label String, min Float, max Float, value Float) Float` | Horizontal slider. Returns current value |
+| `outputs` | `progress` | `(current Integer, max Integer)` | Progress bar |
+| `outputs` | `quit` | `()` | Close window and exit render loop |
+
+### Example: GUI Counter
+
+A minimal GUI application with a button that increments a counter.
 
 ```prove
 module Counter
-  Terminal outputs terminal clear reads size types TerminalAppEvent
-
-  type CounterEvent is TerminalAppEvent
+  Graphic types GraphicAppEvent outputs window button label
+  Types reads string
 
   type CounterState is
     count Integer
 
-  renders interface(registered_attached_verbs List<Attached>)
-    event_type CounterEvent
-    state_init CounterState(0)
-  from
-      Draw(state) =>
-          clear()
-          terminal(0, 0, f"Count: {state.count}")
-          terminal(0, 1, "Press +/- or ESC to quit")
-      Tick(state) => Draw(state)
-      Exit(state) => Unit
+  type CounterApp is GraphicAppEvent
 
-  attached on_key() CounterEvent
-    event_type KeyDown
-    state_type CounterState
-  from
-      match event
-          Key:Escape => Exit
-          Key:43 => Draw(state.count + 1)
-          Key:45 => Draw(state.count - 1)
-          _ => Tick(state)
+renders app(registered_attached_verbs List<Listens>)
+  event_type CounterApp
+  state_init CounterState(0)
+from
+    Draw(state) =>
+        window("Counter", 400, 300)
+        label(f"Count: {string(state.count)}")
+        match button("Increment")
+            true =>
+                state.count += 1
+                Draw(state)
+            false => Draw(state)
+    Tick(state) => Draw(state)
+    Exit(state) => Unit
 
-  main()
-  from
-      raw()
-      interface([on_key])
+main()
+from
+    app([])&
+```
+
+```bash
+prove build examples/gui_counter/
+./examples/gui_counter/dist/gui_counter
 ```

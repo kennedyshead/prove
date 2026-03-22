@@ -245,6 +245,7 @@ static volatile bool _gui_running = false;
 static int _win_width = 800;
 static int _win_height = 600;
 static char _win_title[256] = "Prove";
+static bool _window_active = false;  /* true after prove_gui_window, false after window_end */
 
 /* Temporary buffers for text_input widget */
 #define PROVE_GUI_MAX_TEXT_INPUTS 32
@@ -537,6 +538,7 @@ void prove_gui_window(Prove_String *title, int64_t width, int64_t height) {
              nk_rect(0, 0, (float)actual_w, (float)actual_h),
              NK_WINDOW_NO_SCROLLBAR);
     nk_layout_row_dynamic(&_nk_sdl.ctx, 30, 1);
+    _window_active = true;
 }
 
 bool prove_gui_button(Prove_String *label) {
@@ -630,6 +632,13 @@ void prove_gui_progress(int64_t current, int64_t max) {
     nk_size val = (nk_size)(current > 0 ? current : 0);
     nk_size mx = (nk_size)(max > 0 ? max : 1);
     nk_progress(&_nk_sdl.ctx, &val, mx, nk_false);
+}
+
+void prove_gui_window_end(void) {
+    if (_window_active) {
+        nk_end(&_nk_sdl.ctx);
+        _window_active = false;
+    }
 }
 
 void prove_gui_quit(void) {

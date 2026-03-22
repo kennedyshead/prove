@@ -697,6 +697,16 @@ def copy_runtime(
         if name.endswith(".c"):
             c_files.append(dst)
 
+    # Copy vendor dependencies for needed libs
+    if "prove_gui" in needed_libs:
+        vendor_dest = dest / "vendor"
+        vendor_dest.mkdir(parents=True, exist_ok=True)
+        vendor_pkg = pkg.joinpath("vendor")
+        for vfile in ("nuklear.h",):
+            src_path = vendor_pkg.joinpath(vfile)
+            with importlib.resources.as_file(src_path) as resolved:
+                shutil.copy2(resolved, vendor_dest / vfile)
+
     return c_files
 
 
