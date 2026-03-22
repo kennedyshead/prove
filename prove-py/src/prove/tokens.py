@@ -24,6 +24,7 @@ class TokenKind(Enum):
     ATTACHED = auto()
     LISTENS = auto()
     STREAMS = auto()
+    RENDERS = auto()
 
     # Type modifiers
     BINARY = auto()
@@ -66,6 +67,8 @@ class TokenKind(Enum):
     TEMPORAL = auto()
     SATISFIES = auto()
     EVENT_TYPE = auto()
+    STATE_INIT = auto()
+    STATE_TYPE = auto()
     INVARIANT_NETWORK = auto()
 
     # Literals
@@ -155,6 +158,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "attached": TokenKind.ATTACHED,
     "listens": TokenKind.LISTENS,
     "streams": TokenKind.STREAMS,
+    "renders": TokenKind.RENDERS,
     "binary": TokenKind.BINARY,
     "main": TokenKind.MAIN,
     "from": TokenKind.FROM,
@@ -186,6 +190,8 @@ KEYWORDS: dict[str, TokenKind] = {
     "temporal": TokenKind.TEMPORAL,
     "satisfies": TokenKind.SATISFIES,
     "event_type": TokenKind.EVENT_TYPE,
+    "state_init": TokenKind.STATE_INIT,
+    "state_type": TokenKind.STATE_TYPE,
     "invariant_network": TokenKind.INVARIANT_NETWORK,
     "true": TokenKind.BOOLEAN_LIT,
     "false": TokenKind.BOOLEAN_LIT,

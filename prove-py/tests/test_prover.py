@@ -32,6 +32,8 @@ def _make_fd(**kwargs) -> FunctionDef:
         intent=None,
         satisfies=[],
         event_type=None,
+        state_init=None,
+        state_type=None,
         body=[],
         doc_comment=None,  # noqa: E501
         span=_DUMMY,

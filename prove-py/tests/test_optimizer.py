@@ -63,6 +63,8 @@ def _make_func(
         intent=None,
         satisfies=[],
         event_type=None,
+        state_init=None,
+        state_type=None,
         body=body or [],
         doc_comment=None,
         span=_SPAN,

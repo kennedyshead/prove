@@ -58,7 +58,9 @@ from prove.types import (
     get_scale,
 )
 
-_IO_VERBS = frozenset({"inputs", "outputs", "streams", "listens", "attached", "detached"})
+_IO_VERBS = frozenset(
+    {"inputs", "outputs", "streams", "listens", "attached", "detached", "renders"}
+)
 
 # Literal types whose value the checker can statically verify against
 # refinement constraints (E355).  No runtime guard needed for these.
@@ -1104,13 +1106,14 @@ class StmtEmitterMixin:
         """Emit a match expression as a statement (switch)."""
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
-            # listens uses _ev (received event from queue)
+            # listens/renders uses _ev (received event from queue)
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
                 "streams",
                 "listens",
+                "renders",
             ):
-                if self._current_func.verb == "listens":
+                if self._current_func.verb in ("listens", "renders"):
                     subj_name = "_ev"
                 elif self._current_func.params:
                     subj_name = self._current_func.params[0].name
@@ -1164,11 +1167,13 @@ class StmtEmitterMixin:
                                         f"{tmp}.{arm.pattern.name}.{fname};"
                                     )
                     self._emit_match_arm_body(arm.body)
-                    # streams/listens Exit arm must break out of the while(1) loop
+                    # streams/listens/renders Exit arm must break out of the while(1) loop
                     if self._in_streams_loop and arm.pattern.name == "Exit":
                         self._line("goto _streams_exit;")
                     if self._in_listens_loop and arm.pattern.name == "Exit":
                         self._line("goto _listens_exit;")
+                    if self._in_renders_loop and arm.pattern.name == "Exit":
+                        self._line("goto _renders_exit;")
                     self._line("break;")
                     self._indent -= 1
                     self._line("}")

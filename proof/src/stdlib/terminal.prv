@@ -1,0 +1,52 @@
+module Terminal
+  narrative: """TUI primitives via ANSI escape codes. Extends UI base module.
+    Import TerminalAppEvent and extend it for your app's event type.
+    Frame pacing is event-driven: redraws only when state changes."""
+
+  /// TUI event type — extends AppEvent for terminal backend.
+  /// Selecting this as your base type tells the compiler to use
+  /// the terminal backend with event-driven frame pacing
+  /// (no continuous rendering — redraws only on state change).
+  type TerminalAppEvent is AppEvent
+
+  /// Check if stdout is connected to an interactive terminal.
+  /// Returns false when output is piped or redirected to a file.
+  /// Use to decide whether to enter raw mode or fall back to plain output.
+  validates terminal()
+  binary
+
+  /// Enable raw mode: disables line buffering, echo, and signal processing.
+  /// Input is delivered character-by-character via KeyDown events.
+  /// Must be paired with cooked() — see atexit safety note.
+  outputs raw()
+  binary
+
+  /// Restore cooked mode: re-enables line buffering, echo, and signals.
+  /// Always call before exit to leave the terminal in a usable state.
+  outputs cooked()
+  binary
+
+  /// Write text at the current cursor position.
+  /// Does not move the cursor afterward — subsequent writes append.
+  outputs terminal(text String)
+  binary
+
+  /// Write text at a specific screen position (column x, row y).
+  /// Top-left corner is (0, 0). Coordinates are in character cells.
+  outputs terminal(x Integer, y Integer, text String)
+  binary
+
+  /// Clear the entire screen and reset cursor to (0, 0).
+  outputs clear()
+  binary
+
+  /// Move the cursor to screen position (column x, row y).
+  /// Does not clear or write — just repositions for the next output.
+  outputs cursor(x Integer, y Integer)
+  binary
+
+  /// Get the current terminal dimensions in character cells.
+  /// Returns a Position where x = columns (width) and y = rows (height).
+  /// Updates automatically on Resize events.
+  reads size() Position
+  binary

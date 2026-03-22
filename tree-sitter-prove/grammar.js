@@ -86,7 +86,7 @@ module.exports = grammar({
 
     intent_verb: $ => choice(
       'validates', 'transforms', 'reads', 'creates', 'matches',
-      'inputs', 'outputs', 'streams', 'listens', 'detached', 'attached',
+      'inputs', 'outputs', 'streams', 'listens', 'detached', 'attached', 'renders',
     ),
 
     intent_flow: $ => seq(
@@ -147,6 +147,7 @@ module.exports = grammar({
       'attached',
       'listens',
       'streams',
+      'renders',
     ),
 
     // ─── Type Definitions ──────────────────────────────────────
@@ -387,6 +388,8 @@ module.exports = grammar({
       $.satisfies_clause,
       $.when_annotation,
       $.event_type_annotation,
+      $.state_init_annotation,
+      $.state_type_annotation,
     ),
 
     ensures_clause: $ => seq('ensures', $.expression),
@@ -398,6 +401,8 @@ module.exports = grammar({
     satisfies_clause: $ => seq('satisfies', $.type_identifier),
 
     event_type_annotation: $ => seq('event_type', $.type_expression),
+    state_init_annotation: $ => seq('state_init', $.expression),
+    state_type_annotation: $ => seq('state_type', $.type_expression),
 
     explain_annotation: $ => seq('explain', repeat1($.explain_line)),
 

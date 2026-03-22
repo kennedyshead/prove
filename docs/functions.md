@@ -25,6 +25,7 @@ Every Prove function declares its purpose with a **verb**. The verb IS the decla
 | `detached` | Async | Fire-and-forget coroutine |
 | `attached` | Async | Awaited coroutine |
 | `listens` | Async | Event dispatcher |
+| `renders` | Async | UI render loop with mutable state |
 
 ---
 

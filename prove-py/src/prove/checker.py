@@ -132,7 +132,7 @@ def _count_decimal_places(literal: str) -> int:
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
 # Async verb family
-_ASYNC_VERBS = frozenset({"detached", "attached", "listens"})
+_ASYNC_VERBS = frozenset({"detached", "attached", "listens", "renders"})
 
 # IO (blocking) verbs — forbidden inside async bodies
 _BLOCKING_VERBS = frozenset({"inputs", "outputs", "streams"})
@@ -1928,25 +1928,25 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._check_async_body(fd)
             if verb == "attached" and fd.return_type is None:
                 self._error("E370", "`attached` verb must have a return type", fd.span)
-            if verb in ("detached", "listens") and fd.return_type is not None:
+            if verb in ("detached", "listens", "renders") and fd.return_type is not None:
                 self._error(
                     "E374",
                     f"`{verb}` verb cannot declare a return type; "
                     f"the caller does not wait for a result",
                     fd.span,
                 )
-        # event_type annotation rules (listens event dispatcher)
-        if fd.event_type is not None and verb != "listens":
+        # event_type annotation rules (listens/renders event dispatcher)
+        if fd.event_type is not None and verb not in ("listens", "renders", "attached"):
             self._error(
                 "E405",
-                "`event_type` annotation is only valid on `listens` verb",
+                "`event_type` annotation is only valid on `listens`, `renders`, or `attached` verb",
                 fd.span,
             )
-        if verb == "listens":
+        if verb in ("listens", "renders"):
             if fd.event_type is None:
                 self._error(
                     "E406",
-                    "`listens` verb requires an `event_type` annotation",
+                    f"`{verb}` verb requires an `event_type` annotation",
                     fd.span,
                 )
             else:
@@ -1961,7 +1961,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if not fd.params:
                 self._error(
                     "E402",
-                    "`listens` first parameter must be `List<Attached>`",
+                    f"`{verb}` first parameter must be `List<Attached>`",
                     fd.span,
                 )
             else:
@@ -1973,13 +1973,33 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ):
                     self._error(
                         "E402",
-                        "`listens` first parameter must be `List<Attached>`",
+                        f"`{verb}` first parameter must be `List<Attached>`",
                         fd.params[0].span,
                     )
+        # state_init annotation rules (renders only)
+        if fd.state_init is not None and verb != "renders":
+            self._error(
+                "E407",
+                "`state_init` annotation is only valid on `renders` verb",
+                fd.span,
+            )
+        if verb == "renders" and fd.state_init is None:
+            self._error(
+                "E408",
+                "`renders` verb requires a `state_init` annotation",
+                fd.span,
+            )
+        # state_type annotation rules (attached only)
+        if fd.state_type is not None and verb != "attached":
+            self._error(
+                "E409",
+                "`state_type` annotation is only valid on `attached` verb",
+                fd.span,
+            )
 
         # I367: suggest extracting match to a matches verb function
-        # listens/streams bodies are inherently match-based, so exempt from this check
-        if verb not in ("matches", "listens", "streams"):
+        # listens/streams/renders bodies are inherently match-based, so exempt
+        if verb not in ("matches", "listens", "streams", "renders"):
             self._check_match_restriction(fd.body, fd.span)
 
     def _check_async_body(self, fd: FunctionDef) -> None:
@@ -2799,11 +2819,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif (
             self._current_function
             and isinstance(self._current_function, FunctionDef)
-            and self._current_function.verb in ("matches", "listens", "streams")
+            and self._current_function.verb in ("matches", "listens", "streams", "renders")
         ):
             # Implicit match subject resolution per verb:
             # - matches: first parameter type
-            # - listens: event_type annotation (the algebraic dispatch protocol)
+            # - listens/renders: event_type annotation (the algebraic dispatch protocol)
             # - streams: return type (the element type being streamed)
             if (
                 self._current_function.verb == "streams"
@@ -2811,7 +2831,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             ):
                 subject_type = self._resolve_type_expr(self._current_function.return_type)
             elif (
-                self._current_function.verb == "listens"
+                self._current_function.verb in ("listens", "renders")
                 and self._current_function.event_type is not None
             ):
                 subject_type = self._resolve_type_expr(self._current_function.event_type)

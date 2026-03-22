@@ -131,6 +131,7 @@ VERB_SYNONYMS: dict[str, list[str]] = {
     ],
     "attached": ["attached", "attach", "awaits", "await", "joins", "join", "child", "worker"],
     "streams": ["streams", "stream", "blocks", "block", "polls", "poll", "loops", "loop"],
+    "renders": ["renders", "render", "draws", "draw", "paints", "paint"],
 }
 
 _HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {

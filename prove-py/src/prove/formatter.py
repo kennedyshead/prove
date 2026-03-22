@@ -315,6 +315,10 @@ class ProveFormatter:
             lines.append(f"  satisfies {name}")
         if fd.event_type is not None:
             lines.append(f"  event_type {self._format_type_expr(fd.event_type)}")
+        if fd.state_init is not None:
+            lines.append(f"  state_init {self._format_expr(fd.state_init)}")
+        if fd.state_type is not None:
+            lines.append(f"  state_type {self._format_type_expr(fd.state_type)}")
         return lines
 
     def _format_explain_block(self, explain: ExplainBlock, indent: int) -> list[str]:

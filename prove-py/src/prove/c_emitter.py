@@ -121,6 +121,7 @@ class CEmitter(
         self._in_return_position = False
         self._in_streams_loop = False
         self._in_listens_loop = False
+        self._in_renders_loop = False
         self._foreign_names: set[str] = set()
         self._foreign_fns: list[ForeignFunction] = []
         self._foreign_libs: set[str] = set()
@@ -436,6 +437,7 @@ class CEmitter(
                             "detached",
                             "attached",
                             "listens",
+                            "renders",
                         ):
                             self._needed_headers.add("prove_coro.h")
                             found_coro = True
@@ -445,10 +447,12 @@ class CEmitter(
                     self._needed_headers.add("prove_hof.h")
                     found_hof = True
             if isinstance(decl, FunctionDef):
-                if not found_coro and decl.verb in ("detached", "attached", "listens"):
+                if not found_coro and decl.verb in ("detached", "attached", "listens", "renders"):
                     self._needed_headers.add("prove_coro.h")
                     found_coro = True
-                # prove_event.h reserved for future event queue use
+                if decl.verb == "renders":
+                    self._needed_headers.add("prove_terminal.h")
+                    self._needed_headers.add("prove_event.h")
 
     @staticmethod
     def _expr_uses_hof(expr: Expr) -> bool:
@@ -977,7 +981,7 @@ class CEmitter(
                 any_emitted = True
                 continue
             # Async verbs get special forward declarations
-            if decl.verb in ("detached", "attached", "listens"):
+            if decl.verb in ("detached", "attached", "listens", "renders"):
                 sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
@@ -997,7 +1001,7 @@ class CEmitter(
                         else "Prove_Coro *_caller"
                     )  # noqa: E501
                     self._line(f"{ret_decl} {mangled}({param_str});")
-                elif decl.verb == "listens":
+                elif decl.verb in ("listens", "renders"):
                     param_str = ", ".join(params) if params else "void"
                     self._line(f"void {mangled}({param_str});")
                 else:
@@ -1051,6 +1055,11 @@ class CEmitter(
 
         # Binary functions are C-backed — no Prove body to emit
         if fd.binary:
+            return
+
+        # Renders verb: event-driven render loop
+        if fd.verb == "renders":
+            self._emit_renders_function(fd)
             return
 
         # Async verbs get specialized emission
@@ -1495,6 +1504,105 @@ class CEmitter(
             self._line("}")
 
         self._line("_listens_exit:;")
+
+    def _emit_renders_function(self, fd: FunctionDef) -> None:
+        """Emit a renders verb function — event-driven render loop.
+
+        The renders function:
+        1. Initializes state from state_init
+        2. Creates worker coroutines from the List<Attached> parameter
+        3. Enters a blocking event loop that dispatches events to the match body
+        4. Workers (attached callbacks) feed events into the queue
+        5. Exit arm breaks the loop
+        """
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return
+
+        param_types: list[Type] = []
+        for p in fd.params:
+            if sig:
+                idx = next((i for i, n in enumerate(sig.param_names) if n == p.name), None)
+                if idx is not None and idx < len(sig.param_types):
+                    param_types.append(sig.param_types[idx])
+                    continue
+            param_types.append(INTEGER)
+
+        self._current_func = fd
+        self._current_func_return = UNIT
+        self._current_requires = fd.requires
+
+        mangled = mangle_name(fd.verb, fd.name, param_types, module=self._module_name)
+
+        params: list[str] = []
+        for p, pt in zip(fd.params, param_types):
+            ct = map_type(pt)
+            params.append(f"{ct.decl} {safe_c_name(p.name)}")
+        param_str = ", ".join(params) if params else "void"
+
+        self._line(f"void {mangled}({param_str}) {{")
+        self._indent += 1
+
+        if self._needs_region_scope(fd):
+            self._line("prove_region_enter(prove_global_region());")
+            self._in_region_scope = True
+
+        self._locals.clear()
+        self._used_names.clear()
+        for p, pt in zip(fd.params, param_types):
+            self._locals[p.name] = pt
+
+        # Initialize the event queue
+        self._line("Prove_EventNodeQueue *_eq = prove_event_queue_new();")
+
+        # Initialize terminal backend
+        self._line("prove_terminal_init(_eq);")
+
+        event_type = sig.event_type if sig else None
+
+        # Blocking event loop — receive events from queue, dispatch via match
+        self._line("while (1) {")
+        self._indent += 1
+        self._line("Prove_EventNode *_node = prove_event_queue_recv(_eq, NULL);")
+        self._line("if (!_node) break;")
+
+        if event_type:
+            ct = map_type(event_type)
+            self._line(f"{ct.decl} _ev;")
+            self._line("_ev.tag = _node->tag;")
+            self._line("if (_node->payload) {")
+            self._indent += 1
+            self._line(f"_ev = *({ct.decl}*)_node->payload;")
+            self._line("free(_node->payload);")
+            self._indent -= 1
+            self._line("} else {")
+            self._indent += 1
+            self._line("_ev.tag = _node->tag;")
+            self._indent -= 1
+            self._line("}")
+            self._locals["_ev"] = event_type
+
+        self._line("free(_node);")
+
+        # Dispatch
+        self._in_renders_loop = True
+        for stmt in fd.body:
+            self._emit_stmt(stmt)
+        self._in_renders_loop = False
+        self._indent -= 1
+        self._line("}")
+        self._line("_renders_exit:;")
+
+        # Cleanup
+        self._line("prove_terminal_cleanup();")
+        self._line("prove_event_queue_free(_eq);")
+
+        if self._in_region_scope:
+            self._line("prove_region_exit(prove_global_region());")
+            self._in_region_scope = False
+        self._indent -= 1
+        self._line("}")
+        self._line("")
 
     def _emit_main(self, md: MainDef) -> None:
         self._current_func = md  # type: ignore[assignment]
