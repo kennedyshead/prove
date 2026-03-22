@@ -29,7 +29,7 @@ A pure-Prove module providing ANSI terminal color constants and logging function
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `detached` | `debug(string String)` | Log a debug message (white) |
+| `detached` | `debug(string String)` | Log a debug message (blue) |
 | `detached` | `info(string String)` | Log an info message (green) |
 | `detached` | `warning(string String)` | Log a warning message (yellow) |
 | `detached` | `error(string String)` | Log an error message (red) |

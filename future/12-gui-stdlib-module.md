@@ -2,7 +2,7 @@
 
 Add a `Graphic` stdlib module providing native graphical user interfaces via [Nuklear](https://github.com/Immediate-Mode-UI/Nuklear) — a single-header, immediate-mode C GUI library with zero external dependencies.
 
-Graphic extends the `UI` base module (see `future/11-terminal-stdlib-module.md`) which provides shared types. The `renders` verb is a language-level verb (like `listens`/`streams`), not defined in any stdlib.
+Graphic extends the `UI` base module (implemented in `proof/src/stdlib/ui.prv`) which provides shared types. The `renders` verb is a language-level verb (like `listens`/`streams`), not defined in any stdlib.
 
 ## Motivation
 
@@ -15,7 +15,7 @@ Prove targets native binaries. A Graphic module lets users build desktop applica
 UI capabilities are split across three stdlib modules:
 
 1. **`UI`** (base) — `AppEvent` base event type (not directly usable as algebraic), `Key:[Lookup]`, `Color:[Lookup]`, `Position`, and shared events (`Draw`, `Tick`, `KeyDown`, `KeyUp`, `MouseDown`, `MouseUp`, `Scroll`, `MousePos`, `Resize`, `Exit`)
-2. **`Terminal`** (see `future/11-terminal-stdlib-module.md`) — extends `AppEvent` with `TerminalAppEvent`, adds TUI-specific primitives
+2. **`Terminal`** (implemented in `proof/src/stdlib/terminal.prv`) — extends `AppEvent` with `TerminalAppEvent`, adds TUI-specific primitives
 3. **`Graphic`** — extends `AppEvent` with `GraphicAppEvent`, adds GUI-specific primitives and events (`Visible`, `Hidden`, `Focused`)
 
 ### Backend selection via type hierarchy
@@ -123,7 +123,7 @@ module Graphic
 - Widget functions show parameter-level hints (e.g. `slider` shows min/max/value roles)
 - Inherited `AppEvent` variants (`Draw`, `Tick`, `KeyDown`, etc.) appear alongside `GraphicAppEvent`-specific ones
 
-See `future/11-terminal-stdlib-module.md` for the full UI base module declaration with docstrings on `Key`, `Color`, `AppEvent`, and `Position`.
+See `proof/src/stdlib/ui.prv` for the full UI base module declaration with `Key`, `Color`, `AppEvent`, and `Position`.
 
 ## Usage Examples
 
@@ -335,7 +335,7 @@ Richer widgets for real applications:
 ## Implementation Checklist
 
 ### Compiler & stdlib
-1. Ensure `UI` base module exists (from Terminal implementation, see `future/11`)
+1. ~~Ensure `UI` base module exists~~ ✅ Done (implemented with Terminal)
 2. Vendor `nuklear.h` into `prove-py/src/prove/runtime/vendor/`
 3. Create `prove_gui.c` and `prove_gui.h` in `prove-py/src/prove/runtime/`
 4. Create `graphic.prv` in `prove-py/src/prove/stdlib/`
