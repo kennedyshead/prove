@@ -23,6 +23,7 @@ from prove.ast_nodes import (
     IdentifierExpr,
     IntegerLit,
     LiteralPattern,
+    LookupPattern,
     MatchExpr,
     RawStringLit,
     RegexLit,
@@ -1106,14 +1107,17 @@ class StmtEmitterMixin:
         """Emit a match expression as a statement (switch)."""
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
-            # listens/renders uses _ev (received event from queue)
+            # listens uses _key (raw event payload), renders uses _ev
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
                 "streams",
                 "listens",
                 "renders",
             ):
-                if self._current_func.verb in ("listens", "renders"):
+                if self._current_func.verb == "listens":
+                    # Listens translator: match on raw key code
+                    subj_name = "_key"
+                elif self._current_func.verb == "renders":
                     subj_name = "_ev"
                 elif self._current_func.params:
                     subj_name = self._current_func.params[0].name
@@ -1231,6 +1235,8 @@ class StmtEmitterMixin:
                         elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                             pass  # Dead code — record always matches its own type
                         first = False
+                elif self._is_lookup_match(m):
+                    self._emit_lookup_switch_stmt(m, subj)
                 elif self._is_integer_literal_match(m):
                     self._emit_integer_switch_stmt(m, subj)
                 else:
@@ -1483,6 +1489,65 @@ class StmtEmitterMixin:
                     if subj_type:
                         bct = map_type(subj_type)
                         self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                self._emit_match_arm_body(arm.body)
+                self._line("break;")
+                self._indent -= 1
+                self._line("}")
+        self._line("}")
+
+    # ── LookupPattern match emission ─────────────────────────────
+
+    def _is_lookup_match(self, m: MatchExpr) -> bool:
+        """Check if a match has LookupPattern arms (e.g. Key:Escape, Key:"k")."""
+        return any(isinstance(a.pattern, LookupPattern) for a in m.arms)
+
+    def _lookup_case_value(self, pat: LookupPattern) -> str | None:
+        """Resolve a LookupPattern to an integer case value for switch emission.
+
+        Key:Escape → "27" (from lookup table integer column)
+        Key:"k"   → "(int64_t)'k'" (ASCII value)
+        Key:Space  → "32" (from lookup table integer column)
+        """
+        lookup = self._lookup_tables.get(pat.type_name)
+        if pat.value_kind == "string":
+            # String literal — single char becomes ASCII case value
+            if len(pat.lookup_value) == 1:
+                return f"(int64_t)'{pat.lookup_value}'"
+            return None
+        # Identifier — look up variant name in lookup table
+        if lookup is not None:
+            for entry in lookup.entries:
+                if entry.variant == pat.lookup_value:
+                    # Multi-column lookup: integer value is in entry.values
+                    if entry.values:
+                        for val, kind in zip(entry.values, entry.value_kinds):
+                            if kind == "integer":
+                                return val
+                    # Single-column: value itself may be integer
+                    if entry.value_kind == "integer":
+                        return entry.value
+                    break
+        return None
+
+    def _emit_lookup_switch_stmt(self, m: MatchExpr, subj: str) -> None:
+        """Emit a match with LookupPattern arms as a C switch statement."""
+        self._line(f"switch ({subj}) {{")
+        for arm in m.arms:
+            if isinstance(arm.pattern, LookupPattern):
+                case_val = self._lookup_case_value(arm.pattern)
+                if case_val is not None:
+                    self._line(f"case {case_val}: {{")
+                    self._indent += 1
+                    self._emit_match_arm_body(arm.body)
+                    if self._in_listens_loop and arm.pattern.lookup_value == "Escape":
+                        # Exit via Escape in listens — handled by return in arm body
+                        pass
+                    self._line("break;")
+                    self._indent -= 1
+                    self._line("}")
+            elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                self._line("default: {")
+                self._indent += 1
                 self._emit_match_arm_body(arm.body)
                 self._line("break;")
                 self._indent -= 1

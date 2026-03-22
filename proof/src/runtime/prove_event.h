@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include "prove_coro.h"
 
+#ifndef _WIN32
+#include <pthread.h>
+#endif
+
 /* ── Event node (intrusive linked list) ────────────────────── */
 typedef struct Prove_EventNode {
     struct Prove_EventNode *next;
@@ -12,12 +16,15 @@ typedef struct Prove_EventNode {
     void  *payload;    /* variant payload (NULL for unit variants) */
 } Prove_EventNode;
 
-/* ── Event queue (FIFO, single-threaded) ───────────────────── */
+/* ── Event queue (FIFO, thread-safe) ──────────────────────── */
 typedef struct {
     Prove_EventNode *head;
     Prove_EventNode *tail;
     int  count;
     bool closed;       /* true after all workers finish */
+#ifndef _WIN32
+    pthread_mutex_t lock;
+#endif
 } Prove_EventNodeQueue;
 
 /* ── API ───────────────────────────────────────────────────── */

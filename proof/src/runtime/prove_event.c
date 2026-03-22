@@ -2,6 +2,10 @@
 #include "prove_runtime.h"
 #include <stdlib.h>
 
+#ifndef _WIN32
+#include <unistd.h>  /* usleep */
+#endif
+
 Prove_EventNodeQueue *prove_event_queue_new(void) {
     Prove_EventNodeQueue *q = malloc(sizeof(Prove_EventNodeQueue));
     if (!q) prove_panic("OOM: event queue allocation");
@@ -9,6 +13,9 @@ Prove_EventNodeQueue *prove_event_queue_new(void) {
     q->tail = NULL;
     q->count = 0;
     q->closed = false;
+#ifndef _WIN32
+    pthread_mutex_init(&q->lock, NULL);
+#endif
     return q;
 }
 
@@ -18,6 +25,9 @@ void prove_event_queue_send(Prove_EventNodeQueue *q, int tag, void *payload) {
     ev->next = NULL;
     ev->tag = tag;
     ev->payload = payload;
+#ifndef _WIN32
+    pthread_mutex_lock(&q->lock);
+#endif
     if (q->tail) {
         q->tail->next = ev;
     } else {
@@ -25,19 +35,53 @@ void prove_event_queue_send(Prove_EventNodeQueue *q, int tag, void *payload) {
     }
     q->tail = ev;
     q->count++;
+#ifndef _WIN32
+    pthread_mutex_unlock(&q->lock);
+#endif
 }
 
 Prove_EventNode *prove_event_queue_recv(Prove_EventNodeQueue *q, Prove_Coro *coro) {
+#ifndef _WIN32
+    pthread_mutex_lock(&q->lock);
+#endif
     while (!q->head) {
-        if (q->closed) return NULL;      /* all workers done, no more events */
-        if (prove_coro_cancelled(coro)) return NULL;
-        prove_coro_yield(coro);          /* cooperatively wait */
+        if (q->closed) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&q->lock);
+#endif
+            return NULL;
+        }
+        if (coro) {
+            if (prove_coro_cancelled(coro)) {
+#ifndef _WIN32
+                pthread_mutex_unlock(&q->lock);
+#endif
+                return NULL;
+            }
+#ifndef _WIN32
+            pthread_mutex_unlock(&q->lock);
+#endif
+            prove_coro_yield(coro);
+#ifndef _WIN32
+            pthread_mutex_lock(&q->lock);
+#endif
+        } else {
+            /* No coroutine — busy-wait with short sleep */
+#ifndef _WIN32
+            pthread_mutex_unlock(&q->lock);
+            usleep(1000);
+            pthread_mutex_lock(&q->lock);
+#endif
+        }
     }
     /* Dequeue head */
     Prove_EventNode *ev = q->head;
     q->head = ev->next;
     if (!q->head) q->tail = NULL;
     q->count--;
+#ifndef _WIN32
+    pthread_mutex_unlock(&q->lock);
+#endif
     return ev;
 }
 
@@ -46,6 +90,9 @@ void prove_event_queue_close(Prove_EventNodeQueue *q) {
 }
 
 void prove_event_queue_free(Prove_EventNodeQueue *q) {
+#ifndef _WIN32
+    pthread_mutex_destroy(&q->lock);
+#endif
     Prove_EventNode *ev = q->head;
     while (ev) {
         Prove_EventNode *next = ev->next;
