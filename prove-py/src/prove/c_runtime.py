@@ -108,6 +108,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "language": {"prove_language"},
     "ui": set(),
     "terminal": {"prove_terminal"},
+    "graphic": {"prove_gui"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -347,6 +348,8 @@ _RUNTIME_FUNCTIONS = {
         "prove_list_ops_get_safe_str",
         "prove_list_ops_get_safe_float",
         "prove_list_ops_get_safe_value",
+        "prove_list_ops_set",
+        "prove_list_ops_remove",
     ],
     "prove_format": [
         "prove_format_pad_left",
@@ -582,6 +585,20 @@ _RUNTIME_FUNCTIONS = {
         "prove_terminal_init",
         "prove_terminal_cleanup",
     ],
+    "prove_gui": [
+        "prove_gui_window",
+        "prove_gui_button",
+        "prove_gui_label",
+        "prove_gui_text_input",
+        "prove_gui_checkbox",
+        "prove_gui_slider",
+        "prove_gui_progress",
+        "prove_gui_quit",
+        "prove_gui_init",
+        "prove_gui_cleanup",
+        "prove_gui_frame_begin",
+        "prove_gui_frame_end",
+    ],
 }
 
 
@@ -645,6 +662,7 @@ def copy_runtime(
     # includes another library's header, that library must also be copied.
     _HEADER_DEPS: dict[str, set[str]] = {
         "prove_parse": {"prove_table", "prove_hash"},
+        "prove_input_output": {"prove_bytes"},
     }
     for lib in list(needed_libs):
         needed_libs.update(_HEADER_DEPS.get(lib, set()))

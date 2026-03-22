@@ -576,34 +576,47 @@ class ExprEmitterMixin:
             list_tmp = self._tmp()
             self._line(f"Prove_List *{list_tmp} = prove_list_new({len(workers.elements)});")
             for elem in workers.elements:
+                # Resolve worker function name from call or bare identifier
+                worker_name = None
+                worker_args: list = []
                 if isinstance(elem, _CE) and isinstance(elem.func, _IE):
-                    worker_sig = self._symbols.resolve_function_any(elem.func.name)
-                    if worker_sig and worker_sig.verb == "attached":
-                        w_mangled = mangle_name(
-                            worker_sig.verb,
-                            elem.func.name,
-                            worker_sig.param_types,
-                            module=self._sig_module(worker_sig),
-                        )
-                        args_struct = f"_{w_mangled}_args"
-                        body_fn = f"_{w_mangled}_body"
-                        a_tmp = self._tmp()
-                        c_tmp = self._tmp()
-                        self._line(f"{args_struct} *{a_tmp} = malloc(sizeof({args_struct}));")
-                        for j, arg in enumerate(elem.args):
-                            pname = worker_sig.param_names[j]
-                            val = self._emit_expr(arg)
-                            self._line(f"{a_tmp}->{pname} = {val};")
-                        self._line(
-                            f"Prove_Coro *{c_tmp} = prove_coro_new("
-                            f"{body_fn}, PROVE_CORO_STACK_DEFAULT);"
-                        )
-                        self._line(f"prove_coro_start({c_tmp}, {a_tmp});")
-                        self._line(f"prove_list_push({list_tmp}, (void*){c_tmp});")
-                    else:
-                        # Non-attached in worker list — emit as value
-                        val = self._emit_expr(elem)
-                        self._line(f"prove_list_push({list_tmp}, (void*)(intptr_t){val});")
+                    worker_name = elem.func.name
+                    worker_args = elem.args
+                elif isinstance(elem, _IE):
+                    worker_name = elem.name
+                    worker_args = []
+
+                worker_sig = (
+                    self._symbols.resolve_function_any(worker_name) if worker_name else None
+                )
+                if worker_sig and worker_sig.verb in ("attached", "listens"):
+                    w_mangled = mangle_name(
+                        worker_sig.verb,
+                        worker_name,
+                        worker_sig.param_types,
+                        module=self._sig_module(worker_sig),
+                    )
+                    args_struct = f"_{w_mangled}_args"
+                    body_fn = f"_{w_mangled}_body"
+                    a_tmp = self._tmp()
+                    c_tmp = self._tmp()
+                    self._line(f"{args_struct} *{a_tmp} = malloc(sizeof({args_struct}));")
+                    for j, arg in enumerate(worker_args):
+                        pname = worker_sig.param_names[j]
+                        val = self._emit_expr(arg)
+                        self._line(f"{a_tmp}->{pname} = {val};")
+                    # Initialize missing params with defaults (e.g. empty list)
+                    for j in range(len(worker_args), len(worker_sig.param_names)):
+                        pname = worker_sig.param_names[j]
+                        pt = worker_sig.param_types[j]
+                        if isinstance(pt, ListType):
+                            self._line(f"{a_tmp}->{pname} = prove_list_new(0);")
+                    self._line(
+                        f"Prove_Coro *{c_tmp} = prove_coro_new("
+                        f"{body_fn}, PROVE_CORO_STACK_DEFAULT);"
+                    )
+                    self._line(f"prove_coro_start({c_tmp}, {a_tmp});")
+                    self._line(f"prove_list_push({list_tmp}, (void*){c_tmp});")
                 else:
                     val = self._emit_expr(elem)
                     self._line(f"prove_list_push({list_tmp}, (void*)(intptr_t){val});")
@@ -1124,10 +1137,16 @@ class ExprEmitterMixin:
             )
         else:
             self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
+        is_struct = isinstance(elem_type, (RecordType, AlgebraicType))
         for elem in expr.elements:
             val = self._emit_expr(elem)
             if ct.is_pointer:
                 self._line(f"prove_list_push({tmp}, (void*){val});")
+            elif is_struct:
+                heap_tmp = self._tmp()
+                self._line(f"{ct.decl} *{heap_tmp} = malloc(sizeof({ct.decl}));")
+                self._line(f"*{heap_tmp} = {val};")
+                self._line(f"prove_list_push({tmp}, (void*){heap_tmp});")
             else:
                 self._line(f"prove_list_push({tmp}, (void*)(intptr_t){val});")
         return tmp
@@ -1142,6 +1161,8 @@ class ExprEmitterMixin:
             elem_ct = map_type(obj_type.element)
             if elem_ct.is_pointer:
                 return f"({elem_ct.decl})prove_list_get({obj}, {idx})"
+            if isinstance(obj_type.element, (RecordType, AlgebraicType)):
+                return f"(*({elem_ct.decl}*)prove_list_get({obj}, {idx}))"
             return f"({elem_ct.decl})(intptr_t)prove_list_get({obj}, {idx})"
         return f"{obj}[{idx}]"
 

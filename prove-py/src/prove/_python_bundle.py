@@ -391,8 +391,9 @@ def _is_bundle_zip(path_entry: str) -> bool:
 def _find_existing_bundle_zip() -> Path | None:
     """Find the bundle zip on sys.path when running from an already-bundled binary.
 
-    py_wrappers.c writes the bundle to /tmp/prove_bundle_XXXXXX.zip and prepends
-    it to sys.path.  We look for that zip so we can re-emit it into the new build.
+    py_wrappers.c writes the bundle to .prove_bundle.zip next to the binary
+    and prepends it to sys.path.  We look for that zip so we can re-emit it
+    into the new build.
     """
     import sys
 

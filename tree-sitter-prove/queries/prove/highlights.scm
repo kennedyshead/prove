@@ -8,6 +8,7 @@
 
 ; Only highlight verbs in function definition context
 (function_definition (verb) @keyword.function)
+(function_definition (async_verb) @keyword.function)
 
 ; PROVE-EXPORT-BEGIN: verbs
 [
@@ -20,6 +21,14 @@
   "validates"
 ] @keyword.function
 ; PROVE-EXPORT-END: verbs
+
+[
+  "attached"
+  "detached"
+  "listens"
+  "renders"
+  "streams"
+] @keyword.function
 
 "main" @keyword.function
 
@@ -50,9 +59,16 @@
   "explain"
   "requires"
   "terminates"
+  "trusted"
   "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords
+
+[
+  "event_type"
+  "state_init"
+  "state_type"
+] @keyword.directive
 
 ; ─── Explain Lines ─────────────────────────────────────────
 
@@ -95,7 +111,7 @@
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
-  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Option" "Result" "Source" "String" "Struct" "Table" "Unit" "Value" "Verb"))
+  "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Listens" "Option" "Result" "Source" "String" "Struct" "Table" "Unit" "Value" "Verb"))
 ; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────
@@ -230,6 +246,9 @@
 
 (variant_pattern
   (type_identifier) @constructor)
+
+(lookup_pattern
+  (type_identifier) @type)
 
 (wildcard_pattern) @variable.builtin
 

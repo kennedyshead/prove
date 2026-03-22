@@ -324,9 +324,17 @@ module.exports = grammar({
     ),
     // PROVE-EXPORT-END: verbs
 
+    async_verb: $ => choice(
+      'attached',
+      'detached',
+      'listens',
+      'renders',
+      'streams',
+    ),
+
     function_definition: $ => seq(
       optional($.doc_comment_block),
-      $.verb,
+      choice($.verb, $.async_verb),
       $.identifier,
       $.parameter_list,
       optional($.type_expression),
@@ -410,7 +418,7 @@ module.exports = grammar({
 
     terminates_annotation: $ => seq('terminates', ':', $.expression),
 
-    trusted_annotation: $ => seq('trusted', optional($.string_literal)),
+    trusted_annotation: $ => seq('trusted', ':', $.string_literal),
 
     // ─── AI-Resistance Annotations ─────────────────────────────
 
@@ -496,7 +504,7 @@ module.exports = grammar({
     )),
 
     assignment: $ => prec(1, seq(
-      $.identifier,
+      choice($.identifier, $.field_expression),
       '=',
       $.expression,
     )),
@@ -605,6 +613,7 @@ module.exports = grammar({
     // ─── Patterns ──────────────────────────────────────────────
 
     pattern: $ => choice(
+      $.lookup_pattern,
       $.variant_pattern,
       $.wildcard_pattern,
       $._literal,
@@ -614,6 +623,17 @@ module.exports = grammar({
     variant_pattern: $ => prec(1, seq(
       $.type_identifier,
       optional(seq('(', sep1($.pattern, ','), ')')),
+    )),
+
+    lookup_pattern: $ => prec(2, seq(
+      $.type_identifier,
+      ':',
+      choice(
+        $.string_literal,
+        $.type_identifier,
+        $.identifier,
+        $.integer_literal,
+      ),
     )),
 
     wildcard_pattern: $ => '_',
@@ -749,7 +769,7 @@ module.exports = grammar({
 
     type_identifier: $ => /[A-Z][a-zA-Z0-9]*/,
 
-    constant_identifier: $ => token(prec(1, /[A-Z][A-Z0-9_]+/)),
+    constant_identifier: $ => token(prec(1, /[A-Z][A-Z0-9]*_[A-Z0-9_]*/)),
   },
 });
 

@@ -145,6 +145,14 @@ binary
 transforms slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
 binary
 
+/// Set element at index (copy-on-write: returns new list)
+transforms set(items List<Value>, idx Integer, val Value) List<Value>
+binary
+
+/// Remove element at index (copy-on-write: returns new list)
+transforms remove(items List<Value>, idx Integer) List<Value>
+binary
+
 /// Reverse a sequence
 transforms reverse(items List<Value>) List<Value>
 binary

@@ -99,6 +99,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Token": CType("Prove_Language_Token*", is_pointer=True, header="prove_language.h"),
     "Verb": CType("void*", is_pointer=True, header=None),
     "Attached": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
+    "Listens": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
 }
 
 # ── Public API ─────────────────────────────────────────────────────

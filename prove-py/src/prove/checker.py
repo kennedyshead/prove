@@ -44,6 +44,7 @@ from prove.ast_nodes import (
     ListLiteral,
     LiteralPattern,
     LookupAccessExpr,
+    LookupPattern,
     LookupTypeDef,
     MainDef,
     MatchArm,
@@ -184,6 +185,7 @@ _BUILTIN_TYPE_NAMES = frozenset(
         "Source",
         "Verb",
         "Attached",
+        "Listens",
     }
 )
 
@@ -596,6 +598,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self.symbols.define_type("Source", TypeVariable("Source"))
         self.symbols.define_type("Verb", PrimitiveType("Verb"))
         self.symbols.define_type("Attached", PrimitiveType("Attached"))
+        self.symbols.define_type("Listens", PrimitiveType("Listens"))
 
         _dummy = Span("<builtin>", 0, 0, 0, 0)
 
@@ -725,23 +728,58 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         elif isinstance(body, AlgebraicTypeDef):
             variants: list[VariantInfo] = []
-            for v in body.variants:
+            # Check if first variant is actually a base algebraic type (inheritance)
+            inherited_variants: list[VariantInfo] = []
+            own_variants_start = 0
+            if body.variants:
+                first_v = body.variants[0]
+                if not first_v.fields:
+                    base_type = self.symbols.resolve_type(first_v.name)
+                    # Type must be explicitly imported — no auto-resolve.
+                    # Search stdlib modules to give a helpful error message.
+                    if base_type is None:
+                        from prove.stdlib_loader import (
+                            _STDLIB_MODULES,
+                            load_stdlib_types,
+                        )
+
+                        for mod_name in _STDLIB_MODULES:
+                            stdlib_types = load_stdlib_types(mod_name)
+                            if first_v.name in stdlib_types:
+                                hint = (
+                                    f" (add `types {first_v.name}` to your "
+                                    f"{mod_name.capitalize()} import)"
+                                    if mod_name.lower() in {k.lower() for k in self._module_imports}
+                                    else f" (available from module '{mod_name}')"
+                                )
+                                self._error(
+                                    "E300",
+                                    f"undefined type `{first_v.name}`{hint}",
+                                    first_v.span,
+                                )
+                                break
+                    if isinstance(base_type, AlgebraicType):
+                        inherited_variants = list(base_type.variants)
+                        own_variants_start = 1
+                        self._used_types.add(first_v.name)
+            variants.extend(inherited_variants)
+            for v in body.variants[own_variants_start:]:
                 vfields: dict[str, Type] = {}
                 for f in v.fields:
                     vfields[f.name] = self._resolve_type_expr(f.type_expr)
                 variants.append(VariantInfo(v.name, vfields))
             resolved = AlgebraicType(td.name, variants, type_params)
             # Register each variant as a constructor function
-            for v in body.variants:
-                vfield_types = [self._resolve_type_expr(f.type_expr) for f in v.fields]
+            # (both inherited and own variants)
+            for vi in variants:
                 vsig = FunctionSignature(
                     verb=None,
-                    name=v.name,
-                    param_names=[f.name for f in v.fields],
-                    param_types=vfield_types,
+                    name=vi.name,
+                    param_names=list(vi.fields.keys()),
+                    param_types=list(vi.fields.values()),
                     return_type=resolved,
                     can_fail=False,
-                    span=v.span,
+                    span=td.span,
                     requires=[],
                 )
                 self.symbols.define_function(vsig)
@@ -937,7 +975,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     def _register_import(self, imp: ImportDecl) -> None:
         """Register imported names, loading from stdlib if available."""
-        from prove.stdlib_loader import is_stdlib_module, load_stdlib
+        from prove.stdlib_loader import is_stdlib_module, load_stdlib, load_stdlib_types
 
         # .ModuleName prefix forces local-only resolution
         if getattr(imp, "local", False):
@@ -1030,7 +1068,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Type imports (verb="types" or bare CamelCase with no verb)
             is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
             if is_type_import:
-                resolved = PrimitiveType(item.name)
+                # Try to load rich type definition from stdlib
+                stdlib_types = load_stdlib_types(imp.module)
+                resolved: Type = stdlib_types.get(item.name, PrimitiveType(item.name))
                 self.symbols.define(
                     Symbol(
                         name=item.name,
@@ -1042,6 +1082,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     )
                 )
                 self.symbols.define_type(item.name, resolved)
+                # Register variant constructors for algebraic types
+                if isinstance(resolved, AlgebraicType):
+                    for vi in resolved.variants:
+                        vsig = FunctionSignature(
+                            verb=None,
+                            name=vi.name,
+                            param_names=list(vi.fields.keys()),
+                            param_types=list(vi.fields.values()),
+                            return_type=resolved,
+                            can_fail=False,
+                            span=item.span,
+                            requires=[],
+                        )
+                        self.symbols.define_function(vsig)
                 continue
 
             # Register ALL verb overloads of the function so channel
@@ -1308,6 +1362,42 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     ):
                         sym.resolved_type = sym.resolved_type.args[0]
 
+        # Bind implicit variables for renders/listens verbs
+        # These are marked as used since they're consumed by the runtime dispatch
+        if fd.verb in ("renders", "listens") and fd.event_type is not None:
+            evt_type = self._resolve_type_expr(fd.event_type)
+            if evt_type is not None:
+                ev_sym = Symbol(
+                    name="event",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=evt_type,
+                    span=fd.span,
+                )
+                ev_sym.used = True
+                self.symbols.define(ev_sym)
+        if fd.verb == "renders" and fd.state_init is not None:
+            state_type = self._infer_expr(fd.state_init)
+            if state_type is not None:
+                st_sym = Symbol(
+                    name="state",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=state_type,
+                    span=fd.span,
+                )
+                st_sym.used = True
+                self.symbols.define(st_sym)
+        if fd.verb == "listens" and fd.state_type is not None:
+            st = self._resolve_type_expr(fd.state_type)
+            if st is not None:
+                st_sym = Symbol(
+                    name="state",
+                    kind=SymbolKind.VARIABLE,
+                    resolved_type=st,
+                    span=fd.span,
+                )
+                st_sym.used = True
+                self.symbols.define(st_sym)
+
         # Check verb rules
         self._check_verb_rules(fd)
 
@@ -1374,7 +1464,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         ],
                     )
                 )
-        elif not isinstance(body_type, ErrorType) and not types_compatible(return_type, body_type):
+        elif (
+            fd.verb not in ("renders", "listens")
+            and not isinstance(body_type, ErrorType)
+            and not types_compatible(return_type, body_type)
+        ):
             # For failable functions, body can return the success type
             # e.g. Result<Integer, Error>! function body can return Integer
             success_compatible = False
@@ -1457,14 +1551,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         is_inputs_no_args = fd.verb == "inputs" and not fd.params
         body_len = len(fd.body)
         no_contracts = not fd.requires and not fd.ensures
-        if body_len > 5 and no_contracts and not is_inputs_no_args:
+        is_trusted = fd.trusted is not None
+        if body_len > 5 and no_contracts and not is_inputs_no_args and not is_trusted:
             self._info(
                 "I320",
                 f"Function '{fd.name}' has {body_len} statements but no contracts. "
                 "Consider adding requires/ensures for mutation testing.",
                 fd.span,
             )
-        elif body_len > 1 and fd.verb in ("transforms", "matches") and no_contracts:
+        elif (
+            body_len > 1
+            and fd.verb in ("transforms", "matches")
+            and no_contracts
+            and not is_trusted
+        ):
             self._info(
                 "I320",
                 f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
@@ -1551,6 +1651,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
         """Validate a binary lookup table (E379, E387, W350)."""
+        if span.file.startswith("<stdlib:"):
+            return  # Skip validation for stdlib types
         num_columns = len(body.value_types)
         _ALLOWED_BINARY_TYPES = {"String", "Integer", "Decimal", "Float", "Boolean", "Verb"}
         for vt in body.value_types:
@@ -1928,7 +2030,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._check_async_body(fd)
             if verb == "attached" and fd.return_type is None:
                 self._error("E370", "`attached` verb must have a return type", fd.span)
-            if verb in ("detached", "listens", "renders") and fd.return_type is not None:
+            if verb in ("detached", "renders") and fd.return_type is not None:
                 self._error(
                     "E374",
                     f"`{verb}` verb cannot declare a return type; "
@@ -1951,29 +2053,49 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
             else:
                 resolved_et = self._resolve_type_expr(fd.event_type)
-                if resolved_et is not None and not isinstance(resolved_et, AlgebraicType):
+                # For renders, event_type must be algebraic; for listens, it can be
+                # a variant name used as an event filter (e.g. KeyDown)
+                if (
+                    verb == "renders"
+                    and resolved_et is not None
+                    and not isinstance(resolved_et, AlgebraicType)
+                ):
                     self._error(
                         "E401",
                         "`event_type` must reference an algebraic type",
                         fd.event_type.span,
                     )
-            # E402: first parameter must be List<Attached>
-            if not fd.params:
-                self._error(
-                    "E402",
-                    f"`{verb}` first parameter must be `List<Attached>`",
-                    fd.span,
-                )
-            else:
+            # E402: renders requires List<Listens>, listens optionally takes List<Attached>
+            if verb == "renders":
+                expected_elem = "Listens"
+                if not fd.params:
+                    self._error(
+                        "E402",
+                        "`renders` first parameter must be `List<Listens>`",
+                        fd.span,
+                    )
+                else:
+                    first_type = self._resolve_type_expr(fd.params[0].type_expr)
+                    if not (
+                        isinstance(first_type, ListType)
+                        and isinstance(first_type.element, PrimitiveType)
+                        and first_type.element.name == expected_elem
+                    ):
+                        self._error(
+                            "E402",
+                            "`renders` first parameter must be `List<Listens>`",
+                            fd.params[0].span,
+                        )
+            elif verb == "listens" and fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
-                if not (
+                if first_type is not None and not (
                     isinstance(first_type, ListType)
                     and isinstance(first_type.element, PrimitiveType)
                     and first_type.element.name == "Attached"
                 ):
                     self._error(
                         "E402",
-                        f"`{verb}` first parameter must be `List<Attached>`",
+                        "`listens` first parameter, if present, must be `List<Attached>`",
                         fd.params[0].span,
                     )
         # state_init annotation rules (renders only)
@@ -1989,11 +2111,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 "`renders` verb requires a `state_init` annotation",
                 fd.span,
             )
-        # state_type annotation rules (attached only)
-        if fd.state_type is not None and verb != "attached":
+        # state_type annotation rules (listens only)
+        if fd.state_type is not None and verb != "listens":
             self._error(
                 "E409",
-                "`state_type` annotation is only valid on `attached` verb",
+                "`state_type` annotation is only valid on `listens` verb",
                 fd.span,
             )
 
@@ -2027,7 +2149,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 fname = expr.func.name
                 sig = self.symbols.resolve_function_any(fname)
                 if sig:
-                    if sig.verb in _BLOCKING_VERBS and fd.verb not in ("detached", "attached"):
+                    if sig.verb in _BLOCKING_VERBS and fd.verb not in (
+                        "detached",
+                        "attached",
+                        "renders",
+                    ):
                         self._error(
                             "E371",
                             f"async body cannot call blocking IO function '{fname}'; "
@@ -2862,13 +2988,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     break
 
         # Check exhaustiveness for algebraic types
-        if isinstance(subject_type, AlgebraicType):
-            self._check_exhaustiveness(expr, subject_type)
-        elif isinstance(subject_type, GenericInstance) and subject_type.base_name in (
-            "Result",
-            "Option",
-        ):
-            self._check_generic_exhaustiveness(expr, subject_type)
+        # Skip for renders/listens — event dispatch doesn't require exhaustiveness
+        _is_event_dispatch = (
+            self._current_function is not None
+            and isinstance(self._current_function, FunctionDef)
+            and self._current_function.verb in ("renders", "listens")
+        )
+        if not _is_event_dispatch:
+            if isinstance(subject_type, AlgebraicType):
+                self._check_exhaustiveness(expr, subject_type)
+            elif isinstance(subject_type, GenericInstance) and subject_type.base_name in (
+                "Result",
+                "Option",
+            ):
+                self._check_generic_exhaustiveness(expr, subject_type)
 
         # I301: detect unreachable arms after always-matching record pattern
         resolved_subj = subject_type
@@ -2923,7 +3056,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 value_type = t
                 break
         if value_type is not None:
-            if cur_verb not in ("listens", "streams"):
+            if cur_verb not in ("listens", "streams", "renders"):
                 result_type = value_type
                 for arm_type, arm in arm_types:  # type: ignore
                     if isinstance(arm_type, UnitType):
@@ -3152,6 +3285,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             pass  # matches everything
         elif isinstance(pattern, LiteralPattern):
             pass  # literal match
+        elif isinstance(pattern, LookupPattern):
+            # Mark the type name as used (e.g. Key in Key:Escape)
+            self._used_types.add(pattern.type_name)
+            # Verify the type is defined
+            resolved_lt = self.symbols.resolve_type(pattern.type_name)
+            if resolved_lt is None:
+                self._error(
+                    "E300",
+                    f"undefined type `{pattern.type_name}`",
+                    pattern.span,
+                )
 
     def _check_generic_variant_pattern(
         self, pattern: VariantPattern, subject_type: GenericInstance
@@ -3516,6 +3660,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """W303: warn about user-defined types that are never referenced."""
         for name, span in self._user_types.items():
             if name not in self._used_types:
+                # Skip stdlib types — they may be unused in the user's module
+                if span.file.startswith("<stdlib:"):
+                    continue
                 self._info(
                     "I303",
                     f"Type '{name}' is defined but never used.",

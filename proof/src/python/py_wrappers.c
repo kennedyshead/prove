@@ -14,8 +14,11 @@
  */
 #include "prove_string.h"
 #include <Python.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 /* Generated into build/gen/ by the Prove compiler when foreign libpython3
@@ -33,16 +36,28 @@ void py_initialize(void) {
   Py_SetPythonHome(_home);
 #endif
   Py_Initialize();
-  /* Write the bundled prove package to a temp zip and prepend to sys.path
-   * so `import prove` works regardless of the working directory. */
-  char tmp[] = "/tmp/prove_bundle_XXXXXX.zip";
-  int fd = mkstemps(tmp, 4);
+  /* Write the bundled prove package to a zip next to the binary and prepend
+   * to sys.path so `import prove` works regardless of the working directory.
+   * Uses a fixed name beside the binary to avoid /tmp accumulation. */
+  extern const char *__prove_binary_path;  /* set by main before py_initialize */
+  const char *bin_path = __prove_binary_path;
+  char bundle_path[4096];
+  if (bin_path) {
+    /* Place bundle zip next to the binary: <dir>/.prove_bundle.zip */
+    const char *last_slash = strrchr(bin_path, '/');
+    size_t dir_len = last_slash ? (size_t)(last_slash - bin_path) : 1;
+    snprintf(bundle_path, sizeof(bundle_path), "%.*s/.prove_bundle.zip",
+             (int)dir_len, last_slash ? bin_path : ".");
+  } else {
+    snprintf(bundle_path, sizeof(bundle_path), ".prove_bundle.zip");
+  }
+  int fd = open(bundle_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd >= 0) {
     write(fd, prove_bundle_zip, prove_bundle_zip_len);
     close(fd);
     PyObject *sys_mod = PyImport_ImportModule("sys");
     PyObject *path = PyObject_GetAttrString(sys_mod, "path");
-    PyObject *zip_str = PyUnicode_FromString(tmp);
+    PyObject *zip_str = PyUnicode_FromString(bundle_path);
     PyList_Insert(path, 0, zip_str);
     Py_DECREF(zip_str);
     Py_DECREF(path);

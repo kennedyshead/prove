@@ -145,7 +145,7 @@ class TypeEmitterMixin:
                     self._emit_record_constructor(cname, name, ty.fields)
             elif isinstance(ty, AlgebraicType):
                 self._emit_algebraic_struct(cname, ty.variants)
-                if name in direct_names:
+                if name in direct_names and not self._is_inherited_base_type(name):
                     self._emit_variant_constructors(cname, ty.variants)
 
     def _emit_record_to_value_converters(self) -> None:
@@ -411,6 +411,22 @@ class TypeEmitterMixin:
             self._line("}")
             self._line("")
 
+    def _is_inherited_base_type(self, type_name: str) -> bool:
+        """Check if a type is used as a base type by another algebraic type."""
+        for td in self._all_type_defs():
+            if td.name == type_name:
+                continue
+            resolved = self._symbols.resolve_type(td.name)
+            if isinstance(resolved, AlgebraicType):
+                # Check if any variant shares a name with a variant in the base type
+                base_type = self._symbols.resolve_type(type_name)
+                if isinstance(base_type, AlgebraicType):
+                    base_names = {v.name for v in base_type.variants}
+                    child_names = {v.name for v in resolved.variants}
+                    if base_names.issubset(child_names) and base_names:
+                        return True
+        return False
+
     def _variant_fields_dict(self, v: Any) -> dict[str, Type]:
         """Get fields dict from a variant (resolved VariantInfo or AST node)."""
         if isinstance(v.fields, dict):
@@ -443,8 +459,18 @@ class TypeEmitterMixin:
             self._emit_record_constructor(cname, td.name, fields)
 
         elif isinstance(body, AlgebraicTypeDef):
-            self._emit_algebraic_struct(cname, body.variants)
-            self._emit_variant_constructors(cname, body.variants)
+            # Use resolved type from checker (includes inherited variants)
+            resolved_type = self._symbols.resolve_type(td.name)
+            if isinstance(resolved_type, AlgebraicType) and resolved_type.variants:
+                self._emit_algebraic_struct(cname, resolved_type.variants)
+                # Skip constructors if this type is a base for another type
+                # (child type will emit constructors with its own return type)
+                if not self._is_inherited_base_type(td.name):
+                    self._emit_variant_constructors(cname, resolved_type.variants)
+            else:
+                self._emit_algebraic_struct(cname, body.variants)
+                if not self._is_inherited_base_type(td.name):
+                    self._emit_variant_constructors(cname, body.variants)
 
         elif isinstance(body, BinaryDef):
             # Opaque pointer typedef for C-backed types

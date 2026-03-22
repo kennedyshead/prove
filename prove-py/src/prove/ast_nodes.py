@@ -69,7 +69,17 @@ class BindingPattern:
     span: Span
 
 
-Pattern = Union[VariantPattern, WildcardPattern, LiteralPattern, BindingPattern]
+@dataclass(frozen=True)
+class LookupPattern:
+    """Pattern for Type:value matching (e.g. Key:Escape, Key:"k", Key:Space)."""
+
+    type_name: str
+    lookup_value: str
+    span: Span
+    value_kind: str = "identifier"  # "identifier", "string", "integer"
+
+
+Pattern = Union[VariantPattern, WildcardPattern, LiteralPattern, BindingPattern, LookupPattern]
 
 
 # ── Expressions ──────────────────────────────────────────────────

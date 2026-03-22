@@ -46,6 +46,7 @@ from prove.ast_nodes import (
     LiteralPattern,
     LookupAccessExpr,
     LookupEntry,
+    LookupPattern,
     LookupTypeDef,
     MainDef,
     MatchArm,
@@ -517,6 +518,7 @@ class Parser:
                 terminates_expr = self._parse_expression(0)
             elif self._at(TokenKind.TRUSTED):
                 self._advance()
+                self._expect(TokenKind.COLON)
                 if self._at(TokenKind.STRING_LIT):
                     is_trusted = self._advance().value
                 else:
@@ -653,6 +655,24 @@ class Parser:
             isinstance(arm.pattern, VariantPattern) and arm.pattern.name == "Exit"
             for arm in match_expr.arms
         )
+        # Also check for Exit() calls in arm bodies (e.g. Key:Escape => Exit(state))
+        if not has_exit:
+            for arm in match_expr.arms:
+                for stmt in arm.body:
+                    call: CallExpr | None = None
+                    if isinstance(stmt, CallExpr):
+                        call = stmt
+                    elif isinstance(stmt, ExprStmt) and isinstance(stmt.expr, CallExpr):
+                        call = stmt.expr
+                    if (
+                        call is not None
+                        and isinstance(call.func, (IdentifierExpr, TypeIdentifierExpr))
+                        and call.func.name == "Exit"
+                    ):
+                        has_exit = True
+                        break
+                if has_exit:
+                    break
         if not has_exit:
             self._error(
                 "`listens`/`streams`/`renders` match must have an `Exit()` arm",
@@ -2127,7 +2147,17 @@ class Parser:
                 elif self.tokens[idx].kind == TokenKind.RPAREN:
                     depth -= 1
                 idx += 1
-        # After variant, should see =>
+        # Lookup pattern: TypeId:value => (e.g. Key:Escape =>)
+        elif idx < len(self.tokens) and self.tokens[idx].kind == TokenKind.COLON:
+            idx += 1  # skip ':'
+            if idx < len(self.tokens) and self.tokens[idx].kind in (
+                TokenKind.TYPE_IDENTIFIER,
+                TokenKind.IDENTIFIER,
+                TokenKind.STRING_LIT,
+                TokenKind.INTEGER_LIT,
+            ):
+                idx += 1  # skip the lookup value
+        # After variant/lookup, should see =>
         return idx < len(self.tokens) and self.tokens[idx].kind == TokenKind.FAT_ARROW
 
     def _parse_implicit_match_arms(self) -> list[MatchArm]:
@@ -2762,9 +2792,43 @@ class Parser:
         )
         raise _ParseError
 
-    def _parse_variant_pattern(self) -> VariantPattern:
+    def _parse_variant_pattern(self) -> VariantPattern | LookupPattern:
         start = self._current().span
         name_tok = self._advance()
+
+        # Lookup pattern: TypeId:value (e.g. Key:Escape, Key:"k", Key:Space)
+        if self._at(TokenKind.COLON):
+            self._advance()  # skip ':'
+            val_tok = self._current()
+            if val_tok.kind == TokenKind.TYPE_IDENTIFIER:
+                self._advance()
+                return LookupPattern(
+                    name_tok.value, val_tok.value, self._span(start, val_tok.span), "identifier"
+                )
+            elif val_tok.kind == TokenKind.IDENTIFIER:
+                self._advance()
+                return LookupPattern(
+                    name_tok.value, val_tok.value, self._span(start, val_tok.span), "identifier"
+                )
+            elif val_tok.kind == TokenKind.STRING_LIT:
+                self._advance()
+                return LookupPattern(
+                    name_tok.value, val_tok.value, self._span(start, val_tok.span), "string"
+                )
+            elif val_tok.kind == TokenKind.INTEGER_LIT:
+                self._advance()
+                return LookupPattern(
+                    name_tok.value, val_tok.value, self._span(start, val_tok.span), "integer"
+                )
+            else:
+                self._error(
+                    "expected a lookup value after ':' but found "
+                    f"{_token_display(val_tok.kind, val_tok.value)}",
+                    val_tok.span,
+                    code="E210",
+                )
+                raise _ParseError
+
         fields: list[Pattern] = []
 
         if self._at(TokenKind.LPAREN):
