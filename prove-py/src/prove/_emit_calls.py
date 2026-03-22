@@ -1024,15 +1024,37 @@ class CallEmitterMixin:
             # In renders/listens loop, variant calls are event self-dispatches
             # (e.g. Draw(state) enqueues a Draw event on the event queue)
             if self._in_renders_loop or self._in_listens_loop:
-                sig = self._symbols.resolve_function(None, name, len(expr.args))
-                if sig and isinstance(sig.return_type, AlgebraicType):
-                    evt_cname = map_type(sig.return_type).decl
+                # Resolve the concrete event type:
+                # - renders: use the function's event_type (TodoEvent)
+                # - listens: use the function's return type (TodoEvent)
+                func_sig = (
+                    self._symbols.resolve_function(
+                        self._current_func.verb,
+                        self._current_func.name,
+                        len(self._current_func.params),
+                    )
+                    if self._current_func
+                    else None
+                )
+                if self._in_renders_loop:
+                    event_type = func_sig.event_type if func_sig else None
+                else:
+                    event_type = func_sig.return_type if func_sig else None
+                # Verify this is actually a variant of the event type
+                if (
+                    event_type
+                    and isinstance(event_type, AlgebraicType)
+                    and any(v.name == name for v in event_type.variants)
+                ):
+                    evt_cname = map_type(event_type).decl
                     tag = f"{evt_cname}_TAG_{name.upper()}"
                     if self._in_renders_loop:
                         self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
                     else:
-                        # In listens coroutine — set result tag for renders to consume
-                        self._line(f"_ev.tag = {tag};")
+                        # In listens translator — set result tag.
+                        # Do NOT return here: the switch break + function
+                        # epilogue handles *_state_ptr = state and return.
+                        self._line(f"_result.tag = {tag};")
                     return "(void)0"
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))

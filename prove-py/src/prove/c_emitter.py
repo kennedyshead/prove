@@ -182,6 +182,50 @@ class CEmitter(
                         self._lookup_tables[td.name] = td.body
                         if td.body.is_store_backed:
                             self._store_lookup_types.add(td.name)
+        # Also collect lookup tables from imported stdlib modules
+        self._load_imported_lookup_tables()
+
+    def _load_imported_lookup_tables(self) -> None:
+        """Load lookup tables from imported stdlib modules (e.g. UI.Key)."""
+        from prove.stdlib_loader import is_stdlib_module, stdlib_prv_path
+
+        imported_type_names: set[str] = set()
+        imported_modules: set[str] = set()
+        for decl in self._module.declarations:
+            if not isinstance(decl, ModuleDecl):
+                continue
+            for imp in decl.imports:
+                if not is_stdlib_module(imp.module):
+                    continue
+                for item in imp.items:
+                    if item.verb == "types":
+                        if item.name not in self._lookup_tables:
+                            imported_type_names.add(item.name)
+                            imported_modules.add(imp.module)
+
+        if not imported_type_names:
+            return
+
+        from prove.lexer import Lexer
+        from prove.parser import Parser
+
+        for mod_name in imported_modules:
+            prv_path = stdlib_prv_path(mod_name)
+            if prv_path is None or not prv_path.exists():
+                continue
+            try:
+                src = prv_path.read_text()
+                tokens = Lexer(src, str(prv_path)).lex()
+                parsed = Parser(tokens, str(prv_path)).parse()
+                for pdecl in parsed.declarations:
+                    if isinstance(pdecl, ModuleDecl):
+                        for td in pdecl.types:
+                            if td.name in imported_type_names and isinstance(
+                                td.body, LookupTypeDef
+                            ):
+                                self._lookup_tables[td.name] = td.body
+            except Exception:
+                pass  # Silently skip parse errors for stdlib files
 
     def _all_type_defs(self) -> list[TypeDef]:
         """Collect all TypeDef nodes from ModuleDecl blocks."""
@@ -1001,6 +1045,18 @@ class CEmitter(
                         else "Prove_Coro *_caller"
                     )  # noqa: E501
                     self._line(f"{ret_decl} {mangled}({param_str});")
+                elif decl.verb == "listens" and decl.event_type is not None:
+                    # Listens translator: takes raw payload + state pointer
+                    ret_ct = map_type(sig.return_type)
+                    state_type_expr = decl.state_type
+                    state_ct_str = "void *"
+                    if state_type_expr:
+                        resolved_st = self._symbols.resolve_type(
+                            getattr(state_type_expr, "name", "")
+                        )
+                        if resolved_st:
+                            state_ct_str = f"{map_type(resolved_st).decl} *"
+                    self._line(f"{ret_ct.decl} {mangled}(int64_t _key, {state_ct_str}_state_ptr);")
                 elif decl.verb in ("listens", "renders"):
                     param_str = ", ".join(params) if params else "void"
                     self._line(f"void {mangled}({param_str});")
@@ -1060,6 +1116,11 @@ class CEmitter(
         # Renders verb: event-driven render loop
         if fd.verb == "renders":
             self._emit_renders_function(fd)
+            return
+
+        # Listens with event_type = inline translator function (not coroutine)
+        if fd.verb == "listens" and fd.event_type is not None:
+            self._emit_listens_translator(fd)
             return
 
         # Async verbs get specialized emission
@@ -1505,6 +1566,77 @@ class CEmitter(
 
         self._line("_listens_exit:;")
 
+    def _emit_listens_translator(self, fd: FunctionDef) -> None:
+        """Emit a listens verb as an inline event translator function.
+
+        Instead of a coroutine, emits a regular C function that:
+        - Takes the raw event payload (int64_t for KeyDown) and mutable state pointer
+        - Matches on the payload via LookupPattern (Key:Escape → case 27)
+        - Returns the translated app event type
+        """
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        if not sig:
+            return
+
+        param_types: list[Type] = []
+        for p in fd.params:
+            if sig:
+                idx = next((i for i, n in enumerate(sig.param_names) if n == p.name), None)
+                if idx is not None and idx < len(sig.param_types):
+                    param_types.append(sig.param_types[idx])
+                    continue
+            param_types.append(INTEGER)
+
+        self._current_func = fd
+        self._current_func_return = sig.return_type
+        self._current_requires = fd.requires
+        self._locals.clear()
+        self._used_names.clear()
+
+        mangled = mangle_name(fd.verb, fd.name, param_types, module=self._module_name)
+        ret_ct = map_type(sig.return_type)
+
+        # Resolve state type from state_type annotation
+        state_ct_str = "void *"
+        state_type = None
+        state_ct = None
+        if fd.state_type:
+            resolved_st = self._symbols.resolve_type(getattr(fd.state_type, "name", ""))
+            if resolved_st:
+                state_type = resolved_st
+                state_ct = map_type(resolved_st)
+                state_ct_str = f"{state_ct.decl} *"
+
+        self._line(f"{ret_ct.decl} {mangled}(int64_t _key, {state_ct_str}_state_ptr) {{")
+        self._indent += 1
+
+        # Copy state from pointer to local for natural .field access
+        if state_type and state_ct:
+            self._line(f"{state_ct.decl} state = *_state_ptr;")
+            self._locals["state"] = state_type
+
+        # Make _key available as local
+        self._locals["_key"] = INTEGER
+
+        # Declare result variable
+        self._line(f"{ret_ct.decl} _result;")
+        self._line("memset(&_result, 0, sizeof(_result));")
+
+        # Emit the match body — the implicit subject for listens is _key
+        self._in_listens_loop = True
+        for stmt in fd.body:
+            self._emit_stmt(stmt)
+        self._in_listens_loop = False
+
+        # Copy mutated state back to pointer
+        if state_type:
+            self._line("*_state_ptr = state;")
+
+        self._line("return _result;")
+        self._indent -= 1
+        self._line("}")
+        self._line("")
+
     def _emit_renders_function(self, fd: FunctionDef) -> None:
         """Emit a renders verb function — event-driven render loop.
 
@@ -1569,6 +1701,29 @@ class CEmitter(
 
         event_type = sig.event_type if sig else None
 
+        # Collect registered listens translators from module declarations
+        listeners: list[tuple[str, str, int]] = []  # (mangled_name, event_name, tag_idx)
+        if event_type and isinstance(event_type, AlgebraicType):
+            for decl in self._all_function_defs():
+                if decl.verb == "listens" and decl.event_type is not None:
+                    lsig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
+                    if not lsig:
+                        continue
+                    evt_name = getattr(decl.event_type, "name", "")
+                    # Find the tag index for this event in the renders event type
+                    tag_idx = next(
+                        (i for i, v in enumerate(event_type.variants) if v.name == evt_name),
+                        None,
+                    )
+                    if tag_idx is not None:
+                        l_mangled = mangle_name(
+                            decl.verb,
+                            decl.name,
+                            lsig.param_types,
+                            module=self._module_name,
+                        )
+                        listeners.append((l_mangled, evt_name, tag_idx))
+
         # Send initial Draw event to render the first frame
         if event_type:
             ct = map_type(event_type)
@@ -1583,20 +1738,46 @@ class CEmitter(
         if event_type:
             ct = map_type(event_type)
             self._line(f"{ct.decl} _ev;")
-            self._line("_ev.tag = _node->tag;")
-            self._line("if (_node->payload) {")
-            self._indent += 1
-            self._line(f"_ev = *({ct.decl}*)_node->payload;")
-            self._line("free(_node->payload);")
-            self._indent -= 1
-            self._line("} else {")
-            self._indent += 1
-            self._line("_ev.tag = _node->tag;")
-            self._indent -= 1
-            self._line("}")
-            self._locals["_ev"] = event_type
 
-        self._line("free(_node);")
+            # Dispatch raw events to registered listeners
+            if listeners:
+                first_listener = True
+                for l_mangled, evt_name, tag_idx in listeners:
+                    keyword = "if" if first_listener else "} else if"
+                    self._line(f"{keyword} (_node->tag == {tag_idx}) {{")
+                    self._indent += 1
+                    # Extract payload for this event type (KeyDown → int64_t key)
+                    self._line("int64_t _key = _node->payload ? *(int64_t*)_node->payload : 0;")
+                    self._line("if (_node->payload) free(_node->payload);")
+                    self._line("free(_node);")
+                    self._line(f"_ev = {l_mangled}(_key, &state);")
+                    self._indent -= 1
+                    first_listener = False
+                # Fallthrough for non-listener events
+                self._line("} else {")
+                self._indent += 1
+                self._line("_ev.tag = _node->tag;")
+                self._line("if (_node->payload) {")
+                self._indent += 1
+                self._line(f"_ev = *({ct.decl}*)_node->payload;")
+                self._line("free(_node->payload);")
+                self._indent -= 1
+                self._line("}")
+                self._line("free(_node);")
+                self._indent -= 1
+                self._line("}")
+            else:
+                # No listeners — handle events directly
+                self._line("_ev.tag = _node->tag;")
+                self._line("if (_node->payload) {")
+                self._indent += 1
+                self._line(f"_ev = *({ct.decl}*)_node->payload;")
+                self._line("free(_node->payload);")
+                self._indent -= 1
+                self._line("}")
+                self._line("free(_node);")
+
+            self._locals["_ev"] = event_type
 
         # Dispatch
         self._in_renders_loop = True

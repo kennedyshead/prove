@@ -556,9 +556,38 @@ class ExprEmitterMixin:
                     mangled = fname
                 return f"{mangled}({args_str})"
             if sig and sig.verb in ("listens", "renders"):
+                # For renders with translator listeners, skip worker coro
+                # creation — renders discovers listeners from module declarations
+                if sig.verb == "renders" and self._has_translator_listeners(inner):
+                    from prove.c_types import mangle_name
+
+                    mangled = mangle_name(
+                        sig.verb,
+                        fname,
+                        sig.param_types,
+                        module=self._sig_module(sig),
+                    )
+                    # Pass empty list — renders discovers listeners from declarations
+                    list_tmp = self._tmp()
+                    self._line(f"Prove_List *{list_tmp} = prove_list_new(0);")
+                    return f"{mangled}({list_tmp})"
                 return self._emit_listens_call(inner, sig)
         # Detached or bare: emit the inner expression directly
         return self._emit_expr(inner)
+
+    def _has_translator_listeners(self, call: CallExpr) -> bool:
+        """Check if a renders call's List<Listens> arg contains translator listeners."""
+        from prove.ast_nodes import IdentifierExpr as _IE
+        from prove.ast_nodes import ListLiteral
+
+        if not call.args or not isinstance(call.args[0], ListLiteral):
+            return False
+        for elem in call.args[0].elements:
+            if isinstance(elem, _IE):
+                wsig = self._symbols.resolve_function_any(elem.name)
+                if wsig and wsig.verb == "listens" and wsig.event_type is not None:
+                    return True
+        return False
 
     def _emit_listens_call(self, call: CallExpr, sig) -> str:
         """Emit a listens call with worker coro creation for List<Attached> args."""

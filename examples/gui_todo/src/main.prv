@@ -1,0 +1,64 @@
+module TodoApp
+  narrative: """
+    GUI todo list with add, toggle, and delete.
+    Expected to fail: check, check_md, check_strict, build, build_debug.
+  """
+  Graphic types GraphicAppEvent outputs window button text_input checkbox
+  UI types Key
+
+  type TodoItem is
+    text String
+    done Boolean
+
+  type TodoState is
+    items List<TodoItem>
+    new_text String
+
+  type TodoApp is GraphicAppEvent
+    | AddItem
+    | RemoveItem(index Integer)
+
+transforms checkbox(item TodoItem) TodoState
+from
+    done as Boolean = checkbox(item.text, item.done)
+    match button(f"Delete##{index}")
+        true => RemoveItem(index)
+        false => Unit
+    state.new_text = new_text
+
+renders interface(registered_attached_verbs List<Attached>)
+  event_type TodoApp
+  state_init TodoState([], "")
+from
+    Draw(state) =>
+        window("Todo List", 400, 500)
+        new_text as String = text_input("New item", state.new_text)
+        match button("Add")
+            true => AddItem
+            false =>
+                each(state.items, checkbox)
+                Draw(state)
+    AddItem =>
+        match state.new_text.length > 0
+            true =>
+                state.items = state.items.append(TodoItem(state.new_text, false))
+                state.new_text = ""
+                Draw(state)
+            false => Draw(state)
+    RemoveItem(index) =>
+        state.items = state.items.remove(index)
+        Draw(state)
+    Tick(state) => Draw(state)
+    Exit(state) => Unit
+
+listens on_key() TodoApp
+  event_type KeyDown
+  state_type TodoState
+from
+    Key:Escape => Exit
+    Key:Enter => AddItem
+    _ => Tick(state)
+
+main()
+from
+    interface([on_key])
