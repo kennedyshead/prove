@@ -37,41 +37,44 @@ void py_initialize(void) {
   Py_SetPythonHome(_home);
 #endif
   Py_Initialize();
-  /* Write the bundled prove package to a zip next to the binary and prepend
-   * to sys.path so `import prove` works regardless of the working directory.
-   * Uses a fixed name beside the binary to avoid /tmp accumulation. */
-  extern const char *__prove_binary_path;  /* set by main before py_initialize */
-  const char *bin_path = __prove_binary_path;
-  char bundle_path[4096];
-  if (bin_path) {
-    /* Place bundle zip next to the binary: <dir>/.prove_bundle.zip */
-    const char *last_slash = strrchr(bin_path, '/');
-    size_t dir_len = last_slash ? (size_t)(last_slash - bin_path) : 1;
-    snprintf(bundle_path, sizeof(bundle_path), "%.*s/.prove_bundle.zip",
-             (int)dir_len, last_slash ? bin_path : ".");
-  } else {
-    snprintf(bundle_path, sizeof(bundle_path), ".prove_bundle.zip");
-  }
-  /* Check if bundle already exists with correct size — skip rewrite to avoid
-   * races when multiple proof processes run in parallel (e.g. e2e tests). */
-  bool needs_write = true;
-  struct stat st;
-  if (stat(bundle_path, &st) == 0 &&
-      (size_t)st.st_size == prove_bundle_zip_len) {
-    needs_write = false;
-  }
-  if (needs_write) {
-    /* Atomic write: create temp file, write, rename over target. */
-    char tmp_path[4096];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.%d", bundle_path, getpid());
-    int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd >= 0) {
-      write(fd, prove_bundle_zip, prove_bundle_zip_len);
-      close(fd);
-      rename(tmp_path, bundle_path);
+  /* Only unpack the bundle if the build actually included Python packages. */
+  if (prove_bundle_zip_len > 0) {
+    /* Write the bundled prove package to a zip under a build/ directory beside
+     * the binary and prepend to sys.path so `import prove` works regardless of
+     * the working directory. */
+    extern const char *__prove_binary_path;  /* set by main before py_initialize */
+    const char *bin_path = __prove_binary_path;
+    char bundle_dir[4096];
+    char bundle_path[4096];
+    if (bin_path) {
+      const char *last_slash = strrchr(bin_path, '/');
+      size_t dir_len = last_slash ? (size_t)(last_slash - bin_path) : 1;
+      snprintf(bundle_dir, sizeof(bundle_dir), "%.*s/build",
+               (int)dir_len, last_slash ? bin_path : ".");
+    } else {
+      snprintf(bundle_dir, sizeof(bundle_dir), "build");
     }
-  }
-  {
+    mkdir(bundle_dir, 0755);
+    snprintf(bundle_path, sizeof(bundle_path), "%s/.prove_bundle.zip", bundle_dir);
+    /* Check if bundle already exists with correct size — skip rewrite to avoid
+     * races when multiple proof processes run in parallel (e.g. e2e tests). */
+    bool needs_write = true;
+    struct stat st;
+    if (stat(bundle_path, &st) == 0 &&
+        (size_t)st.st_size == prove_bundle_zip_len) {
+      needs_write = false;
+    }
+    if (needs_write) {
+      /* Atomic write: create temp file, write, rename over target. */
+      char tmp_path[4096];
+      snprintf(tmp_path, sizeof(tmp_path), "%s.%d", bundle_path, getpid());
+      int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (fd >= 0) {
+        write(fd, prove_bundle_zip, prove_bundle_zip_len);
+        close(fd);
+        rename(tmp_path, bundle_path);
+      }
+    }
     PyObject *sys_mod = PyImport_ImportModule("sys");
     PyObject *path = PyObject_GetAttrString(sys_mod, "path");
     PyObject *zip_str = PyUnicode_FromString(bundle_path);

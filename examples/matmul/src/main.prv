@@ -8,6 +8,8 @@ module Main
 
   Element (i,j) stored at index i*n + j.
   Generation: element(i,j) = seed / n / n * (i - j) * (i + j)
+
+  Expected to fail: check_strict 
   """
   System outputs console
   Array reads get creates array transforms set

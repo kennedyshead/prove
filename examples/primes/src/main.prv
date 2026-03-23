@@ -5,13 +5,15 @@ module Main
   Matching kostya/benchmarks C++ reference: Sieve of Atkin to find all primes
   up to UPPER_BOUND, store in a Trie keyed by digit strings, then search for
   all primes sharing a given prefix.
+
+  Expected to fail: check_strict 
   """
   System outputs console
   Sequence reads get length creates array transforms set
   Text reads length
   Character reads at
   Table types Table reads keys get creates new validates has transforms add
-  Types reads string code transforms unwrap
+  Types reads string code unwrap
   Parse reads object
 
   UPPER_BOUND as Integer = 5000000
@@ -163,7 +165,9 @@ from
         _ =>
             match get(sieve, n)
                 true =>
-                    eliminate_squares(eliminate_multiples(sieve, n, 1, limit), n + 1, limit)
+                    eliminate_squares(eliminate_multiples(sieve, n, 1, limit),
+                                      n + 1,
+                                      limit)
                 _ => eliminate_squares(sieve, n + 1, limit)
 
 /// Insert a prime into the trie by iterating its digits
@@ -182,7 +186,7 @@ from
             digit_key as String = string(code(digit))
             match valid has(digit_key, node)
                 true =>
-                    child as Table<Value> = object(unwrap(get(digit_key, node)))
+                    child as Table<Value> = object(unwrap(get(digit_key, node), 0))
                     updated_child as Table<Value> = trie_insert_digits(child, digits, idx + 1, str_len)
                     add(digit_key, updated_child, node)
                 _ =>
@@ -225,7 +229,7 @@ from
             digit_key as String = string(code(digit))
             match valid has(digit_key, node)
                 true =>
-                    child as Table<Value> = object(unwrap(get(digit_key, node)))
+                    child as Table<Value> = object(unwrap(get(digit_key, node), 0))
                     trie_find_prefix(child, prefix, idx + 1, str_len)
                 _ => new()
 
@@ -248,20 +252,40 @@ from
                 true =>
                     match acc == ""
                         true =>
-                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, prefix)
+                            collect_from_keys(node,
+                                              prefix,
+                                              key_list,
+                                              key_idx + 1,
+                                              key_count,
+                                              prefix)
                         _ =>
-                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, acc + ", " + prefix)
+                            collect_from_keys(node,
+                                              prefix,
+                                              key_list,
+                                              key_idx + 1,
+                                              key_count,
+                                              acc + ", " + prefix)
                 _ =>
                     match valid has(k, node)
                         true =>
-                            child as Table<Value> = object(unwrap(get(k, node)))
+                            child as Table<Value> = object(unwrap(get(k, node), 0))
                             sub as String = collect_primes(child, prefix + k)
                             new_acc as String = match acc == ""
                                 true => sub
                                 _ => acc + ", " + sub
-                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, new_acc)
+                            collect_from_keys(node,
+                                              prefix,
+                                              key_list,
+                                              key_idx + 1,
+                                              key_count,
+                                              new_acc)
                         _ =>
-                            collect_from_keys(node, prefix, key_list, key_idx + 1, key_count, acc)
+                            collect_from_keys(node,
+                                              prefix,
+                                              key_list,
+                                              key_idx + 1,
+                                              key_count,
+                                              acc)
 
 /// Collect all primes under a trie node as comma-separated string
 transforms collect_primes(node Table<Value>, prefix String) String
@@ -270,7 +294,7 @@ from
     key_count as Integer = length(all_keys)
     collect_from_keys(node, prefix, all_keys, 0, key_count, "")
 
-main() Result<Unit, Error>!
+main()
 from
     limit as Integer = UPPER_BOUND
     sieve0 as Array<Boolean>:[Mutable] = array(limit + 1, false)

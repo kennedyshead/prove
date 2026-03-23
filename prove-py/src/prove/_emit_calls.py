@@ -743,6 +743,38 @@ class CallEmitterMixin:
                             return f"prove_result_unwrap_double({args[0]})"
                         return f"prove_result_unwrap_int({args[0]})"
 
+            # unwrap(Option<Value>, default) → prove_error_unwrap_or with wrapped default
+            if name == "unwrap" and len(args) == 2 and expr.args:
+                arg_ty = self._infer_expr_type(expr.args[0])
+                if (
+                    isinstance(arg_ty, GenericInstance)
+                    and arg_ty.base_name == "Option"
+                    and arg_ty.args
+                    and getattr(arg_ty.args[0], "name", None) == "Value"
+                ):
+                    default_ty = self._infer_expr_type(expr.args[1])
+                    default_ct = map_type(default_ty)
+                    default_c = args[1]
+                    if default_ct.decl == "Prove_String*":
+                        default_c = f"prove_value_text({default_c})"
+                    elif default_ct.decl in (
+                        "int64_t",
+                        "int32_t",
+                        "int16_t",
+                        "int8_t",
+                        "uint64_t",
+                        "uint32_t",
+                        "uint16_t",
+                        "uint8_t",
+                    ):
+                        default_c = f"prove_value_number({default_c})"
+                    elif default_ct.decl in ("double", "float"):
+                        default_c = f"prove_value_decimal({default_c})"
+                    elif default_ct.decl == "bool":
+                        default_c = f"prove_value_boolean({default_c})"
+                    self._needed_headers.add("prove_error.h")
+                    return f"prove_error_unwrap_or({args[0]}, {default_c})"
+
             # Builtin mapping
             if name in BUILTIN_MAP:
                 c_name = BUILTIN_MAP[name]

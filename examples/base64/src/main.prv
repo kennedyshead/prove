@@ -5,6 +5,8 @@ module Main
   Uses Prove's native Parse.base64 stdlib (prove_parse_base64_encode/decode).
   Creates a large byte array from a repeated string, then runs encode/decode
   loops to measure throughput.
+
+  Expected to fail: check_strict 
   """
   System outputs console
   Parse reads base64 creates base64

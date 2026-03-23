@@ -473,6 +473,7 @@ _register_module(
         ("validates", "unit", "Option<String>"): "prove_error_none_str",
         ("reads", "unwrap", "Option<Integer>"): "prove_error_unwrap_or_int",
         ("reads", "unwrap", "Option<String>"): "prove_error_unwrap_or_str",
+        ("reads", "unwrap", "Option<Value>"): "prove_error_unwrap_or",
     },
 )
 

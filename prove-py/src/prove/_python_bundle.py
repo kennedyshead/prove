@@ -434,6 +434,16 @@ def maybe_generate_bundle(
         for fb in decl.foreign_blocks
     )
     if not uses_libpython:
+        # Write an empty stub so py_wrappers.c compiles without errors
+        stub = gen_dir / "prove_bundle_data.h"
+        if not stub.exists():
+            stub.write_text(
+                "/* No Python FFI — empty bundle. */\n"
+                "#pragma once\n"
+                "#include <stddef.h>\n"
+                "static const unsigned char prove_bundle_zip[] = {};\n"
+                "static const size_t prove_bundle_zip_len = 0;\n"
+            )
         return False
 
     py_entry_files = {p for p in comptime_deps if p.suffix == ".py"}
