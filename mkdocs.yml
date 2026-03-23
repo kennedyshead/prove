@@ -41,6 +41,7 @@ nav:
   - Examples:
       - Inventory Service: examples/inventory_service.md
   - Project:
+      - Releases: releases.md
       - Design Decisions: design.md
       - Roadmap: roadmap.md
       - FAQ: faq.md
