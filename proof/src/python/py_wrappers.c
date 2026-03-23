@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* Generated into build/gen/ by the Prove compiler when foreign libpython3
@@ -51,10 +52,26 @@ void py_initialize(void) {
   } else {
     snprintf(bundle_path, sizeof(bundle_path), ".prove_bundle.zip");
   }
-  int fd = open(bundle_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  if (fd >= 0) {
-    write(fd, prove_bundle_zip, prove_bundle_zip_len);
-    close(fd);
+  /* Check if bundle already exists with correct size — skip rewrite to avoid
+   * races when multiple proof processes run in parallel (e.g. e2e tests). */
+  bool needs_write = true;
+  struct stat st;
+  if (stat(bundle_path, &st) == 0 &&
+      (size_t)st.st_size == prove_bundle_zip_len) {
+    needs_write = false;
+  }
+  if (needs_write) {
+    /* Atomic write: create temp file, write, rename over target. */
+    char tmp_path[4096];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.%d", bundle_path, getpid());
+    int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd >= 0) {
+      write(fd, prove_bundle_zip, prove_bundle_zip_len);
+      close(fd);
+      rename(tmp_path, bundle_path);
+    }
+  }
+  {
     PyObject *sys_mod = PyImport_ImportModule("sys");
     PyObject *path = PyObject_GetAttrString(sys_mod, "path");
     PyObject *zip_str = PyUnicode_FromString(bundle_path);
