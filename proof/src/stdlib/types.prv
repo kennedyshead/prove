@@ -8,8 +8,9 @@ module Types
   creates float integer from string
   reads and converts integer float boolean character value to string
   unwrap Option values
-  handles error 
+  handles error
   """
+  Time types Time Date DateTime Clock Duration
 
 /// Check if a value is a string
 validates string(value String)
@@ -73,6 +74,26 @@ binary
 
 /// Convert a character to a string
 reads string(value Character) String
+binary
+
+/// Convert a time to an ISO 8601 string
+reads string(value Time) String
+binary
+
+/// Convert a date to an ISO 8601 string
+reads string(value Date) String
+binary
+
+/// Convert a datetime to an ISO 8601 string
+reads string(value DateTime) String
+binary
+
+/// Convert a clock to a string
+reads string(value Clock) String
+binary
+
+/// Convert a duration to a string
+reads string(value Duration) String
 binary
 
 /// Convert a value to a string

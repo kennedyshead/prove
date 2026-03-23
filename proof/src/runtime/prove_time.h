@@ -82,6 +82,14 @@ Prove_Clock *prove_time_reads_clock(Prove_Time *t);
 Prove_Clock *prove_time_creates_clock(int64_t hour, int64_t minute, int64_t second);
 bool         prove_time_validates_clock(int64_t hour, int64_t minute, int64_t second);
 
+/* ── Types.string() default conversions ─────────────────────── */
+
+Prove_String   *prove_time_string_time(Prove_Time *t);
+Prove_String   *prove_time_string_date(Prove_Date *d);
+Prove_String   *prove_time_string_datetime(Prove_DateTime *dt);
+Prove_String   *prove_time_string_clock(Prove_Clock *c);
+Prove_String   *prove_time_string_duration(Prove_Duration *d);
+
 /* ── Format integration (C functions for Format module) ──────── */
 
 Prove_String   *prove_time_format_time(Prove_Time *t, Prove_String *pattern);

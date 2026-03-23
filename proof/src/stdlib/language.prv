@@ -1,5 +1,18 @@
 module Language
-  narrative: """Natural language processing primitives."""
+  narrative: """
+  Natural language processing primitives.
+
+  reads words, sentences, tokens and returns as lists 
+  reads string, start, end and kind from token
+  transforms word to root and stem 
+  reads distance and similarity between two strings 
+  reads phonetics trough soundex and metaphone 
+  reads ngrams and bigrams
+  normalize and transliterate strings 
+  Get a list of stopwords 
+  find the word frequency
+  Get the most frequent keywords
+  """
 
   type Token is binary
 

@@ -320,6 +320,15 @@ class ExprEmitterMixin:
                 return "prove_string_from_char"
             if ty.name == "String":
                 return ""  # identity -- shouldn't happen
+            _TIME_STRING_FUNCS = {
+                "Time": "prove_time_string_time",
+                "Date": "prove_time_string_date",
+                "DateTime": "prove_time_string_datetime",
+                "Clock": "prove_time_string_clock",
+                "Duration": "prove_time_string_duration",
+            }
+            if ty.name in _TIME_STRING_FUNCS:
+                return _TIME_STRING_FUNCS[ty.name]
         return "prove_string_from_int"  # fallback
 
     # -- Loop body retains ------------------------------------------
@@ -1135,6 +1144,16 @@ class ExprEmitterMixin:
                     parts.append(f"prove_string_from_bool({val})")
                 elif isinstance(part_type, PrimitiveType) and part_type.name == "Character":
                     parts.append(f"prove_string_from_char({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Time":
+                    parts.append(f"prove_time_string_time({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Date":
+                    parts.append(f"prove_time_string_date({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "DateTime":
+                    parts.append(f"prove_time_string_datetime({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Clock":
+                    parts.append(f"prove_time_string_clock({val})")
+                elif isinstance(part_type, PrimitiveType) and part_type.name == "Duration":
+                    parts.append(f"prove_time_string_duration({val})")
                 elif (
                     isinstance(part_type, GenericInstance)
                     and part_type.base_name == "Option"

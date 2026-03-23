@@ -295,10 +295,12 @@ class StmtEmitterMixin:
                             # Unwrap Result for non-failable return
                             res_tmp = self._tmp()
                             self._line(f"Prove_Result {res_tmp} = {emit_val};")
+                            self._line("#ifndef PROVE_RELEASE")
                             self._line(
                                 f"if (prove_result_is_err({res_tmp}))"
                                 f' prove_panic("unexpected error");'
                             )
+                            self._line("#endif")
                             # Check for Value → concrete coercion
                             success_ty = (
                                 expr_type.args[0]

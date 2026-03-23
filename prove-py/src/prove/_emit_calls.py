@@ -570,11 +570,13 @@ class CallEmitterMixin:
             if isinstance(ftype, GenericInstance) and ftype.base_name == "Option":
                 field_args.append(opt_tmp)
                 continue
+            self._line("#ifndef PROVE_RELEASE")
             self._line(
                 f"if ({opt_tmp}.tag == 0) prove_panic("
                 f'"Tried to map non existent value '
                 f"'{fname}' to type '{record_type.name}'\");"
             )
+            self._line("#endif")
             val_tmp = self._tmp()
             self._line(f"Prove_Value* {val_tmp} = (Prove_Value*){opt_tmp}.value;")
             # Resolve field to concrete C value
@@ -1725,20 +1727,21 @@ class CallEmitterMixin:
                 ret_name = getattr(ret_type, "name", "")
 
                 # Types.string() dispatches by element type
-                if expr.name == "string" and elem_name == "Integer":
-                    c_fn = "prove_string_from_int"
-                    ret_type = STRING
-                elif expr.name == "string" and elem_name in ("Float", "Decimal"):
-                    c_fn = "prove_string_from_double"
-                    ret_type = STRING
-                elif expr.name == "string" and elem_name == "Boolean":
-                    c_fn = "prove_string_from_bool"
-                    ret_type = STRING
-                elif expr.name == "string" and elem_name == "Character":
-                    c_fn = "prove_string_from_char"
-                    ret_type = STRING
-                elif expr.name == "string" and elem_name == "Value":
-                    c_fn = "prove_value_as_text"
+                _STRING_DISPATCH = {
+                    "Integer": "prove_string_from_int",
+                    "Float": "prove_string_from_double",
+                    "Decimal": "prove_string_from_double",
+                    "Boolean": "prove_string_from_bool",
+                    "Character": "prove_string_from_char",
+                    "Value": "prove_value_as_text",
+                    "Time": "prove_time_string_time",
+                    "Date": "prove_time_string_date",
+                    "DateTime": "prove_time_string_datetime",
+                    "Clock": "prove_time_string_clock",
+                    "Duration": "prove_time_string_duration",
+                }
+                if expr.name == "string" and elem_name in _STRING_DISPATCH:
+                    c_fn = _STRING_DISPATCH[elem_name]
                     ret_type = STRING
                 elif ret_name == "String" and elem_name == "Integer":
                     c_fn = "prove_string_from_int"

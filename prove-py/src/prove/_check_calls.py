@@ -232,6 +232,26 @@ class CallCheckMixin:
                 f"{n} {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
             )
             for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
+                # TypeVariable("Value") in stdlib sigs acts as a dynamic type,
+                # but only json-serializable types should silently coerce.
+                # Non-serializable types (e.g. Time, Date) need an explicit
+                # overload; passing them to a Value param is a type error.
+                if (
+                    isinstance(expected, TypeVariable)
+                    and expected.name == "Value"
+                    and not isinstance(actual, (ErrorType, TypeVariable))
+                    and not is_json_serializable(actual)
+                ):
+                    param_name = sig.param_names[i] if i < len(sig.param_names) else str(i + 1)
+                    ordinal = {1: "1st", 2: "2nd", 3: "3rd"}.get(i + 1, f"{i + 1}th")
+                    arg_span = expr.args[i].span if i < len(expr.args) else expr.span
+                    self._error(
+                        "E335",
+                        f"{ordinal} argument '{param_name}': "
+                        f"type '{type_name(actual)}' cannot be used as Value",
+                        arg_span,
+                    )
+                    continue
                 if not types_compatible(expected, actual):
                     extra = self._builtin_extra_types.get((name, i))
                     if extra and any(types_compatible(e, actual) for e in extra):

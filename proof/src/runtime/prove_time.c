@@ -242,6 +242,49 @@ bool prove_time_validates_clock(int64_t hour, int64_t minute, int64_t second) {
            second >= 0 && second <= 59;
 }
 
+/* ── Types.string() default conversions ─────────────────────── */
+
+Prove_String *prove_time_string_time(Prove_Time *t) {
+    int32_t year, month, day, hour, minute, second;
+    _epoch_to_date_clock(t->seconds, &year, &month, &day, &hour, &minute, &second);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
+             year, month, day, hour, minute, second);
+    return prove_string_from_cstr(buf);
+}
+
+Prove_String *prove_time_string_date(Prove_Date *d) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02d", d->year, d->month, d->day);
+    return prove_string_from_cstr(buf);
+}
+
+Prove_String *prove_time_string_datetime(Prove_DateTime *dt) {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
+             dt->date->year, dt->date->month, dt->date->day,
+             dt->clock->hour, dt->clock->minute, dt->clock->second);
+    return prove_string_from_cstr(buf);
+}
+
+Prove_String *prove_time_string_clock(Prove_Clock *c) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d",
+             (int)c->hour, (int)c->minute, (int)c->second);
+    return prove_string_from_cstr(buf);
+}
+
+Prove_String *prove_time_string_duration(Prove_Duration *d) {
+    char buf[64];
+    int64_t total = d->seconds;
+    int64_t hours = total / 3600;
+    int64_t minutes = (total % 3600) / 60;
+    int64_t seconds = total % 60;
+    snprintf(buf, sizeof(buf), "%02lld:%02lld:%02lld",
+             (long long)hours, (long long)minutes, (long long)seconds);
+    return prove_string_from_cstr(buf);
+}
+
 /* ── Format integration ──────────────────────────────────────── */
 
 static int _str_eq(Prove_String *s, const char *cstr) {

@@ -5,14 +5,15 @@ module Main
   Time inputs time
   Time creates date clock duration
   Time reads days
+  Types reads string
 
-main() Result<Unit, Error>!
+main()!
 from
     now as Time = time()
-    console("got current time")
+    console(f"got current time {string(now)}")
     d as Date = date(2026, 3, 6)
     console(f"days in march 2026: {days(2026, 3)}")
     c as Clock = clock(14, 30, 0)
-    console("clock created: 14:30:00")
+    console(f"clock created: {string(c)}")
     dur as Duration = duration(1, 30, 0)
-    console("duration: 1h 30m")
+    console(f"duration: {string(dur)}")

@@ -7,6 +7,7 @@ module Format
   Takes an integer and transforms it to an octal String. 
   Add or remove decimal accuracy to a Float or Decimal 
   Formats time, date, datetime and duration
+  transforms numbers into hexadecimal and bin  
   """
   Time types Time Date DateTime Duration
 

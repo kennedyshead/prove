@@ -3131,13 +3131,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             return ERROR_TY
         return ERROR_TY
 
+    _STRINGABLE_TIME_TYPES = frozenset({"Time", "Date", "DateTime", "Clock", "Duration"})
+
     def _is_stringable(self, ty: Type) -> bool:
         """Return True if the type can be interpolated into an f-string."""
         if isinstance(ty, BorrowType):
             ty = ty.inner
         if ty in (STRING, INTEGER, DECIMAL, FLOAT, BOOLEAN, CHARACTER):
             return True
-        if isinstance(ty, PrimitiveType) and ty.name == "Error":
+        if isinstance(ty, PrimitiveType) and ty.name in ("Error", *self._STRINGABLE_TIME_TYPES):
             return True
         return False
 

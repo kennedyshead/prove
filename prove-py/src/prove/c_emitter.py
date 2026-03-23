@@ -619,6 +619,7 @@ class CEmitter(
             FieldAssignment,
             TailContinue,
             TailLoop,
+            TodoStmt,
             ValidExpr,
             WhileLoop,
         )
@@ -679,7 +680,7 @@ class CEmitter(
                 return any(_expr_alloc(e) for _, e in stmt.assignments)
             if isinstance(stmt, WhileLoop):
                 return _expr_alloc(stmt.break_cond) or any(_stmt_alloc(s) for s in stmt.body)
-            if isinstance(stmt, CommentStmt):
+            if isinstance(stmt, (CommentStmt, TodoStmt)):
                 return False
             if isinstance(stmt, MatchExpr):
                 return _expr_alloc(stmt)

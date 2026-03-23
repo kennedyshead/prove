@@ -54,6 +54,21 @@ The Python bootstrap compiler is complete and released as the reference implemen
 
 ## Proposed
 
+### V1.2 — Package Manager
+
+Pure-Prove package distribution via AST-level sharing in SQLite archives.
+
+- Package format: `.prvpkg` files (SQLite databases) containing typed AST, module signatures, and comptime-resolved assets
+- `prove package` CLI: `init`, `add`, `remove`, `install`, `publish`, `list`, `clean`
+- `[dependencies]` section in `prove.toml` with `prove.lock` lockfile
+- Static HTTP registry — no git dependency, pure Python stdlib (`sqlite3`, `urllib`)
+- Flat dependency resolution (one version per package name across the tree)
+- String-interned binary AST format for compact storage
+- SQL-based AST migrations for cross-compiler-version compatibility
+- Purity validation on publish: no `foreign` blocks, all imports must resolve to stdlib or declared dependencies
+- Checker integration: package signatures loaded from exports table without full AST deserialization
+- Full design: [`future/14-package-manager.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/14-package-manager.md)
+
 ---
 
 ## Exploring
