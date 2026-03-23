@@ -598,6 +598,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_gui_cleanup",
         "prove_gui_frame_begin",
         "prove_gui_frame_end",
+        "prove_gui_window_end",
     ],
 }
 

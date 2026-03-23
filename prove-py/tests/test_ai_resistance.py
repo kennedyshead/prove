@@ -114,7 +114,7 @@ class TestDomainProfiles:
             '  narrative: "Safety module."\n'
             "\n"
             "transforms id(x Integer) Integer\n"
-            '    trusted "bypass"\n'
+            '    trusted: "bypass"\n'
             "    from\n"
             "        x\n",
             "<test>",
