@@ -284,7 +284,7 @@ class TestW323:
         assert "W323" not in _codes(diags)
 
     def test_not_fired_with_trusted(self):
-        source = "transforms f(n Integer) Integer\n  ensures result >= 0\n  trusted\nfrom\n    n\n"
+        source = "transforms f(n Integer) Integer\n  ensures result >= 0\n  trusted:\nfrom\n    n\n"
         diags = check_all(source)
         assert "W323" not in _codes(diags)
 
@@ -361,7 +361,7 @@ class TestW325:
             "transforms f(n Integer) Integer\n"
             "  explain\n"
             "      just return n\n"
-            "  trusted\n"
+            "  trusted:\n"
             "from\n"
             "    n\n"
         )
