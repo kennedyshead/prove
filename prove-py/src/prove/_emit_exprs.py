@@ -577,16 +577,28 @@ class ExprEmitterMixin:
 
     def _has_translator_listeners(self, call: CallExpr) -> bool:
         """Check if a renders call's List<Listens> arg contains translator listeners."""
+        from prove.ast_nodes import FunctionDef as _FD
         from prove.ast_nodes import IdentifierExpr as _IE
         from prove.ast_nodes import ListLiteral
 
         if not call.args or not isinstance(call.args[0], ListLiteral):
             return False
+        listener_names = set()
         for elem in call.args[0].elements:
             if isinstance(elem, _IE):
-                wsig = self._symbols.resolve_function_any(elem.name)
-                if wsig and wsig.verb == "listens" and wsig.event_type is not None:
-                    return True
+                listener_names.add(elem.name)
+        if not listener_names:
+            return False
+        # Check if any of the named listeners are translators (have state_type)
+        for decl in self._all_function_defs():
+            if (
+                isinstance(decl, _FD)
+                and decl.verb == "listens"
+                and decl.name in listener_names
+                and decl.event_type is not None
+                and decl.state_type is not None
+            ):
+                return True
         return False
 
     def _emit_listens_call(self, call: CallExpr, sig) -> str:

@@ -78,14 +78,17 @@ class CallEmitterMixin:
         """
         if not sig.module:
             return None
-        from prove.stdlib_loader import binary_c_name
+        from prove.stdlib_loader import binary_c_name, binary_c_name_overload_only
 
         verb = verb_override or sig.verb
 
         # Check if signature has multiple params - use param count + types as key
         num_params = len(sig.param_types) if sig.param_types else 0
         if num_params >= 3 and call_args and len(call_args) >= 3:
-            # For 3+ arg functions, build key from all param types
+            # For 3+ arg functions, build key from all param types.
+            # Use overload-only lookup (no generic fallback) to avoid
+            # returning the wrong generic function when the combined key
+            # doesn't match any overload.
             if num_params >= 3:
                 tpt = get_type_key(sig.param_types[2]) if sig.param_types[2] else None
             else:
@@ -99,7 +102,7 @@ class CallEmitterMixin:
 
             if fpt and spt and tpt:
                 combined = f"{fpt}_{spt}_{tpt}"
-                result = binary_c_name(sig.module, verb, sig.name, combined)
+                result = binary_c_name_overload_only(sig.module, verb, sig.name, combined)
                 if result:
                     self._ensure_header_for_c_func(result)
                     return result

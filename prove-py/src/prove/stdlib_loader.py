@@ -780,6 +780,17 @@ def binary_c_name(
     return _BINARY_C_MAP.get((key, verb, name))
 
 
+def binary_c_name_overload_only(
+    module: str,
+    verb: str | None,
+    name: str,
+    first_param_type: str,
+) -> str | None:
+    """Look up overload-only (no generic fallback) for a binary stdlib function."""
+    key = module.lower()
+    return _BINARY_C_OVERLOADS.get((key, verb, name, first_param_type))
+
+
 # Cache loaded signatures
 _cache: dict[str, list[FunctionSignature]] = {}
 

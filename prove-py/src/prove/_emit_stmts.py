@@ -1107,17 +1107,20 @@ class StmtEmitterMixin:
         """Emit a match expression as a statement (switch)."""
         if m.subject is None:
             # Implicit subject: matches/streams use first parameter,
-            # listens uses _key (raw event payload), renders uses _ev
+            # listens translator uses _key, listens coroutine uses _ev, renders uses _ev
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
                 "streams",
                 "listens",
                 "renders",
             ):
-                if self._current_func.verb == "listens":
+                if (
+                    self._current_func.verb == "listens"
+                    and self._current_func.state_type is not None
+                ):
                     # Listens translator: match on raw key code
                     subj_name = "_key"
-                elif self._current_func.verb == "renders":
+                elif self._current_func.verb in ("listens", "renders"):
                     subj_name = "_ev"
                 elif self._current_func.params:
                     subj_name = self._current_func.params[0].name
