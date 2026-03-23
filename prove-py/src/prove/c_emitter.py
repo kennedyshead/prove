@@ -2024,6 +2024,16 @@ class CEmitter(
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
+            # unwrap(Option<Value>, default) returns Value, not the matched overload's type
+            if name == "unwrap" and n == 2 and actual_types:
+                first_ty = actual_types[0]
+                if (
+                    isinstance(first_ty, GenericInstance)
+                    and first_ty.base_name == "Option"
+                    and first_ty.args
+                    and getattr(first_ty.args[0], "name", None) == "Value"
+                ):
+                    return PrimitiveType("Value")
             narrowed_types = (
                 [self._narrow_for_requires(a, t) for a, t in zip(expr.args, actual_types)]
                 if actual_types

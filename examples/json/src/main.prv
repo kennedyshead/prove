@@ -6,16 +6,16 @@ module Main
   Sequence reads length
   Types reads string unwrap creates float
 
-main() Result<Unit, Error>!
+main()!
 from
     content as String = file("/tmp/1.json")!
-    root as Value = json(content)!
+    root as Value = json(content)
     root_obj as Table<Value> = object(root)
-    coords as List<Value> = array(unwrap(get("coordinates", root_obj)))
+    coords as List<Value> = array(unwrap(get("coordinates", root_obj), ""))
     len as Integer = length(coords)
-    x_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("x", object(c)))))
-    y_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("y", object(c)))))
-    z_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("z", object(c)))))
+    x_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("x", object(c)), 0)))
+    y_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("y", object(c)), 0)))
+    z_sum as Float = reduce(coords, 0.0, |acc, c| acc + decimal(unwrap(get("z", object(c)), 0)))
     len_f as Float = float(len)
     console(string(x_sum / len_f))
     console(string(y_sum / len_f))

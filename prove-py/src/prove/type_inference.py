@@ -48,7 +48,7 @@ def get_type_key(ty: Type | None) -> str | None:
         inner = getattr(ty.element, "name", "T")
         key = f"Array<{inner}>"
         if ty.modifiers:
-            return f"{key}:{','.join(ty.modifiers)}"
+            return f"{key}:{','.join(v for _, v in ty.modifiers)}"
         return key
     if isinstance(ty, GenericInstance):
         args = ",".join(getattr(a, "name", "T") for a in ty.args)
