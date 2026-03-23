@@ -3,7 +3,7 @@ module Main
   System outputs console
   Array reads length get creates array transforms set
 
-main() Result<Unit, Error>!
+main()
 from
     // Create a boolean array of 5 elements, all false
     flags as Array<Boolean> = array(5, false)

@@ -1,8 +1,8 @@
 module Main
   narrative: """Demonstrates Bytes module operations."""
   System outputs console
-  Bytes types ByteArray reads at creates bytearray
   Parse reads hexadecimal creates hexadecimal
+  Bytes types ByteArray reads at creates bytearray
 
 main()
 from

@@ -634,7 +634,7 @@ def copy_runtime(
     dest.mkdir(parents=True, exist_ok=True)
 
     if not strip_unused or not c_sources:
-        return _copy_all_runtime_files(dest)
+        return _copy_all_runtime_files(dest, stdlib_libs=stdlib_libs)
 
     all_calls = set()
     all_includes: set[str] = set()
@@ -710,11 +710,19 @@ def copy_runtime(
     return c_files
 
 
-def _copy_all_runtime_files(dest: Path) -> list[Path]:
-    """Copy all runtime files."""
+# Runtime libs that require external dependencies — excluded from default copy.
+# Only included when explicitly requested via stdlib_libs.
+_EXTERNAL_DEP_LIBS = frozenset({"prove_gui"})
+
+
+def _copy_all_runtime_files(dest: Path, *, stdlib_libs: set[str] | None = None) -> list[Path]:
+    """Copy all runtime files, excluding external-dep libs unless requested."""
     c_files: list[Path] = []
     pkg = importlib.resources.files("prove.runtime")
     for name in _RUNTIME_FILES:
+        stem = name.rsplit(".", 1)[0]
+        if stem in _EXTERNAL_DEP_LIBS and (not stdlib_libs or stem not in stdlib_libs):
+            continue
         src = pkg.joinpath(name)
         dst = dest / name
         with importlib.resources.as_file(src) as src_path:

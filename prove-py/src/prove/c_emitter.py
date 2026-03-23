@@ -1052,7 +1052,11 @@ class CEmitter(
                         else "Prove_Coro *_caller"
                     )  # noqa: E501
                     self._line(f"{ret_decl} {mangled}({param_str});")
-                elif decl.verb == "listens" and decl.event_type is not None:
+                elif (
+                    decl.verb == "listens"
+                    and decl.event_type is not None
+                    and decl.state_type is not None
+                ):
                     # Listens translator: takes raw payload + state pointer
                     ret_ct = map_type(sig.return_type)
                     state_type_expr = decl.state_type
@@ -1125,8 +1129,8 @@ class CEmitter(
             self._emit_renders_function(fd)
             return
 
-        # Listens with event_type = inline translator function (not coroutine)
-        if fd.verb == "listens" and fd.event_type is not None:
+        # Listens with event_type + state_type = inline translator (not coroutine)
+        if fd.verb == "listens" and fd.event_type is not None and fd.state_type is not None:
             self._emit_listens_translator(fd)
             return
 
@@ -1723,7 +1727,11 @@ class CEmitter(
         listeners: list[tuple[str, str, int]] = []  # (mangled_name, event_name, tag_idx)
         if event_type and isinstance(event_type, AlgebraicType):
             for decl in self._all_function_defs():
-                if decl.verb == "listens" and decl.event_type is not None:
+                if (
+                    decl.verb == "listens"
+                    and decl.event_type is not None
+                    and decl.state_type is not None
+                ):
                     lsig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                     if not lsig:
                         continue

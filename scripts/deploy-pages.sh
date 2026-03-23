@@ -63,10 +63,13 @@ git -C "$WORK_DIR" add -A
 if git -C "$WORK_DIR" diff --cached --quiet; then
     echo "No changes to deploy."
 else
-    git -C "$WORK_DIR" commit -m "Deploy docs from main ($(git rev-parse --short HEAD))"
+    PRE_COMMIT_ALLOW_NO_CONFIG=1 git -C "$WORK_DIR" commit -m "Deploy docs from main ($(git rev-parse --short HEAD))"
 
     echo "==> Pushing to origin/$BRANCH..."
     git -C "$WORK_DIR" push origin "$BRANCH"
+
+    echo "==> Pushing to github/$BRANCH..."
+    git -C "$WORK_DIR" push github "$BRANCH" 2>/dev/null || true
 fi
 
 # Clean up worktree
