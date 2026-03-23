@@ -36,7 +36,6 @@ Extract typed data from a `Value`. For corresponding validators, see [Types — 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `tag(v Value) String` | Get the type tag (`"string"`, `"number"`, etc.) |
-| `reads` | `text(v Value) String` | Extract string content |
 | `reads` | `number(v Value) Integer` | Extract integer content |
 | `reads` | `decimal(v Value) Float` | Extract floating-point content |
 | `reads` | `bool(v Value) Boolean` | Extract boolean content |
@@ -75,7 +74,7 @@ RFC 4180-compliant CSV parsing. Returns raw `List<List<String>>` — no type inf
 | `validates` | `csv(source String)` | True if source is valid CSV |
 
 ```prove
-  Parse creates toml url reads text object url validates url base64 types Value Url
+  Parse creates toml url reads object url validates url base64 types Value Url
   Table reads keys get types Table
 
 main() Result<Unit, Error>!
@@ -171,7 +170,7 @@ end offset.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `text(matched Match) String` | Matched text |
+| `reads` | `string(matched Match) String` | Matched text |
 | `reads` | `start(matched Match) Integer` | Start offset in source string |
 | `reads` | `end(matched Match) Integer` | End offset in source string |
 

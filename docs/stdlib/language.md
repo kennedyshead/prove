@@ -66,7 +66,7 @@ Defines a binary type: `Token` (a text span with position and kind).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `text(token Token) String` | Matched text of a token |
+| `reads` | `string(token Token) String` | Matched text of a token |
 | `reads` | `start(token Token) Integer` | Start position |
 | `reads` | `end(token Token) Integer` | End position |
 | `reads` | `kind(token Token) Integer` | Token kind as integer |

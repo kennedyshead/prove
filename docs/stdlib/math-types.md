@@ -90,7 +90,10 @@ The function name is the *target type*. Failable conversions from strings return
 |------|-----------|-------------|
 | `reads` | `string(n Integer) String` | Integer to string |
 | `reads` | `string(x Float) String` | Float to string |
+| `reads` | `string(x Decimal) String` | Decimal to string |
 | `reads` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
+| `reads` | `string(c Character) String` | Character to string |
+| `reads` | `string(v Value) String` | Extract string content from a Value |
 
 ### Character Conversions
 
