@@ -10,7 +10,7 @@ Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
 - **Terminal, UI & Graphic stdlib modules** — TUI via ANSI escape codes (zero deps), GUI via SDL2 + Nuklear immediate-mode rendering with windows, buttons, labels, text inputs, checkboxes, sliders, and progress bars
 - **`proof` CLI** — unified binary wrapping the compiler: `proof check`, `proof build`, `proof test`, `proof format`, `proof new`
 - **Compound assignment operators** — `+=`, `-=`, `*=`, `/=` for mutable state in `renders`/`listens` arms
-- **`constants` import verb** — import named constants from modules (`constants Pi Tau`)
+- **`constants` import verb** — import named constants from modules (`constants PI TAU`)
 - **`LookupPattern` matching** — `Key:Escape`, `Key:"k"`, `Color:Red` patterns in match arms
 - **Install script** — `curl -sSf .../install.sh | sh` binary installer with platform detection and `--version`/`--prefix` options
 - **Go-to-definition** — LSP resolves local variables, function parameters, imported constants, types, and cross-file symbols
