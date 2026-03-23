@@ -41,9 +41,28 @@ Lambdas work with any function parameter typed as `Verb<P1, ..., R>`:
 result as MergeResult = Store.merge(base, local, remote, |c| KeepRemote)
 ```
 
+## Builtin Higher-Order Functions
+
+The following functions are **builtins** — always available, no import needed. They work on any iterable type (`List`, `Array`, and future iterable types like cursors).
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `map` | `map(items, \|x\| expr) List<T>` | Transform each element, return new list |
+| `filter` | `filter(items, \|x\| predicate) List<T>` | Keep elements matching predicate |
+| `reduce` | `reduce(items, init, \|acc, x\| expr) T` | Fold elements into accumulator |
+| `each` | `each(items, \|x\| expr)` | Run function for each element (side effects) |
+| `len` | `len(items) Integer` | Number of elements |
+| `clamp` | `clamp(value, min, max) Integer` | Clamp value to range |
+| `par_map` | `par_map(items, fn) List<T>` | Parallel map (pure functions only) |
+| `par_filter` | `par_filter(items, fn) List<T>` | Parallel filter (pure functions only) |
+| `par_reduce` | `par_reduce(items, init, fn) T` | Parallel reduce (pure functions only) |
+| `par_each` | `par_each(items, fn)` | Parallel each (pure functions only) |
+
+These are **not** part of any stdlib module — they are compiler builtins with generic type inference. The compiler dispatches to the appropriate C runtime function based on the collection type.
+
 ## Iteration — No Loops
 
-Prove has no `for`, `while`, or loop constructs. Iteration is expressed through `map`, `filter`, `reduce`, and recursion. This keeps all data transformations as expressions (they produce values) rather than statements.
+Prove has no `for`, `while`, or loop constructs. Iteration is expressed through the builtin HOFs (`map`, `filter`, `reduce`) and recursion. This keeps all data transformations as expressions (they produce values) rather than statements.
 
 ```prove
 // Instead of: for each user, get their name

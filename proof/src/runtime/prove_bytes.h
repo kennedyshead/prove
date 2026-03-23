@@ -16,6 +16,7 @@ typedef struct Prove_ByteArray {
 /* ── constructors ────────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_from_string(Prove_String *s);
+Prove_String    *prove_bytes_to_string(Prove_ByteArray *ba);
 Prove_ByteArray *prove_bytes_create(Prove_List *values);
 bool             prove_bytes_validates(Prove_ByteArray *data);
 

@@ -82,7 +82,14 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
         "prove_format",
     },
     "math": {"prove_math"},
-    "types": {"prove_convert", "prove_parse", "prove_table", "prove_hash", "prove_error"},
+    "types": {
+        "prove_convert",
+        "prove_parse",
+        "prove_table",
+        "prove_hash",
+        "prove_error",
+        "prove_bytes",
+    },
     "convert": {"prove_convert"},
     "list": {"prove_list", "prove_list_ops"},
     "sequence": {"prove_list", "prove_list_ops"},
@@ -411,6 +418,7 @@ _RUNTIME_FUNCTIONS = {
     ],
     "prove_bytes": [
         "prove_bytes_from_string",
+        "prove_bytes_to_string",
         "prove_bytes_create",
         "prove_bytes_validates",
         "prove_bytes_slice",

@@ -100,6 +100,10 @@ binary
 reads string(value Value) String
 binary
 
+/// Convert a byte array to a UTF-8 string
+reads string(value ByteArray) String
+binary
+
 /// Get the Unicode code point of a character
 reads code(character Character) Integer
 binary

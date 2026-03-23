@@ -45,6 +45,16 @@ These types need no import:
 - **Containers:** `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>`
 - **Special:** `Value`, `Error`, `Source`
 
+### Builtin Functions
+
+These functions are always available without import — they are compiler builtins, not part of any stdlib module:
+
+- **Iteration:** `map`, `filter`, `reduce`, `each` — work on any iterable (`List`, `Array`)
+- **Parallel:** `par_map`, `par_filter`, `par_reduce`, `par_each` — parallel variants (pure functions only)
+- **Utility:** `len`, `clamp`
+
+See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the full reference.
+
 ---
 
 ## Module Summary

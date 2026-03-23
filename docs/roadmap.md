@@ -69,6 +69,17 @@ Pure-Prove package distribution via AST-level sharing in SQLite archives.
 - Checker integration: package signatures loaded from exports table without full AST deserialization
 - Full design: [`future/14-package-manager.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/14-package-manager.md)
 
+### V1.2 — Sqlite Stdlib
+
+General-purpose SQLite database access with cursor-based iteration.
+
+- `Database`, `Statement`, `Cursor`, `Row` types
+- Parameterized queries (SQL injection prevention by design)
+- Cursor iteration via lambda HOFs: `each(rows, |row| column(row, "name")!)`
+- Transactions, WAL mode, prepared statements
+- SQLite amalgamation vendored (public domain, no external dependency)
+- Full design: [`future/15-sqlite-stdlib.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/15-sqlite-stdlib.md)
+
 ---
 
 ## Exploring

@@ -22,6 +22,19 @@ Prove_ByteArray *prove_bytes_from_string(Prove_String *s) {
     return ba;
 }
 
+Prove_String *prove_bytes_to_string(Prove_ByteArray *ba) {
+#ifndef PROVE_RELEASE
+    int64_t len = ba ? ba->length : 0;
+#else
+    int64_t len = ba->length;
+#endif
+    Prove_String *s = (Prove_String *)prove_alloc(sizeof(Prove_String) + (size_t)len + 1);
+    s->length = len;
+    if (len > 0) memcpy(s->data, ba->data, (size_t)len);
+    s->data[len] = '\0';
+    return s;
+}
+
 /* ── byte channel ────────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_create(Prove_List *values) {
