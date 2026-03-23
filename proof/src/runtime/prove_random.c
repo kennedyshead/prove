@@ -1,41 +1,22 @@
 #include "prove_random.h"
 #include <stdlib.h>
 #include <stdint.h>
-#include <time.h>
 
-/* ── Auto-seed ───────────────────────────────────────────────── */
-
-static int _seeded = 0;
-
-static void _ensure_seeded(void) {
-    if (!_seeded) {
-        srand((unsigned int)time(NULL));
-        _seeded = 1;
-    }
-}
-
-/* ── Full 64-bit random helper ───────────────────────────────── */
+/* ── Full 64-bit random helper (arc4random, no seeding needed) ── */
 
 static uint64_t _random_u64(void) {
-    /* Combine multiple rand() calls to fill 64 bits.
-       rand() gives at least 15 bits (RAND_MAX >= 32767).
-       5 * 15 = 75 bits > 64, so all bits are covered. */
-    uint64_t r = 0;
-    for (int i = 0; i < 5; i++) {
-        r = (r << 15) | ((uint64_t)rand() & 0x7FFF);
-    }
-    return r;
+    uint64_t val;
+    arc4random_buf(&val, sizeof(val));
+    return val;
 }
 
 /* ── Integer ─────────────────────────────────────────────────── */
 
 int64_t prove_random_integer(void) {
-    _ensure_seeded();
     return (int64_t)_random_u64();
 }
 
 int64_t prove_random_integer_range(int64_t min, int64_t max) {
-    _ensure_seeded();
     if (min >= max) return min;
     uint64_t range = (uint64_t)(max - min) + 1;
     /* Rejection sampling: discard values that would cause modulo bias */
@@ -52,28 +33,25 @@ bool prove_random_validates_integer(int64_t value, int64_t min, int64_t max) {
 /* ── Decimal ─────────────────────────────────────────────────── */
 
 double prove_random_decimal(void) {
-    _ensure_seeded();
-    return (double)rand() / (double)RAND_MAX;
+    /* Use 53 bits for a uniform double in [0, 1) */
+    return (double)(_random_u64() >> 11) * (1.0 / 9007199254740992.0);
 }
 
 double prove_random_decimal_range(double min, double max) {
-    _ensure_seeded();
     if (min >= max) return min;
-    double t = (double)rand() / (double)RAND_MAX;
+    double t = prove_random_decimal();
     return min + t * (max - min);
 }
 
 /* ── Boolean ─────────────────────────────────────────────────── */
 
 bool prove_random_boolean(void) {
-    _ensure_seeded();
-    return rand() % 2 == 0;
+    return (_random_u64() & 1) == 0;
 }
 
 /* ── Choice (raw — returns void*) ───────────────────────────── */
 
 void *prove_random_choice_raw(Prove_List *list) {
-    _ensure_seeded();
     if (list->length == 0) {
         prove_panic("choice: empty list");
     }
@@ -88,7 +66,6 @@ void *prove_random_choice_raw(Prove_List *list) {
 /* ── Shuffle (raw — returns new list) ───────────────────────── */
 
 Prove_List *prove_random_shuffle_raw(Prove_List *list) {
-    _ensure_seeded();
     if (list->length == 0) {
         return prove_list_new(4);
     }

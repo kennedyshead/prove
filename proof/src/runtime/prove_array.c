@@ -2,23 +2,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-Prove_Array *prove_array_new(int64_t length, int64_t elem_size, const void *default_val) {
-    Prove_Array *arr = (Prove_Array *)malloc(sizeof(Prove_Array));
-    if (!arr) prove_panic("array: out of memory");
-    arr->header.refcount = 1;
+/* Internal: allocate array without default-filling data buffer */
+static Prove_Array *_prove_array_new_uninit(int64_t length, size_t elem_size) {
+    Prove_Array *arr = (Prove_Array *)prove_alloc(sizeof(Prove_Array));
     arr->length = length;
-    arr->elem_size = elem_size;
-    /* Overflow guard: check that length * elem_size doesn't overflow */
+    arr->elem_size = (int64_t)elem_size;
     if (length > 0 && elem_size > 0 &&
-        (size_t)length > SIZE_MAX / (size_t)elem_size) {
+        (size_t)length > SIZE_MAX / elem_size) {
         prove_panic("array: allocation size overflow");
     }
-    arr->data = malloc((size_t)(length * elem_size));
+    arr->data = malloc((size_t)length * elem_size);
     if (!arr->data) prove_panic("array: out of memory");
+    return arr;
+}
+
+Prove_Array *prove_array_new(int64_t length, int64_t elem_size, const void *default_val) {
+    Prove_Array *arr = _prove_array_new_uninit(length, (size_t)elem_size);
     for (int64_t i = 0; i < length; i++) {
         memcpy((char *)arr->data + i * elem_size, default_val, (size_t)elem_size);
     }
     return arr;
+}
+
+void prove_array_free(Prove_Array *arr) {
+    if (!arr) return;
+    free(arr->data);
+    free(arr);
 }
 
 Prove_Array *prove_array_new_bool(int64_t size, bool default_val) {
@@ -350,8 +359,8 @@ static Prove_Array *_prove_array_slice(Prove_Array *arr, int64_t start, int64_t 
     if (start < 0) start = 0;
     if (end > arr->length) end = arr->length;
     int64_t count = (start < end) ? (end - start) : 0;
-    int64_t zero = 0;
-    Prove_Array *out = prove_array_new(count > 0 ? count : 1, arr->elem_size, &zero);
+    int64_t alloc_len = count > 0 ? count : 1;
+    Prove_Array *out = _prove_array_new_uninit(alloc_len, (size_t)arr->elem_size);
     out->length = count;
     if (count > 0) {
         memcpy(out->data, (char *)arr->data + start * arr->elem_size,
@@ -375,9 +384,8 @@ Prove_Array *prove_array_slice_float(Prove_Array *arr, int64_t start, int64_t en
 /* ── Reverse ──────────────────────────────────────────────────── */
 
 static Prove_Array *_prove_array_reverse(Prove_Array *arr) {
-    int64_t zero = 0;
-    Prove_Array *out = prove_array_new(arr->length > 0 ? arr->length : 1,
-                                       arr->elem_size, &zero);
+    int64_t alloc_len = arr->length > 0 ? arr->length : 1;
+    Prove_Array *out = _prove_array_new_uninit(alloc_len, (size_t)arr->elem_size);
     out->length = arr->length;
     for (int64_t i = 0; i < arr->length; i++) {
         void *src = (char *)arr->data + (arr->length - 1 - i) * arr->elem_size;
@@ -416,9 +424,8 @@ static int _cmp_arr_float(const void *a, const void *b) {
 }
 
 Prove_Array *prove_array_sort_int(Prove_Array *arr) {
-    int64_t zero = 0;
-    Prove_Array *out = prove_array_new(arr->length > 0 ? arr->length : 1,
-                                       arr->elem_size, &zero);
+    int64_t alloc_len = arr->length > 0 ? arr->length : 1;
+    Prove_Array *out = _prove_array_new_uninit(alloc_len, (size_t)arr->elem_size);
     out->length = arr->length;
     if (arr->length > 0) {
         memcpy(out->data, arr->data, (size_t)(arr->length * arr->elem_size));
@@ -430,9 +437,8 @@ Prove_Array *prove_array_sort_int(Prove_Array *arr) {
 }
 
 Prove_Array *prove_array_sort_float(Prove_Array *arr) {
-    int64_t zero = 0;
-    Prove_Array *out = prove_array_new(arr->length > 0 ? arr->length : 1,
-                                       arr->elem_size, &zero);
+    int64_t alloc_len = arr->length > 0 ? arr->length : 1;
+    Prove_Array *out = _prove_array_new_uninit(alloc_len, (size_t)arr->elem_size);
     out->length = arr->length;
     if (arr->length > 0) {
         memcpy(out->data, arr->data, (size_t)(arr->length * arr->elem_size));

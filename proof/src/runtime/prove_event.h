@@ -24,6 +24,7 @@ typedef struct {
     bool closed;       /* true after all workers finish */
 #ifndef _WIN32
     pthread_mutex_t lock;
+    pthread_cond_t  cond;
 #endif
 } Prove_EventNodeQueue;
 

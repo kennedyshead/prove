@@ -427,6 +427,21 @@ Prove_Result prove_parse_toml(Prove_String *source) {
 
 /* ── TOML emitter (uses Builder for O(n) emission) ───────────── */
 
+/* Write a TOML-escaped string (content only, no surrounding quotes) */
+static void _toml_escape_string(Prove_String *src, Prove_Builder **b) {
+    for (int64_t i = 0; i < src->length; i++) {
+        char c = src->data[i];
+        switch (c) {
+            case '\\': *b = prove_text_write_cstr(*b, "\\\\"); break;
+            case '"':  *b = prove_text_write_cstr(*b, "\\\""); break;
+            case '\n': *b = prove_text_write_cstr(*b, "\\n");  break;
+            case '\t': *b = prove_text_write_cstr(*b, "\\t");  break;
+            case '\r': *b = prove_text_write_cstr(*b, "\\r");  break;
+            default:   *b = prove_text_write_char(*b, c);      break;
+        }
+    }
+}
+
 static void _toml_emit_value(Prove_Value *v, Prove_Builder **b);
 static void _toml_emit_table(Prove_Table *t, Prove_String *prefix, Prove_Builder **b);
 
@@ -438,7 +453,7 @@ static void _toml_emit_value(Prove_Value *v, Prove_Builder **b) {
     switch (v->tag) {
         case PROVE_VALUE_TEXT:
             *b = prove_text_write_char(*b, '"');
-            *b = prove_text_write(*b, v->text);
+            _toml_escape_string(v->text, b);
             *b = prove_text_write_char(*b, '"');
             break;
         case PROVE_VALUE_NUMBER: {

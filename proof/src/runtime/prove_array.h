@@ -18,6 +18,9 @@ typedef struct {
    Every element is initialised to `default_val` (by value copy of elem_size bytes). */
 Prove_Array *prove_array_new(int64_t length, int64_t elem_size, const void *default_val);
 
+/* Free an array and its data buffer. */
+void prove_array_free(Prove_Array *arr);
+
 /* Typed constructors for common element types */
 Prove_Array *prove_array_new_bool(int64_t size, bool default_val);
 Prove_Array *prove_array_new_int(int64_t size, int64_t default_val);

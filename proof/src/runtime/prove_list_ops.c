@@ -15,28 +15,36 @@ int64_t prove_list_ops_length(Prove_List *list) {
     return prove_list_len(list);
 }
 
-/* ── First / Last (int) ─────────────────────────────────────── */
+/* ── First / Last (shared) ──────────────────────────────────── */
 
-Prove_Option prove_list_ops_first_int(Prove_List *list) {
+static Prove_Option _prove_list_ops_first(Prove_List *list) {
     if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[0]);
 }
 
-Prove_Option prove_list_ops_last_int(Prove_List *list) {
+static Prove_Option _prove_list_ops_last(Prove_List *list) {
     if (list->length == 0) return prove_option_none();
     return prove_option_some((Prove_Value *)list->data[list->length - 1]);
+}
+
+/* ── First / Last (int) ─────────────────────────────────────── */
+
+Prove_Option prove_list_ops_first_int(Prove_List *list) {
+    return _prove_list_ops_first(list);
+}
+
+Prove_Option prove_list_ops_last_int(Prove_List *list) {
+    return _prove_list_ops_last(list);
 }
 
 /* ── First / Last (str) ─────────────────────────────────────── */
 
 Prove_Option prove_list_ops_first_str(Prove_List *list) {
-    if (list->length == 0) return prove_option_none();
-    return prove_option_some((Prove_Value *)list->data[0]);
+    return _prove_list_ops_first(list);
 }
 
 Prove_Option prove_list_ops_last_str(Prove_List *list) {
-    if (list->length == 0) return prove_option_none();
-    return prove_option_some((Prove_Value *)list->data[list->length - 1]);
+    return _prove_list_ops_last(list);
 }
 
 /* ── Value (get element at position) ───────────────────────── */
@@ -261,10 +269,17 @@ Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) 
 /* ── Set (copy-on-write) ─────────────────────────────────────── */
 
 Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value) {
+#ifndef PROVE_RELEASE
     if (!list || idx < 0 || idx >= list->length) return list;
+#endif
     Prove_List *result = prove_list_new(list->length);
-    for (int64_t i = 0; i < list->length; i++) {
-        result->data[i] = (i == idx) ? value : list->data[i];
+    if (idx > 0) {
+        memcpy(result->data, list->data, sizeof(void *) * (size_t)idx);
+    }
+    result->data[idx] = value;
+    if (idx + 1 < list->length) {
+        memcpy(result->data + idx + 1, list->data + idx + 1,
+               sizeof(void *) * (size_t)(list->length - idx - 1));
     }
     result->length = list->length;
     return result;
@@ -273,14 +288,18 @@ Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value) {
 /* ── Remove (copy-on-write) ──────────────────────────────────── */
 
 Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx) {
+#ifndef PROVE_RELEASE
     if (!list || idx < 0 || idx >= list->length) return list;
-    Prove_List *result = prove_list_new(list->length - 1);
-    int64_t j = 0;
-    for (int64_t i = 0; i < list->length; i++) {
-        if (i != idx) {
-            result->data[j++] = list->data[i];
-        }
+#endif
+    int64_t new_len = list->length - 1;
+    Prove_List *result = prove_list_new(new_len > 0 ? new_len : 4);
+    if (idx > 0) {
+        memcpy(result->data, list->data, sizeof(void *) * (size_t)idx);
     }
-    result->length = j;
+    if (idx < new_len) {
+        memcpy(result->data + idx, list->data + idx + 1,
+               sizeof(void *) * (size_t)(new_len - idx));
+    }
+    result->length = new_len;
     return result;
 }

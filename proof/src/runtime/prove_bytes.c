@@ -12,7 +12,11 @@ static Prove_ByteArray *_alloc_bytes(int64_t length) {
 /* ── constructors ────────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_from_string(Prove_String *s) {
+#ifndef PROVE_RELEASE
     int64_t len = s ? s->length : 0;
+#else
+    int64_t len = s->length;
+#endif
     Prove_ByteArray *ba = _alloc_bytes(len);
     if (len > 0) memcpy(ba->data, s->data, (size_t)len);
     return ba;
@@ -21,7 +25,11 @@ Prove_ByteArray *prove_bytes_from_string(Prove_String *s) {
 /* ── byte channel ────────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_create(Prove_List *values) {
+#ifndef PROVE_RELEASE
     int64_t len = values ? values->length : 0;
+#else
+    int64_t len = values->length;
+#endif
     Prove_ByteArray *ba = _alloc_bytes(len);
     for (int64_t i = 0; i < len; i++) {
         int64_t val = (int64_t)(intptr_t)prove_list_get(values, i);
@@ -37,7 +45,11 @@ bool prove_bytes_validates(Prove_ByteArray *data) {
 /* ── slice channel ───────────────────────────────────────────── */
 
 Prove_ByteArray *prove_bytes_slice(Prove_ByteArray *data, int64_t start, int64_t length) {
+#ifndef PROVE_RELEASE
     if (!data || start < 0 || length < 0 || start + length > data->length) {
+#else
+    if (start < 0 || length < 0 || start + length > data->length) {
+#endif
         return _alloc_bytes(0);
     }
     Prove_ByteArray *result = _alloc_bytes(length);
@@ -46,8 +58,13 @@ Prove_ByteArray *prove_bytes_slice(Prove_ByteArray *data, int64_t start, int64_t
 }
 
 Prove_ByteArray *prove_bytes_concat(Prove_ByteArray *first, Prove_ByteArray *second) {
+#ifndef PROVE_RELEASE
     int64_t len1 = first ? first->length : 0;
     int64_t len2 = second ? second->length : 0;
+#else
+    int64_t len1 = first->length;
+    int64_t len2 = second->length;
+#endif
     Prove_ByteArray *result = _alloc_bytes(len1 + len2);
     if (len1 > 0) memcpy(result->data, first->data, (size_t)len1);
     if (len2 > 0) memcpy(result->data + len1, second->data, (size_t)len2);
@@ -62,16 +79,14 @@ Prove_String *prove_bytes_hex_encode(Prove_ByteArray *data) {
     if (!data || data->length == 0) {
         return prove_string_from_cstr("");
     }
-    int64_t out_len = data->length * 2;
-    char *buf = malloc((size_t)out_len + 1);
-    if (!buf) prove_panic("out of memory");
+    int64_t hex_len = data->length * 2;
+    Prove_String *result = (Prove_String *)prove_alloc(sizeof(Prove_String) + (size_t)hex_len + 1);
+    result->length = hex_len;
     for (int64_t i = 0; i < data->length; i++) {
-        buf[i * 2] = _hex_chars[(data->data[i] >> 4) & 0xF];
-        buf[i * 2 + 1] = _hex_chars[data->data[i] & 0xF];
+        result->data[i * 2] = _hex_chars[(data->data[i] >> 4) & 0xF];
+        result->data[i * 2 + 1] = _hex_chars[data->data[i] & 0xF];
     }
-    buf[out_len] = '\0';
-    Prove_String *result = prove_string_from_cstr(buf);
-    free(buf);
+    result->data[hex_len] = '\0';
     return result;
 }
 
@@ -113,9 +128,11 @@ bool prove_bytes_hex_validates(Prove_String *source) {
 /* ── at channel ──────────────────────────────────────────────── */
 
 int64_t prove_bytes_at(Prove_ByteArray *data, int64_t index) {
+#ifndef PROVE_RELEASE
     if (!data || index < 0 || index >= data->length) {
         prove_panic("byte index out of bounds");
     }
+#endif
     return (int64_t)data->data[index];
 }
 

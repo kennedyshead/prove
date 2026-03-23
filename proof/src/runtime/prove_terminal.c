@@ -101,21 +101,26 @@ static void _restore_cooked(void) {
 static void _sigwinch_handler(int sig) {
     (void)sig;
     _resize_pending = 1;
-    /* Queue resize event if we have an event queue */
-    if (_event_queue) {
-        struct winsize ws;
-        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
-            /* Allocate payload: two int64_t for width, height */
-            int64_t *payload = malloc(2 * sizeof(int64_t));
-            if (payload) {
-                payload[0] = ws.ws_col;
-                payload[1] = ws.ws_row;
-                /* Resize tag = 8 (matching AppEvent variant order:
-                   Draw=0, Tick=1, KeyDown=2, KeyUp=3,
-                   MouseDown=4, MouseUp=5, Scroll=6, MousePos=7,
-                   Resize=8, Exit=9) */
-                prove_event_queue_send(_event_queue, 8, payload);
-            }
+}
+
+/* Check for pending SIGWINCH and send resize event from the main loop
+ * (async-signal-safe — no malloc or mutex in the signal handler). */
+void prove_terminal_check_resize(Prove_EventNodeQueue *q) {
+    if (!_resize_pending) return;
+    _resize_pending = 0;
+    if (!q) return;
+
+    struct winsize ws;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
+        int64_t *payload = malloc(2 * sizeof(int64_t));
+        if (payload) {
+            payload[0] = ws.ws_col;
+            payload[1] = ws.ws_row;
+            /* Resize tag = 8 (matching AppEvent variant order:
+               Draw=0, Tick=1, KeyDown=2, KeyUp=3,
+               MouseDown=4, MouseUp=5, Scroll=6, MousePos=7,
+               Resize=8, Exit=9) */
+            prove_event_queue_send(q, 8, payload);
         }
     }
 }
@@ -132,7 +137,11 @@ void prove_terminal_raw(void) {
     if (_raw_mode) return;
     if (tcgetattr(STDIN_FILENO, &_orig_termios) < 0) return;
 
-    atexit(_restore_cooked);
+    static bool atexit_registered = false;
+    if (!atexit_registered) {
+        atexit(_restore_cooked);
+        atexit_registered = true;
+    }
 
     struct termios raw = _orig_termios;
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);

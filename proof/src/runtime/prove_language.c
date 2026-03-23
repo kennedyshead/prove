@@ -1,7 +1,9 @@
 #include "prove_language.h"
+#include "prove_text.h"
 #include "prove_option.h"
 #include <ctype.h>
 #include <math.h>
+#include <string.h>
 
 /* ═══════════════════════════════════════════════════════════════════
    Internal tokenizer — UTF-8 aware character classification
@@ -528,9 +530,7 @@ static bool _is_vowel_ch(char c) {
 
 /* Slavo-Germanic check */
 static bool _slavo_germanic(const char *s, int64_t len) {
-    for (int64_t i = 0; i < len; i++) {
-        if (s[i] == 'W' || s[i] == 'K') return true;
-    }
+    if (memchr(s, 'W', (size_t)len) || memchr(s, 'K', (size_t)len)) return true;
     /* Check for CZ or WITZ */
     for (int64_t i = 0; i + 1 < len; i++) {
         if (s[i] == 'C' && s[i + 1] == 'Z') return true;
@@ -783,13 +783,17 @@ Prove_List *prove_language_ngrams(Prove_String *text, int64_t n) {
     if (n <= 0 || wcount < n) return result;
 
     for (int64_t i = 0; i <= wcount - n; i++) {
-        /* Join n words with spaces */
-        Prove_String *combined = (Prove_String *)prove_list_get(word_list, i);
+        /* Join n words with spaces using a builder (one allocation) */
+        Prove_Builder *b = prove_text_builder();
+        Prove_String *first = (Prove_String *)prove_list_get(word_list, i);
+        b = prove_text_write(b, first);
         for (int64_t j = 1; j < n; j++) {
-            Prove_String *space = prove_string_new(" ", 1);
+            b = prove_text_write_char(b, ' ');
             Prove_String *next = (Prove_String *)prove_list_get(word_list, i + j);
-            combined = prove_string_concat(prove_string_concat(combined, space), next);
+            b = prove_text_write(b, next);
         }
+        Prove_String *combined = prove_text_build(b);
+        free(b);
         prove_list_push(result, combined);
     }
 
@@ -855,11 +859,20 @@ static const AccentEntry _ACCENT_TABLE[] = {
     {0,0,0} /* sentinel */
 };
 
+/* Number of real entries (excluding sentinel) */
+static const int _ACCENT_TABLE_SIZE =
+    (int)(sizeof(_ACCENT_TABLE) / sizeof(_ACCENT_TABLE[0])) - 1;
+
 static char _lookup_accent(unsigned char b0, unsigned char b1) {
-    for (int i = 0; _ACCENT_TABLE[i].b0 != 0; i++) {
-        if (_ACCENT_TABLE[i].b0 == b0 && _ACCENT_TABLE[i].b1 == b1) {
-            return _ACCENT_TABLE[i].ascii;
-        }
+    /* Table is sorted by (b0, b1) — use binary search O(log n). */
+    int lo = 0, hi = _ACCENT_TABLE_SIZE - 1;
+    uint16_t key = ((uint16_t)b0 << 8) | b1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        uint16_t mk = ((uint16_t)_ACCENT_TABLE[mid].b0 << 8) | _ACCENT_TABLE[mid].b1;
+        if (mk == key) return _ACCENT_TABLE[mid].ascii;
+        if (mk < key) lo = mid + 1;
+        else           hi = mid - 1;
     }
     return 0;
 }
@@ -1111,45 +1124,35 @@ Prove_Table *prove_language_frequency(Prove_String *text) {
    ═══════════════════════════════════════════════════════════════════ */
 
 Prove_List *prove_language_keywords(Prove_String *text, int64_t count) {
-    Prove_List *word_list = prove_language_words(text);
+    /* Use the hash-based frequency table, then sort by frequency. */
+    Prove_Table *freq_table = prove_language_frequency(text);
 
-    /* Count words in a simple frequency map using arrays */
+    /* Extract entries into a sortable array */
     typedef struct { Prove_String *word; int64_t freq; } WordFreq;
 
-    int64_t cap = word_list->length < 256 ? word_list->length + 1 : 256;
-    WordFreq *freqs = (WordFreq *)calloc((size_t)cap, sizeof(WordFreq));
+    Prove_List *keys = prove_table_keys(freq_table);
+    int64_t nkeys = keys->length;
+    WordFreq *freqs = (WordFreq *)calloc((size_t)(nkeys + 1), sizeof(WordFreq));
     if (!freqs) prove_panic("out of memory");
     int64_t nfreqs = 0;
 
-    for (int64_t i = 0; i < word_list->length; i++) {
-        Prove_String *w = (Prove_String *)prove_list_get(word_list, i);
+    for (int64_t i = 0; i < nkeys; i++) {
+        Prove_String *key = (Prove_String *)prove_list_get(keys, i);
 
-        /* Lowercase for comparison */
-        char lbuf[256];
-        int64_t wlen = w->length < 255 ? w->length : 255;
-        for (int64_t j = 0; j < wlen; j++) lbuf[j] = (char)tolower((unsigned char)w->data[j]);
-        lbuf[wlen] = '\0';
+        /* Filter out stopwords */
+        if (_is_stopword(key->data, key->length)) continue;
 
-        /* Find existing */
-        int64_t found = -1;
-        for (int64_t k = 0; k < nfreqs; k++) {
-            if (freqs[k].word->length == wlen &&
-                memcmp(freqs[k].word->data, lbuf, (size_t)wlen) == 0) {
-                found = k;
-                break;
-            }
+        Prove_Option val = prove_table_get(key, freq_table);
+        int64_t f = 1;
+        if (val.tag == 1) {
+            f = *((int64_t *)((char *)val.value + sizeof(Prove_Header)));
         }
-
-        if (found >= 0) {
-            freqs[found].freq++;
-        } else if (nfreqs < cap) {
-            freqs[nfreqs].word = prove_string_new(lbuf, wlen);
-            freqs[nfreqs].freq = 1;
-            nfreqs++;
-        }
+        freqs[nfreqs].word = key;
+        freqs[nfreqs].freq = f;
+        nfreqs++;
     }
 
-    /* Sort by frequency descending (simple insertion sort) */
+    /* Sort by frequency descending (insertion sort) */
     for (int64_t i = 1; i < nfreqs; i++) {
         WordFreq tmp = freqs[i];
         int64_t j = i - 1;

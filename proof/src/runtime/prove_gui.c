@@ -499,11 +499,23 @@ void prove_gui_frame_end(void) {
     SDL_GetWindowSize(_sdl_window, &width, &height);
 
     glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(0.10f, 0.10f, 0.10f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     _nk_sdl_render(NK_ANTI_ALIASING_ON);
     SDL_GL_SwapWindow(_sdl_window);
+}
+
+/* ── String helper ──────────────────────────────────────────── */
+
+static const char *_to_cstr(Prove_String *s, char *buf, size_t bufsz) {
+    size_t n = 0;
+    if (s && s->length > 0) {
+        n = (size_t)s->length < bufsz - 1 ? (size_t)s->length : bufsz - 1;
+        memcpy(buf, s->data, n);
+    }
+    buf[n] = '\0';
+    return buf;
 }
 
 /* ── Widget implementations ─────────────────────────────────── */
@@ -543,24 +555,13 @@ void prove_gui_window(Prove_String *title, int64_t width, int64_t height) {
 
 bool prove_gui_button(Prove_String *label) {
     char buf[256];
-    size_t len = 0;
-    if (label && label->length > 0) {
-        len = label->length < 255 ? label->length : 255;
-        memcpy(buf, label->data, len);
-    }
-    buf[len] = '\0';
+    _to_cstr(label, buf, sizeof(buf));
     return nk_button_label(&_nk_sdl.ctx, buf) != 0;
 }
 
 void prove_gui_label(Prove_String *text) {
     char buf[1024];
-    size_t len = 0;
-    if (text && text->length > 0) {
-        len = text->length < 1023 ? text->length : 1023;
-        memcpy(buf, text->data, len);
-    }
-    buf[len] = '\0';
-    nk_label(&_nk_sdl.ctx, buf, NK_TEXT_LEFT);
+    nk_label(&_nk_sdl.ctx, _to_cstr(text, buf, sizeof(buf)), NK_TEXT_LEFT);
 }
 
 Prove_String *prove_gui_text_input(Prove_String *label, Prove_String *value) {
@@ -600,12 +601,7 @@ Prove_String *prove_gui_text_input(Prove_String *label, Prove_String *value) {
 
 bool prove_gui_checkbox(Prove_String *label, bool checked) {
     char buf[256];
-    size_t len = 0;
-    if (label && label->length > 0) {
-        len = label->length < 255 ? label->length : 255;
-        memcpy(buf, label->data, len);
-    }
-    buf[len] = '\0';
+    _to_cstr(label, buf, sizeof(buf));
 
     nk_bool val = checked ? nk_true : nk_false;
     nk_checkbox_label(&_nk_sdl.ctx, buf, &val);
@@ -614,14 +610,7 @@ bool prove_gui_checkbox(Prove_String *label, bool checked) {
 
 double prove_gui_slider(Prove_String *label, double min, double max, double value) {
     char buf[256];
-    size_t len = 0;
-    if (label && label->length > 0) {
-        len = label->length < 255 ? label->length : 255;
-        memcpy(buf, label->data, len);
-    }
-    buf[len] = '\0';
-
-    nk_label(&_nk_sdl.ctx, buf, NK_TEXT_LEFT);
+    nk_label(&_nk_sdl.ctx, _to_cstr(label, buf, sizeof(buf)), NK_TEXT_LEFT);
     float fval = (float)value;
     float fstep = (float)(max - min) / 100.0f;
     nk_slider_float(&_nk_sdl.ctx, (float)min, &fval, (float)max, fstep);

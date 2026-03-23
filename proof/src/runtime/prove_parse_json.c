@@ -8,6 +8,28 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+
+/* ── UTF-8 encoder for \uXXXX sequences ────────────────────── */
+
+static int _utf8_encode(uint32_t cp, char *out) {
+    if (cp < 0x80) { out[0] = (char)cp; return 1; }
+    if (cp < 0x800) { out[0] = 0xC0 | (cp >> 6); out[1] = 0x80 | (cp & 0x3F); return 2; }
+    if (cp < 0x10000) { out[0] = 0xE0 | (cp >> 12); out[1] = 0x80 | ((cp >> 6) & 0x3F); out[2] = 0x80 | (cp & 0x3F); return 3; }
+    out[0] = 0xF0 | (cp >> 18); out[1] = 0x80 | ((cp >> 12) & 0x3F); out[2] = 0x80 | ((cp >> 6) & 0x3F); out[3] = 0x80 | (cp & 0x3F); return 4;
+}
+
+static uint16_t _parse_hex4(const char *s) {
+    uint16_t val = 0;
+    for (int i = 0; i < 4; i++) {
+        val <<= 4;
+        char c = s[i];
+        if (c >= '0' && c <= '9') val |= (uint16_t)(c - '0');
+        else if (c >= 'a' && c <= 'f') val |= (uint16_t)(c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F') val |= (uint16_t)(c - 'A' + 10);
+    }
+    return val;
+}
 
 /* ── Parser state ────────────────────────────────────────────── */
 
@@ -57,9 +79,36 @@ static Prove_String *_json_parse_string(JsonParser *p) {
                 case '"':  b = prove_text_write_char(b, '"');  break;
                 case '/':  b = prove_text_write_char(b, '/');  break;
                 case 'u': {
-                    /* \uXXXX — just pass through as-is for now */
-                    b = prove_text_write_char(b, '\\');
-                    b = prove_text_write_char(b, 'u');
+                    /* \uXXXX — decode to UTF-8 */
+                    if (p->pos + 4 < p->len) {
+                        uint16_t hi = _parse_hex4(p->src + p->pos + 1);
+                        p->pos += 4; /* skip 4 hex digits (loop will advance past last) */
+                        uint32_t codepoint = hi;
+
+                        /* Handle surrogate pairs: high surrogate 0xD800-0xDBFF */
+                        if (hi >= 0xD800 && hi <= 0xDBFF &&
+                            p->pos + 2 < p->len &&
+                            p->src[p->pos + 1] == '\\' &&
+                            p->src[p->pos + 2] == 'u' &&
+                            p->pos + 6 < p->len) {
+                            uint16_t lo = _parse_hex4(p->src + p->pos + 3);
+                            if (lo >= 0xDC00 && lo <= 0xDFFF) {
+                                codepoint = 0x10000 + ((uint32_t)(hi - 0xD800) << 10) +
+                                            (uint32_t)(lo - 0xDC00);
+                                p->pos += 6; /* skip \uXXXX for low surrogate */
+                            }
+                        }
+
+                        char utf8[4];
+                        int n = _utf8_encode(codepoint, utf8);
+                        for (int i = 0; i < n; i++) {
+                            b = prove_text_write_char(b, utf8[i]);
+                        }
+                    } else {
+                        /* Not enough characters — pass through literally */
+                        b = prove_text_write_char(b, '\\');
+                        b = prove_text_write_char(b, 'u');
+                    }
                     break;
                 }
                 default: b = prove_text_write_char(b, esc); break;

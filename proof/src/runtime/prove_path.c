@@ -117,7 +117,8 @@ Prove_String *prove_path_normalize(Prove_String *path) {
     int seg_count = 0;
     char **segments = (char **)malloc((size_t)seg_cap * sizeof(char *));
 
-    char *tok = strtok(buf, "/");
+    char *saveptr;
+    char *tok = strtok_r(buf, "/", &saveptr);
     while (tok) {
         if (strcmp(tok, ".") == 0) {
             /* skip */
@@ -138,7 +139,7 @@ Prove_String *prove_path_normalize(Prove_String *path) {
             }
             segments[seg_count++] = tok;
         }
-        tok = strtok(NULL, "/");
+        tok = strtok_r(NULL, "/", &saveptr);
     }
 
     /* Calculate result size */

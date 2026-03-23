@@ -12,7 +12,7 @@ typedef struct {
     bool     valid;
 } RegexCacheEntry;
 
-static RegexCacheEntry _regex_cache[REGEX_CACHE_SIZE];
+static _Thread_local RegexCacheEntry _regex_cache[REGEX_CACHE_SIZE];
 
 static uint32_t _hash_str(const char *s) {
     uint32_t h = 5381;

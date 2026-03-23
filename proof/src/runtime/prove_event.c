@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#include <unistd.h>  /* usleep */
+#include <unistd.h>
 #endif
 
 Prove_EventNodeQueue *prove_event_queue_new(void) {
@@ -15,6 +15,7 @@ Prove_EventNodeQueue *prove_event_queue_new(void) {
     q->closed = false;
 #ifndef _WIN32
     pthread_mutex_init(&q->lock, NULL);
+    pthread_cond_init(&q->cond, NULL);
 #endif
     return q;
 }
@@ -36,6 +37,7 @@ void prove_event_queue_send(Prove_EventNodeQueue *q, int tag, void *payload) {
     q->tail = ev;
     q->count++;
 #ifndef _WIN32
+    pthread_cond_signal(&q->cond);
     pthread_mutex_unlock(&q->lock);
 #endif
 }
@@ -66,11 +68,9 @@ Prove_EventNode *prove_event_queue_recv(Prove_EventNodeQueue *q, Prove_Coro *cor
             pthread_mutex_lock(&q->lock);
 #endif
         } else {
-            /* No coroutine — busy-wait with short sleep */
+            /* No coroutine — wait on condvar until event or close */
 #ifndef _WIN32
-            pthread_mutex_unlock(&q->lock);
-            usleep(1000);
-            pthread_mutex_lock(&q->lock);
+            pthread_cond_wait(&q->cond, &q->lock);
 #endif
         }
     }
@@ -86,11 +86,19 @@ Prove_EventNode *prove_event_queue_recv(Prove_EventNodeQueue *q, Prove_Coro *cor
 }
 
 void prove_event_queue_close(Prove_EventNodeQueue *q) {
+#ifndef _WIN32
+    pthread_mutex_lock(&q->lock);
+#endif
     q->closed = true;
+#ifndef _WIN32
+    pthread_cond_broadcast(&q->cond);
+    pthread_mutex_unlock(&q->lock);
+#endif
 }
 
 void prove_event_queue_free(Prove_EventNodeQueue *q) {
 #ifndef _WIN32
+    pthread_cond_destroy(&q->cond);
     pthread_mutex_destroy(&q->lock);
 #endif
     Prove_EventNode *ev = q->head;

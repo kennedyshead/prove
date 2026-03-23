@@ -4,6 +4,8 @@
 #include "prove_runtime.h"
 #include "prove_string.h"
 
+_Static_assert(sizeof(double) <= sizeof(intptr_t), "double must fit in intptr_t");
+
 /* ── Unified Result<Value, Error> ────────────────────────────── */
 
 typedef struct {

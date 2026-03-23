@@ -29,6 +29,14 @@
   static void _ensure_wsa(void) {}
 #endif
 
+/* Portable SIGPIPE suppression for send() on platforms without MSG_NOSIGNAL
+ * (e.g. macOS). SO_NOSIGPIPE is set per-socket at creation time; on Linux
+ * MSG_NOSIGNAL is passed per-call. Define MSG_NOSIGNAL to 0 on platforms
+ * that have neither so the send() call sites compile cleanly. */
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 /* ── Helpers ───────────────────────────────────────────────── */
 
 static Prove_Socket *_alloc_socket(int fd) {
@@ -89,6 +97,10 @@ Prove_Result prove_network_socket_inputs(Prove_String *host, int64_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return _socket_error("socket");
 
+#ifdef SO_NOSIGPIPE
+    { int _nosig = 1; setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &_nosig, sizeof(_nosig)); }
+#endif
+
     struct sockaddr_in sa;
     if (_resolve_and_fill(host, port, &sa) < 0) {
         CLOSE_SOCKET(fd);
@@ -123,6 +135,10 @@ Prove_Result prove_network_server_inputs(Prove_String *host, int64_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) return _socket_error("socket");
 
+#ifdef SO_NOSIGPIPE
+    { int _nosig = 1; setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &_nosig, sizeof(_nosig)); }
+#endif
+
     /* Allow address reuse */
     int opt = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof(opt));
@@ -156,6 +172,10 @@ Prove_Result prove_network_accept_inputs(Prove_Socket *listener) {
     int fd = accept(listener->fd, (struct sockaddr *)&sa, &sa_len);
     if (fd < 0) return _socket_error("accept");
 
+#ifdef SO_NOSIGPIPE
+    { int _nosig = 1; setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &_nosig, sizeof(_nosig)); }
+#endif
+
     return prove_result_ok_ptr(_alloc_socket(fd));
 }
 
@@ -185,7 +205,7 @@ Prove_Result prove_network_message_outputs(Prove_Socket *sock, Prove_ByteArray *
     const char *ptr = (const char *)data->data;
     size_t remaining = (size_t)data->length;
     while (remaining > 0) {
-        ssize_t sent = send(sock->fd, ptr, remaining, 0);
+        ssize_t sent = send(sock->fd, ptr, remaining, MSG_NOSIGNAL);
         if (sent < 0) return _socket_error("send");
         ptr += sent;
         remaining -= (size_t)sent;

@@ -9,11 +9,14 @@ Prove_Result prove_convert_integer_str(Prove_String *s) {
         return prove_result_err(prove_string_from_cstr("empty string"));
     }
 
+    if (s->length > 63) {
+        return prove_result_err(prove_string_from_cstr("number too long"));
+    }
+
     /* Null-terminate for strtol */
     char buf[64];
-    int64_t len = s->length < 63 ? s->length : 63;
-    memcpy(buf, s->data, (size_t)len);
-    buf[len] = '\0';
+    memcpy(buf, s->data, (size_t)s->length);
+    buf[s->length] = '\0';
 
     char *endptr;
     errno = 0;
@@ -42,10 +45,13 @@ Prove_Result prove_convert_float_str(Prove_String *s) {
         return prove_result_err(prove_string_from_cstr("empty string"));
     }
 
+    if (s->length > 127) {
+        return prove_result_err(prove_string_from_cstr("number too long"));
+    }
+
     char buf[128];
-    int64_t len = s->length < 127 ? s->length : 127;
-    memcpy(buf, s->data, (size_t)len);
-    buf[len] = '\0';
+    memcpy(buf, s->data, (size_t)s->length);
+    buf[s->length] = '\0';
 
     char *endptr;
     errno = 0;

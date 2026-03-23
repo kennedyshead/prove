@@ -164,52 +164,50 @@ Prove_String *prove_text_to_upper(Prove_String *s) {
     return result;
 }
 
+/* Forward declaration */
+static Prove_Builder *_builder_grow(Prove_Builder *b, int64_t needed);
+
+/* Write raw bytes to a builder (no null-terminator required) */
+static Prove_Builder *_builder_write_raw(Prove_Builder *b, const char *data, int64_t len) {
+    if (len <= 0) return b;
+    if (b->length + len > b->capacity) {
+        b = _builder_grow(b, len);
+    }
+    memcpy(b->data + b->length, data, (size_t)len);
+    b->length += len;
+    return b;
+}
+
 Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_String *new_s) {
     if (old_s->length == 0) {
         return prove_string_new(s->data, s->length);
     }
 
-    /* Count occurrences */
-    int64_t count = 0;
-    const char *p = s->data;
-    const char *end = s->data + s->length;
-    while (p + old_s->length <= end) {
-        if (memcmp(p, old_s->data, (size_t)old_s->length) == 0) {
-            count++;
-            p += old_s->length;
-        } else {
-            p++;
-        }
-    }
-
-    if (count == 0) return prove_string_new(s->data, s->length);
-
-    int64_t new_len = s->length + count * (new_s->length - old_s->length);
-    Prove_String *result = (Prove_String *)prove_alloc(
-        sizeof(Prove_String) + (size_t)new_len + 1
-    );
-    result->length = new_len;
-
+    /* Single-pass replace using a builder */
     const char *src = s->data;
-    char *dst = result->data;
-    while (src + old_s->length <= end) {
-        if (memcmp(src, old_s->data, (size_t)old_s->length) == 0) {
-            if (new_s->length > 0) {
-                memcpy(dst, new_s->data, (size_t)new_s->length);
-                dst += new_s->length;
-            }
-            src += old_s->length;
-        } else {
-            *dst++ = *src++;
-        }
-    }
-    /* Copy remaining bytes */
-    while (src < end) {
-        *dst++ = *src++;
-    }
-    result->data[new_len] = '\0';
+    const char *end = s->data + s->length;
+    Prove_Builder *b = NULL;
 
-    return result;
+    while (src + old_s->length <= end) {
+        const char *found = (const char *)memmem(
+            src, (size_t)(end - src), old_s->data, (size_t)old_s->length);
+        if (!found) break;
+
+        /* Lazily create builder on first match */
+        if (!b) b = prove_text_builder();
+
+        /* Write segment before the match, then the replacement */
+        b = _builder_write_raw(b, src, (int64_t)(found - src));
+        b = _builder_write_raw(b, new_s->data, new_s->length);
+        src = found + old_s->length;
+    }
+
+    /* No matches found — return a copy of the original */
+    if (!b) return prove_string_new(s->data, s->length);
+
+    /* Write remaining tail */
+    b = _builder_write_raw(b, src, (int64_t)(end - src));
+    return prove_text_build(b);
 }
 
 Prove_String *prove_text_repeat(Prove_String *s, int64_t n) {
@@ -282,6 +280,16 @@ Prove_Builder *prove_text_write_cstr(Prove_Builder *b, const char *cstr) {
         b = _builder_grow(b, len);
     }
     memcpy(b->data + b->length, cstr, (size_t)len);
+    b->length += len;
+    return b;
+}
+
+Prove_Builder *prove_text_write_bytes(Prove_Builder *b, const char *src, int64_t len) {
+    if (len <= 0) return b;
+    if (b->length + len > b->capacity) {
+        b = _builder_grow(b, len);
+    }
+    memcpy(b->data + b->length, src, (size_t)len);
     b->length += len;
     return b;
 }

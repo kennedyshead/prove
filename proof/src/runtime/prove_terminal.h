@@ -60,4 +60,8 @@ void prove_terminal_init(Prove_EventNodeQueue *eq);
 /* Cleanup terminal backend: stop input thread, restore cooked mode. */
 void prove_terminal_cleanup(void);
 
+/* Check for pending SIGWINCH and send resize event to the queue.
+ * Call from the main event loop, not from a signal handler. */
+void prove_terminal_check_resize(Prove_EventNodeQueue *eq);
+
 #endif /* PROVE_TERMINAL_H */

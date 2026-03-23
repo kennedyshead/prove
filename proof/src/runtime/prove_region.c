@@ -29,7 +29,8 @@ void *prove_region_alloc(ProveRegion *r, size_t size) {
 
     size = (size + 7) & ~7;
 
-    if (r->current && r->current->used + size <= r->current->capacity) {
+    if (r->current && !r->current->is_boundary &&
+        r->current->used + size <= r->current->capacity) {
         void *ptr = r->current->data + r->current->used;
         r->current->used += size;
         return ptr;
@@ -60,15 +61,16 @@ void prove_region_enter(ProveRegion *r) {
         return;
     }
 
-    size_t chunk_size = PROVE_REGION_CHUNK_SIZE;
-    ProveRegionFrame *frame = (ProveRegionFrame *)malloc(chunk_size);
+    /* Lazy: allocate only a lightweight boundary marker (~32 bytes).
+       Real data chunks are allocated on first prove_region_alloc. */
+    ProveRegionFrame *frame = (ProveRegionFrame *)malloc(sizeof(ProveRegionFrame));
     if (!frame) {
         fprintf(stderr, "prove: panic: region enter: out of memory\n");
         exit(1);
     }
 
     frame->prev = r->current;
-    frame->capacity = chunk_size - sizeof(ProveRegionFrame);
+    frame->capacity = 0;
     frame->used = 0;
     frame->is_boundary = true;
 

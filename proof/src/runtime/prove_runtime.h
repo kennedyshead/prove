@@ -19,10 +19,8 @@ typedef struct {
 static inline void prove_retain(void *obj) {
     if (__builtin_expect(obj != NULL, 1)) {
         Prove_Header *h = (Prove_Header *)obj;
-        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return;
+        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) return; /* immortal */
         h->refcount++;
-        /* Saturate: prevent non-immortal objects from reaching INT32_MAX */
-        if (__builtin_expect(h->refcount >= INT32_MAX, 0)) h->refcount = INT32_MAX - 1;
     }
 }
 

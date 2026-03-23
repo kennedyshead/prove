@@ -30,8 +30,10 @@ bool prove_character_space(char c) {
 /* ── String-to-character access ──────────────────────────────── */
 
 char prove_character_at(Prove_String *s, int64_t index) {
+#ifndef PROVE_RELEASE
     if (!s || index < 0 || index >= s->length) {
         prove_panic("Character.at: index out of bounds");
     }
+#endif
     return s->data[index];
 }

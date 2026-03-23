@@ -28,21 +28,10 @@ static inline bool prove_error_none(Prove_Option o) {
 
 /* ── Typed Option validators (aliases for overload dispatch) ── */
 
-static inline bool prove_error_some_int(Prove_Option o) {
-    return o.tag == 1;
-}
-
-static inline bool prove_error_some_str(Prove_Option o) {
-    return o.tag == 1;
-}
-
-static inline bool prove_error_none_int(Prove_Option o) {
-    return o.tag == 0;
-}
-
-static inline bool prove_error_none_str(Prove_Option o) {
-    return o.tag == 0;
-}
+#define prove_error_some_int prove_error_some
+#define prove_error_some_str prove_error_some
+#define prove_error_none_int prove_error_none
+#define prove_error_none_str prove_error_none
 
 /* ── Typed unwrap (extract inner type from Option.value) ───── */
 

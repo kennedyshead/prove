@@ -5,8 +5,7 @@
 
 Prove_String *prove_format_pad_left(Prove_String *s, int64_t width, char fill) {
     if (s->length >= width) {
-        /* Return a copy */
-        return prove_string_new(s->data, s->length);
+        return s;  /* Strings are immutable; no copy needed */
     }
     int64_t pad = width - s->length;
     int64_t total = width;
@@ -21,7 +20,7 @@ Prove_String *prove_format_pad_left(Prove_String *s, int64_t width, char fill) {
 
 Prove_String *prove_format_pad_right(Prove_String *s, int64_t width, char fill) {
     if (s->length >= width) {
-        return prove_string_new(s->data, s->length);
+        return s;  /* Strings are immutable; no copy needed */
     }
     int64_t pad = width - s->length;
     int64_t total = width;
@@ -36,7 +35,7 @@ Prove_String *prove_format_pad_right(Prove_String *s, int64_t width, char fill) 
 
 Prove_String *prove_format_center(Prove_String *s, int64_t width, char fill) {
     if (s->length >= width) {
-        return prove_string_new(s->data, s->length);
+        return s;  /* Strings are immutable; no copy needed */
     }
     int64_t total_pad = width - s->length;
     int64_t left_pad = total_pad / 2;

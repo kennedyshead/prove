@@ -25,7 +25,7 @@ Prove_List *prove_list_new_region(ProveRegion *r, int64_t initial_cap) {
 }
 
 void prove_list_push(Prove_List *list, void *elem) {
-    if (list->length >= list->capacity) {
+    if (__builtin_expect(list->length >= list->capacity, 0)) {
         int64_t new_cap = list->capacity * 2;
         if (list->is_region) {
             /* Region data cannot be realloc'd — switch to heap */
@@ -46,18 +46,24 @@ void prove_list_push(Prove_List *list, void *elem) {
 }
 
 void *prove_list_get(Prove_List *list, int64_t index) {
+#ifndef PROVE_RELEASE
     if (index < 0 || index >= list->length) {
         prove_panic("list index out of bounds");
     }
+#endif
     return list->data[index];
 }
 
 int64_t prove_list_len(Prove_List *list) {
+#ifndef PROVE_RELEASE
     return list ? list->length : 0;
+#else
+    return list->length;
+#endif
 }
 
 void prove_list_free(Prove_List *list) {
     if (!list) return;
-    free(list->data);
+    if (!list->is_region) free(list->data);
     free(list);
 }

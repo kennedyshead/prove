@@ -145,11 +145,11 @@ Prove_Table *prove_table_remove(Prove_String *key, Prove_Table *table) {
 
 Prove_List *prove_table_keys(Prove_Table *table) {
     Prove_List *list = prove_list_new(table->count + 1);
-
+    int64_t found = 0;
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
-            Prove_String *k = table->entries[i].key;
-            prove_list_push(list, k);
+            prove_list_push(list, table->entries[i].key);
+            if (++found == table->count) break;
         }
     }
     return list;
@@ -157,11 +157,11 @@ Prove_List *prove_table_keys(Prove_Table *table) {
 
 Prove_List *prove_table_values(Prove_Table *table) {
     Prove_List *list = prove_list_new(table->count + 1);
-
+    int64_t found = 0;
     for (int64_t i = 0; i < table->capacity; i++) {
         if (table->entries[i].key) {
-            void *v = table->entries[i].value;
-            prove_list_push(list, v);
+            prove_list_push(list, table->entries[i].value);
+            if (++found == table->count) break;
         }
     }
     return list;

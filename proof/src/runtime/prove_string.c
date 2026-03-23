@@ -37,8 +37,10 @@ Prove_String *prove_string_from_cstr_region(ProveRegion *r, const char *src) {
 }
 
 Prove_String *prove_string_concat(Prove_String *a, Prove_String *b) {
+#ifndef PROVE_RELEASE
     if (!a) { if (b) prove_retain(b); return b; }
     if (!b) { prove_retain(a); return a; }
+#endif
     if (a->length == 0) { prove_retain(b); return b; }
     if (b->length == 0) { prove_retain(a); return a; }
     int64_t new_len = a->length + b->length;
@@ -52,13 +54,18 @@ Prove_String *prove_string_concat(Prove_String *a, Prove_String *b) {
 
 bool prove_string_eq(Prove_String *a, Prove_String *b) {
     if (a == b) return true;
+#ifndef PROVE_RELEASE
     if (!a || !b) return false;
+#endif
     if (a->length != b->length) return false;
     return memcmp(a->data, b->data, (size_t)a->length) == 0;
 }
 
 int64_t prove_string_len(Prove_String *s) {
-    return s ? s->length : 0;
+#ifndef PROVE_RELEASE
+    if (!s) return 0;
+#endif
+    return s->length;
 }
 
 Prove_String *prove_string_from_int(int64_t val) {
@@ -76,7 +83,7 @@ Prove_String *prove_string_from_double(double val) {
 static Prove_String *_str_true = NULL;
 static Prove_String *_str_false = NULL;
 
-static void prove_string_init_statics(void) {
+void prove_string_init_statics(void) {
     _str_true = prove_string_from_cstr("true");
     _str_true->header.refcount = INT32_MAX;
     _str_false = prove_string_from_cstr("false");
@@ -84,7 +91,7 @@ static void prove_string_init_statics(void) {
 }
 
 Prove_String *prove_string_from_bool(bool val) {
-    if (!_str_true) prove_string_init_statics();
+    if (__builtin_expect(_str_true == NULL, 0)) prove_string_init_statics();
     return val ? _str_true : _str_false;
 }
 

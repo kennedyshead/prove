@@ -13,6 +13,8 @@
 #include "prove_intern.h"
 #include "prove_region.h"
 
+extern void prove_string_init_statics(void);
+
 static ProveArena *_global_arena = NULL;
 static ProveInternTable *_global_intern = NULL;
 static ProveRegion *_global_region = NULL;
@@ -56,12 +58,7 @@ static void prove_backtrace_handler(int sig) {
     }
     _safe_write("\n========================================\n");
 
-#if defined(__GLIBC__)
-    void *buffer[MAX_BACKTRACE];
-    int n = backtrace(buffer, MAX_BACKTRACE);
-    backtrace_symbols_fd(buffer, n, STDERR_FILENO);
-#elif defined(__APPLE__)
-    /* macOS: use backtrace() from <execinfo.h> (available in libSystem) */
+#if defined(__GLIBC__) || defined(__APPLE__)
     void *buffer[MAX_BACKTRACE];
     int n = backtrace(buffer, MAX_BACKTRACE);
     backtrace_symbols_fd(buffer, n, STDERR_FILENO);
@@ -79,8 +76,21 @@ void prove_runtime_init(void) {
     signal(SIGILL, prove_backtrace_handler);
     
     _global_arena = prove_arena_new(0);
+    if (!_global_arena) {
+        fprintf(stderr, "prove: out of memory (arena init)\n");
+        exit(1);
+    }
     _global_intern = prove_intern_table_new(_global_arena);
+    if (!_global_intern) {
+        fprintf(stderr, "prove: out of memory (intern table init)\n");
+        exit(1);
+    }
     _global_region = prove_region_new();
+    if (!_global_region) {
+        fprintf(stderr, "prove: out of memory (region init)\n");
+        exit(1);
+    }
+    prove_string_init_statics();
 }
 
 void prove_runtime_cleanup(void) {

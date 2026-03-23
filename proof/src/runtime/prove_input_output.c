@@ -32,17 +32,18 @@ Prove_Result prove_file_read(Prove_String *path) {
         return prove_result_err(prove_string_from_cstr("failed to determine file size"));
     }
 
-    char *buf = (char *)malloc((size_t)size);
-    if (!buf) {
+    /* Allocate Prove_String directly and fread into it — no intermediate copy */
+    Prove_String *content = (Prove_String *)prove_alloc(sizeof(Prove_String) + (size_t)size + 1);
+    if (!content) {
         fclose(f);
         return prove_result_err(prove_string_from_cstr("out of memory"));
     }
 
-    size_t read_bytes = fread(buf, 1, (size_t)size, f);
+    size_t read_bytes = fread(content->data, 1, (size_t)size, f);
     fclose(f);
 
-    Prove_String *content = prove_string_new(buf, (int64_t)read_bytes);
-    free(buf);
+    content->length = (int64_t)read_bytes;
+    content->data[read_bytes] = '\0';
     return prove_result_ok_ptr(content);
 }
 
@@ -157,8 +158,7 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
         if (fds[0].revents & (POLLIN | POLLHUP)) {
             n = read(out_pipe[0], buf, sizeof(buf));
             if (n > 0) {
-                Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-                ob = prove_text_write(ob, chunk);
+                ob = prove_text_write_bytes(ob, buf, (int64_t)n);
             } else {
                 fds[0].fd = -1;
                 close(out_pipe[0]);
@@ -168,8 +168,7 @@ Prove_ProcessResult prove_io_system_inputs(Prove_String *cmd, Prove_List *args) 
         if (fds[1].revents & (POLLIN | POLLHUP)) {
             n = read(err_pipe[0], buf, sizeof(buf));
             if (n > 0) {
-                Prove_String *chunk = prove_string_new(buf, (int64_t)n);
-                eb = prove_text_write(eb, chunk);
+                eb = prove_text_write_bytes(eb, buf, (int64_t)n);
             } else {
                 fds[1].fd = -1;
                 close(err_pipe[0]);
