@@ -23,8 +23,8 @@ binary
 transforms split(text String, pattern String) List<String>
 binary
 
-/// Get the matched text from a match result
-reads text(matched Match) String
+/// Get the matched string from a match result
+reads string(matched Match) String
 binary
 
 /// Get the start position of a match

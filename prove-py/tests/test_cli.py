@@ -227,13 +227,14 @@ class TestDiagnosticNotes:
         source = (
             "module Main\n"
             "  System outputs console\n"
+            "  Types reads string\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"
             "\n"
             "main()\n"
             "    from\n"
-            "        console(to_string(add(1)))\n"
+            "        console(string(add(1)))\n"
         )
         tokens = Lexer(source, "test.prv").lex()
         module = Parser(tokens, "test.prv").parse()

@@ -203,7 +203,6 @@ BUILTIN_FUNCTIONS: frozenset[str] = frozenset(
         "par_filter",
         "par_reduce",
         "par_each",
-        "to_string",
         "clamp",
     }
 )

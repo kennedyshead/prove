@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates Random module operations"""
   System outputs console
   Random inputs integer decimal boolean choice shuffle
-  Parse reads text
+  Types reads string
   Text transforms join
 
 main() Result<Unit, Error>!
@@ -23,4 +23,4 @@ from
     // Shuffle list
     numbers as List<Integer> = List(1, 2, 3, 4, 5)
     shuffled as List<Integer> = shuffle(numbers)
-    console(f"Shuffled: {join(map(shuffled, text), ", ")}")
+    console(f"Shuffled: {join(map(shuffled, string), ", ")}")

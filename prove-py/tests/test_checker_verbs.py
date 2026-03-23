@@ -163,9 +163,11 @@ class TestChannelDispatch:
     def test_validates_channel(self):
         """validates verb functions should coexist with other verbs."""
         check(
+            "module T\n"
+            "  Types reads string\n"
             "transforms format(n Integer) String\n"
             "    from\n"
-            "        to_string(n)\n"
+            "        string(n)\n"
             "\n"
             "validates format(n Integer)\n"
             "    from\n"

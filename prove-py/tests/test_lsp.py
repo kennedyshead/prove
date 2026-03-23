@@ -287,14 +287,14 @@ class TestBuildImportEdit:
         assert edit.range.start.line == 4
 
     def test_new_stdlib_import_after_multiline_narrative(self):
-        # Regression: stdlib import (e.g. Pattern reads text) inserted inside narrative
+        # Regression: stdlib import (e.g. Pattern reads string) inserted inside narrative
         source = (
             'module Source\n  narrative: """\n  Reads all source files through dir inputs,\n  """\n'
         )
-        suggestion = ImportSuggestion(module="Pattern", verb="reads", name="text")
+        suggestion = ImportSuggestion(module="Pattern", verb="reads", name="string")
         edit = _build_import_edit_text(source, suggestion)
         assert edit is not None
-        assert "Pattern reads text" in edit.new_text
+        assert "Pattern reads string" in edit.new_text
         assert edit.range.start.line == 4
 
     def test_extend_existing_import_different_verb(self):
@@ -337,7 +337,7 @@ class TestCompletion:
     def test_builtin_functions_always_present(self):
         _analyze("<test://bi>", "")
         labels = _complete_labels("<test://bi>")
-        for fn in ("len", "map", "filter", "reduce", "to_string", "clamp"):
+        for fn in ("len", "map", "filter", "reduce", "clamp"):
             assert fn in labels, f"builtin '{fn}' missing from completions"
         # println/print/readln are no longer builtins — they come from System
         for fn in ("println", "print", "readln"):

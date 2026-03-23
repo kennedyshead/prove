@@ -684,7 +684,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 ],
                 UNIT,
             ),
-            ("to_string", [TypeVariable("Value")], STRING),
             ("clamp", [INTEGER, INTEGER, INTEGER], INTEGER),
         ]
         for name, param_types, return_type in builtins:

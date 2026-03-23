@@ -16,8 +16,7 @@ module Main
   System types ByteArray validates console inputs console outputs console
   Text transforms slice trim
   Text reads length
-  Types creates integer
-  Parse reads text
+  Types reads string creates integer
 
 /// Read one framed message from stdin.
 /// Parses the Content-Length header, skips the blank separator line,
@@ -35,4 +34,4 @@ from
         false => console("stdio_demo: no input on stdin")
         true =>
             body as ByteArray = read_message()!
-            console(f"stdio_demo: received message {text(body)}")
+            console(f"stdio_demo: received message {string(body)}")

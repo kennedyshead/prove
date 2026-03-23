@@ -89,13 +89,14 @@ class TestFunctionDef:
         source = (
             "module Main\n"
             "  System outputs console\n"
+            "  Types reads string\n"
             "transforms add(a Integer, b Integer) Integer\n"
             "    from\n"
             "        a + b\n"
             "\n"
             "main()\n"
             "    from\n"
-            "        console(to_string(add(1, 2)))\n"
+            "        console(string(add(1, 2)))\n"
         )
         c_code = _emit(source)
         assert "prv_transforms_add_Integer_Integer" in c_code
@@ -141,20 +142,29 @@ class TestRetainRelease:
 
 
 class TestBuiltinDispatch:
-    def test_to_string_integer(self):
-        source = "transforms show(x Integer) String\n    from\n        to_string(x)\n"
+    def test_string_integer(self):
+        source = (
+            "module T\n  Types reads string\n"
+            "transforms show(x Integer) String\n    from\n        string(x)\n"
+        )
         c_code = _emit(source)
-        assert "prove_string_from_int" in c_code
+        assert "prove_convert_string_int" in c_code
 
-    def test_to_string_boolean(self):
-        source = "transforms show(x Boolean) String\n    from\n        to_string(x)\n"
+    def test_string_boolean(self):
+        source = (
+            "module T\n  Types reads string\n"
+            "transforms show(x Boolean) String\n    from\n        string(x)\n"
+        )
         c_code = _emit(source)
-        assert "prove_string_from_bool" in c_code
+        assert "prove_convert_string_bool" in c_code
 
-    def test_to_string_decimal(self):
-        source = "transforms show(x Decimal) String\n    from\n        to_string(x)\n"
+    def test_string_decimal(self):
+        source = (
+            "module T\n  Types reads string\n"
+            "transforms show(x Decimal) String\n    from\n        string(x)\n"
+        )
         c_code = _emit(source)
-        assert "prove_string_from_double" in c_code
+        assert "prove_convert_string_float" in c_code
 
     def test_len_list(self):
         source = "transforms count() Integer\n    from\n        len([1, 2, 3])\n"
@@ -253,7 +263,7 @@ class TestAlgebraicConstructors:
             "main()\n"
             "    from\n"
             "        x as Color = Red()\n"
-            "        to_string(0)\n"
+            "        0\n"
         )
         c_code = _emit(source)
         assert "static inline Prove_Color Red(void)" in c_code
@@ -269,7 +279,7 @@ class TestAlgebraicConstructors:
             "main()\n"
             "    from\n"
             "        x as Expr = Num(42)\n"
-            "        to_string(0)\n"
+            "        0\n"
         )
         c_code = _emit(source)
         assert "static inline Prove_Expr Num(int64_t val)" in c_code

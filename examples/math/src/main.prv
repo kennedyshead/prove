@@ -4,6 +4,7 @@ module Main
   transforms by sum of add arguments, double value, abs value
   """
   System outputs console
+  Types reads string
 
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b
@@ -27,6 +28,6 @@ from
 
 main()
 from
-    console(to_string(add(10, 20)))
-    console(to_string(double(15)))
-    console(to_string(abs(-42)))
+    console(string(add(10, 20)))
+    console(string(double(15)))
+    console(string(abs(-42)))

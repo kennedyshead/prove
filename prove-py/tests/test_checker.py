@@ -639,9 +639,11 @@ class TestUserDefinedOverloads:
     def test_different_verb_same_name_allowed(self):
         """Same name with different verbs is channel dispatch, not overloading."""
         check(
+            "module T\n"
+            "  Types reads string\n"
             "transforms format(n Integer) String\n"
             "    from\n"
-            "        to_string(n)\n"
+            "        string(n)\n"
             "\n"
             "validates format(n Integer)\n"
             "    from\n"

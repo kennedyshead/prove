@@ -4,7 +4,7 @@ module Main
   Language
     reads words sentences distance similarity soundex metaphone bigrams keywords
     transforms stem root normalize without_stopwords
-  Parse reads text
+  Types reads string
   Text transforms join
 
 main() Result<Unit, Error>!
@@ -21,7 +21,7 @@ from
     d as Integer = distance("kitten", "sitting")
     console(f"Distance 'kitten'/'sitting': {d}")
     s as Float = similarity("hello", "hallo")
-    console(f"Similarity 'hello'/'hallo': {text(s)}")
+    console(f"Similarity 'hello'/'hallo': {string(s)}")
     // Phonetic codes
     console(f"Soundex 'Robert': {soundex("Robert")}")
     console(f"Metaphone 'Smith': {metaphone("Smith")}")

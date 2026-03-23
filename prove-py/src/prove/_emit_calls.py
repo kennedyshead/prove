@@ -24,6 +24,7 @@ from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
     INTEGER,
+    STRING,
     AlgebraicType,
     ArrayType,
     FunctionType,
@@ -690,22 +691,6 @@ class CallEmitterMixin:
                                 inner_c = self._emit_expr(inner_arg)
                                 return f'printf("%f\\n", {inner_c})'
 
-            # Type-aware dispatch for to_string
-            if name == "to_string" and expr.args:
-                arg_type = self._infer_expr_type(expr.args[0])
-                # Unwrap Option<Value> → use inner type for dispatch
-                if (
-                    isinstance(arg_type, GenericInstance)
-                    and arg_type.base_name == "Option"
-                    and arg_type.args
-                ):
-                    inner_ty = arg_type.args[0]
-                    inner_ct = map_type(inner_ty)
-                    c_name = self._to_string_func(inner_ty)
-                    return f"{c_name}(({inner_ct.decl}){args[0]}.value)"
-                c_name = self._to_string_func(arg_type)
-                return f"{c_name}({', '.join(args)})"
-
             # Type-aware dispatch for len
             if name == "len" and expr.args:
                 arg_type = self._infer_expr_type(expr.args[0])
@@ -829,7 +814,7 @@ class CallEmitterMixin:
                         if isinstance(expr.args[i], LambdaExpr):
                             args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
-                c_name = self._resolve_stdlib_c_name(sig, expr.args)
+                c_name: str | None = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
                     # prove_store_merge takes a 4th resolver arg (NULL = no resolver)
                     if c_name == "prove_store_merge" and len(args) == 3:
@@ -1121,7 +1106,7 @@ class CallEmitterMixin:
                         if isinstance(expr.args[i], LambdaExpr):
                             args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
-                c_name = self._resolve_stdlib_c_name(sig)
+                c_name: str | None = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     call_str = f"{c_name}({', '.join(args)})"
                     call_str = self._maybe_unwrap_option(
@@ -1739,7 +1724,23 @@ class CallEmitterMixin:
                 ret_type = fn_sig.return_type if fn_sig else None
                 ret_name = getattr(ret_type, "name", "")
 
-                if ret_name == "String" and elem_name == "Integer":
+                # Types.string() dispatches by element type
+                if expr.name == "string" and elem_name == "Integer":
+                    c_fn = "prove_string_from_int"
+                    ret_type = STRING
+                elif expr.name == "string" and elem_name in ("Float", "Decimal"):
+                    c_fn = "prove_string_from_double"
+                    ret_type = STRING
+                elif expr.name == "string" and elem_name == "Boolean":
+                    c_fn = "prove_string_from_bool"
+                    ret_type = STRING
+                elif expr.name == "string" and elem_name == "Character":
+                    c_fn = "prove_string_from_char"
+                    ret_type = STRING
+                elif expr.name == "string" and elem_name == "Value":
+                    c_fn = "prove_value_as_text"
+                    ret_type = STRING
+                elif ret_name == "String" and elem_name == "Integer":
                     c_fn = "prove_string_from_int"
                 elif ret_name == "String" and elem_name in ("Float", "Decimal"):
                     c_fn = "prove_string_from_double"

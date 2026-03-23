@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates advanced Pattern module operations"""
   System outputs console
-  Pattern types Match reads search find_all text start end transforms replace split
+  Pattern types Match reads search find_all string start end transforms replace split
   Sequence reads length
   Text validates contains transforms join
 
@@ -12,7 +12,7 @@ from
     found as Option<Match> = search(text, "fox")
     match found
         Some(m) =>
-            matched_text as String = text(m)
+            matched_text as String = string(m)
             pos as Integer = start(m)
             end_pos as Integer = end(m)
             console(f"Found '{matched_text}' at {pos}-{end_pos}")

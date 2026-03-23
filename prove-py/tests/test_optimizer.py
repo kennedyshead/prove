@@ -202,6 +202,7 @@ class TestTCOIntegration:
             "module TcoTest\n"
             '  narrative: """TCO test"""\n'
             "  System outputs console\n"
+            "  Types reads string\n"
             "matches count(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
@@ -211,7 +212,7 @@ class TestTCOIntegration:
             "\n"
             "main()\n"
             "from\n"
-            "    console(to_string(count(100000, 0)))\n"
+            "    console(string(count(100000, 0)))\n"
         )
 
         config = ProveConfig(
@@ -242,6 +243,7 @@ class TestTCOIntegration:
         source = (
             "module FactTest\n"
             "  System outputs console\n"
+            "  Types reads string\n"
             "transforms fact(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
@@ -251,7 +253,7 @@ class TestTCOIntegration:
             "\n"
             "main()\n"
             "from\n"
-            "    console(to_string(fact(5, 1)))\n"
+            "    console(string(fact(5, 1)))\n"
         )
 
         tokens = Lexer(source, "<test>").lex()
@@ -813,6 +815,7 @@ class TestTailContinueTemporaryElimination:
         source = (
             "module CountTest\n"
             "  System outputs console\n"
+            "  Types reads string\n"
             "matches count(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
@@ -822,7 +825,7 @@ class TestTailContinueTemporaryElimination:
             "\n"
             "main()\n"
             "from\n"
-            "    console(to_string(count(5, 0)))\n"
+            "    console(string(count(5, 0)))\n"
         )
 
         tokens = Lexer(source, "<test>").lex()
@@ -851,6 +854,7 @@ class TestTailContinueTemporaryElimination:
         source = (
             "module FactTest\n"
             "  System outputs console\n"
+            "  Types reads string\n"
             "transforms fact(n Integer, acc Integer) Integer\n"
             "  terminates: n\n"
             "from\n"
@@ -860,7 +864,7 @@ class TestTailContinueTemporaryElimination:
             "\n"
             "main()\n"
             "from\n"
-            "    console(to_string(fact(5, 1)))\n"
+            "    console(string(fact(5, 1)))\n"
         )
 
         tokens = Lexer(source, "<test>").lex()

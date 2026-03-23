@@ -2,7 +2,8 @@ module Main
   narrative: """Demonstrates Table module operations"""
   System outputs console
   Table types Table reads length keys get validates has
-  Parse reads object text creates json
+  Parse reads object creates json
+  Types reads string
   Text transforms join
 
 main() Unit
@@ -21,11 +22,11 @@ from
             // Get values (returns Option<Value>)
             name_opt as Option<Value> = get("name", table)
             match name_opt
-                Some(v) => console(f"Name: {text(v)}")
+                Some(v) => console(f"Name: {string(v)}")
                 None => console("No name")
             city_opt as Option<Value> = get("city", table)
             match city_opt
-                Some(v) => console(f"City: {text(v)}")
+                Some(v) => console(f"City: {string(v)}")
                 None => console("No city")
             // Get all keys
             all_keys as List<String> = keys(table)

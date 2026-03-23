@@ -6,9 +6,8 @@ module Main
     creates range
     validates empty contains
     transforms slice reverse sort
-  Parse reads text
   Text transforms join
-  Types reads unwrap
+  Types reads string unwrap
 
 main() Result<Unit, Error>!
 from
@@ -28,11 +27,11 @@ from
     console(f"Index of 4: {idx}")
     // Slice
     slice_result as List<Integer> = slice(numbers, 1, 3)
-    console(f"Slice [1:3]: {join(map(slice_result, text), ", ")}")
+    console(f"Slice [1:3]: {join(map(slice_result, string), ", ")}")
     // Reverse
     rev as List<Integer> = reverse(numbers)
-    console(f"Reversed: {join(map(rev, text), ", ")}")
+    console(f"Reversed: {join(map(rev, string), ", ")}")
     // Sort
     unsorted as List<Integer> = [3, 1, 4, 1, 5, 9, 2, 6]
     sorted_nums as List<Integer> = sort(unsorted)
-    console(f"Sorted: {join(map(sorted_nums, text), ", ")}")
+    console(f"Sorted: {join(map(sorted_nums, string), ", ")}")

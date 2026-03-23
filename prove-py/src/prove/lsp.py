@@ -1845,7 +1845,6 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         "map": "(list: List<Value>, fn: (Value) -> Output) List<Output>",
         "filter": "(list: List<Value>, fn: (Value) -> Boolean) List<Value>",
         "reduce": "(list: List<Value>, init: Output, fn: (Output, Value) -> Output) Output",
-        "to_string": "(value: Value) String",
         "clamp": "(value: Integer, low: Integer, high: Integer) Integer",
     }
     for name in _BUILTINS:

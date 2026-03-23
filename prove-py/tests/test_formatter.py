@@ -152,7 +152,7 @@ class TestFormatterExpressions:
         assert _roundtrip(source) == source
 
     def test_call_expr(self):
-        source = "main()\nfrom\n    println(to_string(42))\n"
+        source = "module T\n  Types reads string\n\nmain()\nfrom\n    println(string(42))\n"
         assert _roundtrip(source) == source
 
     def test_pipe_expr(self):
@@ -176,7 +176,7 @@ class TestFormatterExpressions:
         assert _roundtrip(source) == source
 
     def test_list_literal(self):
-        source = "main()\nfrom\n    println(to_string([1, 2, 3]))\n"
+        source = "module T\n  Types reads string\n\nmain()\nfrom\n    println(string([1, 2, 3]))\n"
         assert _roundtrip(source) == source
 
     def test_fail_propagation(self):
@@ -297,7 +297,7 @@ class TestFormatterImports:
         """When over MAX_LINE_LENGTH, verb groups split to indented continuation lines."""
         source = (
             "module Foo\n"
-            "  Pattern reads search find_all text start end validates test"
+            "  Pattern reads search find_all string start end validates test"
             " transforms replace split join types Match\n"
         )
         result = _roundtrip(source)
@@ -350,11 +350,16 @@ class TestFormatterRoundTrip:
 
 class TestFormatterVarDecl:
     def test_var_decl_with_type(self):
-        source = "main()\nfrom\n    x as Integer = 42\n    println(to_string(x))\n"
+        source = (
+            "module T\n  Types reads string\n\n"
+            "main()\nfrom\n    x as Integer = 42\n    println(string(x))\n"
+        )
         assert _roundtrip(source) == source
 
     def test_var_decl_without_type(self):
-        source = "main()\nfrom\n    x = 42\n    println(to_string(x))\n"
+        source = (
+            "module T\n  Types reads string\nmain()\nfrom\n    x = 42\n    println(string(x))\n"
+        )
         result = _parse_format(source)
         assert "x" in result
         assert "42" in result
@@ -374,11 +379,14 @@ class TestFormatterTypeInference:
         result = _format_with_types(source)
         assert "count as Integer = len(items)" in result
 
-    def test_unqualified_call_to_string(self):
-        """to_string(x) → s as String = to_string(x)"""
-        source = "transforms show(n Integer) String\nfrom\n    s as = to_string(n)\n    s\n"
-        result = _format_with_types(source)
-        assert "s as String = to_string(n)" in result
+    def test_unqualified_call_string(self):
+        """string(x) → s as String = string(x) (verifies formatter roundtrip)."""
+        source = (
+            "module T\n  Types reads string\n\n"
+            "transforms show(n Integer) String\nfrom\n"
+            "    s as String = string(n)\n    s\n"
+        )
+        assert _roundtrip(source) == source
 
     def test_existing_annotation_preserved(self):
         """Never overwrite an existing type annotation."""
@@ -451,7 +459,7 @@ class TestFormatterTypeInference:
             "module Main\n"
             '  narrative: """test"""\n'
             "  System inputs file, outputs console\n"
-            "  Parse creates text object, reads toml text, types Value\n"
+            "  Parse creates value object, reads toml, types Value\n"
             "  Table reads keys get, types Table, validates has\n"
             "  Text transforms join\n"
             "\n"

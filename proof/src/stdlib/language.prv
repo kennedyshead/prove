@@ -71,8 +71,8 @@ binary
 reads keywords(text String, count Integer) List<String>
 binary
 
-/// Get the matched text from a token
-reads text(token Token) String
+/// Get the matched string from a token
+reads string(token Token) String
 binary
 
 /// Get the start position of a token

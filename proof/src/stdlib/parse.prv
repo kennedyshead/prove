@@ -29,10 +29,6 @@ binary
 reads tag(value Value) String
 binary
 
-/// Get the text content of a Value
-reads text(value Value) String
-binary
-
 /// Get the numeric content of a Value
 reads number(value Value) Integer
 binary
