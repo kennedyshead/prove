@@ -212,6 +212,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_text_write",
         "prove_text_write_char",
         "prove_text_write_cstr",
+        "prove_text_write_bytes",
         "prove_text_build",
         "prove_text_builder_length",
     ],
@@ -539,6 +540,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_array_reverse_float",
         "prove_array_sort_int",
         "prove_array_sort_float",
+        "prove_array_free",
     ],
     "prove_network": [
         "prove_network_socket_inputs",
@@ -584,6 +586,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_terminal_read_key",
         "prove_terminal_init",
         "prove_terminal_cleanup",
+        "prove_terminal_check_resize",
     ],
     "prove_gui": [
         "prove_gui_window",

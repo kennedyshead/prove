@@ -70,6 +70,18 @@ static Prove_String *_read_str(FILE *f) {
     return s;
 }
 
+/* ── Static string for "current.dat" (allocated once) ────────── */
+
+static Prove_String *_current_dat = NULL;
+
+static Prove_String *_get_current_dat(void) {
+    if (!_current_dat) {
+        _current_dat = prove_string_from_cstr("current.dat");
+        _current_dat->header.refcount = INT32_MAX; /* immortal */
+    }
+    return _current_dat;
+}
+
 /* ── Table constructor ──────────────────────────────────────── */
 
 Prove_StoreTable *prove_store_table_new(Prove_String *name, int64_t col_count,
@@ -227,7 +239,7 @@ bool prove_store_validates(Prove_String *path) {
 
 Prove_Result prove_store_table_inputs(Prove_Store *store, Prove_String *name) {
     Prove_String *table_dir = prove_path_join(store->path, name);
-    Prove_String *file_path = prove_path_join(table_dir, prove_string_from_cstr("current.dat"));
+    Prove_String *file_path = prove_path_join(table_dir, _get_current_dat());
 
     Prove_StoreTable *table = _deserialize_table(file_path, name->data);
     if (!table) {
@@ -248,7 +260,7 @@ Prove_Result prove_store_table_outputs(Prove_Store *store, Prove_StoreTable *tab
     if (prove_result_is_err(dr)) return dr;
 
     /* Optimistic concurrency: check current version on disk */
-    Prove_String *current_path = prove_path_join(table_dir, prove_string_from_cstr("current.dat"));
+    Prove_String *current_path = prove_path_join(table_dir, _get_current_dat());
     if (prove_io_file_validates(current_path)) {
         FILE *existing = fopen(current_path->data, "rb");
         if (existing) {
@@ -287,7 +299,7 @@ Prove_Result prove_store_table_outputs(Prove_Store *store, Prove_StoreTable *tab
 
 bool prove_store_table_validates(Prove_Store *store, Prove_String *name) {
     Prove_String *table_dir = prove_path_join(store->path, name);
-    Prove_String *file_path = prove_path_join(table_dir, prove_string_from_cstr("current.dat"));
+    Prove_String *file_path = prove_path_join(table_dir, _get_current_dat());
     return prove_io_file_validates(file_path);
 }
 
@@ -699,21 +711,27 @@ bool prove_store_merged_validates(Prove_MergeResult *mr) {
 }
 
 Prove_StoreTable *prove_store_merged(Prove_MergeResult *mr) {
+#ifndef PROVE_RELEASE
     if (!mr) prove_panic("Store.merged: null result");
     if (mr->tag != PROVE_MERGE_MERGED) prove_panic("Store.merged: result is conflicted");
+#endif
     return mr->data.table;
 }
 
 Prove_List *prove_store_conflicts(Prove_MergeResult *mr) {
+#ifndef PROVE_RELEASE
     if (!mr) prove_panic("Store.conflicts: null result");
     if (mr->tag != PROVE_MERGE_CONFLICTED) prove_panic("Store.conflicts: result is merged");
+#endif
     return mr->data.conflicts;
 }
 
 /* ── Conflict accessors ───────────────────────────────────── */
 
 Prove_String *prove_store_conflict_variant(Prove_Conflict *c) {
+#ifndef PROVE_RELEASE
     if (!c) prove_panic("Store.variant: null conflict");
+#endif
     if (c->tag == PROVE_CONFLICT_VALUE) return c->data.value.variant;
     if (c->tag == PROVE_CONFLICT_ADDITION) return c->data.addition.variant;
     prove_panic("Store.variant: schema conflict has no variant");
@@ -721,20 +739,26 @@ Prove_String *prove_store_conflict_variant(Prove_Conflict *c) {
 }
 
 Prove_String *prove_store_conflict_column(Prove_Conflict *c) {
+#ifndef PROVE_RELEASE
     if (!c) prove_panic("Store.column: null conflict");
     if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.column: not a value conflict");
+#endif
     return c->data.value.column;
 }
 
 Prove_String *prove_store_conflict_local_value(Prove_Conflict *c) {
+#ifndef PROVE_RELEASE
     if (!c) prove_panic("Store.local_value: null conflict");
     if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.local_value: not a value conflict");
+#endif
     return c->data.value.local_val;
 }
 
 Prove_String *prove_store_conflict_remote_value(Prove_Conflict *c) {
+#ifndef PROVE_RELEASE
     if (!c) prove_panic("Store.remote_value: null conflict");
     if (c->tag != PROVE_CONFLICT_VALUE) prove_panic("Store.remote_value: not a value conflict");
+#endif
     return c->data.value.remote_val;
 }
 
@@ -742,7 +766,7 @@ Prove_String *prove_store_conflict_remote_value(Prove_Conflict *c) {
 
 Prove_Result prove_store_lookup_outputs(Prove_Store *store, Prove_String *name) {
     Prove_String *table_dir = prove_path_join(store->path, name);
-    Prove_String *current_path = prove_path_join(table_dir, prove_string_from_cstr("current.dat"));
+    Prove_String *current_path = prove_path_join(table_dir, _get_current_dat());
     Prove_String *binary_path = prove_path_join(table_dir, prove_string_from_cstr("lookup.bin"));
 
     Prove_StoreTable *table = _deserialize_table(current_path, name->data);
@@ -848,7 +872,7 @@ Prove_Result prove_store_rollback(Prove_Store *store, Prove_String *name, int64_
     }
 
     /* Read current version number from disk */
-    Prove_String *current_path = prove_path_join(table_dir, prove_string_from_cstr("current.dat"));
+    Prove_String *current_path = prove_path_join(table_dir, _get_current_dat());
     int64_t cur_ver = 0;
     if (prove_io_file_validates(current_path)) {
         FILE *cf = fopen(current_path->data, "rb");
@@ -880,9 +904,11 @@ Prove_Result prove_store_rollback(Prove_Store *store, Prove_String *name, int64_
 /* ── Store-backed row addition (stdlib entry point) ────────── */
 
 void prove_store_table_add(Prove_StoreTable *table, Prove_StoreTable *row) {
-    /* In practice, add() with store-backed lookup rows is handled by the
-       compiler emitting prove_store_table_add_variant() directly.
-       This stub exists for the runtime function registry. */
+    /* No-op stub: exists solely for the runtime function registry so that
+       the linker resolves the symbol.  The compiler always emits calls to
+       prove_store_table_add_variant() directly, which takes the variant
+       name and column values as separate arguments.  This function is
+       never called at runtime. */
     (void)table;
     (void)row;
 }
@@ -893,7 +919,9 @@ Prove_String *prove_store_table_find(Prove_StoreTable *table,
                                       Prove_String *key,
                                       int64_t key_col,
                                       int64_t val_col) {
+#ifndef PROVE_RELEASE
     if (!table) prove_panic("store lookup: null table");
+#endif
     for (int64_t i = 0; i < table->variant_count; i++) {
         if (key_col < table->column_count &&
             prove_string_eq(table->values[i][key_col], key)) {
