@@ -25,6 +25,19 @@ V1.0 has shipped. V2.0 planning is underway.
 
 ## Released
 
+### V1.1 — March 2026
+
+Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
+
+- `attached`, `detached`, `listens`, and `renders` async verbs with `prove_coro` stackful coroutines
+- Terminal, UI, and Graphic stdlib modules (TUI via ANSI, GUI via SDL2 + Nuklear)
+- `proof` CLI — unified binary: `proof check`, `proof build`, `proof test`, `proof format`, `proof new`
+- Compound assignment operators (`+=`, `-=`, `*=`, `/=`), `constants` import verb, `LookupPattern` matching
+- Cross-platform release pipeline with `curl | sh` installer (Linux x86_64, macOS aarch64)
+- Go-to-definition in the LSP (local vars, params, imports, cross-file)
+- Tree-sitter and Pygments grammar updates for async verbs and constants
+- 22 stdlib modules total (added Terminal, UI, Graphic)
+
 ### V1.0 — March 2026
 
 The Python bootstrap compiler is complete and released as the reference implementation.
