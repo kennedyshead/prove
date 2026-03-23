@@ -1,18 +1,24 @@
 # Releases
 
-## v1.1.0 (upcoming)
+## v1.1.0 — March 2026
 
-Structured concurrency, terminal UI, and the `proof` CLI wrapper.
+Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
 
 **Highlights:**
 
-- **Terminal & UI stdlib modules** — new `Terminal` and `UI` modules with `renders` verb for reactive terminal and GUI applications
-- **Structured concurrency** — `attached`, `detached`, and `listens` async verbs backed by `prove_coro` and `prove_event` runtime
+- **Structured concurrency** — `attached`, `detached`, `listens`, and `renders` async verbs backed by `prove_coro` stackful coroutines and `prove_event` runtime
+- **Terminal, UI & Graphic stdlib modules** — TUI via ANSI escape codes (zero deps), GUI via SDL2 + Nuklear immediate-mode rendering with windows, buttons, labels, text inputs, checkboxes, sliders, and progress bars
 - **`proof` CLI** — unified binary wrapping the compiler: `proof check`, `proof build`, `proof test`, `proof format`, `proof new`
-- **Go-to-definition** for local files in the LSP
-- **Cross-platform release pipeline** — Linux x86_64 and macOS aarch64 binaries published automatically
-
-[:octicons-tag-16: Full release notes](https://code.botwork.se/Botwork/prove/releases/tag/v1.1.0){ .md-button }
+- **Compound assignment operators** — `+=`, `-=`, `*=`, `/=` for mutable state in `renders`/`listens` arms
+- **`constants` import verb** — import named constants from modules (`constants Pi Tau`)
+- **`LookupPattern` matching** — `Key:Escape`, `Key:"k"`, `Color:Red` patterns in match arms
+- **Install script** — `curl -sSf .../install.sh | sh` binary installer with platform detection and `--version`/`--prefix` options
+- **Go-to-definition** — LSP resolves local variables, function parameters, imported constants, types, and cross-file symbols
+- **Cross-platform release pipeline** — Linux x86_64 and macOS aarch64 binaries published automatically with wheel uploads
+- **Benchmark examples** — base64, brainfuck, JSON, matrix multiplication, and primes with Python and Rust comparisons
+- **Tree-sitter & Pygments updates** — async verbs, import verbs, and constants support in editor grammars
+- **Dead code cleanup** — removed 23 unused functions/methods (~378 LOC)
+- **Optimizer fixes** — skip memoization for struct/Option/Result parameters; track HOF references in runtime dependency analysis
 
 ---
 

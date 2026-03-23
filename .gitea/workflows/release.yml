@@ -153,6 +153,20 @@ jobs:
             RELEASE_ID=$(echo "$CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
           }
 
+          # Always update the release body and name (handles pre-existing releases)
+          curl -sf -X PATCH \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -H "Content-Type: application/json" \
+            "$API/releases/$RELEASE_ID" \
+            -d "$(python3 -c "
+          import json
+          body = open('../release-notes.md').read()
+          print(json.dumps({
+              'name': 'Prove $VERSION',
+              'body': body
+          }))
+          ")"
+
           if [ -z "$RELEASE_ID" ]; then
             echo "ERROR: could not get release ID for tag $TAG" >&2
             exit 1

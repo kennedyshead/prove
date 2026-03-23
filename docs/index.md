@@ -187,7 +187,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-**Prove v1.0.0 is released.** The reference implementation is complete: the compiler lexes, parses, type-checks, emits C, and produces native binaries. Full standard library (19 modules), mutation testing, compile-time evaluation, formatter type inference, lint system, comprehensive diagnostics, LSP with ML-powered completions, and a full CI/CD pipeline. See the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
+**Prove v1.1.0 is released.** Adds structured concurrency (`attached`, `detached`, `listens`, `renders` verbs), Terminal TUI and Graphic GUI stdlib modules, and the `proof` CLI wrapper. The standard library now has 22 modules. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
 
 ## Repository
 
