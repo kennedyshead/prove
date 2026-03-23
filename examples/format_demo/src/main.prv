@@ -1,8 +1,7 @@
 module Main
   narrative: """Demonstrates Format module operations"""
   System outputs console
-  Format transforms pad_left pad_right center octal decimal
-  Parse transforms hexadecimal bin
+  Format transforms pad_left pad_right center octal decimal hexadecimal bin
 
 main() Result<Unit, Error>!
 from

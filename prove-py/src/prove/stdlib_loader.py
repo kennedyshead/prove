@@ -248,6 +248,8 @@ _register_module(
         ("transforms", "pad_right"): "prove_format_pad_right",
         ("transforms", "center"): "prove_format_center",
         ("transforms", "octal"): "prove_format_octal",
+        ("transforms", "hexadecimal"): "prove_format_hex",
+        ("transforms", "bin"): "prove_format_binary",
         ("transforms", "decimal"): "prove_format_decimal",
     },
     overloads={
@@ -629,8 +631,6 @@ _register_module(
         ("validates", "csv"): "prove_validates_csv",
         ("reads", "host"): "prove_parse_url_host_reads",
         ("reads", "port"): "prove_parse_url_port_reads",
-        ("transforms", "hexadecimal"): "prove_format_hex",
-        ("transforms", "bin"): "prove_format_binary",
         ("creates", "time"): "prove_time_parse_time",
         ("validates", "time"): "prove_time_validates_time",
         ("creates", "date"): "prove_time_parse_date",

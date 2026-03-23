@@ -26,6 +26,14 @@ binary
 transforms octal(number Integer) String
 binary
 
+/// Converts an integer to hexadecimal string.
+transforms hexadecimal(number Integer) String
+binary
+
+/// Converts an integer to binary string.
+transforms bin(number Integer) String
+binary
+
 /// Formats a number with the specified decimal places.
 transforms decimal(value Decimal, places Integer) String
 binary

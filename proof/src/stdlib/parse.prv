@@ -121,13 +121,6 @@ binary
 validates csv(source String)
 binary
 
-/// Converts an integer to hexadecimal string.
-transforms hexadecimal(number Integer) String
-binary
-
-/// Converts an integer to binary string.
-transforms bin(number Integer) String
-binary
 
 /// Parse a string into a time using a pattern.
 creates time(source String, pattern String) Time

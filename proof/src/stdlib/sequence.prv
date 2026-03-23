@@ -241,14 +241,6 @@ binary
 creates array(size Integer, default Integer) Array<Integer>
 binary
 
-/// Create a mutable array of given size with every element set to the default value
-creates array(size Integer, default Boolean) Array<Boolean>
-binary
-
-/// Create a mutable array of given size with every element set to the default value
-creates array(size Integer, default Integer) Array<Integer>
-binary
-
 /// Create an array of given size with every element set to the default value
 creates array(size Integer, default Decimal) Array<Decimal>
 binary
@@ -258,14 +250,6 @@ reads get(arr Array<Boolean>, idx Integer) Boolean
 binary
 
 /// Get element at index (unchecked)
-reads get(arr Array<Integer>, idx Integer) Integer
-binary
-
-/// Get element at index (unchecked) - mutable variant
-reads get(arr Array<Boolean>, idx Integer) Boolean
-binary
-
-/// Get element at index (unchecked) - mutable variant
 reads get(arr Array<Integer>, idx Integer) Integer
 binary
 
@@ -290,14 +274,6 @@ reads get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
-binary
-
-/// Get element at index, or None if out of bounds - mutable variant
-reads get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
-binary
-
-/// Get element at index, or None if out of bounds - mutable variant
 reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
 binary
 
