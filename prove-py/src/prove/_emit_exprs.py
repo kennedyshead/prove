@@ -122,7 +122,11 @@ class ExprEmitterMixin:
         if isinstance(expr, IdentifierExpr):
             # Local variables/parameters take priority over stdlib functions
             if expr.name in self._locals:
-                return safe_c_name(expr.name)
+                cname = safe_c_name(expr.name)
+                # Recursive pointer locals need dereference when used as values
+                if expr.name in self._recursive_pointer_locals:
+                    return f"(*{cname})"
+                return cname
             # Check if this identifier is an outputs function with no args (zero-arg call)
             sig = self._symbols.resolve_function("outputs", expr.name, 0)
             if sig is None:
@@ -1001,6 +1005,9 @@ class ExprEmitterMixin:
                     (v for v in subj_type.variants if v.name == arm.pattern.name), None
                 )
                 if variant_info:
+                    rec_direct = getattr(self, "_recursive_fields_cache", {}).get(
+                        subj_type.name, set()
+                    )
                     for i, sub_pat in enumerate(arm.pattern.fields):
                         if isinstance(sub_pat, BindingPattern):
                             field_names = list(variant_info.fields.keys())
@@ -1008,11 +1015,20 @@ class ExprEmitterMixin:
                                 fname = field_names[i]
                                 ft = variant_info.fields[fname]
                                 fct = map_type(ft)
-                                self._locals[sub_pat.name] = ft
-                                self._line(
-                                    f"{fct.decl} {sub_pat.name} = "
-                                    f"{subj_tmp}.{arm.pattern.name}.{fname};"
-                                )
+                                if (arm.pattern.name, fname) in rec_direct:
+                                    # Recursive field: bind as pointer
+                                    self._locals[sub_pat.name] = ft
+                                    self._recursive_pointer_locals.add(sub_pat.name)
+                                    self._line(
+                                        f"{fct.decl} *{sub_pat.name} = "
+                                        f"{subj_tmp}.{arm.pattern.name}.{fname};"
+                                    )
+                                else:
+                                    self._locals[sub_pat.name] = ft
+                                    self._line(
+                                        f"{fct.decl} {sub_pat.name} = "
+                                        f"{subj_tmp}.{arm.pattern.name}.{fname};"
+                                    )
                 for j, s in enumerate(arm.body):
                     if j == len(arm.body) - 1 and not isinstance(result_type, UnitType):
                         e = self._stmt_expr(s)

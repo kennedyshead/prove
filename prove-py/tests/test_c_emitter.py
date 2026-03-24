@@ -910,3 +910,48 @@ class TestRefinementProveRelease:
         fn_body = c_code[fn_start:]
         # Variable source — runtime guard required
         assert "prove_panic" in fn_body
+
+
+class TestRecursiveVariantEmission:
+    """Test C emission for recursive variant types."""
+
+    def test_recursive_struct_has_pointer_fields(self):
+        source = (
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+        )
+        c_code = _emit(source)
+        # Recursive fields should be pointers
+        assert "Prove_Expr *left;" in c_code
+        assert "Prove_Expr *right;" in c_code
+        # Non-recursive fields should be by-value
+        assert "int64_t value;" in c_code
+
+    def test_recursive_constructor_takes_pointer_params(self):
+        source = (
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+        )
+        c_code = _emit(source)
+        # Add constructor should take pointer params
+        assert "Prove_Expr *left, Prove_Expr *right" in c_code
+        # Literal constructor should take value params
+        assert "int64_t value" in c_code
+
+    def test_non_recursive_type_unchanged(self):
+        source = "module M\n  type Color is\n      Red\n      Green\n      Blue\n"
+        c_code = _emit(source)
+        # No pointer fields in non-recursive type
+        assert "Prove_Color *" not in c_code
+
+    def test_unit_variant_base_case(self):
+        source = "module M\n  type Tree is\n      Leaf\n      Branch(left Tree, right Tree)\n"
+        c_code = _emit(source)
+        # Branch has pointer fields
+        assert "Prove_Tree *left;" in c_code
+        # Leaf is a unit variant
+        assert "_Leaf" in c_code

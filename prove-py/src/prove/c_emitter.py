@@ -146,6 +146,10 @@ class CEmitter(
         self._lambda_captures: dict[int, list[str]] = {}
         # Module name for namespaced mangling (user modules only, not stdlib)
         self._module_name: str | None = None
+        # Recursive type field cache: type_name → set of (variant, field) direct recursive pairs
+        self._recursive_fields_cache: dict[str, set[tuple[str, str]]] = {}
+        # Locals that are recursive pointers (from match arm bindings)
+        self._recursive_pointer_locals: set[str] = set()
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 from prove.stdlib_loader import is_stdlib_module

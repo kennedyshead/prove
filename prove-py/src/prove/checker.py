@@ -113,6 +113,7 @@ from prove.types import (
     TypeVariable,
     UnitType,
     VariantInfo,
+    find_recursive_fields,
     get_scale,
     has_mutable_modifier,
     has_own_modifier,
@@ -333,6 +334,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._user_types: dict[str, Span] = {}
         # Track which user-defined types are referenced
         self._used_types: set[str] = set()
+        # Types forward-declared for recursive resolution (skip E301 duplicate check)
+        self._forward_declared_types: set[str] = set()
         # Track user-defined constant names and their spans for I304
         self._user_constants: dict[str, Span] = {}
         # Requires-based narrowing: list of (module, args)
@@ -424,8 +427,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     self._module_name = decl.name.lower()
                 for imp in decl.imports:
                     self._register_import(imp)
+                # Forward-declare all type names (enables self/mutual recursion)
+                for td in decl.types:
+                    self._forward_declare_type(td)
                 for td in decl.types:
                     self._register_type(td)
+                # Validate recursive types have base cases
+                self._validate_recursive_base_cases(decl.types)
                 for cd in decl.constants:
                     self._register_constant(cd)
                 for fb in decl.foreign_blocks:
@@ -699,6 +707,43 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             )
             self.symbols.define_function(sig)
 
+    def _forward_declare_type(self, td: TypeDef) -> None:
+        """Forward-declare a type name so self/mutual recursion can resolve."""
+        if td.name in _BUILTIN_TYPE_NAMES:
+            return  # will be caught by _register_type
+        existing = self.symbols.resolve_type(td.name)
+        if existing is not None and not isinstance(existing, TypeVariable):
+            return  # will be caught by _register_type
+        body = td.body
+        type_params = tuple(td.type_params)
+        if isinstance(body, AlgebraicTypeDef):
+            self.symbols.define_type(td.name, AlgebraicType(td.name, [], type_params))
+            self._forward_declared_types.add(td.name)
+        elif isinstance(body, RecordTypeDef):
+            self.symbols.define_type(td.name, RecordType(td.name, {}, type_params))
+            self._forward_declared_types.add(td.name)
+
+    def _validate_recursive_base_cases(self, type_defs: list[TypeDef]) -> None:
+        """E423: recursive types must have at least one non-recursive variant."""
+        for td in type_defs:
+            resolved = self.symbols.resolve_type(td.name)
+            if not isinstance(resolved, AlgebraicType):
+                continue
+            rec_fields = find_recursive_fields(resolved)
+            if not rec_fields:
+                continue
+            # Check that at least one variant has no direct recursive fields
+            recursive_variants = {rf.variant_name for rf in rec_fields if rf.direct}
+            all_variant_names = {v.name for v in resolved.variants}
+            non_recursive = all_variant_names - recursive_variants
+            if not non_recursive:
+                self._error(
+                    "E423",
+                    f"recursive type '{td.name}' has no base case — "
+                    f"at least one variant must not reference '{td.name}'",
+                    td.span,
+                )
+
     def _register_type(self, td: TypeDef) -> None:
         """Register a user-defined type."""
         # E317: type name shadows builtin type (but allow Table for module<>type collision)
@@ -711,7 +756,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             )
             return
         existing = self.symbols.resolve_type(td.name)
-        if existing is not None and not isinstance(existing, TypeVariable):
+        if (
+            existing is not None
+            and not isinstance(existing, TypeVariable)
+            and td.name not in self._forward_declared_types
+        ):
             self._error("E301", f"duplicate definition of '{td.name}'", td.span)
             return
 
@@ -850,6 +899,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = ERROR_TY
 
         self.symbols.define_type(td.name, resolved)
+        self._forward_declared_types.discard(td.name)
         self._user_types[td.name] = td.span
         # Also register in scope as a type symbol
         self.symbols.define(

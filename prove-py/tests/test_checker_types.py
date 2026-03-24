@@ -437,6 +437,68 @@ class TestScaleEnforcement:
 # ── Lambda capture ──────────────────────────────────────────────
 
 
+class TestRecursiveVariantTypes:
+    """Recursive variant types — self-reference and mutual recursion."""
+
+    def test_direct_self_reference(self):
+        """A type can reference itself in variant fields."""
+        check(
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+            "      Negate(inner Expr)\n"
+        )
+
+    def test_unit_base_case(self):
+        """A recursive type with a unit base case is valid."""
+        check("module M\n  type Tree is\n      Leaf\n      Branch(left Tree, right Tree)\n")
+
+    def test_no_base_case_error(self):
+        """E423: every variant references the type — no base case."""
+        check_fails(
+            "module M\n  type Bad is\n      A(x Bad)\n      B(y Bad)\n",
+            "E423",
+        )
+
+    def test_option_self_reference(self):
+        """Option<Self> is indirect — struct layout unchanged."""
+        check(
+            "module M\n"
+            "  type Node is\n"
+            "      Leaf(value Integer)\n"
+            "      Branch(left Node, right Node, parent Option<Node>)\n"
+        )
+
+    def test_list_self_reference(self):
+        """List<Self> is indirect — already boxed."""
+        check(
+            "module M\n"
+            "  type Folder is\n"
+            "      File(name String)\n"
+            "      Dir(name String, children List<Folder>)\n"
+        )
+
+    def test_constructor_signatures_correct(self):
+        """Recursive type constructors have correct parameter types."""
+        from tests.helpers import parse_check
+
+        _, symbols = parse_check(
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+        )
+        lit_sig = symbols.resolve_function(None, "Literal", 1)
+        add_sig = symbols.resolve_function(None, "Add", 2)
+        assert lit_sig is not None
+        assert add_sig is not None
+        assert isinstance(lit_sig.return_type, AlgebraicType)
+        assert lit_sig.return_type.name == "Expr"
+        assert isinstance(add_sig.return_type, AlgebraicType)
+        assert add_sig.return_type.name == "Expr"
+
+
 class TestLambdaCapture:
     """Lambda closure capture (replaces E364 rejection)."""
 

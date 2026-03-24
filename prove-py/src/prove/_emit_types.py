@@ -31,8 +31,10 @@ from prove.types import (
     AlgebraicType,
     PrimitiveType,
     RecordType,
+    RecursiveFieldInfo,
     Type,
     TypeVariable,
+    find_recursive_fields,
 )
 
 
@@ -351,12 +353,22 @@ class TypeEmitterMixin:
         self._line("}")
         self._line("")
 
-    def _emit_algebraic_struct(self, cname: str, variants: list[Any]) -> None:
+    def _emit_algebraic_struct(
+        self,
+        cname: str,
+        variants: list[Any],
+        rec_fields: list[RecursiveFieldInfo] | None = None,
+    ) -> None:
         """Emit a tagged union struct for an algebraic type.
 
         Variants can be VariantInfo (resolved) or AST variant nodes.
         Each must have .name and .fields attributes.
         """
+        # Build lookup of direct recursive fields for pointer emission
+        rec_direct: set[tuple[str, str]] = set()
+        if rec_fields:
+            rec_direct = {(rf.variant_name, rf.field_name) for rf in rec_fields if rf.direct}
+
         # Tag enum
         self._line("enum {")
         self._indent += 1
@@ -378,8 +390,13 @@ class TypeEmitterMixin:
                 self._line("struct {")
                 self._indent += 1
                 for fname, ftype in v_fields.items():
-                    ct = map_type(ftype)
-                    self._line(f"{ct.decl} {fname};")
+                    if (v.name, fname) in rec_direct:
+                        # Recursive field: emit as pointer
+                        ct = map_type(ftype)
+                        self._line(f"{ct.decl} *{fname};")
+                    else:
+                        ct = map_type(ftype)
+                        self._line(f"{ct.decl} {fname};")
                 self._indent -= 1
                 self._line(f"}} {v.name};")
             else:
@@ -390,15 +407,27 @@ class TypeEmitterMixin:
         self._line("};")
         self._line("")
 
-    def _emit_variant_constructors(self, cname: str, variants: list[Any]) -> None:
+    def _emit_variant_constructors(
+        self,
+        cname: str,
+        variants: list[Any],
+        rec_fields: list[RecursiveFieldInfo] | None = None,
+    ) -> None:
         """Emit constructors for each variant of an algebraic type."""
+        rec_direct: set[tuple[str, str]] = set()
+        if rec_fields:
+            rec_direct = {(rf.variant_name, rf.field_name) for rf in rec_fields if rf.direct}
+
         for i, v in enumerate(variants):
             tag = f"{cname}_TAG_{v.name.upper()}"
             v_fields = self._variant_fields_dict(v)
             params: list[str] = []
             for fname, ftype in v_fields.items():
                 ct = map_type(ftype)
-                params.append(f"{ct.decl} {fname}")
+                if (v.name, fname) in rec_direct:
+                    params.append(f"{ct.decl} *{fname}")
+                else:
+                    params.append(f"{ct.decl} {fname}")
             param_str = ", ".join(params) if params else "void"
             self._line(f"static inline {cname} {v.name}({param_str}) {{")
             self._indent += 1
@@ -462,11 +491,18 @@ class TypeEmitterMixin:
             # Use resolved type from checker (includes inherited variants)
             resolved_type = self._symbols.resolve_type(td.name)
             if isinstance(resolved_type, AlgebraicType) and resolved_type.variants:
-                self._emit_algebraic_struct(cname, resolved_type.variants)
+                rec_fields = find_recursive_fields(resolved_type)
+                if rec_fields:
+                    self._recursive_fields_cache[td.name] = {
+                        (rf.variant_name, rf.field_name) for rf in rec_fields if rf.direct
+                    }
+                self._emit_algebraic_struct(cname, resolved_type.variants, rec_fields or None)
                 # Skip constructors if this type is a base for another type
                 # (child type will emit constructors with its own return type)
                 if not self._is_inherited_base_type(td.name):
-                    self._emit_variant_constructors(cname, resolved_type.variants)
+                    self._emit_variant_constructors(
+                        cname, resolved_type.variants, rec_fields or None
+                    )
             else:
                 self._emit_algebraic_struct(cname, body.variants)
                 if not self._is_inherited_base_type(td.name):

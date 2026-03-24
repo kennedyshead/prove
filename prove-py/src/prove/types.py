@@ -138,6 +138,82 @@ Type = (
 )
 
 
+# ── Recursive type analysis ───────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RecursiveFieldInfo:
+    """Describes a field that references its own type (or a mutually recursive type)."""
+
+    variant_name: str
+    field_name: str
+    direct: bool  # True = needs pointer in struct; False = wrapped in List/Option
+
+
+def find_recursive_fields(
+    ty: AlgebraicType | RecordType,
+    recursive_group: set[str] | None = None,
+) -> list[RecursiveFieldInfo]:
+    """Return recursive field info for fields referencing the enclosing type.
+
+    If *recursive_group* is provided, also matches fields referencing
+    any type in the group (for mutual recursion).
+    """
+    target_names = {ty.name}
+    if recursive_group:
+        target_names |= recursive_group
+
+    results: list[RecursiveFieldInfo] = []
+
+    if isinstance(ty, AlgebraicType):
+        for v in ty.variants:
+            for fname, ftype in v.fields.items():
+                direct, indirect = _is_recursive_ref(ftype, target_names)
+                if direct:
+                    results.append(RecursiveFieldInfo(v.name, fname, direct=True))
+                elif indirect:
+                    results.append(RecursiveFieldInfo(v.name, fname, direct=False))
+    elif isinstance(ty, RecordType):
+        for fname, ftype in ty.fields.items():
+            direct, indirect = _is_recursive_ref(ftype, target_names)
+            if direct:
+                results.append(RecursiveFieldInfo("", fname, direct=True))
+            elif indirect:
+                results.append(RecursiveFieldInfo("", fname, direct=False))
+
+    return results
+
+
+def _is_recursive_ref(ftype: Type, target_names: set[str]) -> tuple[bool, bool]:
+    """Check if *ftype* references any type in *target_names*.
+
+    Returns (direct, indirect) where:
+    - direct: the field type IS a target type (needs pointer in struct)
+    - indirect: the field type wraps a target in List/Option/Array (already boxed)
+    """
+    # Direct: field type is the recursive type itself
+    if isinstance(ftype, AlgebraicType) and ftype.name in target_names:
+        return True, False
+    if isinstance(ftype, RecordType) and ftype.name in target_names:
+        return True, False
+
+    # Indirect: wrapped in GenericInstance (Option<Expr>, List<Expr>, etc.)
+    if isinstance(ftype, GenericInstance) and ftype.base_name in ("Option", "Result"):
+        for arg in ftype.args:
+            if isinstance(arg, (AlgebraicType, RecordType)) and arg.name in target_names:
+                return False, True
+    if isinstance(ftype, ListType):
+        if isinstance(ftype.element, (AlgebraicType, RecordType)):
+            if ftype.element.name in target_names:
+                return False, True
+    if isinstance(ftype, ArrayType):
+        if isinstance(ftype.element, (AlgebraicType, RecordType)):
+            if ftype.element.name in target_names:
+                return False, True
+
+    return False, False
+
+
 # ── Built-in type constants ─────────────────────────────────────
 
 INTEGER = PrimitiveType("Integer")

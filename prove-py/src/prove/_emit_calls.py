@@ -19,7 +19,7 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     ValidExpr,
 )
-from prove.c_types import CType, mangle_name, map_type
+from prove.c_types import CType, mangle_name, map_type, safe_c_name
 from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
@@ -66,6 +66,49 @@ def _has_object_call(expr: Expr, param_name: str) -> bool:
 class CallEmitterMixin:
     _locals: dict[str, Type]
     _in_hof_inline: bool
+
+    def _wrap_recursive_constructor_args(
+        self, name: str, args: list[str], expr_args: list[Expr]
+    ) -> list[str]:
+        """Wrap value args with region allocation for recursive variant constructors."""
+        cache = getattr(self, "_recursive_fields_cache", {})
+        # Find which type this constructor belongs to
+        sig = self._symbols.resolve_function(None, name, len(expr_args))
+        if sig is None:
+            return args
+        ret_type = sig.return_type
+        if not isinstance(ret_type, AlgebraicType):
+            return args
+        rec_direct = cache.get(ret_type.name)
+        if not rec_direct:
+            return args
+        # Find the variant matching this constructor name
+        variant = next((v for v in ret_type.variants if v.name == name), None)
+        if not variant:
+            return args
+        rec_ptr_locals: set[str] = getattr(self, "_recursive_pointer_locals", set())
+        field_names = list(variant.fields.keys())
+        new_args = list(args)
+        for i, fname in enumerate(field_names):
+            if i >= len(new_args):
+                break
+            if (name, fname) in rec_direct:
+                # If the arg is already a recursive pointer local, pass directly
+                if (
+                    i < len(expr_args)
+                    and isinstance(expr_args[i], IdentifierExpr)
+                    and expr_args[i].name in rec_ptr_locals
+                ):
+                    # Use the raw pointer name (not dereferenced)
+                    new_args[i] = safe_c_name(expr_args[i].name)
+                else:
+                    ftype = variant.fields[fname]
+                    ct = map_type(ftype)
+                    tmp = self._tmp()
+                    self._line(f"{ct.decl} *{tmp} = prove_region_alloc(sizeof({ct.decl}));")
+                    self._line(f"*{tmp} = {new_args[i]};")
+                    new_args[i] = tmp
+        return new_args
 
     def _resolve_stdlib_c_name(
         self,
@@ -983,6 +1026,7 @@ class CallEmitterMixin:
                 return f"(({cast}){name})({', '.join(args)})"
 
             # Variant constructor or unknown — use name directly
+            args = self._wrap_recursive_constructor_args(name, args, expr.args)
             return f"{name}({', '.join(args)})"
 
         if isinstance(expr.func, TypeIdentifierExpr):
@@ -1082,6 +1126,7 @@ class CallEmitterMixin:
             # Check if it's a variant constructor
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
+                args = self._wrap_recursive_constructor_args(name, args, expr.args)
                 return f"{name}({', '.join(args)})"
             return f"{name}({', '.join(args)})"
 
