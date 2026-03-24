@@ -13,8 +13,7 @@ import click
 
 from prove import __version__
 from prove.errors import CompileError, DiagnosticRenderer
-from prove.lexer import Lexer
-from prove.parser import Parser
+from prove.parse import parse
 
 
 def _apply_nlp_override(enabled: bool) -> None:
@@ -95,8 +94,7 @@ def check(path: str, md: bool, strict: bool, no_intent: bool) -> None:
     for prv_file in prv_files:
         source = prv_file.read_text()
         try:
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
+            module = parse(source, str(prv_file))
         except CompileError as e:
             for diag in e.diagnostics:
                 click.echo(renderer.render(diag), err=True)
@@ -140,8 +138,7 @@ def format_cmd(path: str, status: bool) -> None:
     for prv_file in prv_files:
         source = prv_file.read_text()
         try:
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
+            module = parse(source, str(prv_file))
         except CompileError:
             continue
 
@@ -214,8 +211,7 @@ def _generate_from_narrative(target: Path, update: bool, dry_run: bool) -> None:
     filename = str(target)
 
     try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
     except CompileError as e:
         renderer = DiagnosticRenderer(color=True)
         for diag in e.diagnostics:
@@ -465,8 +461,7 @@ def view(file: str) -> None:
     filename = str(file)
 
     try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
     except CompileError as e:
         renderer = DiagnosticRenderer(color=True)
         for diag in e.diagnostics:

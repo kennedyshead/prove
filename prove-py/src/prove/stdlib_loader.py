@@ -11,8 +11,7 @@ if TYPE_CHECKING:
     from prove.ast_nodes import LookupTypeDef, Module, TypeDef, TypeExpr
 
 from prove.errors import CompileError
-from prove.lexer import Lexer
-from prove.parser import Parser
+from prove.parse import parse
 from prove.source import Span
 from prove.symbols import FunctionSignature
 from prove.types import (
@@ -999,8 +998,7 @@ def load_stdlib(module_name: str) -> list[FunctionSignature]:
 
     # Parse the stdlib file to extract function declarations
     try:
-        tokens = Lexer(source, f"<stdlib:{module_name}>").lex()
-        module = Parser(tokens, f"<stdlib:{module_name}>").parse()
+        module = parse(source, f"<stdlib:{module_name}>")
     except (CompileError, ValueError, IndexError):
         return []
 
@@ -1259,8 +1257,7 @@ def _parse_stdlib_module(module_name: str) -> Module | None:
         return None
 
     try:
-        tokens = Lexer(source, f"<stdlib:{module_name}>").lex()
-        return Parser(tokens, f"<stdlib:{module_name}>").parse()
+        return parse(source, f"<stdlib:{module_name}>")
     except (CompileError, ValueError, IndexError):
         return None
 

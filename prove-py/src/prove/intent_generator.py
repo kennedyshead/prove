@@ -326,8 +326,7 @@ def check_intent_coverage(
         TodoStmt,
         TypeDef,
     )
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     statuses: list[dict] = []
 
@@ -341,8 +340,7 @@ def check_intent_coverage(
         if prv_path.exists():
             try:
                 source = prv_path.read_text(encoding="utf-8")
-                tokens = Lexer(source, str(prv_path)).lex()
-                parsed = Parser(tokens, str(prv_path)).parse()
+                parsed = parse(source, str(prv_path))
                 for decl in parsed.declarations:
                     if isinstance(decl, FunctionDef):
                         existing_fns[decl.name] = decl

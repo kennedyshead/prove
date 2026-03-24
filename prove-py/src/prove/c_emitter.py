@@ -206,8 +206,7 @@ class CEmitter(
         if not imported_type_names:
             return
 
-        from prove.lexer import Lexer
-        from prove.parser import Parser
+        from prove.parse import parse
 
         for mod_name in imported_modules:
             prv_path = stdlib_prv_path(mod_name)
@@ -215,8 +214,7 @@ class CEmitter(
                 continue
             try:
                 src = prv_path.read_text()
-                tokens = Lexer(src, str(prv_path)).lex()
-                parsed = Parser(tokens, str(prv_path)).parse()
+                parsed = parse(src, str(prv_path))
                 for pdecl in parsed.declarations:
                     if isinstance(pdecl, ModuleDecl):
                         for td in pdecl.types:
@@ -869,11 +867,9 @@ class CEmitter(
             return None
 
         try:
-            from prove.lexer import Lexer as _Lexer
-            from prove.parser import Parser as _Parser
+            from prove.parse import parse
 
-            tokens = _Lexer(target.read_text(), str(target)).lex()
-            mod = _Parser(tokens, str(target)).parse()
+            mod = parse(target.read_text(), str(target))
         except Exception:
             return None
 

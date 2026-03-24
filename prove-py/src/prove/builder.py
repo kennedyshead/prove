@@ -19,8 +19,7 @@ from prove.c_runtime import copy_runtime
 from prove.checker import Checker
 from prove.config import ProveConfig, discover_prv_files
 from prove.errors import CompileError, Diagnostic, Severity
-from prove.lexer import Lexer
-from prove.parser import Parser
+from prove.parse import parse as parse_source
 from prove.symbols import SymbolTable
 
 _FOREIGN_PKG_CONFIG: dict[str, str] = {
@@ -230,8 +229,7 @@ class BuildResult:
 
 def lex_and_parse(source: str, filename: str):
     """Lexes and parses the source"""
-    tokens = Lexer(source, filename).lex()
-    return Parser(tokens, filename).parse()
+    return parse_source(source, filename)
 
 
 def build_project(
@@ -337,8 +335,7 @@ def _compile_pure_stdlib(
 
         filename = f"<stdlib:{mod_name}>"
         try:
-            tokens = Lexer(source, filename).lex()
-            stdlib_module = Parser(tokens, filename).parse()
+            stdlib_module = parse_source(source, filename)
         except CompileError as e:
             all_diags.extend(e.diagnostics)
             continue

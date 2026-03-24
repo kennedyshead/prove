@@ -69,16 +69,14 @@ def _check_file(filepath: Path, *, coherence: bool = True) -> tuple[int, int, in
     from prove.config import discover_prv_files
     from prove.errors import CompileError, DiagnosticRenderer, Severity
     from prove.formatter import ProveFormatter
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     source = filepath.read_text()
     filename = str(filepath)
     renderer = DiagnosticRenderer(color=True)
 
     try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
     except CompileError as e:
         for diag in e.diagnostics:
             sys.stderr.write(renderer.render(diag) + "\n")
@@ -138,8 +136,7 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
 
     from prove.checker import Checker
     from prove.errors import CompileError, DiagnosticRenderer, Severity
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     text = md_file.read_text()
     fence_re = re.compile(r"```prove\s*\n(.*?)```", re.DOTALL)
@@ -155,8 +152,7 @@ def _check_md_prove_blocks(md_file: Path) -> tuple[int, int, int]:
         blocks += 1
 
         try:
-            tokens = Lexer(code, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = parse(code, filename)
         except CompileError as e:
             for diag in e.diagnostics:
                 sys.stderr.write(renderer.render(diag) + "\n")
@@ -188,8 +184,7 @@ def _compile_project(
     from prove.config import discover_prv_files
     from prove.errors import CompileError, DiagnosticRenderer, Severity
     from prove.formatter import ProveFormatter
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     src_dir = project_path / "src"
     if not src_dir.is_dir():
@@ -216,8 +211,7 @@ def _compile_project(
         filename = str(prv_file)
 
         try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = parse(source, filename)
         except CompileError as e:
             errors += 1
             for diag in e.diagnostics:
@@ -314,9 +308,8 @@ def _print_refutation_challenges(project_dir: Path) -> None:
     from prove.ast_nodes import FunctionDef
     from prove.config import discover_prv_files
     from prove.errors import CompileError
-    from prove.lexer import Lexer
     from prove.mutator import Mutator
-    from prove.parser import Parser
+    from prove.parse import parse
 
     src_dir = project_dir / "src"
     if not src_dir.is_dir():
@@ -329,8 +322,7 @@ def _print_refutation_challenges(project_dir: Path) -> None:
     for prv_file in prv_files:
         try:
             source = prv_file.read_text()
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
+            module = parse(source, str(prv_file))
         except CompileError:
             continue
 
@@ -398,8 +390,7 @@ def _print_completeness_status(project_dir: Path) -> None:
     """Print per-module completeness showing todo counts."""
     from prove.ast_nodes import FunctionDef, ModuleDecl, TodoStmt
     from prove.config import discover_prv_files
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     src_dir = project_dir / "src"
     if not src_dir.is_dir():
@@ -413,8 +404,7 @@ def _print_completeness_status(project_dir: Path) -> None:
     for prv_file in prv_files:
         try:
             source = prv_file.read_text()
-            tokens = Lexer(source, str(prv_file)).lex()
-            module = Parser(tokens, str(prv_file)).parse()
+            module = parse(source, str(prv_file))
         except Exception:
             continue
 

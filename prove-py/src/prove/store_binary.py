@@ -19,8 +19,7 @@ import struct
 from pathlib import Path
 
 from prove.ast_nodes import LookupTypeDef, ModuleDecl, TypeDef
-from prove.lexer import Lexer
-from prove.parser import Parser
+from prove.parse import parse
 
 PDAT_MAGIC = 0x50444154
 PDAT_VERSION = 1
@@ -152,8 +151,7 @@ def prv_to_pdat(prv_path: str | Path, output_path: str | Path | None = None) -> 
     """
     prv_path = Path(prv_path)
     source = prv_path.read_text()
-    tokens = Lexer(source, str(prv_path)).lex()
-    module = Parser(tokens, str(prv_path)).parse()
+    module = parse(source, str(prv_path))
 
     for decl in module.declarations:
         if not isinstance(decl, ModuleDecl):

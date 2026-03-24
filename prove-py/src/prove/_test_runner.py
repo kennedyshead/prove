@@ -15,8 +15,7 @@ def run_test(path: str = ".", *, property_rounds: int | None = None) -> int:
     from prove.checker import Checker
     from prove.config import discover_prv_files, find_config, load_config
     from prove.errors import CompileError, DiagnosticRenderer, Severity
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
     from prove.testing import run_tests
 
     try:
@@ -47,8 +46,7 @@ def run_test(path: str = ".", *, property_rounds: int | None = None) -> int:
             source = prv_file.read_text()
             filename = str(prv_file)
             try:
-                tokens = Lexer(source, filename).lex()
-                module = Parser(tokens, filename).parse()
+                module = parse(source, filename)
             except CompileError as e:
                 had_errors = True
                 for diag in e.diagnostics:

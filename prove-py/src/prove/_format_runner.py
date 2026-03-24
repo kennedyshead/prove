@@ -28,12 +28,10 @@ def _try_check(
     """
     from prove.checker import Checker
     from prove.errors import CompileError
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
     except CompileError:
         return None, []
 
@@ -46,12 +44,10 @@ def _format_source(source: str, filename: str) -> str | None:
     """Parse and format Prove source. Returns None on parse failure."""
     from prove.errors import CompileError
     from prove.formatter import ProveFormatter
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     try:
-        tokens = Lexer(source, filename).lex()
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
     except CompileError:
         return None
 
@@ -82,14 +78,12 @@ def run_format(
     from prove.config import discover_prv_files
     from prove.errors import CompileError, DiagnosticRenderer
     from prove.formatter import ProveFormatter
-    from prove.lexer import Lexer
-    from prove.parser import Parser
+    from prove.parse import parse
 
     if use_stdin:
         source = sys.stdin.read()
         try:
-            tokens = Lexer(source, "<stdin>").lex()
-            module = Parser(tokens, "<stdin>").parse()
+            module = parse(source, "<stdin>")
         except CompileError as e:
             renderer = DiagnosticRenderer(color=True)
             for diag in e.diagnostics:
@@ -121,8 +115,7 @@ def run_format(
         source = prv_file.read_text()
         filename = str(prv_file)
         try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = parse(source, filename)
         except CompileError as e:
             skipped += 1
             renderer = DiagnosticRenderer(color=True)

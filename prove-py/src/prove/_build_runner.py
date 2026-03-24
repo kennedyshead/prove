@@ -14,10 +14,9 @@ def mutate(project_dir: Path):
     print("running mutation testing...")
     from prove.checker import Checker
     from prove.errors import CompileError
-    from prove.lexer import Lexer
     from prove.module_resolver import build_module_registry
     from prove.mutator import run_mutation_tests
-    from prove.parser import Parser
+    from prove.parse import parse
 
     src_dir = project_dir / "src"
     if not src_dir.is_dir():
@@ -32,8 +31,7 @@ def mutate(project_dir: Path):
         source = prv_file.read_text()
         filename = str(prv_file)
         try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = parse(source, filename)
             checker = Checker(local_modules=local_modules)
             symbols = checker.check(module)
             if not checker.has_errors():

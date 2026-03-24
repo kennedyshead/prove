@@ -15,8 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from prove.errors import CompileError
-from prove.lexer import Lexer
-from prove.parser import Parser
+from prove.parse import parse
 from prove.source import Span
 from prove.symbols import FunctionSignature
 from prove.types import (
@@ -77,8 +76,7 @@ def build_module_registry(
         filename = str(prv_file)
 
         try:
-            tokens = Lexer(source, filename).lex()
-            module = Parser(tokens, filename).parse()
+            module = parse(source, filename)
         except (CompileError, Exception):
             continue
 
