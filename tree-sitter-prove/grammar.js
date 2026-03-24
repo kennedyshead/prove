@@ -36,6 +36,7 @@ module.exports = grammar({
     [$.import_verb, $.async_verb],
     [$.import_verb, $.function_definition],
     [$.intent_verb_phrase],
+    [$.import_declaration, $.import_group],
   ],
 
   rules: {
@@ -125,6 +126,7 @@ module.exports = grammar({
       $.type_identifier,
       repeat(choice(
         $.type_definition,
+        $.binary_type_definition,
         prec(-1, $.import_declaration),
         prec(-2, $.import_group),
         $.constant_definition,
@@ -140,16 +142,24 @@ module.exports = grammar({
 
     // ─── Imports ───────────────────────────────────────────────
 
-    import_declaration: $ => seq(
+    import_declaration: $ => prec.right(seq(
+      optional($.local_module_marker),
       $.type_identifier,
-      $.import_group,
-    ),
+      repeat1($.import_group),
+      optional(prec.dynamic(10, $._newline)),
+    )),
+
+    local_module_marker: $ => '.',
 
     import_group: $ => choice(
       prec.right(seq(alias('types', $.import_verb), repeat1($.type_identifier), optional(prec.dynamic(10, $._newline)))),
       prec.right(seq(alias('constants', $.import_verb), repeat1($.constant_identifier), optional(prec.dynamic(10, $._newline)))),
-      prec.right(seq($.import_verb, $.identifier, repeat($.identifier))),
-      prec.right(-1, seq($.identifier, repeat($.identifier))),
+      prec.right(seq($.import_verb, repeat1(choice($.identifier, $.type_identifier)), optional(prec.dynamic(10, $._newline)))),
+      prec.right(-1, seq($.identifier, repeat(choice($.identifier, $.type_identifier)), optional(prec.dynamic(10, $._newline)))),
+      // Bare type identifiers without verb
+      prec.right(-2, seq(repeat1($.type_identifier), optional(prec.dynamic(10, $._newline)))),
+      // Bare constant identifiers without 'constants' keyword
+      prec.right(-3, seq($.constant_identifier, repeat($.constant_identifier), optional(prec.dynamic(10, $._newline)))),
     ),
 
     import_verb: $ => choice(
@@ -162,6 +172,18 @@ module.exports = grammar({
     ),
 
     // ─── Type Definitions ──────────────────────────────────────
+
+    // Shorthand: `binary TypeName Col1 Col2 where entries`
+    binary_type_definition: $ => prec.right(seq(
+      optional($.doc_comment_block),
+      alias('binary', $.binary_keyword),
+      $.type_identifier,
+      repeat1($._lookup_column),
+      choice(
+        seq('where', repeat1($.lookup_variant)),
+        'runtime',
+      ),
+    )),
 
     type_definition: $ => seq(
       optional($.doc_comment_block),
@@ -218,7 +240,7 @@ module.exports = grammar({
     refinement_type_body: $ => seq(
       $.type_expression,
       'where',
-      $.expression,
+      choice($.shorthand_constraint, $.expression),
     ),
 
     lookup_type_body: $ => prec.dynamic(2, prec.right(seq(
@@ -380,7 +402,7 @@ module.exports = grammar({
     parameter: $ => seq(
       $.identifier,
       $.type_expression,
-      optional(seq('where', $.expression)),
+      optional(seq('where', choice($.shorthand_constraint, $.expression))),
     ),
 
     _body_content: $ => repeat1(choice(
@@ -408,6 +430,7 @@ module.exports = grammar({
       $.event_type_annotation,
       $.state_init_annotation,
       $.state_type_annotation,
+      $.with_constraint,
     ),
 
     ensures_clause: $ => seq('ensures', $.expression),
@@ -422,13 +445,15 @@ module.exports = grammar({
     state_init_annotation: $ => seq('state_init', $.expression),
     state_type_annotation: $ => seq('state_type', $.type_expression),
 
+    with_constraint: $ => seq('with', $.identifier, '.', $.identifier, $.type_expression),
+
     explain_annotation: $ => seq('explain', repeat1($.explain_line)),
 
     explain_line: $ => token(prec(-1, /[a-z][^\n]*/)),
 
     terminates_annotation: $ => seq('terminates', ':', $.expression),
 
-    trusted_annotation: $ => seq('trusted', ':', $.string_literal),
+    trusted_annotation: $ => seq('trusted', ':', optional($.string_literal)),
 
     // ─── AI-Resistance Annotations ─────────────────────────────
 
@@ -515,8 +540,8 @@ module.exports = grammar({
       $.expression,
     ),
 
-    variable_declaration: $ => prec(1, seq(
-      $.identifier,
+    variable_declaration: $ => prec(2, seq(
+      choice($.identifier, alias('_', $.identifier)),
       'as',
       $.type_expression,
       '=',
@@ -538,6 +563,7 @@ module.exports = grammar({
       $.fail_propagation,
       $.async_marker,
       $.call_expression,
+      $.index_expression,
       $.lookup_access_expression,
       $.field_expression,
       $.valid_expression,
@@ -548,6 +574,12 @@ module.exports = grammar({
       $.identifier,
       $.type_identifier,
       $.constant_identifier,
+    ),
+
+    // Shorthand constraint: `> 0`, `!= ""`, `>= 1` (implicit self on left)
+    shorthand_constraint: $ => seq(
+      field('op', choice('==', '!=', '<', '>', '<=', '>=')),
+      field('value', $.expression),
     ),
 
     pipe_expression: $ => prec.left(PREC.PIPE, seq(
@@ -575,6 +607,13 @@ module.exports = grammar({
       '(',
       optional(sep1($.expression, ',')),
       ')',
+    )),
+
+    index_expression: $ => prec(PREC.CALL, seq(
+      $.expression,
+      token.immediate('['),
+      $.expression,
+      ']',
     )),
 
     lookup_access_expression: $ => prec(PREC.CALL, seq(

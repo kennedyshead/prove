@@ -21,7 +21,7 @@ outputs secures_config(arguments List<String>, verb Verb)
 from
     match valid file(PROVE_TOML)
         true => verb(arguments)
-        _ => error(f"{PROVE_TOML} is not found, run prove new for a scaffold project")&
+        _ => error(f"{PROVE_TOML}")&
 
 main()!
 from
@@ -37,5 +37,5 @@ from
         Some("test") => secures_config(sub_arguments, test)
         Some("--version") =>
             config as Config = config()
-            console(f"proof the prove cli tool {config.package.version}")
+            console(f"{config.package.version}")
         _ => console(HELP_TXT)

@@ -50,11 +50,7 @@ from
             config as Config = config()
             source as List<SourceFile> = source(config)
             pybuild(cwd(), debug, no_mutate, source)
-            info(f"{
-                   config.package.name
-                 } {
-                   config.package.version
-                 } now available in ./dist")&
+            info(f"{config.package.name}{config.package.version}")&
 
 /// Run the check command
 outputs check(arguments List<String>)!
@@ -92,11 +88,7 @@ from
             stdin as Boolean = contains(arguments, "--stdin")
             config as Config = config()
             pyformat(config, cwd(), md, status, stdin)
-            info(f"{
-                   config.package.name
-                 } {
-                   config.package.version
-                 } X files checked, Y formatted")&
+            info(f"{config.package.name}{config.package.version}")&
 
 /// Run the lsp command
 outputs lsp(arguments List<String>)!
@@ -114,9 +106,9 @@ from
         true => console(HELP_NEW_TEXT)
         _ =>
             name as String = get(arguments, 0)
-            info(f"Creating a new project {name}")&
+            info(f"{name}")&
             new_project(name)!
-            info(f"Created {name}")&
+            info(f"{name}")&
 
 /// Run the test command
 outputs test(arguments List<String>)!
@@ -126,8 +118,4 @@ from
         _ =>
             config as Config = config()
             pytest(config, cwd())
-            info(f"{
-                   config.package.name
-                 } {
-                   config.package.version
-                 } has X tests and Y failed")&
+            info(f"{config.package.name}{config.package.version}")&
