@@ -1095,6 +1095,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             requires=[],
                         )
                         self.symbols.define_function(vsig)
+                # Register lookup table definitions for imported lookup types
+                from prove.stdlib_loader import load_stdlib_lookup_defs
+
+                lookup_defs = load_stdlib_lookup_defs(imp.module)
+                if item.name in lookup_defs:
+                    self._lookup_tables[item.name] = lookup_defs[item.name]
                 continue
 
             # Register ALL verb overloads of the function so channel

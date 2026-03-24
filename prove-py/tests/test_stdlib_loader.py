@@ -73,24 +73,10 @@ def test_stdlib_module_has_module_decl(module_name: str):
 class TestLoadStdlibConstants:
     """Test load_stdlib_constants() for pure-Prove stdlib modules."""
 
-    def test_log_returns_constants(self):
+    def test_log_returns_no_constants(self):
+        """Log module uses UI Color/TextStyle lookups instead of raw constants."""
         consts = load_stdlib_constants("log")
-        assert len(consts) >= 10
-        names = {c.name for c in consts}
-        assert "RED" in names
-        assert "GREEN" in names
-        assert "RESET" in names
-
-    def test_log_constant_types(self):
-        consts = load_stdlib_constants("log")
-        for c in consts:
-            assert c.type_name == "String"
-
-    def test_log_constant_values_contain_escape(self):
-        consts = load_stdlib_constants("log")
-        by_name = {c.name: c for c in consts}
-        assert "\x1b[31m" in by_name["RED"].raw_value
-        assert "\x1b[0m" in by_name["RESET"].raw_value
+        assert consts == []
 
     def test_nonexistent_module_returns_empty(self):
         consts = load_stdlib_constants("nonexistent")

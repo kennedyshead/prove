@@ -1,4 +1,5 @@
 #include "prove_terminal.h"
+#include "prove_ansi.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -318,6 +319,12 @@ static void *_input_thread_fn(void *arg) {
 }
 
 #endif /* _WIN32 / POSIX */
+
+/* ── Color / TextStyle ANSI (shared) ─────────────────────────── */
+
+Prove_String *prove_terminal_color_ansi(Prove_String *name) {
+    return prove_ansi_escape(name);
+}
 
 /* ── ANSI output (shared) ────────────────────────────────────── */
 

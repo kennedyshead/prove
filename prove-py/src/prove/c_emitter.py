@@ -343,6 +343,7 @@ class CEmitter(
         "Network": "prove_network.h",
         "Store": "prove_store.h",
         "Language": "prove_language.h",
+        "Terminal": "prove_terminal.h",
         "Graphic": "prove_gui.h",
     }
 

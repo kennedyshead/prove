@@ -111,7 +111,7 @@ neovim: parser/prove.$(SOEXT)
 	cp queries/prove/locals.scm $(NVIM_TS_DIR)/queries/prove/locals.scm
 	cp queries/prove/tags.scm $(NVIM_TS_DIR)/queries/prove/tags.scm
 
-parser/prove.$(SOEXT): $(PARSER)
+parser/prove.$(SOEXT): $(PARSER) $(EXTRAS)
 	@mkdir -p parser
 	$(CC) -shared -fPIC -I$(SRC_DIR) -Os -o $@ $^
 

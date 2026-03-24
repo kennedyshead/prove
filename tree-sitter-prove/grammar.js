@@ -18,6 +18,10 @@ const PREC = {
 module.exports = grammar({
   name: 'prove',
 
+  externals: $ => [
+    $._newline,
+  ],
+
   extras: $ => [
     /\s/,
     $.doc_comment,
@@ -142,8 +146,8 @@ module.exports = grammar({
     ),
 
     import_group: $ => choice(
-      prec.right(seq(alias('types', $.import_verb), repeat1($.type_identifier))),
-      prec.right(seq(alias('constants', $.import_verb), repeat1($.constant_identifier))),
+      prec.right(seq(alias('types', $.import_verb), repeat1($.type_identifier), optional(prec.dynamic(10, $._newline)))),
+      prec.right(seq(alias('constants', $.import_verb), repeat1($.constant_identifier), optional(prec.dynamic(10, $._newline)))),
       prec.right(seq($.import_verb, $.identifier, repeat($.identifier))),
       prec.right(-1, seq($.identifier, repeat($.identifier))),
     ),

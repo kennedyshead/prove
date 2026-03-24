@@ -164,6 +164,7 @@ class CallEmitterMixin:
             "text": "prove_text.h",
             "network": "prove_network.h",
             "language": "prove_language.h",
+            "ansi": "prove_ansi.h",
         }
         # Try longest prefix first (hash_crypto before hash)
         for prefix in sorted(_PREFIX_HEADERS, key=len, reverse=True):

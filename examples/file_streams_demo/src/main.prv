@@ -4,7 +4,7 @@ module Main
 
   streams write and read file data
   """
-  System types File creates reader writer inputs console line outputs console close line
+  System types File inputs console reader writer line outputs console close line
 
   type ChunkIO is Streaming(handle File)
     | Exit

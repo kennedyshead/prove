@@ -1,59 +1,41 @@
 module Log
   narrative: """
-  Writes colorized stdout log through detached verbs, all output is preficed with [SEVERITY][timestamp]
+  Writes colorized stdout log through detached verbs, all output is preficed with
+  [SEVERITY][timestamp]
   debug generates blue output
-  info generate green 
+  info generate green
   warning generate yellow
   error generate red
   """
   System outputs console
   Time types Time inputs time
-  Format transforms time
+  UI types Color
+  Terminal reads ansi
 
-  RESET as String = "[0m"
-
-  BOLD as String = "[1m"
-
-  DIM as String = "[2m"
-
-  RED as String = "[31m"
-
-  GREEN as String = "[32m"
-
-  YELLOW as String = "[33m"
-
-  BLUE as String = "[34m"
-
-  MAGENTA as String = "[35m"
-
-  CYAN as String = "[36m"
-
-  WHITE as String = "[37m"
-
-/// Send a console message to stdout of a debug message 
+/// Send a console message to stdout of a debug message
 /// with severity and timestamp added
 detached debug(string String)
 from
     now as Time = time()
-    console(f"{BLUE}[DEBUG][{time(now, "HH:ii")}] {string}{RESET}")
+    console(f"{ansi(Color:Blue)}[DEBUG][{now}] {string}{ansi(Color:Default)}")
 
-/// Send a console message to stdout of a info message 
+/// Send a console message to stdout of a info message
 /// with severity and timestamp added
 detached info(string String)
 from
     now as Time = time()
-    console(f"{GREEN}[INFO][{time(now, "HH:ii")}] {string}{RESET}")
+    console(f"{ansi(Color:Green)}[INFO][{now}] {string}{ansi(Color:Default)}")
 
-/// Send a console message to stdout of a warning message 
+/// Send a console message to stdout of a warning message
 /// with severity and timestamp added
 detached warning(string String)
 from
     now as Time = time()
-    console(f"{YELLOW}[WARNING][{time(now, "HH:ii")}] {string}{RESET}")
+    console(f"{ansi(Color:Yellow)}[WARNING][{now}] {string}{ansi(Color:Default)}")
 
-/// Send a console message to stdout of a error message 
+/// Send a console message to stdout of a error message
 /// with severity and timestamp added
 detached error(string String)
 from
     now as Time = time()
-    console(f"{RED}[ERROR][{time(now, "HH:ii")}] {string}{RESET}")
+    console(f"{ansi(Color:Red)}[ERROR][{now}] {string}{ansi(Color:Default)}")

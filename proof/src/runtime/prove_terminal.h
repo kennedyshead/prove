@@ -39,6 +39,12 @@ void prove_terminal_clear(void);
 /* Move the cursor to screen position (column x, row y). */
 void prove_terminal_cursor(int64_t x, int64_t y);
 
+/* ── Color ANSI ──────────────────────────────────────────────── */
+
+/* Convert a Color or TextStyle name to its ANSI SGR escape sequence.
+ * Delegates to prove_ansi_escape() from prove_ansi.h. */
+Prove_String *prove_terminal_color_ansi(Prove_String *name);
+
 /* ── Query ───────────────────────────────────────────────────── */
 
 /* Get terminal dimensions. Returns Position where x=cols, y=rows. */

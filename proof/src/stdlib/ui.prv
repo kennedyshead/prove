@@ -51,6 +51,19 @@ module UI
       Cyan | "cyan" | 36 | "#00FFFF"
       White | "white" | 37 | "#FFFFFF"
 
+  /// Bidirectional text style mapping.
+  /// Resolve by variant (TextStyle:Bold), by name (TextStyle:"bold"),
+  /// or by ANSI SGR code (TextStyle:1).
+  /// Use with Terminal.ansi() for escape sequences.
+  type TextStyle:[Lookup] is String Integer where
+      Reset | "reset" | 0
+      Bold | "bold" | 1
+      Dim | "dim" | 2
+      Italic | "italic" | 3
+      Underline | "underline" | 4
+      Inverse | "inverse" | 7
+      Strikethrough | "strikethrough" | 9
+
   /// Base UI event type. Abstract — not directly usable as algebraic type.
   /// Extend via TerminalAppEvent or GraphicAppEvent to select a backend,
   /// then extend further with your own custom events.

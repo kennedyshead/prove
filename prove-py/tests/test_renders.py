@@ -11,7 +11,7 @@ class TestUIModuleImport:
     def test_import_ui_types(self):
         check("""\
 module TestUI
-  UI types Key Color AppEvent Position
+  UI types Key Color TextStyle AppEvent Position
 """)
 
     def test_import_terminal_types(self):

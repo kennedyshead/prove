@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from prove.ast_nodes import Module, TypeDef, TypeExpr
+    from prove.ast_nodes import LookupTypeDef, Module, TypeDef, TypeExpr
 
 from prove.errors import CompileError
 from prove.lexer import Lexer
@@ -137,10 +137,10 @@ _register_module(
         ("validates", "dir"): "prove_io_dir_validates",
         ("inputs", "process"): "prove_io_process_inputs",
         ("validates", "process"): "prove_io_process_validates",
-        ("creates", "reader"): "prove_file_open_read",
+        ("inputs", "reader"): "prove_file_open_read",
         ("inputs", "line"): "prove_file_readline_handle",
         ("outputs", "close"): "prove_file_close_handle",
-        ("creates", "writer"): "prove_file_open_append",
+        ("inputs", "writer"): "prove_file_open_append",
         ("outputs", "line"): "prove_file_writeln_handle",
         ("inputs", "cwd"): "prove_io_process_cwd",
     },
@@ -736,6 +736,7 @@ _register_module(
         ("outputs", "clear"): "prove_terminal_clear",
         ("outputs", "cursor"): "prove_terminal_cursor",
         ("reads", "size"): "prove_terminal_size",
+        ("reads", "ansi"): "prove_terminal_color_ansi",
     },
     overloads={
         ("outputs", "terminal", "Integer_Integer_String"): "prove_terminal_write_at",
@@ -1059,13 +1060,50 @@ def load_stdlib_types(module_name: str) -> dict[str, Type]:
                 fields[f.name] = _resolve_type_expr(f.type_expr)
             types[td.name] = RecordType(td.name, fields, [])
         elif isinstance(body, LookupTypeDef):
-            # Lookup types are opaque to the type system
-            types[td.name] = PrimitiveType(td.name)
+            # Lookup types are algebraic types with variant constructors
+            variant_names = []
+            seen: dict[str, None] = {}
+            for entry in body.entries:
+                if entry.variant not in seen:
+                    seen[entry.variant] = None
+                    variant_names.append(entry.variant)
+            variants = [VariantInfo(name, {}) for name in variant_names]
+            types[td.name] = AlgebraicType(td.name, variants, [])
         else:
             types[td.name] = PrimitiveType(td.name)
 
     _type_cache[normalized] = types
     return types
+
+
+_lookup_cache: dict[str, dict[str, "LookupTypeDef"]] = {}
+
+
+def load_stdlib_lookup_defs(module_name: str) -> dict[str, "LookupTypeDef"]:
+    """Load LookupTypeDef AST nodes from a stdlib module.
+
+    Returns a dict mapping type name -> LookupTypeDef for all lookup types.
+    """
+    from prove.ast_nodes import LookupTypeDef, ModuleDecl
+
+    normalized = module_name.lower()
+    if normalized in _lookup_cache:
+        return _lookup_cache[normalized]
+
+    module = _parse_stdlib_module(normalized)
+    if module is None:
+        _lookup_cache[normalized] = {}
+        return {}
+
+    result: dict[str, LookupTypeDef] = {}
+    for decl in module.declarations:
+        if isinstance(decl, ModuleDecl):
+            for td in decl.types:
+                if isinstance(td.body, LookupTypeDef):
+                    result[td.name] = td.body
+
+    _lookup_cache[normalized] = result
+    return result
 
 
 def stdlib_link_flags(module_name: str) -> list[str]:

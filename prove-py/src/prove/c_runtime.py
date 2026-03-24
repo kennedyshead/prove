@@ -103,7 +103,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "bytes": {"prove_bytes"},
     "hash": {"prove_hash_crypto", "prove_bytes"},
     "time": {"prove_time"},
-    "log": set(),
+    "log": {"prove_terminal", "prove_ansi", "prove_event"},
     "store": {
         "prove_store",
         "prove_hash_crypto",
@@ -114,7 +114,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "network": {"prove_network", "prove_bytes"},
     "language": {"prove_language"},
     "ui": set(),
-    "terminal": {"prove_terminal"},
+    "terminal": {"prove_terminal", "prove_ansi", "prove_event"},
     "graphic": {"prove_gui"},
 }
 
@@ -599,6 +599,9 @@ _RUNTIME_FUNCTIONS = {
         "prove_language_token_end",
         "prove_language_token_kind",
     ],
+    "prove_ansi": [
+        "prove_ansi_escape",
+    ],
     "prove_terminal": [
         "prove_terminal_validates",
         "prove_terminal_raw",
@@ -608,6 +611,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_terminal_clear",
         "prove_terminal_cursor",
         "prove_terminal_size",
+        "prove_terminal_color_ansi",
         "prove_terminal_read_key",
         "prove_terminal_init",
         "prove_terminal_cleanup",

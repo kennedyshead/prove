@@ -251,26 +251,9 @@ class TestRecordValueSerializable:
 
 
 class TestConstantImport:
-    """Test importing constants from stdlib (e.g. Log RED)."""
+    """Test importing constants from stdlib."""
 
-    def test_import_log_constant_registers(self):
-        """import Log RED should register RED as SymbolKind.CONSTANT."""
-        from prove.symbols import SymbolKind
-
-        st = check(
-            "module Main\n"
-            "  Log RED\n"
-            "  Io outputs console\n"
-            "\n"
-            "main()\n"
-            "    from\n"
-            "        console(RED)\n"
-        )
-        sym = st.lookup("RED")
-        assert sym is not None
-        assert sym.kind == SymbolKind.CONSTANT
-
-    def test_import_log_nonexistent_constant_errors(self):
+    def test_import_nonexistent_constant_errors(self):
         """import Log NONEXISTENT should produce E315."""
         check_fails(
             "module Main\n  Log NONEXISTENT\n\nmain()\n    from\n        0\n",
