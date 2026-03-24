@@ -1655,6 +1655,3 @@ class CSTConverter:
             lines.append(text.strip())
 
         return "\n".join(lines) if lines else None
-
-    # ── FloatLit ─────────────────────────────────────────────────
-    # FloatLit is handled in _convert_expr for decimal_literal with f/F suffix
