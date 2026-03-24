@@ -1,5 +1,13 @@
 module Time
-  narrative: """Time representation, arithmetic, and calendar operations."""
+  narrative: """
+  Time representation, arithmetic, and calendar operations.
+  
+  inputs time 
+  validates creates and reads time, duration, date, datetime and clock 
+  validates if days in a year are leap
+  reads day, weekday
+  transforms date duration and datetime
+  """
 
   type Time is binary
 

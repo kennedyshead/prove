@@ -1,5 +1,10 @@
 module System
-  narrative: """Handles IO operations across console, file, system, dir, and process channels."""
+  narrative: """
+  Handles IO operations across console, file, system, dir, and process channels.
+
+  inputs, outputs and validates console, system, file and cwd, dir, line from open file 
+  inputs a file reader and writer and finally close with outputs
+  """
 
   type ProcessResult is binary
 
@@ -70,7 +75,7 @@ validates process(value String)
 binary
 
 /// Open a file for reading (returns a file handle, or fails if not found)
-creates reader(path String) File!
+inputs reader(path String) File!
 binary
 
 /// Read the next line from an open file handle (returns empty string at EOF)
@@ -82,7 +87,7 @@ outputs close(handle File)
 binary
 
 /// Open a file for appending (returns a file handle for writing)
-creates writer(path String) File!
+inputs writer(path String) File!
 binary
 
 /// Write a line to an open file handle

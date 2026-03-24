@@ -1,5 +1,12 @@
 module Network
-  narrative: """Network communication — TCP and UDP sockets."""
+  narrative: """
+  Network communication — TCP and UDP sockets.
+
+  inputs socket from remote host/port, server binds to a TCP port, 
+    accept incoming connection, message data from a socket. 
+  outputs close connection to socket, write message to socket 
+  validates if socket is open
+  """
   Bytes types ByteArray
 
   type Socket is binary

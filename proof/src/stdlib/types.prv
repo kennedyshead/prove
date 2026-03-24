@@ -11,6 +11,7 @@ module Types
   handles error
   """
   Time types Time Date DateTime Clock Duration
+  System types ByteArray
 
 /// Check if a value is a string
 validates string(value String)

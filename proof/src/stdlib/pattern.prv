@@ -1,5 +1,13 @@
 module Pattern
-  narrative: """Regular expression matching."""
+  narrative: """
+  Regular expression matching.
+
+  validates if a test pattern matches 
+  search and find all pattern matching
+  transforms string with replace and split
+  reads a match and return string 
+  gets start and end
+  """
 
   type Match is binary
 

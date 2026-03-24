@@ -1,5 +1,12 @@
 module Table
-  narrative: """Hash table from String keys to values."""
+  narrative: """
+  Hash table from String keys to values.
+
+  creates new Table
+  validates if table has key
+  transforms table with add and remove
+  reads keys, values, length and get aa single value from key
+  """
 
 /// Create a new empty table
 creates new() Table<Value>

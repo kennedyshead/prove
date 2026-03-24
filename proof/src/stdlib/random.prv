@@ -1,5 +1,13 @@
 module Random
-  narrative: """Random value generation."""
+  narrative: """
+  Random value generation.
+
+  generate random integer and decimal with in optional range 
+  validates if an integer is in given range 
+  all of theese are inputs as they are doing IO
+  Shuffle and get random element choice from lists
+  random boolean
+  """
 
 /// Generate a random integer
 inputs integer() Integer

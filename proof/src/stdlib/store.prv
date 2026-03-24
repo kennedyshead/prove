@@ -3,6 +3,12 @@ module Store
   Manages lookup tables with storage, versioning, diffs, and compilation. 
   Prove db is more like a key value store where all values are actually keys. 
   For more info read the docs here: https://prove.botwork.se
+
+  validates if store or table exists, if a diff was merged
+  loads a table, lookup and version via inputs
+  transforms diff, patch and merge
+  outputs rollback store, lookup and row via add
+  reads integrity, conflicts, variant and column
   """
 
   type Store is binary

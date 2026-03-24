@@ -1,5 +1,12 @@
 module Text
-  narrative: """String operations and construction."""
+  narrative: """
+  String operations and construction.
+
+  reads length, index and string from StringBuilder through build
+  creates a new StringBuilder in builder 
+  transforms slice, split, join, lower, upper, trim replace, repeat and char 
+  validates if a string starts ends or contains.
+  """
 
   type StringBuilder is binary
 

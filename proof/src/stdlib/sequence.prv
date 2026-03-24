@@ -1,5 +1,13 @@
 module Sequence
-  narrative: """Operations on sequences (ordered collections)."""
+  narrative: """
+  Operations on sequences (ordered collections).
+
+  reads length, first, last, value at position, get at index unsafe or safe 
+  validates empty and if it contains
+  transforms slice, reverse, sort, set and remove
+  creates Array of size, list of range and converts Array to sequence
+
+  """
 
 /// Get the length of a sequence
 reads length(items List<Value>) Integer

@@ -1,5 +1,12 @@
 module Path
-  narrative: """File path manipulation."""
+  narrative: """
+  File path manipulation.
+
+  reads parent, name, stem and extension from string
+  transforms base and part with join
+  normalize a string path 
+  validates if a path is absolute
+  """
 
 /// Join path components together
 transforms join(base String, part String) String

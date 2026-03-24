@@ -1,5 +1,14 @@
 module Parse
-  narrative: """Encoding and decoding of structured data formats."""
+  narrative: """
+  Encoding and decoding of structured data formats.
+
+  creates validates and reads native values like Value from Source, Table<Value> from toml, 
+    Value from json, Url from (scheme host path), duration, date, datetime, hexadecimal, 
+    time, base64, arguments (CLI arguments) and csv
+  reads Value to bool, integer, tag, number, decimal, array and object
+  reads port from Url
+  transforms Url by adding query params
+  """
   Bytes types ByteArray
   Time types Time Date DateTime Duration
 
@@ -120,7 +129,6 @@ binary
 /// Validate a CSV string
 validates csv(source String)
 binary
-
 
 /// Parse a string into a time using a pattern.
 creates time(source String, pattern String) Time
