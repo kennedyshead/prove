@@ -2,7 +2,7 @@ module Hash
   narrative: """
   Cryptographic hashing and verification.
 
-  creates reads and validates sha256 sha512 blake3 and hmac signatures
+  creates and validates sha256 sha512 blake3 and hmac signatures
   """
   Bytes types ByteArray
 
@@ -11,7 +11,7 @@ creates sha256(data ByteArray) ByteArray
 binary
 
 /// Hash a string to SHA-256 hex string
-reads sha256(data String) String
+creates sha256(data String) String
 binary
 
 /// Verify data matches an expected SHA-256 hash
@@ -23,7 +23,7 @@ creates sha512(data ByteArray) ByteArray
 binary
 
 /// Hash a string to SHA-512 hex string
-reads sha512(data String) String
+creates sha512(data String) String
 binary
 
 /// Verify data matches an expected SHA-512 hash
@@ -35,7 +35,7 @@ creates blake3(data ByteArray) ByteArray
 binary
 
 /// Hash a string to BLAKE3 hex string
-reads blake3(data String) String
+creates blake3(data String) String
 binary
 
 /// Verify data matches an expected BLAKE3 hash

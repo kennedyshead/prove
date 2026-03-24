@@ -565,11 +565,11 @@ _register_module(
     },
     overloads={
         ("creates", "sha256", "ByteArray"): "prove_crypto_sha256_bytes",
-        ("reads", "sha256", "String"): "prove_crypto_sha256_string",
+        ("creates", "sha256", "String"): "prove_crypto_sha256_string",
         ("creates", "sha512", "ByteArray"): "prove_crypto_sha512_bytes",
-        ("reads", "sha512", "String"): "prove_crypto_sha512_string",
+        ("creates", "sha512", "String"): "prove_crypto_sha512_string",
         ("creates", "blake3", "ByteArray"): "prove_crypto_blake3_bytes",
-        ("reads", "blake3", "String"): "prove_crypto_blake3_string",
+        ("creates", "blake3", "String"): "prove_crypto_blake3_string",
     },
 )
 
