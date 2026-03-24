@@ -91,11 +91,11 @@ var (
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords
-				{`\b(as|binary|comptime|domain|foreign|from|is|main|match|module|type|types|valid|where)\b`, chroma.Keyword, nil},
+				{`\b(as|binary|comptime|constants|domain|foreign|from|is|main|match|module|type|types|valid|where)\b`, chroma.Keyword, nil},
 				// PROVE-EXPORT-END: keywords
 
 				// PROVE-EXPORT-BEGIN: ai-keywords
-				{`\b(assume|believe|chosen|event_type|intent|invariant_network|know|narrative|near_miss|satisfies|state_init|state_type|temporal|why_not)\b`, chroma.KeywordNamespace, nil},
+				{`\b(assume|believe|chosen|intent|invariant_network|know|narrative|near_miss|satisfies|temporal|why_not)\b`, chroma.KeywordNamespace, nil},
 				// PROVE-EXPORT-END: ai-keywords
 
 				// PROVE-EXPORT-BEGIN: literals
@@ -103,7 +103,7 @@ var (
 				// PROVE-EXPORT-END: literals
 
 				// PROVE-EXPORT-BEGIN: builtin-types
-				{`\b(Attached|Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Option|Result|Source|String|Struct|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
+				{`\b(Attached|Boolean|Byte|Character|Decimal|Error|Float|Integer|List|Listens|Option|Result|Source|String|Struct|Table|Unit|Value|Verb)\b`, chroma.KeywordType, nil},
 				// PROVE-EXPORT-END: builtin-types
 
 				// Operators (order matters — multi-char before single-char)

@@ -205,6 +205,10 @@
           "named": true
         },
         {
+          "type": "match_arm",
+          "named": true
+        },
+        {
           "type": "match_expression",
           "named": true
         },
@@ -237,6 +241,10 @@
         },
         {
           "type": "type_expression",
+          "named": true
+        },
+        {
+          "type": "type_identifier",
           "named": true
         }
       ]
@@ -1061,6 +1069,10 @@
           "named": true
         },
         {
+          "type": "integer_literal",
+          "named": true
+        },
+        {
           "type": "string_literal",
           "named": true
         },
@@ -1300,11 +1312,23 @@
           "named": true
         },
         {
+          "type": "function_definition",
+          "named": true
+        },
+        {
           "type": "import_declaration",
           "named": true
         },
         {
+          "type": "import_group",
+          "named": true
+        },
+        {
           "type": "invariant_network",
+          "named": true
+        },
+        {
+          "type": "main_definition",
           "named": true
         },
         {

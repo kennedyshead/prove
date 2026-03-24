@@ -2,8 +2,9 @@ module Math
   narrative: """
   Numeric operations.
 
-  reads abs, sqrt, floor, ceil, and log of Float and Integer. 
-  round, power Float
+  reads abs, sqrt, floor, ceil, log, log10, log2, exp of Float and Integer.
+  sin, cos, tan, asin, acos, atan, atan2 trigonometry in radians.
+  round, power Float. pi and e constants.
   max, min, clamp of given Integers or Floats
   transforms clamp of given Integers or Floats
   """
@@ -62,4 +63,52 @@ binary
 
 /// Natural logarithm of a float
 reads log(value Float) Float
+binary
+
+/// Base-10 logarithm of a float
+reads log10(value Float) Float
+binary
+
+/// Sine of an angle in radians
+reads sin(angle Float) Float
+binary
+
+/// Cosine of an angle in radians
+reads cos(angle Float) Float
+binary
+
+/// Tangent of an angle in radians
+reads tan(angle Float) Float
+binary
+
+/// Inverse sine (arc sine), result in radians
+reads asin(value Float) Float
+binary
+
+/// Inverse cosine (arc cosine), result in radians
+reads acos(value Float) Float
+binary
+
+/// Inverse tangent (arc tangent), result in radians
+reads atan(value Float) Float
+binary
+
+/// Two-argument inverse tangent, result in radians (-pi to pi)
+reads atan2(y Float, x Float) Float
+binary
+
+/// Euler's number raised to the power of x (e^x)
+reads exp(value Float) Float
+binary
+
+/// Base-2 logarithm of a float
+reads log2(value Float) Float
+binary
+
+/// The constant pi (3.14159...)
+reads pi() Float
+binary
+
+/// The constant e (2.71828...)
+reads e() Float
 binary

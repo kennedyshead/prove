@@ -1,0 +1,93 @@
+module Main
+  narrative: """
+  Goertzel algorithm — detect a single frequency's power in a signal.
+
+  Pure Prove implementation using Math stdlib only. No C runtime needed.
+  Demonstrates DSP in a functional style: recursive kernel with on-the-fly
+  sine sample generation.
+
+  reads coefficient, signal power, to dbm, sine sample
+  transforms kernel, build samples
+  reads detect of signal at target frequency and sample rate
+  """
+  System outputs console
+  Math reads cos sin pi log10
+  Types reads string creates float
+
+  type FilterState is
+    vn1 Float
+    vn2 Float
+
+  SAMPLE_RATE as Float = 8000.0f
+
+  SAMPLE_COUNT as Integer = 256
+
+  EPSILON as Float = 0.000000001f
+
+/// Goertzel coefficient for a target frequency at a given sample rate
+reads coefficient(frequency Float, sample_rate Float) Float
+from
+    2.0f * cos(2.0f * pi() * frequency / sample_rate)
+
+/// Generate a sine wave sample at a given index
+reads sine_sample(frequency Float, sample_rate Float, index Integer) Float
+from
+    t as Float = float(index) / sample_rate
+    sin(2.0f * pi() * frequency * t)
+
+/// Recursive kernel — generate and process samples on the fly
+transforms kernel(
+    signal_freq Float,
+    sample_rate Float,
+    index Integer,
+    count Integer,
+    koef Float,
+    state FilterState
+) FilterState
+  terminates: count - index
+from
+    match index >= count
+        true => state
+        _ =>
+            sample as Float = sine_sample(signal_freq, sample_rate, index)
+            t as Float = koef * state.vn1 - state.vn2 + sample
+            kernel(signal_freq,
+                   sample_rate,
+                   index + 1,
+                   count,
+                   koef,
+                   FilterState(t, state.vn1))
+
+/// Compute signal power from filter state
+reads signal_power(koef Float, state FilterState, n Integer) Float
+from
+    raw as Float = state.vn1 * state.vn1 + state.vn2 * state.vn2 - koef * state.vn1 * state.vn2
+    n_f as Float = float(n)
+    clamped as Float = match raw < EPSILON
+        true => EPSILON
+        _ => raw
+    clamped / (n_f * n_f)
+
+/// Convert power to dBm (600 Ohm impedance)
+reads to_dbm(p Float) Float
+from
+    log10(2.0f * p * 1000.0f / 600.0f) * 10.0f
+
+/// Run Goertzel: detect target_freq power in a signal of signal_freq
+reads detect(signal_freq Float, target_freq Float, sample_rate Float, count Integer) Float
+from
+    koef as Float = coefficient(target_freq, sample_rate)
+    state as FilterState = kernel(signal_freq, sample_rate, 0, count, koef, FilterState(0.0f, 0.0f))
+    p as Float = signal_power(koef, state, count)
+    to_dbm(p)
+
+main()
+from
+    dbm_440 as Float = detect(440.0f, 440.0f, SAMPLE_RATE, SAMPLE_COUNT)
+    dbm_600 as Float = detect(440.0f, 600.0f, SAMPLE_RATE, SAMPLE_COUNT)
+    console(f"Goertzel frequency detection ({SAMPLE_COUNT} samples at {SAMPLE_RATE} Hz)")
+    console(f"  440 Hz power: {string(dbm_440)} dBm")
+    console(f"  600 Hz power: {string(dbm_600)} dBm")
+    match dbm_440 > dbm_600
+        true => console("  Result: 440 Hz signal detected correctly")
+        _ => console("  Result: detection failed")

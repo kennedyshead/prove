@@ -1,0 +1,20 @@
+{
+  "grammars": [
+    {
+      "name": "prove",
+      "camelCase": "prove",
+      "scope": "source.prove",
+      "path": ".",
+      "file-types": ["prv"],
+      "highlights": "queries/highlights.scm",
+      "injection-regex": "prove"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "links": {
+      "repository": "https://github.com/kennedyshead/prove"
+    },
+    "authors": []
+  }
+}

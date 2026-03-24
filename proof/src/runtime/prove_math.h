@@ -69,6 +69,60 @@ static inline double prove_math_log(double x) {
     return log(x);
 }
 
+static inline double prove_math_log10(double x) {
+    return log10(x);
+}
+
+/* ── Trigonometry ───────────────────────────────────────────── */
+
+static inline double prove_math_sin(double x) {
+    return sin(x);
+}
+
+static inline double prove_math_cos(double x) {
+    return cos(x);
+}
+
+static inline double prove_math_tan(double x) {
+    return tan(x);
+}
+
+static inline double prove_math_asin(double x) {
+    return asin(x);
+}
+
+static inline double prove_math_acos(double x) {
+    return acos(x);
+}
+
+static inline double prove_math_atan(double x) {
+    return atan(x);
+}
+
+static inline double prove_math_atan2(double y, double x) {
+    return atan2(y, x);
+}
+
+/* ── Exponential / Logarithmic ─────────────────────────────── */
+
+static inline double prove_math_exp(double x) {
+    return exp(x);
+}
+
+static inline double prove_math_log2(double x) {
+    return log2(x);
+}
+
+/* ── Constants ─────────────────────────────────────────────── */
+
+static inline double prove_math_pi(void) {
+    return M_PI;
+}
+
+static inline double prove_math_e(void) {
+    return M_E;
+}
+
 /* ── Scale:N rounding ───────────────────────────────────────── */
 
 static inline double prove_decimal_round(double val, int scale) {

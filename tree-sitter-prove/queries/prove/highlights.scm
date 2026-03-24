@@ -59,7 +59,6 @@
   "explain"
   "requires"
   "terminates"
-  "trusted"
   "when"
 ] @keyword.control
 ; PROVE-EXPORT-END: contract-keywords

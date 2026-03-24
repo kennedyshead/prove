@@ -285,6 +285,66 @@ def _evaluate_results(
     return lines, failures
 
 
+def _find_tree_sitter() -> str | None:
+    """Find tree-sitter binary."""
+    import shutil
+
+    return shutil.which("tree-sitter")
+
+
+def _run_ts_parse(prv_file: Path) -> tuple[str, list[str]]:
+    """Run tree-sitter parse on a .prv file.
+
+    Returns (relative_name, error_lines).
+    """
+    name = str(prv_file.relative_to(EXAMPLES_DIR))
+    ts = _find_tree_sitter()
+    if ts is None:
+        return name, ["tree-sitter not found"]
+    try:
+        result = subprocess.run(
+            [ts, "parse", str(prv_file)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        output = result.stdout + result.stderr
+        errors = [
+            line.strip()
+            for line in output.splitlines()
+            if "ERROR" in line or "MISSING" in line
+        ]
+        return name, errors
+    except Exception as e:
+        return name, [str(e)]
+
+
+def run_tree_sitter_tests(
+    prv_files: list[Path], jobs: int
+) -> tuple[int, int, list[tuple[str, list[str]]]]:
+    """Run tree-sitter parse on all .prv files.
+
+    Returns (total, failed, failures).
+    """
+    if not _find_tree_sitter():
+        print("  tree-sitter not found, skipping parse tests")
+        return 0, 0, []
+
+    failures: list[tuple[str, list[str]]] = []
+    completed = 0
+    total = len(prv_files)
+
+    with ProcessPoolExecutor(max_workers=jobs) as pool:
+        futures = {pool.submit(_run_ts_parse, f): f for f in prv_files}
+        for future in as_completed(futures):
+            completed += 1
+            name, errors = future.result()
+            if errors:
+                failures.append((name, errors))
+
+    return total, len(failures), failures
+
+
 def main() -> int:
     """Run e2e tests on all examples.
 
@@ -401,6 +461,24 @@ def main() -> int:
                 print(f"  {line}")
         print("=" * 60)
 
+    # ── Tree-sitter parse tests ────────────────────────────────
+    print("\n" + "=" * 60)
+    print("TREE-SITTER PARSE TESTS")
+    print("=" * 60)
+
+    all_prv = sorted(EXAMPLES_DIR.rglob("*.prv"))
+    ts_total, ts_failed, ts_failures = run_tree_sitter_tests(all_prv, jobs)
+
+    if ts_failures:
+        for ts_name, ts_errors in sorted(ts_failures):
+            print(f"\n  FAIL: {ts_name}")
+            for err in ts_errors[:3]:
+                print(f"    {err}")
+    if ts_total > 0:
+        print(
+            f"\nTree-sitter: {ts_total} files, {ts_total - ts_failed} clean, {ts_failed} with errors"
+        )
+
     # Summary
     print("\n" + "=" * 60)
     print("SUMMARY")
@@ -422,10 +500,10 @@ def main() -> int:
             else:
                 total_failed += 1
 
-    total_failed += len(errors)
+    total_failed += len(errors) + ts_failed
 
     print(
-        f"Total: {total_tests} tests, {total_passed} passed, {total_expected_fail} expected failures, {total_failed} unexpected failures"
+        f"Total: {total_tests + ts_total} tests, {total_passed + ts_total - ts_failed} passed, {total_expected_fail} expected failures, {total_failed} unexpected failures"
     )
 
     return 0 if total_failed == 0 else 1

@@ -28,6 +28,9 @@ module.exports = grammar({
     [$.expression, $.pattern],
     [$.algebraic_variant, $.simple_type],
     [$.refinement_type_body, $.lookup_type_body, $._lookup_column],
+    [$.lookup_type_body, $.runtime_lookup_type_body],
+    [$.import_verb, $.async_verb],
+    [$.import_verb, $.function_definition],
     [$.intent_verb_phrase],
   ],
 
@@ -113,32 +116,36 @@ module.exports = grammar({
 
     // ─── Module ────────────────────────────────────────────────
 
-    module_declaration: $ => seq(
+    module_declaration: $ => prec.right(seq(
       'module',
       $.type_identifier,
       repeat(choice(
         $.type_definition,
         prec(-1, $.import_declaration),
+        prec(-2, $.import_group),
         $.constant_definition,
         $.invariant_network,
         $.narrative_annotation,
         $.domain_annotation,
         $.temporal_annotation,
         $.foreign_block,
+        $.function_definition,
+        $.main_definition,
       )),
-    ),
+    )),
 
     // ─── Imports ───────────────────────────────────────────────
 
-    import_declaration: $ => prec.right(seq(
+    import_declaration: $ => seq(
       $.type_identifier,
-      repeat1($.import_group),
-    )),
+      $.import_group,
+    ),
 
     import_group: $ => choice(
-      prec.left(seq(alias('types', $.import_verb), repeat1($.type_identifier))),
-      prec.left(seq(alias('constants', $.import_verb), repeat1($.constant_identifier))),
-      prec.right(seq($.import_verb, repeat1($.identifier))),
+      prec.right(seq(alias('types', $.import_verb), repeat1($.type_identifier))),
+      prec.right(seq(alias('constants', $.import_verb), repeat1($.constant_identifier))),
+      prec.right(seq($.import_verb, $.identifier, repeat($.identifier))),
+      prec.right(-1, seq($.identifier, repeat($.identifier))),
     ),
 
     import_verb: $ => choice(
@@ -196,12 +203,12 @@ module.exports = grammar({
       ')',
     ),
 
-    record_type_body: $ => repeat1($.field_declaration),
+    record_type_body: $ => prec.right(repeat1($.field_declaration)),
 
-    field_declaration: $ => seq(
+    field_declaration: $ => prec(10, seq(
       $.identifier,
       $.type_expression,
-    ),
+    )),
 
     refinement_type_body: $ => seq(
       $.type_expression,
@@ -211,7 +218,7 @@ module.exports = grammar({
 
     lookup_type_body: $ => prec.dynamic(2, prec.right(seq(
       $.type_expression,
-      repeat(seq('|', $.type_expression)),
+      repeat(seq(optional('|'), $.type_expression)),
       'where',
       repeat1($.lookup_variant),
     ))),
@@ -332,7 +339,7 @@ module.exports = grammar({
       'streams',
     ),
 
-    function_definition: $ => seq(
+    function_definition: $ => prec.right(seq(
       optional($.doc_comment_block),
       choice($.verb, $.async_verb),
       $.identifier,
@@ -344,11 +351,11 @@ module.exports = grammar({
         seq('from', $._body_content),
         'binary',
       ),
-    ),
+    )),
 
     doc_comment_block: $ => repeat1($.doc_comment),
 
-    main_definition: $ => seq(
+    main_definition: $ => prec.right(seq(
       optional($.doc_comment_block),
       'main',
       '(',
@@ -357,7 +364,7 @@ module.exports = grammar({
       optional($.fail_marker),
       'from',
       $._body_content,
-    ),
+    )),
 
     fail_marker: $ => token('!'),
 
@@ -426,7 +433,7 @@ module.exports = grammar({
     chosen_annotation: $ => seq('chosen', ':', $.string_literal),
 
     near_miss_annotation: $ => seq(
-      'near_miss', ':',
+      'near_miss', optional(':'),
       field('input', $.expression),
       '=>',
       field('expected', $.expression),
@@ -452,17 +459,17 @@ module.exports = grammar({
       ),
     ),
 
-    foreign_block: $ => prec(1, seq(
+    foreign_block: $ => prec.right(seq(
       'foreign',
       $.string_literal,
       repeat($.foreign_function),
     )),
 
-    foreign_function: $ => seq(
+    foreign_function: $ => prec.right(seq(
       $.identifier,
       $.parameter_list,
       $.type_expression,
-    ),
+    )),
 
     // ─── Invariant Networks ────────────────────────────────────
 
@@ -474,16 +481,26 @@ module.exports = grammar({
 
     // ─── Constants ─────────────────────────────────────────────
 
-    constant_definition: $ => seq(
-      $.constant_identifier,
-      optional(seq('as', $.type_expression)),
-      '=',
-      choice($.comptime_block, $.expression),
+    constant_definition: $ => choice(
+      seq(
+        $.constant_identifier,
+        optional(seq('as', $.type_expression)),
+        '=',
+        choice($.comptime_block, $.expression),
+      ),
+      // Short all-caps constants like PI that match type_identifier
+      prec(1, seq(
+        $.type_identifier,
+        'as',
+        $.type_expression,
+        '=',
+        choice($.comptime_block, $.expression),
+      )),
     ),
 
     comptime_block: $ => prec.left(seq(
       'comptime',
-      repeat1($._statement),
+      $._body_content,
     )),
 
     // ─── Statements ────────────────────────────────────────────
@@ -558,12 +575,13 @@ module.exports = grammar({
     )),
 
     lookup_access_expression: $ => prec(PREC.CALL, seq(
-      $.type_identifier,
-      ':',
+      choice($.type_identifier, $.identifier),
+      token.immediate(':'),
       choice(
         $.string_literal,
         $.type_identifier,
         $.identifier,
+        $.integer_literal,
       ),
     )),
 
@@ -583,7 +601,7 @@ module.exports = grammar({
       token.immediate('&'),
     )),
 
-    valid_expression: $ => prec.left(PREC.CALL, seq(
+    valid_expression: $ => prec.right(PREC.CALL, seq(
       'valid',
       $.identifier,
       optional(seq('(', optional(sep1($.expression, ',')), ')')),
@@ -627,7 +645,7 @@ module.exports = grammar({
 
     lookup_pattern: $ => prec(2, seq(
       $.type_identifier,
-      ':',
+      token.immediate(':'),
       choice(
         $.string_literal,
         $.type_identifier,
@@ -769,7 +787,7 @@ module.exports = grammar({
 
     type_identifier: $ => /[A-Z][a-zA-Z0-9]*/,
 
-    constant_identifier: $ => token(prec(1, /[A-Z][A-Z0-9]*_[A-Z0-9_]*/)),
+    constant_identifier: $ => token(prec(1, /[A-Z]([A-Z0-9]*_[A-Z0-9_]*|[A-Z0-9][A-Z0-9][A-Z0-9_]*)/)),
   },
 });
 
