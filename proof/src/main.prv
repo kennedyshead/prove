@@ -23,7 +23,7 @@ from
         true => verb(arguments)
         _ => error(f"{PROVE_TOML} is not found, run prove new for a scaffold project")&
 
-main() Result<Unit, Error>!
+main()!
 from
     arguments as List<String> = process()
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))

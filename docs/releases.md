@@ -1,5 +1,20 @@
 # Releases
 
+## v1.1.1 — March 2026
+
+Bug fixes, stdlib improvements, and better ANSI support.
+
+**Changes:**
+
+- **ANSI colors & TextStyle** — new `TextStyle:[Lookup]` type in UI module (`Bold`, `Dim`, `Italic`, `Underline`, `Inverse`, `Strikethrough`) and `Terminal.ansi()` function for Color/TextStyle → ANSI escape sequences
+- **Stdlib fixes** — fixed `prove_store.c` infinite recursion in `_get_current_dat()` causing SIGSEGV; registered missing runtime functions (`prove_array_free`, `prove_terminal_check_resize`, `prove_text_write_bytes`)
+- **Time-to-string bug fixes** — corrected formatting issues in Time module string conversion
+- **Streamlined stdlib modules** — cleaned up module definitions and registrations
+- **Tree-sitter grammar updates** — improved syntax highlighting for async verbs, imports, and constants
+- **HOF cleanup** — clarified that `map`, `filter`, `each`, `reduce` are compiler builtins, not stdlib declarations
+
+---
+
 ## v1.1.0 — March 2026
 
 Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.

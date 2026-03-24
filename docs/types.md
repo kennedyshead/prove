@@ -56,7 +56,7 @@ transforms display(obj Struct) String
   with obj.name String
   with obj.age Integer
 from
-  obj.name + " (" + Text.from_integer(obj.age) + ")"
+  obj.name + " (" + Types.string(obj.age) + ")"
 ```
 
 Rules:

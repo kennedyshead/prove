@@ -45,6 +45,12 @@ Keycodes above 1000 are virtual codes for non-printable keys; printable characte
 
 Bidirectional color mapping. Resolve by variant (`Color:Red`), by name (`Color:"red"`), by ANSI SGR code (`Color:31`), or by hex (`Color:"#FF0000"`).
 
+#### `TextStyle:[Lookup]`
+
+Bidirectional text style mapping. Resolve by variant (`TextStyle:Bold`), by name (`TextStyle:"bold"`), or by ANSI SGR code (`TextStyle:1`).
+
+Variants: `Reset`, `Bold`, `Dim`, `Italic`, `Underline`, `Inverse`, `Strikethrough`.
+
 #### `Position`
 
 Screen position struct with `x` (column) and `y` (row) fields.
@@ -136,6 +142,7 @@ type MyAppEvent is TerminalAppEvent
 | `outputs` | `clear` | `()` | Clear screen and reset cursor to (0,0) |
 | `outputs` | `cursor` | `(x Integer, y Integer)` | Move cursor to position |
 | `reads` | `size` | `() Position` | Get terminal dimensions (cols, rows) |
+| `reads` | `ansi` | `(name String) String` | Convert a Color or TextStyle name to ANSI escape sequence |
 
 ### Example: Terminal Todo List
 
