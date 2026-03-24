@@ -498,6 +498,41 @@ class TestRecursiveVariantTypes:
         assert isinstance(add_sig.return_type, AlgebraicType)
         assert add_sig.return_type.name == "Expr"
 
+    def test_mutual_recursion(self):
+        """Two types referencing each other in the same module."""
+        check(
+            "module M\n"
+            "  type Stmt is\n"
+            "      ExprStmt(expr Expr)\n"
+            "      Block(stmts List<Stmt>)\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Lambda(body Stmt)\n"
+        )
+
+    def test_mutual_recursion_reverse_order(self):
+        """Definition order doesn't matter for mutual recursion."""
+        check(
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Lambda(body Stmt)\n"
+            "  type Stmt is\n"
+            "      ExprStmt(expr Expr)\n"
+            "      Block(stmts List<Stmt>)\n"
+        )
+
+    def test_mutual_recursion_no_base_case(self):
+        """E423: mutual recursion with no base case in either type."""
+        check_fails(
+            "module M\n  type A is\n      X(b B)\n  type B is\n      Y(a A)\n",
+            "E423",
+        )
+
+    def test_mutual_recursion_one_base_case(self):
+        """Mutual recursion where one type has a base case is valid."""
+        check("module M\n  type A is\n      Leaf\n      X(b B)\n  type B is\n      Y(a A)\n")
+
 
 class TestLambdaCapture:
     """Lambda closure capture (replaces E364 rejection)."""

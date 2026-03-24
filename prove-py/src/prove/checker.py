@@ -725,24 +725,85 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     def _validate_recursive_base_cases(self, type_defs: list[TypeDef]) -> None:
         """E423: recursive types must have at least one non-recursive variant."""
+        # Build the set of all user-defined algebraic type names for mutual recursion detection
+        all_type_names = {
+            td.name
+            for td in type_defs
+            if isinstance(self.symbols.resolve_type(td.name), AlgebraicType)
+        }
+        # Build a dependency graph: type_name → set of type_names it references
+        type_refs: dict[str, set[str]] = {}
         for td in type_defs:
             resolved = self.symbols.resolve_type(td.name)
             if not isinstance(resolved, AlgebraicType):
                 continue
-            rec_fields = find_recursive_fields(resolved)
+            rec_fields = find_recursive_fields(resolved, all_type_names - {td.name})
+            refs = {td.name}  # self-reference counts
+            for rf in rec_fields:
+                if rf.direct:
+                    # Find which type this field references
+                    variant = next(
+                        (v for v in resolved.variants if v.name == rf.variant_name), None
+                    )
+                    if variant and rf.field_name in variant.fields:
+                        ft = variant.fields[rf.field_name]
+                        if isinstance(ft, AlgebraicType) and ft.name in all_type_names:
+                            refs.add(ft.name)
+            type_refs[td.name] = refs
+
+        # Find mutual recursion groups (SCCs) and check base cases
+        # Simple approach: for each type, find its reachable group
+        checked: set[str] = set()
+        td_map = {td.name: td for td in type_defs}
+        for td in type_defs:
+            if td.name in checked:
+                continue
+            resolved = self.symbols.resolve_type(td.name)
+            if not isinstance(resolved, AlgebraicType):
+                continue
+            rec_fields = find_recursive_fields(resolved, all_type_names - {td.name})
             if not rec_fields:
                 continue
-            # Check that at least one variant has no direct recursive fields
-            recursive_variants = {rf.variant_name for rf in rec_fields if rf.direct}
-            all_variant_names = {v.name for v in resolved.variants}
-            non_recursive = all_variant_names - recursive_variants
-            if not non_recursive:
-                self._error(
-                    "E423",
-                    f"recursive type '{td.name}' has no base case — "
-                    f"at least one variant must not reference '{td.name}'",
-                    td.span,
-                )
+
+            # Compute reachable recursive group from this type
+            group = self._compute_recursive_group(td.name, type_refs)
+            checked |= group
+
+            # Check: at least one type in the group has a non-recursive base case
+            group_has_base = False
+            for gname in group:
+                gtype = self.symbols.resolve_type(gname)
+                if not isinstance(gtype, AlgebraicType):
+                    continue
+                grecs = find_recursive_fields(gtype, group - {gname})
+                rec_variants = {rf.variant_name for rf in grecs if rf.direct}
+                if {v.name for v in gtype.variants} - rec_variants:
+                    group_has_base = True
+                    break
+            if not group_has_base:
+                for gname in group:
+                    if gname in td_map:
+                        self._error(
+                            "E423",
+                            f"recursive type '{gname}' has no base case — "
+                            f"at least one variant must not reference '{gname}'",
+                            td_map[gname].span,
+                        )
+
+    @staticmethod
+    def _compute_recursive_group(start: str, refs: dict[str, set[str]]) -> set[str]:
+        """Compute the set of types reachable from *start* through recursive refs."""
+        group: set[str] = set()
+        stack = [start]
+        while stack:
+            name = stack.pop()
+            if name in group:
+                continue
+            group.add(name)
+            for ref in refs.get(name, set()):
+                if ref not in group:
+                    stack.append(ref)
+        return group
 
     def _register_type(self, td: TypeDef) -> None:
         """Register a user-defined type."""

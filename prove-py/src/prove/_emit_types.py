@@ -478,6 +478,16 @@ class TypeEmitterMixin:
             result[f.name] = ft if ft else INTEGER
         return result
 
+    def _all_algebraic_type_names(self) -> set[str]:
+        """Return the names of all user-defined algebraic types in this module."""
+        names: set[str] = set()
+        for td in self._all_type_defs():
+            if isinstance(td.body, AlgebraicTypeDef):
+                resolved = self._symbols.resolve_type(td.name)
+                if isinstance(resolved, AlgebraicType):
+                    names.add(td.name)
+        return names
+
     def _emit_type_def(self, td: TypeDef) -> None:
         cname = mangle_type_name(td.name)
         body = td.body
@@ -491,7 +501,9 @@ class TypeEmitterMixin:
             # Use resolved type from checker (includes inherited variants)
             resolved_type = self._symbols.resolve_type(td.name)
             if isinstance(resolved_type, AlgebraicType) and resolved_type.variants:
-                rec_fields = find_recursive_fields(resolved_type)
+                # Include mutual recursion group for cross-type detection
+                all_alg = self._all_algebraic_type_names()
+                rec_fields = find_recursive_fields(resolved_type, all_alg - {td.name})
                 if rec_fields:
                     self._recursive_fields_cache[td.name] = {
                         (rf.variant_name, rf.field_name) for rf in rec_fields if rf.direct

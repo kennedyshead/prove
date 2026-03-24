@@ -955,3 +955,53 @@ class TestRecursiveVariantEmission:
         assert "Prove_Tree *left;" in c_code
         # Leaf is a unit variant
         assert "_Leaf" in c_code
+
+    def test_mutual_recursion_pointer_fields(self):
+        source = (
+            "module M\n"
+            "  type Stmt is\n"
+            "      ExprStmt(expr Expr)\n"
+            "      Block(stmts List<Stmt>)\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Lambda(body Stmt)\n"
+        )
+        c_code = _emit(source)
+        # Cross-type references should be pointers
+        assert "Prove_Expr *expr;" in c_code
+        assert "Prove_Stmt *body;" in c_code
+
+    def test_recursive_constructor_call_region_alloc(self):
+        source = (
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+            "\n"
+            "main()\n"
+            "    from\n"
+            "        x as Expr = Add(Literal(1), Literal(2))\n"
+            "        0\n"
+        )
+        c_code = _emit(source)
+        # Should region-alloc args to Add
+        assert "prove_region_alloc" in c_code
+
+    def test_recursive_match_binding_pointer(self):
+        source = (
+            "module M\n"
+            "  type Expr is\n"
+            "      Literal(value Integer)\n"
+            "      Add(left Expr, right Expr)\n"
+            "\n"
+            "transforms eval(e Expr) Integer\n"
+            "    terminates: e == Literal\n"
+            "    from\n"
+            "        match e\n"
+            "            Literal(v) => v\n"
+            "            Add(l, r) => eval(l) + eval(r)\n"
+        )
+        c_code = _emit(source)
+        # Match bindings for recursive fields should be pointers
+        assert "Prove_Expr *l =" in c_code
+        assert "Prove_Expr *r =" in c_code
