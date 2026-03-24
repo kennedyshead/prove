@@ -55,7 +55,7 @@ type Bigram:[Lookup] is String String Integer where
     r00042 | "creates" | "json" | 6
     r00043 | "creates" | "set_safe" | 6
     r00044 | "creates" | "filter" | 6
-    r00045 | "creates" | "to_sequence" | 6
+    r00045 | "creates" | "list" | 6
     r00046 | "bytearray" | "(" | 11
     r00047 | "bytearray" | "Parse" | 1
     r00048 | "bytearray" | "main" | 1
@@ -757,7 +757,7 @@ type Bigram:[Lookup] is String String Integer where
     r00715 | "p" | "Function" | 6
     r00716 | "p" | ")" | 5
     r00717 | "p" | "as" | 1
-    r00718 | "to_sequence" | "(" | 6
+    r00718 | "list" | "(" | 6
     r00719 | "Store" | "," | 14
     r00720 | "Store" | "narrative" | 2
     r00721 | "Store" | "is" | 2

@@ -5,7 +5,7 @@ module Sequence
   reads length, first, last, value at position, get at index unsafe or safe 
   validates empty and if it contains
   transforms slice, reverse, sort, set and remove
-  creates Array of size, list of range and converts Array to sequence
+  creates Array of size, list of range and converts Array to list
 
   """
 
@@ -262,13 +262,13 @@ reads get_safe(arr Array<Decimal>, idx Integer) Option<Decimal>
 binary
 
 /// Copy array contents into a new List
-creates to_sequence(arr Array<Boolean>) List<Boolean>
+creates list(arr Array<Boolean>) List<Boolean>
 binary
 
 /// Copy array contents into a new List
-creates to_sequence(arr Array<Integer>) List<Integer>
+creates list(arr Array<Integer>) List<Integer>
 binary
 
 /// Copy array contents into a new List
-creates to_sequence(arr Array<Decimal>) List<Decimal>
+creates list(arr Array<Decimal>) List<Decimal>
 binary
