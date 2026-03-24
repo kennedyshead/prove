@@ -75,20 +75,36 @@ class TestCLI:
         assert "pygments" in result.output
         assert "chroma" in result.output
 
-    def test_export_runs(self, runner, tmp_path):
-        # Create minimal workspace with stub grammar.js containing sentinels
+    def test_export_validates_treesitter(self, runner, tmp_path):
+        # Create minimal workspace with grammar.js containing verb literals
         ts_dir = tmp_path / "tree-sitter-prove"
         ts_dir.mkdir()
+        queries_dir = ts_dir / "queries"
+        queries_dir.mkdir()
         (ts_dir / "grammar.js").write_text(
-            "// PROVE-EXPORT-BEGIN: verbs\n// PROVE-EXPORT-END: verbs\n"
+            "verb: $ => choice('creates', 'inputs', 'matches', 'outputs', "
+            "'reads', 'transforms', 'validates'),\n"
+            "'as', 'binary', 'comptime', 'domain', 'foreign', 'from', "
+            "'is', 'match', 'module', 'type', 'valid', 'where',\n"
+            "'ensures', 'explain', 'requires', 'terminates', 'when', 'trusted',\n"
+            "'assume', 'believe', 'chosen', 'intent', 'invariant_network', "
+            "'know', 'narrative', 'near_miss', 'satisfies', 'temporal', 'why_not',\n"
+        )
+        (queries_dir / "highlights.scm").write_text(
+            '"creates" "inputs" "matches" "outputs" "reads" "transforms" "validates"\n'
+            '"as" "binary" "comptime" "domain" "foreign" "from" "is" "match" '
+            '"module" "type" "valid" "where"\n'
+            '"ensures" "explain" "requires" "terminates" "trusted" "when"\n'
+            '"assume" "believe" "chosen" "intent" "invariant_network" "know" '
+            '"narrative" "near_miss" "satisfies" "temporal" "why_not"\n'
         )
         result = runner.invoke(
             main,
             ["export", "-f", "treesitter", "-w", str(tmp_path)],
         )
-        # Should succeed (tree-sitter-prove exists in workspace)
         assert result.exit_code == 0
         assert "tree-sitter-prove" in result.output
+        assert "in sync" in result.output
 
 
 # --- Config tests ---

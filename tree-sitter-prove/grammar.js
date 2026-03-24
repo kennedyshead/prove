@@ -164,6 +164,7 @@ module.exports = grammar({
     // ─── Type Definitions ──────────────────────────────────────
 
     type_definition: $ => seq(
+      optional($.doc_comment_block),
       'type',
       $.type_identifier,
       optional(seq(':', $.type_modifier_bracket)),
@@ -323,7 +324,6 @@ module.exports = grammar({
 
     // ─── Function Definitions ──────────────────────────────────
 
-    // PROVE-EXPORT-BEGIN: verbs
     verb: $ => choice(
       'creates',
       'inputs',
@@ -333,7 +333,6 @@ module.exports = grammar({
       'transforms',
       'validates',
     ),
-    // PROVE-EXPORT-END: verbs
 
     async_verb: $ => choice(
       'attached',
@@ -791,7 +790,7 @@ module.exports = grammar({
 
     type_identifier: $ => /[A-Z][a-zA-Z0-9]*/,
 
-    constant_identifier: $ => token(prec(1, /[A-Z]([A-Z0-9]*_[A-Z0-9_]*|[A-Z0-9][A-Z0-9][A-Z0-9_]*)/)),
+    constant_identifier: $ => token(prec(1, /[A-Z]([A-Z0-9]*_[A-Z0-9_]*|[A-Z][A-Z][A-Z0-9_]*)/)),
   },
 });
 

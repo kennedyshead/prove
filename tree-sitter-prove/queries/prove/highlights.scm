@@ -10,7 +10,6 @@
 (function_definition (verb) @keyword.function)
 (function_definition (async_verb) @keyword.function)
 
-; PROVE-EXPORT-BEGIN: verbs
 [
   "creates"
   "inputs"
@@ -20,7 +19,6 @@
   "transforms"
   "validates"
 ] @keyword.function
-; PROVE-EXPORT-END: verbs
 
 [
   "attached"
@@ -34,7 +32,6 @@
 
 ; ─── Core Keywords ──────────────────────────────────────────
 
-; PROVE-EXPORT-BEGIN: keywords
 [
   "as"
   "binary"
@@ -49,11 +46,9 @@
   "valid"
   "where"
 ] @keyword
-; PROVE-EXPORT-END: keywords
 
 ; ─── Contract Keywords ──────────────────────────────────────
 
-; PROVE-EXPORT-BEGIN: contract-keywords
 [
   "ensures"
   "explain"
@@ -61,7 +56,6 @@
   "terminates"
   "when"
 ] @keyword.control
-; PROVE-EXPORT-END: contract-keywords
 
 [
   "event_type"
@@ -75,7 +69,6 @@
 
 ; ─── AI-Resistance Keywords ────────────────────────────────
 
-; PROVE-EXPORT-BEGIN: ai-keywords
 [
   "assume"
   "believe"
@@ -89,7 +82,6 @@
   "temporal"
   "why_not"
 ] @keyword.directive
-; PROVE-EXPORT-END: ai-keywords
 
 ; ─── Types ──────────────────────────────────────────────────
 
@@ -106,12 +98,10 @@
   (named_modifier
     (type_identifier) @type.qualifier))
 
-; PROVE-EXPORT-BEGIN: builtin-types
 ; Built-in types
 ((type_identifier) @type.builtin
  (#any-of? @type.builtin
   "Attached" "Boolean" "Byte" "Character" "Decimal" "Error" "Float" "Integer" "List" "Listens" "Option" "Result" "Source" "String" "Struct" "Table" "Unit" "Value" "Verb"))
-; PROVE-EXPORT-END: builtin-types
 
 ; ─── Functions ──────────────────────────────────────────────
 

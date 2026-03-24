@@ -422,8 +422,8 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
         build_treesitter,
         generate_chroma,
         generate_pygments,
-        generate_treesitter,
         read_canonical_lists,
+        validate_treesitter,
     )
 
     if workspace_path:
@@ -437,8 +437,8 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
 
     for target in targets:
         if target == "treesitter":
-            click.echo("export: tree-sitter-prove")
-            ok = generate_treesitter(lists, workspace)
+            click.echo("export: tree-sitter-prove (validate)")
+            ok = validate_treesitter(lists, workspace)
             if ok and build:
                 build_treesitter(workspace)
         elif target == "pygments":

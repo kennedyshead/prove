@@ -1,4 +1,4 @@
-# Phase 1: Grammar Unification
+# Phase 1: Grammar Unification — COMPLETE
 
 ## Goal
 
@@ -147,10 +147,10 @@ grammar.js, not tokens.py or parser.py.
 
 ## Completion Criteria
 
-- [ ] `grammar.js` has no sentinel markers; fully hand-maintained
-- [ ] `highlights.scm` has no sentinel markers; fully hand-maintained
-- [ ] `generate_treesitter()` deleted from `export.py`
-- [ ] `prove export --validate-grammar` checks tokens.py ↔ grammar.js sync
-- [ ] `node_kinds.py` and `node_kinds.h` generated from `node-types.json`
-- [ ] CI validates grammar on every push
-- [ ] Audit document committed
+- [x] `grammar.js` has no sentinel markers; fully hand-maintained
+- [x] `highlights.scm` has no sentinel markers; fully hand-maintained
+- [x] `generate_treesitter()` deleted from `export.py`
+- [x] `validate_treesitter()` checks tokens.py ↔ grammar.js sync
+- [x] `node_kinds.py` and `node_kinds.h` generated from `node-types.json`
+- [x] CI validates grammar on every push
+- [x] Audit document committed (`compiler_plan/audit-grammar-vs-parser.md`)

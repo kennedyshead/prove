@@ -1863,6 +1863,10 @@
           "named": true
         },
         {
+          "type": "doc_comment_block",
+          "named": true
+        },
+        {
           "type": "lookup_type_body",
           "named": true
         },

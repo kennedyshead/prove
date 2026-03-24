@@ -27,7 +27,7 @@ Phase 3: Recursive Variants (independent, parallel with any phase)
 
 | Phase | Title | Depends on | Risk |
 |-------|-------|------------|------|
-| 1 | Grammar Unification | — | Low: grammar already comprehensive |
+| 1 | Grammar Unification | — | **DONE** |
 | 2 | Python Tree-sitter | Phase 1 | High: 13+ consumer files, LSP/ML token deps |
 | 3 | Recursive Variants | — (independent) | **DONE** |
 | 4 | Prove Stdlib Module | Phase 1 | Low: opaque binary types, follows Graphic module pattern |
@@ -114,9 +114,9 @@ the compiler_plan directory is accepted:
 
 ## Success Criteria
 
-- [ ] `tree-sitter-prove test` passes on all `.prv` files in the corpus
+- [x] `tree-sitter-prove test` passes on all `.prv` files in the corpus
 - [ ] Python compiler uses tree-sitter for parsing; `parser.py` and `lexer.py` deleted
-- [ ] `tokens.py` validated against grammar.js in CI
+- [x] `tokens.py` validated against grammar.js in CI
 - [ ] All existing e2e tests pass with tree-sitter backend
 - [ ] `Prove` stdlib module provides `Node`, `Tree`, accessors
 - [ ] `Parse.tree()` returns `Result<Tree>` backed by tree-sitter

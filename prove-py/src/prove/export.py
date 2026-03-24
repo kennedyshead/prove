@@ -1,8 +1,11 @@
 """Export syntax highlighting definitions from canonical token lists.
 
-Generates keyword sections for tree-sitter, Pygments, and Chroma lexers
-using sentinel comments (PROVE-EXPORT-BEGIN/END markers) to identify
-replaceable sections.
+Generates keyword sections for Pygments and Chroma lexers using sentinel
+comments (PROVE-EXPORT-BEGIN/END markers) to identify replaceable sections.
+
+For tree-sitter, grammar.js and highlights.scm are fully hand-maintained.
+The `validate_treesitter()` function checks that tokens.py stays in sync
+with the grammar, but does not modify any tree-sitter files.
 
 NOTE: The Prove source file `prove/src/tokens.prv` defines TokenKind with
 a [Lookup] variant type. This export reads from Python's tokens.py which
@@ -16,7 +19,6 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
-from typing import AbstractSet
 
 import click
 
@@ -157,136 +159,79 @@ def replace_sentinel_section(
     return content[:body_start] + replacement + content[end_line_start:]
 
 
-# ── Tree-sitter generator ─────────────────────────────────────────
+# ── Tree-sitter validation ────────────────────────────────────────
 
 _GRAMMAR_LITERAL_RE = re.compile(r"'([a-z_]+)'")
 
 
 def _ts_grammar_literals(grammar_path: Path) -> frozenset[str]:
-    """Extract all single-quoted string literals from grammar.js.
-
-    Tree-sitter highlights.scm can only reference strings that appear
-    as literal tokens in the grammar rules.  Keywords that exist only
-    in the compiler (e.g. 'when', 'domain') but not as grammar literals
-    will cause tree-sitter to error and disable all highlighting.
-    """
+    """Extract all single-quoted string literals from grammar.js."""
     text = grammar_path.read_text()
     return frozenset(_GRAMMAR_LITERAL_RE.findall(text))
 
 
-def _ts_highlights_verbs(lists: dict, grammar_lits: AbstractSet[str]) -> str:
-    """Generate tree-sitter highlights.scm verbs section."""
-    items = ['  "' + v + '"' for v in lists["verbs"] if v in grammar_lits]
-    if "types" in grammar_lits:
-        items.append('  "types"')
-    return "[\n" + "\n".join(items) + "\n] @keyword.function\n"
+def _ts_highlights_keywords(scm_path: Path) -> frozenset[str]:
+    """Extract all double-quoted keyword strings from highlights.scm."""
+    text = scm_path.read_text()
+    return frozenset(re.findall(r'"([a-z_]+)"', text))
 
 
-def _ts_highlights_keywords(lists: dict, grammar_lits: AbstractSet[str]) -> str:
-    """Generate tree-sitter highlights.scm keywords section."""
-    # main and types are handled in the verbs section
-    items = [
-        '  "' + k + '"'
-        for k in lists["keywords"]
-        if k in grammar_lits and k not in ("main", "types")
-    ]
-    return "[\n" + "\n".join(items) + "\n] @keyword\n"
+def validate_treesitter(lists: dict, workspace: Path) -> bool:
+    """Validate that tokens.py is in sync with grammar.js and highlights.scm.
 
+    Checks that every verb and keyword in tokens.py appears as a literal
+    in grammar.js, and that highlights.scm references them. Reports drift
+    but does not modify any files.
 
-def _ts_highlights_contract(lists: dict, grammar_lits: AbstractSet[str]) -> str:
-    """Generate tree-sitter highlights.scm contract keywords section."""
-    # trusted is handled separately via (trusted_annotation)
-    items = [
-        '  "' + k + '"' for k in lists["contract_keywords"] if k in grammar_lits and k != "trusted"
-    ]
-    return "[\n" + "\n".join(items) + "\n] @keyword.control\n"
-
-
-def _ts_highlights_ai(lists: dict, grammar_lits: AbstractSet[str]) -> str:
-    """Generate tree-sitter highlights.scm AI keywords section."""
-    items = ['  "' + k + '"' for k in lists["ai_keywords"] if k in grammar_lits]
-    return "[\n" + "\n".join(items) + "\n] @keyword.directive\n"
-
-
-def _ts_highlights_builtin_types(lists: dict) -> str:
-    """Generate tree-sitter highlights.scm builtin types section."""
-    all_types = lists["builtin_types"] + lists["generic_types"]
-    type_str = " ".join(f'"{t}"' for t in sorted(all_types))
-    return (
-        "; Built-in types\n"
-        "((type_identifier) @type.builtin\n"
-        f" (#any-of? @type.builtin\n  {type_str}))\n"
-    )
-
-
-def _ts_grammar_verbs(lists: dict) -> str:
-    """Generate tree-sitter grammar.js verb choice section."""
-    items = ["      '" + v + "'," for v in lists["verbs"]]
-    return "    verb: $ => choice(\n" + "\n".join(items) + "\n" + "    ),\n"
-
-
-def generate_treesitter(lists: dict, workspace: Path) -> bool:
-    """Write grammar.js and highlights.scm keyword sections.
-
-    Returns True if target directory exists and was updated.
+    Returns True if no drift is found.
     """
     ts_dir = workspace / "tree-sitter-prove"
     if not ts_dir.is_dir():
         click.echo(f"  skip: {ts_dir} not found", err=True)
-        return False
+        return True  # Not an error — tree-sitter-prove may not be present
 
-    # grammar.js — verbs only
     grammar_path = ts_dir / "grammar.js"
-    content = grammar_path.read_text()
-    content = replace_sentinel_section(
-        content,
-        "verbs",
-        _ts_grammar_verbs(lists),
-    )
-    grammar_path.write_text(content)
-    click.echo(f"  wrote {grammar_path}")
-
-    # Scan grammar.js for string literals — highlights.scm can only
-    # reference tokens that appear as literals in the grammar.
     grammar_lits = _ts_grammar_literals(grammar_path)
 
-    # highlights.scm files
+    # Collect all keywords from tokens.py that should appear in grammar.js
+    expected_verbs = set(lists["verbs"])
+    expected_keywords = set(lists["keywords"]) - {"main", "types", "constants"}
+    # trusted is highlighted via (trusted_annotation) node, not as a bare keyword
+    expected_contract = set(lists["contract_keywords"]) - {"trusted"}
+    expected_ai = set(lists["ai_keywords"])
+
+    all_expected = expected_verbs | expected_keywords | expected_contract | expected_ai
+    missing_from_grammar = all_expected - grammar_lits
+
+    ok = True
+    if missing_from_grammar:
+        ok = False
+        click.echo("  drift: tokens.py keywords missing from grammar.js:", err=True)
+        for kw in sorted(missing_from_grammar):
+            click.echo(f"    - {kw}", err=True)
+
+    # Check highlights.scm files
     for scm_path in [
         ts_dir / "queries" / "highlights.scm",
         ts_dir / "queries" / "prove" / "highlights.scm",
     ]:
         if not scm_path.exists():
             continue
-        content = scm_path.read_text()
-        content = replace_sentinel_section(
-            content,
-            "verbs",
-            _ts_highlights_verbs(lists, grammar_lits),
-        )
-        content = replace_sentinel_section(
-            content,
-            "keywords",
-            _ts_highlights_keywords(lists, grammar_lits),
-        )
-        content = replace_sentinel_section(
-            content,
-            "contract-keywords",
-            _ts_highlights_contract(lists, grammar_lits),
-        )
-        content = replace_sentinel_section(
-            content,
-            "ai-keywords",
-            _ts_highlights_ai(lists, grammar_lits),
-        )
-        content = replace_sentinel_section(
-            content,
-            "builtin-types",
-            _ts_highlights_builtin_types(lists),
-        )
-        scm_path.write_text(content)
-        click.echo(f"  wrote {scm_path}")
+        scm_keywords = _ts_highlights_keywords(scm_path)
+        # Only check keywords that are in grammar.js (highlights can only
+        # reference grammar literals)
+        checkable = all_expected & grammar_lits
+        missing_from_scm = checkable - scm_keywords
+        if missing_from_scm:
+            ok = False
+            rel = scm_path.relative_to(workspace)
+            click.echo(f"  drift: keywords missing from {rel}:", err=True)
+            for kw in sorted(missing_from_scm):
+                click.echo(f"    - {kw}", err=True)
 
-    return True
+    if ok:
+        click.echo("  validate: grammar.js ↔ tokens.py in sync")
+    return ok
 
 
 # ── Pygments generator ─────────────────────────────────────────────

@@ -33,6 +33,24 @@ jobs:
       - name: Build proof binary
         run: python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))"
 
+      - name: Validate grammar
+        run: |
+          npm install -g tree-sitter-cli
+          cd ../tree-sitter-prove
+          tree-sitter generate
+          tree-sitter test
+          cd ../prove-py
+          python -c "
+          from prove.export import read_canonical_lists, validate_treesitter
+          from pathlib import Path
+          lists = read_canonical_lists()
+          ok = validate_treesitter(lists, Path('..'))
+          raise SystemExit(0 if ok else 1)
+          "
+          python ../tree-sitter-prove/scripts/extract_constants.py
+          cd ../tree-sitter-prove
+          git diff --exit-code constants/ || { echo 'constants/ out of date — run: tree-sitter generate && python scripts/extract_constants.py'; exit 1; }
+
       - name: Run all checks
         run: |
           ruff check src/ tests/ &

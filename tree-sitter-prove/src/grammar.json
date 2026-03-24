@@ -618,6 +618,18 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "doc_comment_block"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "STRING",
           "value": "type"
         },
@@ -3770,7 +3782,7 @@
         "value": 1,
         "content": {
           "type": "PATTERN",
-          "value": "[A-Z]([A-Z0-9]*_[A-Z0-9_]*|[A-Z0-9][A-Z0-9][A-Z0-9_]*)"
+          "value": "[A-Z]([A-Z0-9]*_[A-Z0-9_]*|[A-Z][A-Z][A-Z0-9_]*)"
         }
       }
     }

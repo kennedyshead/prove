@@ -8,13 +8,10 @@ from prove.export import (
     _chroma_regex_line,
     _pygments_verbs,
     _ts_grammar_literals,
-    _ts_grammar_verbs,
-    _ts_highlights_builtin_types,
-    _ts_highlights_contract,
     _ts_highlights_keywords,
-    _ts_highlights_verbs,
     read_canonical_lists,
     replace_sentinel_section,
+    validate_treesitter,
 )
 
 # ── Canonical lists ────────────────────────────────────────────────
@@ -214,60 +211,56 @@ def test_sentinel_preserves_surrounding():
     assert result.endswith("line3\nline4\n")
 
 
-# ── Generator output validation ──────────────────────────────────
+# ── Tree-sitter validation ───────────────────────────────────────
 
 
-def test_treesitter_verbs_output(lists, grammar_lits):
-    """Generated tree-sitter highlights verb content contains expected keywords."""
-    output = _ts_highlights_verbs(lists, grammar_lits)
-    assert '"transforms"' in output
-    assert '"matches"' in output
-    assert '"types"' in output  # extra verb-like keyword
-    assert "@keyword.function" in output
+def test_treesitter_grammar_literals(grammar_lits):
+    """grammar.js contains all verb literals."""
+    for verb in ["transforms", "inputs", "outputs", "validates", "reads", "creates", "matches"]:
+        assert verb in grammar_lits, f"{verb} missing from grammar.js"
 
 
-def test_treesitter_contract_output(lists, grammar_lits):
-    """Generated tree-sitter contract keywords are correct."""
-    output = _ts_highlights_contract(lists, grammar_lits)
-    assert '"ensures"' in output
-    assert '"explain"' in output
-    assert '"terminates"' in output
-    assert '"proof"' not in output
-    # trusted is handled separately
-    assert '"trusted"' not in output
-    assert '"when"' in output
-    assert "@keyword.control" in output
+def test_treesitter_highlights_keywords_extraction():
+    """_ts_highlights_keywords extracts double-quoted keywords from highlights.scm."""
+    from pathlib import Path
+
+    scm = (
+        Path(__file__).resolve().parent.parent.parent
+        / "tree-sitter-prove"
+        / "queries"
+        / "highlights.scm"
+    )
+    if not scm.exists():
+        pytest.skip("tree-sitter-prove not found")
+    kws = _ts_highlights_keywords(scm)
+    assert "from" in kws
+    assert "type" in kws
+    assert "module" in kws
 
 
-def test_treesitter_keywords_no_phantom_literals(lists, grammar_lits):
-    """Keywords not in grammar.js are excluded from highlights."""
-    output = _ts_highlights_keywords(lists, grammar_lits)
-    # These exist in the compiler but not as grammar literals
-    # when is not a grammar literal
-    assert '"when"' not in output
-    # These should be present (they are grammar literals)
-    assert '"from"' in output
-    assert '"type"' in output
-    assert '"module"' in output
-    assert '"foreign"' in output
+def test_validate_treesitter_sync(lists, tmp_path):
+    """validate_treesitter passes when grammar and highlights are in sync."""
+    ts_dir = tmp_path / "tree-sitter-prove"
+    ts_dir.mkdir()
+    queries_dir = ts_dir / "queries"
+    queries_dir.mkdir()
+    # Write grammar.js with all expected literals
+    all_kws = lists["verbs"] + lists["keywords"] + lists["contract_keywords"] + lists["ai_keywords"]
+    grammar_content = " ".join(f"'{k}'" for k in all_kws)
+    (ts_dir / "grammar.js").write_text(grammar_content)
+    # Write highlights.scm with all expected keywords
+    scm_content = " ".join(f'"{k}"' for k in all_kws)
+    (queries_dir / "highlights.scm").write_text(scm_content)
+    assert validate_treesitter(lists, tmp_path) is True
 
 
-def test_treesitter_builtin_types_output(lists):
-    """Generated tree-sitter builtin types contain expected types."""
-    output = _ts_highlights_builtin_types(lists)
-    assert '"Integer"' in output
-    assert '"String"' in output
-    assert '"List"' in output
-    assert '"Table"' in output
-    assert "@type.builtin" in output
-
-
-def test_treesitter_grammar_verbs_output(lists):
-    """Generated tree-sitter grammar.js verb choice is correct."""
-    output = _ts_grammar_verbs(lists)
-    assert "'transforms'," in output
-    assert "'matches'," in output
-    assert "choice(" in output
+def test_validate_treesitter_drift(lists, tmp_path):
+    """validate_treesitter detects missing keywords."""
+    ts_dir = tmp_path / "tree-sitter-prove"
+    ts_dir.mkdir()
+    # Empty grammar.js — all keywords missing
+    (ts_dir / "grammar.js").write_text("")
+    assert validate_treesitter(lists, tmp_path) is False
 
 
 def test_pygments_output_valid(lists):
