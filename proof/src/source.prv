@@ -5,16 +5,20 @@ module Source
   Config types Config
   System validates file inputs dir file
   Text validates ends
+  Parse types Token creates tokens
 
   type SourceFile is
     path String
     content String
+    lexed List<Token>
 
-inputs content(path String) String
+inputs source_file(path String) SourceFile
   requires valid ends(path, ".prv") && valid file(path)
 from
-    file(path)
+    content as String = file(path)
+    lexed as List<Token> = tokens(content, [])
+    SourceFile(path, content, lexed)
 
 inputs source(config Config) List<SourceFile>
 from
-    map(dir("src/"), |value| SourceFile(value.path, content(value.path)))
+    map(dir("src/"), |value| source_file(value.path))

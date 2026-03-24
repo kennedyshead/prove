@@ -3,6 +3,7 @@ module Build
   Handles the source build.
   
   outputs the command to python for a pybuild
+    or prvbuild for a prove only build
   """
   System validates dir
   Source types SourceFile
@@ -16,6 +17,16 @@ module Build
 
   PYTHON_BUILD as String = comptime
       read("python/build.py")
+
+outputs prvbuild(
+    path String,
+    debug Boolean,
+    no_mutate Boolean,
+    source List<SourceFile>
+) Integer
+  requires valid dir(path)
+from
+    1
 
 outputs pybuild(
     path String,
