@@ -43,6 +43,19 @@ static inline double prove_convert_decimal_int(int64_t n) {
 
 static inline double prove_convert_float_decimal(double x) { return x; }
 
+/* ── Boolean ↔ Integer ───────────────────────────────────────── */
+
+static inline int64_t prove_convert_integer_bool(bool b) { return b ? 1 : 0; }
+static inline bool prove_convert_boolean_int(int64_t n) { return n != 0; }
+
+/* ── String → Boolean ───────────────────────────────────────── */
+
+Prove_Result prove_convert_boolean_str(Prove_String *s);
+
+/* ── Byte → String ──────────────────────────────────────────── */
+
+Prove_String *prove_convert_string_byte(uint8_t b);
+
 /* ── Character ↔ Integer ─────────────────────────────────────── */
 
 int64_t prove_convert_code(char c);

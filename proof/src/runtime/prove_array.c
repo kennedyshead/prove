@@ -342,12 +342,39 @@ bool prove_array_contains_int(Prove_Array *arr, int64_t value) {
     return false;
 }
 
+bool prove_array_contains_float(Prove_Array *arr, double value) {
+    for (int64_t i = 0; i < arr->length; i++) {
+        double v;
+        memcpy(&v, (char *)arr->data + i * arr->elem_size, sizeof(double));
+        if (v == value) return true;
+    }
+    return false;
+}
+
 /* ── Index ────────────────────────────────────────────────────── */
 
 Prove_Option prove_array_index_int(Prove_Array *arr, int64_t value) {
     for (int64_t i = 0; i < arr->length; i++) {
         int64_t v;
         memcpy(&v, (char *)arr->data + i * arr->elem_size, sizeof(int64_t));
+        if (v == value) return prove_option_some((Prove_Value *)(intptr_t)i);
+    }
+    return prove_option_none();
+}
+
+Prove_Option prove_array_index_bool(Prove_Array *arr, bool value) {
+    for (int64_t i = 0; i < arr->length; i++) {
+        bool v;
+        memcpy(&v, (char *)arr->data + i * arr->elem_size, sizeof(bool));
+        if (v == value) return prove_option_some((Prove_Value *)(intptr_t)i);
+    }
+    return prove_option_none();
+}
+
+Prove_Option prove_array_index_float(Prove_Array *arr, double value) {
+    for (int64_t i = 0; i < arr->length; i++) {
+        double v;
+        memcpy(&v, (char *)arr->data + i * arr->elem_size, sizeof(double));
         if (v == value) return prove_option_some((Prove_Value *)(intptr_t)i);
     }
     return prove_option_none();

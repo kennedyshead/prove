@@ -1,5 +1,11 @@
 module Main
-  narrative: """Demonstrates List module operations"""
+  narrative: """Demonstrates List module operations.
+
+  reads first last length index of integers and decimals
+  validates empty and contains for integers and decimals
+  transforms slice reverse sort of integers and decimals
+  creates range of integers
+  """
   System outputs console
   Sequence
     reads first last length index
@@ -35,3 +41,13 @@ from
     unsorted as List<Integer> = [3, 1, 4, 1, 5, 9, 2, 6]
     sorted_nums as List<Integer> = sort(unsorted)
     console(f"Sorted: {join(map(sorted_nums, string), ", ")}")
+    // Decimal list operations
+    prices as List<Decimal> = [9.99, 4.50, 19.95, 2.99]
+    first_price as Decimal = unwrap(first(prices), 0.0)
+    console(f"First price: {string(first_price)}")
+    has_price as Boolean = contains(prices, 4.50)
+    console(f"Contains 4.50: {has_price}")
+    price_idx as Integer = unwrap(index(prices, 19.95), -1)
+    console(f"Index of 19.95: {price_idx}")
+    sorted_prices as List<Decimal> = sort(prices)
+    console(f"Sorted prices: {join(map(sorted_prices, string), ", ")}")

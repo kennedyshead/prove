@@ -47,6 +47,16 @@ Prove_Option prove_list_ops_last_str(Prove_List *list) {
     return _prove_list_ops_last(list);
 }
 
+/* ── First / Last (float) ──────────────────────────────────── */
+
+Prove_Option prove_list_ops_first_float(Prove_List *list) {
+    return _prove_list_ops_first(list);
+}
+
+Prove_Option prove_list_ops_last_float(Prove_List *list) {
+    return _prove_list_ops_last(list);
+}
+
 /* ── Value (get element at position) ───────────────────────── */
 
 Prove_Option prove_list_ops_value(int64_t position, Prove_List *list) {
@@ -78,6 +88,17 @@ bool prove_list_ops_contains_str(Prove_List *list, Prove_String *value) {
     return false;
 }
 
+/* ── Contains (float) ──────────────────────────────────────── */
+
+bool prove_list_ops_contains_float(Prove_List *list, double value) {
+    for (int64_t i = 0; i < list->length; i++) {
+        double v;
+        memcpy(&v, &list->data[i], sizeof(double));
+        if (v == value) return true;
+    }
+    return false;
+}
+
 /* ── Index (int) ────────────────────────────────────────────── */
 
 Prove_Option prove_list_ops_index_int(Prove_List *list, int64_t value) {
@@ -94,6 +115,19 @@ Prove_Option prove_list_ops_index_int(Prove_List *list, int64_t value) {
 Prove_Option prove_list_ops_index_str(Prove_List *list, Prove_String *value) {
     for (int64_t i = 0; i < list->length; i++) {
         if (prove_string_eq((Prove_String *)list->data[i], value)) {
+            return prove_option_some((Prove_Value *)(intptr_t)i);
+        }
+    }
+    return prove_option_none();
+}
+
+/* ── Index (float) ─────────────────────────────────────────── */
+
+Prove_Option prove_list_ops_index_float(Prove_List *list, double value) {
+    for (int64_t i = 0; i < list->length; i++) {
+        double v;
+        memcpy(&v, &list->data[i], sizeof(double));
+        if (v == value) {
             return prove_option_some((Prove_Value *)(intptr_t)i);
         }
     }
@@ -169,6 +203,27 @@ Prove_List *prove_list_ops_sort_str(Prove_List *list) {
         result->length = list->length;
         if (list->length > 1) {
             qsort(result->data, (size_t)result->length, sizeof(void *), _cmp_str);
+        }
+    }
+    return result;
+}
+
+/* ── Sort (float) ──────────────────────────────────────────── */
+
+static int _cmp_float(const void *a, const void *b) {
+    double va, vb;
+    memcpy(&va, a, sizeof(double));
+    memcpy(&vb, b, sizeof(double));
+    return (va > vb) - (va < vb);
+}
+
+Prove_List *prove_list_ops_sort_float(Prove_List *list) {
+    Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
+    if (list->length > 0) {
+        memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
+        result->length = list->length;
+        if (list->length > 1) {
+            qsort(result->data, (size_t)result->length, sizeof(void *), _cmp_float);
         }
     }
     return result;

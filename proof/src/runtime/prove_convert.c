@@ -87,6 +87,29 @@ Prove_String *prove_convert_string_bool(bool b) {
     return prove_string_from_bool(b);
 }
 
+/* ── String → Boolean ───────────────────────────────────────── */
+
+Prove_Result prove_convert_boolean_str(Prove_String *s) {
+    if (!s || s->length == 0) {
+        return prove_result_err(prove_string_from_cstr("empty string"));
+    }
+    if (s->length == 4 && memcmp(s->data, "true", 4) == 0) {
+        return prove_result_ok_int(1);
+    }
+    if (s->length == 5 && memcmp(s->data, "false", 5) == 0) {
+        return prove_result_ok_int(0);
+    }
+    return prove_result_err(prove_string_from_cstr("invalid boolean"));
+}
+
+/* ── Byte → String ──────────────────────────────────────────── */
+
+Prove_String *prove_convert_string_byte(uint8_t b) {
+    char buf[4];
+    snprintf(buf, sizeof(buf), "%u", (unsigned)b);
+    return prove_string_from_cstr(buf);
+}
+
 /* ── Character ↔ Integer ─────────────────────────────────────── */
 
 int64_t prove_convert_code(char c) {

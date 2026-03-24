@@ -125,10 +125,13 @@ bool prove_array_empty(Prove_Array *arr);
 
 bool prove_array_contains_bool(Prove_Array *arr, bool value);
 bool prove_array_contains_int(Prove_Array *arr, int64_t value);
+bool prove_array_contains_float(Prove_Array *arr, double value);
 
 /* ── Index (find position of element) ────────────────────────── */
 
 Prove_Option prove_array_index_int(Prove_Array *arr, int64_t value);
+Prove_Option prove_array_index_bool(Prove_Array *arr, bool value);
+Prove_Option prove_array_index_float(Prove_Array *arr, double value);
 
 /* ── Slice ────────────────────────────────────────────────────── */
 

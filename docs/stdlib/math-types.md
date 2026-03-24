@@ -85,6 +85,7 @@ The function name is the *target type*. Failable conversions from strings return
 | `creates` | `integer(s String) Result<Integer, String>` | Parse string to integer |
 | `creates` | `integer(x Float) Integer` | Truncate float to integer |
 | `creates` | `integer(x Decimal) Integer` | Truncate decimal to integer |
+| `creates` | `integer(b Boolean) Integer` | Boolean to integer (true=1, false=0) |
 
 ### Float Conversions
 
@@ -102,6 +103,7 @@ The function name is the *target type*. Failable conversions from strings return
 | `reads` | `string(x Float) String` | Float to string |
 | `reads` | `string(x Decimal) String` | Decimal to string |
 | `reads` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
+| `reads` | `string(b Byte) String` | Byte to decimal string |
 | `reads` | `string(c Character) String` | Character to string |
 | `reads` | `string(v Value) String` | Extract string content from a Value |
 
@@ -111,6 +113,13 @@ The function name is the *target type*. Failable conversions from strings return
 |------|-----------|-------------|
 | `reads` | `code(character Character) Integer` | Character to code point |
 | `creates` | `character(code Integer) Character` | Code point to character |
+
+### Boolean Conversions
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `boolean(n Integer) Boolean` | Integer to boolean (0=false, non-zero=true) |
+| `creates` | `boolean(s String) Result<Boolean, String>` | Parse `"true"` or `"false"` |
 
 ### Decimal Conversions
 
@@ -150,7 +159,7 @@ The Types module also provides validators and unwrap functions for [`Result<Valu
 | `validates` | `value(option Option<Value>)` | True if Option has a value |
 | `validates` | `unit(option Option<Value>)` | True if Option is empty |
 
-Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<Float>`, and `Option<Decimal>`.
+Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<Float>`, `Option<Decimal>`, and `Option<Boolean>`.
 
 #### Unwrap
 
@@ -160,6 +169,7 @@ Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<F
 | `reads` | `unwrap(option Option<String>, default String) String` | Extract string or use default |
 | `reads` | `unwrap(option Option<Float>, default Float) Float` | Extract float or use default |
 | `reads` | `unwrap(option Option<Decimal>, default Decimal) Decimal` | Extract decimal or use default |
+| `reads` | `unwrap(option Option<Boolean>, default Boolean) Boolean` | Extract boolean or use default |
 | `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
 
 ```prove

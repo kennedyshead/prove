@@ -14,8 +14,10 @@ int64_t prove_list_ops_length(Prove_List *list);
 
 Prove_Option prove_list_ops_first_int(Prove_List *list);
 Prove_Option prove_list_ops_first_str(Prove_List *list);
+Prove_Option prove_list_ops_first_float(Prove_List *list);
 Prove_Option prove_list_ops_last_int(Prove_List *list);
 Prove_Option prove_list_ops_last_str(Prove_List *list);
+Prove_Option prove_list_ops_last_float(Prove_List *list);
 
 /* ── Value (get element at position, or None if out of bounds) ── */
 
@@ -29,11 +31,13 @@ bool prove_list_ops_empty(Prove_List *list);
 
 bool prove_list_ops_contains_int(Prove_List *list, int64_t value);
 bool prove_list_ops_contains_str(Prove_List *list, Prove_String *value);
+bool prove_list_ops_contains_float(Prove_List *list, double value);
 
 /* ── Index (typed variants) ─────────────────────────────────── */
 
 Prove_Option prove_list_ops_index_int(Prove_List *list, int64_t value);
 Prove_Option prove_list_ops_index_str(Prove_List *list, Prove_String *value);
+Prove_Option prove_list_ops_index_float(Prove_List *list, double value);
 
 /* ── Slice ───────────────────────────────────────────────────── */
 
@@ -47,6 +51,7 @@ Prove_List *prove_list_ops_reverse(Prove_List *list);
 
 Prove_List *prove_list_ops_sort_int(Prove_List *list);
 Prove_List *prove_list_ops_sort_str(Prove_List *list);
+Prove_List *prove_list_ops_sort_float(Prove_List *list);
 
 /* ── Range ───────────────────────────────────────────────────── */
 

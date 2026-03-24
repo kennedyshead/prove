@@ -17,8 +17,16 @@ binary
 reads length(items Array<Value>) Integer
 binary
 
-/// Get the first element of a sequence
+/// Get the first element of a list
 reads first(items List<Value>) Option<Value>
+binary
+
+/// Get the first element of a list of floats
+reads first(items List<Float>) Option<Float>
+binary
+
+/// Get the first element of a list of decimals
+reads first(items List<Decimal>) Option<Decimal>
 binary
 
 /// Get the first element of an array
@@ -33,8 +41,16 @@ binary
 reads first(arr Array<Decimal>) Option<Decimal>
 binary
 
-/// Get the last element of a sequence
+/// Get the last element of a list
 reads last(items List<Value>) Option<Value>
+binary
+
+/// Get the last element of a list of floats
+reads last(items List<Float>) Option<Float>
+binary
+
+/// Get the last element of a list of decimals
+reads last(items List<Decimal>) Option<Decimal>
 binary
 
 /// Get the last element of an array
@@ -117,12 +133,28 @@ binary
 validates contains(items List<String>, value String)
 binary
 
+/// Check if a float is in a list
+validates contains(items List<Float>, value Float)
+binary
+
+/// Check if a decimal is in a list
+validates contains(items List<Decimal>, value Decimal)
+binary
+
 /// Check if an integer is in an array
 validates contains(arr Array<Integer>, value Integer)
 binary
 
 /// Check if a boolean is in an array
 validates contains(arr Array<Boolean>, value Boolean)
+binary
+
+/// Check if a float is in an array
+validates contains(arr Array<Float>, value Float)
+binary
+
+/// Check if a decimal is in an array
+validates contains(arr Array<Decimal>, value Decimal)
 binary
 
 /// Find the index of an integer in a sequence
@@ -133,8 +165,28 @@ binary
 reads index(items List<String>, value String) Option<Integer>
 binary
 
+/// Find the index of a float in a list
+reads index(items List<Float>, value Float) Option<Integer>
+binary
+
+/// Find the index of a decimal in a list
+reads index(items List<Decimal>, value Decimal) Option<Integer>
+binary
+
 /// Find the index of an integer in an array
 reads index(arr Array<Integer>, value Integer) Option<Integer>
+binary
+
+/// Find the index of a boolean in an array
+reads index(arr Array<Boolean>, value Boolean) Option<Integer>
+binary
+
+/// Find the index of a float in an array
+reads index(arr Array<Float>, value Float) Option<Integer>
+binary
+
+/// Find the index of a decimal in an array
+reads index(arr Array<Decimal>, value Decimal) Option<Integer>
 binary
 
 /// Get a slice of a sequence from start to end (exclusive)
@@ -183,6 +235,14 @@ binary
 
 /// Sort a sequence of strings
 transforms sort(items List<String>) List<String>
+binary
+
+/// Sort a list of floats
+transforms sort(items List<Float>) List<Float>
+binary
+
+/// Sort a list of decimals
+transforms sort(items List<Decimal>) List<Decimal>
 binary
 
 /// Sort an array of integers

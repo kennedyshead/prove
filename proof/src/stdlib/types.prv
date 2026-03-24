@@ -49,6 +49,10 @@ binary
 creates integer(value Decimal) Integer
 binary
 
+/// Convert a boolean to an integer (true = 1, false = 0)
+creates integer(value Boolean) Integer
+binary
+
 /// Parse a string as a float
 creates float(source String) Result<Float, String>
 binary
@@ -83,6 +87,10 @@ binary
 
 /// Convert a boolean to a string
 reads string(value Boolean) String
+binary
+
+/// Convert a byte to a string
+reads string(value Byte) String
 binary
 
 /// Convert a character to a string
@@ -123,6 +131,14 @@ binary
 
 /// Create a character from a Unicode code point
 creates character(code Integer) Character
+binary
+
+/// Convert an integer to a boolean (0 = false, non-zero = true)
+creates boolean(value Integer) Boolean
+binary
+
+/// Parse a string as a boolean ("true" or "false")
+creates boolean(source String) Result<Boolean, String>
 binary
 
 /// Check if a Value is text
@@ -203,4 +219,16 @@ binary
 
 /// Unwrap an Option<Decimal> or return a default
 reads unwrap(option Option<Decimal>, default Decimal) Decimal
+binary
+
+/// Check if an Option<Boolean> is a Value and not Unit
+validates value(option Option<Boolean>)
+binary
+
+/// Check if an Option<Boolean> is a Unit
+validates unit(option Option<Boolean>)
+binary
+
+/// Unwrap an Option<Boolean> or return a default
+reads unwrap(option Option<Boolean>, default Boolean) Boolean
 binary

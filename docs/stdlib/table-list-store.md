@@ -131,7 +131,8 @@ The `:[Mutable]` annotation tells the compiler to use in-place mutation — no i
 **Module:** `List` — operations on the built-in `List<Value>` type.
 
 Some operations (contains, index, sort) require concrete element types and have
-overloads for `List<Integer>` and `List<String>`.
+overloads for `List<Integer>`, `List<String>`, `List<Float>`, and `List<Decimal>`.
+Typed `first`/`last` overloads are also available for Float and Decimal lists.
 
 ### Query
 
@@ -139,7 +140,11 @@ overloads for `List<Integer>` and `List<String>`.
 |------|-----------|-------------|
 | `reads` | `length(items List<Value>) Integer` | Number of elements |
 | `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
+| `reads` | `first(items List<Float>) Option<Float>` | First float, or None |
+| `reads` | `first(items List<Decimal>) Option<Decimal>` | First decimal, or None |
 | `reads` | `last(items List<Value>) Option<Value>` | Last element, or None |
+| `reads` | `last(items List<Float>) Option<Float>` | Last float, or None |
+| `reads` | `last(items List<Decimal>) Option<Decimal>` | Last decimal, or None |
 | `reads` | `value(position Integer, items List<Value>) Value` | Element at position (0-based) |
 | `validates` | `empty(items List<Value>)` | True if list has no elements |
 
@@ -149,8 +154,12 @@ overloads for `List<Integer>` and `List<String>`.
 |------|-----------|-------------|
 | `validates` | `contains(items List<Integer>, value Integer)` | Check if integer is in list |
 | `validates` | `contains(items List<String>, value String)` | Check if string is in list |
+| `validates` | `contains(items List<Float>, value Float)` | Check if float is in list |
+| `validates` | `contains(items List<Decimal>, value Decimal)` | Check if decimal is in list |
 | `reads` | `index(items List<Integer>, value Integer) Option<Integer>` | Find position of integer |
 | `reads` | `index(items List<String>, value String) Option<Integer>` | Find position of string |
+| `reads` | `index(items List<Float>, value Float) Option<Integer>` | Find position of float |
+| `reads` | `index(items List<Decimal>, value Decimal) Option<Integer>` | Find position of decimal |
 
 ### Transform
 
@@ -160,6 +169,8 @@ overloads for `List<Integer>` and `List<String>`.
 | `transforms` | `reverse(items List<Value>) List<Value>` | Reverse element order |
 | `transforms` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
 | `transforms` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
+| `transforms` | `sort(items List<Float>) List<Float>` | Sort floats ascending |
+| `transforms` | `sort(items List<Decimal>) List<Decimal>` | Sort decimals ascending |
 
 ### Create
 

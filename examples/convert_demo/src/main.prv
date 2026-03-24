@@ -1,12 +1,12 @@
 module Main
   narrative: """Demonstrates Types module operations.
 
-  creates integer float decimal from strings and between numeric types
-  reads string from integers, floats, decimals, and booleans
+  creates integer float decimal boolean from strings and between numeric types
+  reads string from integers, floats, decimals, booleans, and bytes
   reads the Unicode code point of a character
   """
   System outputs console
-  Types reads string code creates integer float decimal
+  Types reads string code creates integer float decimal boolean
 
 main() Result<Unit, Error>!
 from
@@ -28,6 +28,11 @@ from
     // Float ↔ Decimal
     f2 as Float = float(3.14)
     console(f"float(3.14 Decimal) = {string(f2)}")
+    // Boolean ↔ Integer
+    b as Boolean = boolean(1)
+    console(f"boolean(1) = {string(b)}")
+    i as Integer = integer(true)
+    console(f"integer(true) = {i}")
     // Failable string parsing
     parsed as Integer = integer("123")!
     console(f"integer(\"123\") = {parsed}")
