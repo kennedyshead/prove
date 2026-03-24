@@ -30,8 +30,12 @@ static inline bool prove_error_none(Prove_Option o) {
 
 #define prove_error_some_int prove_error_some
 #define prove_error_some_str prove_error_some
+#define prove_error_some_float prove_error_some
+#define prove_error_some_decimal prove_error_some
 #define prove_error_none_int prove_error_none
 #define prove_error_none_str prove_error_none
+#define prove_error_none_float prove_error_none
+#define prove_error_none_decimal prove_error_none
 
 /* ── Typed unwrap (extract inner type from Option.value) ───── */
 
@@ -45,6 +49,15 @@ static inline Prove_String *prove_error_unwrap_str(Prove_Option o) {
     return (Prove_String *)o.value;
 }
 
+/* ── Typed unwrap (float) ────────────────────────────────────── */
+
+static inline double prove_error_unwrap_float(Prove_Option o) {
+    if (o.tag == 0) prove_panic("unwrap on None option");
+    double d;
+    memcpy(&d, &o.value, sizeof(d));
+    return d;
+}
+
 /* ── Typed unwrap_or ─────────────────────────────────────────── */
 
 static inline int64_t prove_error_unwrap_or_int(Prove_Option o, int64_t def) {
@@ -53,6 +66,13 @@ static inline int64_t prove_error_unwrap_or_int(Prove_Option o, int64_t def) {
 
 static inline Prove_String *prove_error_unwrap_or_str(Prove_Option o, Prove_String *def) {
     return o.tag == 1 ? (Prove_String *)o.value : def;
+}
+
+static inline double prove_error_unwrap_or_float(Prove_Option o, double def) {
+    if (o.tag != 1) return def;
+    double d;
+    memcpy(&d, &o.value, sizeof(d));
+    return d;
 }
 
 /* ── Unified unwrap ──────────────────────────────────────────── */

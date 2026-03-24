@@ -69,7 +69,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, CSV codecs with `Value`/`Url` types, and generic tokenization with `Token`/`Rule` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
-| **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer; Result/Option validators and unwrap |
+| **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, String ↔ Decimal, Character ↔ Integer; Result/Option validators and unwrap |
 | **[Path](io-path.md#path)** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | **[Pattern](parse-format-pattern.md#pattern)** | Complete | Regex operations: test, search, replace, split with `Match` type |
 | **[Format](parse-format-pattern.md#format)** | Complete | String/number formatting (pad, hex, bin) and time/date formatting |

@@ -26,7 +26,7 @@ validates float(value Float)
 binary
 
 /// Check if a value is a decimal
-validates decimal(value Float)
+validates decimal(value Decimal)
 binary
 
 /// Check if a value is a boolean
@@ -45,12 +45,24 @@ binary
 creates integer(value Float) Integer
 binary
 
+/// Convert a decimal to an integer (truncates)
+creates integer(value Decimal) Integer
+binary
+
 /// Parse a string as a float
 creates float(source String) Result<Float, String>
 binary
 
 /// Convert an integer to a float
 creates float(value Integer) Float
+binary
+
+/// Convert a decimal to a float
+creates float(value Decimal) Float
+binary
+
+/// Parse a string as a decimal
+creates decimal(source String) Result<Decimal, String>
 binary
 
 /// Convert an integer to a decimal
@@ -167,4 +179,28 @@ binary
 
 /// Unwrap an Option or return a default string
 reads unwrap(option Option<String>, default String) String
+binary
+
+/// Check if an Option<Float> is a Value and not Unit
+validates value(option Option<Float>)
+binary
+
+/// Check if an Option<Float> is a Unit
+validates unit(option Option<Float>)
+binary
+
+/// Unwrap an Option<Float> or return a default
+reads unwrap(option Option<Float>, default Float) Float
+binary
+
+/// Check if an Option<Decimal> is a Value and not Unit
+validates value(option Option<Decimal>)
+binary
+
+/// Check if an Option<Decimal> is a Unit
+validates unit(option Option<Decimal>)
+binary
+
+/// Unwrap an Option<Decimal> or return a default
+reads unwrap(option Option<Decimal>, default Decimal) Decimal
 binary

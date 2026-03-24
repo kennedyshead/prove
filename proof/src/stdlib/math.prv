@@ -2,11 +2,11 @@ module Math
   narrative: """
   Numeric operations.
 
-  reads abs, sqrt, floor, ceil, log, log10, log2, exp of Float and Integer.
+  reads abs, sqrt, floor, ceil, log, log10, log2, exp of Float, Decimal and Integer.
   sin, cos, tan, asin, acos, atan, atan2 trigonometry in radians.
   round, power Float. pi and e constants.
-  max, min, clamp of given Integers or Floats
-  transforms clamp of given Integers or Floats
+  max, min, clamp of given Integers, Floats or Decimals
+  transforms clamp of given Integers, Floats or Decimals
   """
 
 /// Absolute value of an integer
@@ -17,12 +17,20 @@ binary
 reads abs(value Float) Float
 binary
 
+/// Absolute value of a decimal
+reads abs(value Decimal) Decimal
+binary
+
 /// Minimum of two integers
 reads min(first Integer, second Integer) Integer
 binary
 
 /// Minimum of two floats
 reads min(first Float, second Float) Float
+binary
+
+/// Minimum of two decimals
+reads min(first Decimal, second Decimal) Decimal
 binary
 
 /// Maximum of two integers
@@ -33,12 +41,20 @@ binary
 reads max(first Float, second Float) Float
 binary
 
+/// Maximum of two decimals
+reads max(first Decimal, second Decimal) Decimal
+binary
+
 /// Clamp an integer between lo and hi (inclusive)
 transforms clamp(value Integer, minimum Integer, maximum Integer) Integer
 binary
 
 /// Clamp a float between lo and hi (inclusive)
 transforms clamp(value Float, minimum Float, maximum Float) Float
+binary
+
+/// Clamp a decimal between lo and hi (inclusive)
+transforms clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal
 binary
 
 /// Square root of a float

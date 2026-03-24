@@ -8,9 +8,9 @@ keywords: Prove Math, Prove Types, numeric operations, type conversion
 
 ## Math
 
-**Module:** `Math` — numeric operations on `Integer` and `Float`.
+**Module:** `Math` — numeric operations on `Integer`, `Float`, and `Decimal`.
 
-Functions with Integer/Float overloads dispatch based on argument type.
+Functions with Integer/Float/Decimal overloads dispatch based on argument type.
 
 ### Absolute Value, Min, Max
 
@@ -18,10 +18,13 @@ Functions with Integer/Float overloads dispatch based on argument type.
 |------|-----------|-------------|
 | `reads` | `abs(n Integer) Integer` | Absolute value of integer |
 | `reads` | `abs(x Float) Float` | Absolute value of float |
+| `reads` | `abs(x Decimal) Decimal` | Absolute value of decimal |
 | `reads` | `min(first Integer, second Integer) Integer` | Smaller of two integers |
 | `reads` | `min(first Float, second Float) Float` | Smaller of two floats |
+| `reads` | `min(first Decimal, second Decimal) Decimal` | Smaller of two decimals |
 | `reads` | `max(first Integer, second Integer) Integer` | Larger of two integers |
 | `reads` | `max(first Float, second Float) Float` | Larger of two floats |
+| `reads` | `max(first Decimal, second Decimal) Decimal` | Larger of two decimals |
 
 ### Clamp
 
@@ -29,6 +32,7 @@ Functions with Integer/Float overloads dispatch based on argument type.
 |------|-----------|-------------|
 | `transforms` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
 | `transforms` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
+| `transforms` | `clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal` | Constrain decimal to range |
 
 ### Float Operations
 
@@ -47,9 +51,13 @@ Functions with Integer/Float overloads dispatch based on argument type.
 reads distance(x Integer, y Integer) Integer
 from
     Math.abs(Math.min(x, y) - Math.max(x, y))
+
+reads clamp_price(price Decimal, lo Decimal, hi Decimal) Decimal
+from
+    Math.clamp(price, lo, hi)
 ```
 
-> **Note:** Math functions like `sqrt` and `floor` require `Float` arguments. Use the `f` suffix on literals: `16.0f` not `16.0` (which is `Decimal`). See [Type System — Type Modifiers](../types.md#type-modifiers) for more on the Float/Decimal distinction.
+> **Note:** Math functions like `sqrt` and `floor` require `Float` arguments. Use the `f` suffix on literals: `16.0f` not `16.0` (which is `Decimal`). Overloaded functions (`abs`, `min`, `max`, `clamp`) accept both `Float` and `Decimal` arguments. See [Type System — Type Modifiers](../types.md#type-modifiers) for more on the Float/Decimal distinction.
 
 ---
 
@@ -66,7 +74,7 @@ The function name is the *target type*. Failable conversions from strings return
 | `validates` | `string(s String)` | True if value is a string |
 | `validates` | `integer(n Integer)` | True if value is an integer |
 | `validates` | `float(n Float)` | True if value is a float |
-| `validates` | `decimal(n Float)` | True if value is a decimal |
+| `validates` | `decimal(n Decimal)` | True if value is a decimal |
 | `validates` | `boolean(b Boolean)` | True if value is a boolean |
 | `validates` | `character(c Character)` | True if value is a character |
 
@@ -76,6 +84,7 @@ The function name is the *target type*. Failable conversions from strings return
 |------|-----------|-------------|
 | `creates` | `integer(s String) Result<Integer, String>` | Parse string to integer |
 | `creates` | `integer(x Float) Integer` | Truncate float to integer |
+| `creates` | `integer(x Decimal) Integer` | Truncate decimal to integer |
 
 ### Float Conversions
 
@@ -83,6 +92,7 @@ The function name is the *target type*. Failable conversions from strings return
 |------|-----------|-------------|
 | `creates` | `float(s String) Result<Float, String>` | Parse string to float |
 | `creates` | `float(n Integer) Float` | Promote integer to float |
+| `creates` | `float(x Decimal) Float` | Convert decimal to float |
 
 ### String Conversions
 
@@ -106,6 +116,7 @@ The function name is the *target type*. Failable conversions from strings return
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
+| `creates` | `decimal(s String) Result<Decimal, String>` | Parse string to decimal |
 | `creates` | `decimal(n Integer) Decimal` | Promote integer to decimal |
 
 ### Value Validators
@@ -139,16 +150,20 @@ The Types module also provides validators and unwrap functions for [`Result<Valu
 | `validates` | `value(option Option<Value>)` | True if Option has a value |
 | `validates` | `unit(option Option<Value>)` | True if Option is empty |
 
+Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<Float>`, and `Option<Decimal>`.
+
 #### Unwrap
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `unwrap(option Option<Integer>, default Integer) Integer` | Extract integer or use default |
 | `reads` | `unwrap(option Option<String>, default String) String` | Extract string or use default |
+| `reads` | `unwrap(option Option<Float>, default Float) Float` | Extract float or use default |
+| `reads` | `unwrap(option Option<Decimal>, default Decimal) Decimal` | Extract decimal or use default |
 | `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
 
 ```prove
-  Types creates integer float reads string code unwrap validates integer string ok value
+  Types creates integer float decimal reads string code unwrap validates integer string ok value
 
 reads format_pair(label String, n Integer) String
 from
@@ -157,4 +172,8 @@ from
 reads safe_first(items List<Integer>) Integer
 from
     Types.unwrap(List.first(items), 0)
+
+reads parse_price(input String) Decimal!
+from
+    Types.decimal(input)!
 ```

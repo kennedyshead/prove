@@ -340,8 +340,12 @@ _RUNTIME_FUNCTIONS = {
     "prove_convert": [
         "prove_convert_integer_str",
         "prove_convert_integer_float",
+        "prove_convert_integer_decimal",
         "prove_convert_float_str",
         "prove_convert_float_int",
+        "prove_convert_float_decimal",
+        "prove_convert_decimal_str",
+        "prove_convert_decimal_int",
         "prove_convert_string_int",
         "prove_convert_string_float",
         "prove_convert_string_bool",
