@@ -2,19 +2,16 @@ module Language
   narrative: """
   Natural language processing primitives.
 
-  reads words, sentences, tokens and returns as lists 
-  reads string, start, end and kind from token
-  transforms word to root and stem 
-  reads distance and similarity between two strings 
-  reads phonetics trough soundex and metaphone 
+  reads words and sentences and returns as lists
+  transforms word to root and stem
+  reads distance and similarity between two strings
+  reads phonetics trough soundex and metaphone
   reads ngrams and bigrams
-  normalize and transliterate strings 
-  Get a list of stopwords 
+  normalize and transliterate strings
+  Get a list of stopwords
   find the word frequency
   Get the most frequent keywords
   """
-
-  type Token is binary
 
 /// Extract individual words from text
 reads words(text String) List<String>
@@ -22,10 +19,6 @@ binary
 
 /// Split text into sentences
 reads sentences(text String) List<String>
-binary
-
-/// Tokenize text into a list of tokens with position and kind
-reads tokens(text String) List<Token>
 binary
 
 /// Apply the Porter stemming algorithm to a word
@@ -82,20 +75,4 @@ binary
 
 /// Extract the top N most frequent words from text
 reads keywords(text String, count Integer) List<String>
-binary
-
-/// Get the matched string from a token
-reads string(token Token) String
-binary
-
-/// Get the start position of a token
-reads start(token Token) Integer
-binary
-
-/// Get the end position of a token
-reads end(token Token) Integer
-binary
-
-/// Get the kind of a token as an integer
-reads kind(token Token) Integer
 binary

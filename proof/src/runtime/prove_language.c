@@ -27,15 +27,15 @@ static CharClass _classify_byte(unsigned char c) {
 
 static int _token_kind_from_class(CharClass cc) {
     switch (cc) {
-        case CHARCLASS_ALPHA: return PROVE_TOKEN_WORD;
-        case CHARCLASS_DIGIT: return PROVE_TOKEN_NUMBER;
-        case CHARCLASS_PUNCT: return PROVE_TOKEN_PUNCTUATION;
-        case CHARCLASS_SPACE: return PROVE_TOKEN_WHITESPACE;
-        default:              return PROVE_TOKEN_WORD;
+        case CHARCLASS_ALPHA: return PROVE_LANGUAGE_TOKEN_WORD;
+        case CHARCLASS_DIGIT: return PROVE_LANGUAGE_TOKEN_NUMBER;
+        case CHARCLASS_PUNCT: return PROVE_LANGUAGE_TOKEN_PUNCTUATION;
+        case CHARCLASS_SPACE: return PROVE_LANGUAGE_TOKEN_WHITESPACE;
+        default:              return PROVE_LANGUAGE_TOKEN_WORD;
     }
 }
 
-/* Tokenize into a list of Prove_Language_Token*.
+/* Tokenize into a list of Prove_Token* (generic parse tokens).
    Consecutive characters of the same class form one token. */
 static Prove_List *_tokenize(const char *src, int64_t len) {
     Prove_List *result = prove_list_new(16);
@@ -49,8 +49,8 @@ static Prove_List *_tokenize(const char *src, int64_t len) {
             i++;
         }
 
-        Prove_Language_Token *tok =
-            (Prove_Language_Token *)prove_alloc(sizeof(Prove_Language_Token));
+        Prove_Token *tok =
+            (Prove_Token *)prove_alloc(sizeof(Prove_Token));
         tok->text  = prove_string_new(src + start, i - start);
         tok->start = start;
         tok->end   = i;
@@ -70,8 +70,8 @@ Prove_List *prove_language_words(Prove_String *text) {
     Prove_List *result = prove_list_new(tokens->length / 2 + 1);
 
     for (int64_t i = 0; i < tokens->length; i++) {
-        Prove_Language_Token *t = (Prove_Language_Token *)prove_list_get(tokens, i);
-        if (t->kind == PROVE_TOKEN_WORD || t->kind == PROVE_TOKEN_NUMBER) {
+        Prove_Token *t = (Prove_Token *)prove_list_get(tokens, i);
+        if (t->kind == PROVE_LANGUAGE_TOKEN_WORD || t->kind == PROVE_LANGUAGE_TOKEN_NUMBER) {
             prove_list_push(result, t->text);
         }
     }
@@ -159,14 +159,6 @@ Prove_List *prove_language_sentences(Prove_String *text) {
     }
 
     return result;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   tokens() — full tokenization returning Token structs
-   ═══════════════════════════════════════════════════════════════════ */
-
-Prove_List *prove_language_tokens(Prove_String *text) {
-    return _tokenize(text->data, text->length);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1174,22 +1166,3 @@ Prove_List *prove_language_keywords(Prove_String *text, int64_t count) {
     return result;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   Token accessors
-   ═══════════════════════════════════════════════════════════════════ */
-
-Prove_String *prove_language_token_text(Prove_Language_Token *t) {
-    return t->text;
-}
-
-int64_t prove_language_token_start(Prove_Language_Token *t) {
-    return t->start;
-}
-
-int64_t prove_language_token_end(Prove_Language_Token *t) {
-    return t->end;
-}
-
-int64_t prove_language_token_kind(Prove_Language_Token *t) {
-    return t->kind;
-}

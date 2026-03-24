@@ -67,7 +67,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
 | **[Array](table-list-store.md#array)** | Complete | Fixed-size contiguous arrays `Array<T>` with typed elements; supports copy-on-write and `:[Mutable]` in-place variants |
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
-| **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, and CSV codecs with `Value` and `Url` types |
+| **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, CSV codecs with `Value`/`Url` types, and generic tokenization with `Token`/`Rule` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |
 | **[Types](math-types.md#types)** | Complete | Type validation and conversion: String ↔ Integer, String ↔ Float, Character ↔ Integer; Result/Option validators and unwrap |
 | **[Path](io-path.md#path)** | Complete | File path manipulation: join, parent, stem, extension, normalize |
@@ -79,7 +79,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |
 | **[Log](log.md)** | Complete | ANSI color constants and structured logging with `detached` verb |
 | **[Network](network.md)** | Complete | TCP sockets: `socket`, `server`, `accept`, `message` channels with `Socket` type; pairs with `streams` for accept loops |
-| **[Language](language.md)** | Complete | Natural language processing: tokenization, stemming, edit distance, phonetic codes, n-grams, stopwords, frequency analysis |
+| **[Language](language.md)** | Complete | Natural language processing: word/sentence extraction, stemming, edit distance, phonetic codes, n-grams, stopwords, frequency analysis |
 | **[UI](ui-terminal.md#ui)** | Complete | Base UI types: `AppEvent` algebraic event type, `Key:[Lookup]`, `Color:[Lookup]`, `Position` struct |
 | **[Terminal](ui-terminal.md#terminal)** | Complete | TUI primitives via ANSI escape codes: raw/cooked mode, cursor control, clear, terminal size, `TerminalAppEvent` |
 | **[Graphic](ui-terminal.md#graphic)** | Complete | GUI primitives via SDL2 + Nuklear: window, button, label, checkbox, slider, progress, text input. Requires [SDL2](ui-terminal.md#graphic) |

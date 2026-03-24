@@ -476,35 +476,6 @@ class TestLanguageKeywords:
         assert lines[1] == "cat"
 
 
-class TestLanguageTokens:
-    def test_token_accessors(self, tmp_path, runtime_dir):
-        code = textwrap.dedent("""\
-            #include "prove_language.h"
-            #include <stdio.h>
-            int main(void) {
-                Prove_String *text = prove_string_from_cstr("Hi!");
-                Prove_List *toks = prove_language_tokens(text);
-                printf("%lld\\n", (long long)toks->length);
-                for (int64_t i = 0; i < toks->length; i++) {
-                    Prove_Language_Token *t = (Prove_Language_Token *)prove_list_get(toks, i);
-                    Prove_String *txt = prove_language_token_text(t);
-                    printf("%.*s %lld %lld %lld\\n",
-                        (int)txt->length, txt->data,
-                        (long long)prove_language_token_start(t),
-                        (long long)prove_language_token_end(t),
-                        (long long)prove_language_token_kind(t));
-                }
-                return 0;
-            }
-        """)
-        result = compile_and_run(runtime_dir, tmp_path, code, name="lang_tok")
-        assert result.returncode == 0
-        lines = result.stdout.strip().split("\n")
-        assert lines[0] == "2"  # "Hi" and "!"
-        assert lines[1].startswith("Hi ")
-        assert lines[1].endswith(" 0")  # kind=WORD=0
-
-
 class TestLanguageTransliterate:
     def test_preserves_case(self, tmp_path, runtime_dir):
         code = textwrap.dedent("""\

@@ -112,7 +112,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
         "prove_path",
     },
     "network": {"prove_network", "prove_bytes"},
-    "language": {"prove_language"},
+    "language": {"prove_language", "prove_parse"},
     "ui": set(),
     "terminal": {"prove_terminal", "prove_ansi", "prove_event"},
     "graphic": {"prove_gui"},
@@ -286,6 +286,12 @@ _RUNTIME_FUNCTIONS = {
         "prove_creates_value",
         "prove_validates_value",
         "prove_parse_arguments",
+        "prove_parse_rule",
+        "prove_parse_tokens",
+        "prove_parse_token_text",
+        "prove_parse_token_start",
+        "prove_parse_token_end",
+        "prove_parse_token_kind",
     ],
     "prove_parse_csv": [
         "prove_parse_csv",
@@ -579,7 +585,6 @@ _RUNTIME_FUNCTIONS = {
     "prove_language": [
         "prove_language_words",
         "prove_language_sentences",
-        "prove_language_tokens",
         "prove_language_stem",
         "prove_language_root",
         "prove_language_distance",
@@ -594,10 +599,6 @@ _RUNTIME_FUNCTIONS = {
         "prove_language_without_stopwords",
         "prove_language_frequency",
         "prove_language_keywords",
-        "prove_language_token_text",
-        "prove_language_token_start",
-        "prove_language_token_end",
-        "prove_language_token_kind",
     ],
     "prove_ansi": [
         "prove_ansi_escape",
@@ -696,6 +697,7 @@ def copy_runtime(
     _HEADER_DEPS: dict[str, set[str]] = {
         "prove_parse": {"prove_table", "prove_hash"},
         "prove_input_output": {"prove_bytes"},
+        "prove_language": {"prove_parse"},
     }
     for lib in list(needed_libs):
         needed_libs.update(_HEADER_DEPS.get(lib, set()))

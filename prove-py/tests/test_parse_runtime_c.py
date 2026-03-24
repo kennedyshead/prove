@@ -644,3 +644,76 @@ class TestUrlPortReads:
         result = compile_and_run(runtime_dir, tmp_path, code, name="url_port_unset")
         assert result.returncode == 0
         assert "port=-1" in result.stdout
+
+
+# ── Token tests ──────────────────────────────────────────────────
+
+
+class TestParseTokens:
+    def test_rule_based_tokenizer(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                /* Build rules: 0=words, 1=digits, 2=whitespace */
+                Prove_List *rules = prove_list_new(3);
+                prove_list_push(rules, prove_parse_rule(
+                    prove_string_from_cstr("[a-zA-Z]+"), 0));
+                prove_list_push(rules, prove_parse_rule(
+                    prove_string_from_cstr("[0-9]+"), 1));
+                prove_list_push(rules, prove_parse_rule(
+                    prove_string_from_cstr("[ \\t]+"), 2));
+
+                Prove_String *src = prove_string_from_cstr("Hi 42");
+                Prove_List *toks = prove_parse_tokens(src, rules);
+                printf("%lld\\n", (long long)toks->length);
+                for (int64_t i = 0; i < toks->length; i++) {
+                    Prove_Token *t = (Prove_Token *)prove_list_get(toks, i);
+                    Prove_String *txt = prove_parse_token_text(t);
+                    printf("%.*s %lld %lld %lld\\n",
+                        (int)txt->length, txt->data,
+                        (long long)prove_parse_token_start(t),
+                        (long long)prove_parse_token_end(t),
+                        (long long)prove_parse_token_kind(t));
+                }
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="parse_tok")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "3"  # "Hi", " ", "42"
+        assert lines[1] == "Hi 0 2 0"  # word, start=0, end=2, kind=0
+        assert lines[2] == "  2 3 2"  # space, start=2, end=3, kind=2
+        assert lines[3] == "42 3 5 1"  # digits, start=3, end=5, kind=1
+
+    def test_token_unknown_chars(self, tmp_path, runtime_dir):
+        code = textwrap.dedent("""\
+            #include "prove_parse.h"
+            #include <stdio.h>
+            int main(void) {
+                prove_runtime_init();
+                Prove_List *rules = prove_list_new(1);
+                prove_list_push(rules, prove_parse_rule(
+                    prove_string_from_cstr("[a-z]+"), 0));
+
+                Prove_String *src = prove_string_from_cstr("a!b");
+                Prove_List *toks = prove_parse_tokens(src, rules);
+                printf("%lld\\n", (long long)toks->length);
+                for (int64_t i = 0; i < toks->length; i++) {
+                    Prove_Token *t = (Prove_Token *)prove_list_get(toks, i);
+                    printf("%lld\\n", (long long)prove_parse_token_kind(t));
+                }
+                prove_runtime_cleanup();
+                return 0;
+            }
+        """)
+        result = compile_and_run(runtime_dir, tmp_path, code, name="parse_tok_unk")
+        assert result.returncode == 0
+        lines = result.stdout.strip().split("\n")
+        assert lines[0] == "3"  # a, !, b
+        assert lines[1] == "0"  # 'a' matched
+        assert lines[2] == "-1"  # '!' unknown
+        assert lines[3] == "0"  # 'b' matched

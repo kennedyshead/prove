@@ -1,18 +1,23 @@
 module Parse
   narrative: """
-  Encoding and decoding of structured data formats.
+  Encoding and decoding of structured data formats, and generic tokenization.
 
-  creates validates and reads native values like Value from Source, Table<Value> from toml, 
-    Value from json, Url from (scheme host path), duration, date, datetime, hexadecimal, 
+  creates validates and reads native values like Value from Source, Table<Value> from toml,
+    Value from json, Url from (scheme host path), duration, date, datetime, hexadecimal,
     time, base64, arguments (CLI arguments) and csv
   reads Value to bool, integer, tag, number, decimal, array and object
   reads port from Url
   transforms Url by adding query params
+  creates Token and Rule for generic tokenization
+  creates tokens from source text using a list of rules
+  reads token properties: text, start, end, kind
   """
   Bytes types ByteArray
   Time types Time Date DateTime Duration
 
   type Url is binary
+  type Token is binary
+  type Rule is binary
 
 /// Parse a source string into a Value
 creates value(source Source) Value
@@ -156,4 +161,28 @@ binary
 
 /// Parse a string into a duration using a pattern.
 creates duration(source String, pattern String) Duration
+binary
+
+/// Create a tokenization rule from a regex pattern and a kind tag
+creates rule(pattern String, kind Integer) Rule
+binary
+
+/// Tokenize source text using a list of rules, returning tokens
+creates tokens(source String, rules List<Rule>) List<Token>
+binary
+
+/// Get the matched text of a token
+reads text(token Token) String
+binary
+
+/// Get the start position of a token
+reads start(token Token) Integer
+binary
+
+/// Get the end position of a token
+reads end(token Token) Integer
+binary
+
+/// Get the kind tag of a token
+reads kind(token Token) Integer
 binary

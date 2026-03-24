@@ -630,6 +630,18 @@ _register_module(
         ("creates", "datetime"): "prove_time_parse_datetime",
         ("validates", "datetime"): "prove_time_validates_datetime_str",
         ("creates", "duration"): "prove_time_parse_duration",
+        ("creates", "rule"): "prove_parse_rule",
+        ("creates", "tokens"): "prove_parse_tokens",
+        ("reads", "text"): "prove_parse_token_text",
+        ("reads", "start"): "prove_parse_token_start",
+        ("reads", "end"): "prove_parse_token_end",
+        ("reads", "kind"): "prove_parse_token_kind",
+    },
+    overloads={
+        ("reads", "text", "Token"): "prove_parse_token_text",
+        ("reads", "start", "Token"): "prove_parse_token_start",
+        ("reads", "end", "Token"): "prove_parse_token_end",
+        ("reads", "kind", "Token"): "prove_parse_token_kind",
     },
 )
 
@@ -690,7 +702,6 @@ _register_module(
     c_map={
         ("reads", "words"): "prove_language_words",
         ("reads", "sentences"): "prove_language_sentences",
-        ("reads", "tokens"): "prove_language_tokens",
         ("transforms", "stem"): "prove_language_stem",
         ("transforms", "root"): "prove_language_root",
         ("reads", "distance"): "prove_language_distance",
@@ -705,16 +716,6 @@ _register_module(
         ("transforms", "without_stopwords"): "prove_language_without_stopwords",
         ("reads", "frequency"): "prove_language_frequency",
         ("reads", "keywords"): "prove_language_keywords",
-        ("reads", "string"): "prove_language_token_text",
-        ("reads", "start"): "prove_language_token_start",
-        ("reads", "end"): "prove_language_token_end",
-        ("reads", "kind"): "prove_language_token_kind",
-    },
-    overloads={
-        ("reads", "string", "Token"): "prove_language_token_text",
-        ("reads", "start", "Token"): "prove_language_token_start",
-        ("reads", "end", "Token"): "prove_language_token_end",
-        ("reads", "kind", "Token"): "prove_language_token_kind",
     },
 )
 

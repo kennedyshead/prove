@@ -8,9 +8,11 @@ keywords: Prove Parse, Prove Format, Prove Pattern, JSON, TOML, regex, formattin
 
 ## Parse
 
-**Module:** `Parse` — encoding and decoding of structured data formats.
+**Module:** `Parse` — encoding and decoding of structured data formats, and generic tokenization.
 
 Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode, `validates` to check syntax. Supported formats: JSON, TOML, URL, Base64, CSV.
+
+Parse also provides a generic `Token` and `Rule` system for building custom tokenizers. Define rules as regex patterns with kind tags, then tokenize any source text into a `List<Token>`.
 
 ### Value Construction
 
@@ -73,8 +75,29 @@ RFC 4180-compliant CSV parsing. Returns raw `List<List<String>>` — no type inf
 | `reads` | `csv(rows List<List<String>>) String` | Serialize rows of fields to CSV string |
 | `validates` | `csv(source String)` | True if source is valid CSV |
 
+### Tokenization
+
+Defines binary types `Token` (a text span with position and kind tag) and `Rule` (a regex pattern paired with a kind integer). Rules are tried in order; longest match wins.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `rule(pattern String, kind Integer) Rule` | Create a tokenization rule from a regex pattern and kind tag |
+| `creates` | `tokens(source String, rules List<Rule>) List<Token>` | Tokenize source text using rules |
+
+### Token Accessors
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `text(token Token) String` | Matched text of a token |
+| `reads` | `start(token Token) Integer` | Start position in source |
+| `reads` | `end(token Token) Integer` | End position in source |
+| `reads` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
+
+Characters that match no rule produce tokens with kind `-1`.
+
 ```prove
-  Parse creates toml url reads object url validates url base64 types Value Url
+  Parse creates toml url tokens rule reads object url text start end kind validates url base64
+  Parse types Value Url Token Rule
   Table reads keys get types Table
 
 main() Result<Unit, Error>!

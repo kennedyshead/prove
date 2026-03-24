@@ -126,4 +126,37 @@ Prove_Result     prove_parse_csv(Prove_String *source);
 Prove_String    *prove_emit_csv(Prove_List *rows);
 bool             prove_validates_csv(Prove_String *source);
 
+/* ── Token (generic) ──────────────────────────────────────── */
+
+typedef struct {
+    Prove_Header  header;
+    Prove_String *text;
+    int64_t       start;
+    int64_t       end;
+    int64_t       kind;
+} Prove_Token;
+
+/* ── Rule (tokenization rule) ─────────────────────────────── */
+
+typedef struct {
+    Prove_Header  header;
+    Prove_String *pattern;   /* regex pattern for this token kind */
+    int64_t       kind;      /* kind tag assigned to matches */
+} Prove_Rule;
+
+/* ── Generic tokenizer ────────────────────────────────────── */
+
+Prove_List   *prove_parse_tokens(Prove_String *source, Prove_List *rules);
+
+/* ── Rule constructor ─────────────────────────────────────── */
+
+Prove_Rule   *prove_parse_rule(Prove_String *pattern, int64_t kind);
+
+/* ── Token accessors ──────────────────────────────────────── */
+
+Prove_String *prove_parse_token_text(Prove_Token *t);
+int64_t       prove_parse_token_start(Prove_Token *t);
+int64_t       prove_parse_token_end(Prove_Token *t);
+int64_t       prove_parse_token_kind(Prove_Token *t);
+
 #endif /* PROVE_PARSE_H */

@@ -1,22 +1,19 @@
 ---
 title: Language - Prove Standard Library
 description: Natural language processing primitives in the Prove standard library.
-keywords: Prove Language, NLP, tokenization, stemming, edit distance, phonetic codes
+keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 ---
 
 # Language
 
 **Module:** `Language` — natural language processing primitives.
 
-Defines a binary type: `Token` (a text span with position and kind).
-
-### Tokenization
+### Word and Sentence Extraction
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `words(text String) List<String>` | Extract individual words from text |
 | `reads` | `sentences(text String) List<String>` | Split text into sentences |
-| `reads` | `tokens(text String) List<Token>` | Tokenize text with position and kind metadata |
 
 ### Stemming
 
@@ -62,18 +59,8 @@ Defines a binary type: `Token` (a text span with position and kind).
 | `reads` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
 | `reads` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
 
-### Token Accessors
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `reads` | `string(token Token) String` | Matched text of a token |
-| `reads` | `start(token Token) Integer` | Start position |
-| `reads` | `end(token Token) Integer` | End position |
-| `reads` | `kind(token Token) Integer` | Token kind as integer |
-
 ```prove
   Language reads words distance similarity keywords transforms stem normalize
-  Language types Token
 
 reads find_similar(query String, candidates List<String>) List<String>
 from

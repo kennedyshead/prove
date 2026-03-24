@@ -5,29 +5,19 @@
 #include "prove_string.h"
 #include "prove_list.h"
 #include "prove_table.h"
+#include "prove_parse.h"
 
-/* ── Token kind constants ──────────────────────────────────────── */
+/* ── NLP token kind constants (for internal use) ──────────────── */
 
-#define PROVE_TOKEN_WORD         0
-#define PROVE_TOKEN_PUNCTUATION  1
-#define PROVE_TOKEN_WHITESPACE   2
-#define PROVE_TOKEN_NUMBER       3
-
-/* ── Token type ────────────────────────────────────────────────── */
-
-typedef struct {
-    Prove_Header  header;
-    Prove_String *text;
-    int64_t       start;
-    int64_t       end;
-    int64_t       kind;
-} Prove_Language_Token;
+#define PROVE_LANGUAGE_TOKEN_WORD         0
+#define PROVE_LANGUAGE_TOKEN_PUNCTUATION  1
+#define PROVE_LANGUAGE_TOKEN_WHITESPACE   2
+#define PROVE_LANGUAGE_TOKEN_NUMBER       3
 
 /* ── Tokenization ──────────────────────────────────────────────── */
 
 Prove_List   *prove_language_words(Prove_String *text);
 Prove_List   *prove_language_sentences(Prove_String *text);
-Prove_List   *prove_language_tokens(Prove_String *text);
 
 /* ── Stemming / root ───────────────────────────────────────────── */
 
@@ -63,12 +53,5 @@ Prove_List   *prove_language_without_stopwords(Prove_String *text);
 
 Prove_Table  *prove_language_frequency(Prove_String *text);
 Prove_List   *prove_language_keywords(Prove_String *text, int64_t count);
-
-/* ── Token accessors ───────────────────────────────────────────── */
-
-Prove_String *prove_language_token_text(Prove_Language_Token *t);
-int64_t       prove_language_token_start(Prove_Language_Token *t);
-int64_t       prove_language_token_end(Prove_Language_Token *t);
-int64_t       prove_language_token_kind(Prove_Language_Token *t);
 
 #endif /* PROVE_LANGUAGE_H */
