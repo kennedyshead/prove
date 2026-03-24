@@ -29,7 +29,7 @@ Phase 3: Recursive Variants (independent, parallel with any phase)
 |-------|-------|------------|------|
 | 1 | Grammar Unification | — | Low: grammar already comprehensive |
 | 2 | Python Tree-sitter | Phase 1 | High: 13+ consumer files, LSP/ML token deps |
-| 3 | Recursive Variants | — (independent) | Medium: C emitter pointer semantics |
+| 3 | Recursive Variants | — (independent) | **DONE** |
 | 4 | Prove Stdlib Module | Phase 1 | Low: opaque binary types, follows Graphic module pattern |
 | 5 | Self-hosted Path | Phases 2 + 4 (+ Phase 3 for IR) | Large: full compiler rewrite, post-v1 |
 
@@ -120,4 +120,4 @@ the compiler_plan directory is accepted:
 - [ ] All existing e2e tests pass with tree-sitter backend
 - [ ] `Prove` stdlib module provides `Node`, `Tree`, accessors
 - [ ] `Parse.tree()` returns `Result<Tree>` backed by tree-sitter
-- [ ] Recursive variant types work (separate from but enabled by this plan)
+- [x] Recursive variant types work (separate from but enabled by this plan)

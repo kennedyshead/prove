@@ -1,4 +1,4 @@
-# Phase 3: Recursive Variant Types
+# Phase 3: Recursive Variant Types — COMPLETE
 
 ## Goal
 
