@@ -16,10 +16,10 @@ Pure verbs have no side effects. The compiler enforces this. They can be memoize
 
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
-| `transforms` | Pure data computation/conversion | No `!`. Failure encoded in return type (`Result`, `Option`) |
+| `creates` | Creates a new value from a given value | No `!`. Returns a freshly constructed value |
+| `reads` | Extracts a subvalue, returning the same type | No `!`. Non-mutating access to data |
+| `transforms` | Failable version of creates/reads | Allows `!`. Pure but can fail at runtime (deserialization, conversion) |
 | `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
-| `reads` | Non-mutating access to data | No `!`. Extracts or queries without changing anything |
-| `creates` | Constructs a new value | No `!`. Returns a freshly allocated value |
 | `matches` | Pure match dispatch on algebraic type | No `!`. First parameter must be algebraic. `from` block is implicitly a match |
 
 ### Examples
@@ -34,15 +34,16 @@ validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
+transforms config(data String) Config!
+  requires valid toml(data)
+from
+    Config(toml(data))
+
 transforms normalize(data List<Decimal>) List<Decimal>
   ensures len(result) == len(data)
 from
     max_val as Decimal = max(data)
     divide_each(data, max_val)
-
-transforms parse(raw String) Result<Config, ParseError>
-from
-    decode(raw)
 
 reads length(s String) Integer
 from

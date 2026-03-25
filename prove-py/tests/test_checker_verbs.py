@@ -21,9 +21,16 @@ class TestVerbEnforcement:
         )
 
     def test_pure_failable_error(self):
+        # creates/reads/validates/matches cannot be failable
         check_fails(
-            "transforms bad(x Integer) Integer!\n    from\n        x\n",
+            "creates bad(x Integer) Integer!\n    from\n        x\n",
             "E361",
+        )
+
+    def test_transforms_can_be_failable(self):
+        """transforms is a failable pure verb — allows ! on return type."""
+        check(
+            "transforms convert(x Integer) Integer!\n    from\n        x\n",
         )
 
     def test_pure_calls_io_error(self):

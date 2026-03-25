@@ -133,6 +133,9 @@ def _count_decimal_places(literal: str) -> int:
 # Verbs considered pure (no IO side effects allowed)
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
+# Pure verbs that are allowed to be failable (transforms can fail at runtime)
+_FAILABLE_PURE_VERBS = frozenset({"transforms"})
+
 # Async verb family
 _ASYNC_VERBS = frozenset({"detached", "attached", "listens", "renders"})
 
@@ -2105,8 +2108,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Enforce verb purity constraints."""
         verb = fd.verb
         if verb in _PURE_VERBS:
-            # Pure functions cannot be failable
-            if fd.can_fail:
+            # Pure functions cannot be failable (except transforms which can fail)
+            if fd.can_fail and verb not in _FAILABLE_PURE_VERBS:
                 self._error("E361", "pure function cannot be failable", fd.span)
             # Check body for IO calls
             self._check_pure_body(fd.body, fd.span)
