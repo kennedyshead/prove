@@ -169,7 +169,7 @@ from
 
 Here's a basic function definition that transforms an integer and ensures its output:
 ```prove
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2

@@ -90,47 +90,47 @@ creates decimal(value Value) Decimal
 binary
 
 /// Convert an integer to a string
-reads string(value Integer) String
+creates string(value Integer) String
 binary
 
 /// Convert a float to a string
-reads string(value Float) String
+creates string(value Float) String
 binary
 
 /// Convert a decimal to a string
-reads string(value Decimal) String
+creates string(value Decimal) String
 binary
 
 /// Convert a boolean to a string
-reads string(value Boolean) String
+creates string(value Boolean) String
 binary
 
 /// Convert a byte to a string
-reads string(value Byte) String
+creates string(value Byte) String
 binary
 
 /// Convert a character to a string
-reads string(value Character) String
+creates string(value Character) String
 binary
 
 /// Convert a time to an ISO 8601 string
-reads string(value Time) String
+creates string(value Time) String
 binary
 
 /// Convert a date to an ISO 8601 string
-reads string(value Date) String
+creates string(value Date) String
 binary
 
 /// Convert a datetime to an ISO 8601 string
-reads string(value DateTime) String
+creates string(value DateTime) String
 binary
 
 /// Convert a clock to a string
-reads string(value Clock) String
+creates string(value Clock) String
 binary
 
 /// Convert a duration to a string
-reads string(value Duration) String
+creates string(value Duration) String
 binary
 
 /// Convert a value to a string
@@ -138,7 +138,7 @@ creates string(value Value) String
 binary
 
 /// Convert a byte array to a UTF-8 string
-reads string(value ByteArray) String
+creates string(value ByteArray) String
 binary
 
 /// Serialize a JSON value to a string
@@ -170,7 +170,7 @@ creates string(position Position) String
 binary
 
 /// Get the Unicode code point of a character
-reads code(character Character) Integer
+creates code(character Character) Integer
 binary
 
 /// Create a character from a Unicode code point

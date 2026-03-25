@@ -27,10 +27,10 @@ All classification functions take a single `Character` and return `Boolean`.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `at(string String, index Integer) Character` | Character at index (0-based, bounds-checked) |
+| `creates` | `at(string String, index Integer) Character` | Character at index (0-based, bounds-checked) |
 
 ```prove
-  Character validates alpha digit space reads at
+  Character validates alpha digit space creates at
 
 validates is_identifier_start(c Character)
 from
@@ -49,8 +49,8 @@ Defines a binary `StringBuilder` type for efficient incremental string building.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `length(s String) Integer` | Number of bytes in string |
-| `reads` | `index(text String, substring String) Option<Integer>` | Find position of substring |
+| `creates` | `length(s String) Integer` | Number of bytes in string |
+| `creates` | `index(text String, substring String) Option<Integer>` | Find position of substring |
 
 ### Validation
 
@@ -64,14 +64,14 @@ Defines a binary `StringBuilder` type for efficient incremental string building.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `slice(text String, start Integer, end Integer) String` | Extract substring [start, end) |
-| `transforms` | `split(text String, separator String) List<String>` | Split by delimiter |
-| `transforms` | `join(parts List<String>, separator String) String` | Join strings with separator |
-| `transforms` | `trim(text String) String` | Remove leading and trailing whitespace |
-| `transforms` | `lower(text String) String` | Convert to lowercase |
-| `transforms` | `upper(text String) String` | Convert to uppercase |
-| `transforms` | `replace(text String, old String, new String) String` | Replace all occurrences |
-| `transforms` | `repeat(text String, count Integer) String` | Repeat string count times |
+| `reads` | `slice(text String, start Integer, end Integer) String` | Extract substring [start, end) |
+| `creates` | `split(text String, separator String) List<String>` | Split by delimiter |
+| `creates` | `join(parts List<String>, separator String) String` | Join strings with separator |
+| `reads` | `trim(text String) String` | Remove leading and trailing whitespace |
+| `reads` | `lower(text String) String` | Convert to lowercase |
+| `reads` | `upper(text String) String` | Convert to uppercase |
+| `reads` | `replace(text String, old String, new String) String` | Replace all occurrences |
+| `reads` | `repeat(text String, count Integer) String` | Repeat string count times |
 
 ### Builder
 
@@ -80,14 +80,14 @@ The `StringBuilder` type allows efficient incremental string construction.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `builder() StringBuilder:[Mutable]` | Create an empty builder |
-| `transforms` | `string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
-| `transforms` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
-| `reads` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
-| `reads` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
+| `reads` | `string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
+| `reads` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
+| `creates` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
+| `creates` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
-  Text reads length index validates contains starts transforms split join trim replace
-  Text creates builder transforms string reads build
+  Text creates length index validates contains starts reads slice reads trim lower upper replace repeat creates split join
+  Text creates builder reads string creates build
 
 reads word_count(text String) Integer
 from

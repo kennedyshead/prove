@@ -12,7 +12,7 @@ module Main
   Expected to fail: check_strict 
   """
   System outputs console
-  Array reads get creates array transforms set
+  Array reads get set creates array
   Types creates decimal
 
   SIZE as Integer = 100

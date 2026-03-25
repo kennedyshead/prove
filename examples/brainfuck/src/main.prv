@@ -14,10 +14,10 @@ module Main
   Expected to fail: check_strict 
   """
   System inputs file outputs console
-  Array reads get creates array transforms set
-  Text reads length
-  Character reads at
-  Types reads code
+  Array reads get set creates array
+  Text creates length
+  Character creates at
+  Types creates code
 
   TAPE_SIZE as Integer = 30000
 

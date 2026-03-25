@@ -42,11 +42,11 @@ validates duration(duration Duration)
 binary
 
 /// Compute difference between two times
-transforms duration(start Time, stop Time) Duration
+creates duration(start Time, stop Time) Duration
 binary
 
 /// Extract date from a time
-reads date(time Time) Date
+creates date(time Time) Date
 binary
 
 /// Create a date from components
@@ -58,11 +58,11 @@ validates date(year Integer, month Integer, day Integer)
 binary
 
 /// Add days to a date
-transforms date(date Date, days Integer) Date
+reads date(date Date, days Integer) Date
 binary
 
 /// Extract datetime from a time
-reads datetime(time Time) DateTime
+creates datetime(time Time) DateTime
 binary
 
 /// Create a datetime from date and clock
@@ -74,7 +74,7 @@ validates datetime(datetime DateTime)
 binary
 
 /// Convert datetime to timestamp
-transforms datetime(datetime DateTime) Time
+creates datetime(datetime DateTime) Time
 binary
 
 /// Get number of days in a month
@@ -86,7 +86,7 @@ validates days(year Integer)
 binary
 
 /// Get weekday from a date
-reads weekday(date Date) Weekday
+creates weekday(date Date) Weekday
 binary
 
 /// Check if a date falls on a weekend
@@ -94,7 +94,7 @@ validates weekday(date Date)
 binary
 
 /// Extract clock from a time
-reads clock(time Time) Clock
+creates clock(time Time) Clock
 binary
 
 /// Create a clock from components

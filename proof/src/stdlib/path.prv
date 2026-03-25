@@ -9,7 +9,7 @@ module Path
   """
 
 /// Join path components together
-transforms join(base String, part String) String
+reads join(base String, part String) String
 binary
 
 /// Get the parent directory of a path
@@ -33,5 +33,5 @@ validates absolute(path String)
 binary
 
 /// Normalize a path (resolve .. and .)
-transforms normalize(path String) String
+reads normalize(path String) String
 binary

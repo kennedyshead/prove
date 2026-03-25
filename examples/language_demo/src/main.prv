@@ -2,12 +2,12 @@ module Main
   narrative: """Demonstrates Language module NLP operations."""
   System outputs console
   Language
-    reads words sentences distance similarity soundex metaphone bigrams keywords ngrams
-      stopwords frequency
-    transforms stem root normalize without_stopwords transliterate
-  Types reads string
-  Text transforms join
-  Sequence reads length
+    reads soundex metaphone stopwords stem root normalize transliterate
+    creates without_stopwords frequency bigrams keywords ngrams words sentences distance
+      similarity
+  Types creates string
+  Text creates join
+  Sequence creates length
 
 main() Result<Unit, Error>!
 from

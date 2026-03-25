@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Parse module URL and Base64 operations."""
   System outputs console
-  Parse types Url reads url creates base64
+  Parse types Url creates base64 url
   Bytes types ByteArray creates bytearray
 
 main() Result<Unit, Error>!

@@ -51,7 +51,7 @@ creates json(value Value) Value<Json>
 binary
 
 /// Get the tag (type name) of a Value
-reads tag(value Value) String
+creates tag(value Value) String
 binary
 
 
@@ -64,7 +64,7 @@ validates toml(source String)
 binary
 
 /// Parse a URL string into its components
-reads url(raw String) Url
+creates url(raw String) Url
 binary
 
 /// Construct a URL from scheme, host, and path
@@ -80,11 +80,11 @@ transforms url(source Url, params Table<Value>) Url
 binary
 
 /// Read the port component of a URL (-1 if not set)
-reads port(url Url) Integer
+creates port(url Url) Integer
 binary
 
 /// Encode a byte array as a hexadecimal string
-reads hexadecimal(data ByteArray) String
+creates hexadecimal(data ByteArray) String
 binary
 
 /// Decode a hexadecimal string to a byte array
@@ -96,7 +96,7 @@ validates hexadecimal(string String)
 binary
 
 /// Decode a Base64 string into a byte array
-reads base64(encoded String) ByteArray
+creates base64(encoded String) ByteArray
 binary
 
 /// Encode a byte array as Base64

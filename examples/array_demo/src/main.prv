@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Array<T> - fixed-size unboxed arrays."""
   System outputs console
-  Sequence reads value length get get_safe creates array set_safe transforms set
+  Sequence reads value get get_safe set creates array set_safe length
 
 main()
 from

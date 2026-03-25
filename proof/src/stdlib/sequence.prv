@@ -2,21 +2,22 @@ module Sequence
   narrative: """
   Operations on sequences (ordered collections).
 
-  reads length, first, last, value at position, get at index unsafe or safe 
+  reads first, last, value at position, get at index unsafe or safe
   validates empty and if it contains
-  transforms slice, reverse, sort, set and remove
-  creates Array of size, list of range and converts Array to list
+  reads slice, reverse, sort, set and remove
+  creates length, Array of size, list of range and converts Array to list
   creates list from Value<Csv> to List<List<String>> and from Value to List<Value>
+  creates index
 
   """
   Parse types Csv
 
 /// Get the length of a sequence
-reads length(items List<Value>) Integer
+creates length(items List<Value>) Integer
 binary
 
 /// Get the length of an array
-reads length(items Array<Value>) Integer
+creates length(items Array<Value>) Integer
 binary
 
 /// Get the first element of a list
@@ -160,99 +161,99 @@ validates contains(arr Array<Decimal>, value Decimal)
 binary
 
 /// Find the index of an integer in a sequence
-reads index(items List<Integer>, value Integer) Option<Integer>
+creates index(items List<Integer>, value Integer) Option<Integer>
 binary
 
 /// Find the index of a string in a sequence
-reads index(items List<String>, value String) Option<Integer>
+creates index(items List<String>, value String) Option<Integer>
 binary
 
 /// Find the index of a float in a list
-reads index(items List<Float>, value Float) Option<Integer>
+creates index(items List<Float>, value Float) Option<Integer>
 binary
 
 /// Find the index of a decimal in a list
-reads index(items List<Decimal>, value Decimal) Option<Integer>
+creates index(items List<Decimal>, value Decimal) Option<Integer>
 binary
 
 /// Find the index of an integer in an array
-reads index(arr Array<Integer>, value Integer) Option<Integer>
+creates index(arr Array<Integer>, value Integer) Option<Integer>
 binary
 
 /// Find the index of a boolean in an array
-reads index(arr Array<Boolean>, value Boolean) Option<Integer>
+creates index(arr Array<Boolean>, value Boolean) Option<Integer>
 binary
 
 /// Find the index of a float in an array
-reads index(arr Array<Float>, value Float) Option<Integer>
+creates index(arr Array<Float>, value Float) Option<Integer>
 binary
 
 /// Find the index of a decimal in an array
-reads index(arr Array<Decimal>, value Decimal) Option<Integer>
+creates index(arr Array<Decimal>, value Decimal) Option<Integer>
 binary
 
 /// Get a slice of a sequence from start to end (exclusive)
-transforms slice(items List<Value>, start Integer, end Integer) List<Value>
+reads slice(items List<Value>, start Integer, end Integer) List<Value>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-transforms slice(arr Array<Integer>, start Integer, end Integer) Array<Integer>
+reads slice(arr Array<Integer>, start Integer, end Integer) Array<Integer>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-transforms slice(arr Array<Boolean>, start Integer, end Integer) Array<Boolean>
+reads slice(arr Array<Boolean>, start Integer, end Integer) Array<Boolean>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-transforms slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
+reads slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
 binary
 
 /// Set element at index (copy-on-write: returns new list)
-transforms set(items List<Value>, idx Integer, val Value) List<Value>
+reads set(items List<Value>, idx Integer, val Value) List<Value>
 binary
 
 /// Remove element at index (copy-on-write: returns new list)
-transforms remove(items List<Value>, idx Integer) List<Value>
+reads remove(items List<Value>, idx Integer) List<Value>
 binary
 
 /// Reverse a sequence
-transforms reverse(items List<Value>) List<Value>
+reads reverse(items List<Value>) List<Value>
 binary
 
 /// Reverse an array
-transforms reverse(arr Array<Integer>) Array<Integer>
+reads reverse(arr Array<Integer>) Array<Integer>
 binary
 
 /// Reverse an array
-transforms reverse(arr Array<Boolean>) Array<Boolean>
+reads reverse(arr Array<Boolean>) Array<Boolean>
 binary
 
 /// Reverse an array
-transforms reverse(arr Array<Decimal>) Array<Decimal>
+reads reverse(arr Array<Decimal>) Array<Decimal>
 binary
 
 /// Sort a sequence of integers
-transforms sort(items List<Integer>) List<Integer>
+reads sort(items List<Integer>) List<Integer>
 binary
 
 /// Sort a sequence of strings
-transforms sort(items List<String>) List<String>
+reads sort(items List<String>) List<String>
 binary
 
 /// Sort a list of floats
-transforms sort(items List<Float>) List<Float>
+reads sort(items List<Float>) List<Float>
 binary
 
 /// Sort a list of decimals
-transforms sort(items List<Decimal>) List<Decimal>
+reads sort(items List<Decimal>) List<Decimal>
 binary
 
 /// Sort an array of integers
-transforms sort(arr Array<Integer>) Array<Integer>
+reads sort(arr Array<Integer>) Array<Integer>
 binary
 
 /// Sort an array of decimals
-transforms sort(arr Array<Decimal>) Array<Decimal>
+reads sort(arr Array<Decimal>) Array<Decimal>
 binary
 
 /// Create a sequence of integers from start to end (exclusive)
@@ -288,15 +289,15 @@ reads get(arr Array<Decimal>, idx Integer) Decimal
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-transforms set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
+reads set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-transforms set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
+reads set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-transforms set(arr Array<Decimal>, idx Integer, val Decimal) Array<Decimal>
+reads set(arr Array<Decimal>, idx Integer, val Decimal) Array<Decimal>
 binary
 
 /// Get element at index, or None if out of bounds

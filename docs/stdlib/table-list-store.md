@@ -16,16 +16,16 @@ Defines a binary type: `Table<Value>` (the hash map).
 |------|-----------|-------------|
 | `creates` | `new() Table<Value>` | Create an empty table |
 | `validates` | `has(key String, table Table<Value>)` | True if key exists |
-| `transforms` | `add(key String, value Value, table Table<Value>) Table<Value>` | Insert or update a key-value pair |
+| `reads` | `add(key String, value Value, table Table<Value>) Table<Value>` | Insert or update a key-value pair |
 | `reads` | `get(key String, table Table<Value>) Option<Value>` | Look up value by key |
-| `transforms` | `remove(key String, table Table<Value>) Table<Value>` | Delete a key from the table |
-| `reads` | `keys(table Table<Value>) List<String>` | Get all keys |
+| `reads` | `remove(key String, table Table<Value>) Table<Value>` | Delete a key from the table |
+| `creates` | `keys(table Table<Value>) List<String>` | Get all keys |
 | `reads` | `values(table Table<Value>) List<Value>` | Get all values |
-| `reads` | `length(table Table<Value>) Integer` | Number of entries |
+| `creates` | `length(table Table<Value>) Integer` | Number of entries |
 | `creates` | `table(v Value) Table<Value>` | Extract object content from a Value |
 
 ```prove
-  Table creates new table validates has transforms add reads get keys
+  Table creates new table keys validates has reads add remove get
 
 reads lookup(name String, db Table<String>) String
 from
@@ -62,7 +62,7 @@ The element type and mutability are inferred from context (the declared type of 
 |------|-----------|-------------|
 | `reads` | `get(arr Array<Boolean>, idx Integer) Boolean` | Read element at index |
 | `reads` | `get(arr Array<Integer>, idx Integer) Integer` | Read element at index |
-| `reads` | `length(arr Array<T>) Integer` | Number of elements |
+| `creates` | `length(arr Array<T>) Integer` | Number of elements |
 
 Both overloads work identically on mutable (`:[Mutable]`) and immutable arrays.
 
@@ -70,19 +70,18 @@ Both overloads work identically on mutable (`:[Mutable]`) and immutable arrays.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>` | Copy-on-write: return new array with element replaced |
-| `transforms` | `set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>` | Copy-on-write: return new array with element replaced |
-| `transforms` | `set(arr Array<Boolean>:[Mutable], idx Integer, val Boolean) Array<Boolean>:[Mutable]` | In-place: modify array and return same pointer |
-| `transforms` | `set(arr Array<Integer>:[Mutable], idx Integer, val Integer) Array<Integer>:[Mutable]` | In-place: modify array and return same pointer |
+| `reads` | `set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>` | Copy-on-write: return new array with element replaced |
+| `reads` | `set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>` | Copy-on-write: return new array with element replaced |
+| `reads` | `set(arr Array<Boolean>:[Mutable], idx Integer, val Boolean) Array<Boolean>:[Mutable]` | In-place: modify array and return same pointer |
+| `reads` | `set(arr Array<Integer>:[Mutable], idx Integer, val Integer) Array<Integer>:[Mutable]` | In-place: modify array and return same pointer |
 
 The dispatch between copy-on-write and in-place is resolved by the array's type — no separate function name needed.
 
 ### Example — immutable (copy-on-write)
 
 ```prove
-  Array creates array
-  Array reads get length
-  Array transforms set
+  Array creates array length
+  Array reads get set
 
 main() Result<Unit, Error>!
 from
@@ -97,8 +96,7 @@ from
 
 ```prove
   Array creates array
-  Array reads get
-  Array transforms set
+  Array reads get set
 
 // Sieve of Eratosthenes: count primes up to limit
 reads count_primes(limit Integer) Integer
@@ -153,7 +151,7 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `length(items List<Value>) Integer` | Number of elements |
+| `creates` | `length(items List<Value>) Integer` | Number of elements |
 | `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
 | `reads` | `first(items List<Float>) Option<Float>` | First float, or None |
 | `reads` | `first(items List<Decimal>) Option<Decimal>` | First decimal, or None |
@@ -171,21 +169,21 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 | `validates` | `contains(items List<String>, value String)` | Check if string is in list |
 | `validates` | `contains(items List<Float>, value Float)` | Check if float is in list |
 | `validates` | `contains(items List<Decimal>, value Decimal)` | Check if decimal is in list |
-| `reads` | `index(items List<Integer>, value Integer) Option<Integer>` | Find position of integer |
-| `reads` | `index(items List<String>, value String) Option<Integer>` | Find position of string |
-| `reads` | `index(items List<Float>, value Float) Option<Integer>` | Find position of float |
-| `reads` | `index(items List<Decimal>, value Decimal) Option<Integer>` | Find position of decimal |
+| `creates` | `index(items List<Integer>, value Integer) Option<Integer>` | Find position of integer |
+| `creates` | `index(items List<String>, value String) Option<Integer>` | Find position of string |
+| `creates` | `index(items List<Float>, value Float) Option<Integer>` | Find position of float |
+| `creates` | `index(items List<Decimal>, value Decimal) Option<Integer>` | Find position of decimal |
 
 ### Transform
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `slice(items List<Value>, start Integer, end Integer) List<Value>` | Sub-list from start to end |
-| `transforms` | `reverse(items List<Value>) List<Value>` | Reverse element order |
-| `transforms` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
-| `transforms` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
-| `transforms` | `sort(items List<Float>) List<Float>` | Sort floats ascending |
-| `transforms` | `sort(items List<Decimal>) List<Decimal>` | Sort decimals ascending |
+| `reads` | `slice(items List<Value>, start Integer, end Integer) List<Value>` | Sub-list from start to end |
+| `reads` | `reverse(items List<Value>) List<Value>` | Reverse element order |
+| `reads` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
+| `reads` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
+| `reads` | `sort(items List<Float>) List<Float>` | Sort floats ascending |
+| `reads` | `sort(items List<Decimal>) List<Decimal>` | Sort decimals ascending |
 
 ### Create
 
@@ -194,7 +192,7 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 | `creates` | `range(start Integer, end Integer) List<Integer>` | Integer sequence [start, end) |
 
 ```prove
-  List reads length first transforms sort reverse creates range
+  List creates length reads first sort reverse slice creates range
 
 reads top_three() List<Integer>
 from
@@ -229,18 +227,18 @@ Defines four binary types: `Store` (storage handle), `StoreTable` (table handle)
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `diff(old StoreTable, new StoreTable) TableDiff` | Compute structural diff between two tables |
-| `transforms` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
+| `creates` | `diff(old StoreTable, new StoreTable) TableDiff` | Compute structural diff between two tables |
+| `reads` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
 
 ### Merge
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult` | Three-way merge (conflicts reported) |
-| `transforms` | `merge(base StoreTable, local TableDiff, remote TableDiff, resolver Verb<Conflict, Resolution>) MergeResult` | Three-way merge with conflict resolver |
+| `creates` | `merge(base StoreTable, local TableDiff, remote TableDiff) MergeResult` | Three-way merge (conflicts reported) |
+| `creates` | `merge(base StoreTable, local TableDiff, remote TableDiff, resolver Verb<Conflict, Resolution>) MergeResult` | Three-way merge with conflict resolver |
 | `validates` | `merged(result MergeResult)` | True if merge succeeded without conflicts |
-| `reads` | `merged(result MergeResult) StoreTable` | Get merged table from successful result |
-| `reads` | `conflicts(result MergeResult) List<Conflict>` | Get conflict list from conflicted result |
+| `creates` | `merged(result MergeResult) StoreTable` | Get merged table from successful result |
+| `creates` | `conflicts(result MergeResult) List<Conflict>` | Get conflict list from conflicted result |
 
 Additional types: `Conflict` (conflict details), `Resolution` (resolver decision), `MergeResult` (merge outcome).
 
@@ -265,13 +263,13 @@ result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemot
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `integrity(table StoreTable) String` | Compute integrity hash of a table |
+| `creates` | `integrity(table StoreTable) String` | Compute integrity hash of a table |
 | `outputs` | `rollback(store Store, name String, version Integer) Result<StoreTable, Error>!` | Rollback to a previous version |
 | `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
 
 ```prove
-  Store outputs store inputs table lookup validates store table transforms diff patch merge
-  Store reads integrity merged conflicts outputs rollback inputs version
+  Store outputs store inputs table lookup validates store table creates diff merge merged conflicts integrity reads patch
+  Store outputs rollback inputs version
   Store validates merged types Store StoreTable Conflict Resolution MergeResult
 
 inputs load_table(path String, name String) StoreTable!

@@ -1018,8 +1018,10 @@ class StmtEmitterMixin:
         # (the error check is already emitted as a side effect)
         if isinstance(es.expr, FailPropExpr) and val.startswith("_tmp"):
             return
-        # Transforms call as statement: capture return value back into
+        # Pure-verb call as statement: capture return value back into
         # the first argument (mutation-by-return for value types).
+        # Applies to reads/creates/transforms when the return type matches
+        # the first argument type.
         if isinstance(es.expr, CallExpr) and isinstance(es.expr.func, IdentifierExpr):
             sig = self._symbols.resolve_function_any(
                 es.expr.func.name,
@@ -1027,7 +1029,7 @@ class StmtEmitterMixin:
             )
             if (
                 sig is not None
-                and sig.verb == "transforms"
+                and sig.verb in ("transforms", "reads")
                 and es.expr.args
                 and isinstance(es.expr.args[0], IdentifierExpr)
             ):

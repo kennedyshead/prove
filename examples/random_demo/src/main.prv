@@ -2,8 +2,8 @@ module Main
   narrative: """Demonstrates Random module operations"""
   System outputs console
   Random inputs integer decimal boolean choice shuffle
-  Types reads string
-  Text transforms join
+  Types creates string
+  Text creates join
 
 main() Result<Unit, Error>!
 from

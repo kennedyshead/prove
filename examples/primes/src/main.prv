@@ -9,11 +9,11 @@ module Main
   Expected to fail: check_strict 
   """
   System outputs console
-  Sequence reads get length creates array transforms set
-  Text reads length
-  Character reads at
-  Table types Table reads keys get creates new table validates has transforms add
-  Types reads unwrap code creates string
+  Sequence reads get set creates array length
+  Text creates length
+  Character creates at
+  Table types Table reads get add creates new table keys validates has
+  Types reads unwrap creates string code
 
   UPPER_BOUND as Integer = 5000000
 

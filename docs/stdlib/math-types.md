@@ -30,9 +30,9 @@ Functions with Integer/Float/Decimal overloads dispatch based on argument type.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
-| `transforms` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
-| `transforms` | `clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal` | Constrain decimal to range |
+| `reads` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
+| `reads` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
+| `reads` | `clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal` | Constrain decimal to range |
 
 ### Float Operations
 
@@ -40,13 +40,13 @@ Functions with Integer/Float/Decimal overloads dispatch based on argument type.
 |------|-----------|-------------|
 | `reads` | `sqrt(x Float) Float` | Square root |
 | `reads` | `power(base Float, exponent Float) Float` | Exponentiation |
-| `reads` | `floor(x Float) Integer` | Round down to integer |
-| `reads` | `ceil(x Float) Integer` | Round up to integer |
-| `reads` | `round(x Float) Integer` | Round to nearest integer |
+| `creates` | `floor(x Float) Integer` | Round down to integer |
+| `creates` | `ceil(x Float) Integer` | Round up to integer |
+| `creates` | `round(x Float) Integer` | Round to nearest integer |
 | `reads` | `log(x Float) Float` | Natural logarithm |
 
 ```prove
-  Math reads abs min max sqrt floor
+  Math reads abs min max sqrt clamp creates floor
 
 reads distance(x Integer, y Integer) Integer
 from
@@ -101,12 +101,12 @@ The function name is the *target type*. Failable conversions from strings return
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `string(n Integer) String` | Integer to string |
-| `reads` | `string(x Float) String` | Float to string |
-| `reads` | `string(x Decimal) String` | Decimal to string |
-| `reads` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
-| `reads` | `string(b Byte) String` | Byte to decimal string |
-| `reads` | `string(c Character) String` | Character to string |
+| `creates` | `string(n Integer) String` | Integer to string |
+| `creates` | `string(x Float) String` | Float to string |
+| `creates` | `string(x Decimal) String` | Decimal to string |
+| `creates` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
+| `creates` | `string(b Byte) String` | Byte to decimal string |
+| `creates` | `string(c Character) String` | Character to string |
 | `creates` | `string(v Value) String` | Convert a Value to its string representation |
 
 ### Format Serialization
@@ -135,7 +135,7 @@ from
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `code(character Character) Integer` | Character to code point |
+| `creates` | `code(character Character) Integer` | Character to code point |
 | `creates` | `character(code Integer) Character` | Code point to character |
 
 ### Boolean Conversions
@@ -199,7 +199,7 @@ Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<F
 | `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
 
 ```prove
-  Types creates integer float decimal reads string code unwrap validates integer string ok value
+  Types creates integer float decimal string code reads unwrap validates integer string ok value
 
 reads format_pair(label String, n Integer) String
 from

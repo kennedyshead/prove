@@ -47,7 +47,7 @@ The `ensures` clause is type-checked at compile time. The compiler generates pro
 ```prove
 type Clamped is Integer where low .. high
 
-transforms clamp(value Integer, low Integer, high Integer) Clamped
+creates clamp(value Integer, low Integer, high Integer) Clamped
   requires low <= high
   ensures result >= low
   ensures result <= high
@@ -145,7 +145,7 @@ The compiler parses each row for operations (`get`, `fetch`, `validate`, `set`, 
 **Loose mode** (no `ensures`): Row count is flexible. Free-form text. Documentation value only.
 
 ```prove
-transforms merge_sort(xs List<Value>) Sorted<List<Value>>
+creates merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort both halves
@@ -221,7 +221,7 @@ This is the inverse of typical AI workflows. Instead of fishing for working code
 Recursive functions must declare `terminates` with a measure expression — an expression that strictly decreases on each recursive call. Omitting `terminates` on a recursive function is a compiler error ([E366](diagnostics.md#e366-recursive-function-missing-terminates)).
 
 ```prove
-transforms merge_sort(xs List<Value>) Sorted<List<Value>>
+creates merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort the first half
@@ -526,7 +526,7 @@ Testing is not a separate activity. It is woven into the language — contracts 
 No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
 
 ```prove
-transforms sort(xs List<Value>) List<Value>
+reads sort(xs List<Value>) List<Value>
   ensures len(result) == len(xs)
 from
     // implementation
@@ -546,7 +546,7 @@ transforms divide(a Integer, b Integer where != 0) Integer
 For [refinement types](types.md#refinement-types), boundary testing is automatic:
 
 ```prove
-transforms set_port(p Port) Config    // Port = 1..65535
+creates set_port(p Port) Config    // Port = 1..65535
 // Auto-tests: 1, 2, 65534, 65535, and random values between
 // Also verifies that 0 and 65536 are rejected at the call site
 ```

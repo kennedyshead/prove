@@ -8,10 +8,10 @@ module Main
   """
   System outputs console
   Math
-    reads abs min max sqrt floor power ceil round log log10 log2 exp sin cos tan asin acos
-      atan atan2 pi e
-    transforms clamp
-  Types reads string
+    reads abs min max sqrt power log log10 log2 exp sin cos tan asin acos atan atan2 pi e
+      clamp
+    creates ceil round floor
+  Types creates string
 
 main() Result<Unit, Error>!
 from

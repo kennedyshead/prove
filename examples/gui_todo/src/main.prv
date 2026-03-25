@@ -5,8 +5,8 @@ module TodoApp
   """
   Graphic types GraphicAppEvent outputs window button text_input checkbox
   UI types Key
-  Types reads string
-  Text reads length
+  Types creates string
+  Text creates length
   System outputs console
 
   type TodoItem is

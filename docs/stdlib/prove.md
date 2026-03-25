@@ -49,14 +49,14 @@ Use `Parse.tree()` to parse source into a tree and `Parse.string()` to extract t
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `kind(node Node) String` | Node kind name (e.g. `"function_definition"`, `"call_expression"`) |
-| `reads` | `string(node Node) String` | Source text spanned by a node |
-| `reads` | `children(node Node) List<Node>` | All child nodes (including anonymous tokens like punctuation) |
+| `creates` | `kind(node Node) String` | Node kind name (e.g. `"function_definition"`, `"call_expression"`) |
+| `creates` | `string(node Node) String` | Source text spanned by a node |
+| `creates` | `children(node Node) List<Node>` | All child nodes (including anonymous tokens like punctuation) |
 | `reads` | `child(node Node, name String) Option<Node>` | Named child by field name; returns `None` if the field does not exist |
-| `reads` | `named_children(node Node) List<Node>` | Named children only (skipping anonymous tokens) |
-| `reads` | `count(node Node) Integer` | Number of child nodes |
-| `reads` | `line(node Node) Integer` | Line number (1-based) |
-| `reads` | `column(node Node) Integer` | Column number (0-based) |
+| `creates` | `named_children(node Node) List<Node>` | Named children only (skipping anonymous tokens) |
+| `creates` | `count(node Node) Integer` | Number of child nodes |
+| `creates` | `line(node Node) Integer` | Line number (1-based) |
+| `creates` | `column(node Node) Integer` | Column number (0-based) |
 | `validates` | `error(node Node) Boolean` | Whether the node represents a syntax error |
 
 ## Common Node Kinds
@@ -84,7 +84,7 @@ Tree-sitter node kind names correspond to grammar rules. Common kinds:
 module Main
   System outputs console
   Parse creates tree
-  Prove reads root reads kind reads children reads count
+  Prove reads root child creates kind string children named_children count line column
 
 /// Print node kinds at each level
 reads walk(node Node, depth Integer)

@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates file I/O operations"""
   System types DirEntry validates file inputs dir outputs file console
-  Sequence reads length
+  Sequence creates length
 
 main() Result<Unit, Error>!
 from

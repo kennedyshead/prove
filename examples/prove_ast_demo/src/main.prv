@@ -8,9 +8,10 @@ module Main
   Parse creates tree
   Prove
     types Node Tree
-    reads root kind children count line column named_children child string
+    reads root
+    creates kind children count line column named_children child string
     validates error
-  Types reads string
+  Types creates string
 
 /// Walk a node tree, printing each node's kind and line number
 outputs walk(node Node, indent String)

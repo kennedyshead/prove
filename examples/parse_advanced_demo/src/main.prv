@@ -3,13 +3,12 @@ module Main
   System outputs console
   Parse
     types Url Rule Token
-    reads tag port
-    creates url arguments rule tokens time date datetime duration
+    creates tag port url arguments rule tokens time date datetime duration
     validates toml base64 hexadecimal time date datetime
     transforms url
   Table types Table creates new
-  Types reads string
-  Sequence reads length
+  Types creates string
+  Sequence creates length
   Time types Time Date DateTime Duration
 
 main() Result<Unit, Error>!

@@ -31,7 +31,7 @@ pip install -e ".[dev]"
 Every Prove function declares its **intent** before implementation. The verb tells the compiler (and readers) what the function does:
 
 ```prove
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2
@@ -142,7 +142,7 @@ from
 Prove has no `if/else`. All branching uses `match`:
 
 ```prove
-transforms area(shape Shape) Decimal
+creates area(shape Shape) Decimal
 from
     match shape
         Circle(r) => pi * r * r

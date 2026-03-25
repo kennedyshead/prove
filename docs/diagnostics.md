@@ -183,7 +183,7 @@ from
     needs_int("hello")
 
 // Context 2 — field mutation in pure function (construct new value instead)
-transforms set_email(user User, email Email) User
+reads set_email(user User, email Email) User
 from
     user.email = email
     user
@@ -317,8 +317,8 @@ transforms caller(xs List<Integer>) Integer
         par_map(xs, show)
         0
 
-// OK — transforms is pure
-transforms double(n Integer) Integer
+// OK — reads is pure
+reads double(n Integer) Integer
     from
         n + n
 
@@ -487,11 +487,11 @@ The expected value in a `near_miss` declaration doesn't match the function's ret
 
 ```prove
 // Error — function returns Integer but near_miss expects Boolean
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   near_miss 0 => false
 
 // Correct — expected type matches return type
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   near_miss 0 => 0
 ```
 
@@ -784,7 +784,7 @@ module Example
 The `intent:` prose text has no vocabulary overlap with the function body — no called function names, parameter names, or type names appear in the description.
 
 ```prove
-transforms sort(xs List<Value>) List<Value>
+reads sort(xs List<Value>) List<Value>
   intent: "count the number of elements"  -- W313: 'count' unrelated to sort/xs/merge_sort
 from
     merge_sort(xs)
@@ -834,11 +834,11 @@ An `ensures` postcondition doesn't reference `result`, which likely means it's c
 
 ```prove
 // Warning — checks input, not output
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   ensures n > 0
 
 // Correct — constrains the return value
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   ensures result == n * 2
 ```
 
@@ -1033,7 +1033,7 @@ An imported name is never referenced in the module body. The formatter removes u
 
 ```prove
 module Main
-  Text transforms trim upper
+  Text reads trim upper
 
 transforms shout(s String) String
 from

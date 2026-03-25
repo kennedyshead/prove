@@ -24,13 +24,13 @@ Defines a binary type: `ByteArray` (a sequence of bytes).
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `slice(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
-| `creates` | `slice(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
+| `reads` | `slice(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
 
 ### Hex Encoding
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `hex(data ByteArray) String` | Encode byte array as hex string |
+| `creates` | `hex(data ByteArray) String` | Encode byte array as hex string |
 | `creates` | `hex(source String) ByteArray` | Decode hex string to byte array |
 | `validates` | `hex(source String)` | True if string is valid hex |
 
@@ -38,11 +38,11 @@ Defines a binary type: `ByteArray` (a sequence of bytes).
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `at(data ByteArray, index Integer) Integer` | Read byte at index |
+| `creates` | `at(data ByteArray, index Integer) Integer` | Read byte at index |
 | `validates` | `at(data ByteArray, index Integer)` | True if index is within bounds |
 
 ```prove
-  Bytes creates byte hex reads slice hex at validates hex
+  Bytes creates byte hex at reads slice validates hex
 
 reads first_byte_hex(data ByteArray) String
 from

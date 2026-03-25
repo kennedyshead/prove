@@ -9,9 +9,9 @@ module Main
   Expected to fail: check_strict 
   """
   System outputs console
-  Parse reads base64 creates base64
+  Parse creates base64
   Bytes types ByteArray validates bytearray
-  Text reads length transforms repeat
+  Text reads repeat creates length
 
   STR_SIZE as Integer = 131072
 

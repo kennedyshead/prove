@@ -4,7 +4,7 @@ module Main
   Network types Socket inputs server accept message outputs socket message
   Bytes types ByteArray
   Log detached info
-  Parse reads hexadecimal
+  Parse creates hexadecimal
 
   type Connection is Accept(listener Socket)
     | Exit

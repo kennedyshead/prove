@@ -3,12 +3,11 @@ module Main
   System outputs console
   Time
     types Time Date DateTime Clock Duration Weekday
-    reads date datetime clock weekday days duration
-    creates date datetime clock duration
+    reads date days duration
+    creates date datetime clock duration weekday
     validates time days duration date datetime clock weekday
-    transforms date
     inputs time
-  Types reads string
+  Types creates string
 
 main()!
 from

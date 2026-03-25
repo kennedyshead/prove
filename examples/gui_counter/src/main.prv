@@ -4,7 +4,7 @@ module Counter
     renders app
   """
   Graphic types GraphicAppEvent outputs window button label
-  Types reads string
+  Types creates string
 
   type CounterState is
     count Integer

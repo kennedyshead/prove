@@ -5,7 +5,7 @@ module New
   outputs the command to python for a pynew  
   """
   System inputs cwd outputs dir file
-  Path transforms join
+  Path reads join
   Types validates string
 
   MAIN_PRV as String = comptime

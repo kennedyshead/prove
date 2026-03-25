@@ -28,25 +28,25 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | `creates` | `duration(hours Integer, minutes Integer, seconds Integer) Duration` | Create duration from components |
 | `reads` | `duration(duration Duration) Integer` | Total seconds in duration |
 | `validates` | `duration(duration Duration)` | True if duration is positive |
-| `transforms` | `duration(start Time, stop Time) Duration` | Compute difference between two times |
+| `creates` | `duration(start Time, stop Time) Duration` | Compute difference between two times |
 
 ### Date
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `date(time Time) Date` | Extract date from a time |
+| `creates` | `date(time Time) Date` | Extract date from a time |
 | `creates` | `date(year Integer, month Integer, day Integer) Date` | Create date from components |
 | `validates` | `date(year Integer, month Integer, day Integer)` | True if date components are valid |
-| `transforms` | `date(date Date, days Integer) Date` | Add days to a date |
+| `reads` | `date(date Date, days Integer) Date` | Add days to a date |
 
 ### DateTime
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `datetime(time Time) DateTime` | Extract datetime from a time |
+| `creates` | `datetime(time Time) DateTime` | Extract datetime from a time |
 | `creates` | `datetime(date Date, clock Clock) DateTime` | Create datetime from date and clock |
 | `validates` | `datetime(datetime DateTime)` | True if datetime is valid |
-| `transforms` | `datetime(datetime DateTime) Time` | Convert datetime to timestamp |
+| `creates` | `datetime(datetime DateTime) Time` | Convert datetime to timestamp |
 
 ### Calendar
 
@@ -54,19 +54,19 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 |------|-----------|-------------|
 | `reads` | `days(year Integer, month Integer) Integer` | Number of days in a month |
 | `validates` | `days(year Integer)` | True if year is a leap year |
-| `reads` | `weekday(date Date) Weekday` | Get weekday from a date |
+| `creates` | `weekday(date Date) Weekday` | Get weekday from a date |
 | `validates` | `weekday(date Date)` | True if date falls on a weekend |
 
 ### Clock
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `clock(time Time) Clock` | Extract clock from a time |
+| `creates` | `clock(time Time) Clock` | Extract clock from a time |
 | `creates` | `clock(hour Integer, minute Integer, second Integer) Clock` | Create clock from components |
 | `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock components are valid |
 
 ```prove
-  Time inputs time creates duration date clock reads days weekday types Time Duration Date Clock
+  Time inputs time creates duration date datetime clock weekday reads days date types Time Duration Date DateTime Clock Weekday
 
 reads elapsed_days(start Time, stop Time) Integer
 from

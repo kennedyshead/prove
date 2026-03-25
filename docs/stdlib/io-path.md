@@ -136,13 +136,13 @@ access — these are pure string transformations.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `join(base String, part String) String` | Join two path segments |
+| `reads` | `join(base String, part String) String` | Join two path segments |
 | `reads` | `parent(path String) String` | Directory containing the path |
 | `reads` | `name(path String) String` | Final component (file name) |
 | `reads` | `stem(path String) String` | File name without extension |
 | `reads` | `extension(path String) String` | File extension (without dot) |
 | `validates` | `absolute(path String)` | True if path starts with `/` |
-| `transforms` | `normalize(path String) String` | Resolve `.` and `..` segments |
+| `reads` | `normalize(path String) String` | Resolve `.` and `..` segments |
 
 ```prove
   Path reads parent stem extension

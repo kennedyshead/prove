@@ -3,8 +3,8 @@ module Main
   System inputs file outputs console
   Parse creates json
   Table reads get creates table
-  Sequence reads length creates list
-  Types reads string unwrap creates float
+  Sequence creates list length
+  Types reads unwrap creates float string
 
 main()!
 from

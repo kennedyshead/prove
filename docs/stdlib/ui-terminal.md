@@ -153,7 +153,7 @@ module TodoApp
   Terminal types TerminalAppEvent outputs terminal clear raw cooked
   Math reads max min
   UI types Key
-  Sequence transforms set remove
+  Sequence reads set remove
 
   type TodoItem is
     text String

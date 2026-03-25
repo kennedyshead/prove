@@ -30,5 +30,5 @@ validates whitespace(character Character)
 binary
 
 /// Gets the character at a specific index in a string.
-reads at(string String, index Integer) Character
+creates at(string String, index Integer) Character
 binary

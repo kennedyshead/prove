@@ -14,7 +14,7 @@ Every Prove function declares its purpose with a **verb**. The verb IS the decla
 
 | Verb | Family | Purpose |
 |------|--------|---------|
-| `transforms` | Pure | Data computation/conversion |
+| `transforms` | Pure | Failable data computation/conversion |
 | `validates` | Pure | Boolean check (returns `Boolean`) |
 | `reads` | Pure | Non-mutating data access |
 | `creates` | Pure | Construct new value |
@@ -36,7 +36,7 @@ Every Prove function declares its purpose with a **verb**. The verb IS the decla
 Functions declare their purpose through verbs. The compiler enforces that implementations match declared intent:
 
 ```prove
-transforms double(n Integer) Integer
+reads double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2
@@ -70,7 +70,7 @@ The same name can have multiple verbs — the compiler resolves which to call fr
 
 ```prove
 validates email(String)
-transforms email(String) Email
+creates email(String) Email
 inputs email(Integer) Email!
 ```
 
@@ -95,7 +95,7 @@ See [Lambdas & Iteration](lambdas.md) for detailed reference.
 ### Pure Function
 
 ```prove
-transforms area(s Shape) Decimal
+creates area(s Shape) Decimal
 from
     match s
         Circle(r) => pi * r * r

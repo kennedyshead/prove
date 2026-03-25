@@ -17,7 +17,7 @@ These same features serve a broader purpose. The intent declarations, verifiable
 [`explain`](contracts.md#explain) documents the chain of operations in the `from` block using controlled natural language. With [`ensures`](contracts.md#requires-and-ensures) present, the compiler parses each row for operations (action verbs), connectors, and references to identifiers — then verifies them against called functions' contracts. Sugar words ("the", "applicable", etc.) are ignored, keeping explain readable as English while remaining machine-verifiable. AI can generate plausible-looking explanations, but they won't verify — operations must match real function behaviors, and references must be real identifiers. See [Contracts & Annotations — explain](contracts.md#explain) for full syntax.
 
 ```prove
-transforms merge_sort(xs List<Value>) Sorted<List<Value>>
+creates merge_sort(xs List<Value>) Sorted<List<Value>>
   explain
       split the list at the midpoint
       recursively sort the first half
@@ -206,7 +206,7 @@ Run `prove check` to see unaddressed challenges for functions with `ensures` con
 ```bash
 $ prove check
 
-  transforms sort — 3 challenges, 1 addressed:
+  reads sort — 3 challenges, 1 addressed:
     [+] swap + to - in comparison
     [-] replace < with <=
     [-] change constant 0 to 1

@@ -17,7 +17,7 @@ validates has(key String, table Table<Value>)
 binary
 
 /// Add a key-value pair to a table (returns new table)
-transforms add(key String, value Value, table Table<Value>) Table<Value>
+reads add(key String, value Value, table Table<Value>) Table<Value>
 binary
 
 /// Get a value by key
@@ -25,11 +25,11 @@ reads get(key String, table Table<Value>) Option<Value>
 binary
 
 /// Remove a key from a table (returns new table)
-transforms remove(key String, table Table<Value>) Table<Value>
+reads remove(key String, table Table<Value>) Table<Value>
 binary
 
 /// Get all keys in a table
-reads keys(table Table<Value>) List<String>
+creates keys(table Table<Value>) List<String>
 binary
 
 /// Get all values in a table
@@ -37,7 +37,7 @@ reads values(table Table<Value>) List<Value>
 binary
 
 /// Get the number of entries in a table
-reads length(table Table<Value>) Integer
+creates length(table Table<Value>) Integer
 binary
 
 /// Extract object content from a Value

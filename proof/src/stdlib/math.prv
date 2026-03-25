@@ -46,15 +46,15 @@ reads max(first Decimal, second Decimal) Decimal
 binary
 
 /// Clamp an integer between lo and hi (inclusive)
-transforms clamp(value Integer, minimum Integer, maximum Integer) Integer
+reads clamp(value Integer, minimum Integer, maximum Integer) Integer
 binary
 
 /// Clamp a float between lo and hi (inclusive)
-transforms clamp(value Float, minimum Float, maximum Float) Float
+reads clamp(value Float, minimum Float, maximum Float) Float
 binary
 
 /// Clamp a decimal between lo and hi (inclusive)
-transforms clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal
+reads clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal
 binary
 
 /// Square root of a float
@@ -66,15 +66,15 @@ reads power(base Float, exponent Float) Float
 binary
 
 /// Floor of a float (largest integer <= value)
-reads floor(value Float) Integer
+creates floor(value Float) Integer
 binary
 
 /// Ceiling of a float (smallest integer >= value)
-reads ceil(value Float) Integer
+creates ceil(value Float) Integer
 binary
 
 /// Round a float to the nearest integer
-reads round(value Float) Integer
+creates round(value Float) Integer
 binary
 
 /// Natural logarithm of a float

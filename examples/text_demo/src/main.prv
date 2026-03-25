@@ -3,11 +3,10 @@ module Main
   System outputs console
   Text
     types StringBuilder
-    reads length index build
-    creates builder
+    reads slice trim lower upper replace repeat string char
+    creates builder split join length index build
     validates starts ends contains
-    transforms slice trim lower upper split join replace repeat string char
-  Sequence reads length
+  Sequence creates length
 
 main() Result<Unit, Error>!
 from

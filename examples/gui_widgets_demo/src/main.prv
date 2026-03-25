@@ -5,7 +5,7 @@ module Widgets
     Expected to fail: build.
   """
   Graphic types GraphicAppEvent outputs window slider progress quit label
-  Types reads string creates float
+  Types creates float string
 
   type WidgetState is
     volume Float

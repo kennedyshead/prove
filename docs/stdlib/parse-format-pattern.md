@@ -37,7 +37,7 @@ Extract typed data from a `Value`. For corresponding validators, see [Types — 
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `tag(v Value) String` | Get the type tag (`"string"`, `"number"`, etc.) |
+| `creates` | `tag(v Value) String` | Get the type tag (`"string"`, `"number"`, etc.) |
 
 ### URL
 
@@ -45,17 +45,17 @@ Defines a binary `Url` type for parsed URL components.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `url(raw String) Url` | Parse a URL string into components |
+| `creates` | `url(raw String) Url` | Parse a URL string into components |
 | `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
 | `validates` | `url(raw String)` | True if string is a valid URL |
-| `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
-| `reads` | `port(url Url) Integer` | Read the port component (-1 if not set) |
+| `reads` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
+| `creates` | `port(url Url) Integer` | Read the port component (-1 if not set) |
 
 ### Base64
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `base64(encoded String) ByteArray` | Decode Base64 string to byte array |
+| `creates` | `base64(encoded String) ByteArray` | Decode Base64 string to byte array |
 | `creates` | `base64(data ByteArray) String` | Encode byte array as Base64 |
 | `validates` | `base64(encoded String)` | True if string is valid Base64 |
 
@@ -101,7 +101,7 @@ Parse defines four phantom marker types used as type parameters for `Value<T>`:
 Plain `Value` (unparameterized) is compatible with any `Value<T>` — the phantom type parameter is opt-in.
 
 ```prove
-  Parse creates toml json url tokens rule reads tag validates url base64
+  Parse creates toml json url tokens rule tag base64 validates url base64
   Parse types Value Toml Json Url Token Rule
   Types creates string
   Table creates table reads keys get types Table
@@ -125,18 +125,18 @@ from
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `pad_left(text String, width Integer, fill Character) String` | Left-pad to width |
-| `transforms` | `pad_right(text String, width Integer, fill Character) String` | Right-pad to width |
-| `transforms` | `center(text String, width Integer, fill Character) String` | Center within width |
+| `reads` | `pad_left(text String, width Integer, fill Character) String` | Left-pad to width |
+| `reads` | `pad_right(text String, width Integer, fill Character) String` | Right-pad to width |
+| `reads` | `center(text String, width Integer, fill Character) String` | Center within width |
 
 ### Number Formatting
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `hex(number Integer) String` | Integer to hexadecimal string |
-| `transforms` | `bin(number Integer) String` | Integer to binary string |
-| `transforms` | `octal(number Integer) String` | Integer to octal string |
-| `transforms` | `decimal(value Float, places Integer) String` | Float with fixed decimal places |
+| `creates` | `hex(number Integer) String` | Integer to hexadecimal string |
+| `creates` | `bin(number Integer) String` | Integer to binary string |
+| `creates` | `octal(number Integer) String` | Integer to octal string |
+| `creates` | `decimal(value Float, places Integer) String` | Float with fixed decimal places |
 
 ### Time & Date Formatting
 
@@ -146,20 +146,20 @@ Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `time(time Time, pattern String) String` | Format a time as a string |
+| `creates` | `time(time Time, pattern String) String` | Format a time as a string |
 | `creates` | `time(source String, pattern String) Time` | Parse a string into a time |
 | `validates` | `time(source String, pattern String)` | True if string matches time format |
-| `transforms` | `date(date Date, pattern String) String` | Format a date as a string |
+| `creates` | `date(date Date, pattern String) String` | Format a date as a string |
 | `creates` | `date(source String, pattern String) Date` | Parse a string into a date |
 | `validates` | `date(source String, pattern String)` | True if string matches date format |
-| `transforms` | `datetime(datetime DateTime, pattern String) String` | Format a datetime as a string |
+| `creates` | `datetime(datetime DateTime, pattern String) String` | Format a datetime as a string |
 | `creates` | `datetime(source String, pattern String) DateTime` | Parse a string into a datetime |
 | `validates` | `datetime(source String, pattern String)` | True if string matches datetime format |
-| `transforms` | `duration(duration Duration, pattern String) String` | Format a duration as a string |
+| `creates` | `duration(duration Duration, pattern String) String` | Format a duration as a string |
 | `creates` | `duration(source String, pattern String) Duration` | Parse a string into a duration |
 
 ```prove
-  Format transforms pad_left hex decimal date creates date
+  Format reads pad_left creates hex decimal date creates date
   Time creates date types Date
 
 reads format_address(addr Integer) String
@@ -185,26 +185,26 @@ end offset.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `validates` | `test(text String, pattern String)` | True if text fully matches pattern |
-| `reads` | `search(text String, pattern String) Option<Match>` | Find first match |
-| `reads` | `find_all(text String, pattern String) List<Match>` | Find all matches |
+| `creates` | `search(text String, pattern String) Option<Match>` | Find first match |
+| `creates` | `find_all(text String, pattern String) List<Match>` | Find all matches |
 
 ### Transform
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `replace(text String, pattern String, replacement String) String` | Replace first match |
-| `transforms` | `split(text String, pattern String) List<String>` | Split on pattern |
+| `reads` | `replace(text String, pattern String, replacement String) String` | Replace first match |
+| `creates` | `split(text String, pattern String) List<String>` | Split on pattern |
 
 ### Match Accessors
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `string(matched Match) String` | Matched text |
-| `reads` | `start(matched Match) Integer` | Start offset in source string |
-| `reads` | `end(matched Match) Integer` | End offset in source string |
+| `creates` | `string(matched Match) String` | Matched text |
+| `creates` | `start(matched Match) Integer` | Start offset in source string |
+| `creates` | `end(matched Match) Integer` | End offset in source string |
 
 ```prove
-  Pattern validates test transforms replace types Match
+  Pattern validates test reads replace creates search find_all split string start end types Match
 
 reads sanitize(input String) String
 requires

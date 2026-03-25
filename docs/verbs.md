@@ -39,7 +39,7 @@ transforms config(data String) Config!
 from
     Config(toml(data))
 
-transforms normalize(data List<Decimal>) List<Decimal>
+reads normalize(data List<Decimal>) List<Decimal>
   ensures len(result) == len(data)
 from
     max_val as Decimal = max(data)
@@ -91,7 +91,7 @@ validates email(address String)
 from
     contains(address, "@") && contains(address, ".")
 
-transforms email(raw String) Email
+creates email(raw String) Email
 from
     lowercase(trim(raw))
 
@@ -110,7 +110,7 @@ At call sites, you use **just the function name** — the compiler resolves whic
 // Predicate context → resolves to validates email
 clean_list as List<Email> = filter(inputs, valid email)
 
-// Email context + String param → resolves to transforms email
+// Email context + String param → resolves to creates email
 clean as Email = email(raw_input)
 
 // Email context + Integer param → resolves to inputs email
@@ -128,7 +128,7 @@ Resolution rules:
 Go-style: `name Type` (no colon):
 
 ```prove
-transforms area(s Shape) Decimal
+creates area(s Shape) Decimal
 inputs request(route Route, body String) Response!
 validates email(address String)
 ```
@@ -138,7 +138,7 @@ validates email(address String)
 Every function body begins with `from`. No exceptions:
 
 ```prove
-transforms area(s Shape) Decimal
+creates area(s Shape) Decimal
 from
     pi * s.radius * s.radius
 
@@ -153,7 +153,7 @@ from
 IO is inherent in the verb. Fallibility is marked with `!` on the return type. Pure verbs have neither IO nor `!`:
 
 ```prove
-transforms area(s Shape) Decimal
+creates area(s Shape) Decimal
 from
     pi * s.radius * s.radius
 

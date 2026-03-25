@@ -249,7 +249,7 @@ The `Store` module provides persistent storage for lookup tables with versioning
 
 ```prove
   Store outputs store table inputs table version
-    validates store table merged transforms diff patch merge
+    validates store table merged creates diff creates merge reads patch
     reads integrity merged
     types Store StoreTable TableDiff MergeResult Version
 

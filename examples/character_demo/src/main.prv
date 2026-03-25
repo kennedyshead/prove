@@ -1,7 +1,9 @@
 module Main
   narrative: """Demonstrates Character module operations."""
   System outputs console
-  Character reads at validates digit alphanumeric uppercase alphabetic whitespace lowercase
+  Character
+    creates at
+    validates digit alphanumeric uppercase alphabetic whitespace lowercase
 
 main() Result<Unit, Error>!
 from

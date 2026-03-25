@@ -7,7 +7,7 @@ module Main
   when Data is recieved we Exit
   """
   System outputs console
-  Types reads string
+  Types creates string
   Log detached debug
 
   type Event is Data(payload Integer)

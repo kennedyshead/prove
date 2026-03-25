@@ -12,7 +12,7 @@ module Main
   """
   System outputs console
   Math reads cos sin pi log10
-  Types reads string creates float
+  Types creates float string
 
   type FilterState is
     vn1 Float

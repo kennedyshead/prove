@@ -12,22 +12,22 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `words(text String) List<String>` | Extract individual words from text |
-| `reads` | `sentences(text String) List<String>` | Split text into sentences |
+| `creates` | `words(text String) List<String>` | Extract individual words from text |
+| `creates` | `sentences(text String) List<String>` | Split text into sentences |
 
 ### Stemming
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `stem(word String) String` | Apply the Porter stemming algorithm |
-| `transforms` | `root(word String) String` | Strip common suffixes to find the root form |
+| `reads` | `stem(word String) String` | Apply the Porter stemming algorithm |
+| `reads` | `root(word String) String` | Strip common suffixes to find the root form |
 
 ### String Similarity
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `distance(first String, second String) Integer` | Levenshtein edit distance between two strings |
-| `reads` | `similarity(first String, second String) Float` | Normalized similarity (0.0 to 1.0) |
+| `creates` | `distance(first String, second String) Integer` | Levenshtein edit distance between two strings |
+| `creates` | `similarity(first String, second String) Float` | Normalized similarity (0.0 to 1.0) |
 
 ### Phonetic Codes
 
@@ -40,24 +40,24 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `ngrams(text String, size Integer) List<String>` | Word-level n-grams |
-| `reads` | `bigrams(text String) List<String>` | Word-level bigrams |
+| `creates` | `ngrams(text String, size Integer) List<String>` | Word-level n-grams |
+| `creates` | `bigrams(text String) List<String>` | Word-level bigrams |
 
 ### Text Normalization
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `transforms` | `normalize(text String) String` | Lowercase and fold accented characters to ASCII |
-| `transforms` | `transliterate(text String) String` | Transliterate accented characters to ASCII preserving case |
+| `reads` | `normalize(text String) String` | Lowercase and fold accented characters to ASCII |
+| `reads` | `transliterate(text String) String` | Transliterate accented characters to ASCII preserving case |
 
 ### Stopwords and Frequency
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `stopwords() List<String>` | Common English stopwords |
-| `transforms` | `without_stopwords(text String) List<String>` | Remove stopwords, return remaining words |
-| `reads` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
-| `reads` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
+| `creates` | `without_stopwords(text String) List<String>` | Remove stopwords, return remaining words |
+| `creates` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
+| `creates` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
 
 ### Token Accessors
 
@@ -65,12 +65,12 @@ Access properties of `Token` values produced by `Parse.tokens()`. Extract token 
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `start(token Token) Integer` | Start position in source |
-| `reads` | `end(token Token) Integer` | End position in source |
-| `reads` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
+| `creates` | `start(token Token) Integer` | Start position in source |
+| `creates` | `end(token Token) Integer` | End position in source |
+| `creates` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
 
 ```prove
-  Language reads words distance similarity keywords start end kind transforms stem normalize
+  Language creates words distance similarity keywords start end kind reads stem normalize
   Parse types Token
 
 reads find_similar(query String, candidates List<String>) List<String>

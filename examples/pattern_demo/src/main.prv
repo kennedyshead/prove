@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Pattern module operations."""
   System outputs console
-  Pattern validates test transforms replace
+  Pattern reads replace validates test
 
 main() Result<Unit, Error>!
 from

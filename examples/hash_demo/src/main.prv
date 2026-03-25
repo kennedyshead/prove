@@ -3,7 +3,7 @@ module Main
   System outputs console
   Hash creates hmac sha256 sha512 blake3 validates sha256 sha512 blake3 hmac
   Bytes types ByteArray
-  Parse reads hexadecimal creates hexadecimal
+  Parse creates hexadecimal
 
 main() Result<Unit, Error>!
 from

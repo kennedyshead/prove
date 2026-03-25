@@ -6,7 +6,7 @@ module Main
   reads the Unicode code point of a character
   """
   System outputs console
-  Types reads string code creates integer float decimal boolean
+  Types creates integer float decimal boolean string code
 
 main() Result<Unit, Error>!
 from

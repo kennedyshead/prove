@@ -8,7 +8,7 @@ module Main
   secures config makes sure that prove.toml exist
   """
   System validates file inputs process outputs console
-  Sequence reads value length transforms slice
+  Sequence reads value slice creates length
   Config types Config inputs config constants PROVE_TOML
   Commands outputs new check format lsp test build
   Log detached error

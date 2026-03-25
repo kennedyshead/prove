@@ -25,11 +25,11 @@ reads bytearray(data ByteArray, start Integer, length Integer) ByteArray
 binary
 
 /// Concatenate two byte arrays and return a new combined ByteArray
-transforms bytearray(first ByteArray, second ByteArray) ByteArray
+reads bytearray(first ByteArray, second ByteArray) ByteArray
 binary
 
 /// Read byte at a specified index in a ByteArray
-reads at(data ByteArray, index Integer) Integer
+creates at(data ByteArray, index Integer) Integer
 binary
 
 /// Check if index exists in a ByteArray

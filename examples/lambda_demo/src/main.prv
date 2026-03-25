@@ -1,8 +1,8 @@
 module Main
   narrative: """Demonstrates lambdas, pipes, and higher-order functions"""
   System outputs console
-  Text transforms join
-  Types reads string
+  Text creates join
+  Types creates string
 
 main() Result<Unit, Error>!
 from

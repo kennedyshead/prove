@@ -63,7 +63,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 |--------|--------|---------|
 | **[Character](character-text.md#character)** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
 | **[Text](character-text.md#text)** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
-| **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `transforms add`, `validates has` |
+| **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `reads add`, `validates has` |
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
 | **[Array](table-list-store.md#array)** | Complete | Fixed-size contiguous arrays `Array<T>` with typed elements; supports copy-on-write and `:[Mutable]` in-place variants |
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |

@@ -54,7 +54,7 @@ module Main
   System outputs console
   Array creates array
   Array reads get
-  Array transforms set
+  Array reads set
 
   UPPER_BOUND as Integer = 5000000
 

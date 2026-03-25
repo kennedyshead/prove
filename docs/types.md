@@ -137,7 +137,7 @@ On `Array<T>`, `Mutable` switches from copy-on-write to in-place mutation. This 
 ```prove
   Sequence creates array
   Sequence reads get
-  Sequence transforms set
+  Sequence reads set
 
 sieve as Array<Boolean>:[Mutable] = array(1000001, false)
 sieve = set(sieve, 0, true)   // in-place, no copy
@@ -304,7 +304,7 @@ Compiler errors if you forget a variant.
   type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
-transforms area(s Shape) Decimal
+creates area(s Shape) Decimal
 from
     match s
         Circle(r) => pi * r * r
@@ -447,8 +447,8 @@ This allows stdlib functions to accept callbacks without hardcoded special-casin
 resolver as Verb<Conflict, Resolution>
 
 // Used as a parameter type in function signatures
-transforms merge(base StoreTable, local TableDiff, remote TableDiff,
-                 resolver Verb<Conflict, Resolution>) MergeResult
+creates merge(base StoreTable, local TableDiff, remote TableDiff,
+              resolver Verb<Conflict, Resolution>) MergeResult
 
 // Called with a lambda
 Store.merge(base, local, remote, |c| KeepRemote)
