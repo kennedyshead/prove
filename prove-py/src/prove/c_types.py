@@ -97,6 +97,8 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Resolution": CType("Prove_Resolution*", is_pointer=True, header="prove_store.h"),
     "MergeResult": CType("Prove_MergeResult*", is_pointer=True, header="prove_store.h"),
     "Token": CType("Prove_Language_Token*", is_pointer=True, header="prove_language.h"),
+    "Tree": CType("Prove_Tree", is_pointer=True, header="prove_prove.h"),
+    "Node": CType("Prove_Node", is_pointer=True, header="prove_prove.h"),
     "Verb": CType("void*", is_pointer=True, header=None),
     "Attached": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
     "Listens": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),

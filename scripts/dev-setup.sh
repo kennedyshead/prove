@@ -27,7 +27,9 @@ install_system_packages() {
             python3 \
             python3-pip \
             python3-venv \
-            git
+            git \
+            libtree-sitter-dev \
+            libsdl2-dev
     elif command -v pacman &>/dev/null; then
         echo "==> Installing system packages (pacman)..."
         $SUDO pacman -S --needed --noconfirm \
@@ -36,7 +38,9 @@ install_system_packages() {
             make \
             python \
             python-pip \
-            git
+            git \
+            tree-sitter \
+            sdl2
     elif command -v dnf &>/dev/null; then
         echo "==> Installing system packages (dnf)..."
         $SUDO dnf install -y \
@@ -44,10 +48,12 @@ install_system_packages() {
             make \
             python3 \
             python3-pip \
-            git
+            git \
+            tree-sitter-devel \
+            SDL2-devel
     elif command -v brew &>/dev/null; then
         echo "==> Installing system packages (brew)..."
-        brew install gcc make python3 git
+        brew install gcc make python3 git tree-sitter sdl2
     else
         echo "Warning: Unknown package manager. Install manually: gcc, make, python3, pip, git"
     fi
@@ -121,6 +127,8 @@ command -v ruff &>/dev/null && echo "  ruff ............... OK" || { echo "  ruf
 command -v mypy &>/dev/null && echo "  mypy ............... OK" || { echo "  mypy ............... FAIL"; ERRORS=$((ERRORS+1)); }
 command -v pytest &>/dev/null && echo "  pytest ............. OK" || { echo "  pytest ............. FAIL"; ERRORS=$((ERRORS+1)); }
 (command -v gcc &>/dev/null || command -v clang &>/dev/null) && echo "  C compiler ......... OK" || { echo "  C compiler ......... FAIL (needed for prove build)"; ERRORS=$((ERRORS+1)); }
+pkg-config --exists tree-sitter 2>/dev/null && echo "  tree-sitter ........ OK" || { echo "  tree-sitter ........ FAIL (needed for Prove module)"; ERRORS=$((ERRORS+1)); }
+pkg-config --exists sdl2 2>/dev/null && echo "  sdl2 ............... OK" || echo "  sdl2 ............... SKIP (optional, needed for Graphic module)"
 
 echo ""
 if [ "$ERRORS" -eq 0 ]; then

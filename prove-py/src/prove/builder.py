@@ -490,7 +490,15 @@ def _build_c(
         compiler=cc,
         optimize=optimize,
         debug=debug,
-        include_dirs=[runtime_dir, gen_dir],
+        include_dirs=[
+            d
+            for d in [
+                runtime_dir,
+                gen_dir,
+                runtime_dir / "vendor" / "tree_sitter_prove",
+            ]
+            if d.exists()
+        ],
         extra_flags=extra_flags + link_flags,
         strip=config.optimize.strip,
         tune_host=config.optimize.tune_host,

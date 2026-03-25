@@ -116,6 +116,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
     "ui": set(),
     "terminal": {"prove_terminal", "prove_ansi", "prove_event"},
     "graphic": {"prove_gui"},
+    "prove": {"prove_prove"},
 }
 
 _RUNTIME_FUNCTIONS = {
@@ -649,6 +650,20 @@ _RUNTIME_FUNCTIONS = {
         "prove_gui_frame_end",
         "prove_gui_window_end",
     ],
+    "prove_prove": [
+        "prove_parse_tree",
+        "prove_parse_string_tree",
+        "prove_prove_root",
+        "prove_prove_kind",
+        "prove_prove_string",
+        "prove_prove_children",
+        "prove_prove_child",
+        "prove_prove_line",
+        "prove_prove_column",
+        "prove_prove_error",
+        "prove_prove_count",
+        "prove_prove_named_children",
+    ],
 }
 
 
@@ -758,12 +773,27 @@ def copy_runtime(
             with importlib.resources.as_file(src_path) as resolved:
                 shutil.copy2(resolved, vendor_dest / vfile)
 
+    if "prove_prove" in needed_libs:
+        vendor_pkg = pkg.joinpath("vendor")
+        # tree-sitter-prove parser + scanner (tree-sitter core is linked via pkg-config)
+        tsp_dest = dest / "vendor" / "tree_sitter_prove"
+        tsp_ts = tsp_dest / "tree_sitter"
+        tsp_dest.mkdir(parents=True, exist_ok=True)
+        tsp_ts.mkdir(parents=True, exist_ok=True)
+        tsp_pkg = vendor_pkg.joinpath("tree_sitter_prove")
+        for vfile in ("parser.c", "scanner.c"):
+            with importlib.resources.as_file(tsp_pkg.joinpath(vfile)) as resolved:
+                shutil.copy2(resolved, tsp_dest / vfile)
+                c_files.append(tsp_dest / vfile)
+        with importlib.resources.as_file(tsp_pkg.joinpath("tree_sitter", "parser.h")) as resolved:
+            shutil.copy2(resolved, tsp_ts / "parser.h")
+
     return c_files
 
 
 # Runtime libs that require external dependencies — excluded from default copy.
 # Only included when explicitly requested via stdlib_libs.
-_EXTERNAL_DEP_LIBS = frozenset({"prove_gui"})
+_EXTERNAL_DEP_LIBS = frozenset({"prove_gui", "prove_prove"})
 
 
 def _copy_all_runtime_files(dest: Path, *, stdlib_libs: set[str] | None = None) -> list[Path]:

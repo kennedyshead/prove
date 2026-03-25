@@ -1,0 +1,34 @@
+module Main
+  narrative: """Demonstrates the Prove module for parsing and traversing Prove source code.
+    Uses Parse.tree() to parse source into a syntax tree, then walks nodes
+    with Prove.root, Prove.children, and Prove.kind.
+    Expected to fail: check, check_md, check_strict, build, build_debug, format_check, format_check_md."""
+  System outputs console
+  Parse creates tree string
+  Prove types Node Tree reads root kind children count line
+  Types reads string
+
+/// Walk a node tree, printing each node's kind and line number
+outputs walk(node Node, indent String)
+  terminates: count(node) == 0
+from
+    console(indent + kind(node) + " (line " + string(line(node)) + ")")
+    match count(node) > 0
+        true => each(children(node), |kid| walk(kid, indent + "  "))
+        false => Unit
+
+main() Result<Unit, Error>!
+from
+    source as String = "module Hello\n  System outputs console\n\nmain()\nfrom\n    console(\"Hello!\")\n"
+    console("=== Source ===")
+    console(source)
+    t as Tree = tree(source)!
+    console("=== Round-trip ===")
+    console(string(t))
+    console("=== AST ===")
+    r as Node = root(t)
+    console("Root kind: " + kind(r))
+    console("Children: " + string(count(r)))
+    console("")
+    console("=== Full tree ===")
+    walk(r, "")

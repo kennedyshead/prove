@@ -11,12 +11,16 @@ module Parse
   creates Token and Rule for generic tokenization
   creates tokens from source text using a list of rules
   reads token properties: text, start, end, kind
+  creates tree from source string and string from source tree
   """
   Bytes types ByteArray
   Time types Time Date DateTime Duration
+  Prove types Tree
 
   type Url is binary
+
   type Token is binary
+
   type Rule is binary
 
 /// Parse a source string into a Value
@@ -185,4 +189,12 @@ binary
 
 /// Get the kind tag of a token
 reads kind(token Token) Integer
+binary
+
+/// Parse Prove source into a syntax tree
+creates tree(source String) Result<Tree, Error>
+binary
+
+/// Extract the full source text from a parsed tree
+creates string(tree Tree) String
 binary

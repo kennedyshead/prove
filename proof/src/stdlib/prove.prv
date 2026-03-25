@@ -1,0 +1,50 @@
+module Prove
+  narrative: """Syntax tree access for Prove source code.
+    Parse .prv source with Parse.tree(), then traverse nodes
+    with root, children, kind, and other accessors."""
+
+  /// A parsed syntax tree holding all nodes and source text.
+  type Tree is binary
+
+  /// A node in the syntax tree.
+  type Node is binary
+
+  /// Root node of a parsed tree.
+  reads root(tree Tree) Node
+  binary
+
+  /// Node kind name (e.g. "function_definition", "call_expression").
+  reads kind(node Node) String
+  binary
+
+  /// Source text spanned by a node.
+  reads string(node Node) String
+  binary
+
+  /// All child nodes (including anonymous tokens).
+  reads children(node Node) List<Node>
+  binary
+
+  /// Named child by field name. Returns None if the field does not exist.
+  reads child(node Node, name String) Option<Node>
+  binary
+
+  /// Line number (1-based).
+  reads line(node Node) Integer
+  binary
+
+  /// Column number (0-based).
+  reads column(node Node) Integer
+  binary
+
+  /// Whether the node represents a syntax error.
+  validates error(node Node) Boolean
+  binary
+
+  /// Number of child nodes.
+  reads count(node Node) Integer
+  binary
+
+  /// Named children only (skipping anonymous tokens like punctuation).
+  reads named_children(node Node) List<Node>
+  binary

@@ -95,6 +95,15 @@ Defines binary types `Token` (a text span with position and kind tag) and `Rule`
 
 Characters that match no rule produce tokens with kind `-1`.
 
+### Syntax Trees
+
+Parse Prove source into a syntax tree backed by tree-sitter. See the [Prove module](prove.md) for tree traversal accessors.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `tree(source String) Result<Tree, Error>` | Parse Prove source into a syntax tree |
+| `creates` | `string(tree Tree) String` | Extract the full source text from a tree |
+
 ```prove
   Parse creates toml url tokens rule reads object url text start end kind validates url base64
   Parse types Value Url Token Rule

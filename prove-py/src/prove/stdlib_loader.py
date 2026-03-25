@@ -675,8 +675,11 @@ _register_module(
         ("reads", "start"): "prove_parse_token_start",
         ("reads", "end"): "prove_parse_token_end",
         ("reads", "kind"): "prove_parse_token_kind",
+        ("creates", "tree"): "prove_parse_tree",
+        ("creates", "string"): "prove_parse_string_tree",
     },
     overloads={
+        ("creates", "string", "Tree"): "prove_parse_string_tree",
         ("reads", "text", "Token"): "prove_parse_token_text",
         ("reads", "start", "Token"): "prove_parse_token_start",
         ("reads", "end", "Token"): "prove_parse_token_end",
@@ -799,6 +802,25 @@ _register_module(
     },
     pkg_config="sdl2",
     link_flags=["-framework", "OpenGL"],
+)
+
+_register_module(
+    "prove",
+    display="Prove",
+    prv_file="prove.prv",
+    c_map={
+        ("reads", "root"): "prove_prove_root",
+        ("reads", "kind"): "prove_prove_kind",
+        ("reads", "string"): "prove_prove_string",
+        ("reads", "children"): "prove_prove_children",
+        ("reads", "child"): "prove_prove_child",
+        ("reads", "line"): "prove_prove_line",
+        ("reads", "column"): "prove_prove_column",
+        ("validates", "error"): "prove_prove_error",
+        ("reads", "count"): "prove_prove_count",
+        ("reads", "named_children"): "prove_prove_named_children",
+    },
+    pkg_config="tree-sitter",
 )
 
 

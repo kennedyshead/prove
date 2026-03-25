@@ -81,6 +81,45 @@ chmod +x "${PREFIX}/proof"
 
 echo "Installed proof to ${PREFIX}/proof"
 
+# --- Install system dependencies needed by prove build ---
+
+install_deps() {
+  OS=$(uname -s)
+  if [ "$OS" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    echo "Installing build dependencies (brew)..."
+    # tree-sitter: needed for Prove module (syntax tree access)
+    # sdl2: needed for Graphic module (GUI)
+    brew install tree-sitter sdl2 2>/dev/null || true
+  elif [ "$OS" = "Linux" ]; then
+    if command -v apt-get >/dev/null 2>&1; then
+      echo "Installing build dependencies (apt)..."
+      SUDO=""
+      if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+      $SUDO apt-get install -y -qq libtree-sitter-dev libsdl2-dev 2>/dev/null || true
+    elif command -v dnf >/dev/null 2>&1; then
+      echo "Installing build dependencies (dnf)..."
+      SUDO=""
+      if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+      $SUDO dnf install -y tree-sitter-devel SDL2-devel 2>/dev/null || true
+    elif command -v pacman >/dev/null 2>&1; then
+      echo "Installing build dependencies (pacman)..."
+      SUDO=""
+      if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+      $SUDO pacman -S --needed --noconfirm tree-sitter sdl2 2>/dev/null || true
+    fi
+  fi
+}
+
+install_deps
+
+# Verify key dependencies
+if command -v pkg-config >/dev/null 2>&1; then
+  pkg-config --exists tree-sitter 2>/dev/null && echo "  tree-sitter ........ OK" \
+    || echo "  tree-sitter ........ MISSING (needed for Prove module: brew install tree-sitter)"
+  pkg-config --exists sdl2 2>/dev/null && echo "  sdl2 ............... OK" \
+    || echo "  sdl2 ............... MISSING (optional, needed for Graphic module: brew install sdl2)"
+fi
+
 # PATH hint
 case ":${PATH}:" in
   *":${PREFIX}:"*) ;;
