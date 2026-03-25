@@ -25,6 +25,20 @@ V1.0 has shipped. V2.0 planning is underway.
 
 ## Released
 
+### V1.2 — March 2026
+
+Verb semantic guarantees, type system improvements, and compiler optimizations.
+
+- Verb consistency overhaul: enforced strict verb rules across all 22 stdlib modules (~105 corrections)
+- Verb-aware optimizer: inlining heuristics and region scope analysis driven by verb semantics
+- Recursive variant types (`type Tree is Leaf(Integer) | Branch(Tree, Tree)`) with mutual recursion
+- `Value<T>` phantom types tracking data format at the type level with usage-based linking
+- Failable record deserialization with `!` propagation via `transforms` verb
+- `Decimal` type parity with Float across Math, Sequence, Array, and Types
+- Generic tokenization (`Parse.rule()`, `Parse.tokens()`) and Prove AST module (`Parse.tree()`)
+- Tree-sitter grammar unification: `grammar.js` as single source of truth
+- Unified `parse()` facade replacing direct Lexer+Parser usage
+
 ### V1.1 — March 2026
 
 Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
@@ -54,7 +68,7 @@ The Python bootstrap compiler is complete and released as the reference implemen
 
 ## Proposed
 
-### V1.2 — Package Manager
+### V1.3 — Package Manager
 
 Pure-Prove package distribution via AST-level sharing in SQLite archives.
 
@@ -69,7 +83,7 @@ Pure-Prove package distribution via AST-level sharing in SQLite archives.
 - Checker integration: package signatures loaded from exports table without full AST deserialization
 - Full design: [`future/14-package-manager.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/14-package-manager.md)
 
-### V1.2 — Sqlite Stdlib
+### V1.3 — Sqlite Stdlib
 
 General-purpose SQLite database access with cursor-based iteration.
 
