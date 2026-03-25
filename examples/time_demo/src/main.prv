@@ -1,10 +1,7 @@
 module Main
   narrative: """Demonstrates Time module operations."""
   System outputs console
-  Time types Time Date Clock Duration
-  Time inputs time
-  Time creates date clock duration
-  Time reads days
+  Time types Time Date Clock Duration reads days creates date clock duration inputs time
   Types reads string
 
 main()!

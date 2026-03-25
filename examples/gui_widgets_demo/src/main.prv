@@ -1,0 +1,31 @@
+module Widgets
+  narrative: """
+    GUI widget demo: slider, progress, quit.
+    renders app
+    Expected to fail: build.
+  """
+  Graphic types GraphicAppEvent outputs window slider progress quit label
+  Types reads string creates float
+
+  type WidgetState is
+    volume Float
+
+  type WidgetApp is GraphicAppEvent
+
+renders app(registered_attached_verbs List<Listens>)
+  event_type WidgetApp
+  state_init WidgetState(float(5))
+from
+    Draw(state) =>
+        window("Widgets", 400, 300)
+        label(f"Vol: {string(state.volume)}")
+        vol as Float = slider("Vol", float(0), float(100), state.volume)
+        state.volume = vol
+        progress(50, 100)
+        Draw(state)
+    Tick(state) => Draw(state)
+    Exit(state) => quit()
+
+main()
+from
+    app([])&

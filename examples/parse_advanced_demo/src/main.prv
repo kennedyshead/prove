@@ -1,0 +1,61 @@
+module Main
+  narrative: """Demonstrates advanced Parse module operations."""
+  System outputs console
+  Parse
+    types Url Rule Token
+    reads tag port
+    creates url arguments rule tokens time date datetime duration
+    validates toml base64 hexadecimal time date datetime
+    transforms url
+  Table types Table creates new
+  Types reads string
+  Sequence reads length
+  Time types Time Date DateTime Duration
+
+main() Result<Unit, Error>!
+from
+    // Validate formats
+    toml_ok as Boolean = valid toml("[package]\nname = \"test\"")
+    console(f"{toml_ok}")
+    b64_ok as Boolean = valid base64("SGVsbG8=")
+    console(f"{b64_ok}")
+    hex_ok as Boolean = valid hexadecimal("deadbeef")
+    console(f"{hex_ok}")
+    // Read tag from a Value
+    val as Value = "hello"
+    tag_name as String = tag(val)
+    console(f"{tag_name}")
+    // Construct a URL
+    built as Url = url("https", "example.com", "/api")
+    console(f"{string(built)}")
+    // Read port from URL
+    p as Integer = port(built)
+    console(f"{p}")
+    // Transform URL by adding query params
+    params as Table<Value> = new()
+    updated as Url = url(built, params)
+    console("Transformed URL")
+    // Parse CLI arguments
+    args as Value = arguments(["--name", "test", "-v"])
+    console("Parsed arguments")
+    // Create tokenization rule and tokenize
+    r as Rule = rule("[0-9]+", 1)
+    text as String = "abc 123 def 456"
+    toks as List<Token> = tokens(text, [r])
+    console(f"{length(toks)}")
+    // Parse date/time/datetime/duration strings
+    t as Time = time("14:30:00", "%H:%M:%S")
+    console(f"{string(t)}")
+    d as Date = date("2025-03-25", "%Y-%m-%d")
+    console(f"{string(d)}")
+    dt as DateTime = datetime("2025-03-25T14:30:00", "%Y-%m-%dT%H:%M:%S")
+    console(f"{string(dt)}")
+    dur as Duration = duration("1h30m", "%Hh%Mm")
+    console(f"{string(dur)}")
+    // Validate time/date/datetime formats
+    time_ok as Boolean = valid time("14:30:00", "%H:%M:%S")
+    console(f"{time_ok}")
+    date_ok as Boolean = valid date("2025-03-25", "%Y-%m-%d")
+    console(f"{date_ok}")
+    dt_ok as Boolean = valid datetime("2025-03-25T14:30:00", "%Y-%m-%dT%H:%M:%S")
+    console(f"{dt_ok}")

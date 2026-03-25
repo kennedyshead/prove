@@ -7,10 +7,9 @@ module Commands
   Saves built binary to dist folder.
   """
   Config types Config inputs config
-  System inputs cwd
+  System inputs cwd outputs console
   Log detached info
   List validates contains
-  System outputs console
   Source types SourceFile inputs source
   Build outputs pybuild
   Check outputs pycheck

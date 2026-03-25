@@ -7,6 +7,7 @@ module TodoApp
   UI types Key
   Types reads string
   Text reads length
+  System outputs console
 
   type TodoItem is
     text String
@@ -23,6 +24,7 @@ module TodoApp
 outputs checkbox(item TodoItem, index Integer) TodoState
 from
     done as Boolean = checkbox(item.text, item.done)
+    console(f"Done: {done}")
     match button(f"Delete##{string(index)}")
         true => RemoveItem(index)
         false => Tick(Unit)

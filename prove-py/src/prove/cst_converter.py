@@ -215,8 +215,22 @@ class CSTConverter:
             elif child.type == "import_declaration":
                 imports.append(self._convert_import_decl(child))
             elif child.type == "import_group":
-                # Orphan import group (second verb group under same module)
-                if imports:
+                # Check if this is a bare module name (type_identifier only,
+                # no verb) that starts a multi-line import block.
+                group_children = self._named_children(child)
+                is_bare_module = (
+                    len(group_children) == 1 and group_children[0].type == "type_identifier"
+                )
+                if is_bare_module:
+                    module_name = self._text(group_children[0])
+                    imports.append(
+                        ImportDecl(
+                            module=module_name,
+                            items=[],
+                            span=self._span(child),
+                        )
+                    )
+                elif imports:
                     self._extend_last_import(imports, child)
                 else:
                     imports.append(self._convert_orphan_import_group(child))

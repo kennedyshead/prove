@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Array<T> - fixed-size unboxed arrays."""
   System outputs console
-  Array reads length get creates array transforms set
+  Sequence reads value length get get_safe creates array set_safe transforms set
 
 main()
 from
@@ -10,10 +10,28 @@ from
     flags2 as Array<Boolean> = set(flags, 2, true)
     size as Integer = length(flags2)
     val as Boolean = get(flags2, 2)
-    console(f"Array size: {size}, element 2: {val}")
+    console(f"{size}{val}")
     // Create an integer array
     nums as Array<Integer> = array(3, 0)
     nums1 as Array<Integer> = set(nums, 0, 10)
     nums2 as Array<Integer> = set(nums1, 1, 20)
     nums3 as Array<Integer> = set(nums2, 2, 30)
-    console(f"nums[1] = {get(nums3, 1)}")
+    console(f"{get(nums3, 1)}")
+    // Safe access (bounds-checked)
+    safe_val as Option<Integer> = get_safe(nums3, 1)
+    match safe_val
+        Some(n) => console(f"{n}")
+        None => console("out of bounds")
+    oob as Option<Integer> = get_safe(nums3, 99)
+    match oob
+        Some(n) => console(f"{n}")
+        None => console("out of bounds as expected")
+    // Safe set
+    safe_set as Option<Array<Integer>> = set_safe(nums3, 0, 99)
+    match safe_set
+        Some(updated) => console("set_safe succeeded")
+        None => console("set_safe out of bounds")
+    // Read value at position from List
+    items as List<Value> = [1, 2, 3]
+    v as Option<Value> = value(1, items)
+    console("Read value at position")

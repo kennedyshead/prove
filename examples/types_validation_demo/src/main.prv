@@ -1,0 +1,26 @@
+module Main
+  narrative: """Demonstrates Types validation and character conversion."""
+  System outputs console
+  Types creates character validates text number decimal boolean array object unit
+
+main() Result<Unit, Error>!
+from
+    // Validate Value types
+    v as Value = "hello"
+    is_text as Boolean = valid text(v)
+    console(f"{is_text}")
+    is_num as Boolean = valid number(v)
+    console(f"{is_num}")
+    is_dec as Boolean = valid decimal(v)
+    console(f"{is_dec}")
+    is_bool as Boolean = valid boolean(v)
+    console(f"{is_bool}")
+    is_arr as Boolean = valid array(v)
+    console(f"{is_arr}")
+    is_obj as Boolean = valid object(v)
+    console(f"{is_obj}")
+    is_unit as Boolean = valid unit(v)
+    console(f"{is_unit}")
+    // Create character from code point
+    ch as Character = character(65)
+    console(f"{ch}")

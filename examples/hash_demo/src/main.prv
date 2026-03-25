@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Hash module operations"""
   System outputs console
-  Hash creates hmac sha256 sha512 blake3
+  Hash creates hmac sha256 sha512 blake3 validates sha256 sha512 blake3 hmac
   Bytes types ByteArray
   Parse reads hexadecimal creates hexadecimal
 
@@ -9,16 +9,27 @@ main() Result<Unit, Error>!
 from
     // String hashing
     h256 as String = sha256("hello")
-    console(f"sha256('hello'): {h256}")
+    console(f"{h256}")
     h512 as String = sha512("hello")
-    console(f"sha512('hello'): {h512}")
+    console(f"{h512}")
     // Blake3
     b3 as String = blake3("hello")
-    console(f"blake3('hello'): {b3}")
+    console(f"{b3}")
     // HMAC
     mac as ByteArray = hmac(ByteArray("message"), ByteArray("key"))
-    console(f"hmac: {hexadecimal(mac)}")
+    console(f"{hexadecimal(mac)}")
     // ByteArray hashing
     data as ByteArray = hexadecimal("deadbeef")
     bh256 as ByteArray = sha256(data)
     console("sha256 of bytes: done")
+    // Validate hashes
+    s256_ok as Boolean = valid sha256(data, bh256)
+    console(f"{s256_ok}")
+    bh512 as ByteArray = sha512(data)
+    s512_ok as Boolean = valid sha512(data, bh512)
+    console(f"{s512_ok}")
+    bb3 as ByteArray = blake3(data)
+    b3_ok as Boolean = valid blake3(data, bb3)
+    console(f"{b3_ok}")
+    hmac_ok as Boolean = valid hmac(ByteArray("message"), ByteArray("key"), mac)
+    console(f"{hmac_ok}")

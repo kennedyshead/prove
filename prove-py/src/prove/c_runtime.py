@@ -749,6 +749,7 @@ def copy_runtime(
         "prove_parse": {"prove_table", "prove_hash"},
         "prove_input_output": {"prove_bytes"},
         "prove_language": {"prove_parse"},
+        "prove_event": {"prove_coro"},
     }
     for lib in list(needed_libs):
         needed_libs.update(_HEADER_DEPS.get(lib, set()))

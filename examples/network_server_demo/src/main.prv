@@ -1,8 +1,7 @@
 module Main
   narrative: """Demonstrates Network module: TCP echo server using streams to serve the endpoint."""
   System outputs console
-  Network inputs server accept message outputs socket message
-  Network types Socket
+  Network types Socket inputs server accept message outputs socket message
   Bytes types ByteArray
   Log detached info
   Parse reads hexadecimal

@@ -2,36 +2,47 @@ module Main
   narrative: """Demonstrates Language module NLP operations."""
   System outputs console
   Language
-    reads words sentences distance similarity soundex metaphone bigrams keywords
-    transforms stem root normalize without_stopwords
+    reads words sentences distance similarity soundex metaphone bigrams keywords ngrams
+      stopwords frequency
+    transforms stem root normalize without_stopwords transliterate
   Types reads string
   Text transforms join
+  Sequence reads length
 
 main() Result<Unit, Error>!
 from
     // Tokenization
     sample as String = "The quick brown fox jumps over the lazy dog."
-    console(f"Words: {join(words(sample), ", ")}")
-    console(f"Sentences: {join(sentences(sample), " | ")}")
+    console(f"{join(words(sample), ", ")}")
+    console(f"{join(sentences(sample), " | ")}")
     // Stemming and root extraction
-    console(f"Stem 'running': {stem("running")}")
-    console(f"Stem 'caresses': {stem("caresses")}")
-    console(f"Root 'validation': {root("validation")}")
+    console(f"{stem("running")}")
+    console(f"{stem("caresses")}")
+    console(f"{root("validation")}")
     // Edit distance and similarity
     d as Integer = distance("kitten", "sitting")
-    console(f"Distance 'kitten'/'sitting': {d}")
+    console(f"{d}")
     s as Float = similarity("hello", "hallo")
-    console(f"Similarity 'hello'/'hallo': {string(s)}")
+    console(f"{string(s)}")
     // Phonetic codes
-    console(f"Soundex 'Robert': {soundex("Robert")}")
-    console(f"Metaphone 'Smith': {metaphone("Smith")}")
+    console(f"{soundex("Robert")}")
+    console(f"{metaphone("Smith")}")
     // N-grams
-    console(f"Bigrams: {join(bigrams("one two three four"), " | ")}")
-    // Normalization
-    console(f"Normalize 'Héllo WORLD': {normalize("Héllo WORLD")}")
+    console(f"{join(bigrams("one two three four"), " | ")}")
+    tri as List<String> = ngrams(sample, 3)
+    console(f"{join(tri, " | ")}")
+    // Normalization and transliteration
+    console(f"{normalize("Héllo WORLD")}")
+    console(f"{transliterate("café")}")
     // Stopword removal and keywords
     article as String = "The cat sat on the mat and the cat played with the ball"
     filtered as List<String> = without_stopwords(article)
-    console(f"Without stopwords: {join(filtered, ", ")}")
+    console(f"{join(filtered, ", ")}")
     top as List<String> = keywords(article, 3)
-    console(f"Top keywords: {join(top, ", ")}")
+    console(f"{join(top, ", ")}")
+    // Stopwords list
+    sw as List<String> = stopwords()
+    console(f"{string(length(sw))}")
+    // Word frequency
+    freq as Table<String, Integer> = frequency(article)
+    console("Computed word frequency")

@@ -1,0 +1,33 @@
+module Main
+  narrative: """Demonstrates advanced System operations."""
+  System
+    types ProcessResult DirEntry
+    validates system dir
+    inputs system process dir cwd
+    outputs system dir console
+
+main() Result<Unit, Error>!
+from
+    // Get the current working directory
+    current as String = cwd()
+    console(f"{current}")
+    // Get command line arguments
+    args as List<String> = process()
+    console("Got command line arguments")
+    // Validate a command exists in PATH
+    has_ls as Boolean = valid system("ls")
+    console(f"{has_ls}")
+    // Execute a system command
+    result as ProcessResult = system("echo", ["hello"])
+    console("Ran echo command")
+    // Create a directory
+    dir("/tmp/prove_system_demo")
+    console("Created /tmp/prove_system_demo")
+    // Validate that a directory exists
+    dir_exists as Boolean = valid dir("/tmp/prove_system_demo")
+    console(f"{dir_exists}")
+    // List directory entries
+    entries as List<DirEntry> = dir("/tmp/prove_system_demo")
+    console("Listed directory entries")
+    // Exit with status code 0
+    system(0)

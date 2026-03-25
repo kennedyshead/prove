@@ -7,11 +7,10 @@ module Main
   outputs advanced commands that are more for development of the compiler.
   secures config makes sure that prove.toml exist
   """
-  System inputs process outputs console
+  System validates file inputs process outputs console
   Sequence reads value length transforms slice
   Config types Config inputs config constants PROVE_TOML
   Commands outputs new check format lsp test build
-  System validates file
   Log detached error
 
   HELP_TXT as String = comptime

@@ -6,7 +6,10 @@ module Main
     """
   System outputs console
   Parse creates tree
-  Prove types Node Tree reads root kind children count line
+  Prove
+    types Node Tree
+    reads root kind children count line column named_children child string
+    validates error
   Types reads string
 
 /// Walk a node tree, printing each node's kind and line number
@@ -33,3 +36,17 @@ from
     console("")
     console("=== Full tree ===")
     walk(r, "")
+    // Node text and position
+    node_text as String = string(r)
+    col as Integer = column(r)
+    console(f"{col}")
+    // Check for errors
+    has_error as Boolean = valid error(r)
+    console(f"{has_error}")
+    // Named children only
+    named as List<Node> = named_children(r)
+    console(f"{string(count(r))}")
+    // Get child by field name
+    match child(r, "name")
+        Some(n) => console(f"{kind(n)}")
+        None => console("No name field")

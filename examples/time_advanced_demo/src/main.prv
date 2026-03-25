@@ -1,0 +1,54 @@
+module Main
+  narrative: """Demonstrates advanced Time module operations."""
+  System outputs console
+  Time
+    types Time Date DateTime Clock Duration Weekday
+    reads date datetime clock weekday days duration
+    creates date datetime clock duration
+    validates time days duration date datetime clock weekday
+    transforms date
+    inputs time
+  Types reads string
+
+main()!
+from
+    // Get current time and validate
+    now as Time = time()
+    in_past as Boolean = valid time(now)
+    console(f"{in_past}")
+    // Extract date, datetime, clock from time
+    d as Date = date(now)
+    console(f"{string(d)}")
+    dt as DateTime = datetime(now)
+    console(f"{string(dt)}")
+    c as Clock = clock(now)
+    console(f"{string(c)}")
+    // Create date and validate
+    d2 as Date = date(2026, 3, 25)
+    date_valid as Boolean = valid date(2026, 3, 25)
+    console(f"{date_valid}")
+    // Create datetime from date + clock
+    c2 as Clock = clock(14, 30, 0)
+    clock_valid as Boolean = valid clock(14, 30, 0)
+    console(f"{clock_valid}")
+    dt2 as DateTime = datetime(d2, c2)
+    dt_valid as Boolean = valid datetime(dt2)
+    console(f"{dt_valid}")
+    // Duration operations
+    dur as Duration = duration(1, 30, 0)
+    dur_secs as Integer = duration(dur)
+    console(f"{dur_secs}")
+    dur_pos as Boolean = valid duration(dur)
+    console(f"{dur_pos}")
+    // Days in month and leap year
+    march_days as Integer = days(2026, 3)
+    console(f"{march_days}")
+    is_leap as Boolean = valid days(2024)
+    console(f"{is_leap}")
+    // Transform date by adding days
+    tomorrow as Date = date(d2, 1)
+    console(f"{string(tomorrow)}")
+    // Weekday
+    wd as Weekday = weekday(d2)
+    is_weekend as Boolean = valid weekday(d2)
+    console(f"{is_weekend}")

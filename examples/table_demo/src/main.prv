@@ -1,37 +1,49 @@
 module Main
-  narrative: """Demonstrates Table module operations"""
+  narrative: """
+  Demonstrates Table module operations
+  
+  Outputs and show json in console
+  """
   System outputs console
-  Table types Table reads length keys get creates table validates has
-  Parse creates json
+  Table
+    types Table
+    reads length keys values get
+    creates new table
+    validates has
+    transforms add remove
+  Parse creates json value
   Types reads string
   Text transforms join
+  Sequence reads length
+
+/// Show table operations on a parsed JSON object
+outputs show(tbl Table<Value>)
+from
+    has_name as Boolean = valid has("name", tbl)
+    console(f"{has_name}")
+    name_opt as Option<Value> = get("name", tbl)
+    match name_opt
+        Some(v) => console(f"{string(v)}")
+        None => console("Not found")
+    all_keys as List<String> = keys(tbl)
+    console(f"{join(all_keys, ", ")}")
+    all_vals as List<Value> = values(tbl)
+    console(f"{length(all_vals)}")
+    smaller as Table<Value> = remove("city", tbl)
+    console(f"{length(smaller)}")
 
 main() Unit
 from
-    // Create a table by parsing JSON
-    json_str as String = """{"name": "Alice", "city": "Stockholm", "age": 30}"""
+    // Create table from JSON Value
+    json_str as String = """{"name": "Alice", "city": "Stockholm"}"""
     parsed as Result<Value, String> = json(json_str)
     match parsed
-        Ok(value) =>
-            table as Table<Value> = table(value)
-            // Check if key exists
-            has_name as Boolean = valid has("name", table)
-            has_age as Boolean = valid has("age", table)
-            console(f"{has_name}")
-            console(f"{has_age}")
-            // Get values (returns Option<Value>)
-            name_opt as Option<Value> = get("name", table)
-            match name_opt
-                Some(v) => console(f"{string(v)}")
-                None => console("No name")
-            city_opt as Option<Value> = get("city", table)
-            match city_opt
-                Some(v) => console(f"{string(v)}")
-                None => console("No city")
-            // Get all keys
-            all_keys as List<String> = keys(table)
-            console(f"{join(all_keys, ", ")}")
-            // Get length
-            length_value as Integer = length(table)
-            console(f"{length_value}")
-        _ => console("Unable to parse json")
+        Ok(val) => show(table(val))
+        Err(e) => console(f"{e}")
+    // Create empty table and add entries
+    empty as Table<Value> = new()
+    v1 as Value = value("hello")
+    v2 as Value = value("world")
+    t1 as Table<Value> = add("a", v1, empty)
+    t2 as Table<Value> = add("b", v2, t1)
+    console(f"{length(t2)}")

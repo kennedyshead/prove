@@ -603,12 +603,29 @@ class ProveFormatter:
         if mod.temporal:
             lines.append(f"  temporal {' -> '.join(mod.temporal)}")
 
+        # Merge duplicate module imports into a single ImportDecl per module.
+        merged_imports: dict[tuple[str, bool], ImportDecl] = {}
+        import_order: list[tuple[str, bool]] = []
         for imp in mod.imports:
             if self._is_unknown_module(imp.span):
-                continue  # I314: drop unknown module imports
-            formatted_imp = self._format_import_decl(imp)
+                continue
+            key = (imp.module, getattr(imp, "local", False))
+            if key in merged_imports:
+                merged_imports[key].items.extend(imp.items)
+            else:
+                from prove.ast_nodes import ImportDecl as _ID
+
+                merged_imports[key] = _ID(
+                    module=imp.module,
+                    items=list(imp.items),
+                    span=imp.span,
+                    local=getattr(imp, "local", False),
+                )
+                import_order.append(key)
+
+        for key in import_order:
+            formatted_imp = self._format_import_decl(merged_imports[key])
             if formatted_imp is not None:
-                # Add module-level indent to each line (supports multi-line imports)
                 for imp_line in formatted_imp.split("\n"):
                     lines.append(f"  {imp_line}")
 

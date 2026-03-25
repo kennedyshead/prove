@@ -1,38 +1,56 @@
 module Main
   narrative: """Demonstrates Text module operations."""
   System outputs console
-  Text validates starts ends contains
-  Text transforms slice trim lower upper split join replace repeat
-  Text reads length
+  Text
+    types StringBuilder
+    reads length index build
+    creates builder
+    validates starts ends contains
+    transforms slice trim lower upper split join replace repeat string char
   Sequence reads length
 
 main() Result<Unit, Error>!
 from
     text as String = "  Hello, World!  "
-    console(f"Original: '{text}'")
-    console(f"Length: {length(text)}")
+    console(f"{text}")
+    console(f"{length(text)}")
     trimmed as String = trim(text)
-    console(f"Trimmed: '{trimmed}'")
+    console(f"{trimmed}")
     upper_text as String = upper(trimmed)
     lower_text as String = lower(trimmed)
-    console(f"Upper: '{upper_text}'")
-    console(f"Lower: '{lower_text}'")
+    console(f"{upper_text}")
+    console(f"{lower_text}")
     slice_text as String = slice(text, 0, 5)
-    console(f"Slice [0:5]: '{slice_text}'")
+    console(f"{slice_text}")
     starts as Boolean = starts(text, "  Hello")
     ends as Boolean = ends(text, "!")
-    console(f"Starts with '  Hello': {starts}")
-    console(f"Ends with '!': {ends}")
+    console(f"{starts}")
+    console(f"{ends}")
     contains_w as Boolean = contains(text, "World")
-    console(f"Contains 'World': {contains_w}")
+    console(f"{contains_w}")
     csv as String = "apple,banana,cherry"
     parts as List<String> = split(csv, ",")
-    console(f"Split into {length(parts)} parts")
+    console(f"{length(parts)}")
     items as List<String> = ["one", "two", "three"]
     joined as String = join(items, ", ")
-    console(f"Joined: '{joined}'")
+    console(f"{joined}")
     replaced as String = replace("hello world", "world", "Prove")
-    console(f"Replaced: '{replaced}'")
+    console(f"{replaced}")
     repeated as String = repeat("ha", 3)
-    console(f"Repeated: '{repeated}'")
+    console(f"{repeated}")
+    // Find index of substring
+    idx as Option<Integer> = index(text, "World")
+    match idx
+        Some(i) => console(f"{i}")
+        None => console("'World' not found")
+    // StringBuilder operations
+    sb as StringBuilder:[Mutable] = builder()
+    sb1 as StringBuilder:[Mutable] = string(sb, "Hello")
+    sb2 as StringBuilder:[Mutable] = string(sb1, " ")
+    sb3 as StringBuilder:[Mutable] = char(sb2, 'W')
+    sb4 as StringBuilder:[Mutable] = string(sb3, "orld")
+    sb_len as Integer = length(sb4)
+    console(f"{sb_len}")
+    built as String = build(sb4)
+    console(f"{built}")
     console("All text operations completed!")

@@ -1,0 +1,17 @@
+module Main
+  narrative: """Demonstrates Terminal module operations."""
+  System outputs console
+  Terminal reads ansi validates terminal outputs cursor
+
+main()
+from
+    // Check if stdout is a terminal
+    is_tty as Boolean = valid terminal()
+    console(f"{is_tty}")
+    // Get ANSI color code
+    blue as String = ansi("Blue")
+    reset as String = ansi("Reset")
+    console(blue + "Blue text" + reset)
+    // Move cursor
+    cursor(0, 0)
+    console("Cursor moved")
