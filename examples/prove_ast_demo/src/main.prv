@@ -5,7 +5,7 @@ module Main
     outputs kind by recursive walk
     """
   System outputs console
-  Parse creates tree string
+  Parse creates tree
   Prove types Node Tree reads root kind children count line
   Types reads string
 
@@ -23,7 +23,7 @@ from
     source as String = "module Hello\n  System outputs console\n\nmain()\nfrom\n    console(\"Hello!\")\n"
     console("=== Source ===")
     console(source)
-    t as Tree = tree(source)!
+    t as Value<Tree> = tree(source)!
     console("=== Round-trip ===")
     console(string(t))
     console("=== AST ===")

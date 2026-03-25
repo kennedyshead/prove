@@ -19,15 +19,15 @@ module Main
 validates state(s State)
   ensures result == false || true
   requires s.authenticated == true
-  near_miss State(false, true, true) => false
+  near_miss State(false, true, 100) => false
   satisfies ValidState
 from
     !s.authenticated || s.authorized
 
 transforms authorize(s State) State
-  ensures result == State(true, true, true)
+  ensures result == State(true, true, 100)
   requires s.authenticated == true
-  near_miss false => State(false, false, true)
+  near_miss false => State(false, false, 100)
 from
     State(s.authenticated, true, s.balance)
 

@@ -8,7 +8,7 @@ module Example
   """
   System inputs console file outputs console
   Parse types Value reads object creates json value validates json
-  Types creates string validates string object value
+  Types creates string integer validates string object value
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
@@ -32,7 +32,7 @@ transforms user(json_data Result<Value, String>) User
 from
     // as requires already checked and unwrapped we only need to cast to Table
     data as Table<Value> = object(json_data)
-    User(data.id, data.name, data.email)
+    User(integer(data.id), string(data.name), string(data.email))
 
 /// test2
 matches ensure_user(raw String) User
@@ -47,7 +47,7 @@ from
     Some(raw) =>
         json_data as Result<Value, String> = json(raw)
         user(json_data)
-    _ => User()
+    _ => User(0, "", "")
 
 inputs user() User!
 from

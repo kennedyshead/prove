@@ -1,16 +1,16 @@
 module Main
   narrative: """Demonstrates CSV parsing and emission via the Parse module."""
   System outputs console
-  Parse creates csv validates csv
-  Sequence reads length
+  Parse types Csv creates csv validates csv
   Types reads string
+  Sequence creates list
 
 main() Result<Unit, Error>!
 from
     source as String = "name,age,city\nAlice,30,London\nBob,25,Paris\n"
-    rows as List<List<String>> = csv(source)!
-    console("Parsed " + string(length(rows)) + " rows")
-    output as String = csv(rows)
+    rows as Value<Csv> = csv(source)!
+    console("Parsed " + string(length(list(rows))) + " rows")
+    output as String = string(rows)
     console("Emitted CSV:")
     console(output)
     is_valid as Boolean = valid csv(source)
