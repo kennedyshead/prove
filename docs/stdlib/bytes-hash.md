@@ -42,9 +42,9 @@ Defines a binary type: `ByteArray` (a sequence of bytes).
 | `validates` | `at(data ByteArray, index Integer)` | True if index is within bounds |
 
 ```prove
-  Bytes creates byte hex at reads slice validates hex
+  Bytes creates byte hex at, reads slice, validates hex
 
-reads first_byte_hex(data ByteArray) String
+creates first_byte_hex(data ByteArray) String
 from
     single as ByteArray = Bytes.slice(data, 0, 1)
     Bytes.hex(single)
@@ -65,7 +65,7 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `sha256(data ByteArray) ByteArray` | Hash bytes to SHA-256 digest |
-| `reads` | `sha256(data String) String` | Hash string to SHA-256 hex string |
+| `creates` | `sha256(data String) String` | Hash string to SHA-256 hex string |
 | `validates` | `sha256(data ByteArray, expected ByteArray)` | Verify data matches expected SHA-256 hash |
 
 ### SHA-512
@@ -73,7 +73,7 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `sha512(data ByteArray) ByteArray` | Hash bytes to SHA-512 digest |
-| `reads` | `sha512(data String) String` | Hash string to SHA-512 hex string |
+| `creates` | `sha512(data String) String` | Hash string to SHA-512 hex string |
 | `validates` | `sha512(data ByteArray, expected ByteArray)` | Verify data matches expected SHA-512 hash |
 
 ### BLAKE3
@@ -81,7 +81,7 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `blake3(data ByteArray) ByteArray` | Hash bytes to BLAKE3 digest |
-| `reads` | `blake3(data String) String` | Hash string to BLAKE3 hex string |
+| `creates` | `blake3(data String) String` | Hash string to BLAKE3 hex string |
 | `validates` | `blake3(data ByteArray, expected ByteArray)` | Verify data matches expected BLAKE3 hash |
 
 ### HMAC
@@ -92,10 +92,10 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 | `validates` | `hmac(data ByteArray, key ByteArray, signature ByteArray)` | Verify HMAC-SHA256 signature |
 
 ```prove
-  Hash reads sha256 creates sha256 hmac validates hmac
+  Hash creates sha256 hmac validates hmac
   Bytes creates byte types ByteArray
 
-reads checksum(content String) String
+creates checksum(content String) String
 from
     Hash.sha256(content)
 ```

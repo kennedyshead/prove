@@ -95,7 +95,7 @@ See [Lambdas & Iteration](lambdas.md) for detailed reference.
 ### Pure Function
 
 ```prove
-creates area(s Shape) Decimal
+matches area(s Shape) Decimal
 from
     match s
         Circle(r) => pi * r * r

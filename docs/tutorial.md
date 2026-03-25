@@ -142,7 +142,7 @@ from
 Prove has no `if/else`. All branching uses `match`:
 
 ```prove
-creates area(shape Shape) Decimal
+matches area(shape Shape) Decimal
 from
     match shape
         Circle(r) => pi * r * r

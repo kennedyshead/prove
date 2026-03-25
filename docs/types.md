@@ -304,7 +304,7 @@ Compiler errors if you forget a variant.
   type Shape is Circle(radius Decimal) | Rect(w Decimal, h Decimal)
 
 // compiler error if you forget a variant
-creates area(s Shape) Decimal
+matches area(s Shape) Decimal
 from
     match s
         Circle(r) => pi * r * r

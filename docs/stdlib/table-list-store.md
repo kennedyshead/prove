@@ -194,7 +194,7 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 ```prove
   List creates length reads first sort reverse slice creates range
 
-reads top_three() List<Integer>
+creates top_three() List<Integer>
 from
     nums as List<Integer> = List.range(1, 100)
     List.reverse(List.sort(nums))

@@ -146,7 +146,7 @@ Resolution rules:
 Go-style: `name Type` (no colon):
 
 ```prove
-creates area(s Shape) Decimal
+matches area(s Shape) Decimal
 inputs request(route Route, body String) Response!
 validates email(address String)
 ```
@@ -156,7 +156,7 @@ validates email(address String)
 Every function body begins with `from`. No exceptions:
 
 ```prove
-creates area(s Shape) Decimal
+matches area(s Shape) Decimal
 from
     pi * s.radius * s.radius
 
@@ -171,7 +171,7 @@ from
 IO is inherent in the verb. Fallibility is marked with `!` on the return type. Pure verbs have neither IO nor `!`:
 
 ```prove
-creates area(s Shape) Decimal
+matches area(s Shape) Decimal
 from
     pi * s.radius * s.radius
 

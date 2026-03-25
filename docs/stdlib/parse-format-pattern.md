@@ -162,11 +162,11 @@ Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S
   Format reads pad_left creates hex decimal date creates date
   Time creates date types Date
 
-reads format_address(addr Integer) String
+creates format_address(addr Integer) String
 from
     Format.pad_left(Format.hex(addr), 8, '0')
 
-reads format_date(date Date) String
+creates format_date(date Date) String
 from
     Format.date(date, "%Y-%m-%d")
 ```

@@ -126,7 +126,7 @@ Convert complex types to strings. For phantom-typed `Value<T>` (from [Parse](par
   Parse creates json types Json
   Types creates string
 
-reads render(user User) String
+creates render(user User) String
 from
     user |> value |> json |> string
 ```
@@ -201,7 +201,7 @@ Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<F
 ```prove
   Types creates integer float decimal string code reads unwrap validates integer string ok value
 
-reads format_pair(label String, n Integer) String
+creates format_pair(label String, n Integer) String
 from
     label + ": " + Types.string(n)
 
@@ -209,7 +209,7 @@ reads safe_first(items List<Integer>) Integer
 from
     Types.unwrap(List.first(items), 0)
 
-reads parse_price(input String) Decimal!
+transforms parse_price(input String) Decimal!
 from
     Types.decimal(input)!
 ```

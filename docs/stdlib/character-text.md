@@ -89,7 +89,7 @@ The `StringBuilder` type allows efficient incremental string construction.
   Text creates length index validates contains starts reads slice reads trim lower upper replace repeat creates split join
   Text creates builder reads string creates build
 
-reads word_count(text String) Integer
+creates word_count(text String) Integer
 from
     parts as List<String> = Text.split(Text.trim(text), " ")
     Text.length(parts)

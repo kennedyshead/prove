@@ -147,7 +147,7 @@ access — these are pure string transformations.
 ```prove
   Path reads parent stem extension
 
-reads describe(path String) String
+creates describe(path String) String
 from
     f"{Path.stem(path)}.{Path.extension(path)} in {Path.parent(path)}"
 ```
