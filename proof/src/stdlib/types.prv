@@ -5,7 +5,7 @@ module Types
   Validates string integer float decimal boolean character unit value text
   array object number
   reads the Unicode code point of a character
-  creates float integer from string
+  creates float integer from string and value
   creates string from integer float boolean character value byte bytearray
   creates string from Value<Json> Value<Toml> Value<Csv> Value<Tree> Url Token
   unwrap Option values
@@ -54,6 +54,10 @@ binary
 
 /// Convert a boolean to an integer (true = 1, false = 0)
 creates integer(value Boolean) Integer
+binary
+
+/// Get the numeric content of a Value
+creates integer(value Value) Integer
 binary
 
 /// Parse a string as a float

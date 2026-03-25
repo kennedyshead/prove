@@ -328,6 +328,24 @@ class SymbolTable:
 
                 if len(top) == 1:
                     return top[0]
+                # Prefer exact type-name match before falling back to
+                # compatibility — avoids e.g. String overload winning when
+                # the actual argument is Value (both are compatible via
+                # Value's JSON-serializable rule).
+                if arg_types:
+                    exact = [
+                        s
+                        for s in top
+                        if all(
+                            getattr(p, "name", None) == getattr(a, "name", None)
+                            or getattr(p, "base_name", None) == getattr(a, "base_name", None)
+                            for p, a in zip(s.param_types, arg_types)
+                        )
+                    ]
+                    if len(exact) == 1:
+                        return exact[0]
+                    if exact:
+                        top = exact
                 # Among equally specific overloads, prefer exact generic match
                 # e.g. Value<Tree> param for Value<Tree> arg over Value<Csv> param
                 if arg_types:

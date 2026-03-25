@@ -6,7 +6,7 @@ module Parse
     Value<Csv> from csv, Value<Tree> from source, Value from Source,
     Url from (scheme host path), duration, date, datetime, hexadecimal,
     time, base64, arguments (CLI arguments)
-  reads Value to bool, integer, tag, number, decimal, array and object
+  reads Value to bool, integer, tag, decimal, array and object
   reads port from Url
   transforms Url by adding query params
   creates Token and Rule for generic tokenization
@@ -53,10 +53,6 @@ binary
 
 /// Get the tag (type name) of a Value
 reads tag(value Value) String
-binary
-
-/// Get the numeric content of a Value
-reads number(value Value) Integer
 binary
 
 /// Get the decimal content of a Value
