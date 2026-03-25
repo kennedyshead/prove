@@ -3220,6 +3220,18 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             body_type = self._infer_expr(expr.body)
         finally:
             self._inside_lambda = prev
+        # W373: failable call in lambda body without ! — result is
+        # Result<T, Error> instead of T, which likely causes a type mismatch.
+        if (
+            isinstance(expr.body, CallExpr)
+            and isinstance(body_type, GenericInstance)
+            and body_type.base_name == "Result"
+        ):
+            self._warning(
+                "W373",
+                "failable call in lambda without ! — returns Result instead of unwrapped value",
+                expr.body.span,
+            )
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
 

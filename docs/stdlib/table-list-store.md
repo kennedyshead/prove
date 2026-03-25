@@ -111,6 +111,19 @@ from
 
 The `:[Mutable]` annotation tells the compiler to use in-place mutation — no intermediate copies are allocated during the sieve loop.
 
+### Conversion
+
+Convert arrays to lists and extract CSV rows.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `list(arr Array<Boolean>) List<Boolean>` | Copy array contents into a new list |
+| `creates` | `list(arr Array<Integer>) List<Integer>` | Copy array contents into a new list |
+| `creates` | `list(arr Array<Decimal>) List<Decimal>` | Copy array contents into a new list |
+| `creates` | `list(csv Value<Csv>) List<List<String>>` | Extract CSV rows as a list of lists |
+
+The CSV overload requires importing the `Csv` type from `Parse`.
+
 ### Import aliases
 
 `Array`, `Sequence`, and `List` all refer to the same module. The preferred alias depends on context:

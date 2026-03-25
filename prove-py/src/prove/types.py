@@ -387,6 +387,9 @@ def is_json_serializable(ty: Type) -> bool:
     if isinstance(ty, GenericInstance):
         if ty.base_name in ("List", "Option", "Table"):
             return all(is_json_serializable(a) for a in ty.args)
+        # Value<T> (phantom-typed Value) is already a Value — always serializable
+        if ty.base_name == "Value":
+            return True
         return False
     if isinstance(ty, ListType):
         return is_json_serializable(ty.element)
@@ -425,6 +428,17 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return True
     if isinstance(actual, PrimitiveType) and actual.name == "Value":
         if isinstance(expected, GenericInstance) and expected.base_name == "Value":
+            return True
+
+    # Value<T> auto-unwraps to T: Value<Tree> is compatible where Tree is expected
+    if isinstance(actual, GenericInstance) and actual.base_name == "Value" and actual.args:
+        inner = actual.args[0]
+        if types_compatible(expected, inner):
+            return True
+    # Reverse: T is compatible where Value<T> is expected (auto-wrap)
+    if isinstance(expected, GenericInstance) and expected.base_name == "Value" and expected.args:
+        inner = expected.args[0]
+        if types_compatible(inner, actual):
             return True
 
     # Unwrap refinement types so Price (Decimal where ...) is

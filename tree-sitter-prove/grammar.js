@@ -214,9 +214,9 @@ module.exports = grammar({
 
     binary_type_body: $ => 'binary',
 
-    algebraic_type_body: $ => prec.left(seq(
+    algebraic_type_body: $ => prec.right(seq(
       $.algebraic_variant,
-      repeat(seq('|', $.algebraic_variant)),
+      repeat(seq(optional('|'), $.algebraic_variant)),
     )),
 
     algebraic_variant: $ => seq(

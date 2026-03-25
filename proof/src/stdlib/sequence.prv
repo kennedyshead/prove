@@ -6,8 +6,10 @@ module Sequence
   validates empty and if it contains
   transforms slice, reverse, sort, set and remove
   creates Array of size, list of range and converts Array to list
+  creates list from Value<Csv> to List<List<String>>
 
   """
+  Parse types Csv
 
 /// Get the length of a sequence
 reads length(items List<Value>) Integer
@@ -331,4 +333,8 @@ binary
 
 /// Copy array contents into a new List
 creates list(arr Array<Decimal>) List<Decimal>
+binary
+
+/// Extract rows from a parsed CSV value as a list of lists
+creates list(csv Value<Csv>) List<List<String>>
 binary

@@ -299,6 +299,7 @@ _RUNTIME_FUNCTIONS = {
     "prove_parse_csv": [
         "prove_parse_csv",
         "prove_emit_csv",
+        "prove_csv_as_list",
         "prove_validates_csv",
     ],
     "prove_parse_url": [

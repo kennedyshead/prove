@@ -155,8 +155,6 @@ def map_type(ty: Type) -> CType:
         if ty.base_name == "Value":
             if ty.args and isinstance(ty.args[0], PrimitiveType):
                 phantom = ty.args[0].name
-                if phantom == "Tree":
-                    return CType("Prove_Tree", is_pointer=True, header=None)
                 if phantom == "Csv":
                     return CType("Prove_List*", is_pointer=True, header="prove_list.h")
             return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")

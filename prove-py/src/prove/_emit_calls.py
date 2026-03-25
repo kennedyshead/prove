@@ -8,6 +8,7 @@ from prove.ast_nodes import (
     BinaryExpr,
     CallExpr,
     Expr,
+    FailPropExpr,
     FieldExpr,
     IdentifierExpr,
     IntegerLit,  # noqa: F841
@@ -159,6 +160,12 @@ class CallEmitterMixin:
             pts = sig.param_types
             fpt = get_type_key(pts[0]) if pts else None
         result = binary_c_name(sig.module, verb, sig.name, fpt)
+        # Fallback: when actual arg type (e.g. "Tree") doesn't match an overload
+        # but the sig's param type does (e.g. "Value<Tree>"), use the sig's key.
+        if result is None and sig.param_types:
+            sig_fpt = get_type_key(sig.param_types[0])
+            if sig_fpt and sig_fpt != fpt:
+                result = binary_c_name(sig.module, verb, sig.name, sig_fpt)
         # When first-param lookup is ambiguous (e.g. array(Integer, Boolean/Integer)),
         # fall back to a combined key using the second argument/param type.
         if result is None and (call_args or sig.param_types):
@@ -1914,23 +1921,48 @@ class CallEmitterMixin:
             # Save and set locals for lambda body
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
-            body_code = self._emit_expr(expr.body)
-            body_type = self._infer_expr_type(expr.body)
-            self._locals = saved_locals
-            body_ct = map_type(body_type)
-            body_box = self._hof_box(body_code, body_ct)
-            # Own/borrow: retain pointer fields passed to function calls
-            retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
-            retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
-            lam = (
-                f"static void *{name}(void *_arg, void *_ctx) {{\n"
-                f"{void_ctx}"
-                f"{ctx_unpack}"
-                f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
-                f"{retain_lines}"
-                f"    return {body_box};\n"
-                f"}}\n"
-            )
+
+            # FailPropExpr (call()!) in lambda body: _emit_fail_prop emits
+            # statements via self._line() which would land in the *enclosing*
+            # function, not the lambda.  Handle inline instead.
+            if isinstance(expr.body, FailPropExpr):
+                inner_code = self._emit_expr(expr.body.expr)
+                body_type = self._infer_expr_type(expr.body)
+                self._locals = saved_locals
+                retains = self._lambda_owned_field_retains(expr.body.expr, param, elem_type)
+                retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
+                res_var = f"_r_{self._tmp_counter}"
+                self._tmp_counter += 1
+                lam = (
+                    f"static void *{name}(void *_arg, void *_ctx) {{\n"
+                    f"{void_ctx}"
+                    f"{ctx_unpack}"
+                    f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                    f"{retain_lines}"
+                    f"    Prove_Result {res_var} = {inner_code};\n"
+                    f"    if (prove_result_is_err({res_var}))"
+                    f' prove_panic("error in map callback");\n'
+                    f"    return prove_result_unwrap_ptr({res_var});\n"
+                    f"}}\n"
+                )
+            else:
+                body_code = self._emit_expr(expr.body)
+                body_type = self._infer_expr_type(expr.body)
+                self._locals = saved_locals
+                body_ct = map_type(body_type)
+                body_box = self._hof_box(body_code, body_ct)
+                # Own/borrow: retain pointer fields passed to function calls
+                retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
+                retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
+                lam = (
+                    f"static void *{name}(void *_arg, void *_ctx) {{\n"
+                    f"{void_ctx}"
+                    f"{ctx_unpack}"
+                    f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
+                    f"{retain_lines}"
+                    f"    return {body_box};\n"
+                    f"}}\n"
+                )
         elif kind == "filter":
             # bool fn(void *_arg, void *_ctx)
             param = expr.params[0] if expr.params else "_x"

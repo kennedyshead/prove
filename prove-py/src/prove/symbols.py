@@ -289,7 +289,55 @@ class SymbolTable:
             if len(structural_matches) == 1:
                 return structural_matches[0]
             if structural_matches:
-                candidates = structural_matches
+                # Prefer overloads with concrete (non-TypeVariable) params over
+                # generic ones.  e.g. string(Value<Csv>) over string(Value).
+                # But when the actual arg is a simple type (not GenericInstance),
+                # prefer the TypeVariable catch-all over GenericInstance overloads.
+                from prove.types import GenericInstance as GI
+
+                any_generic_arg = arg_types and any(isinstance(a, GI) for a in arg_types)
+
+                def _specificity(sig: "FunctionSignature") -> int:
+                    return sum(0 if isinstance(p, TypeVariable) else 1 for p in sig.param_types)
+
+                if any_generic_arg:
+                    # Arg is generic (e.g. Value<Csv>) — prefer most specific overload
+                    structural_matches.sort(key=_specificity, reverse=True)
+                    best = _specificity(structural_matches[0])
+                    top = [s for s in structural_matches if _specificity(s) == best]
+                else:
+                    # Arg is simple (e.g. plain Value) — prefer name-matching
+                    # TypeVariable overload over more-specific GenericInstance ones
+                    name_matches = [
+                        s
+                        for s in structural_matches
+                        if all(
+                            isinstance(p, TypeVariable)
+                            and getattr(p, "name", "") == getattr(a, "name", "")
+                            for p, a in zip(s.param_types, arg_types)
+                        )
+                    ]
+                    if len(name_matches) == 1:
+                        return name_matches[0]
+                    if name_matches:
+                        top = name_matches
+                    else:
+                        structural_matches.sort(key=_specificity, reverse=True)
+                        best = _specificity(structural_matches[0])
+                        top = [s for s in structural_matches if _specificity(s) == best]
+
+                if len(top) == 1:
+                    return top[0]
+                # Among equally specific overloads, prefer exact generic match
+                # e.g. Value<Tree> param for Value<Tree> arg over Value<Csv> param
+                if arg_types:
+                    for sig in top:
+                        if all(
+                            types_compatible(p, a) and not isinstance(p, TypeVariable)
+                            for p, a in zip(sig.param_types, arg_types)
+                        ):
+                            return sig
+                candidates = top
 
         # Disambiguate by first-argument type name
         if arg_types:
@@ -312,6 +360,15 @@ class SymbolTable:
                         )
                         if pname == first:
                             return sig
+
+        # Prefer creates/reads over validates when arg is dynamic (Value) —
+        # validates returns Boolean which is rarely the intended conversion.
+        if len(candidates) > 1:
+            non_validates = [s for s in candidates if s.verb != "validates"]
+            if non_validates:
+                candidates = non_validates
+            if len(candidates) == 1:
+                return candidates[0]
 
         # Fall back to first candidate
         return candidates[0]

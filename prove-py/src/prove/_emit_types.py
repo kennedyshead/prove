@@ -329,6 +329,8 @@ class TypeEmitterMixin:
         self._indent += 1
         for fname, ftype in fields.items():
             ct = map_type(ftype)
+            if ct.header:
+                self._needed_headers.add(ct.header)
             self._line(f"{ct.decl} {fname};")
         self._indent -= 1
         self._line("};")
@@ -340,6 +342,8 @@ class TypeEmitterMixin:
         field_names: list[str] = []
         for fname, ftype in fields.items():
             ct = map_type(ftype)
+            if ct.header:
+                self._needed_headers.add(ct.header)
             params.append(f"{ct.decl} {fname}")
             field_names.append(fname)
         param_str = ", ".join(params) if params else "void"

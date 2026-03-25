@@ -295,6 +295,7 @@ _register_module(
         ("transforms", "sort", "List<String>"): "prove_list_ops_sort_str",
         ("transforms", "sort", "List<Float>"): "prove_list_ops_sort_float",
         ("transforms", "sort", "List<Decimal>"): "prove_list_ops_sort_float",
+        ("creates", "list", "Value<Csv>"): "prove_csv_as_list",
         ("creates", "range", "Integer_Integer_Integer"): "prove_list_ops_range_step",
         # Array functions
         ("creates", "array", "Integer_Boolean"): "prove_array_new_bool",

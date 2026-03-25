@@ -258,7 +258,17 @@ def _evaluate_results(
 
     for cmd, result in results.items():
         rc = result["returncode"]
-        expected = cmd in expected_failures
+        # Treat mode variants as covered by base command:
+        # check_md/check_strict → check, build_debug → build
+        _MODE_VARIANTS = {
+            "check_md": "check",
+            "check_strict": "check",
+            "build_debug": "build",
+        }
+        base_cmd = _MODE_VARIANTS.get(cmd)
+        expected = cmd in expected_failures or (
+            base_cmd is not None and base_cmd in expected_failures
+        )
 
         missing_diags = []
         if cmd == "check" and expected_diags:
@@ -489,16 +499,26 @@ def main() -> int:
     total_failed = 0
     total_expected_fail = 0
 
+    _MODE_VARIANTS = {
+        "check_md": "check",
+        "check_strict": "check",
+        "build_debug": "build",
+    }
     for name in collected:
         _, results, expected_failures, _ = collected[name]
         for cmd, result in results.items():
             total_tests += 1
             if result["returncode"] == 0:
                 total_passed += 1
-            elif cmd in expected_failures:
-                total_expected_fail += 1
             else:
-                total_failed += 1
+                base_cmd = _MODE_VARIANTS.get(cmd)
+                is_expected = cmd in expected_failures or (
+                    base_cmd is not None and base_cmd in expected_failures
+                )
+                if is_expected:
+                    total_expected_fail += 1
+                else:
+                    total_failed += 1
 
     total_failed += len(errors) + ts_failed
 

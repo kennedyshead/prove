@@ -3,7 +3,7 @@ module Main
   System outputs console
   Parse types Csv creates csv validates csv
   Types reads string
-  Sequence creates list
+  Sequence reads length creates list
 
 main() Result<Unit, Error>!
 from

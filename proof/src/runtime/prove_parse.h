@@ -129,6 +129,7 @@ Prove_Value *prove_parse_arguments(Prove_List *args);
 
 Prove_Result     prove_parse_csv(Prove_String *source);
 Prove_String    *prove_emit_csv(Prove_List *rows);
+Prove_List      *prove_csv_as_list(Prove_List *csv);
 bool             prove_validates_csv(Prove_String *source);
 
 /* ── Token (generic) ──────────────────────────────────────── */

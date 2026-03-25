@@ -11,6 +11,7 @@ module Parse
   transforms Url by adding query params
   creates Token and Rule for generic tokenization
   creates tokens from source text using a list of rules
+  creates tree from prove source files
   reads token properties: start, end, kind
   """
   Bytes types ByteArray

@@ -252,6 +252,10 @@ class CallCheckMixin:
                         arg_span,
                     )
                     continue
+                # PrimitiveType("Value") from Table<Value> field access is a
+                # dynamic runtime value — skip type checks (runtime conversion).
+                if isinstance(actual, PrimitiveType) and actual.name == "Value":
+                    continue
                 if not types_compatible(expected, actual):
                     extra = self._builtin_extra_types.get((name, i))
                     if extra and any(types_compatible(e, actual) for e in extra):

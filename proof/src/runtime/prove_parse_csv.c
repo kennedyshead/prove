@@ -193,6 +193,10 @@ Prove_String *prove_emit_csv(Prove_List *rows) {
     return result;
 }
 
+Prove_List *prove_csv_as_list(Prove_List *csv) {
+    return csv;
+}
+
 bool prove_validates_csv(Prove_String *source) {
     CsvParser p;
     p.src = source->data;

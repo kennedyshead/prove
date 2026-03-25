@@ -507,7 +507,7 @@ class StmtEmitterMixin:
                     if ta_name:
                         resolved_arg = self._symbols.resolve_type(ta_name)
                         target_ty = ArrayType(resolved_arg if resolved_arg else INTEGER)
-                elif type_args and type_name in ("Table", "Option", "Result"):
+                elif type_args and type_name in ("Table", "Option", "Result", "Value"):
                     arg_types: list[Type] = []
                     for ta in type_args:
                         ta_name = getattr(ta, "name", None)
@@ -614,6 +614,8 @@ class StmtEmitterMixin:
                 needs_unwrap = True
 
         ct = map_type(target_ty)
+        if ct.header:
+            self._needed_headers.add(ct.header)
         val = self._emit_expr(vd.value)
         self._expected_emit_type = None
 

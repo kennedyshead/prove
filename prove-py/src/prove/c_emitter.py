@@ -347,6 +347,7 @@ class CEmitter(
         "Language": "prove_language.h",
         "Terminal": "prove_terminal.h",
         "Graphic": "prove_gui.h",
+        "Prove": "prove_prove.h",
     }
 
     def _module_uses_strings(self) -> bool:

@@ -17,21 +17,21 @@ from
             // Check if key exists
             has_name as Boolean = valid has("name", table)
             has_age as Boolean = valid has("age", table)
-            console(f"Has name: {has_name}")
-            console(f"Has age: {has_age}")
+            console(f"{has_name}")
+            console(f"{has_age}")
             // Get values (returns Option<Value>)
             name_opt as Option<Value> = get("name", table)
             match name_opt
-                Some(v) => console(f"Name: {string(v)}")
+                Some(v) => console(f"{string(v)}")
                 None => console("No name")
             city_opt as Option<Value> = get("city", table)
             match city_opt
-                Some(v) => console(f"City: {string(v)}")
+                Some(v) => console(f"{string(v)}")
                 None => console("No city")
             // Get all keys
             all_keys as List<String> = keys(table)
-            console(f"Keys: {join(all_keys, ", ")}")
+            console(f"{join(all_keys, ", ")}")
             // Get length
             length_value as Integer = length(table)
-            console(f"Length: {length_value}")
-        Err(e) => console(f"Parse error: {e}")
+            console(f"{length_value}")
+        _ => console("Unable to parse json")
