@@ -591,6 +591,45 @@ class CallEmitterMixin:
                 continue
         return result
 
+    def _emit_structured_to_record(
+        self,
+        arg_expr: str,
+        arg_type: Type,
+        record_type: RecordType,
+    ) -> str:
+        """Emit deserialization from structured data to a record.
+
+        Handles Value, Value<T>, Table<Value>, and Result<..., ...>.
+        For Result types, unwraps first.  For Value types, extracts the
+        object table.  Then delegates to _emit_table_to_record.
+        """
+        # Result<X, E>: unwrap to inner type first
+        if isinstance(arg_type, GenericInstance) and arg_type.base_name == "Result":
+            unwrap_tmp = self._tmp()
+            self._line(
+                f"Prove_Value* {unwrap_tmp} = (Prove_Value*)prove_result_unwrap_ptr({arg_expr});"
+            )
+            arg_expr = unwrap_tmp
+
+        # Table<Value>: extract table directly
+        if isinstance(arg_type, GenericInstance) and arg_type.base_name == "Table":
+            tbl_expr = arg_expr
+        else:
+            # Value / Value<T>: extract the object table
+            tbl_tmp = self._tmp()
+            self._line(f"Prove_Table* {tbl_tmp} = prove_value_as_object({arg_expr});")
+            tbl_expr = tbl_tmp
+
+        rec_tmp = self._emit_table_to_record(tbl_expr, record_type)
+        # Wrap in Prove_Result so FailProp (!) can unwrap it
+        ct = map_type(record_type)
+        heap_tmp = self._tmp()
+        self._line(f"{ct.decl}* {heap_tmp} = malloc(sizeof({ct.decl}));")
+        self._line(f"*{heap_tmp} = {rec_tmp};")
+        res_tmp = self._tmp()
+        self._line(f"Prove_Result {res_tmp} = prove_result_ok_ptr({heap_tmp});")
+        return res_tmp
+
     def _emit_table_to_record(
         self,
         table_expr: str,
@@ -1052,18 +1091,20 @@ class CallEmitterMixin:
             # Pad record constructors with missing fields using defaults
             resolved = self._symbols.resolve_type(name)
             if isinstance(resolved, RecordType):
-                # Table<Value> → Record: map table fields to record
+                # Single-arg deserialization: Record(structured_data)
+                # Convert Value/Value<T>/Table<Value>/Result<...> to record
                 if len(expr.args) == 1:
                     arg_ty = self._infer_expr_type(expr.args[0])
-                    is_table_value = (
+                    is_structured = (
+                        isinstance(arg_ty, PrimitiveType) and arg_ty.name == "Value"
+                    ) or (
                         isinstance(arg_ty, GenericInstance)
-                        and arg_ty.base_name == "Table"
-                        and arg_ty.args
-                        and isinstance(arg_ty.args[0], TypeVariable)
+                        and arg_ty.base_name in ("Value", "Table", "Result")
                     )
-                    if is_table_value:
-                        return self._emit_table_to_record(
+                    if is_structured:
+                        return self._emit_structured_to_record(
                             args[0],
+                            arg_ty,
                             resolved,
                         )
                 # Coerce args to match record field types

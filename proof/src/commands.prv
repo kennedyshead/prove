@@ -39,7 +39,7 @@ module Commands
       read("static/cli/test.txt")
 
 /// Run the build command
-outputs build(arguments List<String>)
+outputs build(arguments List<String>)!
 from
     info("Running build")&
     match contains(arguments, "--help")
@@ -47,7 +47,7 @@ from
         _ =>
             debug as Boolean = contains(arguments, "--debug")
             no_mutate as Boolean = contains(arguments, "--no-mutate")
-            config as Config = config()
+            config as Config = config()!
             source as List<SourceFile> = source(config)
             pybuild(cwd(), debug, no_mutate, source)
             info(f"{config.package.name}{config.package.version}")&
@@ -86,7 +86,7 @@ from
             md as Boolean = contains(arguments, "--md")
             status as Boolean = contains(arguments, "--status")
             stdin as Boolean = contains(arguments, "--stdin")
-            config as Config = config()
+            config as Config = config()!
             pyformat(config, cwd(), md, status, stdin)
             info(f"{config.package.name}{config.package.version}")&
 
@@ -116,6 +116,6 @@ from
     match contains(arguments, "--help")
         true => console(HELP_TEST_TEXT)
         _ =>
-            config as Config = config()
+            config as Config = config()!
             pytest(config, cwd())
             info(f"{config.package.name}{config.package.version}")&

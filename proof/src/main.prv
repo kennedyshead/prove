@@ -36,6 +36,6 @@ from
         Some("new") => new(sub_arguments)!
         Some("test") => secures_config(sub_arguments, test)
         Some("--version") =>
-            config as Config = config()
+            config as Config = config()!
             console(f"{config.package.version}")
         _ => console(HELP_TXT)

@@ -33,13 +33,13 @@ module Config
 
   PROVE_TOML as String = "prove.toml"
 
-inputs config() Config
+inputs config() Config!
 from
     load as Result<String, Error> = file(PROVE_TOML)
-    _config(load)
+    struct(load)!
 
 /// Parse the toml data to Config struct
-transforms config(data Result<String, Error>) Config!
+transforms struct(data Result<String, Error>) Result<Config, Error>!
   requires valid toml(data)
 from
-    Config(toml(data))
+    Config(toml(data))!

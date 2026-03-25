@@ -448,7 +448,7 @@ class CallCheckMixin:
                             isinstance(actual, PrimitiveType) and actual.name == "Value"
                         ) or (
                             isinstance(actual, GenericInstance)
-                            and actual.base_name in ("Value", "Table")
+                            and actual.base_name in ("Value", "Table", "Result")
                         )
                         if is_structured:
                             from prove.types import EffectType

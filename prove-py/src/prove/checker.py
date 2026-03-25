@@ -101,6 +101,7 @@ from prove.types import (
     AlgebraicType,
     ArrayType,
     BorrowType,  # noqa: E501
+    EffectType,
     ErrorType,
     FunctionType,
     GenericInstance,
@@ -2943,9 +2944,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     )
                 )
 
-        # The inner expression must be a failable (Result-returning) call
-        if not isinstance(inner, ErrorType) and not (
-            isinstance(inner, GenericInstance) and inner.base_name == "Result"
+        # The inner expression must be a failable (Result-returning or Fail-effected) call
+        if (
+            not isinstance(inner, ErrorType)
+            and not (isinstance(inner, GenericInstance) and inner.base_name == "Result")
+            and not (isinstance(inner, EffectType) and "Fail" in inner.effects)
         ):
             self.diagnostics.append(
                 Diagnostic(
@@ -2967,10 +2970,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
             )
 
-        # The inner expression should be Result-like; return its success type
+        # The inner expression should be Result-like or Fail-effected; return its success type
         if isinstance(inner, GenericInstance) and inner.base_name == "Result":
             if inner.args:
                 return inner.args[0]
+        if isinstance(inner, EffectType) and "Fail" in inner.effects:
+            return inner.base
         return ERROR_TY
 
     def _infer_async_call(self, expr: AsyncCallExpr, expected_type: Type | None = None) -> Type:
