@@ -403,9 +403,8 @@ class StmtEmitterMixin:
                                             f" prove_option_some((Prove_Value*){heap});"
                                         )
                                     else:
-                                        some_call = (
-                                            f"prove_option_some((Prove_Value*)(intptr_t){emit_val})"
-                                        )
+                                        cast = f"(Prove_Value*)(intptr_t){emit_val}"
+                                        some_call = f"prove_option_some({cast})"
                                         self._line(f"{ret_ct.decl} {ret_tmp} = {some_call};")
                             else:
                                 self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
