@@ -22,6 +22,24 @@ Pure verbs have no side effects. The compiler enforces this. They can be memoize
 | `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
 | `matches` | Pure match dispatch on algebraic type | No `!`. First parameter must be algebraic. `from` block is implicitly a match |
 
+### Semantic Guarantees
+
+The verb carries strict guarantees that the compiler exploits for optimization:
+
+| Verb | Allocates? | Can fail? | Compiler optimization |
+|------|-----------|-----------|----------------------|
+| `reads` | Never | Never | Freely inlined, reordered, and eliminated. No region scope needed. Best memoization candidate. |
+| `creates` | Always | Never | Needs allocation but no error handling. Safe to inline. |
+| `transforms` | May | Yes (`!`) | Requires error propagation. Conservative optimization only. |
+| `validates` | Never | Never | Returns `Boolean`. Same safety guarantees as `reads`. |
+| `matches` | Never | Never | Dispatch on algebraic type. Same safety guarantees as `reads`. |
+
+**`reads` never allocates new values.** It extracts or recomputes from existing data — the return is always derivable from the input without heap allocation. If a function needs to allocate a new value (even if input and output types match), use `creates` instead.
+
+**`creates` always allocates.** It constructs a freshly allocated value of a different type. The compiler knows it cannot fail, so no error-handling scaffolding is emitted.
+
+**`transforms` is the only pure verb that can fail.** The `!` suffix is allowed, and the compiler emits error propagation paths. Because it may allocate and may fail, the optimizer treats it conservatively.
+
 ### Examples
 
 ```prove

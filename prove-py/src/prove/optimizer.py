@@ -1085,8 +1085,15 @@ class Optimizer:
         return isinstance(expr.operand, IdentifierExpr)
 
     def _is_inline_candidate(self, fd: FunctionDef) -> bool:
-        """Check if a function is eligible for inlining."""
+        """Check if a function is eligible for inlining.
+
+        reads/validates are the safest inlining targets: they cannot fail
+        and never allocate, so we allow up to 3 statements.  Other pure
+        verbs require a single expression.
+        """
         _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
+        # Non-allocating, non-failable verbs — safe to inline larger bodies
+        _non_alloc_verbs = {"reads", "validates"}
         if (
             fd.binary
             or fd.with_constraints
@@ -1097,6 +1104,10 @@ class Optimizer:
             return False
         if self._calls_self(fd.name, fd.body):
             return False
+        if fd.verb in _non_alloc_verbs:
+            # reads/validates: safe to inline up to 3 stmts (no alloc, no fail)
+            if len(fd.body) <= 3 and not self._is_runtime_lookup(fd):
+                return True
         if len(fd.body) != 1:
             return False
         if fd.verb in _pure_verbs:
@@ -1928,6 +1939,21 @@ class Optimizer:
     _PURE_VERBS: frozenset[str] = frozenset(
         {"transforms", "validates", "reads", "creates", "matches"}
     )
+
+    # Non-allocating, non-failable verbs — calls are always safe to eliminate
+    _ELIMINABLE_VERBS: frozenset[str] = frozenset({"reads", "validates", "matches"})
+
+    def _is_eliminable_call(self, expr: CallExpr) -> bool:
+        """True if a call can be eliminated without observable effect.
+
+        reads/validates/matches calls are non-allocating and non-failable,
+        so removing an unused result has zero observable effect.
+        """
+        if isinstance(expr.func, IdentifierExpr):
+            sig = self._symbols.resolve_function_any(expr.func.name)
+            if sig is not None and sig.verb in self._ELIMINABLE_VERBS:
+                return True
+        return False
 
     def _expr_has_side_effects(self, expr: Expr) -> bool:
         """Check if an expression has side effects (returns True if it does)."""

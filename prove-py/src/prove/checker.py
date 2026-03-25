@@ -131,11 +131,20 @@ def _count_decimal_places(literal: str) -> int:
     return 0
 
 
-# Verbs considered pure (no IO side effects allowed)
+# Verbs considered pure (no IO side effects allowed).
+# Semantic guarantees:
+#   reads     — same type in/out, never allocates, never fails
+#   creates   — different type out, always allocates, never fails
+#   transforms — may allocate, may fail (only pure verb with `!`)
+#   validates — returns Boolean, never allocates, never fails
+#   matches   — algebraic dispatch, never allocates, never fails
 _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
 
-# Pure verbs that are allowed to be failable (transforms can fail at runtime)
+# Pure verbs that are allowed to be failable (only transforms can fail at runtime)
 _FAILABLE_PURE_VERBS = frozenset({"transforms"})
+
+# Pure verbs guaranteed to never allocate new values
+_NON_ALLOCATING_VERBS = frozenset({"reads", "validates", "matches"})
 
 # Async verb family
 _ASYNC_VERBS = frozenset({"detached", "attached", "listens", "renders"})

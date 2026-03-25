@@ -680,7 +680,7 @@ _register_module(
         ("creates", "json", "Value"): "prove_tag_json",
         ("creates", "toml", "String"): "prove_parse_toml",
         ("creates", "toml", "Value"): "prove_tag_toml",
-        ("creates", "url", "String_String"): "prove_parse_url_create",
+        ("creates", "url", "String_String_String"): "prove_parse_url_create",
         ("creates", "hexadecimal", "ByteArray"): "prove_bytes_hex_encode",
         ("creates", "base64", "ByteArray"): "prove_parse_base64_encode",
     },

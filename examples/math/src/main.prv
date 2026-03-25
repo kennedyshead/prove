@@ -4,7 +4,7 @@ module Main
   transforms by sum of add arguments, double value, abs value
   """
   System outputs console
-  Types reads string
+  Types creates string
 
 transforms add(a Integer, b Integer) Integer
   ensures result == a + b

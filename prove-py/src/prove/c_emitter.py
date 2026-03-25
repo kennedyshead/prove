@@ -646,6 +646,23 @@ class CEmitter(
             if isinstance(expr, UnaryExpr):
                 return _expr_alloc(expr.operand)
             if isinstance(expr, CallExpr):
+                # reads/validates verbs returning scalars never allocate —
+                # only check arguments for allocation nodes.
+                if isinstance(expr.func, IdentifierExpr):
+                    sig = self._symbols.resolve_function_any(expr.func.name, arity=len(expr.args))
+                    if sig and sig.verb in ("reads", "validates"):
+                        from prove.types import PrimitiveType
+
+                        ret = sig.return_type
+                        if isinstance(ret, PrimitiveType) and ret.name in (
+                            "Integer",
+                            "Float",
+                            "Decimal",
+                            "Boolean",
+                            "Character",
+                            "Byte",
+                        ):
+                            return any(_expr_alloc(a) for a in expr.args)
                 return _expr_alloc(expr.func) or any(_expr_alloc(a) for a in expr.args)
             if isinstance(expr, PipeExpr):
                 return _expr_alloc(expr.left) or _expr_alloc(expr.right)

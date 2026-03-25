@@ -2,13 +2,9 @@ module Main
   narrative: """Demonstrates Format module operations"""
   System outputs console
   Format
-    transforms pad_left pad_right center octal decimal hexadecimal bin time date datetime
-      duration
-  Time
-    types Time Date DateTime Duration
-    reads date datetime
-    creates date datetime duration
-    inputs time
+    reads pad_left pad_right center
+    creates octal decimal hexadecimal bin time date datetime duration
+  Time types Time Date DateTime Duration creates date datetime duration inputs time
 
 main() Result<Unit, Error>!
 from

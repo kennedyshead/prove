@@ -3,13 +3,13 @@ module Main
   System outputs console
   Store
     types Store StoreTable TableDiff MergeResult Version Conflict
-    reads integrity merged conflicts variant column local_value remote_value
+    reads patch
+    creates integrity merged conflicts variant column local_value remote_value diff merge
     validates store table merged
-    transforms diff patch merge
     inputs table version lookup
     outputs store table lookup rollback add
-  Sequence reads length
-  Types reads string
+  Sequence creates length
+  Types creates string
 
 main() Result<Unit, Error>!
 from

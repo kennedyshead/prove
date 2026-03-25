@@ -2,7 +2,7 @@ module Example
   narrative: """
   An example of email update
 
-  Inputs email from console, transforms user json to User struct enusres i in matches ensure_user.
+  Inputs email from console, reads user json to User struct enusres i in matches ensure_user.
   Updates the email an save the user to user.json through file output
   """
   System inputs console file outputs console
@@ -58,7 +58,7 @@ validates email(email Option<Email>)
 from
     email
 
-transforms set_email(user User, email Option<Email>) User
+reads set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
     User(user.id, user.name, email)
