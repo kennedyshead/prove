@@ -2,12 +2,14 @@ module Main
   narrative: """Demonstrates Store module operations."""
   System outputs console
   Store
-    types Store StoreTable TableDiff MergeResult Version
-    reads integrity
+    types Store StoreTable TableDiff MergeResult Version Conflict
+    reads integrity merged conflicts variant column local_value remote_value
     validates store table merged
     transforms diff patch merge
-    inputs table version
-    outputs store table
+    inputs table version lookup
+    outputs store table lookup rollback add
+  Sequence reads length
+  Types reads string
 
 main() Result<Unit, Error>!
 from
@@ -24,16 +26,42 @@ from
     // Integrity hash
     h as String = integrity(tbl)
     console(f"{h}")
-    // Reload, diff, patch
+    // Add a row
     tbl2 as StoreTable = table(db, "demo")!
-    d as TableDiff = diff(tbl, tbl2)
+    add(tbl2, tbl)
+    console("Added row")
+    // Reload, diff, patch
+    tbl3 as StoreTable = table(db, "demo")!
+    d as TableDiff = diff(tbl, tbl3)
     patched as StoreTable = patch(tbl, d)
     console("Diff and patch done")
-    // Three-way merge
-    d2 as TableDiff = diff(tbl, tbl2)
+    // Three-way merge and conflict inspection
+    d2 as TableDiff = diff(tbl, tbl3)
     mr as MergeResult = merge(tbl, d, d2)
     ok as Boolean = valid merged(mr)
     console(f"{ok}")
+    match ok
+        true =>
+            merged_tbl as StoreTable = merged(mr)
+            console("Merge succeeded")
+        false =>
+            cfls as List<Conflict> = conflicts(mr)
+            console(f"Conflicts: {string(length(cfls))}")
+            match length(cfls) > 0
+                true =>
+                    c as Conflict = cfls[0]
+                    console(f"Variant: {variant(c)}")
+                    console(f"Column: {column(c)}")
+                    console(f"Local: {local_value(c)}")
+                    console(f"Remote: {remote_value(c)}")
+                false => console("No conflicts to inspect")
+    // Compile and load lookup
+    lookup(db, "demo")!
+    items as List<String> = lookup("/tmp/prove_store_demo/demo.lookup")!
+    console(f"Lookup items: {string(length(items))}")
+    // Rollback
+    rolled as StoreTable = rollback(db, "demo", 0)!
+    console("Rolled back")
     // List versions
     vers as List<Version> = version(db, "demo")!
     console("Store demo complete")

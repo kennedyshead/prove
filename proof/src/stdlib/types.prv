@@ -15,6 +15,7 @@ module Types
   Bytes types ByteArray
   Parse types Json Toml Csv Url Token
   Prove types Tree
+  UI types Position
 
 /// Check if a value is a string
 validates string(value String)
@@ -162,6 +163,10 @@ binary
 
 /// Extract the matched text of a token as a string
 creates string(token Token) String
+binary
+
+/// Convert a Position to a string (e.g. "80x24")
+creates string(position Position) String
 binary
 
 /// Get the Unicode code point of a character

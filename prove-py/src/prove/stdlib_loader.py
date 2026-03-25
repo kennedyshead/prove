@@ -484,6 +484,7 @@ _register_module(
         ("creates", "string", "Value<Tree>"): "prove_parse_string_tree",
         ("creates", "string", "Url"): "prove_parse_url_host_reads",
         ("creates", "string", "Token"): "prove_parse_token_text",
+        ("creates", "string", "Position"): "prove_convert_string_position",
         ("creates", "integer", "Boolean"): "prove_convert_integer_bool",
         ("creates", "integer", "Value"): "prove_value_as_number",
         ("creates", "float", "Value"): "prove_value_as_decimal",

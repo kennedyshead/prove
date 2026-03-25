@@ -100,6 +100,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Rule": CType("Prove_Rule*", is_pointer=True, header="prove_parse.h"),
     "Tree": CType("Prove_Tree", is_pointer=True, header="prove_prove.h"),
     "Node": CType("Prove_Node", is_pointer=True, header="prove_prove.h"),
+    "Position": CType("Prove_Position", is_pointer=False, header="prove_convert.h"),
     "Verb": CType("void*", is_pointer=True, header=None),
     "Attached": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),
     "Listens": CType("Prove_CoroFn", is_pointer=False, header="prove_coro.h"),

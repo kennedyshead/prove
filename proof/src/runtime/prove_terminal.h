@@ -6,10 +6,13 @@
 #include "prove_event.h"
 
 /* ── Position type (matches UI.Position) ─────────────────────── */
+#ifndef PROVE_POSITION_DEFINED
+#define PROVE_POSITION_DEFINED
 typedef struct {
     int64_t x;
     int64_t y;
 } Prove_Position;
+#endif
 
 /* ── Terminal validation ─────────────────────────────────────── */
 

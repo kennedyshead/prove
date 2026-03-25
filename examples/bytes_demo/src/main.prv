@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates Bytes module operations."""
   System outputs console
   Parse reads hexadecimal creates hexadecimal
-  Bytes types ByteArray reads at creates bytearray
+  Bytes types ByteArray reads at creates bytearray validates exist
 
 main()
 from
@@ -13,3 +13,8 @@ from
     console(f"first byte: {first}")
     decoded as ByteArray = hexadecimal("48656c6c6f")
     console(f"decoded hex: {hexadecimal(decoded)}")
+    // Check if index exists
+    has_idx as Boolean = valid exist(data, 2)
+    console(f"index 2 exists: {has_idx}")
+    no_idx as Boolean = valid exist(data, 99)
+    console(f"index 99 exists: {no_idx}")

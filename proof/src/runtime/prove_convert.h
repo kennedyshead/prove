@@ -61,4 +61,14 @@ Prove_String *prove_convert_string_byte(uint8_t b);
 int64_t prove_convert_code(char c);
 char    prove_convert_character(int64_t n);
 
+/* ── Position → String ──────────────────────────────────────── */
+
+/* Forward-declare to avoid pulling in prove_terminal.h */
+#ifndef PROVE_POSITION_DEFINED
+#define PROVE_POSITION_DEFINED
+typedef struct { int64_t x; int64_t y; } Prove_Position;
+#endif
+
+Prove_String *prove_convert_string_position(Prove_Position pos);
+
 #endif /* PROVE_CONVERT_H */

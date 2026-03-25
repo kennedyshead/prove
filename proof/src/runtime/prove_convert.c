@@ -122,3 +122,11 @@ char prove_convert_character(int64_t n) {
     }
     return (char)n;
 }
+
+/* ── Position → String ──────────────────────────────────────── */
+
+Prove_String *prove_convert_string_position(Prove_Position pos) {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%lldx%lld", (long long)pos.x, (long long)pos.y);
+    return prove_string_from_cstr(buf);
+}

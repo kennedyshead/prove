@@ -1,7 +1,8 @@
 module Main
   narrative: """Demonstrates Terminal module operations."""
   System outputs console
-  Terminal reads ansi validates terminal outputs cursor
+  Terminal reads ansi size validates terminal outputs cursor
+  Types creates string
 
 main()
 from
@@ -15,3 +16,5 @@ from
     // Move cursor
     cursor(0, 0)
     console("Cursor moved")
+    // Get terminal size
+    console(f"{string(size())}")

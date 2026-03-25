@@ -1,7 +1,14 @@
 module Main
   narrative: """Demonstrates Format module operations"""
   System outputs console
-  Format transforms pad_left pad_right center octal decimal hexadecimal bin
+  Format
+    transforms pad_left pad_right center octal decimal hexadecimal bin time date datetime
+      duration
+  Time
+    types Time Date DateTime Duration
+    reads date datetime
+    creates date datetime duration
+    inputs time
 
 main() Result<Unit, Error>!
 from
@@ -19,3 +26,12 @@ from
     console(f"octal(42): {octal(42)}")
     // Decimal
     console(f"decimal(3.14159): {decimal(3.14159, 5)}")
+    // Format time/date/datetime/duration
+    now as Time = time()
+    console(f"time: {time(now, "%H:%M:%S")}")
+    d as Date = date(now)
+    console(f"date: {date(d, "%Y-%m-%d")}")
+    dt as DateTime = datetime(now)
+    console(f"datetime: {datetime(dt, "%Y-%m-%dT%H:%M:%S")}")
+    dur as Duration = duration(1, 30, 0)
+    console(f"duration: {duration(dur, "%Hh%Mm%Ss")}")

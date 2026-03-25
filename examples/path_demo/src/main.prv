@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Path module operations"""
   System outputs console
-  Path reads parent stem extension name validates absolute transforms join
+  Path reads parent stem extension name validates absolute transforms join normalize
 
 main() Result<Unit, Error>!
 from
@@ -17,3 +17,7 @@ from
     // Validate absolute path
     is_abs as Boolean = absolute(p)
     console(f"Is absolute: {is_abs}")
+    // Normalize path
+    messy as String = "/home/user/../user/./docs/../file.txt"
+    clean as String = normalize(messy)
+    console(f"Normalized: {clean}")

@@ -1,7 +1,19 @@
 module Main
-  narrative: """Demonstrates Types validation and character conversion."""
+  narrative: """Demonstrates Types validation and character conversion.
+  transforms json parsing into a Value result
+  """
   System outputs console
-  Types creates character validates text number decimal boolean array object unit
+  Parse types Json creates json
+  Types
+    creates character string
+    validates text number decimal boolean array object unit ok error
+
+/// Parse JSON and return as a Value string (failable)
+transforms try_json(source String) Value!
+  requires valid string(source)
+from
+    parsed as Value<Json> = json(source)!
+    string(parsed)
 
 main() Result<Unit, Error>!
 from
@@ -24,3 +36,14 @@ from
     // Create character from code point
     ch as Character = character(65)
     console(f"{ch}")
+    // Validate Result ok/error
+    good as Result<Value, Error> = try_json("{}")
+    is_ok as Boolean = valid ok(good)
+    console(f"{is_ok}")
+    is_err as Boolean = valid error(good)
+    console(f"{is_err}")
+    bad as Result<Value, Error> = try_json("not json")
+    bad_ok as Boolean = valid ok(bad)
+    console(f"{bad_ok}")
+    bad_err as Boolean = valid error(bad)
+    console(f"{bad_err}")

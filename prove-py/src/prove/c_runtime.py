@@ -359,6 +359,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_convert_boolean_str",
         "prove_convert_code",
         "prove_convert_character",
+        "prove_convert_string_position",
     ],
     "prove_list_ops": [
         "prove_list_ops_length",
