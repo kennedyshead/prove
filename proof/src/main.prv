@@ -4,7 +4,7 @@ module Main
   The prove language compiler proof! Created as a statement, 
   the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
-  Also outputs advanced commands that are more for development of the compiler.
+  outputs advanced commands that are more for development of the compiler.
   secures config makes sure that prove.toml exist
   """
   System inputs process outputs console

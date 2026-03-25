@@ -210,7 +210,13 @@ class StmtEmitterMixin:
                     self._emit_region_exit()
                 elif is_failable:
                     # For failable functions, wrap last expression in result_ok
-                    if isinstance(ret_type, GenericInstance) and ret_type.base_name == "Result":
+                    last_expr = self._stmt_expr(stmt)
+                    last_is_failprop = isinstance(last_expr, FailPropExpr)
+                    if (
+                        isinstance(ret_type, GenericInstance)
+                        and ret_type.base_name == "Result"
+                        and not last_is_failprop
+                    ):
                         # Already returns Result — just emit and return ok
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
@@ -225,15 +231,25 @@ class StmtEmitterMixin:
                         # Non-Result return: capture and wrap
                         expr = self._stmt_expr(stmt)
                         if expr is not None:
+                            # When a FailProp (!) unwraps a Result return,
+                            # the captured value is the inner success type
+                            wrap_type: Type = ret_type
+                            if (
+                                last_is_failprop
+                                and isinstance(ret_type, GenericInstance)
+                                and ret_type.base_name == "Result"
+                                and ret_type.args
+                            ):
+                                wrap_type = ret_type.args[0]
                             ret_tmp = self._tmp()
-                            ret_ct = map_type(ret_type)
+                            ret_ct = map_type(wrap_type)
                             self._in_return_position = True
                             ret_val = self._emit_expr(expr)
                             self._in_return_position = False
                             self._line(f"{ret_ct.decl} {ret_tmp} = {ret_val};")
                             self._emit_releases(ret_tmp)
                             self._emit_region_exit()
-                            if isinstance(ret_type, RecordType):
+                            if isinstance(wrap_type, RecordType):
                                 heap_tmp = self._tmp()
                                 self._line(
                                     f"{ret_ct.decl}* {heap_tmp} = malloc(sizeof({ret_ct.decl}));"
@@ -244,7 +260,7 @@ class StmtEmitterMixin:
                                 self._line(f"return prove_result_ok_ptr({ret_tmp});")
                             elif ret_ct.decl == "double":
                                 self._line(f"return prove_result_ok_double({ret_tmp});")
-                            elif isinstance(ret_type, GenericInstance) and not ret_ct.is_pointer:
+                            elif isinstance(wrap_type, GenericInstance) and not ret_ct.is_pointer:
                                 # Struct-like generic (Option<Value>, etc.) — heap-allocate
                                 heap_tmp = self._tmp()
                                 self._line(
