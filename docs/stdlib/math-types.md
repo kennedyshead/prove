@@ -105,7 +105,29 @@ The function name is the *target type*. Failable conversions from strings return
 | `reads` | `string(b Boolean) String` | Boolean to `"true"` or `"false"` |
 | `reads` | `string(b Byte) String` | Byte to decimal string |
 | `reads` | `string(c Character) String` | Character to string |
-| `reads` | `string(v Value) String` | Extract string content from a Value |
+| `creates` | `string(v Value) String` | Convert a Value to its string representation |
+
+### Format Serialization
+
+Convert complex types to strings. For phantom-typed `Value<T>` (from [Parse](parse-format-pattern.md#phantom-types)), the phantom type determines the output format. Also handles `Url` host extraction and `Token` text extraction.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `creates` | `string(v Value<Json>) String` | Serialize JSON value to string |
+| `creates` | `string(v Value<Toml>) String` | Serialize TOML value to string |
+| `creates` | `string(v Value<Csv>) String` | Serialize CSV value to string |
+| `creates` | `string(v Value<Tree>) String` | Extract full source text from tree |
+| `creates` | `string(url Url) String` | Extract host component from URL |
+| `creates` | `string(token Token) String` | Extract matched text from token |
+
+```prove
+  Parse creates json types Json
+  Types creates string
+
+reads render(user User) String
+from
+    user |> value |> json |> string
+```
 
 ### Character Conversions
 

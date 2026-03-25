@@ -77,6 +77,11 @@ Prove_String *prove_emit_toml(Prove_Value *value);
 Prove_Result prove_parse_json(Prove_String *source);
 Prove_String *prove_emit_json(Prove_Value *value);
 
+/* ── Value tagging (identity — phantom type annotation) ──────── */
+
+static inline Prove_Value *prove_tag_json(Prove_Value *v) { return v; }
+static inline Prove_Value *prove_tag_toml(Prove_Value *v) { return v; }
+
 /* ── String validation ───────────────────────────────────────── */
 
 bool prove_validates_json(Prove_String *source);

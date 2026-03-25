@@ -2,20 +2,19 @@ module Parse
   narrative: """
   Encoding and decoding of structured data formats, and generic tokenization.
 
-  creates validates and reads native values like Value from Source, Table<Value> from toml,
-    Value from json, Url from (scheme host path), duration, date, datetime, hexadecimal,
-    time, base64, arguments (CLI arguments) and csv
+  creates validates and reads native values like Value<Json> from json, Value<Toml> from toml,
+    Value<Csv> from csv, Value<Tree> from source, Value from Source,
+    Url from (scheme host path), duration, date, datetime, hexadecimal,
+    time, base64, arguments (CLI arguments)
   reads Value to bool, integer, tag, number, decimal, array and object
   reads port from Url
   transforms Url by adding query params
   creates Token and Rule for generic tokenization
   creates tokens from source text using a list of rules
-  reads token properties: text, start, end, kind
-  creates tree from source string and string from source tree
+  reads token properties: start, end, kind
   """
   Bytes types ByteArray
   Time types Time Date DateTime Duration
-  Prove types Tree
 
   type Url is binary
 
@@ -23,24 +22,32 @@ module Parse
 
   type Rule is binary
 
+  type Json is binary
+
+  type Toml is binary
+
+  type Csv is binary
+
+  type Tree is binary
+
 /// Parse a source string into a Value
 creates value(source Source) Value
 binary
 
-/// Parse a TOML string into a Table
-creates toml(source String) Result<Table<Value>, String>
+/// Parse a TOML string into a Value
+creates toml(source String) Result<Value<Toml>, String>
 binary
 
-/// Serialize a Value to TOML string
-reads toml(value Value) String
+/// Tag a Value as TOML for serialization
+creates toml(value Value) Value<Toml>
 binary
 
 /// Parse a JSON string into a Value
-creates json(source String) Result<Value, String>
+creates json(source String) Result<Value<Json>, String>
 binary
 
-/// Serialize a Value to JSON string
-reads json(value Value) String
+/// Tag a Value as JSON for serialization
+creates json(value Value) Value<Json>
 binary
 
 /// Get the tag (type name) of a Value
@@ -91,10 +98,6 @@ binary
 transforms url(source Url, params Table<Value>) Url
 binary
 
-/// Read the host component of a URL
-reads host(url Url) String
-binary
-
 /// Read the port component of a URL (-1 if not set)
 reads port(url Url) Integer
 binary
@@ -127,12 +130,8 @@ binary
 creates arguments(args List<String>) Value
 binary
 
-/// Parse a CSV string into rows of fields
-creates csv(source String) Result<List<List<String>>, String>
-binary
-
-/// Serialize rows of fields to CSV string
-reads csv(rows List<List<String>>) String
+/// Parse a CSV string into a Value
+creates csv(source String) Result<Value<Csv>, String>
 binary
 
 /// Validate a CSV string
@@ -175,10 +174,6 @@ binary
 creates tokens(source String, rules List<Rule>) List<Token>
 binary
 
-/// Get the matched text of a token
-reads text(token Token) String
-binary
-
 /// Get the start position of a token
 reads start(token Token) Integer
 binary
@@ -192,9 +187,5 @@ reads kind(token Token) Integer
 binary
 
 /// Parse Prove source into a syntax tree
-creates tree(source String) Result<Tree, Error>
-binary
-
-/// Extract the full source text from a parsed tree
-creates string(tree Tree) String
+creates tree(source String) Result<Value<Tree>, Error>
 binary

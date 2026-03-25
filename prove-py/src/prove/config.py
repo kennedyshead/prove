@@ -42,6 +42,7 @@ class BuildConfig:
     c_sources: list[str] = field(default_factory=list)
     pre_build: list[list[str]] = field(default_factory=list)
     ccache: bool = True
+    vendor_libs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -120,6 +121,7 @@ def load_config(path: Path) -> ProveConfig:
             c_sources=bld.get("c_sources", []),
             pre_build=bld.get("pre_build", []),
             ccache=bld.get("ccache", True),
+            vendor_libs=bld.get("vendor_libs", []),
         )
 
     if "optimize" in data:

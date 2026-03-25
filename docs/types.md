@@ -17,8 +17,9 @@ Certain types are built into the language and available without explicit import:
 | **Arrays** | `Array<T>` | Fixed-size contiguous array; requires import from `Array` module |
 | **Structural** | `Struct` | Row-polymorphic type accepting any record; constrained with `with` clauses |
 | **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
+| **Phantom-typed** | `Value<Json>`, `Value<Toml>`, `Value<Csv>`, `Value<Tree>` | Format-tagged values; phantom types imported from `Parse` |
 
-These are implicitly available in every module. No import statement needed.
+These are implicitly available in every module. No import statement needed. Phantom type parameters (`Json`, `Toml`, `Csv`, `Tree`) require importing from `Parse types`.
 
 ## Row Polymorphism (`Struct`)
 

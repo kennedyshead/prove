@@ -85,7 +85,12 @@ class MemoizationInfo:
 
 
 class RuntimeDeps:
-    """Tracks which C runtime libraries are required based on stdlib imports."""
+    """Tracks which C runtime libraries are required based on stdlib imports.
+
+    NOTE: This is a fallback mechanism.  The primary linking strategy is
+    usage-based: copy_runtime() extracts prove_* calls from the generated C
+    and links only the libraries that contain those functions.
+    """
 
     def __init__(self) -> None:
         self._libs: set[str] = set()

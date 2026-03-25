@@ -459,7 +459,7 @@ class TestFormatterTypeInference:
             "module Main\n"
             '  narrative: """test"""\n'
             "  System inputs file, outputs console\n"
-            "  Parse creates value object, reads toml, types Value\n"
+            "  Parse creates value object toml, types Value Toml\n"
             "  Table reads keys get, types Table, validates has\n"
             "  Text transforms join\n"
             "\n"
@@ -472,7 +472,7 @@ class TestFormatterTypeInference:
             '    console("done")\n'
         )
         result = _format_with_types(source)
-        assert "doc as Table<Value> = toml(source)!" in result
+        assert "doc as Value<Toml> = toml(source)!" in result
 
     def test_roundtrip_stable_with_types(self):
         """Formatting twice with type inference produces identical output."""

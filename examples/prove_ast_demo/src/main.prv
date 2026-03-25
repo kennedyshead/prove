@@ -2,7 +2,8 @@ module Main
   narrative: """Demonstrates the Prove module for parsing and traversing Prove source code.
     Uses Parse.tree() to parse source into a syntax tree, then walks nodes
     with Prove.root, Prove.children, and Prove.kind.
-    Expected to fail: check, check_md, check_strict, build, build_debug, format_check, format_check_md."""
+    outputs kind by recursive walk
+    """
   System outputs console
   Parse creates tree string
   Prove types Node Tree reads root kind children count line

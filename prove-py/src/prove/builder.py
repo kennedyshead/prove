@@ -439,7 +439,12 @@ def _build_c(
             gen_c_files.append(src_path)
 
     # Copy runtime
-    runtime_c_files = copy_runtime(build_dir, c_sources=c_sources, stdlib_libs=stdlib_libs or None)
+    runtime_c_files = copy_runtime(
+        build_dir,
+        c_sources=c_sources,
+        stdlib_libs=stdlib_libs or None,
+        force_libs=config.build.vendor_libs or None,
+    )
 
     # Find compiler
     cc = find_c_compiler()

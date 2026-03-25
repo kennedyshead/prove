@@ -6,12 +6,15 @@ module Types
   array object number
   reads the Unicode code point of a character
   creates float integer from string
-  reads and converts integer float boolean character value to string
+  creates string from integer float boolean character value byte bytearray
+  creates string from Value<Json> Value<Toml> Value<Csv> Value<Tree> Url Token
   unwrap Option values
   handles error
   """
   Time types Time Date DateTime Clock Duration
-  System types ByteArray
+  Bytes types ByteArray
+  Parse types Json Toml Csv Url Token
+  Prove types Tree
 
 /// Check if a value is a string
 validates string(value String)
@@ -118,11 +121,35 @@ reads string(value Duration) String
 binary
 
 /// Convert a value to a string
-reads string(value Value) String
+creates string(value Value) String
 binary
 
 /// Convert a byte array to a UTF-8 string
 reads string(value ByteArray) String
+binary
+
+/// Serialize a JSON value to a string
+creates string(value Value<Json>) String
+binary
+
+/// Serialize a TOML value to a string
+creates string(value Value<Toml>) String
+binary
+
+/// Serialize a CSV value to a string
+creates string(value Value<Csv>) String
+binary
+
+/// Extract the full source text from a parsed tree
+creates string(tree Value<Tree>) String
+binary
+
+/// Extract the host component of a URL as a string
+creates string(url Url) String
+binary
+
+/// Extract the matched text of a token as a string
+creates string(token Token) String
 binary
 
 /// Get the Unicode code point of a character

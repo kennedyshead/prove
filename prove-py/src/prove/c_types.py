@@ -152,6 +152,14 @@ def map_type(ty: Type) -> CType:
             return CType("Prove_Table*", is_pointer=True, header="prove_table.h")
         if ty.base_name == "Option":
             return CType("Prove_Option", is_pointer=False, header="prove_option.h")
+        if ty.base_name == "Value":
+            if ty.args and isinstance(ty.args[0], PrimitiveType):
+                phantom = ty.args[0].name
+                if phantom == "Tree":
+                    return CType("Prove_Tree", is_pointer=True, header=None)
+                if phantom == "Csv":
+                    return CType("Prove_List*", is_pointer=True, header="prove_list.h")
+            return CType("Prove_Value*", is_pointer=True, header="prove_parse.h")
         return CType(mangle_type_name(ty.base_name), is_pointer=False, header=None)
 
     if isinstance(ty, FunctionType):

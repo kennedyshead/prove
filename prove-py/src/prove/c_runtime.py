@@ -284,6 +284,8 @@ _RUNTIME_FUNCTIONS = {
         "prove_emit_json",
         "prove_validates_json",
         "prove_validates_toml",
+        "prove_tag_json",
+        "prove_tag_toml",
         "prove_creates_value",
         "prove_validates_value",
         "prove_parse_arguments",
@@ -678,20 +680,32 @@ def _extract_function_calls(c_code: str) -> set[str]:
     return calls
 
 
+_VENDOR_LIB_ALIASES: dict[str, str] = {
+    "sdl2": "prove_gui",
+    "tree-sitter": "prove_prove",
+}
+
+
 def copy_runtime(
     build_dir: Path,
     c_sources: list[str] | None = None,
     stdlib_libs: set[str] | None = None,
     *,
     strip_unused: bool = True,
+    force_libs: list[str] | None = None,
 ) -> list[Path]:
     """Copy bundled runtime files to *build_dir*/runtime/.
 
     If *c_sources* is provided and *strip_unused* is True, only copies runtime
-    files that contain functions used in the C sources.
+    files that contain functions used in the C sources.  This is the primary
+    mechanism for usage-based linking.
 
     If *stdlib_libs* is provided, includes runtime files for those stdlib modules
-    regardless of whether they're detected in C code (handles indirect dependencies).
+    as a fallback (handles indirect dependencies from imports).
+
+    If *force_libs* is provided (from prove.toml ``vendor_libs``), those libs are
+    always included.  Accepts friendly names (``"sdl2"``, ``"tree-sitter"``) or
+    raw prove lib names (``"prove_gui"``, ``"prove_prove"``).
 
     Returns the list of .c files (needed for compilation).
     """
@@ -722,6 +736,11 @@ def copy_runtime(
 
     if stdlib_libs:
         needed_libs.update(stdlib_libs)
+
+    if force_libs:
+        for lib in force_libs:
+            lib_name = _VENDOR_LIB_ALIASES.get(lib, lib)
+            needed_libs.add(lib_name)
 
     # Resolve transitive header dependencies: if a library's header
     # includes another library's header, that library must also be copied.

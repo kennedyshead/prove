@@ -7,9 +7,8 @@ module Example
   Expected to fail: check, build.
   """
   System inputs console file outputs console
-  Parse types Value reads json object creates json value validates json
-  Types validates string object value
-  Table types Table
+  Parse types Value reads object creates json value validates json
+  Types creates string validates string object value
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
@@ -67,7 +66,7 @@ from
 transforms dump_user(user User) String
   requires valid value(user)
 from
-    json(value(user))
+    string(value(user))
 
 outputs save(json_data String)!
   requires valid string(json_data)

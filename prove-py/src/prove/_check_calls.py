@@ -435,6 +435,49 @@ class CallCheckMixin:
             resolved = self.symbols.resolve_type(name)
             if resolved is not None:
                 self._used_types.add(name)
+                # Type-check constructor arguments against record fields
+                if isinstance(resolved, RecordType) and resolved.fields:
+                    field_names = list(resolved.fields.keys())
+                    expected_n = len(field_names)
+                    # Single-arg deserialization: Record(structured_data)
+                    # Lazily maps structured data fields to record fields.
+                    # This can fail at runtime, so it produces a failable type.
+                    if arg_count == 1:
+                        actual = self._infer_expr(expr.args[0])
+                        is_structured = (
+                            isinstance(actual, PrimitiveType) and actual.name == "Value"
+                        ) or (
+                            isinstance(actual, GenericInstance)
+                            and actual.base_name in ("Value", "Table")
+                        )
+                        if is_structured:
+                            self._warning(
+                                "W370",
+                                f"deserialization from '{type_name(actual)}' to "
+                                f"'{name}' can fail at runtime — consider using ! "
+                                f"to propagate errors",
+                                expr.span,
+                            )
+                            return resolved
+                    if arg_count != expected_n:
+                        self._error(
+                            "E330",
+                            f"wrong number of arguments: expected {expected_n}, got {arg_count}",
+                            expr.span,
+                        )
+                    else:
+                        for i, fname in enumerate(field_names):
+                            expected = resolved.fields[fname]
+                            actual = (
+                                self._infer_expr(expr.args[i]) if i < len(expr.args) else ERROR_TY
+                            )
+                            if not types_compatible(expected, actual):
+                                self._error(
+                                    "E321",
+                                    f"type mismatch: field '{fname}' expects "
+                                    f"'{type_name(expected)}', got '{type_name(actual)}'",
+                                    expr.args[i].span if i < len(expr.args) else expr.span,
+                                )
                 return resolved
             self._error("E311", f"undefined function '{name}'", expr.span)
             return ERROR_TY

@@ -892,7 +892,7 @@ class TestImplicitValueReturn:
     """Test E395 implicit Value → concrete return type coercion."""
 
     def test_value_return_as_string(self):
-        """E395: function returns Value but declares String."""
+        """E322: function returns Value<Json> but declares String."""
         check_fails(
             "module M\n"
             "  Parse creates json\n"
@@ -901,11 +901,11 @@ class TestImplicitValueReturn:
             "    requires valid json(source)\n"
             "    from\n"
             "        json(source)\n",
-            "E395",
+            "E322",
         )
 
     def test_table_value_return_as_table_string(self):
-        """E395: function returns Table<Value> but declares Table<String>."""
+        """E322: function returns Value<Toml> but declares Table<String>."""
         check_fails(
             "module M\n"
             "  Parse creates toml\n"
@@ -914,18 +914,19 @@ class TestImplicitValueReturn:
             "    requires valid toml(source)\n"
             "    from\n"
             "        toml(source)\n",
-            "E395",
+            "E322",
         )
 
     def test_table_value_return_ok(self):
-        """No E395 when return type matches: Table<Value> → Table<Value>."""
+        """No E395 when return type matches: Value<Toml> → Value<Toml>."""
         from tests.helpers import check_all
 
         diags = check_all(
             "module M\n"
+            "  Parse types Toml\n"
             "  Parse creates toml\n"
             "\n"
-            "transforms config(source String) Table<Value>\n"
+            "transforms config(source String) Value<Toml>\n"
             "    requires valid toml(source)\n"
             "    from\n"
             "        toml(source)\n",
@@ -957,11 +958,11 @@ class TestValueCoercion:
         """I311: Value → Table<Value> coercion emits info diagnostic."""
         check_info(
             "module M\n"
-            "  Parse creates json\n"
+            "  Parse creates value\n"
             "\n"
-            "outputs run(source String) Unit!\n"
+            "outputs run(source Source) Unit!\n"
             "    from\n"
-            "        conf as Table<Value> = json(source)!\n"
+            "        conf as Table<Value> = value(source)\n"
             "        conf\n",
             "I311",
         )
@@ -970,11 +971,11 @@ class TestValueCoercion:
         """I311: Value → String coercion emits info diagnostic."""
         check_info(
             "module M\n"
-            "  Parse creates json\n"
+            "  Parse creates value\n"
             "\n"
-            "outputs run(source String) Unit!\n"
+            "outputs run(source Source) Unit!\n"
             "    from\n"
-            "        val as String = json(source)!\n"
+            "        val as String = value(source)\n"
             "        val\n",
             "I311",
         )
@@ -985,11 +986,11 @@ class TestValueCoercion:
 
         diags = check_all(
             "module M\n"
-            "  Parse creates json\n"
+            "  Parse creates value\n"
             "\n"
-            "outputs run(source String) Unit!\n"
+            "outputs run(source Source) Unit!\n"
             "    from\n"
-            "        val as Value = json(source)!\n"
+            "        val as Value = value(source)\n"
             "        val\n",
         )
         assert not any(d.code == "I311" for d in diags)

@@ -1,5 +1,5 @@
 module Config
-  narrative: """Inputs a prove.toml and transforms it to a Config type"""
+  narrative: """Inputs a prove.toml and transforms it to Config struct"""
   Parse creates toml validates toml
   System inputs file
 
@@ -39,7 +39,7 @@ from
     _config(load)
 
 /// Parse the toml data to Config struct
-transforms _config(data Result<String, Error>) Config
+transforms config(data Result<String, Error>) Config!
   requires valid toml(data)
 from
     Config(toml(data))

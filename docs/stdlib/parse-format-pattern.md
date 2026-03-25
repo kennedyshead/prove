@@ -10,7 +10,7 @@ keywords: Prove Parse, Prove Format, Prove Pattern, JSON, TOML, regex, formattin
 
 **Module:** `Parse` — encoding and decoding of structured data formats, and generic tokenization.
 
-Parse uses a universal `Value` type (binary) that represents any parsed value. The same two-function pattern applies to each format: `creates` to decode, `reads` to encode, `validates` to check syntax. Supported formats: JSON, TOML, URL, Base64, CSV.
+Parse uses phantom-typed `Value<T>` types to track the format of parsed data. Each format has a phantom marker type (`Json`, `Toml`, `Csv`, `Tree`) that tags the Value at the type level while sharing the same runtime representation. The pattern: `creates` to decode (returns `Value<T>`), `creates` to tag (wraps plain `Value` as `Value<T>`), `validates` to check syntax. Serialization back to strings lives in the [Types module](math-types.md#format-serialization) as `creates string`.
 
 Parse also provides a generic `Token` and `Rule` system for building custom tokenizers. Define rules as regex patterns with kind tags, then tokenize any source text into a `List<Token>`.
 
@@ -24,11 +24,11 @@ Parse also provides a generic `Token` and `Rule` system for building custom toke
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `json(source String) Result<Value, String>` | Decode JSON to Value |
-| `reads` | `json(value Value) String` | Encode Value to JSON |
+| `creates` | `json(source String) Result<Value<Json>, String>` | Decode JSON string to Value |
+| `creates` | `json(value Value) Value<Json>` | Tag a Value as JSON for serialization |
 | `validates` | `json(source String)` | True if source is valid JSON |
-| `creates` | `toml(source String) Result<Table<Value>, String>` | Decode TOML to Table |
-| `reads` | `toml(value Value) String` | Encode Value to TOML |
+| `creates` | `toml(source String) Result<Value<Toml>, String>` | Decode TOML string to Value |
+| `creates` | `toml(value Value) Value<Toml>` | Tag a Value as TOML for serialization |
 | `validates` | `toml(source String)` | True if source is valid TOML |
 
 ### Value Accessors
@@ -54,7 +54,6 @@ Defines a binary `Url` type for parsed URL components.
 | `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
 | `validates` | `url(raw String)` | True if string is a valid URL |
 | `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
-| `reads` | `host(url Url) String` | Read the host component of a URL |
 | `reads` | `port(url Url) Integer` | Read the port component (-1 if not set) |
 
 ### Base64
@@ -67,12 +66,11 @@ Defines a binary `Url` type for parsed URL components.
 
 ### CSV
 
-RFC 4180-compliant CSV parsing. Returns raw `List<List<String>>` — no type inference.
+RFC 4180-compliant CSV parsing. Returns `Value<Csv>`. Serialize back to string via `Types.string`.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `csv(source String) Result<List<List<String>>, String>` | Parse CSV string into rows of fields |
-| `reads` | `csv(rows List<List<String>>) String` | Serialize rows of fields to CSV string |
+| `creates` | `csv(source String) Result<Value<Csv>, String>` | Parse CSV string into a Value |
 | `validates` | `csv(source String)` | True if source is valid CSV |
 
 ### Tokenization
@@ -86,9 +84,10 @@ Defines binary types `Token` (a text span with position and kind tag) and `Rule`
 
 ### Token Accessors
 
+Extract token text via `Types.string(token)`. Integer accessors remain here.
+
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `text(token Token) String` | Matched text of a token |
 | `reads` | `start(token Token) Integer` | Start position in source |
 | `reads` | `end(token Token) Integer` | End position in source |
 | `reads` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
@@ -97,22 +96,35 @@ Characters that match no rule produce tokens with kind `-1`.
 
 ### Syntax Trees
 
-Parse Prove source into a syntax tree backed by tree-sitter. See the [Prove module](prove.md) for tree traversal accessors.
+Parse Prove source into a syntax tree backed by tree-sitter. See the [Prove module](prove.md) for tree traversal accessors. Extract source text via `Types.string(tree)`.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `tree(source String) Result<Tree, Error>` | Parse Prove source into a syntax tree |
-| `creates` | `string(tree Tree) String` | Extract the full source text from a tree |
+| `creates` | `tree(source String) Result<Value<Tree>, Error>` | Parse Prove source into a syntax tree |
+
+### Phantom Types
+
+Parse defines four phantom marker types used as type parameters for `Value<T>`:
+
+| Type | Used in | Description |
+|------|---------|-------------|
+| `Json` | `Value<Json>` | JSON-formatted data |
+| `Toml` | `Value<Toml>` | TOML-formatted data |
+| `Csv` | `Value<Csv>` | CSV-formatted data |
+| `Tree` | `Value<Tree>` | Parsed syntax tree |
+
+Plain `Value` (unparameterized) is compatible with any `Value<T>` — the phantom type parameter is opt-in.
 
 ```prove
-  Parse creates toml url tokens rule reads object url text start end kind validates url base64
-  Parse types Value Url Token Rule
+  Parse creates toml json url tokens rule reads object url text start end kind validates url base64
+  Parse types Value Toml Json Url Token Rule
+  Types creates string
   Table reads keys get types Table
 
 main() Result<Unit, Error>!
 from
     source as String = System.file("config.toml")!
-    doc as Value = Parse.toml(source)!
+    doc as Value<Toml> = Parse.toml(source)!
     root as Table<Value> = Parse.object(doc)
     names as List<String> = Table.keys(root)
     System.console("Keys: " + join(names, ", "))

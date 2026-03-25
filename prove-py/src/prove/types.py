@@ -420,6 +420,12 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     if isinstance(expected, PrimitiveType) and expected.name == "Value":
         if is_json_serializable(actual):
             return True
+        # Plain Value is compatible with Value<T> (phantom-typed values)
+        if isinstance(actual, GenericInstance) and actual.base_name == "Value":
+            return True
+    if isinstance(actual, PrimitiveType) and actual.name == "Value":
+        if isinstance(expected, GenericInstance) and expected.base_name == "Value":
+            return True
 
     # Unwrap refinement types so Price (Decimal where ...) is
     # compatible with Decimal and with other Decimal refinements.

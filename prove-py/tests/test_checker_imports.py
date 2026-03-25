@@ -132,19 +132,19 @@ class TestCreatesValue:
         )
 
     def test_creates_value_pipe_to_json(self):
-        """user |> value |> json pattern should type-check."""
+        """user |> value |> json |> string pattern should type-check."""
         check(
             "module Main\n"
             "  Parse types Value\n"
-            "  Parse creates value\n"
-            "  Parse reads json\n"
+            "  Parse creates value json\n"
+            "  Types creates string\n"
             "  type User is\n"
             "    id Integer\n"
             "    name String\n"
             "\n"
             "reads render(u User) String\n"
             "    from\n"
-            "        u |> value |> json\n"
+            "        u |> value |> json |> string\n"
         )
 
     def test_creates_value_rejects_non_serializable(self):
