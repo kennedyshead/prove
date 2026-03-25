@@ -47,7 +47,7 @@ from
             debug as Boolean = contains(arguments, "--debug")
             no_mutate as Boolean = contains(arguments, "--no-mutate")
             config as Config = config()!
-            source as List<SourceFile> = source(config)!
+            source as List<Option<SourceFile>> = source(config)!
             pybuild(cwd(), debug, no_mutate, source)
             info(f"{config.package.name}{config.package.version}")&
 

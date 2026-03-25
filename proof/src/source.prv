@@ -3,8 +3,7 @@ module Source
   Reads all source content through dir inputs
   """
   Config types Config
-  System validates file inputs dir file
-  Text validates ends
+  System validates file inputs dir file outputs console
   Parse types Token creates tokens tree
   Prove types Tree
 
@@ -14,14 +13,17 @@ module Source
     lexed List<Token>
     source Value<Tree>
 
-inputs source_file(path String) SourceFile!
+inputs source_file(path String) Option<SourceFile>
   requires valid ends(path, ".prv") && valid file(path)
 from
     content as String = file(path)
-    lexed as List<Token> = tokens(content, [])
-    source as Value<Tree> = tree(content)!
-    SourceFile(path, content, lexed, source)
+    source as Result<Value<Tree>, Error> = tree(content)
+    match source
+        Ok(source) =>
+            lexed as List<Token> = tokens(content, [])
+            SourceFile(path, content, lexed, source)
+        Err(error) => console(f"{error}")
 
-inputs source(config Config) List<SourceFile>!
+inputs source(config Config) List<Option<SourceFile>>!
 from
-    map(dir("src/"), |value| source_file(value.path)!)
+    map(dir("src/"), |value| source_file(value.path))

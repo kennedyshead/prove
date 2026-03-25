@@ -212,10 +212,10 @@ class TestOptionRefinementCompat:
         option_email = GenericInstance(base_name="Option", args=[email])
         assert types_compatible(option_email, STRING) is True
 
-    def test_option_plain_not_compat(self):
-        """String should NOT be assignable to Option<String> (no refinement)."""
+    def test_option_plain_compat(self):
+        """String IS assignable to Option<String> (implicit Some wrapping)."""
         option_string = GenericInstance(base_name="Option", args=[STRING])
-        assert types_compatible(option_string, STRING) is False
+        assert types_compatible(option_string, STRING) is True
 
     def test_option_refinement_wrong_base(self):
         """Integer should NOT be assignable to Option<Email> where Email = String."""

@@ -53,6 +53,7 @@ from prove.types import (
     RecordType,
     Type,
     UnitType,
+    types_compatible,
 )
 
 
@@ -751,6 +752,23 @@ class ExprEmitterMixin:
         if not isinstance(subj_type, AlgebraicType):
             # Non-algebraic match: emit as if/else-if chain
             result_type = self._infer_match_result_type(m)
+
+            # Promote to Option<T> when function return is Option<T> and
+            # arms produce bare T / Unit (implicit Option wrapping).
+            _option_wrap = False
+            if (
+                isinstance(self._current_func_return, GenericInstance)
+                and self._current_func_return.base_name == "Option"
+                and self._current_func_return.args
+                and not isinstance(result_type, UnitType)
+                and not (
+                    isinstance(result_type, GenericInstance) and result_type.base_name == "Option"
+                )
+                and types_compatible(self._current_func_return.args[0], result_type)
+            ):
+                result_type = self._current_func_return
+                _option_wrap = True
+
             ct = map_type(result_type)
             is_unit = isinstance(result_type, UnitType)
             tmp = "" if is_unit else self._tmp()
@@ -770,15 +788,7 @@ class ExprEmitterMixin:
                         bct = map_type(subj_type)
                         self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
                         self._locals[arm.pattern.name] = subj_type
-                    for i, s in enumerate(arm.body):
-                        if not is_unit and i == len(arm.body) - 1:
-                            e = self._stmt_expr(s)
-                            if e is not None:
-                                self._line(f"{tmp} = {self._emit_expr(e)};")
-                            else:
-                                self._emit_stmt(s)
-                        else:
-                            self._emit_stmt(s)
+                    self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                     self._indent -= 1
                     self._line("}")
                 elif isinstance(arm.pattern, LiteralPattern):
@@ -799,15 +809,7 @@ class ExprEmitterMixin:
                     keyword = "if" if first else "} else if"
                     self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
-                    for i, s in enumerate(arm.body):
-                        if not is_unit and i == len(arm.body) - 1:
-                            e = self._stmt_expr(s)
-                            if e is not None:
-                                self._line(f"{tmp} = {self._emit_expr(e)};")
-                            else:
-                                self._emit_stmt(s)
-                        else:
-                            self._emit_stmt(s)
+                    self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                     self._indent -= 1
                 elif isinstance(arm.pattern, VariantPattern):
                     vp = arm.pattern
@@ -832,15 +834,7 @@ class ExprEmitterMixin:
                                 else:
                                     self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
                                 self._locals[bind_name] = inner_ty
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                         elif vp.name == "None":
                             # None variant -- treated as else
@@ -849,15 +843,7 @@ class ExprEmitterMixin:
                             else:
                                 self._line("} else {")
                             self._indent += 1
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                             self._line("}")
                     elif isinstance(subj_type, GenericInstance) and subj_type.base_name == "Result":
@@ -881,15 +867,7 @@ class ExprEmitterMixin:
                                 else:
                                     self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
                                 self._locals[bind_name] = inner_ty
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                         elif vp.name == "Err":
                             keyword = "if" if first else "} else if"
@@ -900,15 +878,7 @@ class ExprEmitterMixin:
                                 self._line(f"Prove_String* {bind_name} = {subj}.error;")
                                 err_ty = subj_type.args[1] if len(subj_type.args) > 1 else ERROR_TY
                                 self._locals[bind_name] = err_ty
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                     elif map_type(subj_type).is_pointer:
                         if vp.name == "Some":
@@ -924,15 +894,7 @@ class ExprEmitterMixin:
                                     sct = map_type(subj_type)
                                     self._line(f"{sct.decl} {bind_name} = {subj};")
                                 self._locals[bind_name] = subj_type
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                         else:
                             # None or other -- else branch
@@ -941,29 +903,13 @@ class ExprEmitterMixin:
                             else:
                                 self._line("} else {")
                             self._indent += 1
-                            for i, s in enumerate(arm.body):
-                                if not is_unit and i == len(arm.body) - 1:
-                                    e = self._stmt_expr(s)
-                                    if e is not None:
-                                        self._line(f"{tmp} = {self._emit_expr(e)};")
-                                    else:
-                                        self._emit_stmt(s)
-                                else:
-                                    self._emit_stmt(s)
+                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                             self._line("}")
                     elif isinstance(subj_type, RecordType) and vp.name == subj_type.name:
                         # Record type always matches its own name -- unconditional.
                         # Remaining arms are dead code, so break after emitting.
-                        for i, s in enumerate(arm.body):
-                            if not is_unit and i == len(arm.body) - 1:
-                                e = self._stmt_expr(s)
-                                if e is not None:
-                                    self._line(f"{tmp} = {self._emit_expr(e)};")
-                                else:
-                                    self._emit_stmt(s)
-                            else:
-                                self._emit_stmt(s)
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                         break
                 first = False
 
@@ -1071,6 +1017,56 @@ class ExprEmitterMixin:
         self._locals = saved_locals
 
         return result_tmp if not isinstance(result_type, UnitType) else "/* match */"
+
+    def _emit_arm_body(
+        self,
+        arm_body: list,
+        tmp: str,
+        is_unit: bool,
+        option_wrap: bool,
+    ) -> None:
+        """Emit match arm body statements, assigning last value to *tmp*.
+
+        When *option_wrap* is True, bare values are wrapped with
+        ``prove_option_some()`` and Unit-producing statements produce
+        ``prove_option_none()``.
+        """
+        for i, s in enumerate(arm_body):
+            if not is_unit and i == len(arm_body) - 1:
+                e = self._stmt_expr(s)
+                if e is not None:
+                    val = self._emit_expr(e)
+                    if option_wrap:
+                        arm_ty = self._infer_expr_type(e)
+                        if isinstance(arm_ty, UnitType):
+                            self._line(f"{val};")
+                            self._line(f"{tmp} = prove_option_none();")
+                        else:
+                            ct_inner = map_type(arm_ty)
+                            if ct_inner.is_pointer:
+                                self._line(f"{tmp} = prove_option_some((Prove_Value*){val});")
+                            elif isinstance(arm_ty, RecordType):
+                                # Struct: heap-allocate, copy, pass pointer
+                                heap = self._tmp()
+                                self._line(
+                                    f"{ct_inner.decl}* {heap} = ({ct_inner.decl}*)"
+                                    f"prove_region_alloc(prove_global_region(),"
+                                    f" sizeof({ct_inner.decl}));"
+                                )
+                                self._line(f"*{heap} = {val};")
+                                self._line(f"{tmp} = prove_option_some((Prove_Value*){heap});")
+                            else:
+                                self._line(
+                                    f"{tmp} = prove_option_some((Prove_Value*)(intptr_t){val});"
+                                )
+                    else:
+                        self._line(f"{tmp} = {val};")
+                else:
+                    self._emit_stmt(s)
+                    if option_wrap:
+                        self._line(f"{tmp} = prove_option_none();")
+            else:
+                self._emit_stmt(s)
 
     def _infer_match_result_type(self, m: MatchExpr) -> Type:
         """Infer the result type of a match expression."""
@@ -1185,6 +1181,11 @@ class ExprEmitterMixin:
                     unwrapped = f"{cast}{val}.value"
                     c_name = self._to_string_func(inner)
                     parts.append(f"{c_name}({unwrapped})")
+                elif isinstance(part_type, ErrorType) or (
+                    isinstance(part_type, PrimitiveType) and part_type.name == "Error"
+                ):
+                    # Error is Prove_String* — use directly
+                    parts.append(val)
                 else:
                     parts.append(f"prove_string_from_int({val})")
 

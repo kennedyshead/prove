@@ -1108,6 +1108,20 @@ class CSTConverter:
                     stmt = self._convert_body_item(child)
                     if stmt is not None:
                         body.append(stmt)
+                        # If we just appended a MatchExpr, start tracking so
+                        # subsequent orphan arms/statements can be merged into it.
+                        if isinstance(stmt, MatchExpr) and stmt.arms:
+                            last_match_idx = len(body) - 1
+                            arm_nodes = self._children_of_type(child, "match_arm")
+                            if arm_nodes:
+                                pat_node = self._child(arm_nodes[-1], "pattern")
+                                last_arm_col = (
+                                    pat_node.start_point[1]
+                                    if pat_node
+                                    else arm_nodes[-1].start_point[1]
+                                )
+                            else:
+                                last_arm_col = child_col
 
         return body
 

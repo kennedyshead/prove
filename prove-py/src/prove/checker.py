@@ -3190,15 +3190,33 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 break
         if value_type is not None:
             if cur_verb not in ("listens", "streams", "renders"):
-                result_type = value_type
-                for arm_type, arm in arm_types:  # type: ignore
-                    if isinstance(arm_type, UnitType):
-                        self._error(
-                            "E400",
-                            f"match arm returns Unit but other arms return "
-                            f"'{type_name(value_type)}'",
-                            arm.span,
-                        )
+                # Check if function return is Option<T> — mixed T/Unit arms
+                # are valid (T auto-wraps to Some, Unit becomes None).
+                fn_ret: Type | None = None
+                if (
+                    self._current_function
+                    and isinstance(self._current_function, FunctionDef)
+                    and self._current_function.return_type
+                ):
+                    fn_ret = self._resolve_type_expr(self._current_function.return_type)
+                is_option_ret = (
+                    isinstance(fn_ret, GenericInstance)
+                    and fn_ret.base_name == "Option"
+                    and fn_ret.args
+                    and types_compatible(fn_ret.args[0], value_type)
+                )
+                if is_option_ret:
+                    result_type = fn_ret  # type: ignore[assignment]
+                else:
+                    result_type = value_type
+                    for arm_type, arm in arm_types:  # type: ignore
+                        if isinstance(arm_type, UnitType):
+                            self._error(
+                                "E400",
+                                f"match arm returns Unit but other arms return "
+                                f"'{type_name(value_type)}'",
+                                arm.span,
+                            )
 
         return result_type
 

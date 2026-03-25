@@ -367,7 +367,48 @@ class StmtEmitterMixin:
                                     opt_ct = map_type(expr_type)
                                     self._line(f"{opt_ct.decl} {opt_tmp} = {emit_val};")
                                     emit_val = f"({opt_tmp}.tag == 1)"
-                            self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
+                            # Implicit Option wrapping: bare T → Some(T), Unit → None
+                            # Skip for MatchExpr — _emit_match_expr already
+                            # handles promotion and wrapping internally.
+                            _is_match = isinstance(expr, MatchExpr)
+                            if (
+                                not _is_match
+                                and isinstance(ret_type, GenericInstance)
+                                and ret_type.base_name == "Option"
+                                and ret_type.args
+                                and not (
+                                    isinstance(expr_type, GenericInstance)
+                                    and expr_type.base_name == "Option"
+                                )
+                            ):
+                                if isinstance(expr_type, UnitType):
+                                    self._line(f"{ret_ct.decl} {ret_tmp} = prove_option_none();")
+                                else:
+                                    inner_ct = map_type(expr_type)
+                                    if inner_ct.is_pointer:
+                                        self._line(
+                                            f"{ret_ct.decl} {ret_tmp} ="
+                                            f" prove_option_some((Prove_Value*){emit_val});"
+                                        )
+                                    elif isinstance(expr_type, RecordType):
+                                        heap = self._tmp()
+                                        self._line(
+                                            f"{inner_ct.decl}* {heap} = ({inner_ct.decl}*)"
+                                            f"prove_region_alloc(prove_global_region(),"
+                                            f" sizeof({inner_ct.decl}));"
+                                        )
+                                        self._line(f"*{heap} = {emit_val};")
+                                        self._line(
+                                            f"{ret_ct.decl} {ret_tmp} ="
+                                            f" prove_option_some((Prove_Value*){heap});"
+                                        )
+                                    else:
+                                        some_call = (
+                                            f"prove_option_some((Prove_Value*)(intptr_t){emit_val})"
+                                        )
+                                        self._line(f"{ret_ct.decl} {ret_tmp} = {some_call};")
+                            else:
+                                self._line(f"{ret_ct.decl} {ret_tmp} = {emit_val};")
                         self._emit_releases(ret_tmp)
                         self._emit_region_exit()
                         self._line(f"return {ret_tmp};")

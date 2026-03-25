@@ -443,11 +443,17 @@ def types_compatible(expected: Type, actual: Type) -> bool:
 
     # Unwrap refinement types so Price (Decimal where ...) is
     # compatible with Decimal and with other Decimal refinements.
-    # Allow Value → Option<Refinement(Value)>: when the Option's inner type is a
-    # RefinementType whose base matches actual, the assignment is valid
-    # (Option wraps the boundary-failure case).
+    # Option<T> <- T: bare value auto-wraps to Some(T)
+    # Option<T> <- Unit: auto-converts to None
     if isinstance(expected, GenericInstance) and expected.base_name == "Option" and expected.args:
+        if isinstance(actual, UnitType):
+            return True
         inner = expected.args[0]
+        if types_compatible(inner, actual):
+            return True
+        # Allow Value → Option<Refinement(Value)>: when the Option's inner type is a
+        # RefinementType whose base matches actual, the assignment is valid
+        # (Option wraps the boundary-failure case).
         if isinstance(inner, RefinementType) and types_compatible(inner.base, actual):
             return True
     expected = _unwrap_refinement(expected)
