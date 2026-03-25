@@ -451,14 +451,9 @@ class CallCheckMixin:
                             and actual.base_name in ("Value", "Table")
                         )
                         if is_structured:
-                            self._warning(
-                                "W370",
-                                f"deserialization from '{type_name(actual)}' to "
-                                f"'{name}' can fail at runtime — consider using ! "
-                                f"to propagate errors",
-                                expr.span,
-                            )
-                            return resolved
+                            from prove.types import EffectType
+
+                            return EffectType(resolved, frozenset({"Fail"}))
                     if arg_count != expected_n:
                         self._error(
                             "E330",
