@@ -23,49 +23,6 @@ V1.0 has shipped. V2.0 planning is underway.
 
 ---
 
-## Released
-
-### V1.2 — March 2026
-
-Verb semantic guarantees, type system improvements, and compiler optimizations.
-
-- Verb consistency overhaul: enforced strict verb rules across all 22 stdlib modules (~105 corrections)
-- Verb-aware optimizer: inlining heuristics and region scope analysis driven by verb semantics
-- Recursive variant types (`type Tree is Leaf(Integer) | Branch(Tree, Tree)`) with mutual recursion
-- `Value<T>` phantom types tracking data format at the type level with usage-based linking
-- Failable record deserialization with `!` propagation via `transforms` verb
-- `Decimal` type parity with Float across Math, Sequence, Array, and Types
-- Generic tokenization (`Parse.rule()`, `Parse.tokens()`) and Prove AST module (`Parse.tree()`)
-- Tree-sitter grammar unification: `grammar.js` as single source of truth
-- Unified `parse()` facade replacing direct Lexer+Parser usage
-
-### V1.1 — March 2026
-
-Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
-
-- `attached`, `detached`, `listens`, and `renders` async verbs with `prove_coro` stackful coroutines
-- Terminal, UI, and Graphic stdlib modules (TUI via ANSI, GUI via SDL2 + Nuklear)
-- `proof` CLI — unified binary: `proof check`, `proof build`, `proof test`, `proof format`, `proof new`
-- Compound assignment operators (`+=`, `-=`, `*=`, `/=`), `constants` import verb, `LookupPattern` matching
-- Cross-platform release pipeline with `curl | sh` installer (Linux x86_64, macOS aarch64)
-- Go-to-definition in the LSP (local vars, params, imports, cross-file)
-- Tree-sitter and Pygments grammar updates for async verbs and constants
-- 22 stdlib modules total (added Terminal, UI, Graphic)
-
-### V1.0 — March 2026
-
-The Python bootstrap compiler is complete and released as the reference implementation.
-
-- Full compiler pipeline: lex → parse → type-check → emit C → native binary
-- 19 stdlib modules (plus aliases): Character, Text, Table, Array, System, Parse, Math, Types, List, Path, Pattern, Format, Random, Time, Bytes, Hash, Log, Network, Language
-- Checker with refinement types, contracts (`requires`/`ensures`/`explain`/`know`/`assume`/`believe`), intent coverage
-- 13-pass AST optimizer (TCO, dead code elimination, iterator fusion, memoization, escape analysis, etc.)
-- LSP with ML-powered n-gram completions and intent-driven stub generation
-- Mutation testing, compile-time evaluation, formatter, lint/diagnostics system
-- CI/CD pipeline with automated builds, tests, and releases
-
----
-
 ## Proposed
 
 ### V1.3 — Package Manager
@@ -128,6 +85,49 @@ The compiler diffs the previous version, reads the commit message, and verifies 
 
 Rewrite the compiler in Prove. The V1.0 Python bootstrap compiles it,
 the resulting binary recompiles itself, and both outputs must match.
+
+---
+
+## Released
+
+### V1.2 — March 2026
+
+Verb semantic guarantees, type system improvements, and compiler optimizations.
+
+- Verb consistency overhaul: enforced strict verb rules across all 22 stdlib modules (~105 corrections)
+- Verb-aware optimizer: inlining heuristics and region scope analysis driven by verb semantics
+- Recursive variant types (`type Tree is Leaf(Integer) | Branch(Tree, Tree)`) with mutual recursion
+- `Value<T>` phantom types tracking data format at the type level with usage-based linking
+- Failable record deserialization with `!` propagation via `transforms` verb
+- `Decimal` type parity with Float across Math, Sequence, Array, and Types
+- Generic tokenization (`Parse.rule()`, `Parse.tokens()`) and Prove AST module (`Parse.tree()`)
+- Tree-sitter grammar unification: `grammar.js` as single source of truth
+- Unified `parse()` facade replacing direct Lexer+Parser usage
+
+### V1.1 — March 2026
+
+Structured concurrency, terminal UI, GUI, and the `proof` CLI wrapper.
+
+- `attached`, `detached`, `listens`, and `renders` async verbs with `prove_coro` stackful coroutines
+- Terminal, UI, and Graphic stdlib modules (TUI via ANSI, GUI via SDL2 + Nuklear)
+- `proof` CLI — unified binary: `proof check`, `proof build`, `proof test`, `proof format`, `proof new`
+- Compound assignment operators (`+=`, `-=`, `*=`, `/=`), `constants` import verb, `LookupPattern` matching
+- Cross-platform release pipeline with `curl | sh` installer (Linux x86_64, macOS aarch64)
+- Go-to-definition in the LSP (local vars, params, imports, cross-file)
+- Tree-sitter and Pygments grammar updates for async verbs and constants
+- 22 stdlib modules total (added Terminal, UI, Graphic)
+
+### V1.0 — March 2026
+
+The Python bootstrap compiler is complete and released as the reference implementation.
+
+- Full compiler pipeline: lex → parse → type-check → emit C → native binary
+- 19 stdlib modules (plus aliases): Character, Text, Table, Array, System, Parse, Math, Types, List, Path, Pattern, Format, Random, Time, Bytes, Hash, Log, Network, Language
+- Checker with refinement types, contracts (`requires`/`ensures`/`explain`/`know`/`assume`/`believe`), intent coverage
+- 13-pass AST optimizer (TCO, dead code elimination, iterator fusion, memoization, escape analysis, etc.)
+- LSP with ML-powered n-gram completions and intent-driven stub generation
+- Mutation testing, compile-time evaluation, formatter, lint/diagnostics system
+- CI/CD pipeline with automated builds, tests, and releases
 
 ---
 
