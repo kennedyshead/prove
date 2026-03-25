@@ -187,7 +187,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-**Prove v1.1.0 is released.** Adds structured concurrency (`attached`, `detached`, `listens`, `renders` verbs), Terminal TUI and Graphic GUI stdlib modules, and the `proof` CLI wrapper. The standard library now has 22 modules. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
+**Prove v1.2.0 is released.** Enforces strict verb semantic guarantees (`reads` never allocates, `creates` always allocates, `transforms` is the only failable pure verb), adds recursive variant types, `Value<T>` phantom types, full Decimal parity, generic tokenization, and Prove AST access via tree-sitter. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
 
 ## Repository
 
