@@ -1,15 +1,15 @@
 module Main
   narrative: """Read a TOML file and print its content."""
   System inputs file outputs console
-  Parse types Value reads object creates toml
-  Table types Table reads keys
+  Parse types Value creates toml
+  Table types Table reads keys creates table
   Text transforms join
 
 main() Result<Unit, Error>!
 from
     source as String = file("config.toml")!
     doc as Value = toml(source)!
-    root as Table<Value> = object(doc)
+    root as Table<Value> = table(doc)
     names as List<String> = keys(root)
     console("Parsed TOML keys:")
     System.console("Keys: " + join(names, ", "))

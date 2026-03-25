@@ -2,7 +2,7 @@ module Table
   narrative: """
   Hash table from String keys to values.
 
-  creates new Table
+  creates new Table and table from Value
   validates if table has key
   transforms table with add and remove
   reads keys, values, length and get aa single value from key
@@ -38,4 +38,8 @@ binary
 
 /// Get the number of entries in a table
 reads length(table Table<Value>) Integer
+binary
+
+/// Extract object content from a Value
+creates table(value Value) Table<Value>
 binary

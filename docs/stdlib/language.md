@@ -59,8 +59,19 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 | `reads` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
 | `reads` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
 
+### Token Accessors
+
+Access properties of `Token` values produced by `Parse.tokens()`. Extract token text via `Types.string(token)`.
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `start(token Token) Integer` | Start position in source |
+| `reads` | `end(token Token) Integer` | End position in source |
+| `reads` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
+
 ```prove
-  Language reads words distance similarity keywords transforms stem normalize
+  Language reads words distance similarity keywords start end kind transforms stem normalize
+  Parse types Token
 
 reads find_similar(query String, candidates List<String>) List<String>
 from

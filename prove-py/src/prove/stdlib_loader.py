@@ -204,6 +204,7 @@ _register_module(
         ("reads", "keys"): "prove_table_keys",
         ("reads", "values"): "prove_table_values",
         ("reads", "length"): "prove_table_length",
+        ("creates", "table"): "prove_value_as_object",
     },
 )
 
@@ -296,6 +297,7 @@ _register_module(
         ("transforms", "sort", "List<Float>"): "prove_list_ops_sort_float",
         ("transforms", "sort", "List<Decimal>"): "prove_list_ops_sort_float",
         ("creates", "list", "Value<Csv>"): "prove_csv_as_list",
+        ("creates", "list", "Value"): "prove_value_as_array",
         ("creates", "range", "Integer_Integer_Integer"): "prove_list_ops_range_step",
         # Array functions
         ("creates", "array", "Integer_Boolean"): "prove_array_new_bool",
@@ -484,6 +486,9 @@ _register_module(
         ("creates", "string", "Token"): "prove_parse_token_text",
         ("creates", "integer", "Boolean"): "prove_convert_integer_bool",
         ("creates", "integer", "Value"): "prove_value_as_number",
+        ("creates", "float", "Value"): "prove_value_as_decimal",
+        ("creates", "decimal", "Value"): "prove_value_as_decimal",
+        ("creates", "boolean", "Value"): "prove_value_as_bool",
         ("creates", "boolean", "Integer"): "prove_convert_boolean_int",
         ("creates", "boolean", "String"): "prove_convert_boolean_str",
         ("creates", "character", "Integer"): "prove_convert_character",
@@ -644,10 +649,6 @@ _register_module(
         ("creates", "toml"): "prove_parse_toml",
         ("creates", "json"): "prove_parse_json",
         ("reads", "tag"): "prove_value_tag",
-        ("reads", "decimal"): "prove_value_as_decimal",
-        ("reads", "bool"): "prove_value_as_bool",
-        ("reads", "array"): "prove_value_as_array",
-        ("reads", "object"): "prove_value_as_object",
         ("validates", "json"): "prove_validates_json",
         ("validates", "toml"): "prove_validates_toml",
         ("creates", "value"): "prove_creates_value",
@@ -674,9 +675,6 @@ _register_module(
         ("creates", "duration"): "prove_time_parse_duration",
         ("creates", "rule"): "prove_parse_rule",
         ("creates", "tokens"): "prove_parse_tokens",
-        ("reads", "start"): "prove_parse_token_start",
-        ("reads", "end"): "prove_parse_token_end",
-        ("reads", "kind"): "prove_parse_token_kind",
         ("creates", "tree"): "prove_parse_tree",
     },
     overloads={
@@ -684,9 +682,6 @@ _register_module(
         ("creates", "json", "Value"): "prove_tag_json",
         ("creates", "toml", "String"): "prove_parse_toml",
         ("creates", "toml", "Value"): "prove_tag_toml",
-        ("reads", "start", "Token"): "prove_parse_token_start",
-        ("reads", "end", "Token"): "prove_parse_token_end",
-        ("reads", "kind", "Token"): "prove_parse_token_kind",
     },
 )
 
@@ -761,6 +756,14 @@ _register_module(
         ("transforms", "without_stopwords"): "prove_language_without_stopwords",
         ("reads", "frequency"): "prove_language_frequency",
         ("reads", "keywords"): "prove_language_keywords",
+        ("reads", "start"): "prove_parse_token_start",
+        ("reads", "end"): "prove_parse_token_end",
+        ("reads", "kind"): "prove_parse_token_kind",
+    },
+    overloads={
+        ("reads", "start", "Token"): "prove_parse_token_start",
+        ("reads", "end", "Token"): "prove_parse_token_end",
+        ("reads", "kind", "Token"): "prove_parse_token_kind",
     },
 )
 

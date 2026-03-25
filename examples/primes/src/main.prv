@@ -12,9 +12,8 @@ module Main
   Sequence reads get length creates array transforms set
   Text reads length
   Character reads at
-  Table types Table reads keys get creates new validates has transforms add
-  Types reads string code unwrap
-  Parse reads object
+  Table types Table reads keys get creates new table validates has transforms add
+  Types reads unwrap code creates string
 
   UPPER_BOUND as Integer = 5000000
 
@@ -186,7 +185,7 @@ from
             digit_key as String = string(code(digit))
             match valid has(digit_key, node)
                 true =>
-                    child as Table<Value> = object(unwrap(get(digit_key, node), 0))
+                    child as Table<Value> = table(unwrap(get(digit_key, node), 0))
                     updated_child as Table<Value> = trie_insert_digits(child, digits, idx + 1, str_len)
                     add(digit_key, updated_child, node)
                 _ =>
@@ -229,7 +228,7 @@ from
             digit_key as String = string(code(digit))
             match valid has(digit_key, node)
                 true =>
-                    child as Table<Value> = object(unwrap(get(digit_key, node), 0))
+                    child as Table<Value> = table(unwrap(get(digit_key, node), 0))
                     trie_find_prefix(child, prefix, idx + 1, str_len)
                 _ => new()
 
@@ -268,7 +267,7 @@ from
                 _ =>
                     match valid has(k, node)
                         true =>
-                            child as Table<Value> = object(unwrap(get(k, node), 0))
+                            child as Table<Value> = table(unwrap(get(k, node), 0))
                             sub as String = collect_primes(child, prefix + k)
                             new_acc as String = match acc == ""
                                 true => sub

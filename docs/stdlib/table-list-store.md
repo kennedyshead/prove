@@ -22,9 +22,10 @@ Defines a binary type: `Table<Value>` (the hash map).
 | `reads` | `keys(table Table<Value>) List<String>` | Get all keys |
 | `reads` | `values(table Table<Value>) List<Value>` | Get all values |
 | `reads` | `length(table Table<Value>) Integer` | Number of entries |
+| `creates` | `table(v Value) Table<Value>` | Extract object content from a Value |
 
 ```prove
-  Table creates new validates has transforms add reads get keys
+  Table creates new table validates has transforms add reads get keys
 
 reads lookup(name String, db Table<String>) String
 from
@@ -121,6 +122,7 @@ Convert arrays to lists and extract CSV rows.
 | `creates` | `list(arr Array<Integer>) List<Integer>` | Copy array contents into a new list |
 | `creates` | `list(arr Array<Decimal>) List<Decimal>` | Copy array contents into a new list |
 | `creates` | `list(csv Value<Csv>) List<List<String>>` | Extract CSV rows as a list of lists |
+| `creates` | `list(v Value) List<Value>` | Extract array content from a Value |
 
 The CSV overload requires importing the `Csv` type from `Parse`.
 

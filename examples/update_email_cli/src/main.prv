@@ -6,8 +6,9 @@ module Example
   Updates the email an save the user to user.json through file output
   """
   System inputs console file outputs console
-  Parse types Value reads object creates json value validates json
+  Parse types Value creates json value validates json
   Types creates string integer validates object value
+  Table creates table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
@@ -30,7 +31,7 @@ transforms user(json_data Result<Value, String>) User
   requires valid object(json_data)
 from
     // as requires already checked and unwrapped we only need to cast to Table
-    data as Table<Value> = object(json_data)
+    data as Table<Value> = table(json_data)
     User(integer(data.id), string(data.name), string(data.email))
 
 /// test2

@@ -6,7 +6,7 @@ module Sequence
   validates empty and if it contains
   transforms slice, reverse, sort, set and remove
   creates Array of size, list of range and converts Array to list
-  creates list from Value<Csv> to List<List<String>>
+  creates list from Value<Csv> to List<List<String>> and from Value to List<Value>
 
   """
   Parse types Csv
@@ -337,4 +337,8 @@ binary
 
 /// Extract rows from a parsed CSV value as a list of lists
 creates list(csv Value<Csv>) List<List<String>>
+binary
+
+/// Extract array content from a Value
+creates list(value Value) List<Value>
 binary

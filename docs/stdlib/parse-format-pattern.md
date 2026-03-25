@@ -38,11 +38,6 @@ Extract typed data from a `Value`. For corresponding validators, see [Types — 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `tag(v Value) String` | Get the type tag (`"string"`, `"number"`, etc.) |
-| `reads` | `number(v Value) Integer` | Extract integer content |
-| `reads` | `decimal(v Value) Float` | Extract floating-point content |
-| `reads` | `bool(v Value) Boolean` | Extract boolean content |
-| `reads` | `array(v Value) List<Value>` | Extract array content |
-| `reads` | `object(v Value) Table<Value>` | Extract object/table content |
 
 ### URL
 
@@ -82,17 +77,7 @@ Defines binary types `Token` (a text span with position and kind tag) and `Rule`
 | `creates` | `rule(pattern String, kind Integer) Rule` | Create a tokenization rule from a regex pattern and kind tag |
 | `creates` | `tokens(source String, rules List<Rule>) List<Token>` | Tokenize source text using rules |
 
-### Token Accessors
-
-Extract token text via `Types.string(token)`. Integer accessors remain here.
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `reads` | `start(token Token) Integer` | Start position in source |
-| `reads` | `end(token Token) Integer` | End position in source |
-| `reads` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
-
-Characters that match no rule produce tokens with kind `-1`.
+Token accessors (`start`, `end`, `kind`) and `string(token)` are in the [Language module](language.md). Characters that match no rule produce tokens with kind `-1`.
 
 ### Syntax Trees
 
@@ -116,16 +101,16 @@ Parse defines four phantom marker types used as type parameters for `Value<T>`:
 Plain `Value` (unparameterized) is compatible with any `Value<T>` — the phantom type parameter is opt-in.
 
 ```prove
-  Parse creates toml json url tokens rule reads object url text start end kind validates url base64
+  Parse creates toml json url tokens rule reads tag validates url base64
   Parse types Value Toml Json Url Token Rule
   Types creates string
-  Table reads keys get types Table
+  Table creates table reads keys get types Table
 
 main() Result<Unit, Error>!
 from
     source as String = System.file("config.toml")!
     doc as Value<Toml> = Parse.toml(source)!
-    root as Table<Value> = Parse.object(doc)
+    root as Table<Value> = table(doc)
     names as List<String> = Table.keys(root)
     System.console("Keys: " + join(names, ", "))
 ```

@@ -72,12 +72,20 @@ binary
 creates float(value Decimal) Float
 binary
 
+/// Extract floating-point content from a Value
+creates float(value Value) Float
+binary
+
 /// Parse a string as a decimal
 creates decimal(source String) Result<Decimal, String>
 binary
 
 /// Convert an integer to a decimal
 creates decimal(value Integer) Decimal
+binary
+
+/// Extract decimal content from a Value
+creates decimal(value Value) Decimal
 binary
 
 /// Convert an integer to a string
@@ -166,6 +174,10 @@ binary
 
 /// Convert an integer to a boolean (0 = false, non-zero = true)
 creates boolean(value Integer) Boolean
+binary
+
+/// Extract boolean content from a Value
+creates boolean(value Value) Boolean
 binary
 
 /// Parse a string as a boolean ("true" or "false")

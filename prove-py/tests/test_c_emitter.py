@@ -670,9 +670,9 @@ class TestTableFieldAccess:
     def test_table_field_emits_prove_table_get(self):
         source = (
             "module Main\n"
-            "  Table types Table Value, creates new, validates has,"
+            "  Table types Table Value, creates new table, validates has,"
             " reads get, transforms add\n"
-            "  Parse reads object, validates object\n"
+            "  Types validates object\n"
             "\n"
             "transforms extract(data Table<Integer>) Integer\n"
             "    from\n"

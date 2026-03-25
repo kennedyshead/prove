@@ -11,7 +11,9 @@ module Language
   Get a list of stopwords
   find the word frequency
   Get the most frequent keywords
+  reads token properties: start, end, kind
   """
+  Parse types Token
 
 /// Extract individual words from text
 reads words(text String) List<String>
@@ -75,4 +77,16 @@ binary
 
 /// Extract the top N most frequent words from text
 reads keywords(text String, count Integer) List<String>
+binary
+
+/// Get the start position of a token
+reads start(token Token) Integer
+binary
+
+/// Get the end position of a token
+reads end(token Token) Integer
+binary
+
+/// Get the kind tag of a token
+reads kind(token Token) Integer
 binary

@@ -1,8 +1,8 @@
 module Main
   narrative: """Demonstrates Table module operations"""
   System outputs console
-  Table types Table reads length keys get validates has
-  Parse reads object creates json
+  Table types Table reads length keys get creates table validates has
+  Parse creates json
   Types reads string
   Text transforms join
 
@@ -13,7 +13,7 @@ from
     parsed as Result<Value, String> = json(json_str)
     match parsed
         Ok(value) =>
-            table as Table<Value> = object(value)
+            table as Table<Value> = table(value)
             // Check if key exists
             has_name as Boolean = valid has("name", table)
             has_age as Boolean = valid has("age", table)

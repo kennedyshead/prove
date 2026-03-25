@@ -6,13 +6,12 @@ module Parse
     Value<Csv> from csv, Value<Tree> from source, Value from Source,
     Url from (scheme host path), duration, date, datetime, hexadecimal,
     time, base64, arguments (CLI arguments)
-  reads Value to bool, integer, tag, decimal, array and object
+  reads Value tag
   reads port from Url
   transforms Url by adding query params
   creates Token and Rule for generic tokenization
   creates tokens from source text using a list of rules
   creates tree from prove source files
-  reads token properties: start, end, kind
   """
   Bytes types ByteArray
   Time types Time Date DateTime Duration
@@ -55,21 +54,6 @@ binary
 reads tag(value Value) String
 binary
 
-/// Get the decimal content of a Value
-reads decimal(value Value) Float
-binary
-
-/// Get the boolean content of a Value
-reads bool(value Value) Boolean
-binary
-
-/// Get the array content of a Value
-reads array(value Value) List<Value>
-binary
-
-/// Get the object content of a Value
-reads object(value Value) Table<Value>
-binary
 
 /// Validate a JSON string
 validates json(source String)
@@ -169,18 +153,6 @@ binary
 
 /// Tokenize source text using a list of rules, returning tokens
 creates tokens(source String, rules List<Rule>) List<Token>
-binary
-
-/// Get the start position of a token
-reads start(token Token) Integer
-binary
-
-/// Get the end position of a token
-reads end(token Token) Integer
-binary
-
-/// Get the kind tag of a token
-reads kind(token Token) Integer
 binary
 
 /// Parse Prove source into a syntax tree

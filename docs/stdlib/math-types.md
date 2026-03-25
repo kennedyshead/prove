@@ -86,6 +86,7 @@ The function name is the *target type*. Failable conversions from strings return
 | `creates` | `integer(x Float) Integer` | Truncate float to integer |
 | `creates` | `integer(x Decimal) Integer` | Truncate decimal to integer |
 | `creates` | `integer(b Boolean) Integer` | Boolean to integer (true=1, false=0) |
+| `creates` | `integer(v Value) Integer` | Extract integer content from a Value |
 
 ### Float Conversions
 
@@ -94,6 +95,7 @@ The function name is the *target type*. Failable conversions from strings return
 | `creates` | `float(s String) Result<Float, String>` | Parse string to float |
 | `creates` | `float(n Integer) Float` | Promote integer to float |
 | `creates` | `float(x Decimal) Float` | Convert decimal to float |
+| `creates` | `float(v Value) Float` | Extract floating-point content from a Value |
 
 ### String Conversions
 
@@ -142,6 +144,7 @@ from
 |------|-----------|-------------|
 | `creates` | `boolean(n Integer) Boolean` | Integer to boolean (0=false, non-zero=true) |
 | `creates` | `boolean(s String) Result<Boolean, String>` | Parse `"true"` or `"false"` |
+| `creates` | `boolean(v Value) Boolean` | Extract boolean content from a Value |
 
 ### Decimal Conversions
 
@@ -149,6 +152,7 @@ from
 |------|-----------|-------------|
 | `creates` | `decimal(s String) Result<Decimal, String>` | Parse string to decimal |
 | `creates` | `decimal(n Integer) Decimal` | Promote integer to decimal |
+| `creates` | `decimal(v Value) Decimal` | Extract decimal content from a Value |
 
 ### Value Validators
 
