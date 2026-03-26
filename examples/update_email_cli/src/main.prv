@@ -6,7 +6,7 @@ module Example
   Updates the email an save the user to user.json through file output
   """
   System inputs console file outputs console
-  Parse types Value creates json value validates json
+  Parse types Value creates json validates json
   Types creates string integer validates object value
   Table creates table
 
@@ -44,10 +44,8 @@ matches ensure_user(raw String) User
       and return the user
       if the string is an empty string we return a User
 from
-    Some(raw) =>
-        json_data as Result<Value, String> = json(raw)
-        user(json_data)
-    _ => User(0, "", "")
+    json_data as Result<Value, String> = json(raw)
+    user(json_data)
 
 inputs user() User!
 from
@@ -84,4 +82,4 @@ from
     // save user.json
     save(dump_user(updated))!
     updated
-    console(f"Saved user email {updated.email}")
+    console(f"{updated.email}")

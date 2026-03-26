@@ -527,10 +527,10 @@ class TestRequiresOptionNarrowing:
         source = (
             "module Main\n"
             "  Table types Table Value, creates new, validates has,"
-            " reads get, transforms add\n"
+            " reads get\n"
             "  System outputs console\n"
             "\n"
-            "outputs show(key String, table Table<String>)\n"
+            "outputs show(key String, table Table<String>)!\n"
             "    requires Table.has(key, table)\n"
             "    from\n"
             "        val as String = Table.get(key, table)\n"

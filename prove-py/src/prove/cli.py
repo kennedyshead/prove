@@ -116,7 +116,8 @@ def check(path: str, md: bool, strict: bool, no_intent: bool) -> None:
 @main.command("format")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--status", is_flag=True, help="Check only, don't rewrite.")
-def format_cmd(path: str, status: bool) -> None:
+@click.option("--md", is_flag=True, help="Markdown output.")
+def format_cmd(path: str, status: bool, md: bool) -> None:
     """Format .prv source files (Python fallback)."""
     from prove.checker import Checker
     from prove.formatter import ProveFormatter
@@ -158,6 +159,86 @@ def format_cmd(path: str, status: bool) -> None:
     if status and changed:
         raise SystemExit(1)
     click.echo(f"{len(prv_files)} file(s) checked, {changed} formatted")
+
+
+@main.command()
+@click.argument("path", default=".", type=click.Path(exists=True))
+@click.option("--property-rounds", type=int, default=1000, help="Property test rounds.")
+def test(path: str, property_rounds: int) -> None:
+    """Run contract tests for a Prove project (Python fallback)."""
+    from prove.checker import Checker
+    from prove.module_resolver import build_module_registry
+    from prove.testing import TestGenerator
+
+    project_dir = Path(path).resolve()
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = sorted(src_dir.glob("*.prv"))
+    if not prv_files:
+        click.echo("no .prv files found", err=True)
+        raise SystemExit(1)
+
+    local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
+
+    total_tests = 0
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        try:
+            module = parse(source, str(prv_file))
+        except CompileError as e:
+            renderer = DiagnosticRenderer(color=True)
+            for diag in e.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            raise SystemExit(1)
+
+        checker = Checker(local_modules=local_modules)
+        symbols = checker.check(module)
+        gen = TestGenerator(module, symbols, property_rounds=property_rounds)
+        suite = gen.generate()
+        total_tests += len(suite.cases)
+
+        if suite.cases:
+            test_c = gen.render(suite)
+            import subprocess
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".c", mode="w", delete=False) as f:
+                f.write(test_c)
+                test_src = f.name
+
+            test_bin = test_src.replace(".c", "")
+            runtime_dir = Path(__file__).parent / "runtime"
+            include_flags = ["-I", str(runtime_dir)]
+
+            # Find runtime .c files needed
+            from prove.c_runtime import _CORE_FILES
+
+            core_files = [str(runtime_dir / f) for f in _CORE_FILES if (runtime_dir / f).exists()]
+
+            result = subprocess.run(
+                ["cc", "-o", test_bin, test_src, *core_files, *include_flags, "-lm"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                click.echo(f"test compilation failed: {result.stderr}", err=True)
+                raise SystemExit(1)
+
+            result = subprocess.run([test_bin], capture_output=True, text=True, timeout=60)
+            click.echo(result.stdout, nl=False)
+            if result.returncode != 0:
+                click.echo(result.stderr, err=True)
+                raise SystemExit(1)
+
+            # Cleanup
+            import os
+
+            os.unlink(test_src)
+            os.unlink(test_bin)
+
+    click.echo(f"{total_tests} test(s) passed")
 
 
 @main.command()
@@ -453,9 +534,12 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
                 build_chroma(workspace)
 
 
-@main.command()
-@click.argument("file", type=click.Path(exists=True))
-def view(file: str) -> None:
+@main.group()
+def advanced() -> None:
+    """Advanced development tools."""
+
+
+def _view_impl(file: str) -> None:
     """View the AST of a Prove source file."""
     source = Path(file).read_text()
     filename = str(file)
@@ -469,6 +553,20 @@ def view(file: str) -> None:
         raise SystemExit(1)
 
     _dump_ast(module, 0)
+
+
+@advanced.command("view")
+@click.argument("file", type=click.Path(exists=True))
+def advanced_view(file: str) -> None:
+    """View the AST of a Prove source file."""
+    _view_impl(file)
+
+
+@main.command("view")
+@click.argument("file", type=click.Path(exists=True))
+def view(file: str) -> None:
+    """View the AST of a Prove source file (shortcut for 'advanced view')."""
+    _view_impl(file)
 
 
 @main.command()
@@ -514,17 +612,8 @@ def compiler(file: str, mode: str | None, output: str | None) -> None:
             click.echo(source, nl=False)
 
 
-@main.command()
-def setup() -> None:
-    """Re-download ML stores to ~/.prove/.
-
-    Downloads pre-trained LSP ML completion stores from the latest release.
-    Stores are also downloaded automatically on first use — run this if
-    something is wrong with your stores and you want a clean reinstall.
-
-    For developers building stores from scratch:
-        pip install 'prove[nlp]' && python scripts/build_stores.py
-    """
+def _setup_impl() -> None:
+    """Re-download ML stores to ~/.prove/."""
     from prove.nlp_store import download_stores
 
     ok = download_stores()
@@ -533,6 +622,18 @@ def setup() -> None:
     else:
         click.echo("Setup failed — check your internet connection.", err=True)
         raise SystemExit(1)
+
+
+@advanced.command("setup")
+def advanced_setup() -> None:
+    """Re-download ML stores to ~/.prove/."""
+    _setup_impl()
+
+
+@main.command("setup")
+def setup() -> None:
+    """Re-download ML stores (shortcut for 'advanced setup')."""
+    _setup_impl()
 
 
 @main.command("setup-nlp")
