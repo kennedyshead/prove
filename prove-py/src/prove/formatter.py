@@ -732,7 +732,11 @@ class ProveFormatter:
         name = vd.name
         if not name.startswith("_") and self._is_unused_var(vd.span):
             name = f"_{name}"
-        return f"{name} as{type_ann} = {self._format_expr(vd.value)}"
+        value = self._format_expr(vd.value)
+        line = f"{name} as{type_ann} = {value}"
+        if self._indent_level * 4 + len(line) > self.MAX_LINE_LENGTH:
+            line = f"{name} as{type_ann} =\n    {value}"
+        return line
 
     def _format_assignment(self, assign: Assignment) -> str:
         """Format an assignment, promoting to VarDecl syntax when possible.
@@ -748,8 +752,16 @@ class ProveFormatter:
             inferred = self._infer_var_type(assign.value)
             if inferred:
                 self._local_types[assign.target] = inferred
-                return f"{name} as {inferred} = {self._format_expr(assign.value)}"
-        return f"{name} = {self._format_expr(assign.value)}"
+                value = self._format_expr(assign.value)
+                line = f"{name} as {inferred} = {value}"
+                if self._indent_level * 4 + len(line) > self.MAX_LINE_LENGTH:
+                    line = f"{name} as {inferred} =\n    {value}"
+                return line
+        value = self._format_expr(assign.value)
+        line = f"{name} = {value}"
+        if self._indent_level * 4 + len(line) > self.MAX_LINE_LENGTH:
+            line = f"{name} =\n    {value}"
+        return line
 
     # ── Expression formatting ──────────────────────────────────
 

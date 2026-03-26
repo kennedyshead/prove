@@ -235,6 +235,30 @@ class TestFormatterStringInterpWrapping:
         assert 'info(f"short {x}")' in result
 
 
+class TestFormatterVarDeclWrapping:
+    def test_long_var_decl_wraps_value(self):
+        """Variable declarations >90 cols fold value onto next line."""
+        source = (
+            "reads filter_sources(source_files List<SourceFile>) List<SourceFile>\n"
+            "from\n"
+            "    clean_source_files as List<SourceFile> = "
+            "filter(source_files, |file| unit(file) == false)\n"
+        )
+        result = _parse_format(source)
+        body = result.split("from\n")[1]
+        lines = body.strip().split("\n")
+        # Should be two lines: decl + continuation
+        assert len(lines) == 2
+        assert lines[0].strip().endswith("=")
+        assert "filter(source_files" in lines[1]
+
+    def test_short_var_decl_stays_inline(self):
+        """Variable declarations <=90 cols stay on one line."""
+        source = "reads get(a Integer) Integer\nfrom\n    x as Integer = a + 1\n"
+        result = _parse_format(source)
+        assert "x as Integer = a + 1" in result
+
+
 class TestFormatterAnnotations:
     def test_ensures(self):
         source = (
