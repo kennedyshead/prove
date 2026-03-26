@@ -388,7 +388,7 @@ Prove_String *prove_language_root(Prove_String *word) {
     buf[len] = '\0';
 
     /* Try suffixes longest first */
-    _replace_suffix(buf, &len, "ation", 5, "", 0, -1) ||
+    (void)(_replace_suffix(buf, &len, "ation", 5, "", 0, -1) ||
     _replace_suffix(buf, &len, "tion", 4, "", 0, -1) ||
     _replace_suffix(buf, &len, "ments", 5, "", 0, -1) ||
     _replace_suffix(buf, &len, "ment", 4, "", 0, -1) ||
@@ -398,7 +398,7 @@ Prove_String *prove_language_root(Prove_String *word) {
     _replace_suffix(buf, &len, "es", 2, "", 0, -1) ||
     _replace_suffix(buf, &len, "ed", 2, "", 0, -1) ||
     (len > 1 && buf[len - 1] == 's' && buf[len - 2] != 's' &&
-        (_replace_suffix(buf, &len, "s", 1, "", 0, -1)));
+        (_replace_suffix(buf, &len, "s", 1, "", 0, -1))));
 
     return prove_string_new(buf, len);
 }
