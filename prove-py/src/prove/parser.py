@@ -2453,7 +2453,7 @@ class Parser:
 
         if tok.kind == TokenKind.FLOAT_LIT:
             self._advance()
-            return FloatLit(tok.value, tok.span)  # type: ignore[return-value]
+            return FloatLit(tok.value, tok.span)
 
         if tok.kind in (TokenKind.STRING_LIT, TokenKind.INTERP_START):
             return self._parse_string_or_interp()

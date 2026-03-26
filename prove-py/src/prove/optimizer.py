@@ -513,7 +513,7 @@ class Optimizer:
                     if isinstance(result, int):
                         return IntegerLit(value=str(result), span=expr.span)
                     elif isinstance(result, float):
-                        return FloatLit(value=str(result) + "f", span=expr.span)  # type: ignore[return-value]
+                        return FloatLit(value=str(result) + "f", span=expr.span)
                     elif isinstance(result, bool):
                         return BooleanLit(value=result, span=expr.span)
                     elif isinstance(result, str):
@@ -1200,7 +1200,10 @@ class Optimizer:
                 if len(expr.args) == len(fd.params):
                     # Substitute params with args
                     body_expr = fd.body[0]
-                    assert isinstance(body_expr, ExprStmt)
+                    if not isinstance(body_expr, ExprStmt):
+                        new_args = [self._inline_in_expr(a, candidates) for a in expr.args]
+                        new_func = self._inline_in_expr(expr.func, candidates)
+                        return replace(expr, func=new_func, args=new_args)
                     substituted = self._substitute_params(
                         body_expr.expr,
                         fd.params,

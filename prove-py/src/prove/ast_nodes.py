@@ -302,6 +302,7 @@ class StoreLookupExpr:
 Expr = Union[
     IntegerLit,
     DecimalLit,
+    FloatLit,
     StringLit,
     BooleanLit,
     CharLit,

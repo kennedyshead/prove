@@ -63,10 +63,9 @@ reads signal_power(koef Float, state FilterState, n Integer) Float
 from
     raw as Float = state.vn1 * state.vn1 + state.vn2 * state.vn2 - koef * state.vn1 * state.vn2
     n_f as Float = float(n)
-    clamped as Float = match raw < EPSILON
-        true => EPSILON
-        _ => raw
-    clamped / (n_f * n_f)
+    match raw < EPSILON
+        true => EPSILON / (n_f * n_f)
+        _ => raw / (n_f * n_f)
 
 /// Convert power to dBm (600 Ohm impedance)
 reads to_dbm(p Float) Float
@@ -85,9 +84,9 @@ main()
 from
     dbm_440 as Float = detect(440.0f, 440.0f, SAMPLE_RATE, SAMPLE_COUNT)
     dbm_600 as Float = detect(440.0f, 600.0f, SAMPLE_RATE, SAMPLE_COUNT)
-    console(f"Goertzel frequency detection ({SAMPLE_COUNT} samples at {SAMPLE_RATE} Hz)")
-    console(f"  440 Hz power: {string(dbm_440)} dBm")
-    console(f"  600 Hz power: {string(dbm_600)} dBm")
+    console(f"{SAMPLE_COUNT}{SAMPLE_RATE}")
+    console(f"{string(dbm_440)}")
+    console(f"{string(dbm_600)}")
     match dbm_440 > dbm_600
         true => console("  Result: 440 Hz signal detected correctly")
         _ => console("  Result: detection failed")

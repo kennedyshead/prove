@@ -36,6 +36,7 @@ from prove.ast_nodes import (
     FieldAssignment,
     FieldDef,
     FieldExpr,
+    FloatLit,
     ForeignBlock,
     ForeignFunction,
     FunctionDef,
@@ -1295,7 +1296,10 @@ class CSTConverter:
         if typ == "integer_literal":
             return IntegerLit(self._text(node), self._span(node))
         if typ == "decimal_literal":
-            return DecimalLit(self._text(node), self._span(node))
+            text = self._text(node)
+            if text.endswith("f"):
+                return FloatLit(text, self._span(node))
+            return DecimalLit(text, self._span(node))
         if typ == "boolean_literal":
             return BooleanLit(self._text(node) == "true", self._span(node))
         if typ == "character_literal":

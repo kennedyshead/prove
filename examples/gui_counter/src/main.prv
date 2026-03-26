@@ -2,6 +2,8 @@ module Counter
   narrative: """
     GUI counter with increment button.
     renders app
+
+    Expected to fail: build.
   """
   Graphic types GraphicAppEvent outputs window button label
   Types creates string
