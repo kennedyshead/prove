@@ -15,7 +15,9 @@
 #define PROVE_NODE_ASYNC_VERB "async_verb"
 #define PROVE_NODE_BELIEVE_ANNOTATION "believe_annotation"
 #define PROVE_NODE_BINARY_EXPRESSION "binary_expression"
+#define PROVE_NODE_BINARY_KEYWORD "binary_keyword"
 #define PROVE_NODE_BINARY_TYPE_BODY "binary_type_body"
+#define PROVE_NODE_BINARY_TYPE_DEFINITION "binary_type_definition"
 #define PROVE_NODE_BOOLEAN_LITERAL "boolean_literal"
 #define PROVE_NODE_CALL_EXPRESSION "call_expression"
 #define PROVE_NODE_CHARACTER_LITERAL "character_literal"
@@ -48,6 +50,7 @@
 #define PROVE_NODE_IMPORT_DECLARATION "import_declaration"
 #define PROVE_NODE_IMPORT_GROUP "import_group"
 #define PROVE_NODE_IMPORT_VERB "import_verb"
+#define PROVE_NODE_INDEX_EXPRESSION "index_expression"
 #define PROVE_NODE_INTEGER_LITERAL "integer_literal"
 #define PROVE_NODE_INTENT_ANNOTATION "intent_annotation"
 #define PROVE_NODE_INTENT_CONSTRAINTS "intent_constraints"
@@ -66,6 +69,7 @@
 #define PROVE_NODE_LAMBDA_EXPRESSION "lambda_expression"
 #define PROVE_NODE_LINE_COMMENT "line_comment"
 #define PROVE_NODE_LIST_LITERAL "list_literal"
+#define PROVE_NODE_LOCAL_MODULE_MARKER "local_module_marker"
 #define PROVE_NODE_LOOKUP_ACCESS_EXPRESSION "lookup_access_expression"
 #define PROVE_NODE_LOOKUP_PATTERN "lookup_pattern"
 #define PROVE_NODE_LOOKUP_TYPE_BODY "lookup_type_body"
@@ -123,5 +127,6 @@
 #define PROVE_NODE_WHEN_ANNOTATION "when_annotation"
 #define PROVE_NODE_WHY_NOT_ANNOTATION "why_not_annotation"
 #define PROVE_NODE_WILDCARD_PATTERN "wildcard_pattern"
+#define PROVE_NODE_WITH_CONSTRAINT "with_constraint"
 
 #endif /* PROVE_NODE_KINDS_H */
