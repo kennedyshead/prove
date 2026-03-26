@@ -2863,6 +2863,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 sig = self.symbols.resolve_function("validates", expr.name, n)
             if sig is None:
                 sig = self.symbols.resolve_function_any(expr.name, arity=n)
+                if sig is not None and sig.verb != "validates":
+                    self._error(
+                        "E321",
+                        f"'valid' requires a validates function, "
+                        f"but '{expr.name}' is declared as '{sig.verb}'",
+                        expr.span,
+                    )
             if sig and sig.module:
                 self._used_imports.add((sig.module, expr.name))
             if expr.args is None:
@@ -3507,38 +3514,32 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._check_generic_variant_pattern(pattern, subject_type)
             elif isinstance(subject_type, RecordType) and pattern.name == subject_type.name:
                 pass  # Record type match — handled elsewhere
-            elif (
-                pattern.name in ("Some", "None")
-                and isinstance(subject_type, PrimitiveType)
-                and subject_type.name
-                in (
-                    "Integer",
-                    "Boolean",
-                    "Decimal",
-                    "Float",
-                    "Byte",
-                    "Unit",
-                    "Character",
+            elif pattern.name in ("Some", "None"):
+                # Some/None on a non-Option type
+                _is_nullable = isinstance(subject_type, PrimitiveType) and subject_type.name in (
+                    "String",
+                    "Value",
                 )
-            ):
-                self._error(
-                    "E371",
-                    f"cannot match variant '{pattern.name}' on value type "
-                    f"'{type_name(subject_type)}'",
-                    pattern.span,
-                )
-            elif pattern.name not in ("Some", "None"):
+                if _is_nullable:
+                    # String/Value null check via Some/None is allowed
+                    if pattern.name == "Some" and pattern.fields:
+                        for sub in pattern.fields:
+                            self._check_pattern(sub, subject_type)
+                else:
+                    self._error(
+                        "E371",
+                        f"cannot match variant '{pattern.name}' on type "
+                        f"'{type_name(subject_type)}'; "
+                        f"did you mean Option<{type_name(subject_type)}>?",
+                        pattern.span,
+                    )
+            else:
                 # Non-Option variant on a non-algebraic type
                 self._error(
                     "E371",
                     f"cannot match variant '{pattern.name}' on type '{type_name(subject_type)}'",
                     pattern.span,
                 )
-            else:
-                # Some/None on a pointer type (e.g. String) — null check
-                if pattern.name == "Some" and pattern.fields:
-                    for sub in pattern.fields:
-                        self._check_pattern(sub, subject_type)
         elif isinstance(pattern, WildcardPattern):
             pass  # matches everything
         elif isinstance(pattern, LiteralPattern):

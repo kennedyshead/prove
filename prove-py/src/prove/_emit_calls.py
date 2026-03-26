@@ -6,6 +6,7 @@ import itertools
 
 from prove.ast_nodes import (
     BinaryExpr,
+    BooleanLit,
     CallExpr,
     Expr,
     FailPropExpr,
@@ -67,6 +68,26 @@ def _has_object_call(expr: Expr, param_name: str) -> bool:
 class CallEmitterMixin:
     _locals: dict[str, Type]
     _in_hof_inline: bool
+
+    @staticmethod
+    def _is_option_none_filter(pred: Expr) -> bool:
+        """Check if a filter predicate is |x| unit(x) == false."""
+        if not isinstance(pred, LambdaExpr):
+            return False
+        body = pred.body
+        if (
+            isinstance(body, BinaryExpr)
+            and body.op == "=="
+            and isinstance(body.left, (CallExpr, ValidExpr))
+            and isinstance(body.right, BooleanLit)
+            and body.right.value is False
+        ):
+            call = body.left
+            if isinstance(call, CallExpr) and isinstance(call.func, IdentifierExpr):
+                return call.func.name == "unit"
+            if isinstance(call, ValidExpr):
+                return call.name == "unit"
+        return False
 
     def _wrap_recursive_constructor_args(
         self, name: str, args: list[str], expr_args: list[Expr]
@@ -1541,7 +1562,33 @@ class CallEmitterMixin:
             elem_type = coll_type.element  # type: ignore[assignment]
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
-        return f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
+        filtered = f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
+
+        # filter(List<Option<T>>, |x| unit(x) == false) → unwrap Options to List<T>
+        if (
+            isinstance(elem_type, GenericInstance)
+            and elem_type.base_name == "Option"
+            and elem_type.args
+            and self._is_option_none_filter(expr.args[1])
+        ):
+            inner_ct = map_type(elem_type.args[0])
+            tmp_filtered = self._tmp()
+            tmp_unwrapped = self._tmp()
+            self._line(f"Prove_List *{tmp_filtered} = {filtered};")
+            self._line(f"Prove_List *{tmp_unwrapped} = prove_list_new({tmp_filtered}->length);")
+            idx = self._tmp()
+            self._line(f"for (int64_t {idx} = 0; {idx} < {tmp_filtered}->length; {idx}++) {{")
+            self._indent += 1
+            self._line(f"Prove_Option _opt = (*(Prove_Option*){tmp_filtered}->data[{idx}]);")
+            if inner_ct.is_pointer:
+                self._line(f"prove_list_push({tmp_unwrapped}, (void*)({inner_ct.decl})_opt.value);")
+            else:
+                self._line(f"prove_list_push({tmp_unwrapped}, _opt.value);")
+            self._indent -= 1
+            self._line("}")
+            return tmp_unwrapped
+
+        return filtered
 
     def _emit_hof_all(self, expr: CallExpr) -> str:
         """Emit all as inline loop — true if predicate holds for every element."""

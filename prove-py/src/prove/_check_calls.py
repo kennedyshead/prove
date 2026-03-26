@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from prove.ast_nodes import (
+    BinaryExpr,
+    BooleanLit,
     CallExpr,
     Expr,
     FieldExpr,
@@ -13,6 +15,7 @@ from prove.ast_nodes import (
     PipeExpr,
     SimpleType,
     TypeIdentifierExpr,
+    ValidExpr,
 )
 from prove.errors import Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
@@ -48,6 +51,27 @@ _PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches
 class CallCheckMixin:
     _in_listens_worker_list: bool
     _inside_async_call: bool
+
+    @staticmethod
+    def _is_option_none_filter(pred: Expr) -> bool:
+        """Check if a filter predicate is |x| unit(x) == false (Option None removal)."""
+        if not isinstance(pred, LambdaExpr):
+            return False
+        body = pred.body
+        # |x| unit(x) == false
+        if (
+            isinstance(body, BinaryExpr)
+            and body.op == "=="
+            and isinstance(body.left, (CallExpr, ValidExpr))
+            and isinstance(body.right, BooleanLit)
+            and body.right.value is False
+        ):
+            call = body.left
+            if isinstance(call, CallExpr) and isinstance(call.func, IdentifierExpr):
+                return call.func.name == "unit"
+            if isinstance(call, ValidExpr):
+                return call.name == "unit"
+        return False
 
     def _infer_call(self, expr: CallExpr, expected_type: Type | None = None) -> Type:
         # Early intercept: store-backed row construction Color(Red, "red", 0xFF0000)
@@ -486,14 +510,30 @@ class CallCheckMixin:
                 isinstance(ret, GenericInstance) and ret.base_name == "Result"
             ):
                 ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
-            # Resolve generic type variables in return type
-            if sig.module and arg_types:
+            # Resolve generic type variables in return type.
+            # For HOF builtins the lambda path (lines 94-127) already infers
+            # concrete types, so only resolve for filter (needs Option unwrap)
+            # and non-HOF calls.
+            _HOF_ALL = _HOF_BUILTINS_1 | _HOF_BUILTINS_2
+            if arg_types and (name not in _HOF_ALL or name == "filter"):
                 bindings = resolve_type_vars(
                     sig.param_types,
                     arg_types,
                 )
                 if bindings:
                     ret = substitute_type_vars(ret, bindings)
+            # filter(List<Option<T>>, |x| unit(x) == false) → List<T>:
+            # When the predicate filters out None values, unwrap Options.
+            if (
+                name == "filter"
+                and isinstance(ret, ListType)
+                and isinstance(ret.element, GenericInstance)
+                and ret.element.base_name == "Option"
+                and ret.element.args
+                and len(expr.args) >= 2
+                and self._is_option_none_filter(expr.args[-1])
+            ):
+                ret = ListType(ret.element.args[0])
             # Requires-based narrowing for unqualified calls:
             # Option<Value> → Value, Result<Value, Error> → Value
             if (

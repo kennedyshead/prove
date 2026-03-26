@@ -39,16 +39,25 @@ from
             true
         _ => false
 
-validates syntax_for_source(source Option<SourceFile>)
+validates syntax_for_source(source SourceFile)
 from
-    match source
-        Some(source) =>
-            match any(children(root(source.source)), |node| syntax_for_line(node))
-                true =>
-                    error(f"{source.path}")&
-                    true
-                _ => false
+    match any(children(root(source.source)), |node| syntax_for_line(node))
+        true =>
+            error(f"{source.path}")&
+            true
         _ => false
+
+outputs syntax_and_lint(source List<SourceFile>) Boolean
+from
+    match any(source, |file| syntax_for_source(file))
+        false =>
+            info("linting source...")&
+            match lint(source)
+                Ok => true
+                Err(error) =>
+                    error(f"{error}")&
+                    false
+        true => false
 
 outputs pycheck(
     path String,

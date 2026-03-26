@@ -1300,7 +1300,10 @@ class StmtEmitterMixin:
                     and isinstance(subj_type, GenericInstance)
                     and subj_type.base_name == "Result"
                 ):
-                    self._emit_result_match_stmt(m, subj, subj_type)
+                    # Capture subject in temp to avoid re-evaluating function calls
+                    tmp = self._tmp()
+                    self._line(f"Prove_Result {tmp} = {subj};")
+                    self._emit_result_match_stmt(m, tmp, subj_type)
                 elif (
                     has_variant
                     and isinstance(subj_type, GenericInstance)

@@ -7,9 +7,9 @@ module Build
   """
   System validates dir
   Source types SourceFile
-  Check validates syntax_for_source outputs lint
   Types validates unit
   Log detached info error
+  Check outputs syntax_and_lint
 
   foreign "libpython3"
     py_initialize() Unit
@@ -38,17 +38,6 @@ from
     py_finalize()
     Unit
 
-outputs run_build(
-    result Result<Unit, Error>,
-    path String,
-    debug Boolean,
-    no_mutate Boolean
-)!
-from
-    match result
-        Err(error) => error(f"{error}")&
-        Ok => pybuild(path, debug, no_mutate)!
-
 outputs source_build(
     source List<Option<SourceFile>>,
     path String,
@@ -56,9 +45,9 @@ outputs source_build(
     no_mutate Boolean
 )!
 from
-    match any(source, |file| syntax_for_source(file))
-        false =>
+    clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
+    match syntax_and_lint(clean_source)
+        true =>
             info("Cleaning source...")&
-            clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-            run_build(lint(clean_source), path, debug, no_mutate)!
-        true => error("Source parsing failed!")&
+            pybuild(path, debug, no_mutate)!
+        false => error("Source parsing failed!")&
