@@ -1844,6 +1844,8 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
         "len": "(list: List<Value>) Integer",
         "map": "(list: List<Value>, fn: (Value) -> Output) List<Output>",
         "filter": "(list: List<Value>, fn: (Value) -> Boolean) List<Value>",
+        "all": "(list: List<Value>, fn: (Value) -> Boolean) Boolean",
+        "any": "(list: List<Value>, fn: (Value) -> Boolean) Boolean",
         "reduce": "(list: List<Value>, init: Output, fn: (Output, Value) -> Output) Output",
         "clamp": "(value: Integer, low: Integer, high: Integer) Integer",
     }
@@ -2648,8 +2650,12 @@ def _build_import_edit(
     last_import_line = -1
     for imp in mod_decl.imports:
         imp_line = imp.span.start_line - 1  # 0-indexed
-        if imp_line > last_import_line:
-            last_import_line = imp_line
+        # Track the actual end line of the last import using the last
+        # item's span — imp.span.end_line may extend into the next
+        # declaration because the parser captures the following token.
+        imp_end = imp.items[-1].span.end_line - 1 if imp.items else imp_line
+        if imp_end > last_import_line:
+            last_import_line = imp_end
 
         if imp.module != suggestion.module:
             continue
@@ -2674,8 +2680,9 @@ def _build_import_edit(
         new_line = "\n".join(f"  {line}" for line in formatted.split("\n"))
 
         source_lines = ds.source.splitlines()
-        # Use the full span of the import (may be multi-line)
-        end_line = imp.span.end_line - 1  # 0-indexed
+        # Use the last import item's span for accurate end line —
+        # imp.span.end_line extends into the next declaration.
+        end_line = imp.items[-1].span.end_line - 1 if imp.items else imp_line
         end_line_text = source_lines[end_line] if end_line < len(source_lines) else ""
         return lsp.TextEdit(
             range=lsp.Range(

@@ -51,6 +51,36 @@ Prove_List *prove_list_filter(
     return out;
 }
 
+bool prove_list_all(
+    Prove_List *list,
+    bool (*pred)(void *, void *),
+    void *ctx
+) {
+#ifndef PROVE_RELEASE
+    if (!list) prove_panic("hof: null list");
+#endif
+    for (int64_t i = 0; i < list->length; i++) {
+        void *elem = prove_list_get(list, i);
+        if (!pred(elem, ctx)) return false;
+    }
+    return true;
+}
+
+bool prove_list_any(
+    Prove_List *list,
+    bool (*pred)(void *, void *),
+    void *ctx
+) {
+#ifndef PROVE_RELEASE
+    if (!list) prove_panic("hof: null list");
+#endif
+    for (int64_t i = 0; i < list->length; i++) {
+        void *elem = prove_list_get(list, i);
+        if (pred(elem, ctx)) return true;
+    }
+    return false;
+}
+
 void *prove_list_reduce(
     Prove_List *list,
     void *init,

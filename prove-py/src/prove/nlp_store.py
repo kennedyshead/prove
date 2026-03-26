@@ -285,6 +285,8 @@ def build_synonym_cache(out_path: Path | None = None) -> Path:
             "join",
             "sort",
             "filter",
+            "all",
+            "any",
             "map",
             "reduce",
             "count",

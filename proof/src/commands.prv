@@ -8,16 +8,15 @@ module Commands
   """
   Config types Config inputs config
   System inputs cwd outputs console
-  Log detached info
-  List validates contains
-  Source types SourceFile inputs source
-  Build outputs pybuild
-  Check outputs pycheck
+  Log detached info error
+  Build types SourceFile outputs pybuild
   Test outputs pytest
   FormatCmd outputs pyformat
   Lsp outputs pylsp
   New outputs new_project
-  Sequence reads get
+  Sequence reads get validates contains
+  Source inputs source
+  Check outputs pycheck check_source
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -39,17 +38,21 @@ module Commands
 
 /// Run the build command
 outputs build(arguments List<String>)!
+  trusted: "For now"
 from
-    info("Running build")&
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
-        _ =>
-            debug as Boolean = contains(arguments, "--debug")
-            no_mutate as Boolean = contains(arguments, "--no-mutate")
-            config as Config = config()!
-            source as List<Option<SourceFile>> = source(config)!
-            pybuild(cwd(), debug, no_mutate, source)
+        _ => info("Setup build...")&
+    debug as Boolean = contains(arguments, "--debug")
+    no_mutate as Boolean = contains(arguments, "--no-mutate")
+    config as Config = config()!
+    source as List<Option<SourceFile>> = source(config)!
+    match any(source, |file| check_source(file)!)
+        false =>
+            info("Using pybuild...")&
+            pybuild(cwd(), debug, no_mutate, source)!
             info(f"{config.package.name}{config.package.version}")&
+        true => error("Source parsing failed!")&
 
 /// Run the check command
 outputs check(arguments List<String>)!
@@ -72,7 +75,7 @@ from
                     no_challenges,
                     no_status,
                     no_intent,
-                    nlp_status)
+                    nlp_status)!
             Unit
 
 /// Run the format command
@@ -86,7 +89,7 @@ from
             status as Boolean = contains(arguments, "--status")
             stdin as Boolean = contains(arguments, "--stdin")
             config as Config = config()!
-            pyformat(config, cwd(), md, status, stdin)
+            pyformat(config, cwd(), md, status, stdin)!
             info(f"{config.package.name}{config.package.version}")&
 
 /// Run the lsp command
@@ -116,5 +119,5 @@ from
         true => console(HELP_TEST_TEXT)
         _ =>
             config as Config = config()!
-            pytest(config, cwd())
+            pytest(config, cwd())!
             info(f"{config.package.name}{config.package.version}")&

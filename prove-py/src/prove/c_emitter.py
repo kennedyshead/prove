@@ -46,6 +46,7 @@ from prove.ast_nodes import (
     TypeDef,
     TypeIdentifierExpr,
     UnaryExpr,
+    ValidExpr,
     VarDecl,
 )
 from prove.c_types import mangle_name, map_type, safe_c_name
@@ -608,6 +609,26 @@ class CEmitter(
         """Get the region pointer to use for allocations."""
         return "prove_global_region()"
 
+    def _requires_expr_resolvable(self, expr: Expr) -> bool:
+        """Check if a requires expression can be emitted as a valid C call."""
+        if isinstance(expr, ValidExpr):
+            n = len(expr.args) if expr.args is not None else 0
+            sig = self._symbols.resolve_function("validates", expr.name, n)
+            if sig is None:
+                sig = self._symbols.resolve_function_any(expr.name, arity=n)
+            if sig is None or sig.verb != "validates":
+                return False
+            # Check if the emitter can resolve this to a known C name
+            c_name = self._resolve_stdlib_c_name(
+                sig, list(expr.args) if expr.args else [], verb_override="validates"
+            )
+            return c_name is not None
+        if isinstance(expr, BinaryExpr):
+            return True
+        if isinstance(expr, CallExpr):
+            return True
+        return True
+
     def _needs_region_scope(self, fd: FunctionDef) -> bool:
         """Check if function body contains nodes that trigger region allocation.
 
@@ -681,7 +702,7 @@ class CEmitter(
             if isinstance(expr, ComptimeExpr):
                 return any(_stmt_alloc(s) for s in expr.body)
             if isinstance(expr, LambdaExpr):
-                return any(_stmt_alloc(s) for s in expr.body)
+                return _expr_alloc(expr.body)
             if isinstance(expr, AsyncCallExpr):
                 return _expr_alloc(expr.expr)
             return False
@@ -1232,6 +1253,28 @@ class CEmitter(
             ct = map_type(pt)
             if ct.is_pointer:
                 self._line(f"prove_retain({p.name});")
+
+        # Emit requires guards for IO verbs (inputs/outputs) —
+        # these receive external data that the compiler cannot verify
+        # statically, so the contract is enforced at runtime.
+        if fd.requires and fd.verb in ("inputs", "outputs"):
+            flat_reqs = self._flatten_requires(fd.requires)
+            parts: list[str] = []
+            for r in flat_reqs:
+                if not self._requires_expr_resolvable(r):
+                    continue
+                parts.append(self._emit_expr(r))
+            if parts:
+                loc = f"{fd.span.file}:{fd.span.start_line}"
+                cond = " && ".join(f"({p})" for p in parts)
+                if isinstance(ret_type, GenericInstance) and ret_type.base_name == "Option":
+                    self._needed_headers.add("prove_option.h")
+                    self._line(f"if (!({cond})) return prove_option_none();")
+                elif fd.can_fail:
+                    self._line(
+                        f"if (!({cond})) return prove_result_err("
+                        f'prove_string_from_cstr("requires violated: {loc}"));'
+                    )
 
         # Emit assume assertions at function entry
         for assume_expr in fd.assume:
@@ -2171,6 +2214,8 @@ class CEmitter(
             if name == "filter":
                 # filter preserves list element type
                 return left_ty
+            if name in ("all", "any"):
+                return BOOLEAN
             if name == "map":
                 # map return type depends on the lambda/function
                 if isinstance(left_ty, ListType):

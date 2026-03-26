@@ -61,6 +61,49 @@ _CORE_FILES = {
     "prove_bitarray",
 }
 
+# Field declarations for binary (C-backed) stdlib types.
+# Maps type name → {field_name: prove_type_name}.
+# Used by the checker to validate field access on opaque binary types.
+BINARY_TYPE_FIELDS: dict[str, dict[str, str]] = {
+    "ProcessResult": {
+        "exit_code": "Integer",
+        "standard_output": "String",
+        "standard_error": "String",
+    },
+    "DirEntry": {
+        "name": "String",
+        "path": "String",
+    },
+    "Match": {
+        "start": "Integer",
+        "end": "Integer",
+        "text": "String",
+    },
+    "Url": {
+        "scheme": "String",
+        "host": "String",
+        "port": "Integer",
+        "path": "String",
+        "query": "String",
+        "fragment": "String",
+    },
+    "Token": {
+        "text": "String",
+        "start": "Integer",
+        "end": "Integer",
+        "kind": "Integer",
+    },
+    "Rule": {
+        "pattern": "String",
+        "kind": "Integer",
+    },
+    "Version": {
+        "number": "Integer",
+        "timestamp": "Integer",
+        "hash": "String",
+    },
+}
+
 # Mapping of stdlib module names to the C runtime libraries they require.
 # Used by RuntimeDeps (in optimizer.py) to track which runtime files to include.
 # Keys are lowercase stdlib module names.
@@ -190,6 +233,8 @@ _RUNTIME_FUNCTIONS = {
     "prove_hof": [
         "prove_list_map",
         "prove_list_filter",
+        "prove_list_all",
+        "prove_list_any",
         "prove_list_each",
         "prove_list_reduce",
     ],

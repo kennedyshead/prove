@@ -8,6 +8,7 @@ from prove.ast_nodes import (
     FieldExpr,
     FunctionDef,
     IdentifierExpr,
+    LambdaExpr,
     ListLiteral,
     PipeExpr,
     SimpleType,
@@ -72,7 +73,62 @@ class CallCheckMixin:
                 self._in_listens_worker_list = True
 
         # Determine function name and resolve
-        arg_types = [self._infer_expr(a) for a in expr.args]
+        # For HOF builtins: infer the collection arg first so we can set the
+        # concrete element type before inferring the lambda callback.  This
+        # lets _infer_lambda assign real types to its parameters instead of
+        # wildcard TypeVariables, catching mismatches like passing
+        # Option<T> where T is expected.
+        _HOF_BUILTINS_1 = frozenset(
+            {
+                "map",
+                "filter",
+                "each",
+                "all",
+                "any",
+                "par_map",
+                "par_filter",
+                "par_each",
+            }
+        )
+        _HOF_BUILTINS_2 = frozenset({"reduce", "par_reduce"})
+        if (
+            isinstance(expr.func, IdentifierExpr)
+            and len(expr.args) >= 2
+            and isinstance(expr.args[-1], LambdaExpr)
+        ):
+            hof_name = expr.func.name
+            if hof_name in _HOF_BUILTINS_1 or hof_name in _HOF_BUILTINS_2:
+                # Infer collection arg first to extract element type
+                list_type = self._infer_expr(expr.args[0])
+                elem_type = None
+                if isinstance(list_type, ListType):
+                    elem_type = list_type.element
+                elif isinstance(list_type, ArrayType):
+                    elem_type = list_type.element
+                # For reduce: also infer the initial value (2nd arg)
+                if hof_name in _HOF_BUILTINS_2 and len(expr.args) >= 3:
+                    mid_types = [self._infer_expr(a) for a in expr.args[1:-1]]
+                    # reduce lambda: (accumulator Output, element Value)
+                    acc_type = mid_types[0] if mid_types else None
+                    params = []
+                    if acc_type is not None:
+                        params.append(acc_type)
+                    if elem_type is not None:
+                        params.append(elem_type)
+                    self._hof_param_types = params if params else None
+                    lam_type = self._infer_expr(expr.args[-1])
+                    self._hof_param_types = None
+                    arg_types = [list_type] + mid_types + [lam_type]
+                else:
+                    # Single-param lambda: element type
+                    self._hof_param_types = [elem_type] if elem_type is not None else None
+                    lam_type = self._infer_expr(expr.args[-1])
+                    self._hof_param_types = None
+                    arg_types = [list_type, lam_type]
+            else:
+                arg_types = [self._infer_expr(a) for a in expr.args]
+        else:
+            arg_types = [self._infer_expr(a) for a in expr.args]
         self._in_listens_worker_list = _was_in_listens
         arg_count = len(expr.args)
 
@@ -674,6 +730,23 @@ class CallCheckMixin:
                     expr.span,
                 )
                 return ERROR_TY
+
+        # Binary (C-backed) stdlib types with known fields
+        if isinstance(obj_type, PrimitiveType):
+            from prove.c_runtime import BINARY_TYPE_FIELDS
+
+            fields = BINARY_TYPE_FIELDS.get(obj_type.name)
+            if fields is not None:
+                field_type_name = fields.get(expr.field)
+                if field_type_name is None:
+                    self._error(
+                        "E340",
+                        f"no field '{expr.field}' on type '{obj_type.name}'"
+                        f" (fields: {', '.join(fields)})",
+                        expr.span,
+                    )
+                    return ERROR_TY
+                return PrimitiveType(field_type_name)
 
         # Allow field access on GenericInstance, AlgebraicType, etc. without error
         # (duck typing / deferred check for generics)

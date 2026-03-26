@@ -23,7 +23,7 @@ outputs pyformat(
     md Boolean,
     status Boolean,
     stdin Boolean
-) Integer
+) Integer!
   requires valid dir(path)
 from
     py_initialize()

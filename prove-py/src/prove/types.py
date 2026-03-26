@@ -279,12 +279,25 @@ BUILTIN_FUNCTIONS: frozenset[str] = frozenset(
         "par_filter",
         "par_reduce",
         "par_each",
+        "all",
+        "any",
         "clamp",
     }
 )
 
 HOF_BUILTINS: frozenset[str] = frozenset(
-    {"map", "filter", "reduce", "each", "par_map", "par_filter", "par_reduce", "par_each"}
+    {
+        "map",
+        "filter",
+        "reduce",
+        "each",
+        "all",
+        "any",
+        "par_map",
+        "par_filter",
+        "par_reduce",
+        "par_each",
+    }
 )
 
 

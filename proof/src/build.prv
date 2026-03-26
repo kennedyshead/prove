@@ -23,7 +23,7 @@ outputs prvbuild(
     debug Boolean,
     no_mutate Boolean,
     source List<SourceFile>
-) Integer
+) Integer!
   requires valid dir(path)
 from
     1
@@ -33,7 +33,7 @@ outputs pybuild(
     debug Boolean,
     no_mutate Boolean,
     source List<Option<SourceFile>>
-) Integer
+) Integer!
   requires valid dir(path)
 from
     py_initialize()

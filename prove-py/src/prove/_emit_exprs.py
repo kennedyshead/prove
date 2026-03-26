@@ -183,6 +183,16 @@ class ExprEmitterMixin:
             return self._emit_store_lookup_expr(expr)
 
         if isinstance(expr, ValidExpr):
+            # valid all/any(list, pred) → route to HOF emitter
+            if expr.name in ("all", "any") and expr.args is not None and len(expr.args) == 2:
+                synthetic = CallExpr(
+                    func=IdentifierExpr(expr.name, expr.span),
+                    args=list(expr.args),
+                    span=expr.span,
+                )
+                if expr.name == "all":
+                    return self._emit_hof_all(synthetic)
+                return self._emit_hof_any(synthetic)
             # Prefer validates verb since valid X(...) means validates
             n = len(expr.args) if expr.args is not None else 0
             sig = self._symbols.resolve_function("validates", expr.name, n)
@@ -286,7 +296,7 @@ class ExprEmitterMixin:
         if not isinstance(divisor_expr, IdentifierExpr):
             return False
         name = divisor_expr.name
-        for req in self._current_requires:
+        for req in self._flatten_requires(self._current_requires):
             if not isinstance(req, BinaryExpr):
                 continue
             # Match patterns: param != 0, param > 0, 0 != param, 0 < param
@@ -408,6 +418,15 @@ class ExprEmitterMixin:
             if val_ct.decl == "bool":
                 return f"prove_value_to_bool({unwrap})"
             return f"({val_ct.decl}){unwrap}"
+        # Option<T> field access: unwrap and cast to inner type, then access field
+        if isinstance(obj_type, GenericInstance) and obj_type.base_name == "Option":
+            self._needed_headers.add("prove_option.h")
+            if obj_type.args:
+                inner_type = obj_type.args[0]
+                inner_ct = map_type(inner_type)
+                cast_type = inner_ct.decl if inner_ct.is_pointer else f"{inner_ct.decl}*"
+                return f"(({cast_type})prove_option_unwrap({obj}))->{expr.field}"
+            return f"prove_option_unwrap({obj})"
         # Pointer types use ->
         ct = map_type(obj_type)
         if ct.is_pointer:
@@ -446,7 +465,7 @@ class ExprEmitterMixin:
         if isinstance(expr.right, CallExpr) and isinstance(expr.right.func, IdentifierExpr):
             name = expr.right.func.name
             # Route HOF builtins through the dedicated HOF emitters
-            if name in ("map", "filter", "reduce", "each"):
+            if name in ("map", "filter", "reduce", "each", "all", "any"):
                 synthetic = CallExpr(
                     func=expr.right.func,
                     args=[expr.left] + list(expr.right.args),
@@ -458,6 +477,10 @@ class ExprEmitterMixin:
                     return self._emit_hof_filter(synthetic)
                 if name == "reduce":
                     return self._emit_hof_reduce(synthetic)
+                if name == "all":
+                    return self._emit_hof_all(synthetic)
+                if name == "any":
+                    return self._emit_hof_any(synthetic)
                 return self._emit_hof_each(synthetic)
             extra_args = [self._emit_expr(a) for a in expr.right.args]
             all_args = [left] + extra_args

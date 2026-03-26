@@ -49,7 +49,7 @@ These types need no import:
 
 These functions are always available without import — they are compiler builtins, not part of any stdlib module:
 
-- **Iteration:** `map`, `filter`, `reduce`, `each` — work on any iterable (`List`, `Array`)
+- **Iteration:** `map`, `filter`, `reduce`, `each`, `all`, `any` — work on any iterable (`List`, `Array`)
 - **Parallel:** `par_map`, `par_filter`, `par_reduce`, `par_each` — parallel variants (pure functions only)
 - **Utility:** `len`, `clamp`
 

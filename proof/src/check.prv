@@ -5,6 +5,10 @@ module Check
   outputs the command to python for a pycheck
   """
   System validates dir
+  Prove types Node reads root creates children kind line validates error
+  Source types SourceFile
+  Types validates unit
+  Log detached info error
 
   foreign "libpython3"
     py_initialize() Unit
@@ -16,6 +20,23 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
+validates check_line(node Node)
+from
+    match error(node)
+        true =>
+            error(f"{line(node)}{kind(node)}")&
+            true
+        _ => false
+
+outputs check_source(source Option<SourceFile>) Boolean!
+  requires unit(source) == false
+from
+    match any(children(root(source.source)), |node| check_line(node))
+        true =>
+            error(f"{source.path}")&
+            true
+        false => false
+
 outputs pycheck(
     path String,
     md Boolean,
@@ -25,7 +46,7 @@ outputs pycheck(
     no_status Boolean,
     no_intent Boolean,
     nlp_status Boolean
-) Integer
+)!
   requires valid dir(path)
 from
     py_initialize()
@@ -38,5 +59,7 @@ from
     py_set_bool("no_intent", no_intent)
     py_set_bool("nlp_status", nlp_status)
     result as Integer = py_run_string(PYTHON_CHECK)
+    match result
+        0 => info("Success")&
+        _ => error("Fail")&
     py_finalize()
-    result

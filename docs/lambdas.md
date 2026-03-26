@@ -51,6 +51,8 @@ The following functions are **builtins** — always available, no import needed.
 | `filter` | `filter(items, \|x\| predicate) List<T>` | Keep elements matching predicate |
 | `reduce` | `reduce(items, init, \|acc, x\| expr) T` | Fold elements into accumulator |
 | `each` | `each(items, \|x\| expr)` | Run function for each element (side effects) |
+| `all` | `all(items, \|x\| predicate) Boolean` | True if predicate holds for every element (short-circuits) |
+| `any` | `any(items, \|x\| predicate) Boolean` | True if predicate holds for at least one element (short-circuits) |
 | `len` | `len(items) Integer` | Number of elements |
 | `clamp` | `clamp(value, min, max) Integer` | Clamp value to range |
 | `par_map` | `par_map(items, fn) List<T>` | Parallel map (pure functions only) |
@@ -79,6 +81,12 @@ result as List<String> = users
     |> filter(|u| u.active)
     |> map(|u| u.email)
     |> filter(valid email)
+
+// Check if all items are in stock
+all_available as Boolean = all(items, |i| i.quantity > 0)
+
+// Check if any user is an admin
+has_admin as Boolean = any(users, |u| u.role == "admin")
 ```
 
 For complex iteration that doesn't fit map/filter/reduce, use recursion with a `transforms` function and a [`terminates`](contracts.md#terminates) annotation.

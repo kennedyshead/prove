@@ -41,6 +41,20 @@ void prove_list_each(
     void *ctx
 );
 
+/* All: return true if pred returns true for every element (short-circuits). */
+bool prove_list_all(
+    Prove_List *list,
+    bool (*pred)(void *, void *),
+    void *ctx
+);
+
+/* Any: return true if pred returns true for at least one element (short-circuits). */
+bool prove_list_any(
+    Prove_List *list,
+    bool (*pred)(void *, void *),
+    void *ctx
+);
+
 /* Reduce: fold list from left with an accumulator. */
 void *prove_list_reduce(
     Prove_List *list,

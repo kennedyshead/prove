@@ -17,7 +17,7 @@ module Test
   PYTHON_TEST as String = comptime
       read("python/test.py")
 
-outputs pytest(config Config, path String) Integer
+outputs pytest(config Config, path String) Integer!
   requires valid dir(path)
 from
     py_initialize()

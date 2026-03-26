@@ -398,6 +398,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._lambda_captures: dict[int, list[str]] = {}
         # Current module name (set from ModuleDecl) for function signature tagging
         self._module_name: str | None = None
+        # HOF param types: set before inferring a lambda in a HOF call so
+        # _infer_lambda can assign concrete types instead of TypeVariable.
+        self._hof_param_types: list[Type] | None = None
         # Match arm depth: >0 when checking statements inside a match arm body
         self._match_arm_depth: int = 0
         # Unique ID for the current match arm (incremented per arm)
@@ -655,6 +658,22 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     FunctionType([TypeVariable("Value")], BOOLEAN),
                 ],
                 ListType(TypeVariable("Value")),
+            ),
+            (
+                "all",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], BOOLEAN),
+                ],
+                BOOLEAN,
+            ),
+            (
+                "any",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], BOOLEAN),
+                ],
+                BOOLEAN,
             ),
             (
                 "reduce",
@@ -1491,6 +1510,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     ):
                         sym.resolved_type = sym.resolved_type.args[0]
 
+        # Narrow Option<T> → T for requires unit(x) == false
+        for req_expr in fd.requires:
+            self._narrow_unit_false(req_expr)
+
         # Bind implicit variables for renders/listens verbs
         # These are marked as used since they're consumed by the runtime dispatch
         if fd.verb in ("renders", "listens") and fd.event_type is not None:
@@ -2112,6 +2135,44 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 return True
         return False
 
+    def _narrow_unit_false(self, expr: Expr) -> None:
+        """Narrow Option<T> → T when requires contains unit(x) == false.
+
+        Also handles &&-conjunctions so that
+        ``requires unit(a) == false && unit(b) == false``
+        narrows both *a* and *b*.
+        """
+        if isinstance(expr, BinaryExpr) and expr.op == "&&":
+            self._narrow_unit_false(expr.left)
+            self._narrow_unit_false(expr.right)
+            return
+        if not (isinstance(expr, BinaryExpr) and expr.op == "=="):
+            return
+        # unit(x) == false  OR  false == unit(x)
+        call, lit = expr.left, expr.right
+        if isinstance(lit, CallExpr) and isinstance(call, BooleanLit):
+            call, lit = lit, call
+        if not (
+            isinstance(call, CallExpr)
+            and isinstance(call.func, IdentifierExpr)
+            and call.func.name == "unit"
+            and len(call.args) == 1
+            and isinstance(lit, BooleanLit)
+            and lit.value is False
+        ):
+            return
+        arg = call.args[0]
+        if not isinstance(arg, IdentifierExpr):
+            return
+        sym = self.symbols.lookup(arg.name)
+        if (
+            sym is not None
+            and isinstance(sym.resolved_type, GenericInstance)
+            and sym.resolved_type.base_name == "Option"
+            and sym.resolved_type.args
+        ):
+            sym.resolved_type = sym.resolved_type.args[0]
+
     # ── Verb enforcement ────────────────────────────────────────
 
     def _check_verb_rules(self, fd: FunctionDef) -> None:
@@ -2247,6 +2308,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 "`state_type` annotation is only valid on `listens` verb",
                 fd.span,
             )
+        # IO verbs with requires must be failable or return Option
+        if fd.requires and verb in ("inputs", "outputs"):
+            ret = self._resolve_type_expr(fd.return_type) if fd.return_type else None
+            is_option = isinstance(ret, GenericInstance) and ret.base_name == "Option"
+            if not fd.can_fail and not is_option:
+                self._error(
+                    "E436",
+                    f"`{verb}` with `requires` must be failable (!) or "
+                    f"return Option<T> so the contract can be enforced at runtime",
+                    fd.span,
+                )
 
         # I367: suggest extracting match to a matches verb function
         # listens/streams/renders bodies are inherently match-based, so exempt
@@ -2766,6 +2838,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(expr, IndexExpr):
             return self._infer_index(expr)
         if isinstance(expr, ValidExpr):
+            # valid all/any(list, pred) → HOF builtin, not a validates function
+            if expr.name in ("all", "any") and expr.args is not None and len(expr.args) == 2:
+                # Infer args to check types but return Boolean directly
+                for a in expr.args:
+                    self._infer_expr(a)
+                return BOOLEAN
             n = len(expr.args) if expr.args is not None else 0
             # Use type-aware resolution among validates overloads
             if expr.args is not None:
@@ -3161,15 +3239,20 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Infer arm types — skip ErrorType arms to avoid poison propagation
         result_type: Type = cast(Type, UNIT)
         arm_types: list[tuple[Type, MatchArm]] = []
+        # Boolean matches (true/false) are effectively if/else — don't count
+        # them for I305 single-arm usage tracking.
+        is_bool_match = subject_type is BOOLEAN
         for arm in expr.arms:
             self.symbols.push_scope("match_arm")
             self._check_pattern(arm.pattern, subject_type)
             arm_type = UNIT
             self._match_arm_id += 1
-            self._match_arm_depth += 1
+            if not is_bool_match:
+                self._match_arm_depth += 1
             for stmt in arm.body:
                 arm_type = self._check_stmt(stmt)  # type: ignore[assignment]
-            self._match_arm_depth -= 1
+            if not is_bool_match:
+                self._match_arm_depth -= 1
             if not isinstance(arm_type, ErrorType):
                 result_type = arm_type
             arm_types.append((arm_type, arm))
@@ -3225,7 +3308,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         param_types: list[Type] = []
         param_names = set(expr.params)
         for pname in expr.params:
-            pt = TypeVariable(pname)
+            # Use concrete HOF param types when available (set by _infer_call
+            # for HOF builtins) so the body is type-checked against the real
+            # collection element type instead of a wildcard TypeVariable.
+            if self._hof_param_types:
+                pt = self._hof_param_types.pop(0)
+            else:
+                pt = TypeVariable(pname)
             param_types.append(pt)
             self.symbols.define(
                 Symbol(

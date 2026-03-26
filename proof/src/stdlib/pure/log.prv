@@ -14,28 +14,28 @@ module Log
 
 /// Send a console message to stdout of a debug message
 /// with severity and timestamp added
-detached debug(string String)
+detached debug(message String)
 from
     now as Time = time()
-    console(f"{ansi(Color:Blue)}[DEBUG][{now}] {string}{ansi(Color:Default)}")
+    console(f"{ansi(Color:Blue)}[DEBUG][{now}] {message}{ansi(Color:Default)}")
 
 /// Send a console message to stdout of a info message
 /// with severity and timestamp added
-detached info(string String)
+detached info(message String)
 from
     now as Time = time()
-    console(f"{ansi(Color:Green)}[INFO][{now}] {string}{ansi(Color:Default)}")
+    console(f"{ansi(Color:Green)}[INFO][{now}] {message}{ansi(Color:Default)}")
 
 /// Send a console message to stdout of a warning message
 /// with severity and timestamp added
-detached warning(string String)
+detached warning(message String)
 from
     now as Time = time()
-    console(f"{ansi(Color:Yellow)}[WARNING][{now}] {string}{ansi(Color:Default)}")
+    console(f"{ansi(Color:Yellow)}[WARNING][{now}] {message}{ansi(Color:Default)}")
 
 /// Send a console message to stdout of a error message
 /// with severity and timestamp added
-detached error(string String)
+detached error(message String)
 from
     now as Time = time()
-    console(f"{ansi(Color:Red)}[ERROR][{now}] {string}{ansi(Color:Default)}")
+    console(f"{ansi(Color:Red)}[ERROR][{now}] {message}{ansi(Color:Default)}")

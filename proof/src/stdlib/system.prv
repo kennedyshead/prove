@@ -6,16 +6,25 @@ module System
   inputs a file reader and writer and finally close with outputs
   """
 
+  /// Process execution result
+  /// exit_code Integer — process exit code
+  /// standard_output String — captured stdout
+  /// standard_error String — captured stderr
   type ProcessResult is binary
 
+  /// Directory entry returned by dir()
+  /// name String — entry name
+  /// path String — full path
   type DirEntry is binary
 
+  /// Open file handle for reading or writing
   type File is binary
 
+  /// Raw byte array
   type ByteArray is binary
 
 /// Print text to the console
-outputs console(text String)
+outputs console(message String)
 binary
 
 /// Read a line from the console

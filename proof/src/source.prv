@@ -6,6 +6,7 @@ module Source
   System validates file inputs dir file outputs console
   Parse types Token creates tokens tree
   Prove types Tree
+  Text validates ends
 
   type SourceFile is
     path String
@@ -14,7 +15,7 @@ module Source
     source Value<Tree>
 
 inputs source_file(path String) Option<SourceFile>
-  requires valid ends(path, ".prv") && valid file(path)
+  requires valid file(path) && ends(path, ".prv")
 from
     content as String = file(path)
     source as Result<Value<Tree>, Error> = tree(content)

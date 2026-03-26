@@ -338,6 +338,16 @@ class ProveFormatter:
     # ── Type definitions ───────────────────────────────────────
 
     def _format_type_def(self, td: TypeDef) -> str:
+        result = self._format_type_def_body(td)
+        if td.doc_comment:
+            doc_lines: list[str] = []
+            for doc_line in td.doc_comment.splitlines():
+                doc_lines.append(f"/// {doc_line}" if doc_line else "///")
+            doc_lines.append(result)
+            return "\n".join(doc_lines)
+        return result
+
+    def _format_type_def_body(self, td: TypeDef) -> str:
         params = ""
         if td.type_params:
             params = "<" + ", ".join(td.type_params) + ">"

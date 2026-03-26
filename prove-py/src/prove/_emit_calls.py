@@ -222,6 +222,20 @@ class CallEmitterMixin:
                 self._needed_headers.add(_PREFIX_HEADERS[prefix])
                 return
 
+    @staticmethod
+    def _flatten_requires(requires: list[Expr]) -> list[Expr]:
+        """Flatten &&-conjunctions in requires expressions."""
+        flat: list[Expr] = []
+        stack = list(requires)
+        while stack:
+            e = stack.pop()
+            if isinstance(e, BinaryExpr) and e.op == "&&":
+                stack.append(e.left)
+                stack.append(e.right)
+            else:
+                flat.append(e)
+        return flat
+
     def _is_requires_narrowed(
         self,
         func_name: str,
@@ -239,7 +253,7 @@ class CallEmitterMixin:
             else:
                 return False
         call_key = frozenset(call_arg_names)
-        for req_expr in self._current_requires:
+        for req_expr in self._flatten_requires(self._current_requires):
             if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
                 # requires valid email(param) — resolve the validates function
                 sig_v = self._symbols.resolve_function(
@@ -318,7 +332,7 @@ class CallEmitterMixin:
         ):
             return inferred
         param_name = expr.name
-        for req_expr in self._current_requires:
+        for req_expr in self._flatten_requires(self._current_requires):
             # requires valid func(param) form
             if isinstance(req_expr, ValidExpr) and req_expr.args is not None:
                 for a in req_expr.args:
@@ -572,6 +586,10 @@ class CallEmitterMixin:
             if arg_ct.decl == "Prove_Value*" and param_ct.decl == "Prove_String*":
                 result[i] = f"prove_value_as_text({arg_str})"
                 continue
+            # Value<T> → T (phantom-typed value): cast Prove_Value* to concrete pointer
+            if arg_ct.decl == "Prove_Value*" and param_ct.is_pointer:
+                result[i] = f"(({param_ct.decl}){arg_str})"
+                continue
             # concrete → Prove_Value*: wrap as Value
             if param_ct.decl == "Prove_Value*" and arg_ct.decl != "Prove_Value*":
                 if arg_ct.decl == "Prove_Table*":
@@ -722,6 +740,10 @@ class CallEmitterMixin:
                 return self._emit_hof_each(expr)
             if name == "filter" and len(expr.args) == 2:
                 return self._emit_hof_filter(expr)
+            if name == "all" and len(expr.args) == 2:
+                return self._emit_hof_all(expr)
+            if name == "any" and len(expr.args) == 2:
+                return self._emit_hof_any(expr)
             if name == "reduce" and len(expr.args) == 3:
                 return self._emit_hof_reduce(expr)
             if name == "par_map" and len(expr.args) == 2:
@@ -908,6 +930,11 @@ class CallEmitterMixin:
                 args = self._coerce_call_args(args, expr.args, sig)
                 c_name: str | None = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
+                    # Option<T> → tag check for Value-type validators
+                    if c_name == "prove_value_is_unit" and len(expr.args) == 1:
+                        arg_ty = self._infer_expr_type(expr.args[0])
+                        if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option":
+                            return f"({args[0]}.tag == 0)"
                     # prove_store_merge takes a 4th resolver arg (NULL = no resolver)
                     if c_name == "prove_store_merge" and len(args) == 3:
                         args.append("NULL")
@@ -1510,6 +1537,80 @@ class CallEmitterMixin:
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
+
+    def _emit_hof_all(self, expr: CallExpr) -> str:
+        """Emit all as inline loop — true if predicate holds for every element."""
+        coll_type = self._infer_expr_type(expr.args[0])
+
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_ct = map_type(elem_type)
+
+        lam = expr.args[1]
+        result_var = self._tmp()
+        self._line(f"bool {result_var} = true;")
+
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_x"
+            idx = self._named_tmp("i")
+            self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+            self._indent += 1
+            elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"if (!({body_code})) {{ {result_var} = false; break; }}")
+            self._indent -= 1
+            self._line("}")
+            return result_var
+
+        # Fallback: use prove_list_all with callback wrapper
+        self._needed_headers.add("prove_hof.h")
+        fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "filter")
+        return f"prove_list_all({list_arg}, {fn_name}, {ctx_arg})"
+
+    def _emit_hof_any(self, expr: CallExpr) -> str:
+        """Emit any as inline loop — true if predicate holds for at least one element."""
+        coll_type = self._infer_expr_type(expr.args[0])
+
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_ct = map_type(elem_type)
+
+        lam = expr.args[1]
+        result_var = self._tmp()
+        self._line(f"bool {result_var} = false;")
+
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_x"
+            idx = self._named_tmp("i")
+            self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+            self._indent += 1
+            elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"if ({body_code}) {{ {result_var} = true; break; }}")
+            self._indent -= 1
+            self._line("}")
+            return result_var
+
+        # Fallback: use prove_list_any with callback wrapper
+        self._needed_headers.add("prove_hof.h")
+        fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "filter")
+        return f"prove_list_any({list_arg}, {fn_name}, {ctx_arg})"
 
     @staticmethod
     def _collect_string_literals(expr: Expr) -> set[str]:
