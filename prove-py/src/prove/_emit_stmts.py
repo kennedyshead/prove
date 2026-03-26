@@ -312,9 +312,11 @@ class StmtEmitterMixin:
                             res_tmp = self._tmp()
                             self._line(f"Prove_Result {res_tmp} = {emit_val};")
                             self._line("#ifndef PROVE_RELEASE")
+                            _span = getattr(expr, "span", None)
+                            _loc = f" ({_span.file}:{_span.start_line})" if _span else ""
                             self._line(
                                 f"if (prove_result_is_err({res_tmp}))"
-                                f' prove_panic("unexpected error");'
+                                f' prove_panic("unexpected error{_loc}");'
                             )
                             self._line("#endif")
                             # Check for Value → concrete coercion
@@ -463,7 +465,8 @@ class StmtEmitterMixin:
             pass  # comments don't emit C code
         elif isinstance(stmt, TodoStmt):
             msg = stmt.message or self._get_current_function_name() or "not implemented"
-            self._line(f'prove_panic("TODO: {msg}");')
+            _loc = f"{stmt.span.file}:{stmt.span.start_line}"
+            self._line(f'prove_panic("TODO: {msg} ({_loc})");')
 
     def _emit_var_decl(self, vd: VarDecl) -> None:
         # C-safe variable name (escapes C keywords like 'default')
@@ -691,7 +694,8 @@ class StmtEmitterMixin:
                 else:
                     self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
             else:
-                self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error");')
+                _loc = f"{vd.span.file}:{vd.span.start_line}"
+                self._line(f'if (prove_result_is_err({tmp})) prove_panic("IO error ({_loc})");')
             # Unwrap the success value
             # Detect Value → concrete coercion: when the Result's success type
             # is Value but the target annotation is a concrete type, we must
@@ -817,6 +821,8 @@ class StmtEmitterMixin:
             return
 
         io_ctx = self._is_io_context()
+        _func_span = getattr(self._current_func, "span", None) if self._current_func else None
+        _loc = f" ({_func_span.file}:{_func_span.start_line})" if _func_span else ""
 
         if isinstance(constraint, RegexLit):
             self._needed_headers.add("prove_pattern.h")
@@ -827,7 +833,7 @@ class StmtEmitterMixin:
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
-            self._line('prove_panic("constraint failed: value does not match pattern");')
+            self._line(f'prove_panic("constraint failed: value does not match pattern{_loc}");')
             self._indent -= 1
             self._line("}")
             if not io_ctx:
@@ -841,7 +847,7 @@ class StmtEmitterMixin:
                 f'if (!prove_pattern_match({var_name}, prove_string_from_cstr("{escaped_pattern}"))) {{'  # noqa: E501
             )
             self._indent += 1
-            self._line('prove_panic("constraint failed: value does not match pattern");')
+            self._line(f'prove_panic("constraint failed: value does not match pattern{_loc}");')
             self._indent -= 1
             self._line("}")
             if not io_ctx:
@@ -858,6 +864,9 @@ class StmtEmitterMixin:
         """Emit runtime validation for numeric refinement constraints."""
         from prove.type_inference import BINARY_OP_TO_C
 
+        _func_span = getattr(self._current_func, "span", None) if self._current_func else None
+        _loc = f" ({_func_span.file}:{_func_span.start_line})" if _func_span else ""
+
         if constraint.op == "..":
             # Range: 1..65535 → if (val < 1 || val > 65535) { panic }
             lo = self._emit_constraint_operand(constraint.left, var_name)
@@ -866,7 +875,9 @@ class StmtEmitterMixin:
                 self._line("#ifndef PROVE_RELEASE")
             self._line(f"if ({var_name} < {lo} || {var_name} > {hi}) {{")
             self._indent += 1
-            self._line('prove_panic("refinement type constraint violated: value out of range");')
+            self._line(  # noqa: E501
+                f'prove_panic("refinement type constraint violated: value out of range{_loc}");'
+            )
             self._indent -= 1
             self._line("}")
             if not io_context:
@@ -884,7 +895,7 @@ class StmtEmitterMixin:
                     self._line("#ifndef PROVE_RELEASE")
                 self._line(f"if (!({left} {c_op} {right})) {{")
                 self._indent += 1
-                self._line('prove_panic("refinement type constraint violated");')
+                self._line(f'prove_panic("refinement type constraint violated{_loc}");')
                 self._indent -= 1
                 self._line("}")
                 if not io_context:
@@ -899,6 +910,9 @@ class StmtEmitterMixin:
         """Emit compound constraint (&&, ||)."""
         from prove.type_inference import BINARY_OP_TO_C
 
+        _func_span = getattr(self._current_func, "span", None) if self._current_func else None
+        _loc = f" ({_func_span.file}:{_func_span.start_line})" if _func_span else ""
+
         c_op = BINARY_OP_TO_C[constraint.op]
         left = self._emit_constraint_condition(constraint.left, var_name)
         right = self._emit_constraint_condition(constraint.right, var_name)
@@ -906,7 +920,7 @@ class StmtEmitterMixin:
             self._line("#ifndef PROVE_RELEASE")
         self._line(f"if (!({left} {c_op} {right})) {{")
         self._indent += 1
-        self._line('prove_panic("refinement type constraint violated");')
+        self._line(f'prove_panic("refinement type constraint violated{_loc}");')
         self._indent -= 1
         self._line("}")
         if not io_context:

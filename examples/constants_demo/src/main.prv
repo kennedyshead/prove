@@ -10,8 +10,8 @@ module Main
 
 main() Unit
 from
-    console(f"PI is approximately: {PI}")
-    console(f"Max size: {MAX_SIZE}")
+    console(f"{PI}")
+    console(f"{MAX_SIZE}")
     console(GREETING)
     area as Decimal = PI * 50 * 50
-    console(f"Area of radius 50: {area}")
+    console(f"{area}")

@@ -16,7 +16,8 @@ module Commands
   New outputs new_project
   Sequence reads get validates contains
   Source inputs source
-  Check outputs pycheck check_source
+  Check validates syntax_for_source outputs pycheck
+  Types validates unit
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -46,11 +47,11 @@ from
     debug as Boolean = contains(arguments, "--debug")
     no_mutate as Boolean = contains(arguments, "--no-mutate")
     config as Config = config()!
-    source as List<Option<SourceFile>> = source(config)!
-    match any(source, |file| check_source(file)!)
+    source as List<Option<SourceFile>> = source(config)
+    match any(source, |file| syntax_for_source(file))
         false =>
             info("Using pybuild...")&
-            pybuild(cwd(), debug, no_mutate, source)!
+            pybuild(cwd(), debug, no_mutate, filter(source, |file| unit(file) == false))!
             info(f"{config.package.name}{config.package.version}")&
         true => error("Source parsing failed!")&
 

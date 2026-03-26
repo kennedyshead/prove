@@ -1057,12 +1057,7 @@ class CSTConverter:
 
                 # Merge into preceding MatchExpr if there is one
                 if body and isinstance(body[-1], MatchExpr):
-                    prev = body[-1]
-                    body[-1] = MatchExpr(
-                        subject=prev.subject,
-                        arms=list(prev.arms) + [arm],
-                        span=prev.span,
-                    )
+                    body[-1] = self._merge_arm_into_match(body[-1], arm, arm_col)
                 elif body and isinstance(body[-1], MatchArm):
                     prev_arm = body.pop()
                     body.append(
@@ -1087,19 +1082,10 @@ class CSTConverter:
                     and isinstance(body[last_match_idx], MatchExpr)
                 ):
                     match_expr = body[last_match_idx]
-                    last_arm = match_expr.arms[-1]
                     stmt = self._convert_body_item(child)
                     if stmt is not None:
-                        new_arm = MatchArm(
-                            pattern=last_arm.pattern,
-                            body=list(last_arm.body) + [stmt],
-                            span=last_arm.span,
-                        )
-                        new_arms = list(match_expr.arms[:-1]) + [new_arm]
-                        body[last_match_idx] = MatchExpr(
-                            subject=match_expr.subject,
-                            arms=new_arms,
-                            span=match_expr.span,
+                        body[last_match_idx] = self._absorb_stmt_into_match(
+                            match_expr, stmt, child_col
                         )
                 else:
                     # Not a match continuation — reset tracking
@@ -1124,6 +1110,79 @@ class CSTConverter:
                                 last_arm_col = child_col
 
         return body
+
+    def _absorb_stmt_into_match(self, match_expr: MatchExpr, stmt: Any, stmt_col: int) -> MatchExpr:
+        """Absorb a statement into the deepest nested match arm by column."""
+        last_arm = match_expr.arms[-1]
+
+        # Check if the last arm body ends with a nested MatchExpr
+        if (
+            last_arm.body
+            and isinstance(last_arm.body[-1], ExprStmt)
+            and isinstance(last_arm.body[-1].expr, MatchExpr)
+        ):
+            inner = last_arm.body[-1].expr
+            if inner.arms:
+                inner_last = inner.arms[-1]
+                if inner_last.body:
+                    inner_body_col = inner_last.body[0].span.start_col
+                    if stmt_col >= inner_body_col:
+                        new_inner = self._absorb_stmt_into_match(inner, stmt, stmt_col)
+                        new_body = list(last_arm.body[:-1]) + [
+                            ExprStmt(new_inner, last_arm.body[-1].span)
+                        ]
+                        new_arm = MatchArm(last_arm.pattern, new_body, last_arm.span)
+                        return MatchExpr(
+                            match_expr.subject,
+                            list(match_expr.arms[:-1]) + [new_arm],
+                            match_expr.span,
+                        )
+
+        # Default: absorb into this match's last arm
+        new_arm = MatchArm(
+            last_arm.pattern,
+            list(last_arm.body) + [stmt],
+            last_arm.span,
+        )
+        return MatchExpr(
+            match_expr.subject,
+            list(match_expr.arms[:-1]) + [new_arm],
+            match_expr.span,
+        )
+
+    def _merge_arm_into_match(
+        self, match_expr: MatchExpr, arm: MatchArm, arm_col: int
+    ) -> MatchExpr:
+        """Merge an orphan arm into the deepest nested match by column."""
+        last_arm = match_expr.arms[-1]
+
+        # Check if the last arm body ends with a nested MatchExpr
+        if (
+            last_arm.body
+            and isinstance(last_arm.body[-1], ExprStmt)
+            and isinstance(last_arm.body[-1].expr, MatchExpr)
+        ):
+            inner = last_arm.body[-1].expr
+            if inner.arms:
+                inner_arm_col = inner.arms[0].span.start_col
+                if arm_col >= inner_arm_col:
+                    new_inner = self._merge_arm_into_match(inner, arm, arm_col)
+                    new_body = list(last_arm.body[:-1]) + [
+                        ExprStmt(new_inner, last_arm.body[-1].span)
+                    ]
+                    new_arm_outer = MatchArm(last_arm.pattern, new_body, last_arm.span)
+                    return MatchExpr(
+                        match_expr.subject,
+                        list(match_expr.arms[:-1]) + [new_arm_outer],
+                        match_expr.span,
+                    )
+
+        # Default: merge into this match
+        return MatchExpr(
+            match_expr.subject,
+            list(match_expr.arms) + [arm],
+            match_expr.span,
+        )
 
     def _convert_body_item(self, node: TSNode) -> Any | None:
         """Convert a single body item (statement or match arm)."""

@@ -1279,12 +1279,14 @@ class CEmitter(
         # Emit assume assertions at function entry
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
-            self._line(f'if (!({cond})) prove_panic("assumption violated");')
+            _loc = f"{assume_expr.span.file}:{assume_expr.span.start_line}"
+            self._line(f'if (!({cond})) prove_panic("assumption violated ({_loc})");')
 
         # Emit believe assertions (always present — believe is explicitly uncertain)
         for believe_expr in fd.believe:
             cond = self._emit_expr(believe_expr)
-            self._line(f'if (!({cond})) prove_panic("believe violation");')
+            _loc = f"{believe_expr.span.file}:{believe_expr.span.start_line}"
+            self._line(f'if (!({cond})) prove_panic("believe violation ({_loc})");')
 
         # Check if explain block has structured conditions (when)
         has_explain_conditions = fd.explain is not None and any(
@@ -1370,11 +1372,13 @@ class CEmitter(
 
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
-            self._line(f'if (!({cond})) prove_panic("assumption violated");')
+            _loc = f"{assume_expr.span.file}:{assume_expr.span.start_line}"
+            self._line(f'if (!({cond})) prove_panic("assumption violated ({_loc})");')
 
         for believe_expr in fd.believe:
             cond = self._emit_expr(believe_expr)
-            self._line(f'if (!({cond})) prove_panic("believe violation");')
+            _loc = f"{believe_expr.span.file}:{believe_expr.span.start_line}"
+            self._line(f'if (!({cond})) prove_panic("believe violation ({_loc})");')
 
         has_explain_conditions = fd.explain is not None and any(
             e.condition is not None for e in fd.explain.entries

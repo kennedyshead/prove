@@ -678,11 +678,13 @@ class CallEmitterMixin:
             if isinstance(ftype, GenericInstance) and ftype.base_name == "Option":
                 field_args.append(opt_tmp)
                 continue
+            _func_span = getattr(self._current_func, "span", None) if self._current_func else None
+            _loc = f" ({_func_span.file}:{_func_span.start_line})" if _func_span else ""
             self._line("#ifndef PROVE_RELEASE")
             self._line(
                 f"if ({opt_tmp}.tag == 0) prove_panic("
                 f'"Tried to map non existent value '
-                f"'{fname}' to type '{record_type.name}'\");"
+                f"'{fname}' to type '{record_type.name}'{_loc}\");"
             )
             self._line("#endif")
             val_tmp = self._tmp()
@@ -2042,7 +2044,9 @@ class CallEmitterMixin:
                     f"{retain_lines}"
                     f"    Prove_Result {res_var} = {inner_code};\n"
                     f"    if (prove_result_is_err({res_var}))"
-                    f' prove_panic("error in map callback");\n'
+                    f' prove_panic("error in map callback'
+                    f" ({expr.span.file}:{expr.span.start_line})"
+                    f'");\n'
                     f"    return prove_result_unwrap_ptr({res_var});\n"
                     f"}}\n"
                 )
@@ -2378,9 +2382,17 @@ class CallEmitterMixin:
         self._line(f"if ({pred_code}) {{")
         self._indent += 1
 
-        # Emit map function application
+        # Emit map function application — infer result type for correct boxing
+        map_fn = expr.args[2]
+        map_result_type = elem_type
+        if isinstance(map_fn, LambdaExpr) and map_fn.params:
+            saved_locals = dict(self._locals)
+            self._locals[map_fn.params[0]] = elem_type
+            map_result_type = self._infer_expr_type(map_fn.body)
+            self._locals = saved_locals
+        map_result_ct = map_type(map_result_type)
         map_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
-        wrap = f"(void*){map_code}" if elem_ct.is_pointer else f"(void*)(intptr_t){map_code}"
+        wrap = self._hof_box(str(map_code), map_result_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -2415,16 +2427,46 @@ class CallEmitterMixin:
         unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
         self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
 
+        # Infer the mapped element type from the map lambda
+        map_fn = expr.args[1]
+        mapped_type = elem_type
+        if isinstance(map_fn, LambdaExpr) and map_fn.params:
+            saved_locals = dict(self._locals)
+            self._locals[map_fn.params[0]] = elem_type
+            mapped_type = self._infer_expr_type(map_fn.body)
+            self._locals = saved_locals
+        mapped_ct = map_type(mapped_type)
+
         # Apply map function then test predicate
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        # Struct types need boxing (e.g. Prove_Option)
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
 
-        # Test predicate on mapped result — pass as elem for simplicity
-        pred_code = self._emit_fused_lambda_inline(expr.args[2], mapped_var, elem_type)
+        # Test predicate on mapped result — unbox if map produced a boxed struct
+        mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer
+        pred_code = self._emit_fused_lambda_inline(
+            expr.args[2],
+            mapped_var,
+            mapped_type,
+            boxed=mapped_is_boxed,
+        )
         self._line(f"if ({pred_code}) {{")
         self._indent += 1
 
-        wrap = f"{mapped_var}"
+        # If map produced Option<T> and the filter removes None values,
+        # unwrap the Option to push the inner T* into the result list.
+        if (
+            isinstance(mapped_type, GenericInstance)
+            and mapped_type.base_name == "Option"
+            and mapped_type.args
+        ):
+            self._needed_headers.add("prove_option.h")
+            wrap = f"(void*)prove_option_unwrap({self._hof_unbox(mapped_var, mapped_ct)})"
+        else:
+            wrap = f"{mapped_var}"
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -2458,14 +2500,43 @@ class CallEmitterMixin:
         unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
         self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
 
+        # Infer f's return type for correct intermediate boxing
+        f_fn = expr.args[1]
+        f_result_type = elem_type
+        if isinstance(f_fn, LambdaExpr) and f_fn.params:
+            saved_locals = dict(self._locals)
+            self._locals[f_fn.params[0]] = elem_type
+            f_result_type = self._infer_expr_type(f_fn.body)
+            self._locals = saved_locals
+        f_result_ct = map_type(f_result_type)
+
         # Apply f then g
         f_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         mid_var = self._tmp()
-        self._line(f"void *{mid_var} = (void*)(intptr_t){f_code};")
+        if f_result_ct.decl.startswith("Prove_") and not f_result_ct.is_pointer:
+            self._line(f"void *{mid_var} = {f_code};")
+        else:
+            self._line(f"void *{mid_var} = (void*)(intptr_t){f_code};")
 
-        # Apply g to f's result
-        g_code = self._emit_fused_lambda_inline(expr.args[2], mid_var, elem_type)
-        wrap = f"(void*)(intptr_t){g_code}"
+        # Infer g's return type for final boxing
+        g_fn = expr.args[2]
+        g_result_type = f_result_type
+        if isinstance(g_fn, LambdaExpr) and g_fn.params:
+            saved_locals2 = dict(self._locals)
+            self._locals[g_fn.params[0]] = f_result_type
+            g_result_type = self._infer_expr_type(g_fn.body)
+            self._locals = saved_locals2
+        g_result_ct = map_type(g_result_type)
+
+        # Apply g to f's result — unbox if f produced a boxed struct
+        f_is_boxed = f_result_ct.decl.startswith("Prove_") and not f_result_ct.is_pointer
+        g_code = self._emit_fused_lambda_inline(
+            expr.args[2],
+            mid_var,
+            f_result_type,
+            boxed=f_is_boxed,
+        )
+        wrap = self._hof_box(str(g_code), g_result_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -2867,8 +2938,19 @@ class CallEmitterMixin:
         self._line(f"Prove_List *{tmp} = {list_code};")
         return tmp, list_type
 
-    def _emit_fused_lambda_inline(self, expr: Expr, arg_var: str, elem_type: Type) -> str:
-        """Inline a lambda or function reference for fused iteration."""
+    def _emit_fused_lambda_inline(
+        self,
+        expr: Expr,
+        arg_var: str,
+        elem_type: Type,
+        *,
+        boxed: bool = False,
+    ) -> str:
+        """Inline a lambda or function reference for fused iteration.
+
+        When *boxed* is True, arg_var is a ``void*`` holding a heap-boxed
+        struct and must be unboxed before use.
+        """
         if isinstance(expr, LambdaExpr) and expr.params:
             old_param = expr.params[0]
             body = expr.body
@@ -2881,13 +2963,27 @@ class CallEmitterMixin:
             saved = dict(self._locals)
             self._locals[old_param] = elem_type
             elem_ct = map_type(elem_type)
+            # Infer the body's return type for correct boxing
+            body_type = self._infer_expr_type(body)
+            body_ct = map_type(body_type)
+            # Struct types (Prove_Option, etc.) need void* boxing, not int64_t
+            needs_box = body_ct.decl.startswith("Prove_") and not body_ct.is_pointer
             result_tmp = self._tmp()
-            self._line(f"int64_t {result_tmp} = 0;")
+            if needs_box:
+                self._line(f"void *{result_tmp} = NULL;")
+            else:
+                self._line(f"int64_t {result_tmp} = 0;")
             self._line("{")
             self._indent += 1
-            self._line(f"{elem_ct.decl} {old_param} = {arg_var};")
+            if boxed:
+                self._line(f"{elem_ct.decl} {old_param} = {self._hof_unbox(arg_var, elem_ct)};")
+            else:
+                self._line(f"{elem_ct.decl} {old_param} = {arg_var};")
             body_code = self._emit_expr(body)
-            self._line(f"{result_tmp} = (int64_t)(intptr_t)({body_code});")
+            if needs_box:
+                self._line(f"{result_tmp} = {self._hof_box(body_code, body_ct)};")
+            else:
+                self._line(f"{result_tmp} = (int64_t)(intptr_t)({body_code});")
             self._indent -= 1
             self._line("}")
             self._locals = saved

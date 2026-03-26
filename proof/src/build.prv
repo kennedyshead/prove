@@ -32,7 +32,7 @@ outputs pybuild(
     path String,
     debug Boolean,
     no_mutate Boolean,
-    source List<Option<SourceFile>>
+    source List<SourceFile>
 ) Integer!
   requires valid dir(path)
 from

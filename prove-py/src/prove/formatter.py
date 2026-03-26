@@ -932,7 +932,7 @@ class ProveFormatter:
         if len(arm.body) == 1:
             body = self._format_stmt(arm.body[0])
             line = f"{pat} => {body}"
-            if self._indent_level * 4 + len(line) <= self.MAX_LINE_LENGTH:
+            if "\n" not in body and self._indent_level * 4 + len(line) <= self.MAX_LINE_LENGTH:
                 return line
         # Multi-statement arm (or single-stmt that doesn't fit)
         lines = [f"{pat} =>"]

@@ -25,6 +25,6 @@ from
             SourceFile(path, content, lexed, source)
         Err(error) => console(f"{error}")
 
-inputs source(config Config) List<Option<SourceFile>>!
+inputs source(config Config) List<Option<SourceFile>>
 from
     map(dir("src/"), |value| source_file(value.path))

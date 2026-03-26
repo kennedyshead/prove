@@ -418,7 +418,7 @@ def is_json_serializable(ty: Type) -> bool:
 STORE_BACKED_TYPES: set[str] = set()
 
 
-def types_compatible(expected: Type, actual: Type) -> bool:
+def types_compatible(expected: Type, actual: Type, *, covariant: bool = True) -> bool:
     """Check structural compatibility between two types.
 
     ErrorType and TypeVariable are compatible with anything to prevent
@@ -458,15 +458,18 @@ def types_compatible(expected: Type, actual: Type) -> bool:
     # compatible with Decimal and with other Decimal refinements.
     # Option<T> <- T: bare value auto-wraps to Some(T)
     # Option<T> <- Unit: auto-converts to None
+    # Only when covariant=True (not inside container type args)
     if isinstance(expected, GenericInstance) and expected.base_name == "Option" and expected.args:
         if isinstance(actual, UnitType):
             return True
-        inner = expected.args[0]
-        if types_compatible(inner, actual):
-            return True
+        if covariant:
+            inner = expected.args[0]
+            if types_compatible(inner, actual):
+                return True
         # Allow Value → Option<Refinement(Value)>: when the Option's inner type is a
         # RefinementType whose base matches actual, the assignment is valid
         # (Option wraps the boundary-failure case).
+        inner = expected.args[0]
         if isinstance(inner, RefinementType) and types_compatible(inner.base, actual):
             return True
     expected = _unwrap_refinement(expected)
@@ -547,7 +550,10 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return False
         if len(expected.args) != len(actual.args):
             return False
-        return all(types_compatible(e, a) for e, a in zip(expected.args, actual.args))
+        # Type args are invariant — no Option auto-wrapping inside containers
+        return all(
+            types_compatible(e, a, covariant=False) for e, a in zip(expected.args, actual.args)
+        )
     if isinstance(expected, FunctionType) and isinstance(actual, FunctionType):
         if len(expected.param_types) != len(actual.param_types):
             return False
@@ -557,9 +563,10 @@ def types_compatible(expected: Type, actual: Type) -> bool:
             return False
         return types_compatible(expected.return_type, actual.return_type)
     if isinstance(expected, ListType) and isinstance(actual, ListType):
-        return types_compatible(expected.element, actual.element)
+        # List element types are invariant — no Option auto-wrapping
+        return types_compatible(expected.element, actual.element, covariant=False)
     if isinstance(expected, ArrayType) and isinstance(actual, ArrayType):
-        return types_compatible(expected.element, actual.element)
+        return types_compatible(expected.element, actual.element, covariant=False)
     return expected == actual
 
 

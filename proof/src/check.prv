@@ -3,11 +3,11 @@ module Check
   Handles the source check.
 
   outputs the command to python for a pycheck
+  validates syntax for file and line
   """
   System validates dir
   Prove types Node reads root creates children kind line validates error
   Source types SourceFile
-  Types validates unit
   Log detached info error
 
   foreign "libpython3"
@@ -20,7 +20,7 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-validates check_line(node Node)
+validates syntax_for_line(node Node)
 from
     match error(node)
         true =>
@@ -28,14 +28,16 @@ from
             true
         _ => false
 
-outputs check_source(source Option<SourceFile>) Boolean!
-  requires unit(source) == false
+validates syntax_for_source(source Option<SourceFile>)
 from
-    match any(children(root(source.source)), |node| check_line(node))
-        true =>
-            error(f"{source.path}")&
-            true
-        false => false
+    match source
+        Some(source) =>
+            match any(children(root(source.source)), |node| syntax_for_line(node))
+                true =>
+                    error(f"{source.path}")&
+                    true
+                _ => false
+        _ => false
 
 outputs pycheck(
     path String,

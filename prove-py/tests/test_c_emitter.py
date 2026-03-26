@@ -817,7 +817,7 @@ class TestDivisionGuards:
         """Division by a variable emits a panic guard."""
         source = "transforms divide(a Integer, b Integer) Integer\n    from\n        a / b\n"
         c_code = _emit(source)
-        assert 'prove_panic("division by zero")' in c_code
+        assert 'prove_panic("division by zero' in c_code
 
     def test_requires_nonzero_elides_guard(self):
         """Division by a variable covered by requires b != 0 omits the guard."""
@@ -828,7 +828,7 @@ class TestDivisionGuards:
             "        a / b\n"
         )
         c_code = _emit(source)
-        assert 'prove_panic("division by zero")' not in c_code
+        assert 'prove_panic("division by zero' not in c_code
 
     def test_literal_divisor_no_guard(self):
         """Division by a literal does not emit a runtime guard."""

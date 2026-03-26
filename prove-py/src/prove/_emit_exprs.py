@@ -283,7 +283,8 @@ class ExprEmitterMixin:
                     tmp = self._tmp()
                     self._line(f"int64_t {tmp} = {right};")
                     self._line("#ifndef PROVE_RELEASE")
-                    self._line(f'if ({tmp} == 0) prove_panic("division by zero");')
+                    _loc = f"{expr.span.file}:{expr.span.start_line}"
+                    self._line(f'if ({tmp} == 0) prove_panic("division by zero ({_loc})");')
                     self._line("#endif")
                     return f"({left} {c_op} {tmp})"
 
@@ -819,9 +820,12 @@ class ExprEmitterMixin:
                         # Unwrap Option: check tag==1 (Some) and compare inner value
                         inner_ty = subj_type.args[0]
                         inner_ct = map_type(inner_ty)
+                        is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
                         cast = (
                             f"({inner_ct.decl})"
                             if inner_ct.is_pointer
+                            else f"*({inner_ct.decl}*)(void*)"
+                            if is_struct
                             else f"({inner_ct.decl})(intptr_t)"
                         )
                         unwrapped = f"{cast}{subj}.value"
@@ -845,9 +849,12 @@ class ExprEmitterMixin:
                                 inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                                 inner_ct = map_type(inner_ty)
                                 bind_name = vp.fields[0].name
+                                is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
                                 cast = (
                                     f"({inner_ct.decl})"
                                     if inner_ct.is_pointer
+                                    else f"*({inner_ct.decl}*)(void*)"
+                                    if is_struct
                                     else f"({inner_ct.decl})(intptr_t)"
                                 )
                                 if bind_name == subj:
@@ -878,9 +885,12 @@ class ExprEmitterMixin:
                                 inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                                 inner_ct = map_type(inner_ty)
                                 bind_name = vp.fields[0].name
+                                is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
                                 cast = (
                                     f"({inner_ct.decl})"
                                     if inner_ct.is_pointer
+                                    else f"*({inner_ct.decl}*)(void*)"
+                                    if is_struct
                                     else f"({inner_ct.decl})(intptr_t)"
                                 )
                                 if bind_name == subj:
@@ -1196,9 +1206,12 @@ class ExprEmitterMixin:
                 ):
                     inner = part_type.args[0]
                     inner_ct = map_type(inner)
+                    is_struct = isinstance(inner, (RecordType, AlgebraicType))
                     cast = (
                         f"({inner_ct.decl})"
                         if inner_ct.is_pointer
+                        else f"*({inner_ct.decl}*)(void*)"
+                        if is_struct
                         else f"({inner_ct.decl})(intptr_t)"
                     )
                     unwrapped = f"{cast}{val}.value"

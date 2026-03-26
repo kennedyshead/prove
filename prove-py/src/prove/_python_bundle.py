@@ -27,6 +27,23 @@ from pathlib import Path
 _MAX_SCAN_BYTES = 2 * 1024 * 1024  # skip files larger than 2 MB (huge generated data files)
 _SKIP_SUFFIXES = frozenset({".pyc", ".pyo"})
 _SKIP_DIRS = frozenset({"__pycache__"})
+# Packages only used for ML training (scripts/ml_train.py), never at runtime.
+# Excluding them prevents the bundler from pulling in ~2000 extra files.
+_EXCLUDE_PACKAGES = frozenset(
+    {
+        "numpy",
+        "spacy",
+        "thinc",
+        "nltk",
+        "joblib",
+        "pydantic",
+        "srsly",
+        "weasel",
+        "cloudpathlib",
+        "_pytest",
+        "pytest",
+    }
+)
 
 
 def _parse_imports(py_file: Path, package: str | None = None) -> set[str]:
@@ -47,7 +64,18 @@ def _parse_imports(py_file: Path, package: str | None = None) -> set[str]:
 
     names: set[str] = set()
     pkg_parts = package.split(".") if package else []
+
+    # Collect imports that are inside try/except blocks (optional deps)
+    try_import_lines: set[int] = set()
     for node in ast.walk(tree):
+        if isinstance(node, ast.Try) and node.handlers:
+            for stmt in node.body:
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    try_import_lines.add(stmt.lineno)
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)) and node.lineno in try_import_lines:
+            continue  # skip optional imports inside try/except
         if isinstance(node, ast.Import):
             for alias in node.names:
                 names.add(alias.name)
@@ -123,6 +151,8 @@ def _find_used_files(entry_files: set[Path]) -> dict[str, Path]:
             for module_name in _parse_imports(f, package=file_package):
                 top = module_name.split(".")[0]
                 if top in stdlib_names or top in sys.builtin_module_names:
+                    continue
+                if top in _EXCLUDE_PACKAGES:
                     continue
                 if module_name in visited:
                     continue
@@ -491,6 +521,14 @@ def maybe_generate_bundle(
         return True
 
     if not files:
+        # Running from a bundled binary — try re-bundling from the existing zip
+        existing_zip = _find_existing_bundle_zip()
+        if existing_zip is not None:
+            data = existing_zip.read_bytes()
+            out_path = gen_dir / "prove_bundle_data.h"
+            _write_c_header(data, out_path)
+            print(f"re-bundled python packages from existing bundle → {len(data):,} bytes")
+            return True
         raise SystemExit(
             "error: foreign libpython3 detected but no bundleable files found.\n"
             "       Make sure the required packages are installed in the active venv.\n"
