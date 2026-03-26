@@ -9,10 +9,10 @@ from
     nums as List<Integer> = [1, 2, 3, 4, 5]
     // Map with lambda - double each number
     doubled as List<Integer> = map(nums, |n| n * 2)
-    console(f"Doubled: {join(map(doubled, string), ", ")}")
+    console(f"Doubled: {join(map(doubled, |value| string(value)), ", ")}")
     // Filter with lambda - keep only even numbers
     evens as List<Integer> = filter(nums, |n| (n % 2) == 0)
-    console(f"Evens: {join(map(evens, string), ", ")}")
+    console(f"Evens: {join(map(evens, |value| string(value)), ", ")}")
     // Reduce with lambda - sum all numbers
     total as Integer = reduce(nums, 0, |acc, n| acc + n)
     console(f"Sum: {total}")

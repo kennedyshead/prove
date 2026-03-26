@@ -4,6 +4,7 @@ module Check
 
   outputs the command to python for a pycheck
   validates syntax for file and line
+  outputs lint messages
   """
   System validates dir
   Prove types Node reads root creates children kind line validates error
@@ -19,6 +20,16 @@ module Check
 
   PYTHON_CHECK as String = comptime
       read("python/check.py")
+
+validates lint_file(source_file SourceFile)
+from
+    true
+
+outputs lint(source List<SourceFile>) Result<Unit, Error>!
+from
+    info("Running lint...")&
+    match all(source, |file| lint_file(file))
+        false => Error("Linting failed!")
 
 validates syntax_for_line(node Node)
 from

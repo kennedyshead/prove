@@ -8,16 +8,15 @@ module Commands
   """
   Config types Config inputs config
   System inputs cwd outputs console
-  Log detached info error
-  Build types SourceFile outputs pybuild
+  Log detached info
+  Build types SourceFile outputs source_build
   Test outputs pytest
   FormatCmd outputs pyformat
   Lsp outputs pylsp
   New outputs new_project
   Sequence reads get validates contains
   Source inputs source
-  Check validates syntax_for_source outputs pycheck
-  Types validates unit
+  Check outputs pycheck
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -43,17 +42,13 @@ outputs build(arguments List<String>)!
 from
     match contains(arguments, "--help")
         true => console(HELP_BUILD_TEXT)
-        _ => info("Setup build...")&
-    debug as Boolean = contains(arguments, "--debug")
-    no_mutate as Boolean = contains(arguments, "--no-mutate")
-    config as Config = config()!
-    source as List<Option<SourceFile>> = source(config)
-    match any(source, |file| syntax_for_source(file))
-        false =>
-            info("Using pybuild...")&
-            pybuild(cwd(), debug, no_mutate, filter(source, |file| unit(file) == false))!
-            info(f"{config.package.name}{config.package.version}")&
-        true => error("Source parsing failed!")&
+        _ =>
+            info("Running build...")&
+            debug as Boolean = contains(arguments, "--debug")
+            no_mutate as Boolean = contains(arguments, "--no-mutate")
+            config as Config = config()!
+            source as List<Option<SourceFile>> = source(config)
+            source_build(source, cwd(), debug, no_mutate)!
 
 /// Run the check command
 outputs check(arguments List<String>)!

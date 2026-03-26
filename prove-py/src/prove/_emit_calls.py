@@ -1109,6 +1109,9 @@ class CallEmitterMixin:
             # Store-backed lookup row construction: Color(Red, "red", 0xFF0000)
             if name in self._store_lookup_types:
                 return self._emit_store_row_construction(name, expr, args)
+            # Error(String) constructor — produces a Prove_String* error value
+            if name == "Error" and len(args) == 1:
+                return args[0]
             # ByteArray(String) constructor
             if name == "ByteArray" and len(args) == 1:
                 return f"prove_bytes_from_string({args[0]})"
@@ -1948,6 +1951,55 @@ class CallEmitterMixin:
                     c_fn = "prove_string_from_bool"
                 elif fn_sig and fn_sig.module:
                     c_fn = self._resolve_stdlib_c_name(fn_sig, None)
+                    if c_fn is None:
+                        # Local module function — use mangled name
+                        c_fn = mangle_name(
+                            fn_sig.verb,
+                            fn_sig.name,
+                            list(fn_sig.param_types) if fn_sig.param_types else None,
+                            module=fn_sig.module,
+                        )
+                elif fn_sig and not fn_sig.module:
+                    # Same-module function — use mangled name
+                    c_fn = mangle_name(
+                        fn_sig.verb,
+                        fn_sig.name,
+                        list(fn_sig.param_types) if fn_sig.param_types else None,
+                        module=self._module.name.lower() if self._module else None,
+                    )
+
+                # Failable function as HOF callback needs Result unwrapping
+                if c_fn and fn_sig and fn_sig.can_fail and kind == "map":
+                    wrapper = f"_lambda_{self._tmp_counter}"
+                    self._tmp_counter += 1
+                    elem_unbox = self._hof_unbox("_arg", elem_ct)
+                    # Determine success type from Result<T, Error>
+                    success_type = ret_type
+                    if (
+                        isinstance(ret_type, GenericInstance)
+                        and ret_type.base_name == "Result"
+                        and ret_type.args
+                    ):
+                        success_type = ret_type.args[0]
+                    success_ct = map_type(success_type)
+                    ret_box = self._hof_box(
+                        f"({success_ct.decl})prove_result_unwrap_ptr(_r)"
+                        if success_ct.is_pointer
+                        else f"({success_ct.decl})(intptr_t)prove_result_unwrap_int(_r)",
+                        success_ct,
+                    )
+                    self._needed_headers.add("prove_result.h")
+                    lam = (
+                        f"static void *{wrapper}(void *_arg, void *_ctx) {{\n"
+                        f"    (void)_ctx;\n"
+                        f"    {elem_ct.decl} _x = {elem_unbox};\n"
+                        f"    Prove_Result _r = {c_fn}(_x);\n"
+                        f'    if (prove_result_is_err(_r)) prove_panic("error in map callback");\n'
+                        f"    return {ret_box};\n"
+                        f"}}\n"
+                    )
+                    self._lambdas.append(lam)
+                    return wrapper, "NULL"
 
                 if c_fn:
                     wrapper = f"_lambda_{self._tmp_counter}"

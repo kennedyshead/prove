@@ -1622,11 +1622,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             and not types_compatible(return_type, body_type)
         ):
             # For failable functions, body can return the success type
-            # e.g. Result<Integer, Error>! function body can return Integer
+            # or the error type (via Error("message") constructor)
+            # e.g. Result<Integer, Error>! function body can return Integer or Error
             success_compatible = False
             if fd.can_fail and isinstance(return_type, GenericInstance):
                 if return_type.base_name == "Result" and return_type.args:
-                    success_compatible = types_compatible(return_type.args[0], body_type)
+                    success_compatible = types_compatible(return_type.args[0], body_type) or (
+                        len(return_type.args) > 1
+                        and types_compatible(return_type.args[1], body_type)
+                    )
             if not success_compatible:
                 self._error(
                     "E322",

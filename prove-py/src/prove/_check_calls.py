@@ -132,6 +132,42 @@ class CallCheckMixin:
         self._in_listens_worker_list = _was_in_listens
         arg_count = len(expr.args)
 
+        # HOF builtin with function reference (not lambda): check param/element compat
+        if (
+            isinstance(expr.func, IdentifierExpr)
+            and expr.func.name in (_HOF_BUILTINS_1 | _HOF_BUILTINS_2)
+            and len(expr.args) >= 2
+            and not isinstance(expr.args[-1], LambdaExpr)
+        ):
+            coll_type = arg_types[0] if arg_types else None
+            cb_type = arg_types[-1] if arg_types else None
+            # If callback didn't resolve as a symbol (ErrorType), try as function sig
+            cb_fn = expr.args[-1]
+            if isinstance(cb_fn, IdentifierExpr) and (
+                cb_type is None or isinstance(cb_type, ErrorType)
+            ):
+                fn_sig = self.symbols.resolve_function_any(cb_fn.name, arity=1)
+                if fn_sig:
+                    cb_type = FunctionType(list(fn_sig.param_types), fn_sig.return_type)
+            elem_type = None
+            if isinstance(coll_type, ListType):
+                elem_type = coll_type.element
+            elif isinstance(coll_type, ArrayType):
+                elem_type = coll_type.element
+            if (
+                elem_type is not None
+                and isinstance(cb_type, FunctionType)
+                and cb_type.param_types
+                and not types_compatible(cb_type.param_types[0], elem_type)
+            ):
+                self._error(
+                    "E321",
+                    f"type mismatch: '{expr.func.name}' callback expects "
+                    f"'{type_name(cb_type.param_types[0])}' but list element "
+                    f"type is '{type_name(elem_type)}'",
+                    expr.args[-1].span,
+                )
+
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             # Try specific resolution first
@@ -477,6 +513,17 @@ class CallCheckMixin:
         if isinstance(expr.func, TypeIdentifierExpr):
             # Type constructor call — try as function first (variant constructors)
             name = expr.func.name
+
+            # Error("message") constructor — creates an Error from a String
+            if name == "Error" and arg_count == 1:
+                arg_ty = arg_types[0]
+                if not isinstance(arg_ty, PrimitiveType) or arg_ty.name != "String":
+                    self._error(
+                        "E321",
+                        f"type mismatch: Error() expects String, got '{type_name(arg_ty)}'",
+                        expr.args[0].span,
+                    )
+                return PrimitiveType("Error")
 
             sig = self.symbols.resolve_function(None, name, arg_count)
             if sig is None:

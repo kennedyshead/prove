@@ -1068,6 +1068,17 @@ class ExprEmitterMixin:
             if not is_unit and i == len(arm_body) - 1:
                 e = self._stmt_expr(s)
                 if e is not None:
+                    # Error("msg") in a failable function → early return with error
+                    if (
+                        isinstance(e, CallExpr)
+                        and isinstance(e.func, TypeIdentifierExpr)
+                        and e.func.name == "Error"
+                        and len(e.args) == 1
+                        and getattr(self._current_func, "can_fail", False)
+                    ):
+                        err_val = self._emit_expr(e.args[0])
+                        self._line(f"return prove_result_err({err_val});")
+                        return
                     val = self._emit_expr(e)
                     if option_wrap:
                         arm_ty = self._infer_expr_type(e)

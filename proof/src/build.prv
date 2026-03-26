@@ -7,6 +7,9 @@ module Build
   """
   System validates dir
   Source types SourceFile
+  Check validates syntax_for_source outputs lint
+  Types validates unit
+  Log detached info error
 
   foreign "libpython3"
     py_initialize() Unit
@@ -18,28 +21,44 @@ module Build
   PYTHON_BUILD as String = comptime
       read("python/build.py")
 
-outputs prvbuild(
-    path String,
-    debug Boolean,
-    no_mutate Boolean,
-    source List<SourceFile>
-) Integer!
+outputs prvbuild(path String, debug Boolean, no_mutate Boolean, source List<SourceFile>)!
   requires valid dir(path)
 from
-    1
+    Unit
 
-outputs pybuild(
-    path String,
-    debug Boolean,
-    no_mutate Boolean,
-    source List<SourceFile>
-) Integer!
+outputs pybuild(path String, debug Boolean, no_mutate Boolean)!
   requires valid dir(path)
 from
+    info("...building in python")&
     py_initialize()
     py_set_string("path", path)
     py_set_bool("debug", debug)
     py_set_bool("no_mutate", no_mutate)
-    result as Integer = py_run_string(PYTHON_BUILD)
+    py_run_string(PYTHON_BUILD)
     py_finalize()
-    result
+    Unit
+
+outputs run_build(
+    result Result<Unit, Error>,
+    path String,
+    debug Boolean,
+    no_mutate Boolean
+)!
+from
+    match result
+        Err(error) => error(f"{error}")&
+        Ok => pybuild(path, debug, no_mutate)!
+
+outputs source_build(
+    source List<Option<SourceFile>>,
+    path String,
+    debug Boolean,
+    no_mutate Boolean
+)!
+from
+    match any(source, |file| syntax_for_source(file))
+        false =>
+            info("Cleaning source...")&
+            clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
+            run_build(lint(clean_source), path, debug, no_mutate)!
+        true => error("Source parsing failed!")&

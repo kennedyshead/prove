@@ -32,6 +32,7 @@ from prove.ast_nodes import (
     TailContinue,
     TailLoop,
     TodoStmt,
+    TypeIdentifierExpr,
     UnaryExpr,
     ValidExpr,
     VarDecl,
@@ -212,7 +213,20 @@ class StmtEmitterMixin:
                     # For failable functions, wrap last expression in result_ok
                     last_expr = self._stmt_expr(stmt)
                     last_is_failprop = isinstance(last_expr, FailPropExpr)
-                    if (
+                    # Error("message") constructor → return prove_result_err
+                    last_is_error_ctor = (
+                        isinstance(last_expr, CallExpr)
+                        and isinstance(last_expr.func, TypeIdentifierExpr)
+                        and last_expr.func.name == "Error"
+                        and len(last_expr.args) == 1
+                    )
+                    if last_is_error_ctor:
+                        assert isinstance(last_expr, CallExpr)
+                        err_val = self._emit_expr(last_expr.args[0])
+                        self._emit_releases(None)
+                        self._emit_region_exit()
+                        self._line(f"return prove_result_err({err_val});")
+                    elif (
                         isinstance(ret_type, GenericInstance)
                         and ret_type.base_name == "Result"
                         and not last_is_failprop
@@ -1439,11 +1453,9 @@ class StmtEmitterMixin:
                         self._locals[bind_name] = inner_ty
                     self._emit_match_arm_body(arm.body)
                     self._indent -= 1
-                elif arm.pattern.name == "Err":
-                    if first:
-                        self._line(f"if (prove_result_is_err({subj})) {{")
-                    else:
-                        self._line("} else {")
+                elif arm.pattern.name in ("Err", "Error"):
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} (prove_result_is_err({subj})) {{")
                     self._indent += 1
                     if arm.pattern.fields and isinstance(
                         arm.pattern.fields[0],
@@ -1457,7 +1469,6 @@ class StmtEmitterMixin:
                         self._locals[bind_name] = STRING
                     self._emit_match_arm_body(arm.body)
                     self._indent -= 1
-                    self._line("}")
             elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                 if first:
                     self._line("{")
@@ -1468,19 +1479,29 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             first = False
-        # Close if last arm wasn't wildcard/Err
+        # Close the trailing if/else-if chain
         if m.arms and not isinstance(
             m.arms[-1].pattern,
             (WildcardPattern, BindingPattern),
         ):
-            last_pat = m.arms[-1].pattern
-            if not (isinstance(last_pat, VariantPattern) and last_pat.name == "Err"):
-                self._line("}")
+            self._line("}")
 
     def _emit_match_arm_body(self, body: list) -> None:
         """Emit match arm body, handling TailContinue and returns in tail loop."""
         for i, s in enumerate(body):
             is_last = i == len(body) - 1
+            # Error("msg") in failable function → early return with error
+            if is_last and getattr(self._current_func, "can_fail", False):
+                expr = self._stmt_expr(s)
+                if (
+                    isinstance(expr, CallExpr)
+                    and isinstance(expr.func, TypeIdentifierExpr)
+                    and expr.func.name == "Error"
+                    and len(expr.args) == 1
+                ):
+                    err_val = self._emit_expr(expr.args[0])
+                    self._line(f"return prove_result_err({err_val});")
+                    return
             if isinstance(s, TailContinue):
                 self._emit_tail_continue(s)
             elif is_last and self._in_tail_loop and not isinstance(s, TailContinue):

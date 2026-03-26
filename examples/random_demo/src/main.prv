@@ -23,4 +23,4 @@ from
     // Shuffle list
     numbers as List<Integer> = List(1, 2, 3, 4, 5)
     shuffled as List<Integer> = shuffle(numbers)
-    console(f"Shuffled: {join(map(shuffled, string), ", ")}")
+    console(f"Shuffled: {join(map(shuffled, |value| string(value)), ", ")}")
