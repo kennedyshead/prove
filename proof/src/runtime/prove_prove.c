@@ -111,7 +111,7 @@ int64_t prove_prove_column(Prove_Node node) {
 }
 
 bool prove_prove_error(Prove_Node node) {
-    return ts_node_is_error(node->node) || ts_node_is_missing(node->node);
+    return ts_node_has_error(node->node) || ts_node_is_missing(node->node);
 }
 
 int64_t prove_prove_count(Prove_Node node) {
