@@ -212,8 +212,20 @@ def test(path: str, property_rounds: int) -> None:
             runtime_dir = Path(__file__).parent / "runtime"
             include_flags = ["-I", str(runtime_dir)]
 
-            # Link all runtime .c files
-            core_files = [str(f) for f in sorted(runtime_dir.glob("*.c"))]
+            # Link runtime .c files needed by the test (skip gui/graphics)
+            from prove.c_runtime import _CORE_FILES
+
+            skip = {"prove_gui", "prove_graphic", "prove_prove"}
+            core_files = [
+                str(runtime_dir / f"{base}.c")
+                for base in _CORE_FILES
+                if base not in skip and (runtime_dir / f"{base}.c").exists()
+            ]
+            # Also link non-core runtime files referenced by the test
+            for c_file in sorted(runtime_dir.glob("prove_*.c")):
+                base = c_file.stem
+                if base not in skip and str(c_file) not in core_files:
+                    core_files.append(str(c_file))
 
             result = subprocess.run(
                 ["cc", "-o", test_bin, test_src, *core_files, *include_flags, "-lm"],
