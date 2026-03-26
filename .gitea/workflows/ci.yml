@@ -23,6 +23,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libtree-sitter-dev
+
       - name: Create venv and install
         run: |
           python3 -m venv ../.venv
