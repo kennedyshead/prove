@@ -3,8 +3,6 @@ module Main
     Uses Parse.tree() to parse source into a syntax tree, then walks nodes
     with Prove.root, Prove.children, and Prove.kind.
     outputs kind by recursive walk
-
-    Expected to fail: build.
     """
   System outputs console
   Parse creates tree
