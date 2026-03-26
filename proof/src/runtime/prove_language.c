@@ -303,12 +303,12 @@ Prove_String *prove_language_stem(Prove_String *word) {
 
     /* Step 2 */
     if (len > 7 && _measure(buf, len - 7) > 0) {
-        _replace_suffix(buf, &len, "ational", 7, "ate", 3, 0) ||
+        (void)(_replace_suffix(buf, &len, "ational", 7, "ate", 3, 0) ||
         _replace_suffix(buf, &len, "tional", 6, "tion", 4, 0) ||
-        _replace_suffix(buf, &len, "ization", 7, "ize", 3, 0);
+        _replace_suffix(buf, &len, "ization", 7, "ize", 3, 0));
     }
     if (len > 5) {
-        _replace_suffix(buf, &len, "enci", 4, "ence", 4, 0) ||
+        (void)(_replace_suffix(buf, &len, "enci", 4, "ence", 4, 0) ||
         _replace_suffix(buf, &len, "anci", 4, "ance", 4, 0) ||
         _replace_suffix(buf, &len, "izer", 4, "ize", 3, 0) ||
         _replace_suffix(buf, &len, "abli", 4, "able", 4, 0) ||
@@ -324,20 +324,20 @@ Prove_String *prove_language_stem(Prove_String *word) {
         _replace_suffix(buf, &len, "ousnes", 6, "ous", 3, 0) ||
         _replace_suffix(buf, &len, "aliti", 5, "al", 2, 0) ||
         _replace_suffix(buf, &len, "iviti", 5, "ive", 3, 0) ||
-        _replace_suffix(buf, &len, "biliti", 6, "ble", 3, 0);
+        _replace_suffix(buf, &len, "biliti", 6, "ble", 3, 0));
     }
 
     /* Step 3 */
-    _replace_suffix(buf, &len, "icate", 5, "ic", 2, 0) ||
+    (void)(_replace_suffix(buf, &len, "icate", 5, "ic", 2, 0) ||
     _replace_suffix(buf, &len, "ative", 5, "", 0, 0) ||
     _replace_suffix(buf, &len, "alize", 5, "al", 2, 0) ||
     _replace_suffix(buf, &len, "iciti", 5, "ic", 2, 0) ||
     _replace_suffix(buf, &len, "ical", 4, "ic", 2, 0) ||
     _replace_suffix(buf, &len, "ful", 3, "", 0, 0) ||
-    _replace_suffix(buf, &len, "ness", 4, "", 0, 0);
+    _replace_suffix(buf, &len, "ness", 4, "", 0, 0));
 
     /* Step 4 */
-    _replace_suffix(buf, &len, "al", 2, "", 0, 1) ||
+    (void)(_replace_suffix(buf, &len, "al", 2, "", 0, 1) ||
     _replace_suffix(buf, &len, "ance", 4, "", 0, 1) ||
     _replace_suffix(buf, &len, "ence", 4, "", 0, 1) ||
     _replace_suffix(buf, &len, "er", 2, "", 0, 1) ||
@@ -356,7 +356,7 @@ Prove_String *prove_language_stem(Prove_String *word) {
     _replace_suffix(buf, &len, "iti", 3, "", 0, 1) ||
     _replace_suffix(buf, &len, "ous", 3, "", 0, 1) ||
     _replace_suffix(buf, &len, "ive", 3, "", 0, 1) ||
-    _replace_suffix(buf, &len, "ize", 3, "", 0, 1);
+    _replace_suffix(buf, &len, "ize", 3, "", 0, 1));
 
     /* Step 5a */
     if (buf[len - 1] == 'e') {

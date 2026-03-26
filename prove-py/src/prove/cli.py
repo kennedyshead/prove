@@ -212,14 +212,8 @@ def test(path: str, property_rounds: int) -> None:
             runtime_dir = Path(__file__).parent / "runtime"
             include_flags = ["-I", str(runtime_dir)]
 
-            # Find runtime .c files needed
-            from prove.c_runtime import _CORE_FILES
-
-            core_files = [
-                str(runtime_dir / f"{base}.c")
-                for base in _CORE_FILES
-                if (runtime_dir / f"{base}.c").exists()
-            ]
+            # Link all runtime .c files
+            core_files = [str(f) for f in sorted(runtime_dir.glob("*.c"))]
 
             result = subprocess.run(
                 ["cc", "-o", test_bin, test_src, *core_files, *include_flags, "-lm"],
