@@ -415,7 +415,7 @@ class TestCompletion:
         assert "file" in edit.new_text
 
     def test_stdlib_completion_no_duplicate_import(self):
-        """If already imported, that specific verb is hidden but other verbs still show."""
+        """Overloads are collapsed — one item per (name, module)."""
         _analyze(
             "file:///noimport.prv",
             "module Main\n"
@@ -426,13 +426,12 @@ class TestCompletion:
             '    console("hi")\n',
         )
         result = _complete("file:///noimport.prv")
-        # Find console with System prefix
+        # Find console with System prefix — collapsed to one item
         console_items = [i for i in result.items if "console" in i.label and "System" in i.label]
-        # outputs is imported (shows with verb detail), others show "Auto-import"
-        assert len(console_items) == 4
-        # Check that outputs has verb detail (not Auto-import)
-        outputs_item = next(i for i in console_items if "outputs" in i.label)
-        assert outputs_item.detail == "outputs"
+        assert len(console_items) == 1
+        # Already imported, so detail shows the verb label (not Auto-import)
+        item = console_items[0]
+        assert "outputs" in item.label or "inputs" in item.label
 
     def test_completion_does_not_insert_params(self):
         """Completions must not insert placeholder parameter names."""
@@ -502,28 +501,25 @@ class TestCompletion:
         assert edit.range.start.line == 3
 
     def test_channel_dispatch_shows_all_verbs(self):
-        """file has inputs, outputs, validates — all should appear."""
+        """file overloads are collapsed — all verbs appear in the label."""
         _analyze("<test://dispatch>", "")
         result = _complete("<test://dispatch>")
         file_items = [i for i in result.items if "file" in i.label and "System" in i.label]
-        verbs_found = set()
-        for item in file_items:
-            if item.label_details and item.label_details.detail:
-                verbs_found.add(item.label_details.detail.strip())
+        # Collapsed: one item with all verbs in the label
+        assert len(file_items) == 1, f"expected 1 collapsed item, got {len(file_items)}"
+        label = file_items[0].label
         for verb in ("inputs", "outputs", "validates"):
-            assert verb in verbs_found, (
-                f"verb '{verb}' missing from file completions; found {verbs_found}"
-            )
+            assert verb in label, f"verb '{verb}' missing from collapsed label: {label}"
 
     def test_stdlib_completions_detail_with_signature(self):
-        """Stdlib completions should show 'Auto-import' in detail, signature in docs."""
+        """Stdlib completions should show 'Auto-import' in detail, all overloads in docs."""
         _analyze("<test://sig>", "")
         result = _complete("<test://sig>")
         console_items = [i for i in result.items if "console" in i.label and "System" in i.label]
-        assert len(console_items) >= 1
+        assert len(console_items) == 1
         item = console_items[0]
-        # Detail should be "Auto-import"
-        assert item.detail == "Auto-import"
+        # Detail should mention Auto-import (possibly with overload count)
+        assert "Auto-import" in item.detail
         # Documentation should contain signature
         assert item.documentation is not None
         assert "console" in item.documentation.value

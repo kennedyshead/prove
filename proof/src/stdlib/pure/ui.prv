@@ -7,7 +7,7 @@ module UI
   /// Resolve by variant (Key:Escape), by name (Key:"escape"),
   /// or by keycode (Key:27). Keycodes above 1000 are virtual codes
   /// for non-printable keys; printable characters use ASCII directly.
-  type Key:[Lookup] is String Integer where
+  type Key:[Lookup] is name:String | Integer where
       Escape | "escape" | 27
       Enter | "enter" | 13
       Tab | "tab" | 9
@@ -40,7 +40,7 @@ module UI
   /// Resolve by variant (Color:Red), by name (Color:"red"),
   /// by ANSI SGR code (Color:31), or by hex (Color:"#FF0000").
   /// Each backend maps to native encoding automatically.
-  type Color:[Lookup] is String Integer String where
+  type Color:[Lookup] is name:String | Integer | hex:String where
       Default | "default" | 0 | "#000000"
       Black | "black" | 30 | "#000000"
       Red | "red" | 31 | "#FF0000"
@@ -55,7 +55,7 @@ module UI
   /// Resolve by variant (TextStyle:Bold), by name (TextStyle:"bold"),
   /// or by ANSI SGR code (TextStyle:1).
   /// Use with Terminal.ansi() for escape sequences.
-  type TextStyle:[Lookup] is String Integer where
+  type TextStyle:[Lookup] is name:String | Integer where
       Reset | "reset" | 0
       Bold | "bold" | 1
       Dim | "dim" | 2

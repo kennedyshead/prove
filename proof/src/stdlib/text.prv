@@ -2,7 +2,7 @@ module Text
   narrative: """
   String operations and construction.
 
-  creates length, index and string from StringBuilder through build
+  creates length, index from StringBuilder through build
   creates a new StringBuilder in builder
   reads slice, split, join, lower, upper, trim replace, repeat and char
   validates if a string starts ends or contains.
@@ -67,7 +67,7 @@ creates builder() StringBuilder:[Mutable]
 binary
 
 /// Append a string to a builder
-reads string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]
+reads string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]
 binary
 
 /// Append a character to a builder

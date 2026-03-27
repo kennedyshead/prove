@@ -8,13 +8,15 @@ module Types
   creates float integer from string and value
   creates string from integer float boolean character value byte bytearray
   creates string from Value<Json> Value<Toml> Value<Csv> Value<Tree> Url Token
+  creates string from Match Node
   unwrap Option values
   handles error
   """
   Time types Time Date DateTime Clock Duration
   Bytes types ByteArray
   Parse types Json Toml Csv Url Token
-  Prove types Tree
+  Prove types Tree Node
+  Pattern types Match
   UI types Position
 
 /// Check if a value is a string
@@ -167,6 +169,14 @@ binary
 
 /// Convert a Position to a string (e.g. "80x24")
 creates string(position Position) String
+binary
+
+/// Get the matched string from a match result
+creates string(matched Match) String
+binary
+
+/// Source text spanned by a syntax tree node
+creates string(node Node) String
 binary
 
 /// Get the Unicode code point of a character

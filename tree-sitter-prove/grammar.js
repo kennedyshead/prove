@@ -567,6 +567,7 @@ module.exports = grammar({
       $.lookup_access_expression,
       $.field_expression,
       $.valid_expression,
+      $.invalid_expression,
       $.lambda_expression,
       $.parenthesized_expression,
       $.list_literal,
@@ -645,6 +646,12 @@ module.exports = grammar({
 
     valid_expression: $ => prec.right(PREC.CALL, seq(
       'valid',
+      $.identifier,
+      optional(seq('(', optional(sep1($.expression, ',')), ')')),
+    )),
+
+    invalid_expression: $ => prec.right(PREC.CALL, seq(
+      'invalid',
       $.identifier,
       optional(seq('(', optional(sep1($.expression, ',')), ')')),
     )),

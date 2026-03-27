@@ -88,6 +88,10 @@ static inline double prove_error_unwrap_or_float(Prove_Option o, double def) {
     return d;
 }
 
+static inline void *prove_error_unwrap_or_ptr(Prove_Option o, void *def) {
+    return o.tag == 1 ? (void *)o.value : def;
+}
+
 /* ── Unified unwrap ──────────────────────────────────────────── */
 
 static inline Prove_Value *prove_error_unwrap(Prove_Option o) {

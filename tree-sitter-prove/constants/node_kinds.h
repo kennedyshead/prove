@@ -119,6 +119,7 @@
 #define PROVE_NODE_TYPE_MODIFIER_BRACKET "type_modifier_bracket"
 #define PROVE_NODE_TYPE_PARAMETERS "type_parameters"
 #define PROVE_NODE_UNARY_EXPRESSION "unary_expression"
+#define PROVE_NODE_INVALID_EXPRESSION "invalid_expression"
 #define PROVE_NODE_VALID_EXPRESSION "valid_expression"
 #define PROVE_NODE_VARIABLE_DECLARATION "variable_declaration"
 #define PROVE_NODE_VARIANT_FIELDS "variant_fields"

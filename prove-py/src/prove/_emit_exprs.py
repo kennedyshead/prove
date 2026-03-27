@@ -191,8 +191,10 @@ class ExprEmitterMixin:
                     span=expr.span,
                 )
                 if expr.name == "all":
-                    return self._emit_hof_all(synthetic)
-                return self._emit_hof_any(synthetic)
+                    result = self._emit_hof_all(synthetic)
+                else:
+                    result = self._emit_hof_any(synthetic)
+                return f"!({result})" if expr.negated else result
             # Prefer validates verb since valid X(...) means validates
             n = len(expr.args) if expr.args is not None else 0
             sig = self._symbols.resolve_function("validates", expr.name, n)
@@ -205,12 +207,14 @@ class ExprEmitterMixin:
                 if sig and sig.module:
                     c_name = self._resolve_stdlib_c_name(sig, expr.args, verb_override="validates")
                     if c_name:
-                        return f"{c_name}({args_c})"
+                        call = f"{c_name}({args_c})"
+                        return f"!({call})" if expr.negated else call
                 pt = list(sig.param_types) if sig else None
                 fn = mangle_name(
                     "validates", expr.name, pt, module=self._sig_module(sig) if sig else None
                 )
-                return f"{fn}({args_c})"
+                call = f"{fn}({args_c})"
+                return f"!({call})" if expr.negated else call
             # valid error -> function reference (used as HOF predicate)
             if sig and sig.module:
                 c_name = self._resolve_stdlib_c_name(sig, verb_override="validates")

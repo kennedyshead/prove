@@ -4,8 +4,8 @@ module Pattern
 
   validates if a test pattern matches
   search and find all pattern matching
-  reads string with replace
-  creates a match and return string
+  reads with replace
+  creates a match
   gets start and end
   """
 
@@ -33,10 +33,6 @@ binary
 
 /// Split a string by a regex pattern
 creates split(text String, pattern String) List<String>
-binary
-
-/// Get the matched string from a match result
-creates string(matched Match) String
 binary
 
 /// Get the start position of a match

@@ -116,6 +116,7 @@ NODE_KINDS: dict[str, str] = {
     "TYPE_MODIFIER_BRACKET": "type_modifier_bracket",
     "TYPE_PARAMETERS": "type_parameters",
     "UNARY_EXPRESSION": "unary_expression",
+    "INVALID_EXPRESSION": "invalid_expression",
     "VALID_EXPRESSION": "valid_expression",
     "VARIABLE_DECLARATION": "variable_declaration",
     "VARIANT_FIELDS": "variant_fields",

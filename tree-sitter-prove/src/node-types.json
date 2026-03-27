@@ -463,6 +463,10 @@
           "named": true
         },
         {
+          "type": "invalid_expression",
+          "named": true
+        },
+        {
           "type": "lambda_expression",
           "named": true
         },
@@ -1045,6 +1049,25 @@
       "types": [
         {
           "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "invalid_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "identifier",
           "named": true
         }
       ]
@@ -2460,6 +2483,10 @@
   },
   {
     "type": "intent",
+    "named": false
+  },
+  {
+    "type": "invalid",
     "named": false
   },
   {

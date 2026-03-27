@@ -487,22 +487,26 @@ class CSTConverter:
         column_names: tuple[str | None, ...] = ()
 
         if named_cols:
-            # Named columns
+            # Mixed named and bare columns — preserve source order
             all_types: list[TypeExpr] = []
             all_names: list[str | None] = []
-            for col in named_cols:
-                col_name = self._child_text(col, "identifier")
-                col_te = self._child(col, "type_expression")
-                all_names.append(col_name)
-                all_types.append(
-                    self._convert_type_expr(col_te)
-                    if col_te
-                    else SimpleType("String", self._span(col))
-                )
-            # Also include any bare type_expressions
-            for te in type_exprs:
-                all_names.append(None)
-                all_types.append(self._convert_type_expr(te))
+            # Collect all column children (named + bare) in source order
+            col_children = [
+                c for c in node.children if c.type in ("named_lookup_column", "type_expression")
+            ]
+            for col in col_children:
+                if col.type == "named_lookup_column":
+                    col_name = self._child_text(col, "identifier")
+                    col_te = self._child(col, "type_expression")
+                    all_names.append(col_name)
+                    all_types.append(
+                        self._convert_type_expr(col_te)
+                        if col_te
+                        else SimpleType("String", self._span(col))
+                    )
+                else:
+                    all_names.append(None)
+                    all_types.append(self._convert_type_expr(col))
             value_type = all_types[0] if all_types else SimpleType("String", self._span(node))
             value_types = tuple(all_types)
             column_names = tuple(all_names)
@@ -1274,6 +1278,8 @@ class CSTConverter:
             return self._convert_async_call(node)
         if typ == "valid_expression":
             return self._convert_valid_expr(node)
+        if typ == "invalid_expression":
+            return self._convert_valid_expr(node, negated=True)
         if typ == "lambda_expression":
             return self._convert_lambda_expr(node)
         if typ == "match_expression":
@@ -1442,14 +1448,14 @@ class CSTConverter:
         inner = self._convert_expr(expr) if expr else IdentifierExpr("_", self._span(node))
         return AsyncCallExpr(inner, self._span(node))
 
-    def _convert_valid_expr(self, node: TSNode) -> ValidExpr:
+    def _convert_valid_expr(self, node: TSNode, *, negated: bool = False) -> ValidExpr:
         name = self._child_text(node, "identifier") or ""
         exprs = self._children_of_type(node, "expression")
         args: list[Expr] | None = None
         # If there's a parenthesized arg list (has `(` token)
         if self._has_token(node, "("):
             args = [self._convert_expr(e) for e in exprs]
-        return ValidExpr(name, args, self._span(node))
+        return ValidExpr(name, args, self._span(node), negated=negated)
 
     def _convert_lambda_expr(self, node: TSNode) -> LambdaExpr:
         ids = self._children_of_type(node, "identifier")
@@ -1630,16 +1636,20 @@ class CSTConverter:
             else:
                 parts.append(StringLit(self._text(child), self._span(child)))
 
-        # Collect non-interpolation text between children
-        # For now, walk all children including anonymous text
+        # Walk children and collect text from byte gaps between them.
+        # Tree-sitter doesn't emit static text between interpolations as
+        # child nodes — they exist only as byte gaps in the source.
         result_parts: list[Expr] = []
         current_text = ""
+        src = self.source
+        pos = node.start_byte
         for child in node.children:
-            if not child.is_named:
-                text = self._text(child)
-                if text not in ('f"', '"', "{", "}"):
-                    current_text += text
-            elif child.type == "interpolation":
+            # Collect any gap text between previous position and this child
+            if child.start_byte > pos:
+                gap = src[pos : child.start_byte]
+                current_text += gap
+
+            if child.type == "interpolation":
                 if current_text:
                     result_parts.append(StringLit(current_text, self._span(child)))
                     current_text = ""
@@ -1648,8 +1658,21 @@ class CSTConverter:
                     result_parts.append(self._convert_expr(expr))
             elif child.type == "escape_sequence":
                 current_text += self._unescape(self._text(child))
+            elif not child.is_named:
+                # Skip f", ", {, } delimiters — they're part of syntax
+                text = self._text(child)
+                if text not in ('f"', '"', "{", "}"):
+                    current_text += text
             else:
                 current_text += self._text(child)
+
+            pos = child.end_byte
+
+        # Gap after last child before closing quote
+        if node.end_byte > pos:
+            gap = src[pos : node.end_byte]
+            if gap not in ('"',):
+                current_text += gap
 
         if current_text:
             result_parts.append(StringLit(current_text, self._span(node)))

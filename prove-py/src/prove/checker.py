@@ -2866,8 +2866,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if sig is not None and sig.verb != "validates":
                     self._error(
                         "E321",
-                        f"'valid' requires a validates function, "
-                        f"but '{expr.name}' is declared as '{sig.verb}'",
+                        f"'{'invalid' if expr.negated else 'valid'}' requires a validates"
+                        f" function, but '{expr.name}' is declared as '{sig.verb}'",
                         expr.span,
                     )
             if sig and sig.module:

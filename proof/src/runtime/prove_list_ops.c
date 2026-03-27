@@ -27,6 +27,16 @@ static Prove_Option _prove_list_ops_last(Prove_List *list) {
     return prove_option_some((Prove_Value *)list->data[list->length - 1]);
 }
 
+/* ── First / Last (generic — List<Value>) ──────────────────── */
+
+Prove_Option prove_list_ops_first(Prove_List *list) {
+    return _prove_list_ops_first(list);
+}
+
+Prove_Option prove_list_ops_last(Prove_List *list) {
+    return _prove_list_ops_last(list);
+}
+
 /* ── First / Last (int) ─────────────────────────────────────── */
 
 Prove_Option prove_list_ops_first_int(Prove_List *list) {

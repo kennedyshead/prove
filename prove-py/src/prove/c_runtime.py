@@ -408,9 +408,11 @@ _RUNTIME_FUNCTIONS = {
     ],
     "prove_list_ops": [
         "prove_list_ops_length",
+        "prove_list_ops_first",
         "prove_list_ops_first_int",
         "prove_list_ops_first_str",
         "prove_list_ops_first_float",
+        "prove_list_ops_last",
         "prove_list_ops_last_int",
         "prove_list_ops_last_str",
         "prove_list_ops_last_float",
@@ -796,6 +798,7 @@ def copy_runtime(
         "prove_input_output": {"prove_bytes"},
         "prove_language": {"prove_parse"},
         "prove_event": {"prove_coro"},
+        "prove_terminal": {"prove_ansi"},
     }
     for lib in list(needed_libs):
         needed_libs.update(_HEADER_DEPS.get(lib, set()))

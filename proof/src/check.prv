@@ -5,11 +5,17 @@ module Check
   outputs the command to python for a pycheck
   validates syntax for file and line
   outputs lint messages
+  matches the declaration and lint
   """
-  System validates dir
-  Prove types Node reads root creates children kind line validates error
+  System validates dir inputs console
+  Prove types Node reads root creates children named_children kind column line
   Source types SourceFile
+  Types creates string validates boolean
   Log detached info error
+  Sequence reads first
+  Terminal reads ansi
+  UI types Color
+  Text reads trim
 
   foreign "libpython3"
     py_initialize() Unit
@@ -21,43 +27,57 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-validates lint_file(source_file SourceFile)
+outputs linter_error(source SourceFile, node Node, node_kind String)
 from
-    true
+    module_name as String = string(node)
+    console(f"{
+              ansi(Color:Red)
+            }error[E210]:{
+              ansi(Color:Default)
+            } Expected module name, found {
+              trim(module_name)
+            }\n  {
+              ansi(Color:Blue)
+            }-->{
+              ansi(Color:Default)
+            } {
+              source.path
+            }:{
+              line(node)
+            }:{
+              column(node)
+            }\n     |\n    {
+              line(node)
+            } | ")
 
-outputs lint(source List<SourceFile>) Result<Unit, Error>!
+outputs lint_module(node Node, source SourceFile) Boolean!
+  ensures valid boolean(result)
+  requires children(node) > 0
+  explain
+      the childrens and uses first as module name
 from
-    info("Running lint...")&
-    match all(source, |file| lint_file(file))
-        false => Error("Linting failed!")
-
-validates syntax_for_line(node Node)
-from
-    match error(node)
-        true =>
-            error(f"{line(node)}{kind(node)}")&
+    names as List<Node> = named_children(node)
+    module_node as Option<Node> = first(names)
+    node_kind as String = kind(module_node)
+    match node_kind
+        "type_identifier" =>
+            info(f"Linting module {string(module_node)}")&
             true
-        _ => false
+        _ =>
+            linter_error(source, module_node, node_kind)
+            false
 
-validates syntax_for_source(source SourceFile)
+outputs lint_file(source SourceFile) Boolean!
 from
-    match any(children(root(source.source)), |node| syntax_for_line(node))
+    match any(children(root(source.source)), |node| lint_module(node, source)!)
         true =>
             error(f"{source.path}")&
             true
         _ => false
 
-outputs syntax_and_lint(source List<SourceFile>) Boolean
+outputs lint(source List<SourceFile>) Boolean!
 from
-    match any(source, |file| syntax_for_source(file))
-        false =>
-            info("linting source...")&
-            match lint(source)
-                Ok => true
-                Err(error) =>
-                    error(f"{error}")&
-                    false
-        true => false
+    all(source, |file| lint_file(file)!)
 
 outputs pycheck(
     path String,

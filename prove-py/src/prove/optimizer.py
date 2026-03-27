@@ -1197,8 +1197,8 @@ class Optimizer:
             # Check if this call is to an inline candidate
             if isinstance(expr.func, IdentifierExpr) and expr.func.name in candidates:
                 fd = candidates[expr.func.name]
-                if len(expr.args) == len(fd.params):
-                    # Substitute params with args
+                if len(expr.args) == len(fd.params) and len(fd.body) == 1:
+                    # Substitute params with args (single-expression bodies only)
                     body_expr = fd.body[0]
                     if not isinstance(body_expr, ExprStmt):
                         new_args = [self._inline_in_expr(a, candidates) for a in expr.args]

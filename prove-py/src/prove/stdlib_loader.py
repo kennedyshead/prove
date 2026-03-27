@@ -182,7 +182,7 @@ _register_module(
         ("reads", "replace"): "prove_text_replace",
         ("reads", "repeat"): "prove_text_repeat",
         ("creates", "builder"): "prove_text_builder",
-        ("reads", "string"): "prove_text_write",
+        ("reads", "string_builder"): "prove_text_write",
         ("reads", "char"): "prove_text_write_char",
         ("creates", "build"): "prove_text_build",
     },
@@ -218,7 +218,6 @@ _register_module(
         ("creates", "find_all"): "prove_pattern_find_all",
         ("reads", "replace"): "prove_pattern_replace",
         ("creates", "split"): "prove_pattern_split",
-        ("creates", "string"): "prove_pattern_text",
         ("creates", "start"): "prove_pattern_start",
         ("creates", "end"): "prove_pattern_end",
     },
@@ -276,10 +275,14 @@ _register_module(
         ("creates", "range"): "prove_list_ops_range",
     },
     overloads={
+        ("reads", "first", "List"): "prove_list_ops_first",
+        ("reads", "first", "List<Value>"): "prove_list_ops_first",
         ("reads", "first", "List<Integer>"): "prove_list_ops_first_int",
         ("reads", "first", "List<String>"): "prove_list_ops_first_str",
         ("reads", "first", "List<Float>"): "prove_list_ops_first_float",
         ("reads", "first", "List<Decimal>"): "prove_list_ops_first_float",
+        ("reads", "last", "List"): "prove_list_ops_last",
+        ("reads", "last", "List<Value>"): "prove_list_ops_last",
         ("reads", "last", "List<Integer>"): "prove_list_ops_last_int",
         ("reads", "last", "List<String>"): "prove_list_ops_last_str",
         ("reads", "last", "List<Float>"): "prove_list_ops_last_float",
@@ -485,6 +488,8 @@ _register_module(
         ("creates", "string", "Url"): "prove_parse_url_host_reads",
         ("creates", "string", "Token"): "prove_parse_token_text",
         ("creates", "string", "Position"): "prove_convert_string_position",
+        ("creates", "string", "Match"): "prove_pattern_text",
+        ("creates", "string", "Node"): "prove_prove_string",
         ("creates", "integer", "Boolean"): "prove_convert_integer_bool",
         ("creates", "integer", "Value"): "prove_value_as_number",
         ("creates", "float", "Value"): "prove_value_as_decimal",
@@ -508,6 +513,7 @@ _register_module(
         ("reads", "unwrap", "Option<Float>"): "prove_error_unwrap_or_float",
         ("reads", "unwrap", "Option<Decimal>"): "prove_error_unwrap_or_float",
         ("reads", "unwrap", "Option<Boolean>"): "prove_error_unwrap_or_bool",
+        ("reads", "unwrap", "Option<Node>"): "prove_error_unwrap_or_ptr",
         ("reads", "unwrap", "Option<Value>"): "prove_error_unwrap_or",
     },
 )
@@ -771,7 +777,7 @@ _register_module(
 _register_module(
     "ui",
     display="UI",
-    prv_file="ui.prv",
+    prv_file="pure/ui.prv",
 )
 
 _register_module(
@@ -818,7 +824,6 @@ _register_module(
     c_map={
         ("reads", "root"): "prove_prove_root",
         ("creates", "kind"): "prove_prove_kind",
-        ("creates", "string"): "prove_prove_string",
         ("creates", "children"): "prove_prove_children",
         ("creates", "child"): "prove_prove_child",
         ("creates", "line"): "prove_prove_line",

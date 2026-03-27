@@ -816,10 +816,11 @@ class ProveFormatter:
         if isinstance(expr, LambdaExpr):
             return self._format_lambda(expr)
         if isinstance(expr, ValidExpr):
+            keyword = "invalid" if expr.negated else "valid"
             if expr.args is not None:
                 args = ", ".join(self._format_expr(a) for a in expr.args)
-                return f"valid {expr.name}({args})"
-            return f"valid {expr.name}"
+                return f"{keyword} {expr.name}({args})"
+            return f"{keyword} {expr.name}"
         if isinstance(expr, MatchExpr):
             return self._format_match_expr(expr)
         if isinstance(expr, ComptimeExpr):

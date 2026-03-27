@@ -192,7 +192,7 @@ class CEmitter(
 
     def _load_imported_lookup_tables(self) -> None:
         """Load lookup tables from imported stdlib modules (e.g. UI.Key)."""
-        from prove.stdlib_loader import is_stdlib_module, stdlib_prv_path
+        from prove.stdlib_loader import is_stdlib_module, load_stdlib_prv_source
 
         imported_type_names: set[str] = set()
         imported_modules: set[str] = set()
@@ -214,12 +214,11 @@ class CEmitter(
         from prove.parse import parse
 
         for mod_name in imported_modules:
-            prv_path = stdlib_prv_path(mod_name)
-            if prv_path is None or not prv_path.exists():
+            src = load_stdlib_prv_source(mod_name)
+            if src is None:
                 continue
             try:
-                src = prv_path.read_text()
-                parsed = parse(src, str(prv_path))
+                parsed = parse(src, f"<stdlib:{mod_name}>")
                 for pdecl in parsed.declarations:
                     if isinstance(pdecl, ModuleDecl):
                         for td in pdecl.types:

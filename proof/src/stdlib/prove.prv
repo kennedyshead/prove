@@ -17,10 +17,6 @@ module Prove
   creates kind(node Node) String
   binary
 
-  /// Source text spanned by a node.
-  creates string(node Node) String
-  binary
-
   /// All child nodes (including anonymous tokens).
   creates children(node Node) List<Node>
   binary

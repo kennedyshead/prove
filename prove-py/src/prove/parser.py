@@ -1539,119 +1539,142 @@ class Parser:
     # ── Lookup type body ────────────────────────────────────────────
 
     def _parse_lookup_type_body(self) -> LookupTypeDef:
-        """Parse: ValueType [ValueType ...] where + indented entries,
-        or pipe-separated types with runtime body for store-backed lookups."""
+        """Parse: [name:]Type [| [name:]Type ...] where + indented entries,
+        or pipe-separated types with runtime body for store-backed lookups.
+
+        Documented syntax:
+            type Color:[Lookup] is name:String | Integer | hex:String where
+                Red | "red" | 31 | "#FF0000"
+        """
         start = self._current().span
 
-        # Parse first column type
+        # Parse column types: [name:]Type | [name:]Type | ...
+        # Columns separated by | with optional name: prefix
         value_types: list[TypeExpr] = []
-        value_types.append(self._parse_type_expr())
+        column_names: list[str | None] = []
 
-        # Check for pipe-separated column types: String | Integer
-        if self._at(TokenKind.PIPE):
-            while self._at(TokenKind.PIPE):
-                self._advance()  # consume |
-                value_types.append(self._parse_type_expr())
+        def _parse_column() -> None:
+            col_name: str | None = None
+            if (
+                self._at(TokenKind.IDENTIFIER)
+                and self._peek(1).kind == TokenKind.COLON
+                and self._peek(2).kind == TokenKind.TYPE_IDENTIFIER
+            ):
+                col_name = self._current().value
+                self._advance()  # consume name
+                self._advance()  # consume colon
+            column_names.append(col_name)
+            value_types.append(self._parse_type_expr())
+
+        _parse_column()
+
+        while self._at(TokenKind.PIPE):
+            self._advance()  # consume |
+            _parse_column()
+
+        # Expect 'where' followed by indented entries
+        if self._at(TokenKind.WHERE):
+            self._advance()
             self._skip_newlines()
-            self._expect(TokenKind.INDENT)
-            self._skip_newlines()
-            tok = self._current()
-            if tok.kind == TokenKind.IDENTIFIER and tok.value == "runtime":
-                # Store-backed lookup: pipe-separated types + runtime block
-                self._advance()
-                self._skip_newlines()
-                if self._at(TokenKind.DEDENT):
-                    self._advance()
+
+            value_type = value_types[0] if value_types else SimpleType("Unit", start)
+
+            if len(value_types) > 1:
+                # Multi-column: binary lookup entry parsing
+                entries = self._parse_binary_lookup_entries(len(value_types))
                 end = self._current().span
                 return LookupTypeDef(
-                    value_type=value_types[0],
-                    entries=[],
-                    span=self._span(start, end),
-                    value_types=tuple(value_types),
-                    is_binary=True,
-                    is_store_backed=True,
-                )
-            else:
-                # Regular multi-column lookup: pipe-separated types + entries
-                # INDENT already consumed, parse entry rows directly
-                entries = self._parse_pipe_lookup_entries(len(value_types))
-                # Dispatch lookup: any entry with an identifier value → verb dispatch
-                is_dispatch = any("identifier" in e.value_kinds for e in entries if e.value_kinds)
-                end = self._current().span
-                return LookupTypeDef(
-                    value_type=value_types[0],
+                    value_type=value_type,
                     entries=entries,
                     span=self._span(start, end),
                     value_types=tuple(value_types),
-                    is_binary=not is_dispatch,
-                    is_pipe_entry_format=not is_dispatch,
-                    is_dispatch=is_dispatch,
+                    column_names=tuple(column_names),
+                    is_binary=True,
                 )
 
-        # Existing: space-separated column types until 'where'
-        while not self._at(TokenKind.WHERE) and not self._at(TokenKind.EOF):
-            value_types.append(self._parse_type_expr())
+            # Single-column: existing stacking logic
+            entries: list[LookupEntry] = []
+            last_variant: str | None = None
+            if self._at(TokenKind.INDENT):
+                self._advance()
+                while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                    self._skip_newlines()
+                    if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                        break
+                    # Stacking: continuation | "value" may be at deeper indent
+                    if self._at(TokenKind.INDENT):
+                        self._advance()
+                        while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
+                            self._skip_newlines()
+                            if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
+                                break
+                            if self._at(TokenKind.PIPE) and last_variant is not None:
+                                self._advance()  # |
+                                entry = self._parse_lookup_value(last_variant)
+                                entries.append(entry)
+                            else:
+                                break
+                            self._skip_newlines()
+                        if self._at(TokenKind.DEDENT):
+                            self._advance()
+                        continue
+                    # Stacking at same indent: | "value" (reuses previous variant)
+                    if self._at(TokenKind.PIPE) and last_variant is not None:
+                        self._advance()  # |
+                        entry = self._parse_lookup_value(last_variant)
+                        entries.append(entry)
+                    elif self._at(TokenKind.TYPE_IDENTIFIER):
+                        # Normal: Variant | "value"
+                        entry = self._parse_lookup_entry()
+                        entries.append(entry)
+                        last_variant = entry.variant
+                    else:
+                        break
+                    self._skip_newlines()
+                if self._at(TokenKind.DEDENT):
+                    self._advance()
 
-        value_type = value_types[0] if value_types else SimpleType("Unit", start)
-        self._expect(TokenKind.WHERE)
+            end = self._current().span
+            return LookupTypeDef(value_type, entries, self._span(start, end))
+
+        # No 'where': pipe-separated types with runtime/dispatch body
         self._skip_newlines()
-
-        if len(value_types) > 1:
-            # Multi-column: reuse binary lookup entry parsing
-            entries = self._parse_binary_lookup_entries(len(value_types))
+        self._expect(TokenKind.INDENT)
+        self._skip_newlines()
+        tok = self._current()
+        if tok.kind == TokenKind.IDENTIFIER and tok.value == "runtime":
+            # Store-backed lookup: pipe-separated types + runtime block
+            self._advance()
+            self._skip_newlines()
+            if self._at(TokenKind.DEDENT):
+                self._advance()
             end = self._current().span
             return LookupTypeDef(
-                value_type=value_type,
+                value_type=value_types[0],
+                entries=[],
+                span=self._span(start, end),
+                value_types=tuple(value_types),
+                column_names=tuple(column_names),
+                is_binary=True,
+                is_store_backed=True,
+            )
+        else:
+            # Regular multi-column lookup: pipe-separated types + entries
+            # INDENT already consumed, parse entry rows directly
+            entries = self._parse_pipe_lookup_entries(len(value_types))
+            # Dispatch lookup: any entry with an identifier value → verb dispatch
+            is_dispatch = any("identifier" in e.value_kinds for e in entries if e.value_kinds)
+            end = self._current().span
+            return LookupTypeDef(
+                value_type=value_types[0],
                 entries=entries,
                 span=self._span(start, end),
                 value_types=tuple(value_types),
-                is_binary=True,
+                column_names=tuple(column_names),
+                is_binary=not is_dispatch,
+                is_pipe_entry_format=not is_dispatch,
+                is_dispatch=is_dispatch,
             )
-
-        # Single-column: existing stacking logic
-        entries: list[LookupEntry] = []
-        last_variant: str | None = None
-        if self._at(TokenKind.INDENT):
-            self._advance()
-            while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
-                self._skip_newlines()
-                if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
-                    break
-                # Stacking: continuation | "value" may be at deeper indent
-                if self._at(TokenKind.INDENT):
-                    self._advance()
-                    while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
-                        self._skip_newlines()
-                        if self._at(TokenKind.DEDENT) or self._at(TokenKind.EOF):
-                            break
-                        if self._at(TokenKind.PIPE) and last_variant is not None:
-                            self._advance()  # |
-                            entry = self._parse_lookup_value(last_variant)
-                            entries.append(entry)
-                        else:
-                            break
-                        self._skip_newlines()
-                    if self._at(TokenKind.DEDENT):
-                        self._advance()
-                    continue
-                # Stacking at same indent: | "value" (reuses previous variant)
-                if self._at(TokenKind.PIPE) and last_variant is not None:
-                    self._advance()  # |
-                    entry = self._parse_lookup_value(last_variant)
-                    entries.append(entry)
-                elif self._at(TokenKind.TYPE_IDENTIFIER):
-                    # Normal: Variant | "value"
-                    entry = self._parse_lookup_entry()
-                    entries.append(entry)
-                    last_variant = entry.variant
-                else:
-                    break
-                self._skip_newlines()
-            if self._at(TokenKind.DEDENT):
-                self._advance()
-
-        end = self._current().span
-        return LookupTypeDef(value_type, entries, self._span(start, end))
 
     def _parse_lookup_entry(self) -> LookupEntry:
         """Parse a single lookup entry: Variant | literal."""
@@ -2295,7 +2318,13 @@ class Parser:
                 if _POSTFIX_BP < min_bp:
                     break
                 self._advance()
-                field_tok = self._expect(TokenKind.IDENTIFIER)
+                # Accept both lowercase (field) and uppercase (named column)
+                if self._at(TokenKind.IDENTIFIER):
+                    field_tok = self._advance()
+                elif self._at(TokenKind.TYPE_IDENTIFIER):
+                    field_tok = self._advance()
+                else:
+                    field_tok = self._expect(TokenKind.IDENTIFIER)
                 left = FieldExpr(
                     left,
                     field_tok.value,

@@ -10,11 +10,13 @@
 
 int64_t prove_list_ops_length(Prove_List *list);
 
-/* ── First / Last (typed variants) ──────────────────────────── */
+/* ── First / Last (generic + typed variants) ─────────────────── */
 
+Prove_Option prove_list_ops_first(Prove_List *list);
 Prove_Option prove_list_ops_first_int(Prove_List *list);
 Prove_Option prove_list_ops_first_str(Prove_List *list);
 Prove_Option prove_list_ops_first_float(Prove_List *list);
+Prove_Option prove_list_ops_last(Prove_List *list);
 Prove_Option prove_list_ops_last_int(Prove_List *list);
 Prove_Option prove_list_ops_last_str(Prove_List *list);
 Prove_Option prove_list_ops_last_float(Prove_List *list);

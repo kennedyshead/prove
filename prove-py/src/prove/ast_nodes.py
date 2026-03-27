@@ -232,6 +232,7 @@ class ValidExpr:
     name: str
     args: list[Expr] | None  # None = function reference, list = call
     span: Span
+    negated: bool = False  # True for `invalid` keyword
 
 
 @dataclass(frozen=True)

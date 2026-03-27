@@ -39,6 +39,7 @@ class TokenKind(Enum):
     MATCH = auto()
     COMPTIME = auto()
     VALID = auto()
+    INVALID = auto()
     MODULE = auto()
     DOMAIN = auto()
     CONSTANTS = auto()
@@ -173,6 +174,7 @@ KEYWORDS: dict[str, TokenKind] = {
     "match": TokenKind.MATCH,
     "comptime": TokenKind.COMPTIME,
     "valid": TokenKind.VALID,
+    "invalid": TokenKind.INVALID,
     "module": TokenKind.MODULE,
     "domain": TokenKind.DOMAIN,
     "constants": TokenKind.CONSTANTS,

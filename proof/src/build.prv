@@ -9,7 +9,7 @@ module Build
   Source types SourceFile
   Types validates unit
   Log detached info error
-  Check outputs syntax_and_lint
+  Check outputs lint
 
   foreign "libpython3"
     py_initialize() Unit
@@ -46,7 +46,7 @@ outputs source_build(
 )!
 from
     clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-    match syntax_and_lint(clean_source)
+    match lint(clean_source)!
         true =>
             info("Cleaning source...")&
             pybuild(path, debug, no_mutate)!

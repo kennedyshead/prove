@@ -1882,36 +1882,53 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
             )
         )
 
-    # Stdlib + local module functions and types — one item per verb variant
+    # Stdlib + local module functions and types — collapsed by (name, module)
     index = _merged_import_index(ds)
     for name, suggestions in index.items():
+        # Group suggestions by module so overloads collapse into one item
+        by_module: dict[str, list[ImportSuggestion]] = {}
         for s in suggestions:
-            is_type = s.verb == "types"
+            by_module.setdefault(s.module, []).append(s)
+
+        for module, mod_suggestions in by_module.items():
+            # Use first suggestion for auto-import edit and kind detection
+            first = mod_suggestions[0]
+            is_type = first.verb == "types"
+
             # Compute auto-import edit if we have document state
             additional_edits: list[lsp.TextEdit] | None = None
             already_imported = False
             if ds is not None:
-                edit = _build_import_edit(ds, s)
+                edit = _build_import_edit(ds, first)
                 if edit is not None:
                     additional_edits = [edit]
                 elif ds.module is not None:
-                    # Already imported - mark it but don't skip
                     already_imported = True
-            # Label shows module + verb + name (e.g., "System outputs console")
-            label = f"{s.module} {s.verb or 'function'} {name}"
-            # Detail: "Auto-import" for importable, verb for already imported
-            detail = "Auto-import" if not already_imported else (s.verb or "")
-            # Documentation: for types use type_def, for functions use signature
-            if is_type and s.type_def:
-                doc_value = f"```prove\n{s.type_def}\n```"
-                if s.docstring:
-                    doc_value += f"\n---\n{s.docstring}"
+
+            # Collect unique verbs for the label
+            verbs = sorted({s.verb or "function" for s in mod_suggestions})
+            verb_label = "/".join(verbs)
+
+            label = f"{module} {verb_label} {name}"
+            n_overloads = len(mod_suggestions)
+            if already_imported:
+                detail = verb_label
+            elif n_overloads > 1:
+                detail = f"Auto-import ({n_overloads} overloads)"
             else:
-                sig_line = f"{name}{s.signature}" if s.signature else f"{name}"
-                if s.docstring:
-                    doc_value = f"```prove\n{sig_line}\n```\n---\n{s.docstring}"
+                detail = "Auto-import"
+
+            # Documentation: show all overloads in one block
+            doc_parts: list[str] = []
+            for s in mod_suggestions:
+                if is_type and s.type_def:
+                    doc_parts.append(f"```prove\n{s.type_def}\n```")
                 else:
-                    doc_value = f"```prove\n{sig_line}\n```"
+                    sig_line = f"{name}{s.signature}" if s.signature else f"{name}"
+                    doc_parts.append(f"```prove\n{sig_line}\n```")
+                if s.docstring:
+                    doc_parts.append(s.docstring)
+            doc_value = "\n---\n".join(doc_parts)
             documentation = lsp.MarkupContent(
                 kind=lsp.MarkupKind.Markdown,
                 value=doc_value,
@@ -1929,13 +1946,11 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     insert_text=name,
                     insert_text_format=lsp.InsertTextFormat.PlainText,
                     label_details=lsp.CompletionItemLabelDetails(
-                        detail=f" {s.verb}" if s.verb and s.verb != "types" else None,
-                        description=s.module,
+                        detail=f" {verb_label}" if not is_type else None,
+                        description=module,
                     ),
                     filter_text=name,
-                    sort_text=f"{name}_{s.verb}_{s.signature}"
-                    if s.verb
-                    else f"{name}_{s.signature}",
+                    sort_text=f"{name}_{module}",
                     additional_text_edits=additional_edits,
                 )
             )
@@ -1982,42 +1997,50 @@ def completion(params: lsp.CompletionParams) -> lsp.CompletionList:
                     )
                 )
 
-        # Function signatures — show all overloads (skip imported ones)
+        # Function signatures — collapsed by name (skip imported ones)
+        local_by_name: dict[str, list[FunctionSignature]] = {}
         for (_verb, fname), sigs in ds.symbols.all_functions().items():
             for sig in sigs:
-                # Skip functions from imported modules (they're shown in stdlib section)
                 if hasattr(sig, "module") and sig.module is not None:
                     continue
-                # Label: "verb name" (e.g., "transforms add")
-                label = f"{sig.verb or 'function'} {fname}"
-                # Detail: "verb" (e.g., "transforms")
-                detail = sig.verb or ""
-                # Documentation: name + signature (no verb)
+                local_by_name.setdefault(fname, []).append(sig)
+
+        for fname, sigs in local_by_name.items():
+            verbs = sorted({sig.verb or "function" for sig in sigs})
+            verb_label = "/".join(verbs)
+            label = f"{verb_label} {fname}"
+            n_overloads = len(sigs)
+            detail = (
+                f"{verb_label} ({n_overloads} overloads)"
+                if n_overloads > 1
+                else (verbs[0] if verbs else "")
+            )
+
+            doc_parts: list[str] = []
+            for sig in sigs:
                 sig_line = f"{fname}{_sig_params_display(sig)}"
+                doc_parts.append(f"```prove\n{sig_line}\n```")
                 if sig.doc_comment:
-                    doc_value = f"```prove\n{sig_line}\n```\n---\n{sig.doc_comment}"
-                else:
-                    doc_value = f"```prove\n{sig_line}\n```"
-                documentation = lsp.MarkupContent(
-                    kind=lsp.MarkupKind.Markdown,
-                    value=doc_value,
+                    doc_parts.append(sig.doc_comment)
+            doc_value = "\n---\n".join(doc_parts)
+            documentation = lsp.MarkupContent(
+                kind=lsp.MarkupKind.Markdown,
+                value=doc_value,
+            )
+            items.append(
+                lsp.CompletionItem(
+                    label=label,
+                    kind=lsp.CompletionItemKind.Function,
+                    detail=detail,
+                    documentation=documentation,
+                    insert_text=fname,
+                    insert_text_format=lsp.InsertTextFormat.PlainText,
+                    label_details=lsp.CompletionItemLabelDetails(
+                        detail=f" {verb_label}",
+                    ),
+                    sort_text=f"{fname}_{verb_label}",
                 )
-                items.append(
-                    lsp.CompletionItem(
-                        label=label,
-                        kind=lsp.CompletionItemKind.Function,
-                        detail=detail,
-                        documentation=documentation,
-                        insert_text=fname,
-                        insert_text_format=lsp.InsertTextFormat.PlainText,
-                        label_details=lsp.CompletionItemLabelDetails(
-                            detail=f" {sig.verb}" if sig.verb else None,
-                        ),
-                        sort_text=f"{fname}_{sig.verb}_{_sig_params_display(sig)}"
-                        if sig.verb
-                        else f"{fname}_{_sig_params_display(sig)}",
-                    )
-                )
+            )
 
     # Phase 5b — from-block body generation (highest priority when in `from` block)
     source = ds.source if ds else ""
