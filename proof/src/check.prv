@@ -7,15 +7,13 @@ module Check
   outputs lint messages
   matches the declaration and lint
   """
-  System validates dir inputs console
-  Prove types Node reads root creates children named_children kind column line
+  System validates dir
+  Prove types Node reads root creates children named_children kind line column
   Source types SourceFile
   Types creates string validates boolean
-  Log detached info error
-  Sequence reads first
-  Terminal reads ansi
-  UI types Color
-  Text reads trim
+  Log types DiagnosticMessage Severity detached info error diagnostic
+  Sequence reads first get
+  Text creates split
 
   foreign "libpython3"
     py_initialize() Unit
@@ -27,29 +25,6 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-outputs linter_error(source SourceFile, node Node, node_kind String)
-from
-    module_name as String = string(node)
-    console(f"{
-              ansi(Color:Red)
-            }error[E210]:{
-              ansi(Color:Default)
-            } Expected module name, found {
-              trim(module_name)
-            }\n  {
-              ansi(Color:Blue)
-            }-->{
-              ansi(Color:Default)
-            } {
-              source.path
-            }:{
-              line(node)
-            }:{
-              column(node)
-            }\n     |\n    {
-              line(node)
-            } | ")
-
 outputs lint_module(node Node, source SourceFile) Boolean!
   ensures valid boolean(result)
   requires children(node) > 0
@@ -57,23 +32,33 @@ outputs lint_module(node Node, source SourceFile) Boolean!
       the childrens and uses first as module name
 from
     names as List<Node> = named_children(node)
-    module_node as Option<Node> = first(names)
+    module_node as Node = first(names)
     node_kind as String = kind(module_node)
+    name as String = string(module_node)
     match node_kind
         "type_identifier" =>
-            info(f"Linting module {string(module_node)}")&
-            true
-        _ =>
-            linter_error(source, module_node, node_kind)
+            info(f"Linting module {name}")&
             false
+        _ =>
+            actual_code as String = get(split(string(node), "\n"), line(module_node) - 1)
+            diagnostic(DiagnosticMessage(
+                            Severity.Error,
+                            210,
+                            source.path,
+                            name,
+                            "Expected module name but found",
+                            line(module_node),
+                            column(module_node),
+                            actual_code))&
+            true
 
 outputs lint_file(source SourceFile) Boolean!
 from
     match any(children(root(source.source)), |node| lint_module(node, source)!)
         true =>
             error(f"{source.path}")&
-            true
-        _ => false
+            false
+        _ => true
 
 outputs lint(source List<SourceFile>) Boolean!
 from

@@ -126,6 +126,18 @@ def map_type(ty: Type) -> CType:
         mapped = _PRIMITIVE_MAP.get(name)
         if mapped is not None:
             return mapped
+        # User-defined type referenced as PrimitiveType (e.g. record/algebraic field types)
+        if name[:1].isupper() and name not in (
+            "Integer",
+            "Decimal",
+            "Float",
+            "Boolean",
+            "String",
+            "Character",
+            "Byte",
+            "Unit",
+        ):
+            return CType(mangle_type_name(name), is_pointer=False, header=None)
         # Fallback for unknown primitives
         return CType("int64_t", is_pointer=False, header=None)
 

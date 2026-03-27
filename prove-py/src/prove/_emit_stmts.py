@@ -647,6 +647,35 @@ class StmtEmitterMixin:
                 self._locals[vd.name] = target_ty
                 return
 
+        # Auto-unwrap: Option<T> → T when annotation declares T and the
+        # function has requires contracts (the contracts are the proof).
+        has_requires = self._current_func is not None and getattr(
+            self._current_func, "requires", None
+        )
+        if (
+            has_requires
+            and isinstance(value_ty, GenericInstance)
+            and value_ty.base_name == "Option"
+            and value_ty.args
+            and not isinstance(target_ty, GenericInstance)
+            and vd.type_expr is not None
+        ):
+            inner_ct = map_type(target_ty)
+            if inner_ct.header:
+                self._needed_headers.add(inner_ct.header)
+            self._needed_headers.add("prove_option.h")
+            val = self._emit_expr(vd.value)
+            self._expected_emit_type = None
+            if inner_ct.is_pointer:
+                self._line(f"{inner_ct.decl} {cn} = ({inner_ct.decl})prove_option_unwrap({val});")
+            else:
+                tmp = self._named_tmp("opt")
+                self._line(f"Prove_Option {tmp} = {val};")
+                decl = inner_ct.decl
+                self._line(f"{decl} {cn} = ({tmp}.tag == 1) ? ({decl}){tmp}.value : ({decl}){{0}};")
+            self._locals[vd.name] = target_ty
+            return
+
         # Check if value is a failable call returning Result and target is the success type
         needs_unwrap = False
         if isinstance(value_ty, GenericInstance) and value_ty.base_name == "Result":

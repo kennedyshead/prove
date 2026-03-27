@@ -2689,10 +2689,27 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     vd.span,
                 )
             if not types_compatible(expected, inferred):
+                # Auto-unwrap: Option<T> → T when the function has requires
+                # contracts. The contracts are the proof that the Option is
+                # always Some (compiler-first principle: requires are proofs).
+                has_requires = (
+                    self._current_function
+                    and isinstance(self._current_function, FunctionDef)
+                    and self._current_function.requires
+                )
+                if (
+                    has_requires
+                    and isinstance(inferred, GenericInstance)
+                    and inferred.base_name == "Option"
+                    and inferred.args
+                    and types_compatible(expected, inferred.args[0])
+                ):
+                    pass  # auto-unwrap — requires contract is the proof
                 # Allow StoreTable → store-backed lookup type assignment
-                expected_name = getattr(expected, "name", "")
-                actual_name = getattr(inferred, "name", "")
-                if not (expected_name in self._store_lookup_types and actual_name == "StoreTable"):
+                elif not (
+                    getattr(expected, "name", "") in self._store_lookup_types
+                    and getattr(inferred, "name", "") == "StoreTable"
+                ):
                     self._error(
                         "E321",
                         f"type mismatch: expected '{type_name(expected)}', got '{type_name(inferred)}'",  # noqa: E501
@@ -3703,6 +3720,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         f"non-exhaustive match on {base}: missing {names}",
                         labels=[DiagnosticLabel(span=expr.span, message="")],
                         notes=[f"add the missing arms: {arms_str}"],
+                        suggestions=[
+                            Suggestion(
+                                message="add the missing arms",
+                                replacement=arms_str,
+                            )
+                        ],
                     )
                 )
 

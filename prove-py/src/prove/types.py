@@ -484,10 +484,10 @@ def types_compatible(expected: Type, actual: Type, *, covariant: bool = True) ->
         return types_compatible(expected.inner, actual)
     if isinstance(actual, BorrowType):
         return types_compatible(expected, actual.inner)
-    if isinstance(expected, PrimitiveType) and expected.modifiers:
+    if isinstance(expected, PrimitiveType):
         if isinstance(actual, (RecordType, AlgebraicType)):
             return expected.name == actual.name
-    if isinstance(actual, PrimitiveType) and actual.modifiers:
+    if isinstance(actual, PrimitiveType):
         if isinstance(expected, (RecordType, AlgebraicType)):
             return actual.name == expected.name
     # Store-backed lookup types are interchangeable with StoreTable

@@ -2733,6 +2733,58 @@ def _build_import_edit(
     )
 
 
+def _exhaustive_match_fix(
+    uri: str, ds: DocumentState, diag: lsp.Diagnostic
+) -> lsp.CodeAction | None:
+    """Build a quick fix that inserts missing match arms for E371/E373."""
+    # Find the matching prove diagnostic by code + range
+    prove_diag = None
+    for pd in ds.prove_diagnostics:
+        if pd.code != diag.code or not pd.suggestions:
+            continue
+        if not pd.labels:
+            continue
+        pd_range = span_to_range(pd.labels[0].span)
+        if pd_range == diag.range:
+            prove_diag = pd
+            break
+    if prove_diag is None:
+        return None
+
+    arms_str = prove_diag.suggestions[0].replacement
+    # arms_str is "Variant1 => ... | Variant2 => ..."
+    arms = [a.strip() for a in arms_str.split(" | ")]
+
+    # Determine indentation from the match line
+    lines = ds.source.splitlines()
+    match_line = diag.range.start.line
+    if match_line < len(lines):
+        existing = lines[match_line]
+        indent = len(existing) - len(existing.lstrip())
+        arm_indent = " " * (indent + 4)
+    else:
+        arm_indent = "        "
+
+    # Insert after the last line of the match expression
+    insert_line = diag.range.end.line
+    insert_text = "\n".join(f"{arm_indent}{arm}" for arm in arms) + "\n"
+
+    edit = lsp.TextEdit(
+        range=lsp.Range(
+            start=lsp.Position(insert_line + 1, 0),
+            end=lsp.Position(insert_line + 1, 0),
+        ),
+        new_text=insert_text,
+    )
+    return lsp.CodeAction(
+        title=f"Add missing match arms ({', '.join(arms)})",
+        kind=lsp.CodeActionKind.QuickFix,
+        diagnostics=[diag],
+        is_preferred=True,
+        edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
+    )
+
+
 @server.feature(
     lsp.TEXT_DOCUMENT_CODE_ACTION,
     lsp.CodeActionOptions(
@@ -2758,28 +2810,32 @@ def code_action(params: lsp.CodeActionParams) -> list[lsp.CodeAction] | None:
     actions: list[lsp.CodeAction] = []
 
     for diag in params.context.diagnostics:
-        if not _is_importable_error(diag):
-            continue
-        name = _extract_undefined_name(diag.message)
-        if name is None or name not in index:
-            continue
+        # Auto-import quick fixes (E310, E300)
+        if _is_importable_error(diag):
+            name = _extract_undefined_name(diag.message)
+            if name is not None and name in index:
+                suggestions = index[name]
+                for suggestion in suggestions:
+                    edit = _build_import_edit(ds, suggestion)
+                    if edit is None:
+                        continue
+                    verb_part = f" ({suggestion.verb})" if suggestion.verb else ""
+                    title = f"Import {suggestion.name} from {suggestion.module}{verb_part}"
+                    actions.append(
+                        lsp.CodeAction(
+                            title=title,
+                            kind=lsp.CodeActionKind.QuickFix,
+                            diagnostics=[diag],
+                            is_preferred=len(suggestions) == 1,
+                            edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
+                        )
+                    )
 
-        suggestions = index[name]
-        for suggestion in suggestions:
-            edit = _build_import_edit(ds, suggestion)
-            if edit is None:
-                continue
-            verb_part = f" ({suggestion.verb})" if suggestion.verb else ""
-            title = f"Import {suggestion.name} from {suggestion.module}{verb_part}"
-            actions.append(
-                lsp.CodeAction(
-                    title=title,
-                    kind=lsp.CodeActionKind.QuickFix,
-                    diagnostics=[diag],
-                    is_preferred=len(suggestions) == 1,
-                    edit=lsp.WorkspaceEdit(changes={uri: [edit]}),
-                )
-            )
+        # Exhaustive match quick fixes (E371, E373)
+        if diag.code in ("E371", "E373"):
+            action = _exhaustive_match_fix(uri, ds, diag)
+            if action is not None:
+                actions.append(action)
 
     return actions if actions else None
 

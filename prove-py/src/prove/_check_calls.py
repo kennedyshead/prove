@@ -343,6 +343,33 @@ class CallCheckMixin:
                 self.diagnostics.append(diag)
                 return sig.return_type
 
+            # Before checking argument types, see if a non-serializable arg
+            # would hit a TypeVariable("Value") param when a concrete overload
+            # exists.  Resolve upfront to avoid false E335.
+            if arg_types:
+                for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
+                    if (
+                        isinstance(expected, TypeVariable)
+                        and expected.name == "Value"
+                        and not isinstance(actual, (ErrorType, TypeVariable))
+                        and not is_json_serializable(actual)
+                    ):
+                        unwrapped = list(arg_types)
+                        if (
+                            isinstance(actual, GenericInstance)
+                            and actual.base_name == "Option"
+                            and actual.args
+                        ):
+                            unwrapped[i] = actual.args[0]
+                        better = self.symbols.resolve_function_any(
+                            name,
+                            unwrapped,
+                            expected_return=expected_type,
+                        )
+                        if better is not None and better is not sig:
+                            sig = better
+                        break  # only check first problematic param
+
             # Check argument types
             sig_str = ", ".join(
                 f"{n} {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
@@ -835,7 +862,20 @@ class CallCheckMixin:
                     return ERROR_TY
                 return PrimitiveType(field_type_name)
 
-        # Allow field access on GenericInstance, AlgebraicType, etc. without error
+        # Variant access on algebraic types: Severity.Error → Severity
+        if isinstance(obj_type, AlgebraicType):
+            variant_names = {v.name for v in obj_type.variants}
+            if expr.field not in variant_names:
+                self._error(
+                    "E340",
+                    f"no variant '{expr.field}' on type '{obj_type.name}'"
+                    f" (variants: {', '.join(variant_names)})",
+                    expr.span,
+                )
+                return ERROR_TY
+            return obj_type
+
+        # Allow field access on GenericInstance, etc. without error
         # (duck typing / deferred check for generics)
         if isinstance(obj_type, (GenericInstance, TypeVariable, ListType, ArrayType)):
             return ERROR_TY

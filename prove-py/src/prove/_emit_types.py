@@ -86,6 +86,11 @@ class TypeEmitterMixin:
         seen: set[str] = set()
 
         def _visit(ty: Type) -> None:
+            if isinstance(ty, PrimitiveType) and ty.name not in _BUILTIN_NAMES:
+                # Resolve PrimitiveType to actual type (e.g. Severity → AlgebraicType)
+                resolved = self._symbols.resolve_type(ty.name)
+                if resolved is not None and isinstance(resolved, (RecordType, AlgebraicType)):
+                    ty = resolved
             if not isinstance(ty, (RecordType, AlgebraicType)):
                 return
             name = ty.name
@@ -433,7 +438,7 @@ class TypeEmitterMixin:
                 else:
                     params.append(f"{ct.decl} {fname}")
             param_str = ", ".join(params) if params else "void"
-            self._line(f"static inline {cname} {v.name}({param_str}) {{")
+            self._line(f"static inline {cname} {cname}_{v.name}({param_str}) {{")
             self._indent += 1
             self._line(f"{cname} _v;")
             self._line(f"_v.tag = {tag};")

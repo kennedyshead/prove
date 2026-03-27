@@ -872,11 +872,14 @@ class ProveFormatter:
                     break
                 col += len(arg_strs[i]) + 2  # skip past this arg + ", "
 
-            # Fall back to per-argument multiline: args aligned under the first
+            # Fall back to per-argument multiline: hanging indent
             if len(arg_strs) > 1:
-                cont = " " * (len(func) + 1)
-                sep = ",\n" + cont
-                return f"{func}({sep.join(arg_strs)}){suffix}"
+                self._indent_level += 1
+                arg_strs = [self._format_expr(a) for a in expr.args]
+                self._indent_level -= 1
+                inner_indent = "    " * (self._indent_level + 1)
+                sep = ",\n" + inner_indent
+                return f"{func}(\n{inner_indent}{sep.join(arg_strs)}){suffix}"
 
         return result
 

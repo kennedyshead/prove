@@ -21,7 +21,7 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     ValidExpr,
 )
-from prove.c_types import CType, mangle_name, map_type, safe_c_name
+from prove.c_types import CType, mangle_name, mangle_type_name, map_type, safe_c_name
 from prove.symbols import FunctionSignature
 from prove.type_inference import BUILTIN_MAP, get_type_key
 from prove.types import (
@@ -1121,7 +1121,12 @@ class CallEmitterMixin:
                 cast = f"void (*)({', '.join(arg_c_types)})" if arg_c_types else "void (*)(void)"
                 return f"(({cast}){name})({', '.join(args)})"
 
-            # Variant constructor or unknown — use name directly
+            # Variant constructor or unknown — namespace variant constructors
+            parent = self._get_variant_parent(name)
+            if parent is not None:
+                cname = mangle_type_name(parent.name)
+                args = self._wrap_recursive_constructor_args(name, args, expr.args)
+                return f"{cname}_{name}({', '.join(args)})"
             args = self._wrap_recursive_constructor_args(name, args, expr.args)
             return f"{name}({', '.join(args)})"
 
@@ -1224,7 +1229,12 @@ class CallEmitterMixin:
                         # epilogue handles *_state_ptr = state and return.
                         self._line(f"_result.tag = {tag};")
                     return "(void)0"
-            # Check if it's a variant constructor
+            # Check if it's a variant constructor — namespace to avoid collisions
+            parent = self._get_variant_parent(name)
+            if parent is not None:
+                cname = mangle_type_name(parent.name)
+                args = self._wrap_recursive_constructor_args(name, args, expr.args)
+                return f"{cname}_{name}({', '.join(args)})"
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
                 args = self._wrap_recursive_constructor_args(name, args, expr.args)

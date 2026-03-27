@@ -390,14 +390,16 @@ def _build_c(
         if runtime_deps:
             stdlib_libs.update(runtime_deps.get_libs())
 
-    # Generate forward declarations for pure stdlib functions
+    # Generate type definitions and forward declarations for pure stdlib functions
     if user_module_count is not None and user_module_count < len(c_sources):
-        forward_decls = _extract_forward_decls(c_sources[user_module_count:])
-        if forward_decls:
-            header = "\n".join(forward_decls) + "\n"
+        stdlib_sources = c_sources[user_module_count:]
+        forward_decls = _extract_forward_decls(stdlib_sources)
+        type_defs = _extract_type_defs(stdlib_sources)
+        if forward_decls or type_defs:
+            fwd_header = "\n".join(forward_decls) + "\n" if forward_decls else ""
+            type_header = "\n".join(type_defs) if type_defs else ""
             for i in range(user_module_count):
-                # Insert forward declarations after the last #include
-                c_sources[i] = _inject_forward_decls(c_sources[i], header)
+                c_sources[i] = _inject_forward_decls(c_sources[i], fwd_header, type_header)
 
     # Set up build directory
     build_dir = project_dir / "build"
@@ -620,13 +622,140 @@ def _extract_forward_decls(stdlib_c_sources: list[str]) -> list[str]:
     return decls
 
 
-def _inject_forward_decls(c_source: str, decls: str) -> str:
-    """Insert forward declarations after the last #include line."""
+def _extract_type_defs(stdlib_c_sources: list[str]) -> list[str]:
+    """Extract type definitions (typedef, enum, struct, constructors) from pure stdlib C.
+
+    Collects everything between the #include block and the first function
+    forward declaration or non-static function definition.
+    """
+    type_lines: list[str] = []
+    for src in stdlib_c_sources:
+        past_includes = False
+        for line in src.splitlines():
+            stripped = line.strip()
+            if not past_includes:
+                if stripped.startswith("#include"):
+                    continue
+                past_includes = True
+            # Stop at first function forward declaration or non-static function
+            if _FORWARD_DECL_RE.match(stripped):
+                break
+            # Stop at non-static, non-inline function definitions (actual implementations)
+            if (
+                stripped
+                and not stripped.startswith("static")
+                and not stripped.startswith("typedef")
+                and not stripped.startswith("enum")
+                and not stripped.startswith("struct")
+                and not stripped.startswith("}")
+                and not stripped.startswith("union")
+                and not stripped.startswith("uint8_t")
+                and not stripped.startswith("int64_t")
+                and not stripped.startswith("double")
+                and not stripped.startswith("bool")
+                and not stripped.startswith("Prove_")
+                and not stripped.startswith("/*")
+                and not stripped.startswith("//")
+                and not stripped.startswith("return")
+                and not stripped.startswith("_v.")
+                and not stripped == ""
+                and not stripped == "{"
+                and not stripped == "};"
+                and not stripped == "},"
+                and "prv_" in stripped
+            ):
+                break
+            type_lines.append(line)
+    return type_lines
+
+
+def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str:
+    """Insert type definitions and forward declarations after the last #include line."""
     lines = c_source.split("\n")
     insert_at = 0
     for i, line in enumerate(lines):
         if line.startswith("#include"):
             insert_at = i + 1
-    lines.insert(insert_at, "\n// Forward declarations for pure stdlib modules")
-    lines.insert(insert_at + 1, decls)
+
+    # Find Prove_XXX type names already typedef'd in this module
+    existing_types: set[str] = set()
+    for line in lines:
+        m = re.match(r"\s*typedef\s+struct\s+(Prove_\w+)\s+\1\s*;", line)
+        if m:
+            existing_types.add(m.group(1))
+
+    # Find insertion point after the emitter's type section:
+    # scan forward past the last typedef/struct/static-inline/enum block
+    inject_at = insert_at
+    i = insert_at
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if (
+            stripped.startswith("typedef struct Prove_")
+            or stripped.startswith("struct Prove_")
+            or stripped.startswith("static inline Prove_")
+            or stripped.startswith("static inline " + "Prove_")  # constructors
+            or (stripped.startswith("enum {") and i > insert_at)
+        ):
+            # Skip past this block (find closing brace)
+            brace = stripped.count("{") - stripped.count("}")
+            i += 1
+            while brace > 0 and i < len(lines):
+                brace += lines[i].count("{") - lines[i].count("}")
+                i += 1
+            inject_at = i
+            continue
+        elif stripped == "" and inject_at > insert_at:
+            inject_at = i + 1
+            i += 1
+            continue
+        elif inject_at > insert_at:
+            break
+        i += 1
+
+    parts = []
+    if type_defs:
+        # Filter out type definitions already present in this module.
+        # Parse into blocks: single-line typedefs are individual blocks,
+        # multi-line constructs (brace-delimited) are grouped.
+        if existing_types:
+            blocks: list[list[str]] = []
+            current: list[str] = []
+            brace_depth = 0
+            for td_line in type_defs.splitlines():
+                stripped = td_line.strip()
+                if not stripped and brace_depth == 0:
+                    if current:
+                        blocks.append(current)
+                        current = []
+                    continue
+                # Single-line typedef: treat as its own block
+                if stripped.startswith("typedef") and stripped.endswith(";") and brace_depth == 0:
+                    if current:
+                        blocks.append(current)
+                        current = []
+                    blocks.append([td_line])
+                    continue
+                current.append(td_line)
+                brace_depth += stripped.count("{") - stripped.count("}")
+                if brace_depth <= 0 and current:
+                    brace_depth = 0
+                    blocks.append(current)
+                    current = []
+            if current:
+                blocks.append(current)
+
+            filtered_blocks = [
+                b for b in blocks if not any(t in "\n".join(b) for t in existing_types)
+            ]
+            type_defs = "\n\n".join("\n".join(b) for b in filtered_blocks)
+
+        if type_defs.strip():
+            parts.append("\n// Type definitions from pure stdlib modules")
+            parts.append(type_defs)
+
+    parts.append("\n// Forward declarations for pure stdlib modules")
+    parts.append(decls)
+    for j, part in enumerate(parts):
+        lines.insert(inject_at + j, part)
     return "\n".join(lines)

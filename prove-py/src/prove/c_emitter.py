@@ -145,6 +145,7 @@ class CEmitter(
         self._struct_specialisations: dict[tuple, str] = {}
         self._struct_specialisation_queue: list[tuple[FunctionDef, list[Type]]] = []
         self._lambda_captures: dict[int, list[str]] = {}
+        self._variant_parent_map: dict[str, AlgebraicType] | None = None
         # Module name for namespaced mangling (user modules only, not stdlib)
         self._module_name: str | None = None
         # Recursive type field cache: type_name → set of (variant, field) direct recursive pairs
@@ -159,6 +160,16 @@ class CEmitter(
                     self._module_name = decl.name.lower()
                 break
         self._collect_foreign_info()
+
+    def _get_variant_parent(self, variant_name: str) -> AlgebraicType | None:
+        """Look up the parent algebraic type for a variant name."""
+        if self._variant_parent_map is None:
+            self._variant_parent_map = {}
+            for ty in self._symbols.all_types().values():
+                if isinstance(ty, AlgebraicType):
+                    for v in ty.variants:
+                        self._variant_parent_map[v.name] = ty
+        return self._variant_parent_map.get(variant_name)
 
     def _sig_module(self, sig) -> str | None:
         """Return module name for mangling, or None for stdlib/Main modules."""
@@ -457,16 +468,28 @@ class CEmitter(
         if has_main:
             self._needed_headers.add("prove_input_output.h")
 
-        # Scan function signatures and types for what we need
-        for (_verb, _name), sigs in self._symbols.all_functions().items():
-            for sig in sigs:
-                for pt in sig.param_types:
-                    ct = map_type(pt)
+        # Scan module-local function signatures for type headers.
+        # Only look at functions declared in this module — stdlib function
+        # signatures (which may reference types from unrelated modules like
+        # Node/Tree from the Prove module) are covered by _STDLIB_HEADERS.
+        for decl in self._module.declarations:
+            funcs: list[FunctionDef] = []
+            if isinstance(decl, FunctionDef):
+                funcs.append(decl)
+            elif isinstance(decl, ModuleDecl):
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        funcs.append(inner)
+            for fd in funcs:
+                sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+                if sig:
+                    for pt in sig.param_types:
+                        ct = map_type(pt)
+                        if ct.header:
+                            self._needed_headers.add(ct.header)
+                    ct = map_type(sig.return_type)
                     if ct.header:
                         self._needed_headers.add(ct.header)
-                ct = map_type(sig.return_type)
-                if ct.header:
-                    self._needed_headers.add(ct.header)
 
         # Single pass over declarations for imports, lookup tables, async verbs, and HOF
         found_hof = False

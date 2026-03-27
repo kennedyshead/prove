@@ -141,6 +141,11 @@ class ExprEmitterMixin:
         if isinstance(expr, TypeIdentifierExpr):
             if expr.name == "Unit":
                 return "(void)0"
+            # Namespace variant references for algebraic types
+            parent = self._get_variant_parent(expr.name)
+            if parent is not None:
+                cname = mangle_type_name(parent.name)
+                return f"{cname}_{expr.name}"
             return expr.name
 
         if isinstance(expr, BinaryExpr):
@@ -406,6 +411,10 @@ class ExprEmitterMixin:
 
         obj = self._emit_expr(expr.obj)
         obj_type = self._infer_expr_type(expr.obj)
+        # Variant access on algebraic type: Severity.Error → Prove_Severity_Error()
+        if isinstance(obj_type, AlgebraicType) and isinstance(expr.obj, TypeIdentifierExpr):
+            cname = mangle_type_name(obj_type.name)
+            return f"{cname}_{expr.field}()"
         if isinstance(obj_type, (RecordType, AlgebraicType)):
             return f"{obj}.{expr.field}"
         # Table field access: prove_table_get

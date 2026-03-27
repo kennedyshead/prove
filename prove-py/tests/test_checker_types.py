@@ -194,10 +194,12 @@ class TestModifiedTypeCompat:
         prim = PrimitiveType("Admin", ((None, "Mutable"),))
         assert not types_compatible(rec, prim)
 
-    def test_no_modifiers_still_incompatible(self):
+    def test_no_modifiers_name_match_is_compatible(self):
+        """PrimitiveType("User") is compatible with RecordType("User") —
+        struct fields are stored as PrimitiveType before resolution."""
         rec = RecordType("User", {"name": STRING})
         prim = PrimitiveType("User")
-        assert not types_compatible(rec, prim)
+        assert types_compatible(rec, prim)
 
 
 # ── Fix: Option<Refinement(Value)> compatibility ─────────────────────────

@@ -266,8 +266,8 @@ class TestAlgebraicConstructors:
             "        0\n"
         )
         c_code = _emit(source)
-        assert "static inline Prove_Color Red(void)" in c_code
-        assert "static inline Prove_Color Blue(void)" in c_code
+        assert "static inline Prove_Color Prove_Color_Red(void)" in c_code
+        assert "static inline Prove_Color Prove_Color_Blue(void)" in c_code
 
     def test_data_variant_constructor(self):
         source = (
@@ -282,8 +282,8 @@ class TestAlgebraicConstructors:
             "        0\n"
         )
         c_code = _emit(source)
-        assert "static inline Prove_Expr Num(int64_t val)" in c_code
-        assert "static inline Prove_Expr Add(int64_t left, int64_t right)" in c_code
+        assert "static inline Prove_Expr Prove_Expr_Num(int64_t val)" in c_code
+        assert "static inline Prove_Expr Prove_Expr_Add(int64_t left, int64_t right)" in c_code
         assert "_v.tag = Prove_Expr_TAG_NUM;" in c_code
 
 

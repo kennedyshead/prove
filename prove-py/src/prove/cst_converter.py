@@ -1114,7 +1114,59 @@ class CSTConverter:
                             else:
                                 last_arm_col = child_col
 
+        # Post-process: fix VarDecl(value=match identifier) followed by
+        # call expr + match arms.  Tree-sitter splits "x as T = match expr"
+        # into VarDecl(value=match) + ExprStmt(call) + MatchExpr.  Reassemble.
+        body = self._fix_match_assignments(body)
+
         return body
+
+    @staticmethod
+    def _fix_match_assignments(body: list) -> list:
+        """Reassemble split match-in-assignment patterns."""
+        i = 0
+        result: list = []
+        while i < len(body):
+            stmt = body[i]
+            if (
+                isinstance(stmt, VarDecl)
+                and isinstance(stmt.value, IdentifierExpr)
+                and stmt.value.name == "match"
+                and i + 1 < len(body)
+            ):
+                # Next item should be ExprStmt (the match subject) or MatchExpr
+                next_stmt = body[i + 1]
+                subject: Expr | None = None
+                match_idx = i + 1
+
+                if isinstance(next_stmt, ExprStmt):
+                    subject = next_stmt.expr
+                    match_idx = i + 2
+                elif isinstance(next_stmt, MatchExpr):
+                    # match without explicit subject after var decl
+                    subject = next_stmt.subject
+                    match_idx = i + 1
+
+                if match_idx < len(body) and isinstance(body[match_idx], MatchExpr):
+                    match_expr = body[match_idx]
+                    if subject is not None and match_expr.subject is None:
+                        match_expr = MatchExpr(subject, match_expr.arms, match_expr.span)
+                    elif subject is not None:
+                        match_expr = MatchExpr(subject, match_expr.arms, match_expr.span)
+                    result.append(
+                        VarDecl(
+                            name=stmt.name,
+                            type_expr=stmt.type_expr,
+                            value=match_expr,
+                            span=stmt.span,
+                        )
+                    )
+                    i = match_idx + 1
+                    continue
+
+            result.append(stmt)
+            i += 1
+        return result
 
     def _absorb_stmt_into_match(self, match_expr: MatchExpr, stmt: Any, stmt_col: int) -> MatchExpr:
         """Absorb a statement into the deepest nested match arm by column."""
@@ -1413,8 +1465,26 @@ class CSTConverter:
         )
 
         args: list[Expr] = []
-        for child in self._children_of_type(node, "expression"):
-            args.append(self._convert_expr(child))
+        children = list(node.children)
+        i = 0
+        while i < len(children):
+            child = children[i]
+            if child.type == "expression":
+                expr = self._convert_expr(child)
+                # Variant access recovery: expression(TypeIdentifier) + ERROR(.Field)
+                # Tree-sitter doesn't recognise Type.Variant as an expression,
+                # so it emits type_identifier + ERROR(.Variant).
+                if (
+                    isinstance(expr, TypeIdentifierExpr)
+                    and i + 1 < len(children)
+                    and children[i + 1].type == "ERROR"
+                ):
+                    err_text = self._text(children[i + 1])
+                    if err_text.startswith(".") and err_text[1:].isidentifier():
+                        expr = FieldExpr(expr, err_text[1:], self._span(child))
+                        i += 1  # skip the ERROR node
+                args.append(expr)
+            i += 1
 
         return CallExpr(func, args, self._span(node))
 

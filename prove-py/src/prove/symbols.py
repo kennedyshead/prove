@@ -280,9 +280,13 @@ class SymbolTable:
                         isinstance(p, TypeVariable) or types_compatible(p, a)
                         for p, a in zip(sig.param_types, arg_types)
                     ):
-                        # If this matches return type too, it's a very strong candidate
-                        if expected_return is not None and types_compatible(
-                            expected_return, sig.return_type
+                        # If all params are concrete matches (no TypeVariable) and
+                        # the return type matches, this is an exact hit — return early.
+                        all_concrete = all(not isinstance(p, TypeVariable) for p in sig.param_types)
+                        if (
+                            all_concrete
+                            and expected_return is not None
+                            and types_compatible(expected_return, sig.return_type)
                         ):
                             return sig
                         structural_matches.append(sig)
