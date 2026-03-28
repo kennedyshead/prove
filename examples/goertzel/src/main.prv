@@ -51,17 +51,19 @@ from
         _ =>
             sample as Float = sine_sample(signal_freq, sample_rate, index)
             t as Float = koef * state.vn1 - state.vn2 + sample
-            kernel(signal_freq,
-                   sample_rate,
-                   index + 1,
-                   count,
-                   koef,
-                   FilterState(t, state.vn1))
+            kernel(
+                            signal_freq,
+                            sample_rate,
+                            index + 1,
+                            count,
+                            koef,
+                            FilterState(t, state.vn1))
 
 /// Compute signal power from filter state
 reads signal_power(koef Float, state FilterState, n Integer) Float
 from
-    raw as Float = state.vn1 * state.vn1 + state.vn2 * state.vn2 - koef * state.vn1 * state.vn2
+    raw as Float =
+        state.vn1 * state.vn1 + state.vn2 * state.vn2 - koef * state.vn1 * state.vn2
     n_f as Float = float(n)
     match raw < EPSILON
         true => EPSILON / (n_f * n_f)
@@ -76,7 +78,8 @@ from
 reads detect(signal_freq Float, target_freq Float, sample_rate Float, count Integer) Float
 from
     koef as Float = coefficient(target_freq, sample_rate)
-    state as FilterState = kernel(signal_freq, sample_rate, 0, count, koef, FilterState(0.0f, 0.0f))
+    state as FilterState =
+        kernel(signal_freq, sample_rate, 0, count, koef, FilterState(0.0f, 0.0f))
     p as Float = signal_power(koef, state, count)
     to_dbm(p)
 

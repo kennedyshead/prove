@@ -9,7 +9,7 @@ module Main
   Prove
     types Node Tree
     reads root
-    creates kind children count line column named_children child string
+    creates kind children count line column named_children child
     validates error
   Types creates string
 
@@ -24,7 +24,8 @@ from
 
 main() Result<Unit, Error>!
 from
-    source as String = "module Hello\n  System outputs console\n\nmain()\nfrom\n    console(\"Hello!\")\n"
+    source as String =
+        "module Hello\n  System outputs console\n\nmain()\nfrom\n    console(\"Hello!\")\n"
     console("=== Source ===")
     console(source)
     t as Value<Tree> = tree(source)!

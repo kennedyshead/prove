@@ -55,7 +55,6 @@ from
                     console(f"Local: {local_value(c)}")
                     console(f"Remote: {remote_value(c)}")
                 false => console("No conflicts to inspect")
-    // Compile and load lookup
     lookup(db, "demo")!
     items as List<String> = lookup("/tmp/prove_store_demo/demo.lookup")!
     console(f"Lookup items: {string(length(items))}")

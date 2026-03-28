@@ -35,7 +35,6 @@ from
     match parsed
         Ok(val) => show(table(val))
         Err(e) => console(f"{e}")
-    // Create empty table and add entries
     empty as Table<Value> = new()
     v1 as Value = value("hello")
     v2 as Value = value("world")

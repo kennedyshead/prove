@@ -3,7 +3,7 @@ module Main
   System outputs console
   Text
     types StringBuilder
-    reads slice trim lower upper replace repeat string char
+    reads slice trim lower upper replace repeat char string_builder
     creates builder split join length index build
     validates starts ends contains
   Sequence creates length
@@ -42,12 +42,11 @@ from
     match idx
         Some(i) => console(f"{i}")
         None => console("'World' not found")
-    // StringBuilder operations
     sb as StringBuilder:[Mutable] = builder()
-    sb1 as StringBuilder:[Mutable] = string(sb, "Hello")
-    sb2 as StringBuilder:[Mutable] = string(sb1, " ")
+    sb1 as StringBuilder:[Mutable] = string_builder(sb, "Hello")
+    sb2 as StringBuilder:[Mutable] = string_builder(sb1, " ")
     sb3 as StringBuilder:[Mutable] = char(sb2, 'W')
-    sb4 as StringBuilder:[Mutable] = string(sb3, "orld")
+    sb4 as StringBuilder:[Mutable] = string_builder(sb3, "orld")
     sb_len as Integer = length(sb4)
     console(f"{sb_len}")
     built as String = build(sb4)

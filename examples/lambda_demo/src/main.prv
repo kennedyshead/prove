@@ -17,5 +17,6 @@ from
     total as Integer = reduce(nums, 0, |acc, n| acc + n)
     console(f"Sum: {total}")
     // Pipe operator - chain operations
-    result as Integer = nums |> filter(|n| n > 2) |> map(|n| n * 10) |> reduce(0, |acc, n| acc + n)
+    result as Integer =
+        nums |> filter(|n| n > 2) |> map(|n| n * 10) |> reduce(0, |acc, n| acc + n)
     console(f"Piped result: {result}")
