@@ -27,7 +27,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
 | Problem | How Prove solves it |
 |---|---|
-  | [AI scrapes your code for training](ai-resistance.md#anti-training-license-for-prove-code) | Binary AST format + anti-training license + semantic normalization |
+  | [AI scrapes your code for training](ai-resistance.md#anti-training-license-for-prove-code) | Anti-training license + intent enforcement (binary AST format and semantic normalization planned) |
   | [AI slop PRs waste maintainer time](ai-resistance.md#implementation-explanation-as-code) | Compiler rejects code without explanations and intent |
   | [Tests are separate from code](contracts.md) | Testing is part of the definition — `ensures`, `requires`, `near_miss` |
   | ["Works on my machine"](functions.md) | Verb system makes IO explicit |
@@ -51,7 +51,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
     This detects your platform (Linux x86_64, macOS aarch64), downloads the binary, and installs it to `~/.local/bin/`.
 
-    Options: `--version v1.1.0` for a specific release, `--prefix /usr/local/bin` for a custom location.
+    Options: `--version v1.2.0` for a specific release, `--prefix /usr/local/bin` for a custom location.
 
 === "From source"
 
@@ -90,7 +90,7 @@ proof test
 
 ### Intent Verbs
 
-Every function declares its purpose with a [verb](functions.md#intent-verbs). The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit. [Async verbs](functions.md#async-verbs) (`detached`, `attached`, `listens`) provide structured concurrency.
+Every function declares its purpose with a [verb](functions.md#intent-verbs). The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit. [Async verbs](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) provide structured concurrency.
 
 ```prove
 validates email(address String)

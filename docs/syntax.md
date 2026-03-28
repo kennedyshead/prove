@@ -37,7 +37,7 @@ module InventoryService
     total >= 0
 ```
 
-A verb applies to all space-separated names that follow it. Commas separate verb groups. Multiple verbs for the same function name import each variant. The verb is part of the function's identity — see [Functions & Verbs](verbs.md#verb-dispatched-identity) for details.
+A verb applies to all space-separated names that follow it. Verb groups are separated by their leading verb keyword (commas between groups are accepted but not required). Multiple verbs for the same function name import each variant. The verb is part of the function's identity — see [Functions & Verbs](verbs.md#verb-dispatched-identity) for details.
 
 ### Local imports (`.ModuleName`)
 
@@ -119,7 +119,7 @@ link_flags = ["-L/usr/local/lib", "-lm"]
 
 ## Blocks and Indentation
 
-No curly braces. Indentation defines scope (like Python). No semicolons — newlines terminate statements. Newlines are suppressed after operators, commas, opening brackets, `->`, `=>`.
+No curly braces. Indentation defines scope (like Python). No semicolons — newlines terminate statements. Newlines are suppressed after operators (including `=`, `:`, `|`, `.`, `..`), commas, opening brackets, `->`, `=>`.
 
 ## Primitive Types
 
@@ -158,8 +158,8 @@ speed as Float = 9.8f          // Float literal (IEEE 754, requires 'f' suffix)
 flag as Boolean = true
 greeting as String = "Hello"
 char as Character = 'x'
-pattern as Regex = r"\d+"
-path as Path = /users/alice/
+pattern as String = r"\d+"      // raw string / regex pattern (String-typed)
+path as String = /users/alice/  // path literal (String-typed)
 ```
 
 The **`f` suffix** on floating-point literals (like `9.8f`) creates a `Float` type, suitable for IEEE 754 operations like `Math.sqrt` and `Math.floor`. Without the suffix (like `3.14`), you get a `Decimal` type for exact decimal arithmetic.
@@ -188,9 +188,9 @@ The compiler infers types when unambiguous, but **`prove format` always inserts 
 
 ```prove
 // What you write:
-port = 8080
-server = new_server()
-users = query(db, "SELECT * FROM users")!
+port as = 8080
+server as = new_server()
+users as = query(db, "SELECT * FROM users")!
 
 // What `prove format` produces:
 port as Integer = 8080

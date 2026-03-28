@@ -12,42 +12,40 @@ keywords: Prove Bytes, Prove Hash, byte array, SHA-256, SHA-512, BLAKE3, HMAC
 
 Defines a binary type: `ByteArray` (a sequence of bytes).
 
-### Construction
+### Construction & Slicing
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `byte(values List<Integer>) ByteArray` | Create byte array from list of integers |
-| `validates` | `byte(data ByteArray)` | True if byte array is empty |
-
-### Slicing
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `reads` | `slice(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
-| `reads` | `slice(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
-
-### Hex Encoding
-
-| Verb | Signature | Description |
-|------|-----------|-------------|
-| `creates` | `hex(data ByteArray) String` | Encode byte array as hex string |
-| `creates` | `hex(source String) ByteArray` | Decode hex string to byte array |
-| `validates` | `hex(source String)` | True if string is valid hex |
+| `creates` | `bytearray(values List<Integer>) ByteArray` | Create byte array from list of integers |
+| `validates` | `bytearray(data ByteArray)` | True if byte array is empty |
+| `reads` | `bytearray(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
+| `reads` | `bytearray(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
 
 ### Access
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `at(data ByteArray, index Integer) Integer` | Read byte at index |
-| `validates` | `at(data ByteArray, index Integer)` | True if index is within bounds |
+| `validates` | `exist(data ByteArray, index Integer)` | True if index is within bounds |
+
+### Hex Encoding
+
+Hex encoding/decoding functions are in the **Parse** module, not Bytes:
+
+| Verb | Signature | Module | Description |
+|------|-----------|--------|-------------|
+| `creates` | `hexadecimal(data ByteArray) String` | Parse | Encode byte array as hex string |
+| `creates` | `hexadecimal(string String) ByteArray` | Parse | Decode hex string to byte array |
+| `validates` | `hexadecimal(string String)` | Parse | True if string is valid hex |
 
 ```prove
-  Bytes creates byte hex at, reads slice, validates hex
+  Bytes creates bytearray at validates exist
+  Parse creates hexadecimal validates hexadecimal
 
 creates first_byte_hex(data ByteArray) String
 from
-    single as ByteArray = Bytes.slice(data, 0, 1)
-    Bytes.hex(single)
+    single as ByteArray = Bytes.bytearray(data, 0, 1)
+    Parse.hexadecimal(single)
 ```
 
 ---

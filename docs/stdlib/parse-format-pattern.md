@@ -48,7 +48,7 @@ Defines a binary `Url` type for parsed URL components.
 | `creates` | `url(raw String) Url` | Parse a URL string into components |
 | `creates` | `url(scheme String, host String, path String) Url` | Construct a URL from parts |
 | `validates` | `url(raw String)` | True if string is a valid URL |
-| `reads` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
+| `transforms` | `url(source Url, params Table<Value>) Url` | Add query parameters to a URL |
 | `creates` | `port(url Url) Integer` | Read the port component (-1 if not set) |
 
 ### Base64
@@ -133,9 +133,10 @@ from
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `hex(number Integer) String` | Integer to hexadecimal string |
+| `creates` | `hexadecimal(number Integer) String` | Integer to hexadecimal string |
 | `creates` | `bin(number Integer) String` | Integer to binary string |
 | `creates` | `octal(number Integer) String` | Integer to octal string |
+| `creates` | `decimal(value Decimal, places Integer) String` | Decimal with fixed decimal places |
 | `creates` | `decimal(value Float, places Integer) String` | Float with fixed decimal places |
 
 ### Time & Date Formatting
@@ -144,19 +145,26 @@ Format time, date, datetime, and duration values using pattern strings.
 
 Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S"`, `"%Hh %Mm %Ss"`, and other `strftime`-style patterns.
 
+**Formatting** (value → string) lives in the Format module:
+
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `time(time Time, pattern String) String` | Format a time as a string |
-| `creates` | `time(source String, pattern String) Time` | Parse a string into a time |
-| `validates` | `time(source String, pattern String)` | True if string matches time format |
 | `creates` | `date(date Date, pattern String) String` | Format a date as a string |
-| `creates` | `date(source String, pattern String) Date` | Parse a string into a date |
-| `validates` | `date(source String, pattern String)` | True if string matches date format |
 | `creates` | `datetime(datetime DateTime, pattern String) String` | Format a datetime as a string |
-| `creates` | `datetime(source String, pattern String) DateTime` | Parse a string into a datetime |
-| `validates` | `datetime(source String, pattern String)` | True if string matches datetime format |
 | `creates` | `duration(duration Duration, pattern String) String` | Format a duration as a string |
-| `creates` | `duration(source String, pattern String) Duration` | Parse a string into a duration |
+
+**Parsing** (string → value) and **validation** live in the **Parse** module:
+
+| Verb | Signature | Module | Description |
+|------|-----------|--------|-------------|
+| `creates` | `time(source String, pattern String) Time` | Parse | Parse a string into a time |
+| `validates` | `time(source String, pattern String)` | Parse | True if string matches time format |
+| `creates` | `date(source String, pattern String) Date` | Parse | Parse a string into a date |
+| `validates` | `date(source String, pattern String)` | Parse | True if string matches date format |
+| `creates` | `datetime(source String, pattern String) DateTime` | Parse | Parse a string into a datetime |
+| `validates` | `datetime(source String, pattern String)` | Parse | True if string matches datetime format |
+| `creates` | `duration(source String, pattern String) Duration` | Parse | Parse a string into a duration |
 
 ```prove
   Format reads pad_left creates hex decimal date creates date
@@ -199,9 +207,10 @@ end offset.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `string(matched Match) String` | Matched text |
 | `creates` | `start(matched Match) Integer` | Start offset in source string |
 | `creates` | `end(matched Match) Integer` | End offset in source string |
+
+> **Note:** `string(matched Match)` for extracting matched text is registered in the **Types** module as a `creates string` overload, not in Pattern directly. Use `Types.string(match)` or just `string(match)` if Types is imported.
 
 ```prove
   Pattern validates test reads replace creates search find_all split string start end types Match

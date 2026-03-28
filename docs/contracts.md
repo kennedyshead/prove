@@ -107,7 +107,7 @@ Here `id` is `Option<Integer>`, but inside the body it is narrowed to `Integer` 
 
 **Two strictness modes:**
 
-**Strict mode** (function has `ensures`): Each explain row corresponds to a **top-level statement** in the `from` block — a binding, a final expression, or a match arm. Multi-line expressions (pipe chains, multi-line arms) count as one. The count must match exactly (mismatch is a compiler error). The compiler warns if a single arm grows complex enough to warrant extraction into a named function.
+**Strict mode** (function has `ensures`): Named explain entries must cover the number of `ensures` clauses. The count of named explain rows must be at least the number of `ensures` (mismatch is a compiler error). The compiler warns if a single arm grows complex enough to warrant extraction into a named function.
 
 The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
 
@@ -339,7 +339,7 @@ from
     (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
 ```
 
-The compiler generates tests that pass each `near_miss` input to the function and confirms it is rejected by the preconditions. If a `near_miss` input is accidentally accepted, the test fails — the contract has a gap.
+The compiler generates tests that pass each `near_miss` input to the function and confirms the expected output matches. Each `near_miss: input => expected` tests that the function produces the expected value for that boundary input. If the actual output doesn't match, the test fails.
 
 The LSP suggests `near_miss` for [`validates`](functions.md#intent-verbs) functions with compound logic — multiple `&&`/`||`, modular arithmetic, negation. Trivial validators (single field access, simple equality) get no suggestion.
 
@@ -430,16 +430,18 @@ The compiler validates structure: constraint expressions must be Boolean ([E396]
 
 All annotations appear between the verb line and `from`. The compiler accepts any order. The formatter normalizes to this canonical order:
 
-1. `requires` — preconditions
-2. `ensures` — postconditions
-3. `terminates` — recursion measure
-4. `trusted` — explicit verification opt-out
-5. `know` / `assume` / `believe` — confidence levels
-6. `why_not` / `chosen` — design reasoning
-7. `near_miss` — boundary examples
-8. `satisfies` — invariant networks
-9. `event_type` — algebraic type for `listens` event dispatch
-10. `explain` — implementation documentation (adjacent to `from`)
+1. `intent` — function purpose documentation
+2. `requires` — preconditions
+3. `ensures` — postconditions
+4. `terminates` — recursion measure
+5. `trusted` — explicit verification opt-out
+6. `know` / `assume` / `believe` — confidence levels
+7. `why_not` / `chosen` — design reasoning
+8. `near_miss` — boundary examples
+9. `satisfies` — invariant networks
+10. `event_type` — algebraic type for `listens`/`renders` event dispatch
+11. `state_init` — initial state for `renders` UI loop
+12. `explain` — implementation documentation (adjacent to `from`)
 
 ---
 

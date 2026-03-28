@@ -98,9 +98,9 @@ Open file handles for line-by-line streaming — for use with the [`streams` ver
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `reader(path String) File!` | Open a file for reading (line by line) |
+| `inputs` | `reader(path String) File!` | Open a file for reading (line by line) |
 | `inputs` | `line(handle File) String` | Read the next line from an open file; loop exits on EOF |
-| `creates` | `writer(path String) File!` | Open a file for appending |
+| `inputs` | `writer(path String) File!` | Open a file for appending |
 | `outputs` | `line(handle File, data String)` | Write a line to an open file |
 | `outputs` | `close(handle File)` | Close an open file handle |
 

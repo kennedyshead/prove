@@ -76,9 +76,9 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ## Concurrency — Structured Concurrency
 
-Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
+Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
-Thread-based `par_map`, `par_filter`, and `par_reduce` are available for pure verbs, running a pthreads-backed thread pool with automatic core detection. They are restricted to pure verbs at compile time — IO and async verbs are rejected. See [Parallel Iteration](lambdas.md).
+`par_map`, `par_filter`, `par_reduce`, and `par_each` are builtin parallel higher-order functions. `par_map`/`par_filter`/`par_reduce` are restricted to pure verbs at compile time — IO and async verbs are rejected. `par_each` allows IO callbacks but rejects async verbs. See [Parallel Iteration](lambdas.md).
 
 The verb system enforces purity boundaries — pure verbs cannot make IO calls, and the compiler rejects violations at compile time.
 
@@ -100,7 +100,7 @@ from
 
 ## Zero-Cost Abstractions
 
-- Pure functions auto-memoized and inlined
+- Eligible pure functions auto-memoized and inlined
 - Region-based memory runtime; per-function scoping is upcoming
 - Use-after-move detection for `Own` modifier; comprehensive tracking is upcoming
 - No GC pauses, predictable performance

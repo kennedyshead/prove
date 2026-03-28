@@ -39,11 +39,33 @@ Functions with Integer/Float/Decimal overloads dispatch based on argument type.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `reads` | `sqrt(x Float) Float` | Square root |
-| `reads` | `power(base Float, exponent Float) Float` | Exponentiation |
+| `reads` | `power(base Float, exponent Float) Float` | Exponentiation (also available as `pow`) |
 | `creates` | `floor(x Float) Integer` | Round down to integer |
 | `creates` | `ceil(x Float) Integer` | Round up to integer |
 | `creates` | `round(x Float) Integer` | Round to nearest integer |
 | `reads` | `log(x Float) Float` | Natural logarithm |
+| `reads` | `log2(x Float) Float` | Base-2 logarithm |
+| `reads` | `log10(x Float) Float` | Base-10 logarithm |
+| `reads` | `exp(x Float) Float` | Exponential (e^x) |
+
+### Trigonometry
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `sin(angle Float) Float` | Sine |
+| `reads` | `cos(angle Float) Float` | Cosine |
+| `reads` | `tan(angle Float) Float` | Tangent |
+| `reads` | `asin(value Float) Float` | Arc sine |
+| `reads` | `acos(value Float) Float` | Arc cosine |
+| `reads` | `atan(value Float) Float` | Arc tangent |
+| `reads` | `atan2(y Float, x Float) Float` | Two-argument arc tangent |
+
+### Constants
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `pi() Float` | Pi (3.14159...) |
+| `reads` | `e() Float` | Euler's number (2.71828...) |
 
 ```prove
   Math reads abs min max sqrt clamp creates floor
@@ -121,6 +143,15 @@ Convert complex types to strings. For phantom-typed `Value<T>` (from [Parse](par
 | `creates` | `string(v Value<Tree>) String` | Extract full source text from tree |
 | `creates` | `string(url Url) String` | Extract host component from URL |
 | `creates` | `string(token Token) String` | Extract matched text from token |
+| `creates` | `string(matched Match) String` | Extract matched text from Pattern match |
+| `creates` | `string(node Node) String` | Source text spanned by an AST node |
+| `creates` | `string(value ByteArray) String` | Convert byte array to string |
+| `creates` | `string(position Position) String` | Convert position to string |
+| `creates` | `string(time Time) String` | Time to ISO string |
+| `creates` | `string(date Date) String` | Date to ISO string |
+| `creates` | `string(datetime DateTime) String` | DateTime to ISO string |
+| `creates` | `string(clock Clock) String` | Clock to string |
+| `creates` | `string(duration Duration) String` | Duration to string |
 
 ```prove
   Parse creates json types Json
@@ -185,7 +216,7 @@ The Types module also provides validators and unwrap functions for [`Result<Valu
 | `validates` | `value(option Option<Value>)` | True if Option has a value |
 | `validates` | `unit(option Option<Value>)` | True if Option is empty |
 
-Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<Float>`, `Option<Decimal>`, and `Option<Boolean>`.
+Typed overloads are available for `Option<Float>`, `Option<Decimal>`, and `Option<Boolean>`.
 
 #### Unwrap
 
@@ -196,7 +227,7 @@ Typed overloads are available for `Option<Integer>`, `Option<String>`, `Option<F
 | `reads` | `unwrap(option Option<Float>, default Float) Float` | Extract float or use default |
 | `reads` | `unwrap(option Option<Decimal>, default Decimal) Decimal` | Extract decimal or use default |
 | `reads` | `unwrap(option Option<Boolean>, default Boolean) Boolean` | Extract boolean or use default |
-| `transforms` | `unwrap(option Option<Value>) Value` | Extract inner value (panics if empty) |
+| `reads` | `unwrap(option Option<Value>, default Value) Value` | Extract value or use default |
 
 ```prove
   Types creates integer float decimal string code reads unwrap validates integer string ok value

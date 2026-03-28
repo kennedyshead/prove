@@ -1,12 +1,12 @@
 ---
 title: Standard Library Overview - Prove Programming Language
-description: Overview of the Prove standard library — 21 modules with consistent design patterns, verb families, and channel dispatch.
+description: Overview of the Prove standard library — 23 modules with consistent design patterns, verb families, and channel dispatch.
 keywords: Prove stdlib, standard library, design pattern, verb families, channel dispatch
 ---
 
 # Standard Library
 
-The Prove standard library is a set of 22 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 23 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -29,7 +29,7 @@ See [Functions & Verbs](../verbs.md) for the full reference.
 Many modules organize functions by **channel** — the same name with different verbs:
 
 ```prove
-# Three operations on "file", resolved by verb at call site
+// Three operations on "file", resolved by verb at call site
 inputs file(path String) String!      // read file
 outputs file(path String, content String)!  // write file
 validates file(path String)           // check if exists
@@ -53,7 +53,7 @@ These functions are always available without import — they are compiler builti
 - **Parallel:** `par_map`, `par_filter`, `par_reduce`, `par_each` — parallel variants (pure functions only)
 - **Utility:** `len`, `clamp`
 
-See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the full reference.
+See [Lambdas & Iteration](../lambdas.md#builtin-functions) for the full reference.
 
 ---
 
@@ -61,7 +61,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 
 | Module | Status | Purpose |
 |--------|--------|---------|
-| **[Character](character-text.md#character)** | Complete | Character classification (`alpha`, `digit`, `space`, etc.) and string-to-char access |
+| **[Character](character-text.md#character)** | Complete | Character classification (`alphabetic`, `digit`, `whitespace`, etc.) and string-to-char access |
 | **[Text](character-text.md#text)** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
 | **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `reads add`, `validates has` |
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
@@ -73,7 +73,7 @@ See [Lambdas & Iteration](../lambdas.md#builtin-higher-order-functions) for the 
 | **[Path](io-path.md#path)** | Complete | File path manipulation: join, parent, stem, extension, normalize |
 | **[Pattern](parse-format-pattern.md#pattern)** | Complete | Regex operations: test, search, replace, split with `Match` type |
 | **[Format](parse-format-pattern.md#format)** | Complete | String/number formatting (pad, hex, bin) and time/date formatting |
-| **[Bytes](bytes-hash.md#bytes)** | Complete | Byte sequence manipulation: create, slice, hex encode/decode, index access |
+| **[Bytes](bytes-hash.md#bytes)** | Complete | Byte sequence manipulation: create (`bytearray`), slice, index access. Hex encoding is in Parse (`hexadecimal`) |
 | **[Hash](bytes-hash.md#hash)** | Complete | Cryptographic hashing: SHA-256, SHA-512, BLAKE3, HMAC-SHA256 |
 | **[Random](time-random.md#random)** | Complete | Random value generation: integer, decimal, boolean, choice, shuffle |
 | **[Time](time-random.md#time)** | Complete | Time, Date, Clock, Duration, DateTime, Weekday with calendar operations |

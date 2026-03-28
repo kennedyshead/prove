@@ -16,7 +16,8 @@ Certain types are built into the language and available without explicit import:
 | **Containers** | `List<Value>`, `Option<Value>`, `Result<Value, Error>`, `Table<Value>` | Generic collection types |
 | **Arrays** | `Array<T>` | Fixed-size contiguous array; requires import from `Array` module |
 | **Structural** | `Struct` | Row-polymorphic type accepting any record; constrained with `with` clauses |
-| **Special** | `Value`, `Error`, `Source` | Used by stdlib for dynamic values, errors, and sources |
+| **Special** | `Value`, `Error`, `Source`, `Attached`, `Listens` | Used by stdlib for dynamic values, errors, sources, and async worker references |
+| **Function** | `Verb<P1, ..., R>` | Function reference type; see [Function Types](#function-types-verb) |
 | **Phantom-typed** | `Value<Json>`, `Value<Toml>`, `Value<Csv>`, `Value<Tree>` | Format-tagged values; phantom types imported from `Parse` |
 
 These are implicitly available in every module. No import statement needed. Phantom type parameters (`Json`, `Toml`, `Csv`, `Tree`) require importing from `Parse types`.
@@ -99,7 +100,7 @@ Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). R
 
 | Type | Modifier Axes | Default | Examples |
 |------|---------------|---------|----------|
-| `Integer` | size (8/16/32/64/128), signedness (Signed/Unsigned) | `Integer:[64 Signed]` | `Integer:[32 Unsigned]`, `Integer:[8]` |
+| `Integer` | size (8/16/32/64), signedness (Signed/Unsigned) | `Integer:[64 Signed]` | `Integer:[32 Unsigned]`, `Integer:[8]` |
 | `Decimal` | precision (32/64/128), scale (Scale:N) | `Decimal:[64]` | `Decimal:[128 Scale:2]` |
 | `Float` | precision (32/64) | `Float:[64]` | `Float:[32]` |
 | `String` | encoding (UTF8/ASCII/UTF16), max length | `String:[UTF8]` | `String:[UTF8 15]`, `String:[ASCII 255]` |
@@ -108,6 +109,8 @@ Each modifier occupies a **distinct axis** (size, signedness, encoding, etc.). R
 | `Byte` | — | — | — |
 
 `Float` is **opt-in** — `Decimal` is the default for fractional numbers. `Float:[64]` uses IEEE 754 hardware floats for performance-critical domains (scientific computing, graphics, signal processing) where speed matters more than exact precision. Mixing `Float` and `Decimal` requires explicit conversion.
+
+> **Note:** At the C level, `Decimal` and `Float` currently share the same hardware float representation (`float`/`double`/`long double`). The semantic distinction exists at the Prove type-system level — `Decimal` is intended for exact decimal arithmetic (with `Scale:N` constraints), while `Float` signals IEEE 754 semantics. True arbitrary-precision decimal is a future enhancement.
 
 **Decimal precision mappings:** `Decimal:[32]` compiles to C `float`, `Decimal:[64]` (default) compiles to `double`, and `Decimal:[128]` compiles to `long double`. `Scale:N` constrains decimal places: literals exceeding the scale are rejected at compile time (E407), mismatched scales produce E408, and runtime arithmetic results are rounded to the declared scale.
 
@@ -383,7 +386,7 @@ Branch on *what something is*, not on *whether something is true*. Types and con
 
 ## Error Propagation
 
-`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. Only IO verbs (`inputs`, `outputs`) and `main` can use `!`. Pure verbs cannot be failable ([E361](diagnostics.md#e361-pure-function-cannot-be-failable)). There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
+`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. IO verbs (`inputs`, `outputs`), `transforms` (the only failable pure verb), and `main` can use `!`. Other pure verbs cannot be failable ([E361](diagnostics.md#e361-pure-function-cannot-be-failable)). There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
 
 Pure functions that need to represent expected failure cases use `Result<Value, Error>` and handle them with `match` — these are values, not errors.
 
@@ -404,8 +407,8 @@ Effects are encoded in the verb, not in type annotations. The compiler tracks th
 | Family | Verbs | Effect |
 |--------|-------|--------|
 | **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
-| **IO** | `inputs`, `outputs` | Reads from or writes to the external world. `!` marks additional fallibility |
-| **Async** | `detached`, `attached`, `listens` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` and `attached` may call IO freely (own coroutine stacks); `listens` may not (cooperative yield cycle) |
+| **IO** | `inputs`, `outputs`, `streams` | Reads from or writes to the external world. `!` marks additional fallibility. `streams` is a blocking IO loop with implicit match |
+| **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` and `attached` may call IO freely (own coroutine stacks); `listens` may not (cooperative yield cycle). `renders` is a UI render loop with mutable state |
 
 ```prove
 inputs read_config(path Path) String!               // IO inherent, ! = can fail
@@ -470,6 +473,17 @@ from
     ...
 ```
 
+### `Listens` — Dispatcher Reference
+
+`Listens` is a reference to a `listens` verb function. It is used in `List<Listens>` as the first parameter for `renders` UI render loops. Like `Attached`, it resolves to a `Prove_CoroFn` in the C runtime.
+
+```prove
+renders app(dispatchers List<Listens>)
+    state_init AppState(0)
+from
+    ...
+```
+
 ## Ownership Lite (Linear Types with Compiler-Inferred Borrows)
 
 Linear types for resources, but without Rust's lifetime annotation burden. The compiler infers borrows or asks you. Ownership is a type modifier, consistent with mutability and other storage concerns.
@@ -506,11 +520,12 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `creates` | Declares a pure function that constructs a new value. See [Functions & Verbs](functions.md#intent-verbs) |
 | `inputs` | Declares a function that reads from the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
 | `outputs` | Declares a function that writes to the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
-| `streams` | Declares a blocking IO loop over a source. See [Async & Streams](async.md) |
+| `streams` | Declares a blocking IO loop over a source (IO verb). See [Async & Streams](async.md) |
 | `detached` | Declares a fire-and-forget async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `listens` | Declares an event dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
 | `matches` | Declares a pure match dispatch on algebraic type. See [Functions & Verbs](functions.md#intent-verbs) |
+| `renders` | Declares a UI render loop with mutable state. See [Async & Streams](async.md) |
 
 ### Declarations & Types
 

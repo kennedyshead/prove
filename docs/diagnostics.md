@@ -12,7 +12,7 @@ The Prove compiler emits diagnostics with unique codes, source locations, and su
 - **Warning** — code compiles but the compiler could use this information (e.g., optimization, contract reasoning)
 - **Info** — good practice suggestions or issues that `prove format` fixes automatically
 
-Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer, 2xx = parser, 3xx = checker, 4xx = comptime).
+Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer/parser, 2xx = parser, 3xx = checker, 4xx = comptime, 5xx = prose coherence, 6xx = completeness).
 
 ---
 
@@ -267,9 +267,9 @@ transforms bad(x Integer) Integer
 
 Functions with pure verbs cannot use the `!` fail marker.
 
-### E362 — Pure function cannot call IO builtin
+### E362 — Pure function cannot call IO function
 
-A function with a pure verb cannot call the built-in IO function `sleep`. Other IO operations (file read/write, console output) are accessed through stdlib modules with IO verbs and are caught by E363.
+A function with a pure verb cannot call IO functions. This covers both the built-in `sleep` function and any resolved function with an IO verb (`inputs`, `outputs`).
 
 ### E363 — Pure function cannot call user-defined IO function
 
@@ -352,9 +352,9 @@ outputs caller(xs List<Integer>) Unit
         par_each(xs, log_item)
 ```
 
-### E151 — `listens` body missing `Exit` arm
+### E151 — `listens`/`streams`/`renders` body missing `Exit` arm
 
-A `listens` function's `from` block must be a single implicit match (bare arms) with an `Exit` arm. The `Exit` variant terminates the cooperative loop.
+A `listens`, `streams`, or `renders` function's `from` block must be a single implicit match (bare arms) with an `Exit` arm. The `Exit` variant terminates the loop.
 
 ```prove
 // Error — no Exit arm
@@ -394,9 +394,9 @@ This code is used in two contexts:
 
 A match expression on a `Result` or `Option` does not cover all variants and has no catch-all (`_`) pattern. `Result` requires `Ok` and `Err`; `Option` requires `Some` and `None`.
 
-### E374 — `detached` or `listens` declared with a return type
+### E374 — `detached` or `renders` declared with a return type
 
-`detached` is fire-and-forget — the caller never waits for a result. `listens` is a cooperative loop — it processes items from the first parameter's algebraic type until the `Exit` arm terminates the loop. Neither should declare a return type.
+`detached` is fire-and-forget — the caller never waits for a result. `renders` is a UI render loop — it processes events until the `Exit` arm terminates the loop. Neither should declare a return type.
 
 ### E375 — Duplicate value in lookup table
 
@@ -588,11 +588,11 @@ A `match` expression has arms with inconsistent return types — some arms retur
 
 ### E401 — `event_type` must reference an algebraic type
 
-The `event_type` annotation on a `listens` verb references a type that is not an algebraic type. The event type must be an algebraic type so that match arms can dispatch on its variants.
+The `event_type` annotation on a `renders` verb references a type that is not an algebraic type. The event type must be an algebraic type so that match arms can dispatch on its variants. This check is currently enforced for `renders` only.
 
-### E402 — `listens` first parameter must be `List<Attached>`
+### E402 — Async verb first parameter type mismatch
 
-A `listens` verb's first parameter is not `List<Attached>`. The first parameter must be a list of registered attached worker functions that produce events for the dispatcher.
+A `listens` verb's first parameter is not `List<Attached>`, or a `renders` verb's first parameter is not `List<Listens>`. The first parameter must be the appropriate worker/dispatcher reference list.
 
 ### E403 — Registered function is not an `attached` verb
 
@@ -602,25 +602,31 @@ A function in the `listens` worker list (the `List<Attached>` first argument) is
 
 A registered worker function's return type is not a variant of the `listens` dispatcher's `event_type`. Each worker must return a variant of the event type so the dispatcher can match on it.
 
-### E405 — `event_type` on non-`listens` verb
+### E405 — `event_type` on non-`listens`/`renders`/`attached` verb
 
-The `event_type` annotation was used on a function that is not a `listens` verb. This annotation is only valid on `listens` dispatchers.
+The `event_type` annotation was used on a function that is not a `listens`, `renders`, or `attached` verb. This annotation is only valid on these async verbs.
 
-### E406 — `listens` missing `event_type` annotation
+### E406 — `listens`/`renders` missing `event_type` annotation
 
-A `listens` verb was declared without an `event_type` annotation. The `event_type` annotation is required to declare the algebraic type that the dispatcher matches on.
+A `listens` or `renders` verb was declared without an `event_type` annotation. The `event_type` annotation is required to declare the algebraic type that the dispatcher matches on.
 
-### E407 — Decimal literal exceeds Scale:N precision
+### E407 — Decimal literal exceeds Scale:N precision / `state_init` on non-`renders` verb
 
-A decimal literal assigned to a `Decimal:[Scale:N]` variable has more decimal places than the scale allows. For example, assigning `3.141` to `Decimal:[Scale:2]` exceeds the allowed 2 decimal places.
+This code is used in two contexts:
 
-### E408 — Scale mismatch between Decimal types
+1. **Decimal precision:** A decimal literal assigned to a `Decimal:[Scale:N]` variable has more decimal places than the scale allows. For example, assigning `3.141` to `Decimal:[Scale:2]` exceeds the allowed 2 decimal places.
+2. **Async verbs:** The `state_init` annotation was used on a function that is not a `renders` verb.
 
-An assignment or comparison between two `Decimal:[Scale:N]` types with different scale values. For example, assigning a `Decimal:[Scale:3]` to a `Decimal:[Scale:2]` variable is not allowed without explicit conversion.
+### E408 — Scale mismatch / `renders` missing `state_init`
 
-### E409 — Mutable capture in parallel lambda
+This code is used in two contexts:
 
-A lambda passed to a parallel HOF (`par_map`, `par_filter`, `par_reduce`) captures a mutable variable from the enclosing scope. Parallel lambdas must only capture immutable values to prevent data races.
+1. **Decimal precision:** An assignment or comparison between two `Decimal:[Scale:N]` types with different scale values.
+2. **Async verbs:** A `renders` verb was declared without a `state_init` annotation.
+
+### E409 — `state_type` on non-`listens` verb
+
+The `state_type` annotation was used on a function that is not a `listens` verb. This annotation is only valid on `listens` dispatchers.
 
 ### E410 — Tail recursion not supported in comptime
 

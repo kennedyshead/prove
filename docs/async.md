@@ -13,7 +13,7 @@ Prove provides structured concurrency via cooperative coroutines. Async verbs fo
 | `detached` | Spawn and move on — fire-and-forget | No return type. Body runs concurrently; caller does not wait |
 | `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. May call blocking IO (runs in its own coroutine stack) |
 | `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. No return type |
-| `renders` | Event-driven UI loop — like `listens` with mutable state | `event_type` + `state_init` annotations. `List<Attached>` first param. Match with `Exit` arm |
+| `renders` | Event-driven UI loop — like `listens` with mutable state | `event_type` + `state_init` annotations. `List<Listens>` first param. Match with `Exit` arm |
 
 **Key rules:**
 - `listens`/`renders` bodies must not call blocking `inputs`/`outputs` functions directly — they run cooperatively and blocking would stall the yield cycle
@@ -37,7 +37,7 @@ The verb (`detached`, `attached`, `listens`) declares intent at the function lev
 
 ## `detached` — Fire and Forget
 
-Spawns a coroutine and returns immediately. The caller does not wait for completion. Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type)). May call blocking IO freely since it runs independently.
+Spawns a coroutine and returns immediately. The caller does not wait for completion. Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-renders-declared-with-a-return-type)). May call blocking IO freely since it runs independently.
 
 ```prove
 
@@ -84,12 +84,11 @@ from
 
 **Key rules:**
 
-- First parameter must be `List<Attached>` — the registered worker functions
+- First parameter, if present, must be `List<Attached>` — the registered worker functions
 - `event_type` annotation declares the algebraic type for dispatch (required)
 - Each registered attached function's return type must be a variant of the `event_type`
 - Match arms exhaust the `event_type` variants
 - One arm must match `Exit` (terminates the dispatcher)
-- Cannot declare a return type ([E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type))
 - Cannot call blocking IO directly ([E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body)) — use `&` in match arms
 - Attached functions in the worker list can have arguments: `[worker(arg)]`
 
@@ -140,7 +139,7 @@ The `renders` verb declares an event-driven UI loop with mutable state. It follo
 **Signature pattern:**
 
 ```prove
-renders name(workers List<Attached>)
+renders name(dispatchers List<Listens>)
     event_type MyAppEvent
     state_init MyState(initial_value)
 from
@@ -166,7 +165,7 @@ from
 
 **Key rules:**
 
-- First parameter must be `List<Attached>`
+- First parameter must be `List<Listens>`
 - `from` block must be a single implicit match with an `Exit` arm
 - No return type — `renders` always returns `Unit`
 - Backend resolved from `event_type` type chain (`TerminalAppEvent` → TUI, `GraphicAppEvent` → GUI)
@@ -257,15 +256,15 @@ from
 | [E370](diagnostics.md#e370-unknown-variant-attached-without-return-type) | `attached` declared without a return type | Error |
 | [E371](diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body) | Blocking `inputs`/`outputs`/`streams` call in `listens` body | Error |
 | [E372](diagnostics.md#e372-unknown-variant-for-generic-type-async-call-without) | `attached` or `listens` called without `&` | Error |
-| [E374](diagnostics.md#e374-detached-or-listens-declared-with-a-return-type) | `detached` or `listens` declared with a return type | Error |
+| [E374](diagnostics.md#e374-detached-or-renders-declared-with-a-return-type) | `detached` or `renders` declared with a return type | Error |
 | [E398](diagnostics.md#e398-io-bearing-attached-called-outside-async-context) | IO-bearing `attached` called outside `listens`/`attached` body | Error |
-| E401 | `event_type` must reference an algebraic type | Error |
-| E402 | `listens` first parameter must be `List<Attached>` | Error |
+| E401 | `event_type` must reference an algebraic type (checked for `renders` only) | Error |
+| E402 | `listens` first parameter must be `List<Attached>`; `renders` first parameter must be `List<Listens>` | Error |
 | E403 | Registered function is not an `attached` verb | Error |
 | E404 | Attached return type doesn't match event variant | Error |
-| E405 | `event_type` on non-`listens`/`renders` verb | Error |
+| E405 | `event_type` on non-`listens`/`renders`/`attached` verb | Error |
 | E406 | `listens`/`renders` missing `event_type` annotation | Error |
-| [E151](diagnostics.md#e151-listens-body-missing-exit-arm) | `listens` body missing an `Exit` arm | Error |
+| [E151](diagnostics.md#e151-listensstreamsrenders-body-missing-exit-arm) | `listens`/`streams`/`renders` body missing an `Exit` arm | Error |
 | [I375](diagnostics.md#i375-on-a-non-async-callee) | `&` on a non-async callee | Info |
 | [I377](diagnostics.md#i377-attached-call-runs-synchronously-outside-listens) | `attached&` outside `listens` — runs synchronously | Info |
 | [I378](diagnostics.md#i378-detached-function-called-without) | `detached` called without `&` | Info |

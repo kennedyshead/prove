@@ -52,7 +52,7 @@ Use `Parse.tree()` to parse source into a tree and `Parse.string()` to extract t
 | `creates` | `kind(node Node) String` | Node kind name (e.g. `"function_definition"`, `"call_expression"`) |
 | `creates` | `string(node Node) String` | Source text spanned by a node |
 | `creates` | `children(node Node) List<Node>` | All child nodes (including anonymous tokens like punctuation) |
-| `reads` | `child(node Node, name String) Option<Node>` | Named child by field name; returns `None` if the field does not exist |
+| `creates` | `child(node Node, name String) Option<Node>` | Named child by field name; returns `None` if the field does not exist |
 | `creates` | `named_children(node Node) List<Node>` | Named children only (skipping anonymous tokens) |
 | `creates` | `count(node Node) Integer` | Number of child nodes |
 | `creates` | `line(node Node) Integer` | Line number (1-based) |

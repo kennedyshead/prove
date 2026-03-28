@@ -51,8 +51,10 @@ Unlike `List<Value>`, an `Array<T>` has a concrete element type and a fixed size
 |------|-----------|-------------|
 | `creates` | `array(size Integer, default Boolean) Array<Boolean>` | Allocate a boolean array filled with `default` |
 | `creates` | `array(size Integer, default Integer) Array<Integer>` | Allocate an integer array filled with `default` |
+| `creates` | `array(size Integer, default Decimal) Array<Decimal>` | Allocate a decimal array filled with `default` |
 | `creates` | `array(size Integer, default Boolean) Array<Boolean>:[Mutable]` | Allocate a mutable boolean array |
 | `creates` | `array(size Integer, default Integer) Array<Integer>:[Mutable]` | Allocate a mutable integer array |
+| `creates` | `array(size Integer, default Decimal) Array<Decimal>:[Mutable]` | Allocate a mutable decimal array |
 
 The element type and mutability are inferred from context (the declared type of the receiving variable).
 
@@ -153,12 +155,16 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 |------|-----------|-------------|
 | `creates` | `length(items List<Value>) Integer` | Number of elements |
 | `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
+| `reads` | `first(items List<Integer>) Option<Integer>` | First integer, or None |
+| `reads` | `first(items List<String>) Option<String>` | First string, or None |
 | `reads` | `first(items List<Float>) Option<Float>` | First float, or None |
 | `reads` | `first(items List<Decimal>) Option<Decimal>` | First decimal, or None |
 | `reads` | `last(items List<Value>) Option<Value>` | Last element, or None |
+| `reads` | `last(items List<Integer>) Option<Integer>` | Last integer, or None |
+| `reads` | `last(items List<String>) Option<String>` | Last string, or None |
 | `reads` | `last(items List<Float>) Option<Float>` | Last float, or None |
 | `reads` | `last(items List<Decimal>) Option<Decimal>` | Last decimal, or None |
-| `reads` | `value(position Integer, items List<Value>) Value` | Element at position (0-based) |
+| `reads` | `value(position Integer, items List<Value>) Option<Value>` | Element at position (0-based), or None |
 | `validates` | `empty(items List<Value>)` | True if list has no elements |
 
 ### Search
@@ -190,6 +196,21 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `range(start Integer, end Integer) List<Integer>` | Integer sequence [start, end) |
+| `creates` | `range(start Integer, end Integer, step Integer) List<Integer>` | Integer sequence with step |
+
+### Element Access
+
+| Verb | Signature | Description |
+|------|-----------|-------------|
+| `reads` | `get(items List<Integer>, idx Integer) Integer` | Get integer element at index |
+| `reads` | `get(items List<String>, idx Integer) String` | Get string element at index |
+| `reads` | `get(items List<Float>, idx Integer) Float` | Get float element at index |
+| `reads` | `get(items List<Decimal>, idx Integer) Decimal` | Get decimal element at index |
+| `reads` | `get(items List<Value>, idx Integer) Value` | Get value element at index |
+| `reads` | `get_safe(items List<Integer>, idx Integer) Option<Integer>` | Safe get integer at index |
+| `reads` | `get_safe(items List<String>, idx Integer) Option<String>` | Safe get string at index |
+| `reads` | `set(items List<Value>, idx Integer, val Value) List<Value>` | Return list with element replaced |
+| `reads` | `remove(items List<Value>, idx Integer) List<Value>` | Return list with element removed |
 
 ```prove
   List creates length reads first sort reverse slice creates range

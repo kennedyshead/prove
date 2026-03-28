@@ -33,7 +33,7 @@ from
 
 ### Verb Purity Enforcement
 
-The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-builtin), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
+The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-function), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
 
 ### Exhaustive Match
 

@@ -88,10 +88,10 @@ Common causes:
 
 The compiler needs more context. Add explicit type annotations:
 ```prove
-# Instead of:
+// Instead of:
 result = compute()
 
-# Use:
+// Use:
 result as Integer = compute()
 ```
 
@@ -110,7 +110,7 @@ The function returned a value that doesn't satisfy its `ensures` clause. Check:
 Recursive functions must have `terminates` to prove they don't loop forever:
 ```prove
 transforms factorial(n Integer) Integer
-  terminates  # Prove termination
+  terminates: n
   requires n >= 0
 from
     n == 0 => 1
@@ -126,7 +126,7 @@ from
 Add a contract or use refinement types:
 ```prove
 transforms safe_divide(a Decimal, b Decimal) Result<Decimal, String>
-  requires b != 0  # Contract proves b is non-zero
+  requires b != 0  // Contract proves b is non-zero
 from
     Ok(a / b)
 ```
@@ -152,15 +152,15 @@ from
 
 ### When to use `Result` vs `!`?
 
-- `Result<Value, Error>` — for **expected failures** in pure functions
-- `!` — for **IO failures** that should propagate to `main`
+- `Result<Value, Error>` — for **expected failures** in pure functions (handle with `match`)
+- `!` — for **IO failures** and failable `transforms` that should propagate to `main`
 
 ### How to structure a module?
 
 ```prove
 module MyModule
   narrative: """What this module does."""
-  OtherModule validates x transforms y  # Import what you need
+  OtherModule validates x transforms y  // Import what you need
 
   type MyType is
     VariantA
@@ -168,9 +168,9 @@ module MyModule
 
   CONSTANT as Integer = 42
 
-  transforms public_function(x Integer) Integer
-    from
-        x + 1
+transforms public_function(x Integer) Integer
+from
+    x + 1
 ```
 
 ---

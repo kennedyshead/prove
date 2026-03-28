@@ -30,8 +30,8 @@ verified_emails as List<String> = filter(emails, valid email)
 
 **Constraints:**
 - **Single expression only** — no multi-line bodies, no statements. If you need more, write a named function.
-- **Must be pure** — no IO effects inside a lambda. Side effects require a named function.
-- **Closure capture** — lambdas can capture immutable variables from the enclosing scope. Captured values are passed via a compiler-generated context struct. Mutable captures in parallel lambdas are rejected (E409).
+- **Should be pure** — IO effects inside a lambda are not recommended and may cause undefined behavior in parallel contexts. Side effects require a named function.
+- **Closure capture** — lambdas can capture immutable variables from the enclosing scope. Captured values are passed via a compiler-generated context struct.
 - **Only as arguments** — lambdas cannot be assigned to variables or returned from functions. They exist only at the call site of a higher-order function or a [`Verb`](types.md#function-types-verb) parameter.
 
 Lambdas work with any function parameter typed as `Verb<P1, ..., R>`:
@@ -41,9 +41,11 @@ Lambdas work with any function parameter typed as `Verb<P1, ..., R>`:
 result as MergeResult = Store.merge(base, local, remote, |c| KeepRemote)
 ```
 
-## Builtin Higher-Order Functions
+## Builtin Functions
 
 The following functions are **builtins** — always available, no import needed. They work on any iterable type (`List`, `Array`, and future iterable types like cursors).
+
+### Higher-Order Functions
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -53,12 +55,17 @@ The following functions are **builtins** — always available, no import needed.
 | `each` | `each(items, \|x\| expr)` | Run function for each element (side effects) |
 | `all` | `all(items, \|x\| predicate) Boolean` | True if predicate holds for every element (short-circuits) |
 | `any` | `any(items, \|x\| predicate) Boolean` | True if predicate holds for at least one element (short-circuits) |
-| `len` | `len(items) Integer` | Number of elements |
-| `clamp` | `clamp(value, min, max) Integer` | Clamp value to range |
 | `par_map` | `par_map(items, fn) List<T>` | Parallel map (pure functions only) |
 | `par_filter` | `par_filter(items, fn) List<T>` | Parallel filter (pure functions only) |
 | `par_reduce` | `par_reduce(items, init, fn) T` | Parallel reduce (pure functions only) |
-| `par_each` | `par_each(items, fn)` | Parallel each (pure functions only) |
+| `par_each` | `par_each(items, fn)` | Parallel each (IO allowed, async verbs rejected) |
+
+### Other Builtins
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `len` | `len(items) Integer` | Number of elements |
+| `clamp` | `clamp(value, min, max) Integer` | Clamp value to range |
 
 These are **not** part of any stdlib module — they are compiler builtins with generic type inference. The compiler dispatches to the appropriate C runtime function based on the collection type.
 
@@ -100,13 +107,13 @@ For complex iteration that doesn't fit map/filter/reduce, use recursion with a `
 scores as List<Integer> = par_map(documents, compute_score)
 
 // Parallel filter — keep matching elements concurrently
-valid as List<Order> = par_filter(orders, validates order)
+valid as List<Order> = par_filter(orders, valid order)
 
 // Parallel reduce — combine elements concurrently
 total as Integer = par_reduce(values, 0, add)
 ```
 
-**Purity requirement:** the callback must be a named pure function (`transforms`, `validates`, `reads`, `creates`, or `matches`). IO verbs (`inputs`, `outputs`) and async verbs are rejected at compile time.
+**Purity requirement:** for `par_map`, `par_filter`, and `par_reduce`, the callback must be a named pure function (`transforms`, `validates`, `reads`, `creates`, or `matches`). IO and async verbs are rejected at compile time. `par_each` is less restrictive — it allows IO callbacks but rejects async verbs. When using a named function reference, the compiler verifies purity; lambdas passed to parallel HOFs are not currently checked.
 
 **Closures:** lambdas with captured variables are supported. The compiler generates a context struct for captured values and passes it through the parallel runtime.
 

@@ -17,10 +17,10 @@ Pure verbs have no side effects. The compiler enforces this. They can be memoize
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
 | `creates` | Creates a new value from a given value | No `!`. Returns a freshly constructed value |
-| `reads` | Extracts a subvalue, returning the same type | No `!`. Non-mutating access to data |
+| `reads` | Non-mutating data access or extraction | No `!`. Never allocates. Non-mutating |
 | `transforms` | Failable version of creates/reads | Allows `!`. Pure but can fail at runtime (deserialization, conversion) |
 | `validates` | Pure boolean check | No `!`. Return type is implicitly `Boolean` |
-| `matches` | Pure match dispatch on algebraic type | No `!`. First parameter must be algebraic. `from` block is implicitly a match |
+| `matches` | Pure match dispatch on matchable type | No `!`. First parameter must be a matchable type (algebraic, String, Integer, Result, or Option). `from` block is implicitly a match |
 
 ### Semantic Guarantees
 
@@ -78,8 +78,9 @@ IO verbs interact with the external world. Side effects are explicit in the verb
 
 | Verb | Purpose | Compiler enforces |
 |------|---------|-------------------|
-| `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility. Implicit match when first param is algebraic |
+| `inputs` | Reads/receives from external world | IO is inherent. `!` marks fallibility |
 | `outputs` | Writes/sends to external world | IO is inherent. `!` marks fallibility |
+| `streams` | Blocking IO loop with implicit match | IO is inherent. Body is a single match expression with an `Exit()` arm |
 
 ### Examples
 
@@ -94,10 +95,11 @@ from
 
 inputs request(route Route, body String, db Store) Response!
 from
-    Get(/health) => ok("healthy")
-    Get(/users) => users(db)! |> encode |> ok
-    Post(/users) => create(db, body)! |> encode |> created
-    _ => not_found()
+    match route
+        Get(/health) => ok("healthy")
+        Get(/users) => users(db)! |> encode |> ok
+        Post(/users) => create(db, body)! |> encode |> created
+        _ => not_found()
 ```
 
 ## Verb-Dispatched Identity
@@ -136,10 +138,10 @@ stored as Email = email(user.id)
 ```
 
 Resolution rules:
-1. **Boolean context** → resolves to `validates` variant
+1. **`valid` keyword** → explicitly invokes the `validates` variant (e.g., `valid email(address)` or `valid email` as a predicate reference)
 2. **Expected type** from assignment → matches the variant returning that type
 3. **Parameter types** disambiguate between variants with same return type
-4. **Ambiguous** → compiler error with suggestions
+4. **Ambiguous** → first matching candidate wins based on arity and parameter types
 
 ## Parameters
 

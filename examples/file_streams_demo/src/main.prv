@@ -36,7 +36,7 @@ from
     wh as File = writer(path)!
     console(f"writing to {
               path
-            } — type lines (Ctrl+D when done):\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\")")
+            } — type lines (Ctrl+D when done):\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\")")
     write(Streaming(wh))
     close(wh)
     // Read phase: stream file chunks back to console

@@ -44,6 +44,7 @@ target = "native"
 c_flags = []
 link_flags = []
 ccache = true
+# Also available: debug, mutate, c_sources, pre_build, vendor_libs
 
 [optimize]
 enabled = true
@@ -69,13 +70,18 @@ line_length = 90
 | | `c_flags` | `[]` | Extra flags passed to the C compiler (e.g., `["-I/usr/local/include"]`). For foreign libraries like `libpython3`, prefer [environment variables](syntax.md#foreign-blocks-c-ffi) instead. |
 | | `link_flags` | `[]` | Extra flags passed to the linker (e.g., `["-L/usr/local/lib", "-lm"]`). For foreign libraries like `libpython3`, prefer [environment variables](syntax.md#foreign-blocks-c-ffi) instead. |
 | | `ccache` | `true` | Use [ccache](https://ccache.dev) if installed (no-op otherwise) |
+| | `debug` | `false` | Build in debug mode (keeps symbols, enables runtime checks) |
+| | `mutate` | `true` | Enable mutation testing during build |
+| | `c_sources` | `[]` | Additional C source files to compile |
+| | `pre_build` | `[]` | Shell commands to run before compilation |
+| | `vendor_libs` | `[]` | Vendored library paths to link |
 | `[optimize]` | `enabled` | `true` | Enable compiler optimizations (`-O2 -flto`) |
 | | `pgo` | `false` | Enable [profile-guided optimization](performance.md#profile-guided-optimization-pgo) (requires `enabled = true`) |
 | | `strip` | `true` | Strip symbols from release binary (`-s`); ignored in debug builds |
 | | `tune_host` | `false` | Tune for the host CPU (`-march=native`); breaks cross-compilation |
 | | `gc_sections` | `true` | Dead-code elimination at link time; ignored in debug builds |
 | `[test]` | `property_rounds` | `1000` | Number of random inputs per property test (overridable with `--property-rounds`) |
-| `[style]` | `line_length` | `90` | Maximum line length for the formatter |
+| `[style]` | `line_length` | `90` | Maximum line length for the formatter (planned — currently hardcoded) |
 
 ---
 
@@ -161,12 +167,12 @@ When `enabled = true` under `[optimize]` in `prove.toml`, the compiler runs opti
 | **Tail call optimization** | Rewrites self-recursive tail calls into loops. Only applies to functions with a [`terminates`](contracts.md#terminates) annotation where the recursive call is in tail position. Eliminates stack growth for eligible recursion. |
 | **Dead branch elimination** | Removes match arms with statically-known-false patterns. When the match subject is a literal, only the matching arm (and wildcards) survive. |
 | **Compile-time evaluation** | Evaluates pure functions with constant arguments at compile time. For example, `double(21)` becomes `42` during compilation. Recursive functions are not evaluated to avoid infinite loops. |
-| **Iterator fusion** | Fuses chained `map`/`filter`/`reduce` calls into a single traversal, eliminating intermediate list allocations. |
-| **Copy elision** | Identifies variables that are assigned once and consumed once, eliminating redundant copies by forwarding the value directly to its use site. |
-| **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Small function inlining** | Inlines pure single-expression functions at call sites. Targets functions with pure verbs that have no `terminates`, no recursion, and a single-expression body. Parameters are substituted with arguments. |
 | **TCO loop inlining** | When a TCO-converted function calls another TCO-converted function in tail position, inlines the callee as a nested `while` loop inside the caller's loop body. Eliminates the function call overhead entirely and enables the C compiler to see the combined loop as a single unit. The inlined function is then removed by dead code elimination. |
 | **Trivial loop folding** | Detects TCO-converted counting or accumulating loops with constant step and folds them to O(1) closed-form computations (e.g., `sum(1..n)` becomes `n*(n+1)/2`). |
+| **Iterator fusion** | Fuses chained `map`/`filter`/`reduce` calls into a single traversal, eliminating intermediate list allocations. |
+| **Copy elision** | Identifies variables that are assigned once and consumed once, eliminating redundant copies by forwarding the value directly to its use site. |
+| **Dead code elimination** | Removes pure functions that are never called. After inlining, any function whose body was fully inlined is removed from the output. |
 | **Memoization candidate identification** | Identifies pure functions eligible for memoization — small, non-recursive pure-verb functions with hashable parameter types. Feeds metadata to the C emitter for cache generation. |
 | **Match compilation** | Merges consecutive match statements on the same subject into a single match expression, combining their arms. |
 | **Escape analysis** | Tracks which local variables escape their enclosing function (returned, stored in mutable parameters, passed to escaping functions). Non-escaping values are candidates for region allocation instead of arena/malloc, reducing allocation overhead. Conservative by default — unknown variables are assumed to escape. |
@@ -205,11 +211,13 @@ Dependencies are tracked automatically; no annotation is needed. Every `read()` 
 
 ## Verb Enforcement
 
-The compiler enforces purity rules based on the function's verb. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
+The compiler enforces purity rules based on the function's verb. Pure verbs (`validates`, `reads`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
 
 - Cannot call built-in IO functions like `println` or `read_file` (E362)
-- Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E363)
+- Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E362)
 - Cannot be failable with `!` (E361)
+
+`transforms` is the exception — it is a pure verb that **may** be failable with `!`, but still cannot call IO functions.
 
 IO verbs (`inputs`, `outputs`, `streams`) have no such restrictions.
 

@@ -16,12 +16,12 @@ All classification functions take a single `Character` and return `Boolean`.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `validates` | `alpha(c Character)` | True if alphabetic (a–z, A–Z) |
+| `validates` | `alphabetic(c Character)` | True if alphabetic (a–z, A–Z) |
 | `validates` | `digit(c Character)` | True if numeric digit (0–9) |
-| `validates` | `alnum(c Character)` | True if alphanumeric |
-| `validates` | `upper(c Character)` | True if uppercase letter |
-| `validates` | `lower(c Character)` | True if lowercase letter |
-| `validates` | `space(c Character)` | True if whitespace |
+| `validates` | `alphanumeric(c Character)` | True if alphanumeric |
+| `validates` | `uppercase(c Character)` | True if uppercase letter |
+| `validates` | `lowercase(c Character)` | True if lowercase letter |
+| `validates` | `whitespace(c Character)` | True if whitespace |
 
 ### Access
 
@@ -30,11 +30,11 @@ All classification functions take a single `Character` and return `Boolean`.
 | `creates` | `at(string String, index Integer) Character` | Character at index (0-based, bounds-checked) |
 
 ```prove
-  Character validates alpha digit space creates at
+  Character validates alphabetic digit whitespace creates at
 
 validates is_identifier_start(c Character)
 from
-    Character.alpha(c)
+    Character.alphabetic(c)
 ```
 
 ---
@@ -80,14 +80,14 @@ The `StringBuilder` type allows efficient incremental string construction.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `builder() StringBuilder:[Mutable]` | Create an empty builder |
-| `reads` | `string(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
+| `reads` | `string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
 | `reads` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
 | `creates` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
 | `creates` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
   Text creates length index validates contains starts reads slice reads trim lower upper replace repeat creates split join
-  Text creates builder reads string creates build
+  Text creates builder reads string_builder creates build
 
 creates word_count(text String) Integer
 from

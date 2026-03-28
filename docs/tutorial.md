@@ -41,7 +41,7 @@ Let's break this down:
 
 | Part | Meaning |
 |------|---------|
-| `transforms` | This is a pure function — no side effects |
+| `reads` | This is a pure function — non-mutating data access |
 | `double(n Integer) Integer` | Takes an Integer, returns an Integer |
 | `ensures result == n * 2` | Contract: the result must equal n times 2 |
 | `from` | Everything after this is the implementation |
@@ -117,13 +117,13 @@ The compiler **enforces** these distinctions. A `transforms` function cannot cal
 Types in Prove carry **constraints**, not just shapes:
 
 ```prove
-# A port number — must be between 1 and 65535
+// A port number — must be between 1 and 65535
 type Port is Integer:[16 Unsigned] where 1 .. 65535
 
-# An email — must match a regex pattern
+// An email — must match a regex pattern
 type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
 
-# A non-empty list — length must be greater than 0
+// A non-empty list — length must be greater than 0
 type NonEmpty<Value> is List<Value> where len > 0
 ```
 
@@ -132,7 +132,7 @@ With `NonEmpty`, you never need to check if a list is empty — the type guarant
 ```prove
 transforms first(items NonEmpty<Value>) Value
 from
-    items[0]  # Safe! Compiler knows it's not empty
+    items[0]  // Safe! Compiler knows it's not empty
 ```
 
 ---
@@ -192,15 +192,15 @@ from
     parse(content)
 ```
 
-The `!` marks fallibility — it propagates errors up the call chain. Only IO verbs (`inputs`, `outputs`) can use `!`.
+The `!` marks fallibility — it propagates errors up the call chain. IO verbs (`inputs`, `outputs`) and `transforms` (the only failable pure verb) can use `!`.
 
 For pure functions that need to represent failure, use `Result`:
 
 ```prove
-transforms divide(a Decimal, b Decimal) Result<Decimal, String>
+transforms divide(a Decimal, b Decimal) Decimal!
+  requires b != 0
 from
-    b == 0 => Err("division by zero")
-    _ => Ok(a / b)
+    a / b
 ```
 
 ---
@@ -210,12 +210,12 @@ from
 Prove has no null. Use `Option<Value>` instead:
 
 ```prove
-transforms find_user(id Integer) Option<User>
+inputs find_user(db Store, id Integer) Option<User>!
 from
     match query(db, "SELECT * FROM users WHERE id = {id}")!
         [] => None
         [user] => Some(user)
-        _ => None  # Should never happen
+        _ => None  // Should never happen
 ```
 
 ---
@@ -225,16 +225,16 @@ from
 No loops. Use `map`, `filter`, `reduce`:
 
 ```prove
-# Get names of all active users
+// Get names of all active users
 names as List<String> = map(users, |u| u.name)
 
-# Filter to active users only
+// Filter to active users only
 active as List<User> = filter(users, |u| u.active)
 
-# Calculate total price
+// Calculate total price
 total as Decimal = reduce(items, 0, |acc, item| acc + item.price)
 
-# Chain operations with pipe
+// Chain operations with pipe
 result as List<String> = users
     |> filter(|u| u.active)
     |> map(|u| u.email)
@@ -247,17 +247,17 @@ result as List<String> = users
 Three async verbs for different patterns:
 
 ```prove
-# Fire and forget — caller doesn't wait
+// Fire and forget — caller doesn't wait
 detached log(message String)
 from
     console(message)
 
-# Spawn and await — caller waits for result
+// Spawn and await — caller waits for result
 attached fetch(url String) String
 from
     request(url)&
 
-# Event dispatcher — cooperative loop
+// Event dispatcher — cooperative loop
 listens handler(workers List<Attached>)
     event_type Command
 from
