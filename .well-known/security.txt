@@ -1,9 +1,0 @@
-# Security Policy for Prove
-# https://prove.botwork.se/.well-known/security.txt
-
-Contact: mailto:magnusknutas@botwork.se
-Expires: 2027-03-06T00:00:00.000Z
-Encryption: https://prove.botwork.se/pgp-key.txt
-Preferred-Languages: en
-Canonical: https://prove.botwork.se/.well-known/security.txt
-Policy: https://prove.botwork.se/security-policy
