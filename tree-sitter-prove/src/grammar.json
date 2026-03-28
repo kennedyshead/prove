@@ -2824,6 +2824,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "match_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "list_literal"
         },
         {
@@ -4286,6 +4290,18 @@
     [
       "import_declaration",
       "import_group"
+    ],
+    [
+      "assignment",
+      "pipe_expression"
+    ],
+    [
+      "variable_declaration",
+      "binary_expression"
+    ],
+    [
+      "expression",
+      "_statement"
     ]
   ],
   "precedences": [],

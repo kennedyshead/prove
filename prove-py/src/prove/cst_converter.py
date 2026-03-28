@@ -1048,6 +1048,9 @@ class CSTConverter:
         # so we can absorb continuation statements into that arm.
         last_match_idx: int | None = None
         last_arm_col: int | None = None
+        # When the last absorbed item was VarDecl(match), the next expression
+        # is the match subject and must be absorbed even at arm-pattern level.
+        pending_match_subject = False
         # Buffer comments between implicit match arms so they can be
         # prepended to the next arm's body instead of breaking grouping.
         pending_arm_comments: list[Any] = []
@@ -1104,13 +1107,21 @@ class CSTConverter:
 
                 for a in all_arms:
                     # Merge into preceding MatchExpr if there is one
-                    if (
-                        last_match_idx is not None
-                        and last_match_idx < len(body)
-                        and isinstance(body[last_match_idx], MatchExpr)
-                    ):
-                        body[last_match_idx] = self._merge_arm_into_match(
-                            body[last_match_idx], a, arm_col
+                    tracked = (
+                        body[last_match_idx]
+                        if (last_match_idx is not None and last_match_idx < len(body))
+                        else None
+                    )
+                    assert last_match_idx is not None
+                    if isinstance(tracked, MatchExpr):
+                        body[last_match_idx] = self._merge_arm_into_match(tracked, a, arm_col)
+                    elif isinstance(tracked, VarDecl) and isinstance(tracked.value, MatchExpr):
+                        new_match = self._merge_arm_into_match(tracked.value, a, arm_col)
+                        body[last_match_idx] = VarDecl(
+                            name=tracked.name,
+                            type_expr=tracked.type_expr,
+                            value=new_match,
+                            span=tracked.span,
                         )
                     else:
                         # Wrap in MatchExpr immediately so continuation
@@ -1128,18 +1139,53 @@ class CSTConverter:
             else:
                 # Check if this statement should be absorbed into the last match arm.
                 # If it's more indented than the arm pattern, it's a continuation.
-                if (
-                    last_match_idx is not None
-                    and last_arm_col is not None
-                    and child_col > last_arm_col
-                    and isinstance(body[last_match_idx], MatchExpr)
+                # Also absorb when the last absorbed item was VarDecl(match) —
+                # the next expression is the match subject.
+                tracked_item = (
+                    body[last_match_idx]
+                    if (last_match_idx is not None and last_match_idx < len(body))
+                    else None
+                )
+                # Extract MatchExpr from tracked item (bare or inside VarDecl)
+                tracked_match: MatchExpr | None = None
+                if isinstance(tracked_item, MatchExpr):
+                    tracked_match = tracked_item
+                elif isinstance(tracked_item, VarDecl) and isinstance(
+                    tracked_item.value, MatchExpr
                 ):
-                    match_expr = body[last_match_idx]
+                    tracked_match = tracked_item.value
+                should_absorb = (
+                    tracked_match is not None
+                    and last_arm_col is not None
+                    and (child_col > last_arm_col or pending_match_subject)
+                )
+                if should_absorb:
+                    assert last_match_idx is not None
+                    pending_match_subject = False
+                    match_expr = tracked_match
                     stmt = self._convert_body_item(child)
                     if stmt is not None:
-                        body[last_match_idx] = self._absorb_stmt_into_match(
-                            match_expr, stmt, child_col
-                        )
+                        new_match = self._absorb_stmt_into_match(match_expr, stmt, child_col)
+                        if isinstance(tracked_item, VarDecl):
+                            body[last_match_idx] = VarDecl(
+                                name=tracked_item.name,
+                                type_expr=tracked_item.type_expr,
+                                value=new_match,
+                                span=tracked_item.span,
+                            )
+                        else:
+                            body[last_match_idx] = new_match
+                        # Check if we just absorbed a VarDecl(match) — next
+                        # expression is the match subject.
+                        last_arm = new_match.arms[-1]
+                        if last_arm.body:
+                            tail = last_arm.body[-1]
+                            if (
+                                isinstance(tail, VarDecl)
+                                and isinstance(tail.value, IdentifierExpr)
+                                and tail.value.name == "match"
+                            ):
+                                pending_match_subject = True
                 elif (
                     last_match_idx is not None
                     and last_arm_col is not None
@@ -1159,9 +1205,19 @@ class CSTConverter:
                     stmt = self._convert_body_item(child)
                     if stmt is not None:
                         body.append(stmt)
-                        # If we just appended a MatchExpr, start tracking so
-                        # subsequent orphan arms/statements can be merged into it.
+                        # If we just appended a MatchExpr (or VarDecl with
+                        # MatchExpr value), start tracking so subsequent orphan
+                        # arms/statements can be merged into it.
+                        track_match = None
                         if isinstance(stmt, MatchExpr) and stmt.arms:
+                            track_match = stmt
+                        elif (
+                            isinstance(stmt, VarDecl)
+                            and isinstance(stmt.value, MatchExpr)
+                            and stmt.value.arms
+                        ):
+                            track_match = stmt.value
+                        if track_match is not None:
                             last_match_idx = len(body) - 1
                             arm_nodes = self._children_of_type(child, "match_arm")
                             if arm_nodes:
@@ -1181,9 +1237,30 @@ class CSTConverter:
 
         return body
 
-    @staticmethod
-    def _fix_match_assignments(body: list) -> list:
-        """Reassemble split match-in-assignment patterns."""
+    @classmethod
+    def _fix_match_assignments(cls, body: list) -> list:
+        """Reassemble split match-in-assignment patterns, recursively."""
+        # First, recurse into match arm bodies
+        fixed: list = []
+        for stmt in body:
+            if isinstance(stmt, MatchExpr):
+                new_arms = []
+                for arm in stmt.arms:
+                    new_body = cls._fix_match_assignments(list(arm.body))
+                    new_arms.append(MatchArm(arm.pattern, new_body, arm.span))
+                fixed.append(MatchExpr(stmt.subject, new_arms, stmt.span))
+            elif isinstance(stmt, ExprStmt) and isinstance(stmt.expr, MatchExpr):
+                me = stmt.expr
+                new_arms = []
+                for arm in me.arms:
+                    new_body = cls._fix_match_assignments(list(arm.body))
+                    new_arms.append(MatchArm(arm.pattern, new_body, arm.span))
+                fixed.append(ExprStmt(MatchExpr(me.subject, new_arms, me.span), stmt.span))
+            else:
+                fixed.append(stmt)
+        body = fixed
+
+        # Then fix VarDecl(match) + ExprStmt(subject) + MatchExpr patterns
         i = 0
         result: list = []
         while i < len(body):
@@ -1238,6 +1315,8 @@ class CSTConverter:
             return tail
         if isinstance(tail, ExprStmt) and isinstance(tail.expr, MatchExpr):
             return tail.expr
+        if isinstance(tail, VarDecl) and isinstance(tail.value, MatchExpr):
+            return tail.value
         return None
 
     @staticmethod
@@ -1246,6 +1325,14 @@ class CSTConverter:
         tail = body[-1]
         if isinstance(tail, MatchExpr):
             return list(body[:-1]) + [new_match]
+        if isinstance(tail, VarDecl) and isinstance(tail.value, MatchExpr):
+            new_var = VarDecl(
+                name=tail.name,
+                type_expr=tail.type_expr,
+                value=new_match,
+                span=tail.span,
+            )
+            return list(body[:-1]) + [new_var]
         # ExprStmt wrapper
         return list(body[:-1]) + [ExprStmt(new_match, tail.span)]
 
@@ -1294,6 +1381,32 @@ class CSTConverter:
             if arm_col >= inner_arm_col:
                 new_inner = self._merge_arm_into_match(inner, arm, arm_col)
                 new_body = self._replace_tail_match(last_arm.body, new_inner)
+                new_arm_outer = MatchArm(last_arm.pattern, new_body, last_arm.span)
+                return MatchExpr(
+                    match_expr.subject,
+                    list(match_expr.arms[:-1]) + [new_arm_outer],
+                    match_expr.span,
+                )
+
+        # Check if the last arm body has a pending VarDecl(match) + ExprStmt
+        # pattern that should absorb this orphan arm as part of an inner match.
+        body = last_arm.body
+        if len(body) >= 2:
+            tail2, tail1 = body[-2], body[-1]
+            if (
+                isinstance(tail2, VarDecl)
+                and isinstance(tail2.value, IdentifierExpr)
+                and tail2.value.name == "match"
+                and isinstance(tail1, ExprStmt)
+            ):
+                inner_match = MatchExpr(tail1.expr, [arm], arm.span)
+                new_var = VarDecl(
+                    name=tail2.name,
+                    type_expr=tail2.type_expr,
+                    value=inner_match,
+                    span=tail2.span,
+                )
+                new_body = list(body[:-2]) + [new_var]
                 new_arm_outer = MatchArm(last_arm.pattern, new_body, last_arm.span)
                 return MatchExpr(
                     match_expr.subject,
@@ -1729,13 +1842,23 @@ class CSTConverter:
         return LookupAccessExpr(type_name, operand_expr, self._span(node))
 
     def _convert_comptime(self, node: TSNode) -> ComptimeExpr:
-        body: list[Stmt] = []
+        body: list[Any] = []
         in_body = False
         for child in node.children:
             if not child.is_named and self._text(child) == "comptime":
                 in_body = True
                 continue
             if in_body and child.is_named:
+                if child.type == "match_arm":
+                    # Orphan match_arm: merge into preceding MatchExpr
+                    arm = self._convert_match_arm(child)
+                    if body and isinstance(body[-1], MatchExpr):
+                        body[-1] = MatchExpr(
+                            subject=body[-1].subject,
+                            arms=list(body[-1].arms) + [arm],
+                            span=body[-1].span,
+                        )
+                        continue
                 item = self._convert_body_item(child)
                 if item is not None:
                     body.append(item)

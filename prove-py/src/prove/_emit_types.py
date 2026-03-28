@@ -49,13 +49,27 @@ class TypeEmitterMixin:
                 self._line(f"typedef enum {cname} {cname};")
             else:
                 self._line(f"typedef struct {cname} {cname};")
-        # Forward declarations for imported local types
+        # Forward declarations for imported local types.
+        # Lookup types (from stdlib) need full enum definitions here
+        # because C requires the complete type for by-value fields.
+        stdlib_lookup_names: set[str] = set()
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
-            self._line(f"typedef struct {cname} {cname};")
+            if self._is_stdlib_lookup_type(name):
+                stdlib_lookup_names.add(name)
+                self._line(f"typedef enum {cname} {cname};")
+                self._line(f"enum {cname} {{")
+                self._indent += 1
+                for i, v in enumerate(ty.variants):
+                    self._line(f"{cname}_{v.name.upper()} = {i},")
+                self._indent -= 1
+                self._line("};")
+                self._line("")
+            else:
+                self._line(f"typedef struct {cname} {cname};")
         self._line("")
         # Full struct definitions for imported local types
-        self._emit_imported_type_defs()
+        self._emit_imported_type_defs(stdlib_lookup_names)
 
     def _imported_local_types(self) -> list[tuple[str, Type]]:
         """Collect types imported from local modules (not defined in this module).
@@ -78,6 +92,7 @@ class TypeEmitterMixin:
                 "Option",
                 "List",
                 "Table",
+                "Position",  # defined in prove_terminal.h runtime header
             )
         )
         local_type_names = {td.name for td in self._all_type_defs()}
@@ -136,15 +151,31 @@ class TypeEmitterMixin:
                     result.add(name)
         return result
 
-    def _emit_imported_type_defs(self) -> None:
+    def _emit_imported_type_defs(self, stdlib_lookup_names: set[str] | None = None) -> None:
         """Emit full struct definitions for imported local types.
 
         Constructors are only emitted for directly imported types — transitive
         field dependencies only need the struct definition (no constructor), to
         avoid name collisions with locally-defined constructors.
         """
+        skip = stdlib_lookup_names or set()
         direct_names = self._direct_imported_local_type_names()
         for name, ty in self._imported_local_types():
+            if name in skip:
+                # Lookup types were fully emitted as enums in _emit_type_forwards
+                if name in direct_names:
+                    cname = mangle_type_name(name)
+                    for v in ty.variants:
+                        tag = f"{cname}_{v.name.upper()}"
+                        self._line(f"static inline {cname} {v.name}(void) {{")
+                        self._indent += 1
+                        self._line(f"{cname} _v;")
+                        self._line(f"_v = {tag};")
+                        self._line("return _v;")
+                        self._indent -= 1
+                        self._line("}")
+                        self._line("")
+                continue
             cname = mangle_type_name(name)
             if isinstance(ty, RecordType):
                 self._emit_record_struct(cname, ty.fields)
@@ -154,6 +185,30 @@ class TypeEmitterMixin:
                 self._emit_algebraic_struct(cname, ty.variants)
                 if name in direct_names and not self._is_inherited_base_type(name):
                     self._emit_variant_constructors(cname, ty.variants)
+
+    _stdlib_lookup_cache: dict[str, bool] | None = None
+
+    @classmethod
+    def _is_stdlib_lookup_type(cls, name: str) -> bool:
+        """Check if a type name is a lookup type in any stdlib module."""
+        if cls._stdlib_lookup_cache is None:
+            cls._stdlib_lookup_cache = {}
+            from prove.parse import parse as parse_source
+            from prove.stdlib_loader import load_stdlib_prv_source
+
+            for mod_name in ("UI", "Terminal", "Graphic"):
+                src = load_stdlib_prv_source(mod_name)
+                if not src:
+                    continue
+                try:
+                    mod = parse_source(src, f"<stdlib:{mod_name}>")
+                except Exception:
+                    continue
+                for decl in mod.declarations:
+                    if hasattr(decl, "types"):
+                        for td in decl.types:
+                            cls._stdlib_lookup_cache[td.name] = isinstance(td.body, LookupTypeDef)
+        return cls._stdlib_lookup_cache.get(name, False)
 
     def _emit_record_to_value_converters(self) -> None:
         """Emit static functions that convert record structs to Prove_Value*.

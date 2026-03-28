@@ -691,9 +691,14 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
     # Find Prove_XXX type names already typedef'd in this module
     existing_types: set[str] = set()
     for line in lines:
-        m = re.match(r"\s*typedef\s+struct\s+(Prove_\w+)\s+\1\s*;", line)
+        m = re.match(r"\s*typedef\s+(?:struct|enum)\s+(Prove_\w+)\s+\1\s*;", line)
         if m:
             existing_types.add(m.group(1))
+        m = re.match(r"\s*enum\s+(Prove_\w+)\s*\{", line)
+        if m:
+            existing_types.add(m.group(1))
+    # Types defined in runtime headers — always skip injection
+    existing_types.add("Prove_Position")
 
     # Find insertion point after the emitter's type section:
     # scan forward past the last typedef/struct/static-inline/enum block
@@ -703,7 +708,9 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
         stripped = lines[i].strip()
         if (
             stripped.startswith("typedef struct Prove_")
+            or stripped.startswith("typedef enum Prove_")
             or stripped.startswith("struct Prove_")
+            or stripped.startswith("enum Prove_")
             or stripped.startswith("static inline Prove_")
             or stripped.startswith("static inline " + "Prove_")  # constructors
             or (stripped.startswith("enum {") and i > insert_at)
@@ -756,9 +763,28 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
             if current:
                 blocks.append(current)
 
-            filtered_blocks = [
-                b for b in blocks if not any(t in "\n".join(b) for t in existing_types)
-            ]
+            def _block_is_duplicate(block: list[str]) -> bool:
+                """Check if a block is a duplicate definition for an existing type."""
+                first = block[0].strip() if block else ""
+                for t in existing_types:
+                    # Typedef forward declarations
+                    if first == f"typedef struct {t} {t};":
+                        return True
+                    if first == f"typedef enum {t} {t};":
+                        return True
+                    # Full type body definitions
+                    if first == f"enum {t} {{" or first == f"struct {t} {{":
+                        return True
+                    # Anonymous tag enum for this type
+                    if first == "enum {" and f"{t}_TAG_" in "\n".join(block):
+                        return True
+                    # Constructor/function returning this type (already emitted
+                    # by the target module's _emit_imported_type_defs)
+                    if first.startswith(f"static inline {t} "):
+                        return True
+                return False
+
+            filtered_blocks = [b for b in blocks if not _block_is_duplicate(b)]
             type_defs = "\n\n".join("\n".join(b) for b in filtered_blocks)
 
         if type_defs.strip():

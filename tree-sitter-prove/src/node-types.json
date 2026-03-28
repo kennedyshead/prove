@@ -479,6 +479,10 @@
           "named": true
         },
         {
+          "type": "match_expression",
+          "named": true
+        },
+        {
           "type": "parenthesized_expression",
           "named": true
         },

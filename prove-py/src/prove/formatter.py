@@ -735,7 +735,14 @@ class ProveFormatter:
         value = self._format_expr(vd.value)
         line = f"{name} as{type_ann} = {value}"
         if self._indent_level * 4 + len(line) > self.MAX_LINE_LENGTH:
-            line = f"{name} as{type_ann} =\n    {value}"
+            # For match expressions, keep "name = match subject" on one line
+            # so the tree-sitter parser can parse it as match-in-assignment.
+            if isinstance(vd.value, MatchExpr) and "\n" in value:
+                first_line = value.split("\n", 1)[0]
+                rest = value.split("\n", 1)[1]
+                line = f"{name} as{type_ann} = {first_line}\n{rest}"
+            else:
+                line = f"{name} as{type_ann} =\n    {value}"
         return line
 
     def _format_assignment(self, assign: Assignment) -> str:
@@ -872,14 +879,13 @@ class ProveFormatter:
                     break
                 col += len(arg_strs[i]) + 2  # skip past this arg + ", "
 
-            # Fall back to per-argument multiline: hanging indent
+            # Fall back to per-argument multiline: indent args 4 spaces
+            # relative to the call (not absolute indent_level, since
+            # _indent() from callers already adds the base indentation).
             if len(arg_strs) > 1:
-                self._indent_level += 1
-                arg_strs = [self._format_expr(a) for a in expr.args]
-                self._indent_level -= 1
-                inner_indent = "    " * (self._indent_level + 1)
-                sep = ",\n" + inner_indent
-                return f"{func}(\n{inner_indent}{sep.join(arg_strs)}){suffix}"
+                rel_indent = "    "
+                sep = ",\n" + rel_indent
+                return f"{func}(\n{rel_indent}{sep.join(arg_strs)}){suffix}"
 
         return result
 

@@ -25,7 +25,7 @@ static const struct { const char *name; const char *esc; } _ansi_map[] = {
 Prove_String *prove_ansi_escape(Prove_String *name) {
     if (!name) return prove_string_from_cstr("");
     for (size_t i = 0; i < sizeof(_ansi_map) / sizeof(_ansi_map[0]); i++) {
-        if (name->length == strlen(_ansi_map[i].name) &&
+        if ((size_t)name->length == strlen(_ansi_map[i].name) &&
             memcmp(name->data, _ansi_map[i].name, name->length) == 0) {
             return prove_string_from_cstr(_ansi_map[i].esc);
         }

@@ -500,9 +500,20 @@ class CEmitter(
                     header = self._STDLIB_HEADERS.get(imp.module)
                     if header:
                         self._needed_headers.add(header)
+                    # Table's table() function uses prove_value_as_object
+                    # from prove_parse.h
+                    if imp.module == "Table" and any(item.name == "table" for item in imp.items):
+                        self._needed_headers.add("prove_parse.h")
                 for td in decl.types:
                     if isinstance(td.body, LookupTypeDef) and td.body.is_binary:
                         self._needed_headers.add("prove_lookup.h")
+                # Also check if imported types include stdlib lookup types
+                from prove._emit_types import TypeEmitterMixin
+
+                for _name, _ty in self._imported_local_types():
+                    if TypeEmitterMixin._is_stdlib_lookup_type(_name):
+                        self._needed_headers.add("prove_lookup.h")
+                        break
                 if not found_coro:
                     for inner in decl.body:
                         if isinstance(inner, FunctionDef) and inner.verb in (
@@ -2037,6 +2048,10 @@ class CEmitter(
             resolved = self._symbols.resolve_type(expr.name)
             if resolved:
                 return resolved
+            # ALL_CAPS names may be constants parsed as TypeIdentifierExpr
+            sym = self._symbols.lookup(expr.name)
+            if sym:
+                return sym.resolved_type
             return ERROR_TY
 
         if isinstance(expr, BinaryExpr):

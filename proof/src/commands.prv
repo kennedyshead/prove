@@ -65,14 +65,14 @@ from
             no_intent as Boolean = contains(arguments, "--no-intent")
             nlp_status as Boolean = contains(arguments, "--nlp--status")
             pycheck(
-                            cwd(),
-                            md,
-                            strict,
-                            no_coherence,
-                            no_challenges,
-                            no_status,
-                            no_intent,
-                            nlp_status)!
+                cwd(),
+                md,
+                strict,
+                no_coherence,
+                no_challenges,
+                no_status,
+                no_intent,
+                nlp_status)!
             Unit
 
 /// Run the format command

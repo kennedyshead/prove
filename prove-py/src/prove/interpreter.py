@@ -93,6 +93,8 @@ class ComptimeInterpreter:
             return value
         if isinstance(stmt, ExprStmt):
             return self._eval_expr(stmt.expr)
+        if isinstance(stmt, MatchExpr):
+            return self._eval_match(stmt)
         if isinstance(stmt, CommentStmt):
             return None
         if isinstance(stmt, (TailLoop, TailContinue)):

@@ -70,14 +70,14 @@ from
         _ =>
             actual_code as String = get(split(string(node), "\n"), line(module_node) - 1)
             diagnostic(DiagnosticMessage(
-                            Severity.Error,
-                            210,
-                            source.path,
-                            name,
-                            "Expected module name but found",
-                            line(module_node),
-                            column(module_node),
-                            actual_code))&
+                Severity.Error,
+                210,
+                source.path,
+                name,
+                "Expected module name but found",
+                line(module_node),
+                column(module_node),
+                actual_code))&
             false
 
 validates lint_file(source SourceFile)

@@ -37,6 +37,9 @@ module.exports = grammar({
     [$.import_verb, $.function_definition],
     [$.intent_verb_phrase],
     [$.import_declaration, $.import_group],
+    [$.assignment, $.pipe_expression],
+    [$.variable_declaration, $.binary_expression],
+    [$.expression, $._statement],
   ],
 
   rules: {
@@ -570,6 +573,7 @@ module.exports = grammar({
       $.invalid_expression,
       $.lambda_expression,
       $.parenthesized_expression,
+      $.match_expression,
       $.list_literal,
       $._literal,
       $.identifier,
