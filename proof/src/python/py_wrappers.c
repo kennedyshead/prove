@@ -39,47 +39,85 @@ void py_initialize(void) {
   Py_Initialize();
   /* Only unpack the bundle if the build actually included Python packages. */
   if (prove_bundle_zip_len > 0) {
-    /* Write the bundled prove package to a zip under a build/ directory beside
-     * the binary and prepend to sys.path so `import prove` works regardless of
-     * the working directory. */
-    extern const char *__prove_binary_path;  /* set by main before py_initialize */
-    const char *bin_path = __prove_binary_path;
-    char bundle_dir[4096];
-    char bundle_path[4096];
-    if (bin_path) {
-      const char *last_slash = strrchr(bin_path, '/');
-      size_t dir_len = last_slash ? (size_t)(last_slash - bin_path) : 1;
-      snprintf(bundle_dir, sizeof(bundle_dir), "%.*s/build",
-               (int)dir_len, last_slash ? bin_path : ".");
+    /* Write the bundled zip next to the binary and extract it so both .py
+     * and native extensions (.so/.dylib) are importable.  Uses the real
+     * executable path so it works regardless of cwd. */
+    char exe_path[4096];
+    char bundle_base[4096];
+    char zip_path[4096];
+    char extract_dir[4096];
+
+#ifdef __APPLE__
+    {
+      uint32_t sz = sizeof(exe_path);
+      extern int _NSGetExecutablePath(char *, uint32_t *);
+      if (_NSGetExecutablePath(exe_path, &sz) != 0) {
+        exe_path[0] = '\0';
+      } else {
+        /* Resolve symlinks so the bundle lands next to the real binary. */
+        char *rp = realpath(exe_path, NULL);
+        if (rp) { strncpy(exe_path, rp, sizeof(exe_path) - 1); free(rp); }
+      }
+    }
+#elif defined(__linux__)
+    {
+      ssize_t n = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+      if (n > 0) exe_path[n] = '\0'; else exe_path[0] = '\0';
+    }
+#else
+    exe_path[0] = '\0';
+#endif
+
+    if (exe_path[0]) {
+      const char *last_slash = strrchr(exe_path, '/');
+      size_t dir_len = last_slash ? (size_t)(last_slash - exe_path) : 1;
+      snprintf(bundle_base, sizeof(bundle_base), "%.*s/.prove",
+               (int)dir_len, last_slash ? exe_path : ".");
     } else {
-      snprintf(bundle_dir, sizeof(bundle_dir), "build");
+      snprintf(bundle_base, sizeof(bundle_base), ".prove");
     }
-    mkdir(bundle_dir, 0755);
-    snprintf(bundle_path, sizeof(bundle_path), "%s/.prove_bundle.zip", bundle_dir);
-    /* Check if bundle already exists with correct size — skip rewrite to avoid
-     * races when multiple proof processes run in parallel (e.g. e2e tests). */
-    bool needs_write = true;
+    mkdir(bundle_base, 0755);
+    snprintf(zip_path, sizeof(zip_path), "%s/bundle.zip", bundle_base);
+    snprintf(extract_dir, sizeof(extract_dir), "%s/bundle", bundle_base);
+
+    /* Check if zip already exists with correct size — skip rewrite. */
+    bool needs_extract = true;
     struct stat st;
-    if (stat(bundle_path, &st) == 0 &&
+    if (stat(zip_path, &st) == 0 &&
         (size_t)st.st_size == prove_bundle_zip_len) {
-      needs_write = false;
+      /* Zip is current; only re-extract if bundle dir is missing. */
+      struct stat dir_st;
+      if (stat(extract_dir, &dir_st) == 0 && S_ISDIR(dir_st.st_mode)) {
+        needs_extract = false;
+      }
     }
-    if (needs_write) {
-      /* Atomic write: create temp file, write, rename over target. */
+    if (needs_extract) {
+      /* Write zip to disk. */
       char tmp_path[4096];
-      snprintf(tmp_path, sizeof(tmp_path), "%s.%d", bundle_path, getpid());
+      snprintf(tmp_path, sizeof(tmp_path), "%s.%d", zip_path, getpid());
       int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
       if (fd >= 0) {
         write(fd, prove_bundle_zip, prove_bundle_zip_len);
         close(fd);
-        rename(tmp_path, bundle_path);
+        rename(tmp_path, zip_path);
       }
+      /* Extract zip to .prove/bundle/ via Python's zipfile module. */
+      char extract_code[4096];
+      snprintf(extract_code, sizeof(extract_code),
+               "import zipfile, shutil, os\n"
+               "d = '%s'\n"
+               "if os.path.isdir(d): shutil.rmtree(d)\n"
+               "os.makedirs(d, exist_ok=True)\n"
+               "zipfile.ZipFile('%s').extractall(d)\n",
+               extract_dir, zip_path);
+      PyRun_SimpleString(extract_code);
     }
+    /* Prepend .prove/bundle/ to sys.path so all packages are importable. */
     PyObject *sys_mod = PyImport_ImportModule("sys");
     PyObject *path = PyObject_GetAttrString(sys_mod, "path");
-    PyObject *zip_str = PyUnicode_FromString(bundle_path);
-    PyList_Insert(path, 0, zip_str);
-    Py_DECREF(zip_str);
+    PyObject *dir_str = PyUnicode_FromString(extract_dir);
+    PyList_Insert(path, 0, dir_str);
+    Py_DECREF(dir_str);
     Py_DECREF(path);
     Py_DECREF(sys_mod);
   }

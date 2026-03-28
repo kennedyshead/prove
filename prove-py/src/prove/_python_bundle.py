@@ -165,10 +165,15 @@ def _find_used_files(entry_files: set[Path]) -> dict[str, Path]:
                     # platform-specific modules (e.g. click._winconsole on non-Windows)
                     # that raise unconditionally on import.
                     continue
-                if spec is None or not spec.origin or not spec.origin.endswith(".py"):
+                if spec is None or not spec.origin:
                     continue
 
                 origin = Path(spec.origin)
+                # Native extensions (.so/.dylib) — register but don't scan for imports
+                if not spec.origin.endswith(".py"):
+                    _register(module_name, origin)
+                    continue
+
                 _register(module_name, origin)
                 # Compute the package name for this file so its relative imports resolve.
                 # __init__.py files ARE the package; regular files belong to the parent package.
@@ -414,8 +419,8 @@ def _find_files_on_disk(entry_files: set[Path]) -> dict[str, Path]:
 
 
 def _is_bundle_zip(path_entry: str) -> bool:
-    """True if a sys.path entry is a prove bundle zip."""
-    return path_entry.endswith(".zip") and "prove_bundle" in path_entry
+    """True if a sys.path entry is a prove bundle zip or extracted bundle dir."""
+    return "prove_bundle" in path_entry or path_entry.endswith(".prove/bundle")
 
 
 def _find_existing_bundle_zip() -> Path | None:
@@ -433,6 +438,105 @@ def _find_existing_bundle_zip() -> Path | None:
             if p.is_file():
                 return p
     return None
+
+
+def _target_python_version() -> str | None:
+    """Extract the target Python version from PROVE_PYTHON_CFLAGS.
+
+    Returns e.g. '3.13' if the env var contains 'python3.13', else None.
+    """
+    import re
+
+    cflags = os.environ.get("PROVE_PYTHON_CFLAGS", "")
+    m = re.search(r"python(\d+\.\d+)", cflags)
+    return m.group(1) if m else None
+
+
+def _target_python_exe() -> str | None:
+    """Find the python executable matching the target version."""
+    import shutil
+
+    ver = _target_python_version()
+    if ver is None:
+        return None
+    import sys
+
+    # If we're already running the target version, no special handling needed
+    current = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if current == ver:
+        return None
+    exe = shutil.which(f"python{ver}")
+    return exe
+
+
+def _get_native_ext_venv() -> Path | None:
+    """Create/reuse a build venv matching the target Python for native extensions.
+
+    Returns the site-packages path, or None if not needed/possible.
+    """
+    import subprocess
+
+    exe = _target_python_exe()
+    if exe is None:
+        return None
+
+    venv_dir = Path(".prove") / "build-venv"
+    sp_pattern = venv_dir / "lib" / "python*" / "site-packages"
+    import glob as _g
+
+    existing = _g.glob(str(sp_pattern))
+    if existing:
+        return Path(existing[0])
+
+    # Create venv with the target Python
+    print(f"creating build venv with {exe} for native extension bundling...")
+    subprocess.run([exe, "-m", "venv", str(venv_dir)], check=True)
+
+    existing = _g.glob(str(sp_pattern))
+    return Path(existing[0]) if existing else None
+
+
+def _ensure_native_ext_installed(venv_sp: Path, pkg_name: str, install_args: list[str]) -> None:
+    """Install a package in the build venv if not present."""
+    import subprocess
+
+    pkg_dir = venv_sp / pkg_name
+    if pkg_dir.is_dir():
+        return
+    pip = venv_sp.parent.parent.parent / "bin" / "pip"
+    print(f"installing {pkg_name} in build venv...")
+    subprocess.run([str(pip), "install", "-q"] + install_args, check=True)
+
+
+def _add_package_files(pkg_dir: Path, parent: Path, files: dict[str, Path]) -> None:
+    """Walk a package directory and add all files to the bundle."""
+    parent = parent.resolve()
+    for dirpath, dirnames, filenames in os.walk(pkg_dir, followlinks=True):
+        dirnames[:] = [d for d in sorted(dirnames) if d not in _SKIP_DIRS]
+        for fname in sorted(filenames):
+            f = Path(dirpath) / fname
+            if f.suffix in _SKIP_SUFFIXES:
+                continue
+            try:
+                arc = str(f.resolve().relative_to(parent))
+            except ValueError:
+                continue
+            files[arc] = f
+
+
+def _ensure_package_bundled(pkg_name: str, files: dict[str, Path]) -> None:
+    """Add all files from an installed package to the bundle if available."""
+    try:
+        spec = importlib.util.find_spec(pkg_name)
+    except (ModuleNotFoundError, ValueError):
+        return
+    if spec is None or not spec.submodule_search_locations:
+        return
+    pkg_dir = Path(next(iter(spec.submodule_search_locations))).resolve()
+    if not pkg_dir.is_dir():
+        return
+    parent = pkg_dir.parent
+    _add_package_files(pkg_dir, parent, files)
 
 
 def maybe_generate_bundle(
@@ -481,6 +585,28 @@ def maybe_generate_bundle(
         return False
 
     files = _find_used_files(py_entry_files)
+
+    # Ensure tree-sitter packages are bundled (imported inside try/except in
+    # prove.parse so _find_used_files misses them, but required at runtime).
+    # When the build Python differs from the target (embedded) Python, native
+    # extensions must come from a venv matching the target version.
+    _native_venv_sp = _get_native_ext_venv()
+    if _native_venv_sp is not None:
+        # Target Python differs — remove wrong-version files that
+        # _find_used_files may have added, then bundle from build venv.
+        for arc in list(files):
+            if arc.startswith(("tree_sitter/", "tree_sitter_prove/")):
+                del files[arc]
+        _ts_prove_dir = str(
+            Path(__file__).resolve().parent.parent.parent.parent / "tree-sitter-prove"
+        )
+        _ensure_native_ext_installed(_native_venv_sp, "tree_sitter", ["tree-sitter"])
+        _ensure_native_ext_installed(_native_venv_sp, "tree_sitter_prove", [_ts_prove_dir])
+        _add_package_files(_native_venv_sp / "tree_sitter", _native_venv_sp, files)
+        _add_package_files(_native_venv_sp / "tree_sitter_prove", _native_venv_sp, files)
+    else:
+        _ensure_package_bundled("tree_sitter", files)
+        _ensure_package_bundled("tree_sitter_prove", files)
 
     # If all resolved files are inside a zip (running from a bundled binary),
     # the bundle zip shadows the real installed package.  Augment sys.path
@@ -546,12 +672,15 @@ def maybe_generate_bundle(
     out_path = gen_dir / "prove_bundle_data.h"
     _write_c_header(data, out_path)
 
+    _NATIVE_SUFFIXES = (".so", ".dylib", ".pyd")
     py_count = sum(1 for p in files if p.endswith(".py"))
-    data_count = len(files) - py_count
+    native_count = sum(1 for p in files if any(p.endswith(s) for s in _NATIVE_SUFFIXES))
+    data_count = len(files) - py_count - native_count
+    native_note = f" + {native_count} native extensions" if native_count else ""
     data_note = f" + {data_count} data files" if data_count else ""
     libpython_note = " + libpython3 (static)" if standalone else ""
     print(
-        f"bundled python packages → {py_count} source files{data_note},"
+        f"bundled python packages → {py_count} source files{native_note}{data_note},"
         f" {len(data):,} bytes{libpython_note}"
     )
     return True

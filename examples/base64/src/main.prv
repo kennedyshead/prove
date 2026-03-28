@@ -48,11 +48,10 @@ from
     match valid bytearray(decoded_check)
         true => console("Verify: ok")
         _ => console("Verify: FAILED")
-    // Encode the data once for decode loop
     encoded as String = base64(data)
     // Run encode loop
     total_encoded as Integer = encode_loop(data, ITERATIONS, 0)
-    console(f"Encode: {total_encoded} bytes")
+    console(f"{t}{t}{t}{t}{total_encoded}\\\\\\\"\")")
     // Run decode loop
     total_decoded as Integer = decode_loop(encoded, ITERATIONS, 0)
-    console(f"Decode: {total_decoded} iterations")
+    console(f"{t}{t}{t}{t}{total_decoded}\\\\\\\\\\\\\\\\\"\")")

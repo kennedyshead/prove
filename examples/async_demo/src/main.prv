@@ -28,7 +28,7 @@ listens handler(registered_attached_verbs List<Attached>)
   event_type Event
 from
     Data(payload) =>
-        debug(f"Event double says: {string(payload)} from attached")&
+        debug(f"n{strin}{strin}{strin}{string(payload)}\\\"\\\"\"\\\\\\\"\")\n  ")&
         Exit()
     Exit => Unit
 

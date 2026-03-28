@@ -7,11 +7,11 @@ module Check
   outputs lint messages
   matches the declaration and lint
   """
-  System validates dir
+  System validates dir inputs file
   Prove types Node reads root creates children named_children kind line column
   Source types SourceFile
   Types creates string validates boolean
-  Log types DiagnosticMessage Severity detached info error diagnostic
+  Log types DiagnosticMessage Severity detached info error diagnostic debug warning
   Sequence reads first get
   Text creates split
 
@@ -25,11 +25,39 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-outputs lint_module(node Node, source SourceFile) Boolean!
+matches lint_node(node_kind String, node Node, source SourceFile) Boolean
+  ensures valid boolean(result)
+  requires valid string(node_kind)
+from
+    "module"
+    "module_declaration" => lint_module(node, source)
+    "narrative_annotation" =>
+        info(f"NARRATIVE {string(node)}")&
+        true
+    "import_declaration" =>
+        debug(f"IMPORT {string(node)}")&
+        true
+    "constant_definition" =>
+        debug(f"CONSTANT {string(node)}")&
+        true
+    "function_definition" =>
+        debug(f"FUNCTION {string(node)}")&
+        true
+    "type_definition" =>
+        debug(f"TYPE {string(node)}")&
+        true
+    "foreign_block" =>
+        // debug(f"TYPE {string(node)}")&
+        true
+    _ =>
+        warning(f"missing lint for {node_kind}")&
+        true
+
+validates lint_module(node Node, source SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
-      the childrens and uses first as module name
+      gets the childrens and uses first as module name
 from
     names as List<Node> = named_children(node)
     module_node as Node = first(names)
@@ -38,7 +66,7 @@ from
     match node_kind
         "type_identifier" =>
             info(f"Linting module {name}")&
-            false
+            any(children(node), |child| lint_node(kind(child), child, source))
         _ =>
             actual_code as String = get(split(string(node), "\n"), line(module_node) - 1)
             diagnostic(DiagnosticMessage(
@@ -52,17 +80,15 @@ from
                             actual_code))&
             true
 
-outputs lint_file(source SourceFile) Boolean!
+validates lint_file(source SourceFile)
+  ensures valid boolean(result)
+  requires valid file(source.path)
 from
-    match any(children(root(source.source)), |node| lint_module(node, source)!)
-        true =>
-            error(f"{source.path}")&
-            false
-        _ => true
+    all(children(root(source.source)), |node| lint_node(kind(node), node, source))
 
 outputs lint(source List<SourceFile>) Boolean!
 from
-    all(source, |file| lint_file(file)!)
+    all(source, |file| lint_file(file))
 
 outputs pycheck(
     path String,

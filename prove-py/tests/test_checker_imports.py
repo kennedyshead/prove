@@ -259,3 +259,26 @@ class TestConstantImport:
             "module Main\n  Log NONEXISTENT\n\nmain()\n    from\n        0\n",
             "E315",
         )
+
+
+class TestSelfImport:
+    """Test E318 self-import detection."""
+
+    def test_self_import_errors(self):
+        """E318: module importing from itself should error."""
+        check_fails(
+            "module Foo\n  Foo outputs bar\n\noutputs bar() Unit\n    from\n        0\n",
+            "E318",
+        )
+
+    def test_self_import_case_insensitive(self):
+        """E318: self-import detection is case-insensitive."""
+        check_fails(
+            "module MyMod\n"
+            "  Mymod outputs something\n"
+            "\n"
+            "outputs something() Unit\n"
+            "    from\n"
+            "        0\n",
+            "E318",
+        )

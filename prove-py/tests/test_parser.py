@@ -24,6 +24,7 @@ from prove.ast_nodes import (
     InvariantNetwork,
     LambdaExpr,
     ListLiteral,
+    LiteralPattern,
     LookupAccessExpr,
     LookupTypeDef,
     MainDef,
@@ -525,6 +526,51 @@ class TestParserImplicitMatch:
         # First should be VarDecl, then MatchExpr
         assert isinstance(decl.body[0], VarDecl)
         assert isinstance(decl.body[1], MatchExpr)
+
+
+class TestParserMultiPatternMatch:
+    """Multi-pattern match arms desugar into one arm per pattern."""
+
+    def test_multi_pattern_produces_duplicate_arms(self):
+        from prove.parse import parse as cst_parse
+
+        source = (
+            "matches route(path String) String\n"
+            "    from\n"
+            '        "foo"\n'
+            '        "bar" => "matched"\n'
+            '        _ => "other"\n'
+        )
+        mod = cst_parse(source, "test.prv")
+        decl = mod.declarations[0]
+        assert isinstance(decl, FunctionDef)
+        match_expr = decl.body[0]
+        assert isinstance(match_expr, MatchExpr)
+        # "foo" and "bar" should each be their own arm, plus the wildcard
+        assert len(match_expr.arms) == 3
+        assert isinstance(match_expr.arms[0].pattern, LiteralPattern)
+        assert match_expr.arms[0].pattern.value == "foo"
+        assert isinstance(match_expr.arms[1].pattern, LiteralPattern)
+        assert match_expr.arms[1].pattern.value == "bar"
+        # Both share the same body
+        assert len(match_expr.arms[0].body) == len(match_expr.arms[1].body)
+
+    def test_three_patterns_same_arm(self):
+        from prove.parse import parse as cst_parse
+
+        source = (
+            "matches kind(tag String) String\n"
+            "    from\n"
+            '        "a"\n'
+            '        "b"\n'
+            '        "c" => "letter"\n'
+            '        _ => "other"\n'
+        )
+        mod = cst_parse(source, "test.prv")
+        decl = mod.declarations[0]
+        match_expr = decl.body[0]
+        assert isinstance(match_expr, MatchExpr)
+        assert len(match_expr.arms) == 4
 
 
 class TestParserConstants:

@@ -40,22 +40,7 @@ from
             match ch == 43
                 true =>
                     a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 0), op_count * 2 + 1, 1)
-                    parse_char(source,
-                               src_len,
-                               src_idx + 1,
-                               a0,
-                               op_count + 1,
-                               stack,
-                               stack_top)
-                _ =>
-                    parse_char_minus(source,
-                                     src_len,
-                                     src_idx,
-                                     ch,
-                                     op_arr,
-                                     op_count,
-                                     stack,
-                                     stack_top)
+            parse_char(source, src_len, src_idx + 1, a0, op_count + 1, stack, stack_top)
 
 /// Continue parsing: check for minus
 transforms parse_char_minus(
@@ -75,14 +60,15 @@ from
             a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 1), op_count * 2 + 1, 1)
             parse_char(source, src_len, src_idx + 1, a0, op_count + 1, stack, stack_top)
         _ =>
-            parse_char_right(source,
-                             src_len,
-                             src_idx,
-                             ch,
-                             op_arr,
-                             op_count,
-                             stack,
-                             stack_top)
+            parse_char_right(
+                            source,
+                            src_len,
+                            src_idx,
+                            ch,
+                            op_arr,
+                            op_count,
+                            stack,
+                            stack_top)
 
 /// Continue parsing: check for right
 transforms parse_char_right(
@@ -102,7 +88,8 @@ from
             a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 2), op_count * 2 + 1, 1)
             parse_char(source, src_len, src_idx + 1, a0, op_count + 1, stack, stack_top)
         _ =>
-            parse_char_left(source,
+            parse_char_left(
+                            source,
                             src_len,
                             src_idx,
                             ch,
@@ -129,14 +116,15 @@ from
             a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 3), op_count * 2 + 1, 1)
             parse_char(source, src_len, src_idx + 1, a0, op_count + 1, stack, stack_top)
         _ =>
-            parse_char_dot(source,
-                           src_len,
-                           src_idx,
-                           ch,
-                           op_arr,
-                           op_count,
-                           stack,
-                           stack_top)
+            parse_char_dot(
+                            source,
+                            src_len,
+                            src_idx,
+                            ch,
+                            op_arr,
+                            op_count,
+                            stack,
+                            stack_top)
 
 /// Continue parsing: check for dot (print)
 transforms parse_char_dot(
@@ -156,14 +144,15 @@ from
             a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 4), op_count * 2 + 1, 0)
             parse_char(source, src_len, src_idx + 1, a0, op_count + 1, stack, stack_top)
         _ =>
-            parse_char_bracket(source,
-                               src_len,
-                               src_idx,
-                               ch,
-                               op_arr,
-                               op_count,
-                               stack,
-                               stack_top)
+            parse_char_bracket(
+                            source,
+                            src_len,
+                            src_idx,
+                            ch,
+                            op_arr,
+                            op_count,
+                            stack,
+                            stack_top)
 
 /// Continue parsing: check for open/close brackets
 transforms parse_char_bracket(
@@ -182,34 +171,27 @@ from
         true =>
             new_stack as Array<Integer>:[Mutable] = set(stack, stack_top, op_count)
             a0 as Array<Integer>:[Mutable] = set(set(op_arr, op_count * 2, 5), op_count * 2 + 1, 0)
-            parse_char(source,
-                       src_len,
-                       src_idx + 1,
-                       a0,
-                       op_count + 1,
-                       new_stack,
-                       stack_top + 1)
+            parse_char(
+                            source,
+                            src_len,
+                            src_idx + 1,
+                            a0,
+                            op_count + 1,
+                            new_stack,
+                            stack_top + 1)
         _ =>
             match ch == 93
-                true =>
-                    open_idx as Integer = get(stack, stack_top - 1)
-                    patched as Array<Integer>:[Mutable] = set(op_arr, open_idx * 2 + 1, op_count)
-                    a0 as Array<Integer>:[Mutable] = set(set(patched, op_count * 2, 6), op_count * 2 + 1, open_idx)
-                    parse_char(source,
-                               src_len,
-                               src_idx + 1,
-                               a0,
-                               op_count + 1,
-                               stack,
-                               stack_top - 1)
-                _ =>
-                    parse_char(source,
-                               src_len,
-                               src_idx + 1,
-                               op_arr,
-                               op_count,
-                               stack,
-                               stack_top)
+                true => open_idx as Integer = get(stack, stack_top - 1)
+            patched as Array<Integer>:[Mutable] = set(op_arr, open_idx * 2 + 1, op_count)
+            a0 as Array<Integer>:[Mutable] = set(set(patched, op_count * 2, 6), op_count * 2 + 1, open_idx)
+            parse_char(
+                            source,
+                            src_len,
+                            src_idx + 1,
+                            a0,
+                            op_count + 1,
+                            stack,
+                            stack_top - 1)
 
 /// Count BF opcodes in source for array sizing
 reads count_ops(source String, src_len Integer, idx Integer, acc Integer) Integer
@@ -221,42 +203,6 @@ from
             ch as Integer = code(at(source, idx))
             match ch == 43
                 true => count_ops(source, src_len, idx + 1, acc + 1)
-                _ =>
-                    match ch == 45
-                        true => count_ops(source, src_len, idx + 1, acc + 1)
-                        _ =>
-                            match ch == 62
-                                true => count_ops(source, src_len, idx + 1, acc + 1)
-                                _ =>
-                                    match ch == 60
-                                        true =>
-                                            count_ops(source, src_len, idx + 1, acc + 1)
-                                        _ =>
-                                            match ch == 46
-                                                true =>
-                                                    count_ops(source,
-                                                              src_len,
-                                                              idx + 1,
-                                                              acc + 1)
-                                                _ =>
-                                                    match ch == 91
-                                                        true =>
-                                                            count_ops(source,
-                                                                      src_len,
-                                                                      idx + 1,
-                                                                      acc + 1)
-                                                        _ =>
-                                                            match ch == 93
-                                                                true =>
-                                                                    count_ops(source,
-                                                                              src_len,
-                                                                              idx + 1,
-                                                                              acc + 1)
-                                                                _ =>
-                                                                    count_ops(source,
-                                                                              src_len,
-                                                                              idx + 1,
-                                                                              acc)
 
 /// Main dispatch loop — all opcodes inlined for full TCO
 transforms eval_dispatch(
@@ -276,101 +222,9 @@ from
             op_type as Integer = get(ops, pc * 2)
             op_arg as Integer = get(ops, pc * 2 + 1)
             match op_type == 0
-                true =>
-                    raw as Integer = get(tape, ptr) + op_arg
-                    val as Integer = raw % 256
-                    eval_dispatch(ops,
-                                  op_count,
-                                  pc + 1,
-                                  set(tape, ptr, val),
-                                  ptr,
-                                  sum1,
-                                  sum2)
-                _ =>
-                    match op_type == 1
-                        true =>
-                            raw2 as Integer = get(tape, ptr) - op_arg + 256
-                            val2 as Integer = raw2 % 256
-                            eval_dispatch(ops,
-                                          op_count,
-                                          pc + 1,
-                                          set(tape, ptr, val2),
-                                          ptr,
-                                          sum1,
-                                          sum2)
-                        _ =>
-                            match op_type == 2
-                                true =>
-                                    eval_dispatch(ops,
-                                                  op_count,
-                                                  pc + 1,
-                                                  tape,
-                                                  ptr + op_arg,
-                                                  sum1,
-                                                  sum2)
-                                _ =>
-                                    match op_type == 3
-                                        true =>
-                                            eval_dispatch(ops,
-                                                          op_count,
-                                                          pc + 1,
-                                                          tape,
-                                                          ptr - op_arg,
-                                                          sum1,
-                                                          sum2)
-                                        _ =>
-                                            match op_type == 4
-                                                true =>
-                                                    byte as Integer = get(tape, ptr)
-                                                    raw_sum1 as Integer = sum1 + byte
-                                                    new_sum1 as Integer = raw_sum1 % 255
-                                                    raw_sum2 as Integer = sum2 + new_sum1
-                                                    new_sum2 as Integer = raw_sum2 % 255
-                                                    eval_dispatch(ops,
-                                                                  op_count,
-                                                                  pc + 1,
-                                                                  tape,
-                                                                  ptr,
-                                                                  new_sum1,
-                                                                  new_sum2)
-                                                _ =>
-                                                    match op_type == 5
-                                                        true =>
-                                                            match get(tape, ptr) == 0
-                                                                true =>
-                                                                    eval_dispatch(ops,
-                                                                                  op_count,
-                                                                                  op_arg + 1,
-                                                                                  tape,
-                                                                                  ptr,
-                                                                                  sum1,
-                                                                                  sum2)
-                                                                _ =>
-                                                                    eval_dispatch(ops,
-                                                                                  op_count,
-                                                                                  pc + 1,
-                                                                                  tape,
-                                                                                  ptr,
-                                                                                  sum1,
-                                                                                  sum2)
-                                                        _ =>
-                                                            match get(tape, ptr) == 0
-                                                                true =>
-                                                                    eval_dispatch(ops,
-                                                                                  op_count,
-                                                                                  pc + 1,
-                                                                                  tape,
-                                                                                  ptr,
-                                                                                  sum1,
-                                                                                  sum2)
-                                                                _ =>
-                                                                    eval_dispatch(ops,
-                                                                                  op_count,
-                                                                                  op_arg + 1,
-                                                                                  tape,
-                                                                                  ptr,
-                                                                                  sum1,
-                                                                                  sum2)
+                true => raw as Integer = get(tape, ptr) + op_arg
+            val as Integer = raw % 256
+            eval_dispatch(ops, op_count, pc + 1, set(tape, ptr, val), ptr, sum1, sum2)
 
 main() Result<Unit, Error>!
 from
@@ -382,4 +236,4 @@ from
     ops as Array<Integer>:[Mutable] = parse_char(source, src_len, 0, op_arr, 0, stack, 0)
     tape as Array<Integer>:[Mutable] = array(TAPE_SIZE, 0)
     checksum as Integer = eval_dispatch(ops, op_count, 0, tape, 0, 0, 0)
-    console(f"Output checksum: {checksum}")
+    console(f"e{che}{che}{che}{che}{checksum}")

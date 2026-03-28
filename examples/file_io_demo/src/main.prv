@@ -15,7 +15,6 @@ from
     match read_result
         Ok(text) => console(f"Read: {text}")
         Err(error) => console(f"Error reading: {error}")
-    // Validate a file exists
     exists as Boolean = valid file(test_file)
     console(f"File exists: {exists}")
     // List directory entries

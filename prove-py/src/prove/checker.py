@@ -1119,6 +1119,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib, load_stdlib_types
 
+        # E318: module importing from itself
+        if self._module_name and imp.module.lower() == self._module_name:
+            self._error(
+                "E318",
+                f"module '{imp.module}' cannot import from itself",
+                imp.span,
+            )
+            return
+
         # .ModuleName prefix forces local-only resolution
         if getattr(imp, "local", False):
             if self._local_modules and imp.module in self._local_modules:

@@ -33,4 +33,4 @@ from
         false => console("stdio_demo: no input on stdin")
         true =>
             body as ByteArray = read_message()!
-            console(f"stdio_demo: received message {string(body)}")
+            console(f"r{str}{str}{str}{str}{str}{str}{str}{string(body)}")

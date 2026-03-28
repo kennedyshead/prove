@@ -101,10 +101,10 @@ class CSTConverter:
     # ── Helpers ───────────────────────────────────────────────────
 
     def _span(self, node: TSNode) -> Span:
-        """Convert tree-sitter node position to Span (1-based lines)."""
+        """Convert tree-sitter node position to Span (1-based lines and columns)."""
         sr, sc = node.start_point
         er, ec = node.end_point
-        return Span(self.filename, sr + 1, sc, er + 1, ec)
+        return Span(self.filename, sr + 1, sc + 1, er + 1, ec + 1)
 
     def _text(self, node: TSNode) -> str:
         """Get the UTF-8 text of a node."""
@@ -625,6 +625,13 @@ class CSTConverter:
 
     # ── Type expressions ─────────────────────────────────────────
 
+    def _parse_type_from_text(self, text: str, ref_node: TSNode) -> TypeExpr | None:
+        """Best-effort type expr from raw text inside an ERROR node."""
+        text = text.strip()
+        if not text or not text[0].isupper():
+            return None
+        return SimpleType(text, self._span(ref_node))
+
     def _convert_type_expr(self, node: TSNode) -> TypeExpr:
         if node.type == "type_expression":
             # type_expression wraps simple_type, generic_type, or modified_type
@@ -1041,6 +1048,12 @@ class CSTConverter:
         # so we can absorb continuation statements into that arm.
         last_match_idx: int | None = None
         last_arm_col: int | None = None
+        # Buffer comments between implicit match arms so they can be
+        # prepended to the next arm's body instead of breaking grouping.
+        pending_arm_comments: list[Any] = []
+        # Buffer bare literal expressions that precede a match_arm — they
+        # become extra patterns sharing the next arm's body (multi-match).
+        pending_multi_patterns: list[Pattern] = []
 
         for child in node.children:
             if not child.is_named and self._text(child) == "from":
@@ -1055,27 +1068,59 @@ class CSTConverter:
 
             child_col = child.start_point[1]
 
+            # Detect bare literal expressions that are multi-match patterns:
+            # a standalone literal (string, integer, boolean, identifier)
+            # followed later by a match_arm shares that arm's body.
+            # Only trigger when a match_arm sibling follows (lookahead).
+            if child.type == "expression" and self._is_bare_match_pattern(child):
+                if self._has_following_match_arm(child):
+                    pattern = self._literal_to_pattern(child)
+                    if pattern is not None:
+                        pending_multi_patterns.append(pattern)
+                        continue
+
             if child.type == "match_arm":
                 arm = self._convert_match_arm(child)
+                # Prepend any buffered comments to this arm's body
+                if pending_arm_comments:
+                    arm = MatchArm(
+                        arm.pattern,
+                        pending_arm_comments + list(arm.body),
+                        arm.span,
+                    )
+                    pending_arm_comments = []
+                # Desugar multi-pattern: bare literal expressions buffered
+                # before this arm become extra arms with the same body.
+                extra_patterns = pending_multi_patterns
+                pending_multi_patterns = []
                 pat_node = self._child(child, "pattern")
                 arm_col = pat_node.start_point[1] if pat_node else child_col
 
-                # Merge into preceding MatchExpr if there is one
-                if body and isinstance(body[-1], MatchExpr):
-                    body[-1] = self._merge_arm_into_match(body[-1], arm, arm_col)
-                elif body and isinstance(body[-1], MatchArm):
-                    prev_arm = body.pop()
-                    body.append(
-                        MatchExpr(
-                            subject=None,
-                            arms=[prev_arm, arm],
-                            span=prev_arm.span,
-                        )
-                    )
-                else:
-                    body.append(arm)
+                all_arms = [MatchArm(p, list(arm.body), arm.span) for p in extra_patterns]
+                all_arms.append(arm)
 
-                last_match_idx = len(body) - 1
+                for a in all_arms:
+                    # Merge into preceding MatchExpr if there is one
+                    if (
+                        last_match_idx is not None
+                        and last_match_idx < len(body)
+                        and isinstance(body[last_match_idx], MatchExpr)
+                    ):
+                        body[last_match_idx] = self._merge_arm_into_match(
+                            body[last_match_idx], a, arm_col
+                        )
+                    else:
+                        # Wrap in MatchExpr immediately so continuation
+                        # statements can be absorbed into the arm's body.
+                        body.append(
+                            MatchExpr(
+                                subject=None,
+                                arms=[a],
+                                span=a.span,
+                            )
+                        )
+                    last_match_idx = len(body) - 1
+
                 last_arm_col = arm_col
             else:
                 # Check if this statement should be absorbed into the last match arm.
@@ -1092,6 +1137,18 @@ class CSTConverter:
                         body[last_match_idx] = self._absorb_stmt_into_match(
                             match_expr, stmt, child_col
                         )
+                elif (
+                    last_match_idx is not None
+                    and last_arm_col is not None
+                    and child.type in ("comment", "line_comment")
+                    and child_col <= last_arm_col
+                ):
+                    # Comment at arm-pattern indent level between implicit
+                    # match arms — buffer it so it can be prepended to the
+                    # next arm's body without breaking arm grouping.
+                    stmt = self._convert_body_item(child)
+                    if stmt is not None:
+                        pending_arm_comments.append(stmt)
                 else:
                     # Not a match continuation — reset tracking
                     last_match_idx = None
@@ -1265,9 +1322,24 @@ class CSTConverter:
         value = self._convert_expr(expr) if expr else IntegerLit("0", self._span(node))
         return VarDecl(name=name, type_expr=type_expr, value=value, span=self._span(node))
 
-    def _convert_assignment(self, node: TSNode) -> Assignment | FieldAssignment:
+    def _convert_assignment(self, node: TSNode) -> Assignment | FieldAssignment | VarDecl:
         expr = self._child(node, "expression")
         value = self._convert_expr(expr) if expr else IntegerLit("0", self._span(node))
+
+        # tree-sitter parses "name as = value" and "name as Type = value"
+        # as assignment with ERROR on "as [Type]"; recover as VarDecl.
+        error_node = self._child(node, "ERROR")
+        if error_node and "as" in self._text(error_node):
+            ident = self._child(node, "identifier")
+            name = self._text(ident) if ident else ""
+            # Try to extract type from the ERROR text (e.g. "as Integer")
+            err_text = self._text(error_node).strip()
+            type_expr = None
+            if err_text.startswith("as "):
+                type_part = err_text[3:].strip()
+                if type_part:
+                    type_expr = self._parse_type_from_text(type_part, error_node)
+            return VarDecl(name=name, type_expr=type_expr, value=value, span=self._span(node))
 
         # Check if target is a field expression
         fe = self._child(node, "field_expression")
@@ -1562,8 +1634,57 @@ class CSTConverter:
                 body.append(self._convert_assignment(child))
             elif child.type == "match_expression":
                 body.append(ExprStmt(self._convert_match_expr(child), self._span(child)))
+            elif child.type in ("comment", "line_comment"):
+                text = self._text(child).lstrip("/").strip()
+                body.append(CommentStmt(text, self._span(child)))
 
         return MatchArm(pattern, body, self._span(node))
+
+    @staticmethod
+    def _has_following_match_arm(node: TSNode) -> bool:
+        """Check if any later named sibling of *node* is a match_arm."""
+        sib = node.next_named_sibling
+        while sib is not None:
+            if sib.type == "match_arm":
+                return True
+            # Stop at non-literal expressions (they can't be multi-patterns)
+            if sib.type not in ("expression", "comment", "line_comment"):
+                return False
+            sib = sib.next_named_sibling
+        return False
+
+    _MULTI_MATCH_LITERAL_TYPES = frozenset(
+        {
+            "string_literal",
+            "integer_literal",
+            "decimal_literal",
+            "boolean_literal",
+        }
+    )
+
+    def _is_bare_match_pattern(self, expr_node: TSNode) -> bool:
+        """True if an expression node contains only a bare literal (multi-match candidate)."""
+        children = self._named_children(expr_node)
+        if len(children) != 1:
+            return False
+        return children[0].type in self._MULTI_MATCH_LITERAL_TYPES
+
+    def _literal_to_pattern(self, expr_node: TSNode) -> Pattern | None:
+        """Convert a bare literal expression node to a match Pattern."""
+        children = self._named_children(expr_node)
+        if not children:
+            return None
+        child = children[0]
+        span = self._span(child)
+        if child.type == "string_literal":
+            return LiteralPattern(self._extract_string_value(child), span, kind="string")
+        if child.type == "integer_literal":
+            return LiteralPattern(self._text(child), span, kind="integer")
+        if child.type == "decimal_literal":
+            return LiteralPattern(self._text(child), span, kind="decimal")
+        if child.type == "boolean_literal":
+            return LiteralPattern(self._text(child), span, kind="boolean")
+        return None
 
     def _convert_index_expr(self, node: TSNode) -> IndexExpr:
         exprs = self._children_of_type(node, "expression")

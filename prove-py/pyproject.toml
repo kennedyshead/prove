@@ -68,5 +68,9 @@ disallow_incomplete_defs = false
 warn_return_any = false
 disable_error_code = ["union-attr", "arg-type", "list-item", "attr-defined", "type-arg", "no-untyped-def", "no-any-return", "import-untyped", "no-redef", "operator", "assignment", "has-type", "return-value", "var-annotated", "truthy-function", "call-overload"]
 
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*", "spacy", "spacy.*"]
+ignore_missing_imports = true
+
 [[tool.pyright]]
 disable = ["missing-module-docstring"]

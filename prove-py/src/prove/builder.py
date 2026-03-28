@@ -56,6 +56,17 @@ def _resolve_foreign_flags(
     if cflags_env or ldflags_env:
         c_flags = cflags_env.split() if cflags_env else []
         l_flags = ldflags_env.split() if ldflags_env else []
+        # For libpython3: derive PYTHON_HOME from the include path so the
+        # embedded interpreter finds its stdlib (critical when build Python
+        # differs from the target Python).
+        if library == "libpython3":
+            import re
+
+            m = re.search(r"-I(.+?/python\d+\.\d+)", cflags_env)
+            if m:
+                # include dir is .../include/python3.X → home is two levels up
+                python_home = str(Path(m.group(1)).parent.parent)
+                c_flags.append(f'-DPYTHON_HOME="{python_home}"')
         return c_flags, l_flags
 
     # Step 2: Standalone static linking

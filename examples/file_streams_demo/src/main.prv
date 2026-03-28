@@ -34,12 +34,14 @@ from
     path as String = "/tmp/prove_file_stream.txt"
     // Write phase: stream stdin chunks to file
     wh as File = writer(path)!
-    console(f"writing to {path} — type lines (Ctrl+D when done):")
+    console(f"writing to {
+              path
+            } — type lines (Ctrl+D when done):\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\")")
     write(Streaming(wh))
     close(wh)
     // Read phase: stream file chunks back to console
     rh as File = reader(path)!
-    console(f"reading back from {path}:")
+    console(f"{p}{p}{p}{p}{p}{p}{p}{p}{p}{path})")
     read(Streaming(rh))
     close(rh)
     console("done")

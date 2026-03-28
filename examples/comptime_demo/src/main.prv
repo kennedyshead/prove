@@ -11,8 +11,6 @@ module Main
   MAX_ITEMS as Integer = comptime
       match platform()
           "linux" => 4096
-          "macos" => 2048
-          _ => 1024
 
 main() Unit
 from

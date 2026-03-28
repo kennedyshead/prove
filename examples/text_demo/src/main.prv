@@ -42,7 +42,6 @@ from
     match idx
         Some(i) => console(f"{i}")
         None => console("'World' not found")
-    // StringBuilder operations
     sb as StringBuilder:[Mutable] = builder()
     sb1 as StringBuilder:[Mutable] = string(sb, "Hello")
     sb2 as StringBuilder:[Mutable] = string(sb1, " ")

@@ -38,7 +38,6 @@ from prove.nlp_store import (
     load_lsp_completions,
     load_lsp_from_blocks,
 )
-from prove.parser import Parser
 from prove.stdlib_loader import (
     ImportSuggestion,
     build_import_index,
@@ -235,7 +234,9 @@ class _ProjectIndexer:
         # Symbols from AST
         symbols: list[dict] = []
         try:
-            module = Parser(tokens, str(path)).parse()
+            from prove.parse import parse as _parse
+
+            module = _parse(source, str(path))
             try:
                 rel = str(path.relative_to(self.project_root))
             except ValueError:
@@ -924,38 +925,22 @@ def _build_local_import_index(
 
 
 def _analyze(uri: str, source: str) -> DocumentState:
-    """Run Lexer → Parser → Checker, cache results, return state."""
+    """Run parse → Checker, cache results, return state."""
+    from prove.parse import parse
+
     ds = DocumentState(source=source)
     diags: list[lsp.Diagnostic] = []
     filename = uri
 
-    # Phase 1: Lex
+    # Phase 1: Lex (best-effort, tokens used for completion context only)
     try:
-        tokens = Lexer(source, filename).lex()
-        ds.tokens = tokens
-    except CompileError as e:
-        diags.extend(_compile_diag(d) for d in e.diagnostics)
-        ds.diagnostics = diags
-        _state[uri] = ds
-        return ds
+        ds.tokens = Lexer(source, filename).lex()
     except Exception:
-        import traceback
+        pass
 
-        diags.append(
-            lsp.Diagnostic(
-                range=lsp.Range(start=lsp.Position(0, 0), end=lsp.Position(0, 0)),
-                severity=lsp.DiagnosticSeverity.Error,
-                source="prove",
-                message=f"[internal] lexer error: {traceback.format_exc()}",
-            )
-        )
-        ds.diagnostics = diags
-        _state[uri] = ds
-        return ds
-
-    # Phase 2: Parse
+    # Phase 2: Parse (uses tree-sitter when available, legacy fallback)
     try:
-        module = Parser(tokens, filename).parse()
+        module = parse(source, filename)
         ds.module = module
     except CompileError as e:
         diags.extend(_compile_diag(d) for d in e.diagnostics)
@@ -1270,8 +1255,9 @@ def _find_fd_at_cursor(source: str, position: lsp.Position) -> FunctionDef | Non
     truncated = "\n".join(truncated_lines)
 
     try:
-        tokens = Lexer(truncated, "<completion>").lex()
-        module = Parser(tokens, "<completion>").parse()
+        from prove.parse import parse as _parse
+
+        module = _parse(truncated, "<completion>")
     except Exception:
         return None
 
@@ -2723,7 +2709,25 @@ def _build_import_edit(
         insert_line = last_import_line + 1
     else:
         # After narrative/temporal or the module line itself.
+        # Scan source lines to find end of module header (narrative, domain,
+        # temporal) so the insert works regardless of parser backend.
         insert_line = mod_decl.span.start_line  # 0-indexed: line after 'module X'
+        src_lines = ds.source.splitlines()
+        i = insert_line
+        while i < len(src_lines):
+            stripped = src_lines[i].strip()
+            if stripped.startswith(("narrative:", "domain:", "temporal:")):
+                # Skip multiline triple-quoted blocks
+                if '"""' in stripped:
+                    rest = stripped[stripped.index('"""') + 3 :]
+                    if '"""' not in rest:
+                        i += 1
+                        while i < len(src_lines) and '"""' not in src_lines[i]:
+                            i += 1
+                i += 1
+                insert_line = i
+                continue
+            break
     return lsp.TextEdit(
         range=lsp.Range(
             start=lsp.Position(line=insert_line, character=0),

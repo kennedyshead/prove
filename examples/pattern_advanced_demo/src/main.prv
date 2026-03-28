@@ -17,7 +17,6 @@ from
             end_pos as Integer = end(m)
             console(f"Found '{matched_text}' at {pos}-{end_pos}")
         _ => console("Pattern not found")
-    // Find all matches
     numbers as String = "one 1 two 2 three 3 four 4"
     all_matches as List<Match> = find_all(numbers, r"[0-9]")
     count as Integer = length(all_matches)

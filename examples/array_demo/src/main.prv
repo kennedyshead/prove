@@ -26,12 +26,12 @@ from
     match oob
         Some(n) => console(f"{n}")
         None => console("out of bounds as expected")
-    // Safe set
     safe_set as Option<Array<Integer>> = set_safe(nums3, 0, 99)
     match safe_set
         Some(updated) => console("set_safe succeeded")
-        None => console("set_safe out of bounds")
-    // Read value at position from List
+        None =>
+            // Safe set
+            console("set_safe out of bounds")
     items as List<Value> = [1, 2, 3]
     v as Option<Value> = value(1, items)
     console("Read value at position")
