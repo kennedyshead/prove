@@ -14,7 +14,7 @@ from
     Active(prompt) =>
         console(prompt)
         line as String = console()
-        console(f"{l}{line}")
+        console(f"< {line}")
 
 main()
 from

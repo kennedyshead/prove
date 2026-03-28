@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#if defined(__APPLE__) || defined(__linux__)
+#include <execinfo.h>
+#endif
 
 #include "prove_region.h"
 
@@ -48,6 +51,14 @@ static inline void *prove_alloc(size_t size) {
 
 static inline _Noreturn void prove_panic(const char *msg) {
     fprintf(stderr, "prove: panic: %s\n", msg);
+#if defined(__APPLE__) || defined(__linux__)
+    {
+        void *bt[32];
+        int n = backtrace(bt, 32);
+        fprintf(stderr, "stack trace:\n");
+        backtrace_symbols_fd(bt, n, 2);
+    }
+#endif
     exit(1);
 }
 

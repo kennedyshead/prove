@@ -21,9 +21,10 @@ from
         window("Counter", 400, 300)
         label(f"Count: {string(state.count)}")
         match button("Increment")
-            true => state.count = state.count + 1
-        Draw(state)
-    false => Draw(state)
+            true =>
+                state.count = state.count + 1
+                Draw(state)
+            false => Draw(state)
     Tick(state) => Draw(state)
     Exit(state) => Unit
 

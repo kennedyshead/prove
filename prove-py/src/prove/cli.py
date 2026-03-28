@@ -143,6 +143,13 @@ def format_cmd(path: str, status: bool, md: bool) -> None:
         except CompileError:
             continue
 
+        # Skip files where tree-sitter has parse errors — formatting
+        # a broken parse tree produces mangled output.
+        from prove.parse import has_parse_errors
+
+        if has_parse_errors(source):
+            continue
+
         checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
         formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)

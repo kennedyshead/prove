@@ -1071,9 +1071,12 @@ class CSTConverter:
             # Detect bare literal expressions that are multi-match patterns:
             # a standalone literal (string, integer, boolean, identifier)
             # followed later by a match_arm shares that arm's body.
-            # Only trigger when a match_arm sibling follows (lookahead).
+            # Only trigger when a match_arm sibling follows (lookahead)
+            # AND the literal is at arm-pattern indent (not deeper — a deeper
+            # literal is a body statement, e.g. a return value).
             if child.type == "expression" and self._is_bare_match_pattern(child):
-                if self._has_following_match_arm(child):
+                is_at_arm_indent = last_arm_col is None or child_col <= last_arm_col
+                if is_at_arm_indent and self._has_following_match_arm(child):
                     pattern = self._literal_to_pattern(child)
                     if pattern is not None:
                         pending_multi_patterns.append(pattern)
@@ -1225,32 +1228,46 @@ class CSTConverter:
             i += 1
         return result
 
+    @staticmethod
+    def _tail_match(body: list) -> MatchExpr | None:
+        """Return the trailing MatchExpr from an arm body, bare or ExprStmt-wrapped."""
+        if not body:
+            return None
+        tail = body[-1]
+        if isinstance(tail, MatchExpr):
+            return tail
+        if isinstance(tail, ExprStmt) and isinstance(tail.expr, MatchExpr):
+            return tail.expr
+        return None
+
+    @staticmethod
+    def _replace_tail_match(body: list, new_match: MatchExpr) -> list:
+        """Replace the trailing MatchExpr in *body*, preserving wrapper type."""
+        tail = body[-1]
+        if isinstance(tail, MatchExpr):
+            return list(body[:-1]) + [new_match]
+        # ExprStmt wrapper
+        return list(body[:-1]) + [ExprStmt(new_match, tail.span)]
+
     def _absorb_stmt_into_match(self, match_expr: MatchExpr, stmt: Any, stmt_col: int) -> MatchExpr:
         """Absorb a statement into the deepest nested match arm by column."""
         last_arm = match_expr.arms[-1]
 
         # Check if the last arm body ends with a nested MatchExpr
-        if (
-            last_arm.body
-            and isinstance(last_arm.body[-1], ExprStmt)
-            and isinstance(last_arm.body[-1].expr, MatchExpr)
-        ):
-            inner = last_arm.body[-1].expr
-            if inner.arms:
-                inner_last = inner.arms[-1]
-                if inner_last.body:
-                    inner_body_col = inner_last.body[0].span.start_col
-                    if stmt_col >= inner_body_col:
-                        new_inner = self._absorb_stmt_into_match(inner, stmt, stmt_col)
-                        new_body = list(last_arm.body[:-1]) + [
-                            ExprStmt(new_inner, last_arm.body[-1].span)
-                        ]
-                        new_arm = MatchArm(last_arm.pattern, new_body, last_arm.span)
-                        return MatchExpr(
-                            match_expr.subject,
-                            list(match_expr.arms[:-1]) + [new_arm],
-                            match_expr.span,
-                        )
+        inner = self._tail_match(last_arm.body)
+        if inner is not None and inner.arms:
+            inner_last = inner.arms[-1]
+            if inner_last.body:
+                inner_body_col = inner_last.body[0].span.start_col - 1  # 0-based
+                if stmt_col >= inner_body_col:
+                    new_inner = self._absorb_stmt_into_match(inner, stmt, stmt_col)
+                    new_body = self._replace_tail_match(last_arm.body, new_inner)
+                    new_arm = MatchArm(last_arm.pattern, new_body, last_arm.span)
+                    return MatchExpr(
+                        match_expr.subject,
+                        list(match_expr.arms[:-1]) + [new_arm],
+                        match_expr.span,
+                    )
 
         # Default: absorb into this match's last arm
         new_arm = MatchArm(
@@ -1271,25 +1288,18 @@ class CSTConverter:
         last_arm = match_expr.arms[-1]
 
         # Check if the last arm body ends with a nested MatchExpr
-        if (
-            last_arm.body
-            and isinstance(last_arm.body[-1], ExprStmt)
-            and isinstance(last_arm.body[-1].expr, MatchExpr)
-        ):
-            inner = last_arm.body[-1].expr
-            if inner.arms:
-                inner_arm_col = inner.arms[0].span.start_col
-                if arm_col >= inner_arm_col:
-                    new_inner = self._merge_arm_into_match(inner, arm, arm_col)
-                    new_body = list(last_arm.body[:-1]) + [
-                        ExprStmt(new_inner, last_arm.body[-1].span)
-                    ]
-                    new_arm_outer = MatchArm(last_arm.pattern, new_body, last_arm.span)
-                    return MatchExpr(
-                        match_expr.subject,
-                        list(match_expr.arms[:-1]) + [new_arm_outer],
-                        match_expr.span,
-                    )
+        inner = self._tail_match(last_arm.body)
+        if inner is not None and inner.arms:
+            inner_arm_col = inner.arms[0].span.start_col - 1  # 0-based
+            if arm_col >= inner_arm_col:
+                new_inner = self._merge_arm_into_match(inner, arm, arm_col)
+                new_body = self._replace_tail_match(last_arm.body, new_inner)
+                new_arm_outer = MatchArm(last_arm.pattern, new_body, last_arm.span)
+                return MatchExpr(
+                    match_expr.subject,
+                    list(match_expr.arms[:-1]) + [new_arm_outer],
+                    match_expr.span,
+                )
 
         # Default: merge into this match
         return MatchExpr(
@@ -1830,14 +1840,16 @@ class CSTConverter:
         # Walk children and collect text from byte gaps between them.
         # Tree-sitter doesn't emit static text between interpolations as
         # child nodes — they exist only as byte gaps in the source.
+        # Use UTF-8 bytes for gap extraction because tree-sitter offsets
+        # are byte offsets, not character offsets.
         result_parts: list[Expr] = []
         current_text = ""
-        src = self.source
+        src_bytes = self.source.encode("utf-8")
         pos = node.start_byte
         for child in node.children:
             # Collect any gap text between previous position and this child
             if child.start_byte > pos:
-                gap = src[pos : child.start_byte]
+                gap = src_bytes[pos : child.start_byte].decode("utf-8")
                 current_text += gap
 
             if child.type == "interpolation":
@@ -1861,7 +1873,7 @@ class CSTConverter:
 
         # Gap after last child before closing quote
         if node.end_byte > pos:
-            gap = src[pos : node.end_byte]
+            gap = src_bytes[pos : node.end_byte].decode("utf-8")
             if gap not in ('"',):
                 current_text += gap
 

@@ -46,8 +46,7 @@ outputs source_build(
 )!
 from
     clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-    match lint(clean_source)!
+    match lint(clean_source)
         true =>
-            info("Cleaning source...")&
             pybuild(path, debug, no_mutate)!
         false => error("Source parsing failed!")&

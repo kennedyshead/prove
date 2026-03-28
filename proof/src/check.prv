@@ -1,6 +1,6 @@
 module Check
   narrative: """
-  Handles the source check.
+  Handles the source code linting and check command.
 
   outputs the command to python for a pycheck
   validates syntax for file and line
@@ -12,7 +12,7 @@ module Check
   Source types SourceFile
   Types creates string validates boolean
   Log types DiagnosticMessage Severity detached info error diagnostic debug warning
-  Sequence reads first get
+  Sequence reads first get creates length
   Text creates split
 
   foreign "libpython3"
@@ -29,7 +29,6 @@ matches lint_node(node_kind String, node Node, source SourceFile) Boolean
   ensures valid boolean(result)
   requires valid string(node_kind)
 from
-    "module"
     "module_declaration" => lint_module(node, source)
     "narrative_annotation" =>
         info(f"NARRATIVE {string(node)}")&
@@ -49,8 +48,9 @@ from
     "foreign_block" =>
         // debug(f"TYPE {string(node)}")&
         true
+    "module" => true
     _ =>
-        warning(f"missing lint for {node_kind}")&
+        warning(f"missing lint for {node_kind} {string(node)}")&
         true
 
 validates lint_module(node Node, source SourceFile)
@@ -66,7 +66,7 @@ from
     match node_kind
         "type_identifier" =>
             info(f"Linting module {name}")&
-            any(children(node), |child| lint_node(kind(child), child, source))
+            all(children(node), |child| lint_node(kind(child), child, source))
         _ =>
             actual_code as String = get(split(string(node), "\n"), line(module_node) - 1)
             diagnostic(DiagnosticMessage(
@@ -78,7 +78,7 @@ from
                             line(module_node),
                             column(module_node),
                             actual_code))&
-            true
+            false
 
 validates lint_file(source SourceFile)
   ensures valid boolean(result)
@@ -86,7 +86,9 @@ validates lint_file(source SourceFile)
 from
     all(children(root(source.source)), |node| lint_node(kind(node), node, source))
 
-outputs lint(source List<SourceFile>) Boolean!
+validates lint(source List<SourceFile>)
+  ensures valid boolean(result)
+  requires length(source) > 0
 from
     all(source, |file| lint_file(file))
 

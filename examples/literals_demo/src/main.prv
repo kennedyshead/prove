@@ -19,3 +19,6 @@ from
     file_path as String = "/tmp/test.txt"
     has_slash as Boolean = contains(file_path, "/")
     console(f"Path contains slash: {has_slash}")
+    // Decimal literal with f suffix
+    // Note: This syntax may not be fully supported
+    // Demonstrating type modifiers with literals

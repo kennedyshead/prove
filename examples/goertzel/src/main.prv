@@ -51,13 +51,12 @@ from
         _ =>
             sample as Float = sine_sample(signal_freq, sample_rate, index)
             t as Float = koef * state.vn1 - state.vn2 + sample
-            kernel(
-                            signal_freq,
-                            sample_rate,
-                            index + 1,
-                            count,
-                            koef,
-                            FilterState(t, state.vn1))
+            kernel(signal_freq,
+                   sample_rate,
+                   index + 1,
+                   count,
+                   koef,
+                   FilterState(t, state.vn1))
 
 /// Compute signal power from filter state
 reads signal_power(koef Float, state FilterState, n Integer) Float

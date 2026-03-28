@@ -48,12 +48,14 @@ from
             cfls as List<Conflict> = conflicts(mr)
             console(f"Conflicts: {string(length(cfls))}")
             match length(cfls) > 0
-                true => c as Conflict = cfls[0]
-            console(f"Variant: {variant(c)}")
-            console(f"Column: {column(c)}")
-            console(f"Local: {local_value(c)}")
-            console(f"Remote: {remote_value(c)}")
-        false => console("No conflicts to inspect")
+                true =>
+                    c as Conflict = cfls[0]
+                    console(f"Variant: {variant(c)}")
+                    console(f"Column: {column(c)}")
+                    console(f"Local: {local_value(c)}")
+                    console(f"Remote: {remote_value(c)}")
+                false => console("No conflicts to inspect")
+    // Compile and load lookup
     lookup(db, "demo")!
     items as List<String> = lookup("/tmp/prove_store_demo/demo.lookup")!
     console(f"Lookup items: {string(length(items))}")

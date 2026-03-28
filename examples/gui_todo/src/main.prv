@@ -38,15 +38,16 @@ from
         new_text as String = text_input("New item", state.new_text)
         match button("Add")
             true => AddItem
-    false =>
-        each(state.items, checkbox)
-        Draw(state)
+            false =>
+                each(state.items, checkbox)
+                Draw(state)
     AddItem =>
         match length(state.new_text) > 0
-            true => state.items = state.items.append(TodoItem(state.new_text, false))
-        state.new_text = ""
-        Draw(state)
-    false => Draw(state)
+            true =>
+                state.items = state.items.append(TodoItem(state.new_text, false))
+                state.new_text = ""
+                Draw(state)
+            false => Draw(state)
     RemoveItem(index) =>
         state.items = state.items.remove(index)
         Draw(state)

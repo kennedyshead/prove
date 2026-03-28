@@ -4,7 +4,7 @@ module Main
   Language
     reads soundex metaphone stopwords stem root normalize transliterate
     creates without_stopwords frequency bigrams keywords ngrams words sentences distance
-     similarity
+      similarity
   Types creates string
   Text creates join
   Sequence creates length

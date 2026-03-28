@@ -17,3 +17,20 @@ def parse(source: str, filename: str = "<stdin>") -> Module:
 
     tree = ts_parse(source)
     return CSTConverter(source, tree, filename).convert()
+
+
+def has_parse_errors(source: str) -> bool:
+    """Return True if tree-sitter reports any parse errors for *source*."""
+    from prove.tree_sitter_setup import ts_parse
+
+    tree = ts_parse(source)
+
+    def _has_error(node) -> bool:
+        if node.type == "ERROR" or node.is_missing:
+            return True
+        for child in node.children:
+            if _has_error(child):
+                return True
+        return False
+
+    return _has_error(tree.root_node)

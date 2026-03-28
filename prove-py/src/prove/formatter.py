@@ -927,30 +927,61 @@ class ProveFormatter:
 
     def _format_match_expr(self, expr: MatchExpr) -> str:
         lines: list[str] = []
+        grouped = self._group_multi_pattern_arms(expr.arms)
         if expr.subject is not None:
             lines.append(f"match {self._format_expr(expr.subject)}")
             self._indent_level += 1
-            for arm in expr.arms:
-                lines.append(self._indent(self._format_arm(arm), 1))
-                if isinstance(arm.pattern, WildcardPattern):
+            for group in grouped:
+                lines.extend(self._indent(line, 1) for line in self._format_arm_group(group))
+                if isinstance(group[-1].pattern, WildcardPattern):
                     break  # W301: drop unreachable arms after wildcard
             self._indent_level -= 1
         else:
             # Implicit match — arms at current level (no extra indent)
-            for arm in expr.arms:
-                lines.append(self._format_arm(arm))
-                if isinstance(arm.pattern, WildcardPattern):
+            for group in grouped:
+                lines.extend(self._format_arm_group(group))
+                if isinstance(group[-1].pattern, WildcardPattern):
                     break  # W301: drop unreachable arms after wildcard
         return "\n".join(lines)
+
+    def _group_multi_pattern_arms(self, arms: list[MatchArm]) -> list[list[MatchArm]]:
+        """Group consecutive arms whose bodies are identical (desugared multi-pattern)."""
+        if not arms:
+            return []
+        groups: list[list[MatchArm]] = [[arms[0]]]
+        for arm in arms[1:]:
+            prev = groups[-1][0]
+            # Compare body by equality; desugared multi-pattern arms share
+            # the same body objects so this is reliable.
+            if arm.body == prev.body:
+                groups[-1].append(arm)
+            else:
+                groups.append([arm])
+        return groups
+
+    def _format_arm_group(self, group: list[MatchArm]) -> list[str]:
+        """Format a group of arms sharing the same body as multi-pattern syntax."""
+        if len(group) == 1:
+            return [self._format_arm(group[0])]
+        # Multi-pattern: emit bare patterns on their own lines, last one gets => body
+        result: list[str] = []
+        for arm in group[:-1]:
+            result.append(self._format_pattern(arm.pattern))
+        result.append(self._format_arm(group[-1]))
+        return result
 
     def _format_arm(self, arm: MatchArm) -> str:
         pat = self._format_pattern(arm.pattern)
         if len(arm.body) == 1:
-            body = self._format_stmt(arm.body[0])
-            line = f"{pat} => {body}"
-            if "\n" not in body and self._indent_level * 4 + len(line) <= self.MAX_LINE_LENGTH:
-                return line
-        # Multi-statement arm (or single-stmt that doesn't fit)
+            # Preserve multi-line layout: if body was on a different line
+            # than the pattern in the original source, keep it multi-line.
+            body_was_multiline = arm.body[0].span.start_line > arm.span.start_line
+            if not body_was_multiline:
+                body = self._format_stmt(arm.body[0])
+                line = f"{pat} => {body}"
+                if "\n" not in body and self._indent_level * 4 + len(line) <= self.MAX_LINE_LENGTH:
+                    return line
+        # Multi-statement arm (or single-stmt that doesn't fit / was multi-line)
         lines = [f"{pat} =>"]
         self._indent_level += 1
         for stmt in arm.body:
