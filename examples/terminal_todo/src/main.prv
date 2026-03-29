@@ -6,9 +6,9 @@ module TodoApp
     listens to on key down events
   """
   Terminal types TerminalAppEvent outputs terminal clear raw cooked
-  Math reads max min
+  Math derives max min
   UI types Key
-  Sequence reads set remove
+  Sequence derives set remove
 
   type TodoItem is
     text String

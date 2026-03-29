@@ -16,11 +16,12 @@ Every Prove function declares its purpose with a **verb**. The verb IS the decla
 |------|--------|---------|
 | `transforms` | Pure | Failable data computation/conversion |
 | `validates` | Pure | Boolean check (returns `Boolean`) |
-| `reads` | Pure | Non-mutating data access |
+| `derives` | Pure | Non-mutating data access or derivation |
 | `creates` | Pure | Construct new value |
-| `matches` | Pure | Algebraic dispatch |
+| `matches` | Pure | Pure algebraic dispatch |
 | `inputs` | IO | Read from external world |
 | `outputs` | IO | Write to external world |
+| `dispatches` | IO | IO algebraic dispatch (pattern match with IO in arms) |
 | `streams` | IO | Blocking IO loop |
 | `detached` | Async | Fire-and-forget coroutine |
 | `attached` | Async | Awaited coroutine |
@@ -36,7 +37,7 @@ Every Prove function declares its purpose with a **verb**. The verb IS the decla
 Functions declare their purpose through verbs. The compiler enforces that implementations match declared intent:
 
 ```prove
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2

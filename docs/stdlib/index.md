@@ -18,7 +18,7 @@ Verbs define what a function does. The compiler enforces their guarantees:
 
 | Family | Verbs | Guarantees |
 |--------|-------|------------|
-| **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no side effects. Safe to memoize, parallelize |
+| **Pure** | `transforms`, `validates`, `derives`, `creates`, `matches` | No IO, no side effects. Safe to memoize, parallelize |
 | **IO** | `inputs`, `outputs`, `streams` | Reads/writes to external world |
 | **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via coroutines |
 

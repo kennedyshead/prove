@@ -544,9 +544,10 @@ _INTENT_SEVERITY_MAP = {
 _INTENT_VERBS = [
     "validates",
     "transforms",
-    "reads",
+    "derives",
     "creates",
     "matches",
+    "dispatches",
     "inputs",
     "outputs",
     "streams",
@@ -1194,8 +1195,9 @@ def _prose_completions(
             starters = {
                 "transforms": [f"Transforms {p.name} into" for p in fd.params[:1]],
                 "validates": [f"Validates {p.name}" for p in fd.params[:1]],
-                "reads": [f"Reads {p.name} from" for p in fd.params[:1]],
+                "derives": [f"Derives {p.name} from" for p in fd.params[:1]],
                 "creates": ["Creates a new"],
+                "dispatches": [f"Dispatches {p.name} to" for p in fd.params[:1]],
                 "outputs": ["Outputs"],
             }
             for phrase in starters.get(fd.verb, []):
@@ -1212,9 +1214,10 @@ def _prose_completions(
             starters = {
                 "transforms": ["linear scan because", "recursive because", "iterative because"],
                 "validates": ["early-exit because", "regex because", "range check because"],
-                "reads": ["lazy load because", "cached read because"],
+                "derives": ["lazy load because", "cached read because"],
                 "creates": ["builder pattern because", "factory because"],
                 "matches": ["pattern match because", "lookup table because"],
+                "dispatches": ["dispatch table because", "route by type because"],
             }
             for phrase in starters.get(fd.verb, []):
                 items.append(_text(phrase, "approach", "1"))
@@ -1490,7 +1493,16 @@ def _ml_completions(
 
     # Project symbols — context-filtered so we don't flood every completion
     _VERB_KEYWORDS = frozenset(
-        {"transforms", "validates", "inputs", "outputs", "reads", "creates", "matches"}
+        {
+            "transforms",
+            "validates",
+            "inputs",
+            "outputs",
+            "derives",
+            "creates",
+            "matches",
+            "dispatches",
+        }
     )
     _TYPE_TRIGGERS = frozenset({"as", "is", "type", "Result", "Option", "List"})
     want_functions = prev1 in _VERB_KEYWORDS
@@ -2416,7 +2428,16 @@ def signature_help(params: lsp.SignatureHelpParams) -> lsp.SignatureHelp | None:
 
     # Look backwards from the function name to find the verb
     verb = None
-    verbs = ("transforms", "inputs", "outputs", "reads", "validates", "creates", "matches")
+    verbs = (
+        "transforms",
+        "inputs",
+        "outputs",
+        "derives",
+        "validates",
+        "creates",
+        "matches",
+        "dispatches",
+    )
     search_start = max(0, end - 20)  # Look at most 20 chars before
     before_func = text[search_start:end].strip()
     for v in verbs:
@@ -2517,9 +2538,10 @@ _IMPORT_VERBS = {
     "validates",
     "inputs",
     "outputs",
-    "reads",
+    "derives",
     "creates",
     "matches",
+    "dispatches",
     "types",
     "constants",
 }

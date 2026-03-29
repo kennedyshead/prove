@@ -141,8 +141,8 @@ type MyAppEvent is TerminalAppEvent
 | `outputs` | `terminal` | `(x Integer, y Integer, text String)` | Write text at screen position |
 | `outputs` | `clear` | `()` | Clear screen and reset cursor to (0,0) |
 | `outputs` | `cursor` | `(x Integer, y Integer)` | Move cursor to position |
-| `reads` | `size` | `() Position` | Get terminal dimensions (cols, rows) |
-| `reads` | `ansi` | `(name String) String` | Convert a Color or TextStyle name to ANSI escape sequence |
+| `derives` | `size` | `() Position` | Get terminal dimensions (cols, rows) |
+| `derives` | `ansi` | `(name String) String` | Convert a Color or TextStyle name to ANSI escape sequence |
 
 ### Example: Terminal Todo List
 
@@ -151,9 +151,9 @@ A full interactive TUI application with keyboard navigation, state management, a
 ```prove
 module TodoApp
   Terminal types TerminalAppEvent outputs terminal clear raw cooked
-  Math reads max min
+  Math derives max min
   UI types Key
-  Sequence reads set remove
+  Sequence derives set remove
 
   type TodoItem is
     text String
@@ -282,7 +282,7 @@ A minimal GUI application with a button that increments a counter.
 ```prove
 module Counter
   Graphic types GraphicAppEvent outputs window button label
-  Types reads string
+  Types derives string
 
   type CounterState is
     count Integer

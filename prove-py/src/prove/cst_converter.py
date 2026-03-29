@@ -182,7 +182,16 @@ class CSTConverter:
     # ── Module declaration ───────────────────────────────────────
 
     def _convert_module_decl(self, node: TSNode) -> ModuleDecl:
-        name = self._child_text(node, "type_identifier") or ""
+        # If the module_declaration has ERROR children before the first
+        # type_identifier, the name was likely mis-parsed (e.g. `module`
+        # with no name causes tree-sitter to grab a word from the body).
+        name_node = self._child(node, "type_identifier")
+        has_error_before_name = any(
+            c.type == "ERROR"
+            for c in node.children
+            if name_node is None or c.start_byte < name_node.start_byte
+        )
+        name = "" if has_error_before_name else (self._text(name_node) if name_node else "")
 
         narrative: str | None = None
         domain: str | None = None
@@ -289,11 +298,13 @@ class CSTConverter:
             if child.type == "import_verb":
                 verb_node = self._child(child, "verb") or self._child(child, "async_verb")
                 if verb_node:
-                    verb = self._text(verb_node)
+                    raw = self._text(verb_node)
                 else:
-                    verb = self._text(child)
+                    raw = self._text(child)
+                verb = "derives" if raw == "reads" else raw
             elif child.type == "verb":
-                verb = self._text(child)
+                raw = self._text(child)
+                verb = "derives" if raw == "reads" else raw
             elif child.type == "identifier":
                 items.append(ImportItem(verb=verb, name=self._text(child), span=self._span(child)))
             elif child.type == "type_identifier":
@@ -699,7 +710,8 @@ class CSTConverter:
         doc = self._extract_doc_comment(node)
 
         verb_node = self._child(node, "verb") or self._child(node, "async_verb")
-        verb = self._text(verb_node) if verb_node else ""
+        raw_verb = self._text(verb_node) if verb_node else ""
+        verb = "derives" if raw_verb == "reads" else raw_verb
 
         name = self._child_text(node, "identifier") or ""
 
@@ -1112,10 +1124,13 @@ class CSTConverter:
                         if (last_match_idx is not None and last_match_idx < len(body))
                         else None
                     )
-                    assert last_match_idx is not None
-                    if isinstance(tracked, MatchExpr):
+                    if isinstance(tracked, MatchExpr) and last_match_idx is not None:
                         body[last_match_idx] = self._merge_arm_into_match(tracked, a, arm_col)
-                    elif isinstance(tracked, VarDecl) and isinstance(tracked.value, MatchExpr):
+                    elif (
+                        isinstance(tracked, VarDecl)
+                        and isinstance(tracked.value, MatchExpr)
+                        and last_match_idx is not None
+                    ):
                         new_match = self._merge_arm_into_match(tracked.value, a, arm_col)
                         body[last_match_idx] = VarDecl(
                             name=tracked.name,

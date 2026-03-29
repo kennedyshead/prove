@@ -782,7 +782,7 @@ class TestAnalyzeIntent:
 project Test
   purpose: test
   module Foo
-    handles something gracefully
+    yeets something gracefully
 """
         ids = _analyze_intent("file:///test/test.intent", source)
         assert any(d.code == "W601" for d in ids.diagnostics)

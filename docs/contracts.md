@@ -528,7 +528,7 @@ Testing is not a separate activity. It is woven into the language — contracts 
 No test file needed. No QuickCheck boilerplate. The compiler generates thousands of random inputs and verifies all postconditions hold. Contracts are mandatory — every function declares what it guarantees.
 
 ```prove
-reads sort(xs List<Value>) List<Value>
+derives sort(xs List<Value>) List<Value>
   ensures len(result) == len(xs)
 from
     // implementation

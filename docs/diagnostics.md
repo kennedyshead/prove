@@ -81,7 +81,7 @@ The parser expected an expression (a name, literal, or parenthesized group) but 
 
 ### E214 — Verb used as identifier
 
-A verb keyword (`transforms`, `validates`, `reads`, `creates`, `matches`, `inputs`, `outputs`) cannot be used as a variable or function name. Use a different name, or declare it as a verb.
+A verb keyword (`transforms`, `validates`, `derives`, `creates`, `matches`, `inputs`, `outputs`) cannot be used as a variable or function name. Use a different name, or declare it as a verb.
 
 ### E215 — Expected pattern
 
@@ -174,7 +174,7 @@ A function call has a different number of arguments than the function signature 
 This code is used in two contexts:
 
 1. **Call checking:** An argument type does not match the corresponding parameter type in the function signature.
-2. **Purity enforcement:** A function with a pure verb (`transforms`, `validates`, `reads`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
+2. **Purity enforcement:** A function with a pure verb (`transforms`, `validates`, `derives`, `creates`, `matches`) contains a field assignment. Pure functions must not mutate state — construct a new value instead.
 
 ```prove
 // Context 1 — argument type mismatch
@@ -183,7 +183,7 @@ from
     needs_int("hello")
 
 // Context 2 — field mutation in pure function (construct new value instead)
-reads set_email(user User, email Email) User
+derives set_email(user User, email Email) User
 from
     user.email = email
     user
@@ -304,7 +304,7 @@ from
 
 ### E368 — Parallel HOF requires pure callback
 
-`par_map`, `par_filter`, and `par_reduce` require callbacks with pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`). IO verbs (`inputs`, `outputs`) and async verbs (`detached`, `attached`, `listens`) are not allowed because they cannot safely execute in parallel.
+`par_map`, `par_filter`, and `par_reduce` require callbacks with pure verbs (`transforms`, `validates`, `derives`, `creates`, `matches`). IO verbs (`inputs`, `outputs`) and async verbs (`detached`, `attached`, `listens`) are not allowed because they cannot safely execute in parallel.
 
 ```prove
 // Error — outputs is not a pure verb
@@ -317,8 +317,8 @@ transforms caller(xs List<Integer>) Integer
         par_map(xs, show)
         0
 
-// OK — reads is pure
-reads double(n Integer) Integer
+// OK — derives is pure
+derives double(n Integer) Integer
     from
         n + n
 
@@ -487,11 +487,11 @@ The expected value in a `near_miss` declaration doesn't match the function's ret
 
 ```prove
 // Error — function returns Integer but near_miss expects Boolean
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   near_miss 0 => false
 
 // Correct — expected type matches return type
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   near_miss 0 => 0
 ```
 
@@ -782,7 +782,7 @@ The verb specified in an import does not match any overload of the function in t
 ```prove
 module Example
   narrative: "Just an example of imports"
-  Parse transforms json   -- W312: Parse has no 'transforms json'; available: creates, reads
+  Parse transforms json   -- W312: Parse has no 'transforms json'; available: creates, derives
 ```
 
 ### W313 — Intent prose doesn't reference function concepts
@@ -790,7 +790,7 @@ module Example
 The `intent:` prose text has no vocabulary overlap with the function body — no called function names, parameter names, or type names appear in the description.
 
 ```prove
-reads sort(xs List<Value>) List<Value>
+derives sort(xs List<Value>) List<Value>
   intent: "count the number of elements"  -- W313: 'count' unrelated to sort/xs/merge_sort
 from
     merge_sort(xs)
@@ -840,11 +840,11 @@ An `ensures` postcondition doesn't reference `result`, which likely means it's c
 
 ```prove
 // Warning — checks input, not output
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   ensures n > 0
 
 // Correct — constrains the return value
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   ensures result == n * 2
 ```
 
@@ -854,7 +854,7 @@ A previous `prove build` run (mutation testing) found a surviving mutant in this
 
 ### W332 — Unused pure function result
 
-A pure function (`transforms`, `validates`, `reads`, `creates`, `matches`) is called but its result is discarded. Pure functions have no side effects — if you don't use the result, the call has no effect. Assign the result to a variable or remove the call.
+A pure function (`transforms`, `validates`, `derives`, `creates`, `matches`) is called but its result is discarded. Pure functions have no side effects — if you don't use the result, the call has no effect. Assign the result to a variable or remove the call.
 
 ```prove
 // Warning — result discarded
@@ -1039,7 +1039,7 @@ An imported name is never referenced in the module body. The formatter removes u
 
 ```prove
 module Main
-  Text reads trim upper
+  Text derives trim upper
 
 transforms shout(s String) String
 from

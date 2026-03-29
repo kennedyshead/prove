@@ -58,7 +58,7 @@ Make sure you've imported the module. Check the [Stdlib Overview](stdlib/index.m
 
 ### "Pure function cannot call IO function"
 
-You declared a `transforms`, `validates`, `reads`, `creates`, or `matches` function, but it's calling an `inputs` or `outputs` function. Either:
+You declared a `transforms`, `validates`, `derives`, `creates`, or `matches` function, but it's calling an `inputs` or `outputs` function. Either:
 1. Change the verb to `inputs` or `outputs` if it truly needs IO
 2. Pass the data as a parameter instead of reading it inside
 
@@ -135,7 +135,7 @@ from
 
 Use `Option` for safe access:
 ```prove
-reads get(items List<Value>, index Integer) Option<Value>
+derives get(items List<Value>, index Integer) Option<Value>
 from
     index >= 0 && index < len(items) => Some(items[index])
     _ => None
@@ -145,10 +145,17 @@ from
 
 ## Best Practices
 
-### When to use `transforms` vs `reads`?
+### When to use `transforms` vs `derives`?
 
 - `transforms` — conversion, computation, producing a new value
-- `reads` — querying, extracting, no modification
+- `derives` — querying, extracting, no modification
+
+### When to use `matches` vs `dispatches`?
+
+- `matches` — pure pattern match, no IO in arms (e.g., computing a value from a variant)
+- `dispatches` — pattern match with IO in arms (e.g., routing commands to handlers)
+
+Both require a matchable first parameter (algebraic, String, Integer, Result, or Option). `dispatches` is the IO counterpart to `matches`.
 
 ### When to use `Result` vs `!`?
 

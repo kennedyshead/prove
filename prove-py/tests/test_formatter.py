@@ -152,7 +152,7 @@ class TestFormatterExpressions:
         assert _roundtrip(source) == source
 
     def test_call_expr(self):
-        source = "module T\n  Types reads string\n\nmain()\nfrom\n    println(string(42))\n"
+        source = "module T\n  Types derives string\n\nmain()\nfrom\n    println(string(42))\n"
         assert _roundtrip(source) == source
 
     def test_pipe_expr(self):
@@ -176,7 +176,9 @@ class TestFormatterExpressions:
         assert _roundtrip(source) == source
 
     def test_list_literal(self):
-        source = "module T\n  Types reads string\n\nmain()\nfrom\n    println(string([1, 2, 3]))\n"
+        source = (
+            "module T\n  Types derives string\n\nmain()\nfrom\n    println(string([1, 2, 3]))\n"
+        )
         assert _roundtrip(source) == source
 
     def test_fail_propagation(self):
@@ -239,7 +241,7 @@ class TestFormatterVarDeclWrapping:
     def test_long_var_decl_wraps_value(self):
         """Variable declarations >90 cols fold value onto next line."""
         source = (
-            "reads filter_sources(source_files List<SourceFile>) List<SourceFile>\n"
+            "derives filter_sources(source_files List<SourceFile>) List<SourceFile>\n"
             "from\n"
             "    clean_source_files as List<SourceFile> = "
             "filter(source_files, |file| unit(file) == false)\n"
@@ -254,7 +256,7 @@ class TestFormatterVarDeclWrapping:
 
     def test_short_var_decl_stays_inline(self):
         """Variable declarations <=90 cols stay on one line."""
-        source = "reads get(a Integer) Integer\nfrom\n    x as Integer = a + 1\n"
+        source = "derives get(a Integer) Integer\nfrom\n    x as Integer = a + 1\n"
         result = _parse_format(source)
         assert "x as Integer = a + 1" in result
 
@@ -312,9 +314,9 @@ class TestFormatterImports:
         assert _roundtrip(source) == source
 
     def test_import_verb_order(self):
-        """Verb groups are sorted: types > reads > creates > validates > transforms > inputs > outputs."""  # noqa: E501
+        """Verb groups are sorted: types > derives > creates > validates > transforms > inputs > outputs."""  # noqa: E501
         source = "module Foo\n  Table transforms add validates has types Table Value reads get creates new\n"  # noqa: E501
-        expected = "module Foo\n  Table types Table Value reads get creates new validates has transforms add\n"  # noqa: E501
+        expected = "module Foo\n  Table types Table Value derives get creates new validates has transforms add\n"  # noqa: E501
         assert _roundtrip(source) == expected
 
     def test_import_multiline_over_line_length(self):
@@ -375,14 +377,14 @@ class TestFormatterRoundTrip:
 class TestFormatterVarDecl:
     def test_var_decl_with_type(self):
         source = (
-            "module T\n  Types reads string\n\n"
+            "module T\n  Types derives string\n\n"
             "main()\nfrom\n    x as Integer = 42\n    println(string(x))\n"
         )
         assert _roundtrip(source) == source
 
     def test_var_decl_without_type(self):
         source = (
-            "module T\n  Types reads string\nmain()\nfrom\n    x = 42\n    println(string(x))\n"
+            "module T\n  Types derives string\nmain()\nfrom\n    x = 42\n    println(string(x))\n"
         )
         result = _parse_format(source)
         assert "x" in result
@@ -406,7 +408,7 @@ class TestFormatterTypeInference:
     def test_unqualified_call_string(self):
         """string(x) → s as String = string(x) (verifies formatter roundtrip)."""
         source = (
-            "module T\n  Types reads string\n\n"
+            "module T\n  Types derives string\n\n"
             "transforms show(n Integer) String\nfrom\n"
             "    s as String = string(n)\n    s\n"
         )

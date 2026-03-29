@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates advanced Pattern module operations"""
   System outputs console
-  Pattern types Match reads replace creates search find_all start end split
+  Pattern types Match derives replace creates search find_all start end split
   Sequence creates length
   Text creates join validates contains
   Types validates string

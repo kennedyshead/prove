@@ -33,7 +33,7 @@ from
 
 ### Verb Purity Enforcement
 
-The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-function), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
+The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `derives`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-function), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
 
 ### Exhaustive Match
 
@@ -206,7 +206,7 @@ Run `prove check` to see unaddressed challenges for functions with `ensures` con
 ```bash
 $ prove check
 
-  reads sort — 3 challenges, 1 addressed:
+  derives sort — 3 challenges, 1 addressed:
     [+] swap + to - in comparison
     [-] replace < with <=
     [-] change constant 0 to 1

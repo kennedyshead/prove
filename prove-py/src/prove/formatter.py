@@ -531,17 +531,19 @@ class ProveFormatter:
     # Canonical ordering for verb groups in import lines.
     _VERB_ORDER = {
         "types": 0,
-        "reads": 1,
+        "derives": 1,
         "creates": 2,
         "validates": 3,
         "transforms": 4,
-        "inputs": 5,
-        "attached": 6,
-        "outputs": 7,
-        "detached": 8,
-        "streams": 9,
-        "listens": 10,
-        "constants": 11,
+        "matches": 5,
+        "dispatches": 6,
+        "inputs": 7,
+        "attached": 8,
+        "outputs": 9,
+        "detached": 10,
+        "streams": 11,
+        "listens": 12,
+        "constants": 13,
     }
 
     def _format_import_decl(self, imp: ImportDecl) -> str | None:

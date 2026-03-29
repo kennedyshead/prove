@@ -3,7 +3,7 @@ module Main
   System outputs console
   Text
     types StringBuilder
-    reads slice trim lower upper replace repeat char string_builder
+    derives slice trim lower upper replace repeat char string_builder
     creates builder split join length index build
     validates starts ends contains
   Sequence creates length

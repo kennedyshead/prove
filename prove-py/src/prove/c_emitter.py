@@ -704,7 +704,7 @@ class CEmitter(
                 # only check arguments for allocation nodes.
                 if isinstance(expr.func, IdentifierExpr):
                     sig = self._symbols.resolve_function_any(expr.func.name, arity=len(expr.args))
-                    if sig and sig.verb in ("reads", "validates"):
+                    if sig and sig.verb in ("derives", "validates"):
                         from prove.types import PrimitiveType
 
                         ret = sig.return_type

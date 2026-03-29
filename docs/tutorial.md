@@ -31,7 +31,7 @@ pip install -e ".[dev]"
 Every Prove function declares its **intent** before implementation. The verb tells the compiler (and readers) what the function does:
 
 ```prove
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2
@@ -41,7 +41,7 @@ Let's break this down:
 
 | Part | Meaning |
 |------|---------|
-| `reads` | This is a pure function — non-mutating data access |
+| `derives` | This is a pure function — non-mutating data access |
 | `double(n Integer) Integer` | Takes an Integer, returns an Integer |
 | `ensures result == n * 2` | Contract: the result must equal n times 2 |
 | `from` | Everything after this is the implementation |
@@ -74,7 +74,7 @@ validates is_positive(n Integer)
 from
     n > 0
 
-reads first(items List<Integer>) Option<Integer>
+derives first(items List<Integer>) Option<Integer>
 from
     len(items) > 0 => Some(items[0])
     _ => None
@@ -88,7 +88,7 @@ from
 |------|---------|
 | `transforms` | Convert data from one form to another |
 | `validates` | Return true/false (implicitly Boolean) |
-| `reads` | Extract or query without modification |
+| `derives` | Extract or query without modification |
 | `creates` | Construct a new value |
 
 ### IO Verbs (Side Effects)

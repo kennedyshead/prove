@@ -14,7 +14,7 @@ module Commands
   FormatCmd outputs pyformat
   Lsp outputs pylsp
   New outputs new_project
-  Sequence reads get validates contains
+  Sequence derives get validates contains
   Source inputs source
   Check outputs pycheck
 
@@ -37,18 +37,17 @@ module Commands
       read("static/cli/test.txt")
 
 /// Run the build command
-outputs build(arguments List<String>)!
+dispatches build(help Boolean, arguments List<String>)!
   trusted: "For now"
 from
-    match contains(arguments, "--help")
-        true => console(HELP_BUILD_TEXT)
-        _ =>
-            info("Running build...")&
-            debug as Boolean = contains(arguments, "--debug")
-            no_mutate as Boolean = contains(arguments, "--no-mutate")
-            config as Config = config()!
-            source as List<Option<SourceFile>> = source(config)
-            source_build(source, cwd(), debug, no_mutate)!
+    true => console(HELP_BUILD_TEXT)
+    false =>
+        info("Running build...")&
+        debug as Boolean = contains(arguments, "--debug")
+        no_mutate as Boolean = contains(arguments, "--no-mutate")
+        config as Config = config()!
+        source as List<Option<SourceFile>> = source(config)
+        source_build(source, cwd(), debug, no_mutate)!
 
 /// Run the check command
 outputs check(arguments List<String>)!

@@ -222,6 +222,10 @@
         },
         {
           "type": "STRING",
+          "value": "derives"
+        },
+        {
+          "type": "STRING",
           "value": "reads"
         },
         {
@@ -231,6 +235,10 @@
         {
           "type": "STRING",
           "value": "matches"
+        },
+        {
+          "type": "STRING",
+          "value": "dispatches"
         },
         {
           "type": "STRING",
@@ -1658,6 +1666,10 @@
         },
         {
           "type": "STRING",
+          "value": "dispatches"
+        },
+        {
+          "type": "STRING",
           "value": "inputs"
         },
         {
@@ -1667,6 +1679,10 @@
         {
           "type": "STRING",
           "value": "outputs"
+        },
+        {
+          "type": "STRING",
+          "value": "derives"
         },
         {
           "type": "STRING",

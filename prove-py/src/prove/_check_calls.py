@@ -45,7 +45,7 @@ from prove.types import (
 )
 
 # Verbs considered pure (no IO side effects allowed)
-_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
+_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
 
 
 class CallCheckMixin:

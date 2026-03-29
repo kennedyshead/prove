@@ -33,9 +33,10 @@ _VERB_KINDS = frozenset(
         TokenKind.INPUTS,
         TokenKind.OUTPUTS,
         TokenKind.VALIDATES,
-        TokenKind.READS,
+        TokenKind.DERIVES,
         TokenKind.CREATES,
         TokenKind.MATCHES,
+        TokenKind.DISPATCHES,
     }
 )
 

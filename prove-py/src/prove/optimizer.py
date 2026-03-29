@@ -1087,13 +1087,13 @@ class Optimizer:
     def _is_inline_candidate(self, fd: FunctionDef) -> bool:
         """Check if a function is eligible for inlining.
 
-        reads/validates are the safest inlining targets: they cannot fail
+        derives/validates are the safest inlining targets: they cannot fail
         and never allocate, so we allow up to 3 statements.  Other pure
         verbs require a single expression.
         """
-        _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
+        _pure_verbs = {"transforms", "validates", "derives", "creates", "matches"}
         # Non-allocating, non-failable verbs — safe to inline larger bodies
-        _non_alloc_verbs = {"reads", "validates"}
+        _non_alloc_verbs = {"derives", "validates"}
         if (
             fd.binary
             or fd.with_constraints
@@ -1843,7 +1843,7 @@ class Optimizer:
         that are small and don't have side effects. Memoization allows caching
         results based on input parameters.
         """
-        _pure_verbs = {"transforms", "validates", "reads", "creates", "matches"}
+        _pure_verbs = {"transforms", "validates", "derives", "creates", "matches"}
 
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
@@ -1940,11 +1940,11 @@ class Optimizer:
         return False
 
     _PURE_VERBS: frozenset[str] = frozenset(
-        {"transforms", "validates", "reads", "creates", "matches"}
+        {"transforms", "validates", "derives", "creates", "matches"}
     )
 
     # Non-allocating, non-failable verbs — calls are always safe to eliminate
-    _ELIMINABLE_VERBS: frozenset[str] = frozenset({"reads", "validates", "matches"})
+    _ELIMINABLE_VERBS: frozenset[str] = frozenset({"derives", "validates", "matches"})
 
     def _is_eliminable_call(self, expr: CallExpr) -> bool:
         """True if a call can be eliminated without observable effect.

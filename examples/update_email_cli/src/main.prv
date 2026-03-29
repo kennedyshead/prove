@@ -56,7 +56,7 @@ validates email(email Option<Email>)
 from
     email
 
-reads set_email(user User, email Option<Email>) User
+derives set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
     User(user.id, user.name, email)

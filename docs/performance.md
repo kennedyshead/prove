@@ -53,8 +53,8 @@ module Main
   """
   System outputs console
   Array creates array
-  Array reads get
-  Array reads set
+  Array derives get
+  Array derives set
 
   UPPER_BOUND as Integer = 5000000
 
@@ -75,7 +75,7 @@ from
         true => sieve_pass(arr, p + 1, limit)
         _ => sieve_pass(mark_composites(arr, p, p * p, limit), p + 1, limit)
 
-reads count_primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer) Integer
+derives count_primes(arr Array<Boolean>:[Mutable], i Integer, limit Integer, acc Integer) Integer
   terminates: limit - i
 from
   match i > limit

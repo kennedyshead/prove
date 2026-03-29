@@ -743,10 +743,11 @@ class ExprEmitterMixin:
 
     def _emit_match_expr(self, m: MatchExpr) -> str:
         if m.subject is None:
-            # Implicit subject: matches/streams use first parameter,
+            # Implicit subject: matches/dispatches/streams use first parameter,
             # listens/renders uses _ev (received event from queue)
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
+                "dispatches",
                 "streams",
                 "listens",
                 "renders",
@@ -1131,7 +1132,7 @@ class ExprEmitterMixin:
             subj_type = self._infer_expr_type(m.subject)
         elif (
             self._current_func is not None
-            and self._current_func.verb in ("matches", "streams")
+            and self._current_func.verb in ("matches", "dispatches", "streams")
             and self._current_func.params
         ):
             # Implicit subject: resolve from first parameter

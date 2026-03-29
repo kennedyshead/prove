@@ -16,65 +16,65 @@ Functions with Integer/Float/Decimal overloads dispatch based on argument type.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `abs(n Integer) Integer` | Absolute value of integer |
-| `reads` | `abs(x Float) Float` | Absolute value of float |
-| `reads` | `abs(x Decimal) Decimal` | Absolute value of decimal |
-| `reads` | `min(first Integer, second Integer) Integer` | Smaller of two integers |
-| `reads` | `min(first Float, second Float) Float` | Smaller of two floats |
-| `reads` | `min(first Decimal, second Decimal) Decimal` | Smaller of two decimals |
-| `reads` | `max(first Integer, second Integer) Integer` | Larger of two integers |
-| `reads` | `max(first Float, second Float) Float` | Larger of two floats |
-| `reads` | `max(first Decimal, second Decimal) Decimal` | Larger of two decimals |
+| `derives` | `abs(n Integer) Integer` | Absolute value of integer |
+| `derives` | `abs(x Float) Float` | Absolute value of float |
+| `derives` | `abs(x Decimal) Decimal` | Absolute value of decimal |
+| `derives` | `min(first Integer, second Integer) Integer` | Smaller of two integers |
+| `derives` | `min(first Float, second Float) Float` | Smaller of two floats |
+| `derives` | `min(first Decimal, second Decimal) Decimal` | Smaller of two decimals |
+| `derives` | `max(first Integer, second Integer) Integer` | Larger of two integers |
+| `derives` | `max(first Float, second Float) Float` | Larger of two floats |
+| `derives` | `max(first Decimal, second Decimal) Decimal` | Larger of two decimals |
 
 ### Clamp
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
-| `reads` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
-| `reads` | `clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal` | Constrain decimal to range |
+| `derives` | `clamp(value Integer, minimum Integer, maximum Integer) Integer` | Constrain integer to range |
+| `derives` | `clamp(value Float, minimum Float, maximum Float) Float` | Constrain float to range |
+| `derives` | `clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal` | Constrain decimal to range |
 
 ### Float Operations
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `sqrt(x Float) Float` | Square root |
-| `reads` | `power(base Float, exponent Float) Float` | Exponentiation (also available as `pow`) |
+| `derives` | `sqrt(x Float) Float` | Square root |
+| `derives` | `power(base Float, exponent Float) Float` | Exponentiation (also available as `pow`) |
 | `creates` | `floor(x Float) Integer` | Round down to integer |
 | `creates` | `ceil(x Float) Integer` | Round up to integer |
 | `creates` | `round(x Float) Integer` | Round to nearest integer |
-| `reads` | `log(x Float) Float` | Natural logarithm |
-| `reads` | `log2(x Float) Float` | Base-2 logarithm |
-| `reads` | `log10(x Float) Float` | Base-10 logarithm |
-| `reads` | `exp(x Float) Float` | Exponential (e^x) |
+| `derives` | `log(x Float) Float` | Natural logarithm |
+| `derives` | `log2(x Float) Float` | Base-2 logarithm |
+| `derives` | `log10(x Float) Float` | Base-10 logarithm |
+| `derives` | `exp(x Float) Float` | Exponential (e^x) |
 
 ### Trigonometry
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `sin(angle Float) Float` | Sine |
-| `reads` | `cos(angle Float) Float` | Cosine |
-| `reads` | `tan(angle Float) Float` | Tangent |
-| `reads` | `asin(value Float) Float` | Arc sine |
-| `reads` | `acos(value Float) Float` | Arc cosine |
-| `reads` | `atan(value Float) Float` | Arc tangent |
-| `reads` | `atan2(y Float, x Float) Float` | Two-argument arc tangent |
+| `derives` | `sin(angle Float) Float` | Sine |
+| `derives` | `cos(angle Float) Float` | Cosine |
+| `derives` | `tan(angle Float) Float` | Tangent |
+| `derives` | `asin(value Float) Float` | Arc sine |
+| `derives` | `acos(value Float) Float` | Arc cosine |
+| `derives` | `atan(value Float) Float` | Arc tangent |
+| `derives` | `atan2(y Float, x Float) Float` | Two-argument arc tangent |
 
 ### Constants
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `pi() Float` | Pi (3.14159...) |
-| `reads` | `e() Float` | Euler's number (2.71828...) |
+| `derives` | `pi() Float` | Pi (3.14159...) |
+| `derives` | `e() Float` | Euler's number (2.71828...) |
 
 ```prove
-  Math reads abs min max sqrt clamp creates floor
+  Math derives abs min max sqrt clamp creates floor
 
-reads distance(x Integer, y Integer) Integer
+derives distance(x Integer, y Integer) Integer
 from
     Math.abs(Math.min(x, y) - Math.max(x, y))
 
-reads clamp_price(price Decimal, lo Decimal, hi Decimal) Decimal
+derives clamp_price(price Decimal, lo Decimal, hi Decimal) Decimal
 from
     Math.clamp(price, lo, hi)
 ```
@@ -222,21 +222,21 @@ Typed overloads are available for `Option<Float>`, `Option<Decimal>`, and `Optio
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `unwrap(option Option<Integer>, default Integer) Integer` | Extract integer or use default |
-| `reads` | `unwrap(option Option<String>, default String) String` | Extract string or use default |
-| `reads` | `unwrap(option Option<Float>, default Float) Float` | Extract float or use default |
-| `reads` | `unwrap(option Option<Decimal>, default Decimal) Decimal` | Extract decimal or use default |
-| `reads` | `unwrap(option Option<Boolean>, default Boolean) Boolean` | Extract boolean or use default |
-| `reads` | `unwrap(option Option<Value>, default Value) Value` | Extract value or use default |
+| `derives` | `unwrap(option Option<Integer>, default Integer) Integer` | Extract integer or use default |
+| `derives` | `unwrap(option Option<String>, default String) String` | Extract string or use default |
+| `derives` | `unwrap(option Option<Float>, default Float) Float` | Extract float or use default |
+| `derives` | `unwrap(option Option<Decimal>, default Decimal) Decimal` | Extract decimal or use default |
+| `derives` | `unwrap(option Option<Boolean>, default Boolean) Boolean` | Extract boolean or use default |
+| `derives` | `unwrap(option Option<Value>, default Value) Value` | Extract value or use default |
 
 ```prove
-  Types creates integer float decimal string code reads unwrap validates integer string ok value
+  Types creates integer float decimal string code derives unwrap validates integer string ok value
 
 creates format_pair(label String, n Integer) String
 from
     label + ": " + Types.string(n)
 
-reads safe_first(items List<Integer>) Integer
+derives safe_first(items List<Integer>) Integer
 from
     Types.unwrap(List.first(items), 0)
 

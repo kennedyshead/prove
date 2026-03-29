@@ -138,30 +138,31 @@ def _count_decimal_places(literal: str) -> int:
 #   transforms — may allocate, may fail (only pure verb with `!`)
 #   validates — returns Boolean, never allocates, never fails
 #   matches   — algebraic dispatch, never allocates, never fails
-_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
+_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
 
 # Pure verbs that are allowed to be failable (only transforms can fail at runtime)
 _FAILABLE_PURE_VERBS = frozenset({"transforms"})
 
 # Pure verbs guaranteed to never allocate new values
-_NON_ALLOCATING_VERBS = frozenset({"reads", "validates", "matches"})
+_NON_ALLOCATING_VERBS = frozenset({"derives", "validates", "matches"})
 
 # Async verb family
 _ASYNC_VERBS = frozenset({"detached", "attached", "listens", "renders"})
 
 # IO (blocking) verbs — forbidden inside async bodies
-_BLOCKING_VERBS = frozenset({"inputs", "outputs", "streams"})
+_BLOCKING_VERBS = frozenset({"inputs", "outputs", "streams", "dispatches"})
 
 # Verbs that need ownership of their parameters (skip borrow inference)
 _VERBS_NEED_OWNERSHIP = frozenset(
     {
         "outputs",
         "matches",
+        "dispatches",
         "creates",
         "validates",
         "inputs",
         "transforms",
-        "reads",
+        "derives",
         "detached",
         "attached",
         "listens",
@@ -421,6 +422,12 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     "I201",
                     "Prove requires a module declaration with narrative",
                     module.span,
+                )
+            elif not mod_decls[0].name or not mod_decls[0].name[0].isupper():
+                self._error(
+                    "E210",
+                    "module declaration requires a name (e.g. `module MyModule`)",
+                    mod_decls[0].span,
                 )
             elif mod_decls[0].narrative is None:
                 self._info(
@@ -2198,15 +2205,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Check body for IO calls
             self._check_pure_body(fd.body, fd.span)
 
-        # matches verb: first parameter must be a matchable type
-        if verb == "matches":
+        # matches/dispatches verb: first parameter must be a matchable type
+        if verb in ("matches", "dispatches"):
             if fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
                 is_matchable = (
                     isinstance(first_type, (AlgebraicType, ErrorType))
                     or (
                         isinstance(first_type, PrimitiveType)
-                        and first_type.name in ("String", "Integer")
+                        and first_type.name in ("String", "Integer", "Boolean")
                     )
                     or (
                         isinstance(first_type, GenericInstance)
@@ -2216,15 +2223,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if not is_matchable:
                     self._error(
                         "E365",
-                        f"matches verb requires first parameter to be "
-                        f"a matchable type (algebraic, String, or "
-                        f"Integer), got '{type_name(first_type)}'",
+                        f"{verb} verb requires first parameter to be "
+                        f"a matchable type (algebraic, String, Integer, "
+                        f"or Boolean), got '{type_name(first_type)}'",
                         fd.params[0].span,
                     )
             else:
                 self._error(
                     "E365",
-                    "matches verb requires at least one parameter",
+                    f"{verb} verb requires at least one parameter",
                     fd.span,
                 )
 
@@ -2322,7 +2329,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 fd.span,
             )
         # IO verbs with requires must be failable or return Option
-        if fd.requires and verb in ("inputs", "outputs"):
+        if fd.requires and verb in ("inputs", "outputs", "dispatches"):
             ret = self._resolve_type_expr(fd.return_type) if fd.return_type else None
             is_option = isinstance(ret, GenericInstance) and ret.base_name == "Option"
             if not fd.can_fail and not is_option:
@@ -2335,8 +2342,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
         # I367: suggest extracting match to a matches verb function
         # listens/streams/renders bodies are inherently match-based, so exempt
-        if verb not in ("matches", "listens", "streams", "renders"):
-            self._check_match_restriction(fd.body, fd.span)
+        if verb not in ("matches", "dispatches", "listens", "streams", "renders"):
+            self._check_match_restriction(fd.body, fd.span, verb)
 
     def _check_async_body(self, fd: FunctionDef) -> None:
         """Enforce async body rules: no blocking IO calls; async calls must use &."""
@@ -2527,51 +2534,53 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self,
         body: list[Stmt | MatchExpr],
         span: Span,
+        verb: str,
     ) -> None:
-        """I367: suggest extracting match to a 'matches' verb function."""
+        """I367: suggest extracting match to a 'matches'/'dispatches' verb function."""
+        target = "matches" if verb in _PURE_VERBS else "dispatches"
         for stmt in body:
             if isinstance(stmt, MatchExpr):
                 if len(stmt.arms) >= 3 and not _match_arms_have_fail_prop(stmt):
                     self._info(
                         "I367",
-                        "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
+                        f"consider extracting match to a '{target}' verb function for better code flow",  # noqa: E501
                         stmt.span,
                     )
             elif isinstance(stmt, VarDecl):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, Assignment):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, FieldAssignment):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, ExprStmt):
-                self._check_match_in_expr(stmt.expr)
+                self._check_match_in_expr(stmt.expr, target)
 
-    def _check_match_in_expr(self, expr: Expr) -> None:
+    def _check_match_in_expr(self, expr: Expr, target: str) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
             if len(expr.arms) >= 3 and not _match_arms_have_fail_prop(expr):
                 self._info(
                     "I367",
-                    "consider extracting match to a 'matches' verb function for better code flow",
+                    f"consider extracting match to a '{target}' verb function for better code flow",
                     expr.span,
                 )
         elif isinstance(expr, CallExpr):
             for arg in expr.args:
-                self._check_match_in_expr(arg)
+                self._check_match_in_expr(arg, target)
         elif isinstance(expr, BinaryExpr):
-            self._check_match_in_expr(expr.left)
-            self._check_match_in_expr(expr.right)
+            self._check_match_in_expr(expr.left, target)
+            self._check_match_in_expr(expr.right, target)
         elif isinstance(expr, UnaryExpr):
-            self._check_match_in_expr(expr.operand)
+            self._check_match_in_expr(expr.operand, target)
         elif isinstance(expr, PipeExpr):
-            self._check_match_in_expr(expr.left)
-            self._check_match_in_expr(expr.right)
+            self._check_match_in_expr(expr.left, target)
+            self._check_match_in_expr(expr.right, target)
         elif isinstance(expr, LambdaExpr):
-            self._check_match_in_expr(expr.body)
+            self._check_match_in_expr(expr.body, target)
         elif isinstance(expr, FailPropExpr):
-            self._check_match_in_expr(expr.expr)
+            self._check_match_in_expr(expr.expr, target)
         elif isinstance(expr, AsyncCallExpr):
-            self._check_match_in_expr(expr.expr)
+            self._check_match_in_expr(expr.expr, target)
 
     def _check_unused_pure_result(self, stmt: Stmt | MatchExpr) -> None:
         """Check for unused pure function calls in statement position (W332)."""
@@ -3193,7 +3202,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif (
             self._current_function
             and isinstance(self._current_function, FunctionDef)
-            and self._current_function.verb in ("matches", "listens", "streams", "renders")
+            and self._current_function.verb
+            in ("matches", "dispatches", "listens", "streams", "renders")
         ):
             # Implicit match subject resolution per verb:
             # - matches: first parameter type
@@ -3979,7 +3989,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         An unverified function that calls a verified function breaks the
         verification chain — the callee's guarantees don't propagate.
         """
-        _IO_VERBS = frozenset({"inputs", "outputs", "streams"})
+        _IO_VERBS = frozenset({"inputs", "outputs", "streams", "dispatches"})
 
         # Collect all function definitions
         all_fns: list[FunctionDef] = []

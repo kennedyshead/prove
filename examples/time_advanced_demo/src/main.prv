@@ -3,7 +3,7 @@ module Main
   System outputs console
   Time
     types Time Date DateTime Clock Duration Weekday
-    reads date days duration
+    derives date days duration
     creates date datetime clock duration weekday
     validates time days duration date datetime clock weekday
     inputs time

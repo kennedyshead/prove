@@ -6,8 +6,8 @@ Verb semantic guarantees, type system improvements, and compiler optimizations.
 
 **Highlights:**
 
-- **Verb consistency overhaul** — enforced strict verb rules across all 22 stdlib modules (~105 corrections): `reads` = same type, never allocates, never fails; `creates` = different type, always allocates, never fails; `transforms` = failable, may allocate. The verb now carries compiler-exploitable semantic guarantees.
-- **Verb-aware optimizer** — `reads`/`validates` functions inline up to 3 statements (previously 1); region scope analysis skips scalar `reads`/`validates` calls; new `_is_eliminable_call` helper for dead expression elimination
+- **Verb consistency overhaul** — enforced strict verb rules across all 22 stdlib modules (~105 corrections): `derives` = same type, never allocates, never fails; `creates` = different type, always allocates, never fails; `transforms` = failable, may allocate. The verb now carries compiler-exploitable semantic guarantees.
+- **Verb-aware optimizer** — `derives`/`validates` functions inline up to 3 statements (previously 1); region scope analysis skips scalar `derives`/`validates` calls; new `_is_eliminable_call` helper for dead expression elimination
 - **Recursive variant types** — algebraic types can reference themselves (`type Tree is Leaf(Integer) | Branch(Tree, Tree)`), with mutual recursion support
 - **`Value<T>` phantom types** — `Value<Json>`, `Value<Toml>`, `Value<Csv>`, `Value<Tree>` track data format at the type level; usage-based linking only pulls in runtime code for formats actually used
 - **Failable record deserialization** — `creates` from structured data (`Value`, `Value<Json>`) now returns `Result` when fields may be missing; `transforms` enables `!` propagation

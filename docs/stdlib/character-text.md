@@ -64,14 +64,14 @@ Defines a binary `StringBuilder` type for efficient incremental string building.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `slice(text String, start Integer, end Integer) String` | Extract substring [start, end) |
+| `derives` | `slice(text String, start Integer, end Integer) String` | Extract substring [start, end) |
 | `creates` | `split(text String, separator String) List<String>` | Split by delimiter |
 | `creates` | `join(parts List<String>, separator String) String` | Join strings with separator |
-| `reads` | `trim(text String) String` | Remove leading and trailing whitespace |
-| `reads` | `lower(text String) String` | Convert to lowercase |
-| `reads` | `upper(text String) String` | Convert to uppercase |
-| `reads` | `replace(text String, old String, new String) String` | Replace all occurrences |
-| `reads` | `repeat(text String, count Integer) String` | Repeat string count times |
+| `derives` | `trim(text String) String` | Remove leading and trailing whitespace |
+| `derives` | `lower(text String) String` | Convert to lowercase |
+| `derives` | `upper(text String) String` | Convert to uppercase |
+| `derives` | `replace(text String, old String, new String) String` | Replace all occurrences |
+| `derives` | `repeat(text String, count Integer) String` | Repeat string count times |
 
 ### Builder
 
@@ -80,14 +80,14 @@ The `StringBuilder` type allows efficient incremental string construction.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `builder() StringBuilder:[Mutable]` | Create an empty builder |
-| `reads` | `string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
-| `reads` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
+| `derives` | `string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
+| `derives` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
 | `creates` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
 | `creates` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
-  Text creates length index validates contains starts reads slice reads trim lower upper replace repeat creates split join
-  Text creates builder reads string_builder creates build
+  Text creates length index validates contains starts derives slice derives trim lower upper replace repeat creates split join
+  Text creates builder derives string_builder creates build
 
 creates word_count(text String) Integer
 from

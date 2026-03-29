@@ -96,7 +96,7 @@ module.exports = grammar({
     ),
 
     intent_verb: $ => choice(
-      'validates', 'transforms', 'reads', 'creates', 'matches',
+      'validates', 'transforms', 'derives', 'reads', 'creates', 'matches', 'dispatches',
       'inputs', 'outputs', 'streams', 'listens', 'detached', 'attached', 'renders',
     ),
 
@@ -351,9 +351,11 @@ module.exports = grammar({
 
     verb: $ => choice(
       'creates',
+      'dispatches',
       'inputs',
       'matches',
       'outputs',
+      'derives',
       'reads',
       'transforms',
       'validates',

@@ -142,11 +142,10 @@ class TestMatchesVerbRelaxation:
             "            Square(s) => s\n"
         )
 
-    def test_matches_boolean_first_param_rejected(self):
-        """matches verb rejects Boolean as first parameter."""
-        check_fails(
+    def test_matches_boolean_first_param_accepted(self):
+        """matches verb accepts Boolean as first parameter."""
+        check(
             'matches bad(flag Boolean) String\n    from\n        "nope"\n',
-            "E365",
         )
 
     def test_matches_decimal_first_param_rejected(self):
@@ -286,12 +285,12 @@ class TestMatchRestriction:
             "I367",
         )
 
-    def test_match_in_reads_info(self):
-        """I367: match in reads body produces info (4+ arms)."""
+    def test_match_in_derives_info(self):
+        """I367: match in derives body produces info (4+ arms)."""
         check_info(
             "module M\n"
             "  type Dir is North | South | East | West\n"
-            "reads bad(d Dir) Integer\n"
+            "derives bad(d Dir) Integer\n"
             "    from\n"
             "        match d\n"
             "            North => 1\n"
@@ -386,6 +385,51 @@ class TestMatchRestriction:
             "            _ => dispatch(n)!\n"
         )
         assert "I367" not in [d.code for d in diags]
+
+    def test_match_in_dispatches_ok(self):
+        """match in dispatches body is allowed (no I367)."""
+        check(
+            "module M\n"
+            "  type Color is Red | Green | Blue\n"
+            "dispatches handle(c Color) Integer\n"
+            "    from\n"
+            "        match c\n"
+            "            Red => 1\n"
+            "            Green => 2\n"
+            "            Blue => 3\n"
+        )
+
+    def test_i367_pure_suggests_matches(self):
+        """I367 in pure verb context should suggest 'matches'."""
+        diags = check_info(
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "transforms bad(d Dir) Integer\n"
+            "    from\n"
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
+            "I367",
+        )
+        assert "'matches'" in diags[0].message
+
+    def test_i367_io_suggests_dispatches(self):
+        """I367 in IO verb context should suggest 'dispatches'."""
+        diags = check_info(
+            "module M\n"
+            "  type Dir is North | South | East | West\n"
+            "outputs bad(d Dir) Integer\n"
+            "    from\n"
+            "        match d\n"
+            "            North => 1\n"
+            "            South => 2\n"
+            "            East => 3\n"
+            "            West => 4\n",
+            "I367",
+        )
+        assert "'dispatches'" in diags[0].message
 
     def test_match_in_main_ok(self):
         """match in main is exempt from I367."""

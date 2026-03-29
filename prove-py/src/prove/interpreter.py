@@ -64,7 +64,7 @@ class ComptimeInterpreter:
         if func_name not in self._function_defs:
             return None
         fd = self._function_defs[func_name]
-        if fd.verb not in {"transforms", "validates", "reads", "creates", "matches"}:
+        if fd.verb not in {"transforms", "validates", "derives", "creates", "matches"}:
             return None
         if len(fd.params) != len(args):
             return None

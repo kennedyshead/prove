@@ -48,17 +48,21 @@ VERB_SYNONYMS: dict[str, list[str]] = {
         "guards",
         "guard",
     ],
-    "reads": [
+    "derives": [
+        "derives",
+        "derive",
         "reads",
         "read",
+        "accesses",
+        "access",
+        "gets",
+        "get",
         "fetches",
         "fetch",
         "loads",
         "load",
         "retrieves",
         "retrieve",
-        "queries",
-        "query",
     ],
     "creates": [
         "creates",
@@ -81,6 +85,14 @@ VERB_SYNONYMS: dict[str, list[str]] = {
         "classify",
         "selects",
         "select",
+    ],
+    "dispatches": [
+        "dispatches",
+        "dispatch",
+        "routes",
+        "route",
+        "handles",
+        "handle",
     ],
     "outputs": [
         "outputs",
@@ -141,7 +153,7 @@ _HARDCODED_SYNONYM_TO_VERB: dict[str, str] = {
 try:
     from prove.nlp_store import load_verb_synonyms
 
-    _SYNONYM_TO_VERB: dict[str, str] = {**_HARDCODED_SYNONYM_TO_VERB, **load_verb_synonyms()}
+    _SYNONYM_TO_VERB: dict[str, str] = {**load_verb_synonyms(), **_HARDCODED_SYNONYM_TO_VERB}
 except Exception:
     _SYNONYM_TO_VERB: dict[str, str] = _HARDCODED_SYNONYM_TO_VERB
 
@@ -432,9 +444,10 @@ class FunctionStub:
 _VERB_PARAM_HINTS: dict[str, list[tuple[str, str]]] = {
     "validates": [("value", "String")],
     "transforms": [("value", "String")],
-    "reads": [("source", "String")],
+    "derives": [("source", "String")],
     "creates": [],
     "matches": [("value", "Value")],
+    "dispatches": [("value", "Value")],
     "inputs": [("path", "String")],
     "outputs": [("value", "String")],
 }
@@ -442,9 +455,10 @@ _VERB_PARAM_HINTS: dict[str, list[tuple[str, str]]] = {
 _VERB_RETURN_DEFAULTS: dict[str, str] = {
     "validates": "Boolean",
     "transforms": "String",
-    "reads": "String",
+    "derives": "String",
     "creates": "String",
     "matches": "Boolean",
+    "dispatches": "String",
     "inputs": "String",
     "outputs": "Unit",
 }

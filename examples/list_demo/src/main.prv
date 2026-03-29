@@ -8,11 +8,11 @@ module Main
   """
   System outputs console
   Sequence
-    reads first last slice reverse sort
+    derives first last slice reverse sort
     creates range length index
     validates empty contains
   Text creates join
-  Types reads unwrap creates string
+  Types derives unwrap creates string
 
 main() Result<Unit, Error>!
 from

@@ -8,7 +8,7 @@ module Main
   Parse creates tree
   Prove
     types Node Tree
-    reads root
+    derives root
     creates kind children count line column named_children child
     validates error
   Types creates string

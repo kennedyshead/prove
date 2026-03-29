@@ -19,8 +19,8 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `stem(word String) String` | Apply the Porter stemming algorithm |
-| `reads` | `root(word String) String` | Strip common suffixes to find the root form |
+| `derives` | `stem(word String) String` | Apply the Porter stemming algorithm |
+| `derives` | `root(word String) String` | Strip common suffixes to find the root form |
 
 ### String Similarity
 
@@ -33,8 +33,8 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `soundex(word String) String` | Soundex phonetic code |
-| `reads` | `metaphone(word String) String` | Double Metaphone phonetic code |
+| `derives` | `soundex(word String) String` | Soundex phonetic code |
+| `derives` | `metaphone(word String) String` | Double Metaphone phonetic code |
 
 ### N-Grams
 
@@ -47,14 +47,14 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `normalize(text String) String` | Lowercase and fold accented characters to ASCII |
-| `reads` | `transliterate(text String) String` | Transliterate accented characters to ASCII preserving case |
+| `derives` | `normalize(text String) String` | Lowercase and fold accented characters to ASCII |
+| `derives` | `transliterate(text String) String` | Transliterate accented characters to ASCII preserving case |
 
 ### Stopwords and Frequency
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `stopwords() List<String>` | Common English stopwords |
+| `derives` | `stopwords() List<String>` | Common English stopwords |
 | `creates` | `without_stopwords(text String) List<String>` | Remove stopwords, return remaining words |
 | `creates` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
 | `creates` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
@@ -70,10 +70,10 @@ Access properties of `Token` values produced by `Parse.tokens()`. Extract token 
 | `creates` | `kind(token Token) Integer` | Kind tag (from the matched rule) |
 
 ```prove
-  Language creates words distance similarity keywords start end kind reads stem normalize
+  Language creates words distance similarity keywords start end kind derives stem normalize
   Parse types Token
 
-reads find_similar(query String, candidates List<String>) List<String>
+derives find_similar(query String, candidates List<String>) List<String>
 from
     filter(candidates, |c| Language.similarity(query, c) > 0.8f)
 ```

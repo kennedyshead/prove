@@ -16,9 +16,10 @@ class TokenKind(Enum):
     INPUTS = auto()
     OUTPUTS = auto()
     VALIDATES = auto()
-    READS = auto()
+    DERIVES = auto()
     CREATES = auto()
     MATCHES = auto()
+    DISPATCHES = auto()
     TYPES = auto()
     DETACHED = auto()
     ATTACHED = auto()
@@ -155,9 +156,11 @@ KEYWORDS: dict[str, TokenKind] = {
     "inputs": TokenKind.INPUTS,
     "outputs": TokenKind.OUTPUTS,
     "validates": TokenKind.VALIDATES,
-    "reads": TokenKind.READS,
+    "derives": TokenKind.DERIVES,
+    "reads": TokenKind.DERIVES,  # backward-compat alias
     "creates": TokenKind.CREATES,
     "matches": TokenKind.MATCHES,
+    "dispatches": TokenKind.DISPATCHES,
     "types": TokenKind.TYPES,
     "detached": TokenKind.DETACHED,
     "attached": TokenKind.ATTACHED,

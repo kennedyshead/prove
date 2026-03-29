@@ -90,7 +90,7 @@ proof test
 
 ### Intent Verbs
 
-Every function declares its purpose with a [verb](functions.md#intent-verbs). The compiler enforces it. Pure verbs (`transforms`, `validates`, `reads`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`) make side effects explicit. [Async verbs](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) provide structured concurrency.
+Every function declares its purpose with a [verb](functions.md#intent-verbs). The compiler enforces it. Pure verbs (`transforms`, `validates`, `derives`, `creates`, `matches`) cannot perform IO. IO verbs (`inputs`, `outputs`, `dispatches`) make side effects explicit. [Async verbs](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) provide structured concurrency.
 
 ```prove
 validates email(address String)
@@ -169,7 +169,7 @@ from
 
 Here's a basic function definition that transforms an integer and ensures its output:
 ```prove
-reads double(n Integer) Integer
+derives double(n Integer) Integer
   ensures result == n * 2
 from
     n * 2
@@ -187,7 +187,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-**Prove v1.2.0 is released.** Enforces strict verb semantic guarantees (`reads` never allocates, `creates` always allocates, `transforms` is the only failable pure verb), adds recursive variant types, `Value<T>` phantom types, full Decimal parity, generic tokenization, and Prove AST access via tree-sitter. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
+**Prove v1.2.0 is released.** Enforces strict verb semantic guarantees (`derives` never allocates, `creates` always allocates, `transforms` is the only failable pure verb), adds recursive variant types, `Value<T>` phantom types, full Decimal parity, generic tokenization, and Prove AST access via tree-sitter. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
 
 ## Repository
 

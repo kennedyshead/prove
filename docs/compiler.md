@@ -211,7 +211,7 @@ Dependencies are tracked automatically; no annotation is needed. Every `read()` 
 
 ## Verb Enforcement
 
-The compiler enforces purity rules based on the function's verb. Pure verbs (`validates`, `reads`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
+The compiler enforces purity rules based on the function's verb. Pure verbs (`validates`, `derives`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
 
 - Cannot call built-in IO functions like `println` or `read_file` (E362)
 - Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E362)
@@ -257,8 +257,8 @@ The `Store` module provides persistent storage for lookup tables with versioning
 
 ```prove
   Store outputs store table inputs table version
-    validates store table merged creates diff creates merge reads patch
-    reads integrity merged
+    validates store table merged creates diff creates merge derives patch
+    derives integrity merged
     types Store StoreTable TableDiff MergeResult Version
 
 // Create a store and load a table (creates empty table if missing)

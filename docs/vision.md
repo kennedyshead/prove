@@ -107,7 +107,7 @@ The `todo` keyword is a first-class incomplete marker. The linter tracks it:
 ```
 Module Auth: 1/4 functions complete (25%)
   - validates credentials    [todo]
-  - reads password_hash      [todo]
+  - derives password_hash      [todo]
   - transforms password      [complete]
   - creates session          [todo]
 ```

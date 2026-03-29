@@ -16,18 +16,18 @@ Defines a binary type: `Table<Value>` (the hash map).
 |------|-----------|-------------|
 | `creates` | `new() Table<Value>` | Create an empty table |
 | `validates` | `has(key String, table Table<Value>)` | True if key exists |
-| `reads` | `add(key String, value Value, table Table<Value>) Table<Value>` | Insert or update a key-value pair |
-| `reads` | `get(key String, table Table<Value>) Option<Value>` | Look up value by key |
-| `reads` | `remove(key String, table Table<Value>) Table<Value>` | Delete a key from the table |
+| `derives` | `add(key String, value Value, table Table<Value>) Table<Value>` | Insert or update a key-value pair |
+| `derives` | `get(key String, table Table<Value>) Option<Value>` | Look up value by key |
+| `derives` | `remove(key String, table Table<Value>) Table<Value>` | Delete a key from the table |
 | `creates` | `keys(table Table<Value>) List<String>` | Get all keys |
-| `reads` | `values(table Table<Value>) List<Value>` | Get all values |
+| `derives` | `values(table Table<Value>) List<Value>` | Get all values |
 | `creates` | `length(table Table<Value>) Integer` | Number of entries |
 | `creates` | `table(v Value) Table<Value>` | Extract object content from a Value |
 
 ```prove
-  Table creates new table keys validates has reads add remove get
+  Table creates new table keys validates has derives add remove get
 
-reads lookup(name String, db Table<String>) String
+derives lookup(name String, db Table<String>) String
 from
     Error.unwrap_or(Table.get(name, db), "unknown")
 ```
@@ -62,8 +62,8 @@ The element type and mutability are inferred from context (the declared type of 
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `get(arr Array<Boolean>, idx Integer) Boolean` | Read element at index |
-| `reads` | `get(arr Array<Integer>, idx Integer) Integer` | Read element at index |
+| `derives` | `get(arr Array<Boolean>, idx Integer) Boolean` | Read element at index |
+| `derives` | `get(arr Array<Integer>, idx Integer) Integer` | Read element at index |
 | `creates` | `length(arr Array<T>) Integer` | Number of elements |
 
 Both overloads work identically on mutable (`:[Mutable]`) and immutable arrays.
@@ -72,10 +72,10 @@ Both overloads work identically on mutable (`:[Mutable]`) and immutable arrays.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>` | Copy-on-write: return new array with element replaced |
-| `reads` | `set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>` | Copy-on-write: return new array with element replaced |
-| `reads` | `set(arr Array<Boolean>:[Mutable], idx Integer, val Boolean) Array<Boolean>:[Mutable]` | In-place: modify array and return same pointer |
-| `reads` | `set(arr Array<Integer>:[Mutable], idx Integer, val Integer) Array<Integer>:[Mutable]` | In-place: modify array and return same pointer |
+| `derives` | `set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>` | Copy-on-write: return new array with element replaced |
+| `derives` | `set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>` | Copy-on-write: return new array with element replaced |
+| `derives` | `set(arr Array<Boolean>:[Mutable], idx Integer, val Boolean) Array<Boolean>:[Mutable]` | In-place: modify array and return same pointer |
+| `derives` | `set(arr Array<Integer>:[Mutable], idx Integer, val Integer) Array<Integer>:[Mutable]` | In-place: modify array and return same pointer |
 
 The dispatch between copy-on-write and in-place is resolved by the array's type — no separate function name needed.
 
@@ -83,7 +83,7 @@ The dispatch between copy-on-write and in-place is resolved by the array's type 
 
 ```prove
   Array creates array length
-  Array reads get set
+  Array derives get set
 
 main() Result<Unit, Error>!
 from
@@ -98,10 +98,10 @@ from
 
 ```prove
   Array creates array
-  Array reads get set
+  Array derives get set
 
 // Sieve of Eratosthenes: count primes up to limit
-reads count_primes(limit Integer) Integer
+derives count_primes(limit Integer) Integer
 from
     is_composite as Array<Boolean>:[Mutable] = array(limit + 1, false)
     marked0 as Array<Boolean>:[Mutable] = set(is_composite, 0, true)
@@ -154,17 +154,17 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `length(items List<Value>) Integer` | Number of elements |
-| `reads` | `first(items List<Value>) Option<Value>` | First element, or None |
-| `reads` | `first(items List<Integer>) Option<Integer>` | First integer, or None |
-| `reads` | `first(items List<String>) Option<String>` | First string, or None |
-| `reads` | `first(items List<Float>) Option<Float>` | First float, or None |
-| `reads` | `first(items List<Decimal>) Option<Decimal>` | First decimal, or None |
-| `reads` | `last(items List<Value>) Option<Value>` | Last element, or None |
-| `reads` | `last(items List<Integer>) Option<Integer>` | Last integer, or None |
-| `reads` | `last(items List<String>) Option<String>` | Last string, or None |
-| `reads` | `last(items List<Float>) Option<Float>` | Last float, or None |
-| `reads` | `last(items List<Decimal>) Option<Decimal>` | Last decimal, or None |
-| `reads` | `value(position Integer, items List<Value>) Option<Value>` | Element at position (0-based), or None |
+| `derives` | `first(items List<Value>) Option<Value>` | First element, or None |
+| `derives` | `first(items List<Integer>) Option<Integer>` | First integer, or None |
+| `derives` | `first(items List<String>) Option<String>` | First string, or None |
+| `derives` | `first(items List<Float>) Option<Float>` | First float, or None |
+| `derives` | `first(items List<Decimal>) Option<Decimal>` | First decimal, or None |
+| `derives` | `last(items List<Value>) Option<Value>` | Last element, or None |
+| `derives` | `last(items List<Integer>) Option<Integer>` | Last integer, or None |
+| `derives` | `last(items List<String>) Option<String>` | Last string, or None |
+| `derives` | `last(items List<Float>) Option<Float>` | Last float, or None |
+| `derives` | `last(items List<Decimal>) Option<Decimal>` | Last decimal, or None |
+| `derives` | `value(position Integer, items List<Value>) Option<Value>` | Element at position (0-based), or None |
 | `validates` | `empty(items List<Value>)` | True if list has no elements |
 
 ### Search
@@ -184,12 +184,12 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `slice(items List<Value>, start Integer, end Integer) List<Value>` | Sub-list from start to end |
-| `reads` | `reverse(items List<Value>) List<Value>` | Reverse element order |
-| `reads` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
-| `reads` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
-| `reads` | `sort(items List<Float>) List<Float>` | Sort floats ascending |
-| `reads` | `sort(items List<Decimal>) List<Decimal>` | Sort decimals ascending |
+| `derives` | `slice(items List<Value>, start Integer, end Integer) List<Value>` | Sub-list from start to end |
+| `derives` | `reverse(items List<Value>) List<Value>` | Reverse element order |
+| `derives` | `sort(items List<Integer>) List<Integer>` | Sort integers ascending |
+| `derives` | `sort(items List<String>) List<String>` | Sort strings lexicographically |
+| `derives` | `sort(items List<Float>) List<Float>` | Sort floats ascending |
+| `derives` | `sort(items List<Decimal>) List<Decimal>` | Sort decimals ascending |
 
 ### Create
 
@@ -202,18 +202,18 @@ Typed `first`/`last` overloads are also available for Float and Decimal lists.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `get(items List<Integer>, idx Integer) Integer` | Get integer element at index |
-| `reads` | `get(items List<String>, idx Integer) String` | Get string element at index |
-| `reads` | `get(items List<Float>, idx Integer) Float` | Get float element at index |
-| `reads` | `get(items List<Decimal>, idx Integer) Decimal` | Get decimal element at index |
-| `reads` | `get(items List<Value>, idx Integer) Value` | Get value element at index |
-| `reads` | `get_safe(items List<Integer>, idx Integer) Option<Integer>` | Safe get integer at index |
-| `reads` | `get_safe(items List<String>, idx Integer) Option<String>` | Safe get string at index |
-| `reads` | `set(items List<Value>, idx Integer, val Value) List<Value>` | Return list with element replaced |
-| `reads` | `remove(items List<Value>, idx Integer) List<Value>` | Return list with element removed |
+| `derives` | `get(items List<Integer>, idx Integer) Integer` | Get integer element at index |
+| `derives` | `get(items List<String>, idx Integer) String` | Get string element at index |
+| `derives` | `get(items List<Float>, idx Integer) Float` | Get float element at index |
+| `derives` | `get(items List<Decimal>, idx Integer) Decimal` | Get decimal element at index |
+| `derives` | `get(items List<Value>, idx Integer) Value` | Get value element at index |
+| `derives` | `get_safe(items List<Integer>, idx Integer) Option<Integer>` | Safe get integer at index |
+| `derives` | `get_safe(items List<String>, idx Integer) Option<String>` | Safe get string at index |
+| `derives` | `set(items List<Value>, idx Integer, val Value) List<Value>` | Return list with element replaced |
+| `derives` | `remove(items List<Value>, idx Integer) List<Value>` | Return list with element removed |
 
 ```prove
-  List creates length reads first sort reverse slice creates range
+  List creates length derives first sort reverse slice creates range
 
 creates top_three() List<Integer>
 from
@@ -249,7 +249,7 @@ Defines four binary types: `Store` (storage handle), `StoreTable` (table handle)
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `diff(old StoreTable, new StoreTable) TableDiff` | Compute structural diff between two tables |
-| `reads` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
+| `derives` | `patch(table StoreTable, diff TableDiff) StoreTable` | Apply a diff to a table |
 
 ### Merge
 
@@ -289,7 +289,7 @@ result as MergeResult = Store.merge(base, local_diff, remote_diff, |c| KeepRemot
 | `inputs` | `version(store Store, name String) Result<List<Version>, Error>!` | List all versions of a table |
 
 ```prove
-  Store outputs store inputs table lookup validates store table creates diff merge merged conflicts integrity reads patch
+  Store outputs store inputs table lookup validates store table creates diff merge merged conflicts integrity derives patch
   Store outputs rollback inputs version
   Store validates merged types Store StoreTable Conflict Resolution MergeResult
 

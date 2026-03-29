@@ -111,15 +111,17 @@ def test_matches_present(lists):
 
 
 def test_verbs_complete(lists):
-    """All 7 verbs are present."""
+    """All verbs are present."""
     expected = {
         "transforms",
         "inputs",
         "outputs",
         "validates",
-        "reads",
+        "derives",
+        "reads",  # backward-compat alias for derives
         "creates",
         "matches",
+        "dispatches",
     }
     assert set(lists["verbs"]) == expected
 

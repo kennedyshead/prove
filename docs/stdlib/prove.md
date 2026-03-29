@@ -43,7 +43,7 @@ Use `Parse.tree()` to parse source into a tree and `Parse.string()` to extract t
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `root(tree Tree) Node` | Root node of a parsed tree |
+| `derives` | `root(tree Tree) Node` | Root node of a parsed tree |
 
 ## Node Accessors
 
@@ -84,10 +84,10 @@ Tree-sitter node kind names correspond to grammar rules. Common kinds:
 module Main
   System outputs console
   Parse creates tree
-  Prove reads root child creates kind string children named_children count line column
+  Prove derives root child creates kind string children named_children count line column
 
 /// Print node kinds at each level
-reads walk(node Node, depth Integer)
+derives walk(node Node, depth Integer)
 from
     indent as String = ""
     i as Integer = 0

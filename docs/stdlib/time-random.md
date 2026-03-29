@@ -26,7 +26,7 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `duration(hours Integer, minutes Integer, seconds Integer) Duration` | Create duration from components |
-| `reads` | `duration(duration Duration) Integer` | Total seconds in duration |
+| `derives` | `duration(duration Duration) Integer` | Total seconds in duration |
 | `validates` | `duration(duration Duration)` | True if duration is positive |
 | `creates` | `duration(start Time, stop Time) Duration` | Compute difference between two times |
 
@@ -37,7 +37,7 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | `creates` | `date(time Time) Date` | Extract date from a time |
 | `creates` | `date(year Integer, month Integer, day Integer) Date` | Create date from components |
 | `validates` | `date(year Integer, month Integer, day Integer)` | True if date components are valid |
-| `reads` | `date(date Date, days Integer) Date` | Add days to a date |
+| `derives` | `date(date Date, days Integer) Date` | Add days to a date |
 
 ### DateTime
 
@@ -52,7 +52,7 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `days(year Integer, month Integer) Integer` | Number of days in a month |
+| `derives` | `days(year Integer, month Integer) Integer` | Number of days in a month |
 | `validates` | `days(year Integer)` | True if year is a leap year |
 | `creates` | `weekday(date Date) Weekday` | Get weekday from a date |
 | `validates` | `weekday(date Date)` | True if date falls on a weekend |
@@ -66,9 +66,9 @@ Only `inputs time()` is an IO verb (reads the system clock). All other functions
 | `validates` | `clock(hour Integer, minute Integer, second Integer)` | True if clock components are valid |
 
 ```prove
-  Time inputs time creates duration date datetime clock weekday reads days date types Time Duration Date DateTime Clock Weekday
+  Time inputs time creates duration date datetime clock weekday derives days date types Time Duration Date DateTime Clock Weekday
 
-reads elapsed_days(start Time, stop Time) Integer
+derives elapsed_days(start Time, stop Time) Integer
 from
     span as Duration = Time.duration(start, stop)
     Time.duration(span) / 86400

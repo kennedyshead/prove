@@ -195,12 +195,27 @@ class TestParserFunctions:
         assert decl.verb == "outputs"
         assert decl.can_fail is True
 
-    def test_reads(self):
+    def test_derives(self):
+        source = "derives get(key String, table Table) String\n    from\n        key\n"
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.verb == "derives"
+        assert decl.name == "get"
+
+    def test_reads_alias(self):
+        """reads keyword parses as derives (backward compat)."""
         source = "reads get(key String, table Table) String\n    from\n        key\n"
         decl = parse_decl(source)
         assert isinstance(decl, FunctionDef)
-        assert decl.verb == "reads"
+        assert decl.verb == "derives"
         assert decl.name == "get"
+
+    def test_dispatches(self):
+        source = "dispatches handle(cmd String) Integer\n    from\n        0\n"
+        decl = parse_decl(source)
+        assert isinstance(decl, FunctionDef)
+        assert decl.verb == "dispatches"
+        assert decl.name == "handle"
 
     def test_creates(self):
         source = "creates new() Table\n    from\n        0\n"

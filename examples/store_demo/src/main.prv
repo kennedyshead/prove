@@ -3,7 +3,7 @@ module Main
   System outputs console
   Store
     types Store StoreTable TableDiff MergeResult Version Conflict
-    reads patch
+    derives patch
     creates integrity merged conflicts variant column local_value remote_value diff merge
     validates store table merged
     inputs table version lookup

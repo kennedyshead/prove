@@ -11,7 +11,7 @@ module Main
   reads detect of signal at target frequency and sample rate
   """
   System outputs console
-  Math reads cos sin pi log10
+  Math derives cos sin pi log10
   Types creates float string
 
   type FilterState is
@@ -25,12 +25,12 @@ module Main
   EPSILON as Float = 0.000000001f
 
 /// Goertzel coefficient for a target frequency at a given sample rate
-reads coefficient(frequency Float, sample_rate Float) Float
+derives coefficient(frequency Float, sample_rate Float) Float
 from
     2.0f * cos(2.0f * pi() * frequency / sample_rate)
 
 /// Generate a sine wave sample at a given index
-reads sine_sample(frequency Float, sample_rate Float, index Integer) Float
+derives sine_sample(frequency Float, sample_rate Float, index Integer) Float
 from
     t as Float = float(index) / sample_rate
     sin(2.0f * pi() * frequency * t)
@@ -60,7 +60,7 @@ from
                 FilterState(t, state.vn1))
 
 /// Compute signal power from filter state
-reads signal_power(koef Float, state FilterState, n Integer) Float
+derives signal_power(koef Float, state FilterState, n Integer) Float
 from
     raw as Float =
         state.vn1 * state.vn1 + state.vn2 * state.vn2 - koef * state.vn1 * state.vn2
@@ -70,12 +70,17 @@ from
         _ => raw / (n_f * n_f)
 
 /// Convert power to dBm (600 Ohm impedance)
-reads to_dbm(p Float) Float
+derives to_dbm(p Float) Float
 from
     log10(2.0f * p * 1000.0f / 600.0f) * 10.0f
 
 /// Run Goertzel: detect target_freq power in a signal of signal_freq
-reads detect(signal_freq Float, target_freq Float, sample_rate Float, count Integer) Float
+derives detect(
+    signal_freq Float,
+    target_freq Float,
+    sample_rate Float,
+    count Integer
+) Float
 from
     koef as Float = coefficient(target_freq, sample_rate)
     state as FilterState =

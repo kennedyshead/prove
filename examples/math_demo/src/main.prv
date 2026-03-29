@@ -8,7 +8,7 @@ module Main
   """
   System outputs console
   Math
-    reads abs min max sqrt power log log10 log2 exp sin cos tan asin acos atan atan2 pi e
+    derives abs min max sqrt power log log10 log2 exp sin cos tan asin acos atan atan2 pi e
     creates ceil round floor
      clamp
   Types creates string

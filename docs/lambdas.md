@@ -113,7 +113,7 @@ valid as List<Order> = par_filter(orders, valid order)
 total as Integer = par_reduce(values, 0, add)
 ```
 
-**Purity requirement:** for `par_map`, `par_filter`, and `par_reduce`, the callback must be a named pure function (`transforms`, `validates`, `reads`, `creates`, or `matches`). IO and async verbs are rejected at compile time. `par_each` is less restrictive — it allows IO callbacks but rejects async verbs. When using a named function reference, the compiler verifies purity; lambdas passed to parallel HOFs are not currently checked.
+**Purity requirement:** for `par_map`, `par_filter`, and `par_reduce`, the callback must be a named pure function (`transforms`, `validates`, `derives`, `creates`, or `matches`). IO and async verbs are rejected at compile time. `par_each` is less restrictive — it allows IO callbacks but rejects async verbs. When using a named function reference, the compiler verifies purity; lambdas passed to parallel HOFs are not currently checked.
 
 **Closures:** lambdas with captured variables are supported. The compiler generates a context struct for captured values and passes it through the parallel runtime.
 

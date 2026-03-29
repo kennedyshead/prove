@@ -129,7 +129,7 @@ reads changes(db Database) Integer
 ```prove
 module Main
   Sqlite inputs database, query, each
-  Sqlite reads column, changes
+  Sqlite derives column, changes
   Sqlite outputs execute, begin, commit, database
   System outputs console
 
@@ -234,14 +234,14 @@ _register_module(
         ("outputs", "commit"): "prove_sqlite_commit_outputs",
         ("outputs", "rollback"): "prove_sqlite_rollback_outputs",
         ("outputs", "wal"): "prove_sqlite_wal_outputs",
-        ("reads", "column"): "prove_sqlite_column_by_name",
-        ("reads", "columns"): "prove_sqlite_columns",
-        ("reads", "changes"): "prove_sqlite_changes",
+        ("derives", "column"): "prove_sqlite_column_by_name",
+        ("derives", "columns"): "prove_sqlite_columns",
+        ("derives", "changes"): "prove_sqlite_changes",
     },
     overloads={
         ("outputs", "execute", "Database_String_List"): "prove_sqlite_execute_outputs_params",
         ("inputs", "query", "Database_String_List"): "prove_sqlite_query_inputs_params",
-        ("reads", "column", "Row_Integer"): "prove_sqlite_column_by_index",
+        ("derives", "column", "Row_Integer"): "prove_sqlite_column_by_index",
     },
 )
 ```

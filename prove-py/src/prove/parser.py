@@ -117,9 +117,10 @@ _VERBS = frozenset(
         TokenKind.INPUTS,
         TokenKind.OUTPUTS,
         TokenKind.VALIDATES,
-        TokenKind.READS,
+        TokenKind.DERIVES,
         TokenKind.CREATES,
         TokenKind.MATCHES,
+        TokenKind.DISPATCHES,
         TokenKind.DETACHED,
         TokenKind.ATTACHED,
         TokenKind.LISTENS,
@@ -463,7 +464,7 @@ class Parser:
     def _parse_function_def(self, doc_comment: str | None) -> FunctionDef:
         start = self._current().span
         verb_tok = self._advance()
-        verb = verb_tok.value
+        verb = "derives" if verb_tok.value == "reads" else verb_tok.value
 
         name_tok = self._expect_name()
         name = name_tok.value
@@ -1310,7 +1311,8 @@ class Parser:
         """Parse a verb group: [verb] name+ (space-separated names share the verb)."""
         verb: str | None = None
         if self._current().kind in _IMPORT_VERBS:
-            verb = self._advance().value
+            raw = self._advance().value
+            verb = "derives" if raw == "reads" else raw
 
         seen_verbs.add(verb)
 

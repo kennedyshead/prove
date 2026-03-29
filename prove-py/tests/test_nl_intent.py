@@ -35,8 +35,8 @@ class TestImpliedVerbs:
     def test_transforms(self) -> None:
         assert "transforms" in implied_verbs("Converts plaintext passwords into hashes.")
 
-    def test_reads(self) -> None:
-        assert "reads" in implied_verbs("Fetches password hashes from the store.")
+    def test_derives(self) -> None:
+        assert "derives" in implied_verbs("Fetches password hashes from the store.")
 
     def test_creates(self) -> None:
         assert "creates" in implied_verbs("Creates session tokens for authenticated users.")
@@ -62,7 +62,7 @@ class TestImpliedVerbs:
         assert "validates" in implied_verbs("Checks that the input is valid.")
 
     def test_reads_synonym_query(self) -> None:
-        assert "reads" in implied_verbs("Queries the database for records.")
+        assert "derives" in implied_verbs("Queries the database for records.")
 
     def test_case_insensitive(self) -> None:
         assert "validates" in implied_verbs("VALIDATES user input.")
@@ -129,7 +129,7 @@ class TestNormalizeVerb:
     def test_singular_forms(self) -> None:
         assert normalize_verb("transform") == "transforms"
         assert normalize_verb("validate") == "validates"
-        assert normalize_verb("read") == "reads"
+        assert normalize_verb("read") == "derives"
         assert normalize_verb("create") == "creates"
         assert normalize_verb("match") == "matches"
         assert normalize_verb("output") == "outputs"
@@ -142,7 +142,7 @@ class TestNormalizeVerb:
     def test_common_synonyms(self) -> None:
         assert normalize_verb("convert") == "transforms"
         assert normalize_verb("check") == "validates"
-        assert normalize_verb("fetch") == "reads"
+        assert normalize_verb("fetch") == "derives"
         assert normalize_verb("build") == "creates"
         assert normalize_verb("compare") == "matches"
         assert normalize_verb("write") == "outputs"
@@ -170,7 +170,7 @@ class TestImpliedVerbsSynonyms:
     def test_synonym_in_prose(self) -> None:
         assert "transforms" in implied_verbs("convert the input to output")
         assert "validates" in implied_verbs("check user credentials")
-        assert "reads" in implied_verbs("fetch records from database")
+        assert "derives" in implied_verbs("fetch records from database")
         assert "creates" in implied_verbs("build a new session")
 
     def test_all_synonym_forms(self) -> None:

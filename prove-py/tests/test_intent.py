@@ -100,7 +100,7 @@ class TestIntentParser:
 project Test
   purpose: test
   module Foo
-    handles something gracefully
+    yeets something gracefully
 """
         result = parse_intent(source)
         assert result.project is not None
@@ -174,7 +174,7 @@ project Test
         vp = result.project.modules[0].intents[0]
         assert vp.verb == "validates"
 
-    def test_synonym_fetch_normalizes_to_reads(self) -> None:
+    def test_synonym_fetch_normalizes_to_derives(self) -> None:
         source = """\
 project Test
   purpose: test
@@ -184,7 +184,7 @@ project Test
         result = parse_intent(source)
         assert result.project is not None
         vp = result.project.modules[0].intents[0]
-        assert vp.verb == "reads"
+        assert vp.verb == "derives"
 
 
 class TestIntentGenerator:
@@ -573,10 +573,10 @@ class TestIntentGeneratorConstants:
             name="Net",
             intents=[
                 VerbPhrase(
-                    verb="reads",
+                    verb="derives",
                     noun="data",
                     context="from network",
-                    raw_line="reads data from network",
+                    raw_line="derives data from network",
                 ),
             ],
         )

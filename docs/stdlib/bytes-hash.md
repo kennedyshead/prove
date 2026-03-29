@@ -18,8 +18,8 @@ Defines a binary type: `ByteArray` (a sequence of bytes).
 |------|-----------|-------------|
 | `creates` | `bytearray(values List<Integer>) ByteArray` | Create byte array from list of integers |
 | `validates` | `bytearray(data ByteArray)` | True if byte array is empty |
-| `reads` | `bytearray(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
-| `reads` | `bytearray(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
+| `derives` | `bytearray(data ByteArray, start Integer, length Integer) ByteArray` | Extract a sub-range of bytes |
+| `derives` | `bytearray(first ByteArray, second ByteArray) ByteArray` | Concatenate two byte arrays |
 
 ### Access
 

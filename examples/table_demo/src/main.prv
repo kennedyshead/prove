@@ -5,7 +5,11 @@ module Main
   Outputs and show json in console
   """
   System outputs console
-  Table types Table reads values get add remove creates new table length keys validates has
+  Table
+    types Table
+    derives values get add remove
+    creates new table length keys
+    validates has
   Parse creates json value
   Types creates string
   Text creates join

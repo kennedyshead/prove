@@ -139,8 +139,8 @@ On `Array<T>`, `Mutable` switches from copy-on-write to in-place mutation. This 
 
 ```prove
   Sequence creates array
-  Sequence reads get
-  Sequence reads set
+  Sequence derives get
+  Sequence derives set
 
 sieve as Array<Boolean>:[Mutable] = array(1000001, false)
 sieve = set(sieve, 0, true)   // in-place, no copy
@@ -406,7 +406,7 @@ Effects are encoded in the verb, not in type annotations. The compiler tracks th
 
 | Family | Verbs | Effect |
 |--------|-------|--------|
-| **Pure** | `transforms`, `validates`, `reads`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
+| **Pure** | `transforms`, `validates`, `derives`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
 | **IO** | `inputs`, `outputs`, `streams` | Reads from or writes to the external world. `!` marks additional fallibility. `streams` is a blocking IO loop with implicit match |
 | **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` and `attached` may call IO freely (own coroutine stacks); `listens` may not (cooperative yield cycle). `renders` is a UI render loop with mutable state |
 
@@ -516,7 +516,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 |---------|-------------|
 | `transforms` | Declares a pure function — no side effects. See [Functions & Verbs](functions.md#intent-verbs) |
 | `validates` | Declares a function that returns true or false. Return type is implicitly `Boolean`. See [Functions & Verbs](functions.md#intent-verbs) |
-| `reads` | Declares a pure function that extracts or queries data. See [Functions & Verbs](functions.md#intent-verbs) |
+| `derives` | Declares a pure function that extracts or queries data. See [Functions & Verbs](functions.md#intent-verbs) |
 | `creates` | Declares a pure function that constructs a new value. See [Functions & Verbs](functions.md#intent-verbs) |
 | `inputs` | Declares a function that reads from the outside world. See [Functions & Verbs](functions.md#intent-verbs) |
 | `outputs` | Declares a function that writes to the outside world. See [Functions & Verbs](functions.md#intent-verbs) |

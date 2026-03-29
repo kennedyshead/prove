@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Terminal module operations."""
   System outputs console
-  Terminal reads ansi size validates terminal outputs cursor
+  Terminal derives ansi size validates terminal outputs cursor
   Types creates string
 
 main()

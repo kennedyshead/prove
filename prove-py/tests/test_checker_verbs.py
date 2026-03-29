@@ -44,7 +44,11 @@ class TestVerbEnforcement:
             "E362",
         )
 
-    def test_reads_is_pure(self):
+    def test_derives_is_pure(self):
+        check("derives get(key String) String\n    from\n        key\n")
+
+    def test_reads_alias_still_parses(self):
+        """reads is a backward-compat alias for derives."""
         check("reads get(key String) String\n    from\n        key\n")
 
     def test_creates_is_pure(self):
@@ -61,11 +65,11 @@ class TestVerbEnforcement:
             "        0\n"
         )
 
-    def test_reads_rejects_io(self):
+    def test_derives_rejects_io(self):
         check_fails(
             "module M\n"
             "  System outputs console\n"
-            "reads bad() Integer\n"
+            "derives bad() Integer\n"
             "    from\n"
             '        console("side effect")\n'
             "        0\n",
@@ -527,3 +531,56 @@ class TestAsyncVerbs:
             "    from\n"
             "        loop([worker(5)])&\n",
         )
+
+
+class TestDispatchesVerb:
+    """Test dispatches verb (IO pattern matching)."""
+
+    def test_dispatches_is_io(self):
+        """dispatches allows IO calls in body."""
+        check(
+            "module M\n"
+            "  System outputs console\n"
+            "  type Dir is North | South\n"
+            "dispatches go(d Dir) Unit\n"
+            "    from\n"
+            '        console("going")\n'
+        )
+
+    def test_dispatches_is_failable(self):
+        """dispatches can be failable."""
+        check(
+            "module M\n"
+            "  type Dir is North | South\n"
+            "dispatches go(d Dir) Integer!\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_dispatches_requires_matchable(self):
+        """dispatches verb requires matchable first parameter (E365)."""
+        check_fails(
+            "module M\ndispatches bad(x Decimal) Integer\n    from\n        0\n",
+            "E365",
+        )
+
+    def test_dispatches_requires_param(self):
+        """dispatches verb requires at least one parameter (E365)."""
+        check_fails(
+            "module M\ndispatches bad() Integer\n    from\n        0\n",
+            "E365",
+        )
+
+    def test_dispatches_algebraic_ok(self):
+        """dispatches accepts algebraic types."""
+        check(
+            "module M\n"
+            "  type Shape is Circle | Square\n"
+            "dispatches handle(s Shape) Integer\n"
+            "    from\n"
+            "        0\n"
+        )
+
+    def test_dispatches_string_ok(self):
+        """dispatches accepts String as matchable type."""
+        check("module M\ndispatches handle(s String) Integer\n    from\n        0\n")

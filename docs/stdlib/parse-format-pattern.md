@@ -104,7 +104,7 @@ Plain `Value` (unparameterized) is compatible with any `Value<T>` — the phanto
   Parse creates toml json url tokens rule tag base64 validates url base64
   Parse types Value Toml Json Url Token Rule
   Types creates string
-  Table creates table reads keys get types Table
+  Table creates table derives keys get types Table
 
 main() Result<Unit, Error>!
 from
@@ -125,9 +125,9 @@ from
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `pad_left(text String, width Integer, fill Character) String` | Left-pad to width |
-| `reads` | `pad_right(text String, width Integer, fill Character) String` | Right-pad to width |
-| `reads` | `center(text String, width Integer, fill Character) String` | Center within width |
+| `derives` | `pad_left(text String, width Integer, fill Character) String` | Left-pad to width |
+| `derives` | `pad_right(text String, width Integer, fill Character) String` | Right-pad to width |
+| `derives` | `center(text String, width Integer, fill Character) String` | Center within width |
 
 ### Number Formatting
 
@@ -167,7 +167,7 @@ Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S
 | `creates` | `duration(source String, pattern String) Duration` | Parse | Parse a string into a duration |
 
 ```prove
-  Format reads pad_left creates hex decimal date creates date
+  Format derives pad_left creates hex decimal date creates date
   Time creates date types Date
 
 creates format_address(addr Integer) String
@@ -200,7 +200,7 @@ end offset.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `reads` | `replace(text String, pattern String, replacement String) String` | Replace first match |
+| `derives` | `replace(text String, pattern String, replacement String) String` | Replace first match |
 | `creates` | `split(text String, pattern String) List<String>` | Split on pattern |
 
 ### Match Accessors
@@ -213,9 +213,9 @@ end offset.
 > **Note:** `string(matched Match)` for extracting matched text is registered in the **Types** module as a `creates string` overload, not in Pattern directly. Use `Types.string(match)` or just `string(match)` if Types is imported.
 
 ```prove
-  Pattern validates test reads replace creates search find_all split string start end types Match
+  Pattern validates test derives replace creates search find_all split string start end types Match
 
-reads sanitize(input String) String
+derives sanitize(input String) String
 requires
     test(input, "[a-zA-Z0-9 ]+")
 from

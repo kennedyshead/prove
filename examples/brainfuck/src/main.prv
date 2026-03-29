@@ -14,7 +14,7 @@ module Main
   creates a perfect benchmark example
   """
   System inputs file outputs console
-  Array reads get set creates array
+  Array derives get set creates array
   Text creates length
   Character creates at
   Types creates code

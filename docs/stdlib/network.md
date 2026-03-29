@@ -68,13 +68,13 @@ Import only what your module uses. Verbs are declared per channel:
   // Client: connect and exchange messages
   Network inputs socket message outputs socket message
   Network types Socket
-  Bytes creates hex reads hex
+  Bytes creates hex derives hex
   Bytes types ByteArray
 
   // Server: bind, accept, and echo
   Network inputs server accept message outputs socket message
   Network types Socket
-  Bytes reads hex
+  Bytes derives hex
   Bytes types ByteArray
   Log detached info
 ```
@@ -97,7 +97,7 @@ module Main
   System outputs console
   Network inputs socket message outputs socket message
   Network types Socket
-  Bytes creates hex reads hex
+  Bytes creates hex derives hex
   Bytes types ByteArray
 
 main() Result<Unit, Error>!
@@ -130,7 +130,7 @@ module Main
   System outputs console
   Network inputs server accept message outputs socket message
   Network types Socket
-  Bytes reads hex
+  Bytes derives hex
   Bytes types ByteArray
   Log detached info
 

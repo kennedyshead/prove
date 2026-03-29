@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates Language module NLP operations."""
   System outputs console
   Language
-    reads soundex metaphone stopwords stem root normalize transliterate
+    derives soundex metaphone stopwords stem root normalize transliterate
     creates without_stopwords frequency bigrams keywords ngrams words sentences distance
      similarity
   Types creates string

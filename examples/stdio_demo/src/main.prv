@@ -14,7 +14,7 @@ module Main
     printf "Content-Length: 15\r\n\r\n{\"method\":\"init\"}" | ./build/stdio_demo
   """
   System types ByteArray validates console inputs console outputs console
-  Text reads slice trim creates length
+  Text derives slice trim creates length
   Types creates integer string
 
 /// Read one framed message from stdin.

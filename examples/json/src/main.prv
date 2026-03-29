@@ -2,9 +2,9 @@ module Main
   narrative: """JSON benchmark from kostya/benchmarks — parse JSON, sum coordinates."""
   System inputs file outputs console
   Parse creates json
-  Table reads get creates table
+  Table derives get creates table
   Sequence creates list length
-  Types reads unwrap creates float string
+  Types derives unwrap creates float string
 
 main()!
 from

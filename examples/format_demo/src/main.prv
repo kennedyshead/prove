@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates Format module operations"""
   System outputs console
   Format
-    reads pad_left pad_right center
+    derives pad_left pad_right center
     creates octal decimal hexadecimal bin time date datetime duration
   Time types Time Date DateTime Duration creates date datetime duration inputs time
 

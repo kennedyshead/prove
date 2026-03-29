@@ -11,14 +11,14 @@ module Main
   System outputs console
   Parse creates base64
   Bytes types ByteArray validates bytearray
-  Text reads repeat creates length
+  Text derives repeat creates length
 
   STR_SIZE as Integer = 131072
 
   ITERATIONS as Integer = 8192
 
 /// Encode loop: encode data ITERATIONS times, accumulate encoded sizes
-reads encode(data ByteArray, remaining Integer, acc Integer) Integer
+derives encode(data ByteArray, remaining Integer, acc Integer) Integer
   terminates: remaining
 from
     match remaining <= 0
@@ -28,7 +28,7 @@ from
             encode(data, remaining - 1, acc + length(encoded))
 
 /// Decode loop: decode encoded string ITERATIONS times, accumulate success count
-reads decode(encoded String, remaining Integer, acc Integer) Integer
+derives decode(encoded String, remaining Integer, acc Integer) Integer
   terminates: remaining
 from
     match remaining <= 0

@@ -61,7 +61,7 @@ from prove.types import (
 )
 
 _IO_VERBS = frozenset(
-    {"inputs", "outputs", "streams", "listens", "attached", "detached", "renders"}
+    {"inputs", "outputs", "streams", "dispatches", "listens", "attached", "detached", "renders"}
 )
 
 # Literal types whose value the checker can statically verify against
@@ -1126,7 +1126,7 @@ class StmtEmitterMixin:
             )
             if (
                 sig is not None
-                and sig.verb in ("transforms", "reads")
+                and sig.verb in ("transforms", "derives")
                 and es.expr.args
                 and isinstance(es.expr.args[0], IdentifierExpr)
             ):
@@ -1229,6 +1229,7 @@ class StmtEmitterMixin:
             # listens translator uses _key, listens coroutine uses _ev, renders uses _ev
             if self._current_func is not None and self._current_func.verb in (
                 "matches",
+                "dispatches",
                 "streams",
                 "listens",
                 "renders",

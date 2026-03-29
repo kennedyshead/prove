@@ -46,7 +46,7 @@ from prove.types import (
     types_compatible,
 )
 
-_PURE_VERBS = frozenset({"transforms", "validates", "reads", "creates", "matches"})
+_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
 _IO_FUNCTIONS = frozenset({"sleep"})
 
 
@@ -525,31 +525,38 @@ class ContractCheckMixin:
             self._check_pure_body(fd.body, fd.span)
 
         # matches verb: first parameter must be a matchable type
-        if verb == "matches":
+        if verb in ("matches", "dispatches"):
             if fd.params:
                 first_type = self._resolve_type_expr(fd.params[0].type_expr)
-                is_matchable = isinstance(first_type, (AlgebraicType, ErrorType)) or (
-                    isinstance(first_type, PrimitiveType)
-                    and first_type.name in ("String", "Integer")
+                is_matchable = (
+                    isinstance(first_type, (AlgebraicType, ErrorType))
+                    or (
+                        isinstance(first_type, PrimitiveType)
+                        and first_type.name in ("String", "Integer", "Boolean")
+                    )
+                    or (
+                        isinstance(first_type, GenericInstance)
+                        and first_type.base_name in ("Result", "Option")
+                    )
                 )
                 if not is_matchable:
                     self._error(
                         "E365",
-                        f"matches verb requires first parameter to be "
-                        f"a matchable type (algebraic, String, or "
-                        f"Integer), got '{type_name(first_type)}'",
+                        f"{verb} verb requires first parameter to be "
+                        f"a matchable type (algebraic, String, Integer, "
+                        f"or Boolean), got '{type_name(first_type)}'",
                         fd.params[0].span,
                     )
             else:
                 self._error(
                     "E365",
-                    "matches verb requires at least one parameter",
+                    f"{verb} verb requires at least one parameter",
                     fd.span,
                 )
 
-        # I367: suggest extracting match to a matches verb function
-        if verb != "matches":
-            self._check_match_restriction(fd.body, fd.span)
+        # I367: suggest extracting match to a matches/dispatches verb function
+        if verb not in ("matches", "dispatches"):
+            self._check_match_restriction(fd.body, fd.span, verb)
 
     def _has_pure_overload(self, name: str) -> bool:
         """Check if a function name has at least one pure verb overload."""
@@ -676,49 +683,51 @@ class ContractCheckMixin:
         self,
         body: list[Stmt | MatchExpr],
         span: Span,
+        verb: str,
     ) -> None:
-        """I367: suggest extracting match to a 'matches' verb function."""
+        """I367: suggest extracting match to a 'matches'/'dispatches' verb function."""
+        target = "matches" if verb in _PURE_VERBS else "dispatches"
         for stmt in body:
             if isinstance(stmt, MatchExpr):
                 if len(stmt.arms) >= 3 and not self._match_arms_have_fail_prop(stmt):
                     self._info(
                         "I367",
-                        "consider extracting match to a 'matches' verb function for better code flow",  # noqa: E501
+                        f"consider extracting match to a '{target}' verb function for better code flow",  # noqa: E501
                         stmt.span,
                     )
             elif isinstance(stmt, VarDecl):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, Assignment):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, FieldAssignment):
-                self._check_match_in_expr(stmt.value)
+                self._check_match_in_expr(stmt.value, target)
             elif isinstance(stmt, ExprStmt):
-                self._check_match_in_expr(stmt.expr)
+                self._check_match_in_expr(stmt.expr, target)
 
-    def _check_match_in_expr(self, expr: Expr) -> None:
+    def _check_match_in_expr(self, expr: Expr, target: str) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
             if len(expr.arms) >= 3 and not self._match_arms_have_fail_prop(expr):
                 self._info(
                     "I367",
-                    "consider extracting match to a 'matches' verb function for better code flow",
+                    f"consider extracting match to a '{target}' verb function for better code flow",
                     expr.span,
                 )
         elif isinstance(expr, CallExpr):
             for arg in expr.args:
-                self._check_match_in_expr(arg)
+                self._check_match_in_expr(arg, target)
         elif isinstance(expr, BinaryExpr):
-            self._check_match_in_expr(expr.left)
-            self._check_match_in_expr(expr.right)
+            self._check_match_in_expr(expr.left, target)
+            self._check_match_in_expr(expr.right, target)
         elif isinstance(expr, UnaryExpr):
-            self._check_match_in_expr(expr.operand)
+            self._check_match_in_expr(expr.operand, target)
         elif isinstance(expr, PipeExpr):
-            self._check_match_in_expr(expr.left)
-            self._check_match_in_expr(expr.right)
+            self._check_match_in_expr(expr.left, target)
+            self._check_match_in_expr(expr.right, target)
         elif isinstance(expr, LambdaExpr):
-            self._check_match_in_expr(expr.body)
+            self._check_match_in_expr(expr.body, target)
         elif isinstance(expr, FailPropExpr):
-            self._check_match_in_expr(expr.expr)
+            self._check_match_in_expr(expr.expr, target)
 
     def _infer_param_borrows(
         self, params: list[Param], param_types: list[Type], body: list[Stmt | MatchExpr]
