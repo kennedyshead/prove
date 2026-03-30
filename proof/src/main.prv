@@ -20,7 +20,7 @@ module Main
 dispatches parsed_command(command Option<String>, arguments List<String>)!
 from
     Some("build") => build(contains(arguments, "--help"), arguments)!
-    Some("check") => check(arguments)!
+    Some("check") => check(contains(arguments, "--help"), arguments)!
     Some("format") => format(arguments)!
     Some("lsp") => lsp(arguments)!
     Some("new") => new(arguments)!

@@ -3,16 +3,18 @@ module Check
   Handles the source code linting and check command.
 
   outputs the command to python for a pycheck
-  validates syntax for file and line
+  validates syntax for file, module and node
   outputs lint messages
   matches the declaration and lint for each statement
   """
-  System validates dir
+  System validates dir inputs cwd
   Prove types Node derives root creates children kind
   Source types SourceFile
   Types creates string validates boolean
   Log detached info error warning
-  Sequence creates length
+  Sequence creates length validates contains
+  Config types Config
+  Diagnostic creates static_fail
 
   foreign "libpython3"
     py_initialize() Unit
@@ -24,11 +26,11 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-matches lint_node(node_kind String, node Node, source SourceFile) Boolean
+matches node(node_kind String, node Node, source SourceFile) Boolean
   ensures valid boolean(result)
   requires valid string(node_kind)
 from
-    "module_declaration" => lint_module(node_kind, node, source)
+    "module_declaration" => module(node_kind, node, source)
     "narrative_annotation" =>
         // info(f"NARRATIVE {string(node)}")&
         true
@@ -54,31 +56,58 @@ from
     "module" =>
         true
     "ERROR" =>
-        error(f"{string(node)}")&
-        true
+        static_fail(node, source)
+        false
     _ =>
         warning(f"missing lint for {node_kind} {string(node)}")&
         true
 
-validates lint_module(node_kind String, node Node, source SourceFile)
+validates module(node_kind String, node Node, source SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
-      gets the childrens and uses first as module name
+      iterates and lint all children of a module
 from
-    all(children(node), |child| lint_node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), child, source))
 
-validates lint_file(source SourceFile)
+validates source(source SourceFile)
   ensures valid boolean(result)
   requires valid string(source.content)
 from
-    all(children(root(source.source)), |node| lint_node(kind(node), node, source))
+    all(children(root(source.source)), |node| node(kind(node), node, source))
 
 validates lint(source List<SourceFile>)
   ensures valid boolean(result)
   requires length(source) > 0
 from
-    all(source, |file| lint_file(file))
+    all(source, |file| source(file))
+
+/// After a successful native lint, we continue with python check
+dispatches source_check(
+    successful_lint Boolean,
+    clean_source List<SourceFile>,
+    arguments List<String>,
+    config Config
+)!
+from
+    false => error("Lint failed")&
+    true =>
+        md as Boolean = contains(arguments, "--md")
+        strict as Boolean = contains(arguments, "--strict")
+        no_coherence as Boolean = contains(arguments, "--no-coherence")
+        no_challenges as Boolean = contains(arguments, "--no-challenges")
+        no_status as Boolean = contains(arguments, "--no-status")
+        no_intent as Boolean = contains(arguments, "--no-intent")
+        nlp_status as Boolean = contains(arguments, "--nlp--status")
+        pycheck(
+            cwd(),
+            md,
+            strict,
+            no_coherence,
+            no_challenges,
+            no_status,
+            no_intent,
+            nlp_status)!
 
 outputs pycheck(
     path String,

@@ -619,7 +619,10 @@ def _build_c(
     )
 
 
-_FORWARD_DECL_RE = re.compile(r"^(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$")
+_FORWARD_DECL_RE = re.compile(
+    r"^(?:__attribute__\(\([^)]*\)\)\s+)?"
+    r"(?:void|int64_t|double|bool|Prove_\w+\*?)\s+prv_\w+\([^)]*\);$"
+)
 
 
 def _extract_forward_decls(stdlib_c_sources: list[str]) -> list[str]:
@@ -763,10 +766,35 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
             if current:
                 blocks.append(current)
 
+            # Track types seen across injected blocks to deduplicate
+            # when the same type is imported by multiple stdlib modules.
+            injected_types: set[str] = set()
+
+            def _block_type_name(block: list[str]) -> str | None:
+                """Extract the Prove_XXX type name from a block, if any."""
+                first = block[0].strip() if block else ""
+                m = re.match(r"typedef\s+(?:struct|enum)\s+(Prove_\w+)\s+\1\s*;", first)
+                if m:
+                    return m.group(1)
+                m = re.match(r"(?:enum|struct)\s+(Prove_\w+)\s*\{", first)
+                if m:
+                    return m.group(1)
+                m = re.match(r"static\s+(?:inline\s+|const\s+)?(Prove_\w+)\s", first)
+                if m:
+                    return m.group(1)
+                if first == "enum {":
+                    # Anonymous tag enum — extract type from TAG names
+                    content = "\n".join(block)
+                    m2 = re.search(r"(Prove_\w+)_TAG_", content)
+                    if m2:
+                        return m2.group(1)
+                return None
+
             def _block_is_duplicate(block: list[str]) -> bool:
                 """Check if a block is a duplicate definition for an existing type."""
                 first = block[0].strip() if block else ""
-                for t in existing_types:
+                all_types = existing_types | injected_types
+                for t in all_types:
                     # Typedef forward declarations
                     if first == f"typedef struct {t} {t};":
                         return True
@@ -782,14 +810,37 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
                     # by the target module's _emit_imported_type_defs)
                     if first.startswith(f"static inline {t} "):
                         return True
+                    # Static const arrays for this type (lookup tables)
+                    if first.startswith("static const ") and f" {t}_" in first:
+                        return True
+                    if first.startswith("static ") and f" {t}_col_" in first:
+                        return True
                 return False
 
-            filtered_blocks = [b for b in blocks if not _block_is_duplicate(b)]
+            filtered_blocks: list[list[str]] = []
+            for b in blocks:
+                if _block_is_duplicate(b):
+                    continue
+                filtered_blocks.append(b)
+                # Track the type name so later blocks for the same type
+                # (from a different stdlib module) are also filtered.
+                tname = _block_type_name(b)
+                if tname:
+                    injected_types.add(tname)
             type_defs = "\n\n".join("\n".join(b) for b in filtered_blocks)
 
         if type_defs.strip():
             parts.append("\n// Type definitions from pure stdlib modules")
             parts.append(type_defs)
+            # Add prove_lookup.h if injected content uses lookup table types
+            if "Prove_LookupEntry" in type_defs or "Prove_IntLookupEntry" in type_defs:
+                if '#include "prove_lookup.h"' not in c_source:
+                    # Insert after last #include
+                    for idx in range(insert_at - 1, -1, -1):
+                        if lines[idx].startswith("#include"):
+                            lines.insert(idx + 1, '#include "prove_lookup.h"')
+                            inject_at += 1
+                            break
 
     parts.append("\n// Forward declarations for pure stdlib modules")
     parts.append(decls)

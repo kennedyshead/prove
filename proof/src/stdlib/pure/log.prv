@@ -12,8 +12,7 @@ module Log
   System outputs console
   Time types Time inputs time
   UI types Color
-  Terminal reads ansi
-  Text reads trim repeat creates length
+  Terminal derives ansi
 
   type Severity is Default
     | Debug
@@ -21,16 +20,6 @@ module Log
     | Warning
     | Error
     | Critical
-
-  type DiagnosticMessage is
-    severity Severity
-    code Integer
-    file String
-    found String
-    message String
-    line Integer
-    column Integer
-    actual_line String
 
 /// match the color for message based on severity
 matches severity_color(severity Severity) String
@@ -41,16 +30,6 @@ from
     Warning => ansi(Color:Yellow)
     Error => ansi(Color:Red)
     Critical => ansi(Color:Magenta)
-
-/// match the prefix for error code based severity
-matches severity_prefix(severity Severity) String
-from
-    Default => ""
-    Debug => "D"
-    Info => "I"
-    Warning => "W"
-    Error => "E"
-    Critical => "C"
 
 /// Send a console message to stdout of a debug message
 /// with severity and timestamp added
@@ -79,41 +58,3 @@ detached error(message String)
 from
     now as Time = time()
     console(f"{ansi(Color:Red)}[ERROR][{now}] {message}{ansi(Color:Default)}")
-
-/// Send a diagnostic message to the console
-detached diagnostic(message DiagnosticMessage)
-from
-    color as String = severity_color(message.severity)
-    console(f"{
-              color
-            }error[{
-              severity_prefix(message.severity)
-            }{
-              message.code
-            }]:{
-              ansi(Color:Default)
-            } message.message {
-              trim(message.found)
-            }\n  {
-              ansi(Color:Blue)
-            }-->{
-              ansi(Color:Default)
-            } {
-              message.file
-            }:{
-              message.line
-            }:{
-              message.column
-            }\n     |\n   {
-              message.line
-            } | {
-              message.actual_line
-            }\n     |{
-              repeat(" ", message.column - 1)
-            }{
-              color
-            }{
-              repeat("^", length(message.found))
-            }{
-              ansi(Color:Default)
-            }")

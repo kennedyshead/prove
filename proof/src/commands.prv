@@ -16,7 +16,7 @@ module Commands
   New outputs new_project
   Sequence derives get validates contains
   Source inputs source
-  Check validates lint outputs pycheck
+  Check validates lint outputs source_check
   Types validates unit
 
   HELP_BUILD_TEXT as String = comptime
@@ -51,33 +51,15 @@ from
         source_build(source, cwd(), debug, no_mutate)!
 
 /// Run the check command
-outputs check(arguments List<String>)!
+dispatches check(help Boolean, arguments List<String>)!
 from
-    info("Running check")&
-    match contains(arguments, "--help")
-        true => console(HELP_CHECK_TEXT)
-        _ =>
-            config as Config = config()!
-            source as List<Option<SourceFile>> = source(config)
-            clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-            lint(clean_source)
-            md as Boolean = contains(arguments, "--md")
-            strict as Boolean = contains(arguments, "--strict")
-            no_coherence as Boolean = contains(arguments, "--no-coherence")
-            no_challenges as Boolean = contains(arguments, "--no-challenges")
-            no_status as Boolean = contains(arguments, "--no-status")
-            no_intent as Boolean = contains(arguments, "--no-intent")
-            nlp_status as Boolean = contains(arguments, "--nlp--status")
-            pycheck(
-                cwd(),
-                md,
-                strict,
-                no_coherence,
-                no_challenges,
-                no_status,
-                no_intent,
-                nlp_status)!
-            Unit
+    true => console(HELP_CHECK_TEXT)
+    _ =>
+        info("Running check")&
+        config as Config = config()!
+        source as List<Option<SourceFile>> = source(config)
+        clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
+        source_check(lint(clean_source), clean_source, arguments, config)!
 
 /// Run the format command
 outputs format(arguments List<String>)!
