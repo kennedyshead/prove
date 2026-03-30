@@ -15,8 +15,24 @@ def parse(source: str, filename: str = "<stdin>") -> Module:
     from prove.cst_converter import CSTConverter
     from prove.tree_sitter_setup import ts_parse
 
+    # Run lexical validation to catch unterminated literals (E101-E109).
+    # Tree-sitter reports these as generic ERROR nodes; the Lexer gives
+    # specific diagnostics.
+    _check_lexical_errors(source, filename)
+
     tree = ts_parse(source)
     return CSTConverter(source, tree, filename).convert()
+
+
+def _check_lexical_errors(source: str, filename: str) -> None:
+    """Run the legacy Lexer for lexical-level diagnostics (E10x).
+
+    Raises CompileError if any lexical errors are found.
+    """
+    from prove.lexer import Lexer
+
+    lexer = Lexer(source, filename)
+    lexer.lex()  # raises CompileError on E101-E109
 
 
 def has_parse_errors(source: str) -> bool:

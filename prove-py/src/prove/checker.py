@@ -661,6 +661,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 BOOLEAN,
             ),
             (
+                "find",
+                [
+                    ListType(TypeVariable("Value")),
+                    FunctionType([TypeVariable("Value")], BOOLEAN),
+                ],
+                GenericInstance("Option", [TypeVariable("Value")]),
+            ),
+            (
                 "reduce",
                 [
                     ListType(TypeVariable("Value")),

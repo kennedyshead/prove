@@ -1,19 +1,20 @@
 module Diagnostic
   narrative: """
   creates all info, warnings and errors from static analysis fails
-  matches line fail 
+  dispatches a search for syntax failures
+  matches location and syntax fail 
   sends a detatched background diagnostic message with a severity prefix
-  e210 module name is not given
+  e100 generic syntax error
+  e210 token X is not given
   """
-  Log types Severity matches severity_color detached error
+  Log types Severity matches severity_color
   Source types SourceFile
   Prove types Node creates line column
   Sequence derives get
-  Pattern creates split
   Types creates string
   System outputs console
   Terminal derives ansi
-  Text derives trim repeat creates length
+  Text derives trim repeat creates length split validates contains
   UI types Color
 
   type DiagnosticMessage is
@@ -26,25 +27,53 @@ module Diagnostic
     column Integer
     actual_line String
 
-matches location_fail(where String, node Node, source SourceFile)
+dispatches syntax(search String, node Node, source SourceFile) Boolean
 from
-    "1:7" => e210(node, source)
+    "1" =>
+        e210("module `name`", node, source)
+        true
+    "type" =>
+        match contains(get(split(source.content, "\n"), line(node) - 1), "is")
+            true =>
+                e100(node, source)
+                true
+            false =>
+                e210("`is`", node, source)
+                true
     _ =>
-        error(f"Unhadled line {where}")&
+        false
 
 creates static_fail(node Node, source SourceFile) Unit
 from
-    location_fail(f"{line(node)}:{column(node)}", node, source)
+    match any([f"{line(node)}", "type"], |search| syntax(search, node, source))
+        true => Unit
+        false => e100(node, source)
 
-creates e210(node Node, source SourceFile)
+/// Generic syntax error
+creates e100(node Node, source SourceFile) Unit
 from
-    actual_code as String = get(split(source.content, "\n"), 0)
+    actual_code as String = get(split(source.content, "\n"), line(node) - 1)
+    diagnostic(DiagnosticMessage(
+        Severity.Error,
+        100,
+        source.path,
+        get(split(string(node), "\n"), 0),
+        "Syntax error",
+        line(node),
+        column(node),
+        actual_code))&
+
+/// Missing token X error
+creates e210(from String, node Node, source SourceFile) Unit
+from
+    actual_code as String = get(split(source.content, "\n"), line(node) - 1)
+    message as String = f"Expected {from} but found"
     diagnostic(DiagnosticMessage(
         Severity.Error,
         210,
         source.path,
-        string(node),
-        "Expected module name but found",
+        get(split(string(node), "\n"), 0),
+        message,
         line(node),
         column(node),
         actual_code))&
@@ -63,37 +92,19 @@ from
 detached diagnostic(message DiagnosticMessage)
 from
     color as String = severity_color(message.severity)
-    console(f"{
-              color
-            }error[{
+    console(f"{color}error[{
               severity_prefix(message.severity)
-            }{
-              message.code
-            }]:{
+            }{message.code}]:{
               ansi(Color:Default)
-            } {
-              message.message
-            } {
+            } {message.message} {
               trim(message.found)
             }\n  {
               ansi(Color:Blue)
             }-->{
               ansi(Color:Default)
-            } {
-              message.file
-            }:{
-              message.line
-            }:{
-              message.column
-            }\n     |\n   {
-              message.line
-            } | {
-              message.actual_line
-            }\n     |{
-              repeat(" ", message.column - 1)
-            }{
-              color
-            }{
+            } {message.file}:{message.line}:{message.column}\n     |\n   {message.line} | {message.actual_line}\n     |{
+              repeat(" ", message.column + 2)
+            }{color}{
               repeat("^", length(message.found))
             }{
               ansi(Color:Default)

@@ -968,7 +968,11 @@ class ProveFormatter:
                 result_parts.append(_escape_string(part.value))
             else:
                 formatted = self._format_expr(part)
-                result_parts.append("{\n" + expr_indent + formatted + "\n" + brace_indent + "}")
+                is_simple = isinstance(part, (IdentifierExpr, FieldExpr))
+                if is_simple:
+                    result_parts.append("{" + formatted + "}")
+                else:
+                    result_parts.append("{\n" + expr_indent + formatted + "\n" + brace_indent + "}")
         result_parts.append('"')
         return "".join(result_parts)
 

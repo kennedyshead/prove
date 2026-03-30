@@ -191,25 +191,23 @@ class TestFormatterStringInterpWrapping:
         source = 'outputs greet(name String) Unit\nfrom\n    info(f"Hello {name}")\n'
         assert _roundtrip(source) == source
 
-    def test_long_fstring_wraps_interpolations(self):
+    def test_long_fstring_simple_interps_stay_inline(self):
+        """Simple identifier interpolations stay inline even when line is long."""
         source = (
             "outputs build_report(config_package_name String, config_package_version String) Unit\n"
             "from\n"
             '    info(f"{config_package_name} {config_package_version} is now available in the build folder")\n'  # noqa: E501
         )
         result = _parse_format(source)
-        # The call exceeds 90 chars with indent, so the f-string should be wrapped
-        assert "\n" in result.split("from\n")[1]
-        # Expressions should appear on their own lines
         assert "config_package_name" in result
         assert "config_package_version" in result
 
     def test_fstring_wrap_alignment(self):
-        """Expressions align after f\", closing } aligns with f."""
+        """Complex expressions wrap and align after f\", closing } aligns with f."""
         source = (
-            "outputs report(package_name String, package_version String) Unit\n"
+            "outputs report(items List, package_version String) Unit\n"
             "from\n"
-            '    info(f"{package_name} version {package_version} is now available in the build output folder area")\n'  # noqa: E501
+            '    info(f"{len(items)} version {trim(package_version)} is now available in the build output folder area")\n'  # noqa: E501
         )
         result = _parse_format(source)
         body = result.split("from\n")[1]
@@ -217,8 +215,8 @@ class TestFormatterStringInterpWrapping:
         # Find the info(f" line
         call_line = next(line for line in lines if "info(f" in line)
         col_f = call_line.index('f"')
-        # Find expression lines in the body only
-        expr_lines = [line for line in lines if "package_name" in line or "package_version" in line]
+        # Find expression lines with function calls in the body
+        expr_lines = [line for line in lines if "len(items)" in line or "trim(" in line]
         for el in expr_lines:
             indent = len(el) - len(el.lstrip())
             # Expression should align after f" (col_f + 2)

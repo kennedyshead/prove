@@ -767,6 +767,8 @@ class CallEmitterMixin:
                 return self._emit_hof_all(expr)
             if name == "any" and len(expr.args) == 2:
                 return self._emit_hof_any(expr)
+            if name == "find" and len(expr.args) == 2:
+                return self._emit_hof_find(expr)
             if name == "reduce" and len(expr.args) == 3:
                 return self._emit_hof_reduce(expr)
             if name == "par_map" and len(expr.args) == 2:
@@ -944,6 +946,7 @@ class CallEmitterMixin:
                     name,
                     arity=n_args,
                 )
+            args_coerced = False
             if sig and sig.module:
                 # Emit Verb lambda args before coercion
                 for i, pt in enumerate(sig.param_types):
@@ -951,6 +954,7 @@ class CallEmitterMixin:
                         if isinstance(expr.args[i], LambdaExpr):
                             args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
+                args_coerced = True
                 c_name: str | None = self._resolve_stdlib_c_name(sig, expr.args)
                 if c_name:
                     # Option<T> → tag check for Value-type validators
@@ -1077,7 +1081,8 @@ class CallEmitterMixin:
                                     else:
                                         args[i] = f"(void*){ref_mangled}"
 
-                args = self._coerce_call_args(args, expr.args, sig)
+                if not args_coerced:
+                    args = self._coerce_call_args(args, expr.args, sig)
                 mangled = mangle_name(
                     sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
                 )
@@ -1673,6 +1678,49 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_hof.h")
         fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "filter")
         return f"prove_list_any({list_arg}, {fn_name}, {ctx_arg})"
+
+    def _emit_hof_find(self, expr: CallExpr) -> str:
+        """Emit find as inline loop — return first element matching predicate as Option."""
+        coll_type = self._infer_expr_type(expr.args[0])
+
+        self._needed_headers.add("prove_list.h")
+        list_arg = self._emit_expr(expr.args[0])
+
+        elem_type = INTEGER
+        if isinstance(coll_type, ListType):
+            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_ct = map_type(elem_type)
+
+        lam = expr.args[1]
+        result_var = self._tmp()
+        self._line(f"Prove_Option {result_var} = {{ .tag = 0, .value = NULL }};")
+
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_x"
+            idx = self._named_tmp("i")
+            self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
+            self._indent += 1
+            elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+            self._line(f"{elem_ct.decl} {param} = {elem_get};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            if elem_ct.is_pointer or elem_ct.decl == "Prove_String*":
+                box = f"(void*){param}"
+            else:
+                box = f"(void*)(intptr_t){param}"
+            self._line(
+                f"if ({body_code}) {{ {result_var}.tag = 1; {result_var}.value = {box}; break; }}"
+            )
+            self._indent -= 1
+            self._line("}")
+            return result_var
+
+        # Fallback: use prove_list_filter + first
+        self._needed_headers.add("prove_hof.h")
+        fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "filter")
+        return f"prove_list_ops_first({list_arg}, {fn_name}, {ctx_arg})"
 
     @staticmethod
     def _collect_string_literals(expr: Expr) -> set[str]:

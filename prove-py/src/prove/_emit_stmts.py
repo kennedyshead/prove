@@ -1620,11 +1620,7 @@ class StmtEmitterMixin:
         for arm in m.arms:
             if isinstance(arm.pattern, LiteralPattern):
                 if arm.pattern.kind not in ("integer", None):
-                    # String or boolean literals can't use switch
-                    try:
-                        int(arm.pattern.value)
-                    except (ValueError, TypeError):
-                        return False
+                    return False
                 has_literal = True
             elif isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
                 continue  # Wildcard becomes default
