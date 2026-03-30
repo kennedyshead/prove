@@ -152,6 +152,8 @@ def format_cmd(path: str, status: bool, md: bool) -> None:
 
         checker = Checker(local_modules=local_modules)
         symbols = checker.check(module)
+        if checker.has_errors():
+            continue
         formatter = ProveFormatter(symbols=symbols, diagnostics=checker.diagnostics)
         formatted = formatter.format(module)
 

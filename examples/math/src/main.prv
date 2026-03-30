@@ -1,12 +1,12 @@
 module Main
   narrative: """Basic math operations.
 
-  transforms by sum of add arguments, double value, abs value
+  derives sum of add arguments, double value, abs value
   """
   System outputs console
   Types creates string
 
-transforms add(a Integer, b Integer) Integer
+derives add(a Integer, b Integer) Integer
   ensures result == a + b
   requires valid integer(a) && valid integer(b)
   explain
@@ -14,13 +14,13 @@ transforms add(a Integer, b Integer) Integer
 from
     a + b
 
-transforms double(n Integer) Integer
+derives double(n Integer) Integer
   ensures result == n * 2
   requires n > 0
 from
     n * 2
 
-transforms abs(n Integer) Integer
+derives abs(n Integer) Integer
   ensures result > 0
   requires n > 0
 from

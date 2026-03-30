@@ -20,7 +20,7 @@ module Main
   SIZE as Integer = 100
 
 /// Generate matrix: fill row by iterating columns
-derives columns(
+creates columns(
     mat Array<Decimal>:[Mutable],
     n Integer,
     tmp Decimal,
@@ -36,7 +36,7 @@ from
             columns(set(mat, i * n + j, val), n, tmp, i, j + 1)
 
 /// Generate matrix: iterate rows
-derives rows(
+creates rows(
     mat Array<Decimal>:[Mutable],
     n Integer,
     tmp Decimal,
@@ -58,7 +58,7 @@ from
     rows(mat, n, tmp, 0)
 
 /// Transpose: copy columns of src into rows of dst
-derives transpose_columns(
+creates transpose_columns(
     dst Array<Decimal>:[Mutable],
     src Array<Decimal>:[Mutable],
     n Integer,
@@ -74,7 +74,7 @@ from
             transpose_columns(set(dst, i * n + j, val), src, n, i, j + 1)
 
 /// Transpose: iterate rows
-derives transpose_rows(
+creates transpose_rows(
     dst Array<Decimal>:[Mutable],
     src Array<Decimal>:[Mutable],
     n Integer,
@@ -89,13 +89,13 @@ from
             transpose_rows(updated, src, n, i + 1)
 
 /// Transpose a matrix
-derives transpose(src Array<Decimal>:[Mutable], n Integer) Array<Decimal>:[Mutable]
+creates transpose(src Array<Decimal>:[Mutable], n Integer) Array<Decimal>:[Mutable]
 from
     dst as Array<Decimal>:[Mutable] = array(n * n, 0.0)
     transpose_rows(dst, src, n, 0)
 
 /// Dot product of row i of a with row j of bt (transposed b)
-derives dot(
+creates dot(
     a Array<Decimal>:[Mutable],
     bt Array<Decimal>:[Mutable],
     n Integer,
@@ -113,7 +113,7 @@ from
             dot(a, bt, n, i, j, k + 1, acc + product)
 
 /// Multiply: fill one row of result
-derives mul_columns(
+creates mul_columns(
     result Array<Decimal>:[Mutable],
     a Array<Decimal>:[Mutable],
     bt Array<Decimal>:[Mutable],
@@ -130,7 +130,7 @@ from
             mul_columns(set(result, i * n + j, val), a, bt, n, i, j + 1)
 
 /// Multiply: iterate rows
-derives mul_rows(
+creates mul_rows(
     result Array<Decimal>:[Mutable],
     a Array<Decimal>:[Mutable],
     bt Array<Decimal>:[Mutable],
@@ -146,7 +146,7 @@ from
             mul_rows(filled, a, bt, n, i + 1)
 
 /// Multiply two matrices: a * b with transpose optimization
-derives multiply(
+creates multiply(
     a Array<Decimal>:[Mutable],
     b Array<Decimal>:[Mutable],
     n Integer

@@ -370,6 +370,19 @@ class Parser:
                 return
             self._advance()
 
+    def _sync_to_next_decl(self) -> None:
+        """Skip tokens to the next declaration within an indented block.
+
+        Unlike _synchronize, this stops at NEWLINE boundaries without
+        escaping the current indented block — so the module body loop
+        can continue parsing subsequent declarations.
+        """
+        while not self._at(TokenKind.EOF) and not self._at(TokenKind.DEDENT):
+            if self._at(TokenKind.NEWLINE):
+                self._advance()
+                return
+            self._advance()
+
     def _is_indented(self) -> bool:
         """Check if we're inside an indented block."""
         # Look ahead past the newline to see if next is INDENT or at top level
@@ -1411,32 +1424,39 @@ class Parser:
                         doc_lines.append(self._advance().value)
                         self._skip_newlines()
                     doc = "\n".join(doc_lines) if doc_lines else None
-                    if self._at(TokenKind.BINARY):
-                        types.append(self._parse_binary_lookup_def(doc))
-                    elif self._at(TokenKind.TYPE):
-                        types.append(self._parse_type_def(doc))
-                    elif self._current().kind in _VERBS:
-                        body.append(self._parse_function_def(doc))
-                    elif self._at(TokenKind.MAIN):
-                        body.append(self._parse_main_def(doc))
-                    elif self._at(TokenKind.CONSTANT_IDENTIFIER):
-                        constants.append(self._parse_constant_def(doc))
-                    else:
-                        tok = self._current()
-                        if not self._recovery_mode:
-                            self._error(
-                                f"expected a declaration after doc comment "
-                                f"but found {tok.kind.name} ({tok.value!r})",
-                                tok.span,
-                                code="E211",
-                            )
-                            self._recovery_mode = True
-                        self._advance()
+                    try:
+                        if self._at(TokenKind.BINARY):
+                            types.append(self._parse_binary_lookup_def(doc))
+                        elif self._at(TokenKind.TYPE):
+                            types.append(self._parse_type_def(doc))
+                        elif self._current().kind in _VERBS:
+                            body.append(self._parse_function_def(doc))
+                        elif self._at(TokenKind.MAIN):
+                            body.append(self._parse_main_def(doc))
+                        elif self._at(TokenKind.CONSTANT_IDENTIFIER):
+                            constants.append(self._parse_constant_def(doc))
+                        else:
+                            tok = self._current()
+                            if not self._recovery_mode:
+                                self._error(
+                                    f"expected a declaration after doc comment "
+                                    f"but found {tok.kind.name} ({tok.value!r})",
+                                    tok.span,
+                                    code="E211",
+                                )
+                                self._recovery_mode = True
+                            self._advance()
+                    except _ParseError:
+                        self._sync_to_next_decl()
                     continue
                 elif self._at(TokenKind.BINARY):
                     types.append(self._parse_binary_lookup_def(None))
                 elif self._at(TokenKind.TYPE):
-                    types.append(self._parse_type_def(None))
+                    try:
+                        types.append(self._parse_type_def(None))
+                    except _ParseError:
+                        self._sync_to_next_decl()
+                        continue
                 elif self._at(TokenKind.CONSTANT_IDENTIFIER):
                     # Disambiguate: if next token is a verb or type name, it's a module import
                     # (e.g., "UI types Key Color" where UI is all-caps)

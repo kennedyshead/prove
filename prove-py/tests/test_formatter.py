@@ -647,7 +647,7 @@ class TestFormatterAutoFixes:
         )
         result = _format_with_fixes(source)
         assert "Unused" not in result
-        assert "transforms one() Integer" in result
+        assert "derives one() Integer" in result  # I440: non-failable, non-allocating
 
     def test_w303_keeps_used_type(self):
         """Used type definitions are preserved."""

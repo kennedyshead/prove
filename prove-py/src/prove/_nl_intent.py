@@ -63,6 +63,8 @@ VERB_SYNONYMS: dict[str, list[str]] = {
         "load",
         "retrieves",
         "retrieve",
+        "queries",
+        "query",
     ],
     "creates": [
         "creates",

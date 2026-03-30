@@ -167,7 +167,7 @@ class TestFixI303:
         )
         result = check_and_format(source)
         assert "Unused" not in result
-        assert "transforms one() Integer" in result
+        assert "derives one() Integer" in result  # I440: non-failable, non-allocating
 
     def test_keeps_used_type(self):
         source = (
@@ -211,7 +211,7 @@ class TestFixI304:
         source = "module M\n  PI as Float = 3.14\n\ntransforms one() Integer\nfrom\n    1\n"
         result = check_and_format(source)
         assert "PI" not in result
-        assert "transforms one() Integer" in result
+        assert "derives one() Integer" in result  # I440: non-failable, non-allocating
 
     def test_keeps_used_constant(self):
         source = "module M\n  PI as Float = 3.14\n\ntransforms f() Float\nfrom\n    PI\n"

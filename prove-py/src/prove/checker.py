@@ -122,6 +122,14 @@ from prove.types import (
     type_name,
     types_compatible,
 )
+from prove.verb_defs import (
+    ASYNC_VERBS,
+    BLOCKING_VERBS,
+    FAILABLE_PURE_VERBS,
+    NON_ALLOCATING_VERBS,
+    PURE_VERBS,
+    VERBS_NEED_OWNERSHIP,
+)
 
 
 def _count_decimal_places(literal: str) -> int:
@@ -131,44 +139,14 @@ def _count_decimal_places(literal: str) -> int:
     return 0
 
 
-# Verbs considered pure (no IO side effects allowed).
-# Semantic guarantees:
-#   reads     — same type in/out, never allocates, never fails
-#   creates   — different type out, always allocates, never fails
-#   transforms — may allocate, may fail (only pure verb with `!`)
-#   validates — returns Boolean, never allocates, never fails
-#   matches   — algebraic dispatch, never allocates, never fails
-_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
-
-# Pure verbs that are allowed to be failable (only transforms can fail at runtime)
-_FAILABLE_PURE_VERBS = frozenset({"transforms"})
-
-# Pure verbs guaranteed to never allocate new values
-_NON_ALLOCATING_VERBS = frozenset({"derives", "validates", "matches"})
-
-# Async verb family
-_ASYNC_VERBS = frozenset({"detached", "attached", "listens", "renders"})
-
-# IO (blocking) verbs — forbidden inside async bodies
-_BLOCKING_VERBS = frozenset({"inputs", "outputs", "streams", "dispatches"})
-
-# Verbs that need ownership of their parameters (skip borrow inference)
-_VERBS_NEED_OWNERSHIP = frozenset(
-    {
-        "outputs",
-        "matches",
-        "dispatches",
-        "creates",
-        "validates",
-        "inputs",
-        "transforms",
-        "derives",
-        "detached",
-        "attached",
-        "listens",
-        "streams",
-    }
-)
+# Verb classification sets are imported from prove.verb_defs.
+# Local aliases with leading underscores for backward compat within this file.
+_PURE_VERBS = PURE_VERBS
+_FAILABLE_PURE_VERBS = FAILABLE_PURE_VERBS
+_NON_ALLOCATING_VERBS = NON_ALLOCATING_VERBS
+_ASYNC_VERBS = ASYNC_VERBS
+_BLOCKING_VERBS = BLOCKING_VERBS
+_VERBS_NEED_OWNERSHIP = VERBS_NEED_OWNERSHIP
 
 # Built-in functions considered to perform IO
 _IO_FUNCTIONS = frozenset(
@@ -1455,9 +1433,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Register parameters
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
 
-        # Infer borrows only for parameters without explicit ownership modifiers
-        # Skip for verbs that need ownership of their parameters
-        if fd.verb not in _VERBS_NEED_OWNERSHIP:
+        # Infer borrows for non-pure verbs that don't need ownership (e.g. renders).
+        # Pure verbs are implicitly borrowing — the emitter handles this via
+        # the verb classification, no BorrowType wrapper needed.
+        if fd.verb not in _VERBS_NEED_OWNERSHIP and fd.verb not in _PURE_VERBS:
             param_has_explicit_modifier = [
                 isinstance(p.type_expr, ModifiedType) and bool(p.type_expr.modifiers)
                 for p in fd.params
@@ -2202,8 +2181,59 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Pure functions cannot be failable (except transforms which can fail)
             if fd.can_fail and verb not in _FAILABLE_PURE_VERBS:
                 self._error("E361", "pure function cannot be failable", fd.span)
+            # Non-allocating pure verbs cannot take Mutable params —
+            # Mutable allows in-place mutation which violates purity.
+            if verb in _NON_ALLOCATING_VERBS:
+                for p in fd.params:
+                    pt = self._resolve_type_expr(p.type_expr)
+                    if has_mutable_modifier(pt):
+                        self._error(
+                            "E437",
+                            f"`{verb}` verb cannot accept Mutable parameters "
+                            f"— pure verbs must not mutate their inputs",
+                            p.span,
+                        )
+            # derives returning a heap type (String, List, Record, etc.)
+            # that calls creates/transforms is misclassified — the
+            # function allocates from the caller's perspective.
+            # Skip for validates (always returns Boolean) and matches.
+            if verb == "derives" and fd.return_type is not None:
+                ret_ty = self._resolve_type_expr(fd.return_type)
+                if self._is_heap_type(ret_ty) and self._body_allocates(fd.body):
+                    self._info(
+                        "I438",
+                        f"`derives` function '{fd.name}' returns heap type "
+                        f"'{type_name(ret_ty)}' and allocates "
+                        f"— use `creates` instead",
+                        fd.span,
+                    )
             # Check body for IO calls
             self._check_pure_body(fd.body, fd.span)
+
+        # Verb precision suggestions for pure verbs
+        if verb == "creates" and not fd.binary:
+            if not self._body_allocates(fd.body):
+                self._info(
+                    "I439",
+                    f"`creates` function '{fd.name}' does not allocate — use `derives` instead",
+                    fd.span,
+                )
+        if verb == "transforms" and not fd.binary:
+            if not fd.can_fail and not self._body_calls_failable(fd.body):
+                if self._body_allocates(fd.body):
+                    self._info(
+                        "I440",
+                        f"`transforms` function '{fd.name}' is not failable "
+                        f"— use `creates` instead",
+                        fd.span,
+                    )
+                else:
+                    self._info(
+                        "I440",
+                        f"`transforms` function '{fd.name}' is not failable "
+                        f"and does not allocate — use `derives` instead",
+                        fd.span,
+                    )
 
         # matches/dispatches verb: first parameter must be a matchable type
         if verb in ("matches", "dispatches"):
@@ -2527,6 +2557,127 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             for arm in expr.arms:
                 for s in arm.body:
                     self._check_pure_stmt(s)
+
+    # ── Verb precision helpers ──────────────────────────────────
+
+    _STACK_PRIMITIVES = frozenset(
+        {
+            "Integer",
+            "Float",
+            "Decimal",
+            "Boolean",
+            "Character",
+            "Byte",
+        }
+    )
+
+    def _is_heap_type(self, ty: Type) -> bool:
+        """True if the type is heap-allocated (pointer in C)."""
+        if isinstance(ty, PrimitiveType):
+            return ty.name not in self._STACK_PRIMITIVES
+        # Records, generics (List, Option, Result), etc. are all heap
+        return True
+
+    # AST nodes that allocate heap memory (strings, lists, records).
+    _HEAP_LITERAL_TYPES = (
+        StringLit,
+        TripleStringLit,
+        RawStringLit,
+        PathLit,
+        RegexLit,
+        StringInterp,
+        ListLiteral,
+    )
+
+    def _body_allocates(self, body: list[Stmt | MatchExpr]) -> bool:
+        """Conservative check: does the body contain allocating expressions?"""
+        return any(self._stmt_allocates(s) for s in body)
+
+    def _stmt_allocates(self, stmt: Stmt | MatchExpr) -> bool:
+        if isinstance(stmt, VarDecl):
+            return self._expr_allocates(stmt.value)
+        if isinstance(stmt, Assignment):
+            return self._expr_allocates(stmt.value)
+        if isinstance(stmt, ExprStmt):
+            return self._expr_allocates(stmt.expr)
+        if isinstance(stmt, MatchExpr):
+            if stmt.subject and self._expr_allocates(stmt.subject):
+                return True
+            return any(self._stmt_allocates(s) for arm in stmt.arms for s in arm.body)
+        return False
+
+    def _expr_allocates(self, expr: Expr) -> bool:
+        if isinstance(expr, self._HEAP_LITERAL_TYPES):
+            return True
+        if isinstance(expr, TypeIdentifierExpr):
+            # Record constructor — allocates a new record
+            return True
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, TypeIdentifierExpr):
+                return True  # Record/variant constructor call
+            if isinstance(expr.func, IdentifierExpr):
+                sig = self.symbols.resolve_function_any(expr.func.name)
+                if sig and sig.verb in ("creates", "transforms"):
+                    return True
+            return any(self._expr_allocates(a) for a in expr.args)
+        if isinstance(expr, BinaryExpr):
+            # String concatenation allocates — conservatively flag + with
+            # string literal operands (full type inference not available here).
+            if expr.op == "+" and (
+                isinstance(expr.left, (StringLit, StringInterp, TripleStringLit))
+                or isinstance(expr.right, (StringLit, StringInterp, TripleStringLit))
+            ):
+                return True
+            return self._expr_allocates(expr.left) or self._expr_allocates(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return self._expr_allocates(expr.operand)
+        if isinstance(expr, PipeExpr):
+            return self._expr_allocates(expr.left) or self._expr_allocates(expr.right)
+        if isinstance(expr, FailPropExpr):
+            return self._expr_allocates(expr.expr)
+        if isinstance(expr, MatchExpr):
+            if expr.subject and self._expr_allocates(expr.subject):
+                return True
+            return any(self._stmt_allocates(s) for arm in expr.arms for s in arm.body)
+        return False
+
+    def _body_calls_failable(self, body: list[Stmt | MatchExpr]) -> bool:
+        """Check if any call in the body targets a failable function."""
+        return any(self._stmt_calls_failable(s) for s in body)
+
+    def _stmt_calls_failable(self, stmt: Stmt | MatchExpr) -> bool:
+        if isinstance(stmt, VarDecl):
+            return self._expr_calls_failable(stmt.value)
+        if isinstance(stmt, Assignment):
+            return self._expr_calls_failable(stmt.value)
+        if isinstance(stmt, ExprStmt):
+            return self._expr_calls_failable(stmt.expr)
+        if isinstance(stmt, MatchExpr):
+            if stmt.subject and self._expr_calls_failable(stmt.subject):
+                return True
+            return any(self._stmt_calls_failable(s) for arm in stmt.arms for s in arm.body)
+        return False
+
+    def _expr_calls_failable(self, expr: Expr) -> bool:
+        if isinstance(expr, CallExpr):
+            if isinstance(expr.func, IdentifierExpr):
+                sig = self.symbols.resolve_function_any(expr.func.name)
+                if sig and sig.can_fail:
+                    return True
+            return any(self._expr_calls_failable(a) for a in expr.args)
+        if isinstance(expr, FailPropExpr):
+            return True  # ! operator implies failable context
+        if isinstance(expr, BinaryExpr):
+            return self._expr_calls_failable(expr.left) or self._expr_calls_failable(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return self._expr_calls_failable(expr.operand)
+        if isinstance(expr, PipeExpr):
+            return self._expr_calls_failable(expr.left) or self._expr_calls_failable(expr.right)
+        if isinstance(expr, MatchExpr):
+            if expr.subject and self._expr_calls_failable(expr.subject):
+                return True
+            return any(self._stmt_calls_failable(s) for arm in expr.arms for s in arm.body)
+        return False
 
     # ── Match restriction (I367) ────────────────────────────────
 
@@ -3989,7 +4140,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         An unverified function that calls a verified function breaks the
         verification chain — the callee's guarantees don't propagate.
         """
-        _IO_VERBS = frozenset({"inputs", "outputs", "streams", "dispatches"})
+        _IO_VERBS = _BLOCKING_VERBS
 
         # Collect all function definitions
         all_fns: list[FunctionDef] = []

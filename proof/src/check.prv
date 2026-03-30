@@ -7,11 +7,11 @@ module Check
   outputs lint messages
   matches the declaration and lint for each statement
   """
-  System validates dir inputs file
+  System validates dir
   Prove types Node derives root creates children kind line column
   Source types SourceFile
   Types creates string validates boolean
-  Log types DiagnosticMessage Severity detached info error diagnostic debug warning
+  Log types DiagnosticMessage Severity detached info error diagnostic warning
   Sequence derives get creates length
   Text creates split
 
@@ -31,54 +31,61 @@ matches lint_node(node_kind String, node Node, source SourceFile) Boolean
 from
     "module_declaration" => lint_module(node_kind, node, source)
     "narrative_annotation" =>
-        info(f"NARRATIVE {string(node)}")&
+        // info(f"NARRATIVE {string(node)}")&
         true
     "import_declaration" =>
-        debug(f"IMPORT {string(node)}")&
+        // debug(f"IMPORT {string(node)}")&
         true
     "constant_definition" =>
-        debug(f"CONSTANT {string(node)}")&
+        // debug(f"CONSTANT {string(node)}")&
         true
     "function_definition" =>
-        debug(f"FUNCTION {string(node)}")&
+        // debug(f"FUNCTION {string(node)}")&
         true
     "type_definition" =>
-        debug(f"TYPE {string(node)}")&
+        // debug(f"TYPE {string(node)}")&
         true
     "foreign_block" =>
         // debug(f"TYPE {string(node)}")&
         true
-    "module" => true
+    "main_definition" =>
+        true
+    "type_identifier" =>
+        true
+    "module" =>
+        true
+    "ERROR" =>
+        error(f"{string(node)}")&
+        true
     _ =>
         warning(f"missing lint for {node_kind} {string(node)}")&
         true
 
-matches lint_module(node_kind String, node Node, source SourceFile) Boolean
+creates e210(node Node, node_kind String, source SourceFile)
+from
+    actual_code as String = get(split(string(node), "\n"), line(node) - 1)
+    error(node_kind)&
+    diagnostic(DiagnosticMessage(
+        Severity.Error,
+        210,
+        source.path,
+        string(node),
+        "Expected module name but found",
+        line(node),
+        column(node),
+        actual_code))&
+
+validates lint_module(node_kind String, node Node, source SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
       gets the childrens and uses first as module name
 from
-    "module_declaration" =>
-        info(f"Linting module {string(node)}")&
-        all(children(node), |child| lint_node(kind(child), child, source))
-    _ =>
-        actual_code as String = get(split(string(node), "\n"), line(node) - 1)
-        error(node_kind)&
-        diagnostic(DiagnosticMessage(
-            Severity.Error,
-            210,
-            source.path,
-            string(node),
-            "Expected module name but found",
-            line(node),
-            column(node),
-            actual_code))&
-        false
+    all(children(node), |child| lint_node(kind(child), child, source))
 
 validates lint_file(source SourceFile)
   ensures valid boolean(result)
-  requires valid file(source.path)
+  requires valid string(source.content)
 from
     all(children(root(source.source)), |node| lint_node(kind(node), node, source))
 

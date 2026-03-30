@@ -74,6 +74,7 @@ from prove.types import (
     resolve_type_vars,
     substitute_type_vars,
 )
+from prove.verb_defs import ASYNC_VERBS, BLOCKING_VERBS, NON_ALLOCATING_VERBS, PURE_VERBS
 
 
 class CEmitter(
@@ -136,6 +137,8 @@ class CEmitter(
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
         self.comptime_dependencies: set["Path"] = set()  # files read by comptime
         self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
+        self._static_error_strings: dict[str, str] = {}  # C literal → generated name
+        self._param_names: set[str] = set()  # current function's parameter names
         self._in_hof_inline = False  # True when emitting inline HOF loop body
         self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
         self._fused_object_cache: tuple[str, str] | None = None  # type: ignore[assignment]  # (param, var) for CSE
@@ -314,6 +317,21 @@ class CEmitter(
                     if isinstance(item, MainDef):
                         self._emit_main(item)
                         break
+
+        # Insert static immortal error strings before functions
+        if self._static_error_strings:
+            statics: list[str] = []
+            for escaped, name in self._static_error_strings.items():
+                byte_len = self._c_byte_length(escaped)
+                statics.append(
+                    f"static struct {{ Prove_Header header; int64_t length; "
+                    f"char data[{byte_len + 1}]; }} {name} = "
+                    f'{{ {{ INT32_MAX }}, {byte_len}, "{escaped}" }};'
+                )
+            statics.append("")
+            for i, line in enumerate(statics):
+                self._out.insert(lambda_pos + i, line)
+            lambda_pos += len(statics)
 
         # Insert hoisted lambdas before functions
         if self._lambdas:
@@ -516,12 +534,7 @@ class CEmitter(
                         break
                 if not found_coro:
                     for inner in decl.body:
-                        if isinstance(inner, FunctionDef) and inner.verb in (
-                            "detached",
-                            "attached",
-                            "listens",
-                            "renders",
-                        ):
+                        if isinstance(inner, FunctionDef) and inner.verb in ASYNC_VERBS:
                             self._needed_headers.add("prove_coro.h")
                             found_coro = True
                             break
@@ -530,7 +543,7 @@ class CEmitter(
                     self._needed_headers.add("prove_hof.h")
                     found_hof = True
             if isinstance(decl, FunctionDef):
-                if not found_coro and decl.verb in ("detached", "attached", "listens", "renders"):
+                if not found_coro and decl.verb in ASYNC_VERBS:
                     self._needed_headers.add("prove_coro.h")
                     found_coro = True
                 if decl.verb == "renders":
@@ -665,11 +678,17 @@ class CEmitter(
     def _needs_region_scope(self, fd: FunctionDef) -> bool:
         """Check if function body contains nodes that trigger region allocation.
 
+        Non-allocating verbs (validates/derives/matches) never allocate by
+        definition, so skip the region scope entirely.
+
         Region allocation (prove_string_*_region, prove_list_new_region) is only
         emitted for string/list literals when _use_region_allocation() returns True.
         If the body has none, the prove_region_enter/exit pair is pure overhead
         (a 4096-byte malloc + free per call).
         """
+        if fd.verb in NON_ALLOCATING_VERBS:
+            return False
+
         from prove.ast_nodes import (
             Assignment,
             AsyncCallExpr,
@@ -1106,7 +1125,7 @@ class CEmitter(
                 any_emitted = True
                 continue
             # Async verbs get special forward declarations
-            if decl.verb in ("detached", "attached", "listens", "renders"):
+            if decl.verb in ASYNC_VERBS:
                 sig = self._symbols.resolve_function(decl.verb, decl.name, len(decl.params))
                 if not sig:
                     continue
@@ -1171,14 +1190,90 @@ class CEmitter(
             params = []
             for p, pt in zip(decl.params, sig.param_types):
                 ct = map_type(pt)
-                params.append(f"{ct.decl} {safe_c_name(p.name)}")
+                decl_str = self._restrict_param(decl.verb, ct.decl, ct.is_pointer)
+                params.append(f"{decl_str} {safe_c_name(p.name)}")
             param_str = ", ".join(params) if params else "void"
-            self._line(f"{ret_decl} {mangled}({param_str});")
+            has_ptrs = any(map_type(pt).is_pointer for pt in sig.param_types)
+            attr = self._function_attributes(decl.verb, has_ptrs)
+            self._line(f"{attr}{ret_decl} {mangled}({param_str});")
             any_emitted = True
         if any_emitted:
             self._line("")
 
     # ── Function emission ──────────────────────────────────────
+
+    @staticmethod
+    def _function_attributes(
+        verb: str,
+        has_pointer_params: bool,
+    ) -> str:
+        """Return GCC/Clang function attributes based on verb semantics.
+
+        - non_allocating verbs with only primitive (non-pointer) params
+          get __attribute__((const)) — result depends solely on param values.
+        - non_allocating verbs with pointer params get __attribute__((pure))
+          — they only read through pointers (checker rejects Mutable params).
+        - Allocating pure verbs (creates/transforms) get NO purity attr —
+          allocation modifies global heap state, violating C pure semantics.
+        - blocking/IO verbs get __attribute__((noinline)) — keeps cold
+          IO paths out of the instruction cache during hot pure loops.
+        """
+        attrs: list[str] = []
+        if verb in NON_ALLOCATING_VERBS:
+            if not has_pointer_params:
+                attrs.append("const")
+            else:
+                attrs.append("pure")
+        if verb in BLOCKING_VERBS:
+            attrs.append("noinline")
+        if not attrs:
+            return ""
+        return "__attribute__((" + ", ".join(attrs) + ")) "
+
+    @staticmethod
+    def _restrict_param(verb: str, ct_decl: str, is_pointer: bool) -> str:
+        """Add __restrict__ qualifier to pointer params when safe.
+
+        Currently disabled: derives/validates/matches functions may mutate
+        Mutable arrays through their pointer params, and __restrict__
+        combined with __attribute__((pure)) lets the compiler eliminate
+        those mutations.  Re-enable once the emitter tracks Mutable vs
+        immutable pointer params separately.
+        """
+        return ct_decl
+
+    def _static_error_ref(self, c_literal: str) -> str:
+        """Return C expression for a static immortal Prove_String.
+
+        *c_literal* is the already-escaped C string content (without quotes).
+        Deduplicates: the same literal reuses the same static variable.
+        """
+        if c_literal not in self._static_error_strings:
+            name = f"_err_str_{len(self._static_error_strings)}"
+            self._static_error_strings[c_literal] = name
+        return f"(Prove_String*)&{self._static_error_strings[c_literal]}"
+
+    @staticmethod
+    def _c_byte_length(escaped: str) -> int:
+        """Compute actual byte length of a C-escaped string literal."""
+        i, n = 0, 0
+        while i < len(escaped):
+            if escaped[i] == "\\" and i + 1 < len(escaped):
+                n += 1
+                c = escaped[i + 1]
+                if c == "x":
+                    i += 4  # \xNN
+                elif c in "01234567":
+                    i += 2  # backslash + first digit
+                    for _ in range(2):  # up to 2 more octal digits
+                        if i < len(escaped) and escaped[i] in "01234567":
+                            i += 1
+                else:
+                    i += 2  # \n, \t, \\, \", etc.
+            else:
+                n += 1
+                i += 1
+        return n
 
     def _is_struct_polymorphic(self, fd: FunctionDef) -> bool:
         """Check if a function has any Struct-typed parameters."""
@@ -1253,10 +1348,13 @@ class CEmitter(
         params: list[str] = []
         for p, pt in zip(fd.params, param_types):
             ct = map_type(pt)
-            params.append(f"{ct.decl} {safe_c_name(p.name)}")
+            decl_str = self._restrict_param(fd.verb, ct.decl, ct.is_pointer)
+            params.append(f"{decl_str} {safe_c_name(p.name)}")
         param_str = ", ".join(params) if params else "void"
 
-        self._line(f"{ret_decl} {mangled}({param_str}) {{")
+        has_ptrs = any(map_type(pt).is_pointer for pt in param_types)
+        attr = self._function_attributes(fd.verb, has_ptrs)
+        self._line(f"{attr}{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 
         # Enter region for short-lived allocations (skip for pure numeric functions)
@@ -1270,6 +1368,7 @@ class CEmitter(
         self._locals.clear()
         self._used_names.clear()
         self._string_literal_cache.clear()
+        self._param_names = {p.name for p in fd.params}
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
 
@@ -1277,15 +1376,18 @@ class CEmitter(
         # including params, but recursive calls or stdlib functions that
         # return their input may also release them.  The entry retain
         # ensures the outer scope's reference stays alive.
+        # Skip for pure verbs: they only read their inputs and never
+        # transfer ownership, so the caller's reference stays alive.
         # Skip Verb/FunctionType params — function pointers, not heap objects.
-        for p, pt in zip(fd.params, param_types):
-            if isinstance(pt, PrimitiveType) and pt.name == "Verb":
-                continue
-            if isinstance(pt, FunctionType):
-                continue
-            ct = map_type(pt)
-            if ct.is_pointer:
-                self._line(f"prove_retain({p.name});")
+        if fd.verb not in PURE_VERBS:
+            for p, pt in zip(fd.params, param_types):
+                if isinstance(pt, PrimitiveType) and pt.name == "Verb":
+                    continue
+                if isinstance(pt, FunctionType):
+                    continue
+                ct = map_type(pt)
+                if ct.is_pointer:
+                    self._line(f"prove_retain({p.name});")
 
         # Emit requires guards for IO verbs (inputs/outputs) —
         # these receive external data that the compiler cannot verify
@@ -1302,24 +1404,28 @@ class CEmitter(
                 cond = " && ".join(f"({p})" for p in parts)
                 if isinstance(ret_type, GenericInstance) and ret_type.base_name == "Option":
                     self._needed_headers.add("prove_option.h")
-                    self._line(f"if (!({cond})) return prove_option_none();")
+                    self._line(f"if (__builtin_expect(!({cond}), 0)) return prove_option_none();")
                 elif fd.can_fail:
+                    ref = self._static_error_ref(f"requires violated: {loc}")
                     self._line(
-                        f"if (!({cond})) return prove_result_err("
-                        f'prove_string_from_cstr("requires violated: {loc}"));'
+                        f"if (__builtin_expect(!({cond}), 0)) return prove_result_err({ref});"
                     )
 
         # Emit assume assertions at function entry
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
             _loc = f"{assume_expr.span.file}:{assume_expr.span.start_line}"
-            self._line(f'if (!({cond})) prove_panic("assumption violated ({_loc})");')
+            self._line(
+                f'if (__builtin_expect(!({cond}), 0)) prove_panic("assumption violated ({_loc})");'
+            )
 
         # Emit believe assertions (always present — believe is explicitly uncertain)
         for believe_expr in fd.believe:
             cond = self._emit_expr(believe_expr)
             _loc = f"{believe_expr.span.file}:{believe_expr.span.start_line}"
-            self._line(f'if (!({cond})) prove_panic("believe violation ({_loc})");')
+            self._line(
+                f'if (__builtin_expect(!({cond}), 0)) prove_panic("believe violation ({_loc})");'
+            )
 
         # Check if explain block has structured conditions (when)
         has_explain_conditions = fd.explain is not None and any(
@@ -1377,7 +1483,8 @@ class CEmitter(
         params: list[str] = []
         for p, pt in zip(fd.params, concrete_types):
             ct = map_type(pt)
-            params.append(f"{ct.decl} {safe_c_name(p.name)}")
+            decl_str = self._restrict_param(fd.verb, ct.decl, ct.is_pointer)
+            params.append(f"{decl_str} {safe_c_name(p.name)}")
         param_str = ", ".join(params) if params else "void"
 
         # Forward declaration for the specialisation
@@ -1395,13 +1502,21 @@ class CEmitter(
         self._locals.clear()
         self._used_names.clear()
         self._string_literal_cache.clear()
+        self._param_names = {p.name for p in fd.params}
         for p, pt in zip(fd.params, concrete_types):
             self._locals[p.name] = pt
 
-        for p, pt in zip(fd.params, concrete_types):
-            ct = map_type(pt)
-            if ct.is_pointer:
-                self._line(f"prove_retain({p.name});")
+        # Retain pointer params at entry — skip for pure verbs
+        # (they only read inputs, never transfer ownership).
+        if fd.verb not in PURE_VERBS:
+            for p, pt in zip(fd.params, concrete_types):
+                if isinstance(pt, PrimitiveType) and pt.name == "Verb":
+                    continue
+                if isinstance(pt, FunctionType):
+                    continue
+                ct = map_type(pt)
+                if ct.is_pointer:
+                    self._line(f"prove_retain({p.name});")
 
         for assume_expr in fd.assume:
             cond = self._emit_expr(assume_expr)
@@ -1607,7 +1722,7 @@ class CEmitter(
         param_str = ", ".join(params) if params else "void"
 
         ret_decl = "Prove_Result" if sig.can_fail else "void"
-        self._line(f"{ret_decl} {mangled}({param_str}) {{")
+        self._line(f"__attribute__((noinline)) {ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 
         if sig.can_fail:

@@ -43,9 +43,9 @@ from prove.types import (
     type_name,
     types_compatible,
 )
+from prove.verb_defs import ASYNC_VERBS, PURE_VERBS
 
-# Verbs considered pure (no IO side effects allowed)
-_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
+_PURE_VERBS = PURE_VERBS
 
 
 class CallCheckMixin:
@@ -237,7 +237,7 @@ class CallCheckMixin:
                 self._used_imports.add((sig.module, name))
 
             # Check calls to async functions without &
-            if sig.verb in ("detached", "attached", "listens", "renders"):
+            if sig.verb in ASYNC_VERBS:
                 if self._in_listens_worker_list and sig.verb == "attached":
                     # Attached calls inside listens worker list are worker
                     # registrations, not coroutine invocations — no & needed.
@@ -310,11 +310,7 @@ class CallCheckMixin:
                     cb_arg = expr.args[cb_idx]
                     if isinstance(cb_arg, IdentifierExpr):
                         cb_sig = self.symbols.resolve_function_any(cb_arg.name, arity=1)
-                        if (
-                            cb_sig
-                            and cb_sig.verb
-                            and cb_sig.verb in ("detached", "attached", "listens", "renders")
-                        ):
+                        if cb_sig and cb_sig.verb and cb_sig.verb in ASYNC_VERBS:
                             self._error(
                                 "E369",
                                 f"'par_each' callback cannot be an async verb "

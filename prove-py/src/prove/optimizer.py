@@ -49,6 +49,7 @@ from prove.ast_nodes import (
 from prove.c_runtime import STDLIB_RUNTIME_LIBS
 from prove.interpreter import ComptimeInterpreter
 from prove.symbols import SymbolTable
+from prove.verb_defs import NON_ALLOCATING_VERBS, PURE_VERBS
 
 
 @dataclass
@@ -357,6 +358,15 @@ class Optimizer:
                         return True
                     elif isinstance(s, Assignment) and self._expr_calls(name, s.value):
                         return True
+        return False
+
+    def _calls_any(self, body: list[Any], candidates: dict[str, Any], *, exclude: str) -> bool:
+        """Check if body calls any candidate (other than *exclude*)."""
+        for name in candidates:
+            if name == exclude:
+                continue
+            if self._calls_self(name, body):
+                return True
         return False
 
     # ── Pass 2: Dead Branch Elimination ───────────────────────────
@@ -1091,9 +1101,6 @@ class Optimizer:
         and never allocate, so we allow up to 3 statements.  Other pure
         verbs require a single expression.
         """
-        _pure_verbs = {"transforms", "validates", "derives", "creates", "matches"}
-        # Non-allocating, non-failable verbs — safe to inline larger bodies
-        _non_alloc_verbs = {"derives", "validates"}
         if (
             fd.binary
             or fd.with_constraints
@@ -1104,13 +1111,13 @@ class Optimizer:
             return False
         if self._calls_self(fd.name, fd.body):
             return False
-        if fd.verb in _non_alloc_verbs:
-            # reads/validates: safe to inline up to 3 stmts (no alloc, no fail)
-            if len(fd.body) <= 3 and not self._is_runtime_lookup(fd):
+        if fd.verb in NON_ALLOCATING_VERBS:
+            # validates/derives/matches: safe to inline up to 5 stmts (no alloc, no fail)
+            if len(fd.body) <= 5 and not self._is_runtime_lookup(fd):
                 return True
         if len(fd.body) != 1:
             return False
-        if fd.verb in _pure_verbs:
+        if fd.verb in PURE_VERBS:
             return isinstance(fd.body[0], ExprStmt) and not self._is_runtime_lookup(fd)
         if fd.verb == "inputs" and fd.can_fail:
             return True
@@ -1127,6 +1134,16 @@ class Optimizer:
                 for inner in decl.body:
                     if isinstance(inner, FunctionDef) and self._is_inline_candidate(inner):
                         candidates[inner.name] = inner
+
+        if not candidates:
+            return module
+
+        # Don't inline a function whose body already contains a call to
+        # another inline candidate — this prevents transitive code bloat
+        # (A inlined into B, then the expanded B inlined into C).
+        for name, fd in list(candidates.items()):
+            if self._calls_any(fd.body, candidates, exclude=name):
+                del candidates[name]
 
         if not candidates:
             return module
@@ -1840,32 +1857,117 @@ class Optimizer:
         """Identify pure functions eligible for memoization.
 
         Candidates are pure verbs (transforms, validates, reads, creates, matches)
-        that are small and don't have side effects. Memoization allows caching
-        results based on input parameters.
+        that are small, don't have side effects, and are called from at least
+        2 call sites (memoizing a single-call function wastes a hash table).
         """
-        _pure_verbs = {"transforms", "validates", "derives", "creates", "matches"}
-
+        call_counts = self._count_call_sites(module)
         for decl in module.declarations:
             if isinstance(decl, FunctionDef):
-                self._check_function_for_memoization(decl, _pure_verbs)
+                self._check_function_for_memoization(decl, PURE_VERBS, call_counts)
             elif isinstance(decl, ModuleDecl):
                 for inner in decl.body:
                     if isinstance(inner, FunctionDef):
-                        self._check_function_for_memoization(inner, _pure_verbs)
+                        self._check_function_for_memoization(inner, PURE_VERBS, call_counts)
 
         return module
 
-    def _check_function_for_memoization(self, fd: FunctionDef, pure_verbs: set[str]) -> None:
+    def _count_call_sites(self, module: Module) -> dict[str, int]:
+        """Count how many call sites reference each function name across the module."""
+        counts: dict[str, int] = {}
+
+        def _walk_expr(expr: Any) -> None:
+            if isinstance(expr, CallExpr):
+                if isinstance(expr.func, IdentifierExpr):
+                    name = expr.func.name
+                    counts[name] = counts.get(name, 0) + 1
+                _walk_expr(expr.func)
+                for arg in expr.args:
+                    _walk_expr(arg)
+            elif isinstance(expr, BinaryExpr):
+                _walk_expr(expr.left)
+                _walk_expr(expr.right)
+            elif isinstance(expr, UnaryExpr):
+                _walk_expr(expr.operand)
+            elif isinstance(expr, PipeExpr):
+                _walk_expr(expr.left)
+                _walk_expr(expr.right)
+            elif isinstance(expr, FailPropExpr):
+                _walk_expr(expr.expr)
+            elif isinstance(expr, AsyncCallExpr):
+                _walk_expr(expr.expr)
+            elif isinstance(expr, MatchExpr):
+                if expr.subject:
+                    _walk_expr(expr.subject)
+                for arm in expr.arms:
+                    for s in arm.body:
+                        _walk_stmt(s)
+            elif isinstance(expr, LambdaExpr):
+                _walk_expr(expr.body)
+            elif isinstance(expr, IndexExpr):
+                _walk_expr(expr.obj)
+                _walk_expr(expr.index)
+            elif isinstance(expr, FieldExpr):
+                _walk_expr(expr.obj)
+
+        def _walk_stmt(stmt: Any) -> None:
+            if isinstance(stmt, VarDecl):
+                _walk_expr(stmt.value)
+            elif isinstance(stmt, ExprStmt):
+                _walk_expr(stmt.expr)
+            elif isinstance(stmt, Assignment):
+                _walk_expr(stmt.value)
+            elif isinstance(stmt, MatchExpr):
+                if stmt.subject:
+                    _walk_expr(stmt.subject)
+                for arm in stmt.arms:
+                    for s in arm.body:
+                        _walk_stmt(s)
+            elif isinstance(stmt, WhileLoop):
+                _walk_expr(stmt.condition)
+                for s in stmt.body:
+                    _walk_stmt(s)
+            elif isinstance(stmt, TailLoop):
+                for s in stmt.body:
+                    _walk_stmt(s)
+
+        for decl in module.declarations:
+            if isinstance(decl, FunctionDef):
+                for stmt in decl.body:
+                    _walk_stmt(stmt)
+            elif isinstance(decl, MainDef):
+                for stmt in decl.body:
+                    _walk_stmt(stmt)
+            elif isinstance(decl, ModuleDecl):
+                for inner in decl.body:
+                    if isinstance(inner, FunctionDef):
+                        for stmt in inner.body:
+                            _walk_stmt(stmt)
+
+        return counts
+
+    def _check_function_for_memoization(
+        self, fd: FunctionDef, pure_verbs: set[str], call_counts: dict[str, int]
+    ) -> None:
         """Check if a function is a memoization candidate."""
         if fd.verb not in pure_verbs:
+            return
+        # Only memoize functions called from 2+ sites — a single call site
+        # never benefits from a hash-table cache.
+        if call_counts.get(fd.name, 0) < 2:
             return
         if fd.binary or fd.with_constraints:
             return
         if fd.terminates is not None:
             return
-        if len(fd.params) > 4:
+        # Non-allocating verbs return scalar/borrowed results that are
+        # trivially safe to cache — allow larger functions.
+        if fd.verb in NON_ALLOCATING_VERBS:
+            max_params, max_stmts = 6, 20
+        else:
+            max_params, max_stmts = 4, 10
+        if len(fd.params) > max_params:
             return
-        if len(fd.body) > 10:
+        if len(fd.body) > max_stmts:
             return
         if self._calls_self(fd.name, fd.body):
             return
@@ -1939,12 +2041,10 @@ class Optimizer:
                         return True
         return False
 
-    _PURE_VERBS: frozenset[str] = frozenset(
-        {"transforms", "validates", "derives", "creates", "matches"}
-    )
+    _PURE_VERBS: frozenset[str] = PURE_VERBS
 
     # Non-allocating, non-failable verbs — calls are always safe to eliminate
-    _ELIMINABLE_VERBS: frozenset[str] = frozenset({"derives", "validates", "matches"})
+    _ELIMINABLE_VERBS: frozenset[str] = NON_ALLOCATING_VERBS
 
     def _is_eliminable_call(self, expr: CallExpr) -> bool:
         """True if a call can be eliminated without observable effect.

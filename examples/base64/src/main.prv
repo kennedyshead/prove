@@ -18,7 +18,7 @@ module Main
   ITERATIONS as Integer = 8192
 
 /// Encode loop: encode data ITERATIONS times, accumulate encoded sizes
-derives encode(data ByteArray, remaining Integer, acc Integer) Integer
+creates encode(data ByteArray, remaining Integer, acc Integer) Integer
   terminates: remaining
 from
     match remaining <= 0

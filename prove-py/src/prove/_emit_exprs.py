@@ -1090,8 +1090,13 @@ class ExprEmitterMixin:
                         and len(e.args) == 1
                         and getattr(self._current_func, "can_fail", False)
                     ):
-                        err_val = self._emit_expr(e.args[0])
-                        self._line(f"return prove_result_err({err_val});")
+                        arg = e.args[0]
+                        if isinstance(arg, StringLit):
+                            ref = self._static_error_ref(self._escape_c_string(arg.value))
+                            self._line(f"return prove_result_err({ref});")
+                        else:
+                            err_val = self._emit_expr(arg)
+                            self._line(f"return prove_result_err({err_val});")
                         return
                     val = self._emit_expr(e)
                     if option_wrap:
@@ -1106,10 +1111,15 @@ class ExprEmitterMixin:
                             elif isinstance(arm_ty, RecordType):
                                 # Struct: heap-allocate, copy, pass pointer
                                 heap = self._tmp()
+                                if self._use_region_allocation():
+                                    alloc_call = (
+                                        f"prove_region_alloc({self._get_region_ptr()},"
+                                        f" sizeof({ct_inner.decl}))"
+                                    )
+                                else:
+                                    alloc_call = f"prove_alloc(sizeof({ct_inner.decl}))"
                                 self._line(
-                                    f"{ct_inner.decl}* {heap} = ({ct_inner.decl}*)"
-                                    f"prove_region_alloc(prove_global_region(),"
-                                    f" sizeof({ct_inner.decl}));"
+                                    f"{ct_inner.decl}* {heap} = ({ct_inner.decl}*){alloc_call};"
                                 )
                                 self._line(f"*{heap} = {val};")
                                 self._line(f"{tmp} = prove_option_some((Prove_Value*){heap});")

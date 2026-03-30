@@ -36,7 +36,7 @@ from
     sin(2.0f * pi() * frequency * t)
 
 /// Recursive kernel — generate and process samples on the fly
-transforms kernel(
+creates kernel(
     signal_freq Float,
     sample_rate Float,
     index Integer,
@@ -75,7 +75,7 @@ from
     log10(2.0f * p * 1000.0f / 600.0f) * 10.0f
 
 /// Run Goertzel: detect target_freq power in a signal of signal_freq
-derives detect(
+creates detect(
     signal_freq Float,
     target_freq Float,
     sample_rate Float,

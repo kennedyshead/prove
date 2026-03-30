@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates advanced module features: narrative, domain, temporal, invariant_network.
 
   validates state 
-  transforms state by authorize
+  creates state by authorize
   """
   domain Finance
   temporal authenticate -> authorize -> access
@@ -24,7 +24,7 @@ validates state(s State)
 from
     !s.authenticated || s.authorized
 
-transforms authorize(s State) State
+creates authorize(s State) State
   ensures result == State(true, true, 100)
   requires s.authenticated == true
   near_miss false => State(false, false, 100)

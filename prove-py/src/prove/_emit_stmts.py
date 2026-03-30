@@ -59,10 +59,9 @@ from prove.types import (
     UnitType,
     get_scale,
 )
+from prove.verb_defs import ALL_IO_VERBS, NON_ALLOCATING_VERBS
 
-_IO_VERBS = frozenset(
-    {"inputs", "outputs", "streams", "dispatches", "listens", "attached", "detached", "renders"}
-)
+_IO_VERBS = ALL_IO_VERBS
 
 # Literal types whose value the checker can statically verify against
 # refinement constraints (E355).  No runtime guard needed for these.
@@ -222,10 +221,17 @@ class StmtEmitterMixin:
                     )
                     if last_is_error_ctor:
                         assert isinstance(last_expr, CallExpr)
-                        err_val = self._emit_expr(last_expr.args[0])
-                        self._emit_releases(None)
-                        self._emit_region_exit()
-                        self._line(f"return prove_result_err({err_val});")
+                        arg = last_expr.args[0]
+                        if isinstance(arg, StringLit):
+                            ref = self._static_error_ref(self._escape_c_string(arg.value))
+                            self._emit_releases(None)
+                            self._emit_region_exit()
+                            self._line(f"return prove_result_err({ref});")
+                        else:
+                            err_val = self._emit_expr(arg)
+                            self._emit_releases(None)
+                            self._emit_region_exit()
+                            self._line(f"return prove_result_err({err_val});")
                     elif (
                         isinstance(ret_type, GenericInstance)
                         and ret_type.base_name == "Result"
@@ -435,9 +441,27 @@ class StmtEmitterMixin:
                 self._emit_stmt(stmt)
 
     def _emit_releases(self, skip_var: str | None) -> None:
-        """Emit prove_release for all pointer locals except skip_var."""
+        """Emit prove_release for all pointer locals except skip_var.
+
+        Non-allocating verbs (validates/derives/matches) skip all releases:
+        they never create heap objects, so every pointer local is a borrowed
+        alias of a caller-owned value — no ownership to relinquish.
+
+        Pure allocating verbs (creates/transforms) skip releases for PARAMS
+        (caller retains ownership) but still release local variables that
+        were allocated inside the function body.
+        """
+        from prove.verb_defs import PURE_VERBS
+
+        verb = getattr(self._current_func, "verb", None) if self._current_func else None
+        if verb in NON_ALLOCATING_VERBS:
+            return
+        is_pure = verb in PURE_VERBS
         for name, ty in self._locals.items():
             if name == skip_var:
+                continue
+            # Pure verbs don't own their params — skip release
+            if is_pure and name in self._param_names:
                 continue
             # Skip Verb/FunctionType — function pointers, not heap objects
             if isinstance(ty, PrimitiveType) and ty.name == "Verb":
@@ -1532,8 +1556,13 @@ class StmtEmitterMixin:
                     and expr.func.name == "Error"
                     and len(expr.args) == 1
                 ):
-                    err_val = self._emit_expr(expr.args[0])
-                    self._line(f"return prove_result_err({err_val});")
+                    arg = expr.args[0]
+                    if isinstance(arg, StringLit):
+                        ref = self._static_error_ref(self._escape_c_string(arg.value))
+                        self._line(f"return prove_result_err({ref});")
+                    else:
+                        err_val = self._emit_expr(arg)
+                        self._line(f"return prove_result_err({err_val});")
                     return
             if isinstance(s, TailContinue):
                 self._emit_tail_continue(s)

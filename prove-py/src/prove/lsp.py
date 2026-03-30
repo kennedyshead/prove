@@ -2491,8 +2491,24 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     if ds is None or ds.module is None:
         return None
 
-    # Filter to only I302 (unused imports) for formatting - don't remove unused types
-    fmt_diags = [d for d in ds.prove_diagnostics if d.code == "I302"]
+    # Don't format files that have errors
+    if any(d.severity == Severity.ERROR for d in ds.prove_diagnostics):
+        return None
+
+    # Auto-fixable diagnostics safe for live editing (LSP).
+    # Destructive removals (I300, I301, I303, I304, I314) are CLI-only —
+    # too disruptive during active editing.
+    _FMT_CODES = {
+        "I302",  # unused import (safe: imports are declarative)
+        "I310",  # implicitly typed variable → add type annotation
+        "I360",  # validates explicit Boolean return → strip
+        "I375",  # & on non-async function → strip
+        "I378",  # add async marker
+        "I438",  # derives → creates
+        "I439",  # creates → derives
+        "I440",  # transforms → creates/derives
+    }
+    fmt_diags = [d for d in ds.prove_diagnostics if d.code in _FMT_CODES]
     fmt = ProveFormatter(symbols=ds.symbols, diagnostics=fmt_diags)
     formatted = fmt.format(ds.module)
 

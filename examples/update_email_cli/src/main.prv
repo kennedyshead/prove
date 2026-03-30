@@ -4,6 +4,7 @@ module Example
 
   Inputs email from console, reads user json to User struct enusres i in matches ensure_user.
   Updates the email an save the user to user.json through file output
+  creates a json string to save
   """
   System inputs console file outputs console
   Parse types Value creates json validates json
@@ -27,7 +28,7 @@ from
     user_input
 
 /// test
-transforms user(json_data Result<Value, String>) User
+creates user(json_data Result<Value, String>) User
   requires valid object(json_data)
 from
     // as requires already checked and unwrapped we only need to cast to Table
@@ -35,7 +36,7 @@ from
     User(integer(data.id), string(data.name), string(data.email))
 
 /// test2
-matches ensure_user(raw String) User
+creates ensure_user(raw String) User
   ensures valid json(raw)
   requires valid string(raw)
   explain
@@ -56,12 +57,12 @@ validates email(email Option<Email>)
 from
     email
 
-derives set_email(user User, email Option<Email>) User
+creates set_email(user User, email Option<Email>) User
   requires valid email(email)
 from
     User(user.id, user.name, email)
 
-transforms dump_user(user User) String
+creates dump_user(user User) String
   requires valid value(user)
 from
     string(value(user))

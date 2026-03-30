@@ -16,7 +16,8 @@ module Commands
   New outputs new_project
   Sequence derives get validates contains
   Source inputs source
-  Check outputs pycheck
+  Check validates lint outputs pycheck
+  Types validates unit
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -56,6 +57,10 @@ from
     match contains(arguments, "--help")
         true => console(HELP_CHECK_TEXT)
         _ =>
+            config as Config = config()!
+            source as List<Option<SourceFile>> = source(config)
+            clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
+            lint(clean_source)
             md as Boolean = contains(arguments, "--md")
             strict as Boolean = contains(arguments, "--strict")
             no_coherence as Boolean = contains(arguments, "--no-coherence")

@@ -323,7 +323,10 @@ class TestResolveForeignFlags:
             "-L/opt/homebrew/lib -lpython3.13 -ldl",
         )
         c_flags, l_flags = _resolve_foreign_flags("libpython3")
-        assert c_flags == ["-I/opt/homebrew/opt/python@3.13/include/python3.13"]
+        assert c_flags == [
+            "-I/opt/homebrew/opt/python@3.13/include/python3.13",
+            '-DPYTHON_HOME="/opt/homebrew/opt/python@3.13"',
+        ]
         assert l_flags == ["-L/opt/homebrew/lib", "-lpython3.13", "-ldl"]
 
     def test_env_vars_partial_cflags_only(self, monkeypatch):
@@ -335,7 +338,7 @@ class TestResolveForeignFlags:
         )
         monkeypatch.delenv("PROVE_PYTHON_LDFLAGS", raising=False)
         c_flags, l_flags = _resolve_foreign_flags("libpython3")
-        assert c_flags == ["-I/usr/include/python3.12"]
+        assert c_flags == ["-I/usr/include/python3.12", '-DPYTHON_HOME="/usr"']
         assert l_flags == []
 
     def test_env_vars_jvm(self, monkeypatch):

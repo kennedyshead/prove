@@ -1,7 +1,7 @@
 module TodoApp
   narrative: """
     Interactive terminal todo list with keyboard navigation.
-    transforms checkboxes
+    creates checkboxes
     renders interface
     listens to on key down events
   """
@@ -24,7 +24,7 @@ module TodoApp
     | AddItem
     | RemoveItem
 
-transforms checkboxes(item TodoItem, state TodoState) String
+creates checkboxes(item TodoItem, state TodoState) String
   trusted: "For now"
 from
     prefix as String = match item.pos == state.selected

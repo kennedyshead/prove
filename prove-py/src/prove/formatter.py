@@ -140,6 +140,10 @@ class ProveFormatter:
         self._unknown_module_spans: set[tuple[str, int, int]] = set()
         self._strip_async_marker_spans: set[tuple[str, int, int]] = set()
         self._add_async_marker_spans: set[tuple[str, int, int]] = set()
+        self._verb_corrections: dict[tuple[str, int, int], str] = {}  # span → target verb
+        self._unreachable_arm_spans: set[tuple[str, int, int]] = set()
+        self._strip_return_type_spans: set[tuple[str, int, int]] = set()  # I360
+        self._missing_narrative_funcs: list[str] = []  # I340: function names to add to narrative
         self._indent_level = 0  # current nesting depth (in 4-space units)
         self._extra_col = 0  # extra prefix width (e.g. match arm pattern)
         for d in diagnostics or []:
@@ -171,6 +175,30 @@ class ProveFormatter:
                 for lbl in d.labels:
                     s = lbl.span
                     self._unknown_module_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I340":
+                # Extract function name from message
+                import re
+
+                m = re.search(r"function '(\w+)'", d.message)
+                if m:
+                    self._missing_narrative_funcs.append(m.group(1))
+            elif d.code == "I301":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._unreachable_arm_spans.add((s.file, s.start_line, s.start_col))
+            elif d.code == "I360":
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._strip_return_type_spans.add((s.file, s.start_line, s.start_col))
+            # Verb precision auto-fixes: extract target verb from "use `X` instead"
+            elif d.code in ("I438", "I439", "I440"):
+                import re
+
+                m = re.search(r"use `(\w+)` instead", d.message)
+                target = m.group(1) if m else "creates"
+                for lbl in d.labels:
+                    s = lbl.span
+                    self._verb_corrections[(s.file, s.start_line, s.start_col)] = target
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -216,6 +244,10 @@ class ProveFormatter:
             for p in fd.params
         ]
         verb = fd.verb
+        # Auto-fix verb if a precision diagnostic was emitted
+        span_key = (fd.span.file, fd.span.start_line, fd.span.start_col)
+        if span_key in self._verb_corrections:
+            verb = self._verb_corrections[span_key]
         params_inline = ", ".join(param_strs)
         sig = f"{verb} {fd.name}({params_inline})"
         if fd.return_type and fd.verb != "validates":
@@ -607,7 +639,14 @@ class ProveFormatter:
         lines = [f"module {mod.name}"]
 
         if mod.narrative:
-            lines.append(f'  narrative: """{mod.narrative}"""')
+            narrative = mod.narrative
+            # I340: append TODO for functions whose vocabulary is missing
+            if self._missing_narrative_funcs:
+                missing = " ".join(sorted(set(self._missing_narrative_funcs)))
+                if f"TODO: {missing}" not in narrative:
+                    narrative = narrative.rstrip()
+                    narrative += f"\n  TODO: describe {missing}"
+            lines.append(f'  narrative: """{narrative}"""')
 
         if mod.domain:
             lines.append(f"  domain {mod.domain}")
@@ -934,8 +973,14 @@ class ProveFormatter:
         return "".join(result_parts)
 
     def _format_match_expr(self, expr: MatchExpr) -> str:
+        # Filter out unreachable arms (I301)
+        arms = [
+            a
+            for a in expr.arms
+            if (a.span.file, a.span.start_line, a.span.start_col) not in self._unreachable_arm_spans
+        ]
         lines: list[str] = []
-        grouped = self._group_multi_pattern_arms(expr.arms)
+        grouped = self._group_multi_pattern_arms(arms)
         if expr.subject is not None:
             lines.append(f"match {self._format_expr(expr.subject)}")
             self._indent_level += 1

@@ -45,8 +45,9 @@ from prove.types import (
     type_name,
     types_compatible,
 )
+from prove.verb_defs import PURE_VERBS
 
-_PURE_VERBS = frozenset({"transforms", "validates", "derives", "creates", "matches"})
+_PURE_VERBS = PURE_VERBS
 _IO_FUNCTIONS = frozenset({"sleep"})
 
 
