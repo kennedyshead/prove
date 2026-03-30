@@ -1,0 +1,24 @@
+module Diagnostic
+  narrative: """
+  creates all info, warnings and errors
+  e210 module name is not given
+  """
+  Log types DiagnosticMessage Severity detached diagnostic
+  Source types SourceFile
+  Prove types Node creates line column
+  Sequence derives get
+  Pattern creates split
+  Types validates string
+
+creates e210(node Node, node_kind String, source SourceFile)
+from
+    actual_code as String = get(split(string(node), "\n"), line(node) - 1)
+    diagnostic(DiagnosticMessage(
+        Severity.Error,
+        210,
+        source.path,
+        string(node),
+        "Expected module name but found",
+        line(node),
+        column(node),
+        actual_code))&

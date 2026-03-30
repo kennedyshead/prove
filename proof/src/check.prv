@@ -8,12 +8,11 @@ module Check
   matches the declaration and lint for each statement
   """
   System validates dir
-  Prove types Node derives root creates children kind line column
+  Prove types Node derives root creates children kind
   Source types SourceFile
   Types creates string validates boolean
-  Log types DiagnosticMessage Severity detached info error diagnostic warning
-  Sequence derives get creates length
-  Text creates split
+  Log detached info error warning
+  Sequence creates length
 
   foreign "libpython3"
     py_initialize() Unit
@@ -60,20 +59,6 @@ from
     _ =>
         warning(f"missing lint for {node_kind} {string(node)}")&
         true
-
-creates e210(node Node, node_kind String, source SourceFile)
-from
-    actual_code as String = get(split(string(node), "\n"), line(node) - 1)
-    error(node_kind)&
-    diagnostic(DiagnosticMessage(
-        Severity.Error,
-        210,
-        source.path,
-        string(node),
-        "Expected module name but found",
-        line(node),
-        column(node),
-        actual_code))&
 
 validates lint_module(node_kind String, node Node, source SourceFile)
   ensures valid boolean(result)
