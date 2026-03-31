@@ -34,7 +34,7 @@ dispatches syntax(search String, node Node, source SourceFile) Boolean
 from
     "1" =>
         // Module name check
-        exxx("module `name`", LintCode.E210, node, source)
+        exxx("Expected module `name` but found", LintCode.E210, node, source)
         true
     "type" =>
         // type decleration check

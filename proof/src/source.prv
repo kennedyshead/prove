@@ -7,12 +7,17 @@ module Source
   Parse types Token creates tokens tree
   Prove types Tree
   Text validates ends
+  Types validates unit
 
   type SourceFile is
     path String
     content String
-    lexed List<Token>
     source Value<Tree>
+    verbs List<String>
+
+  type Content is
+    files List<SourceFile>
+    modules List<String>
 
 inputs source_file(path String) Option<SourceFile>
   requires valid file(path) && ends(path, ".prv")
@@ -22,9 +27,10 @@ from
     match source
         Ok(source) =>
             lexed as List<Token> = tokens(content, [])
-            SourceFile(path, content, lexed, source)
+            SourceFile(path, content, source, [])
         Err(error) => console(f"{error}")
 
-inputs source(config Config) List<Option<SourceFile>>
+inputs source(config Config) Content
 from
-    map(dir("src/"), |value| source_file(value.path))
+    source as List<Option<SourceFile>> = map(dir("src/"), |value| source_file(value.path))
+    Content(filter(source, |file| unit(file) == false), [])

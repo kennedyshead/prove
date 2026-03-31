@@ -9,15 +9,14 @@ module Commands
   Config types Config inputs config
   System inputs cwd outputs console
   Log detached info
-  Build types SourceFile outputs source_build
+  Build outputs source_build
   Test outputs pytest
   FormatCmd outputs pyformat
   Lsp outputs pylsp
   New outputs new_project
   Sequence derives get validates contains
-  Source inputs source
+  Source types Content inputs source
   Check validates lint outputs source_check
-  Types validates unit
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")
@@ -47,8 +46,8 @@ from
         debug as Boolean = contains(arguments, "--debug")
         no_mutate as Boolean = contains(arguments, "--no-mutate")
         config as Config = config()!
-        source as List<Option<SourceFile>> = source(config)
-        source_build(source, cwd(), debug, no_mutate)!
+        source as Content = source(config)
+        source_build(lint(source), source, cwd(), debug, no_mutate)!
 
 /// Run the check command
 dispatches check(help Boolean, arguments List<String>)!
@@ -57,9 +56,8 @@ from
     _ =>
         info("Running check")&
         config as Config = config()!
-        source as List<Option<SourceFile>> = source(config)
-        clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-        source_check(lint(clean_source), clean_source, arguments, config)!
+        source as Content = source(config)
+        source_check(lint(source), source.files, arguments, config)!
 
 /// Run the format command
 outputs format(arguments List<String>)!

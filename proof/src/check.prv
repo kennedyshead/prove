@@ -10,7 +10,7 @@ module Check
   """
   System validates dir inputs cwd
   Prove types Node derives root creates children kind
-  Source types SourceFile
+  Source types SourceFile Content
   Types creates string validates boolean
   Log detached info error warning
   Sequence creates length validates contains
@@ -27,7 +27,8 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-matches node(node_kind String, node Node, source SourceFile) Boolean
+/// match all known nodes for routing
+matches node(node_kind String, content Content, node Node, source_file SourceFile) Boolean
   ensures valid boolean(result)
   requires valid string(node_kind)
 from
@@ -45,26 +46,26 @@ from
     "ensures_clause" => true
     "event_type_annotation" => true
     "explain_annotation" => true
-    "expression" => expression(node, source)
+    "expression" => expression(content, node, source_file)
     "fail_marker" => true
     "fail_propagation" => true
     "foreign" => true
-    "foreign_block" => foreign(node, source)
+    "foreign_block" => foreign(content, node, source_file)
     "foreign_function" => true
     "from" => true
-    "function_definition" => verb(node, source)
+    "function_definition" => verb(content, node, source_file)
     "identifier" => true
     "import_declaration" => true
     "import_group" => true
     "is" => true
     "line_comment" => true
     "main" => true
-    "main_definition" => main_block(node, source)
+    "main_definition" => main_block(content, node, source_file)
     "match" => true
-    "match_arm" => arm(node, source)
-    "match_expression" => match_block(node, source)
+    "match_arm" => arm(content, node, source_file)
+    "match_expression" => match_block(content, node, source_file)
     "module" => true
-    "module_declaration" => module(node, source)
+    "module_declaration" => module(content, node, source_file)
     "narrative_annotation" => true
     "parameter_list" => true
     "pattern" => true
@@ -75,7 +76,7 @@ from
     "terminates_annotation" => true
     "trusted_annotation" => true
     "type" => true
-    "type_definition" => type(node, source)
+    "type_definition" => type(content, node, source_file)
     "type_expression" => true
     "type_identifier" => true
     "type_modifier_bracket" => true
@@ -83,73 +84,82 @@ from
     "variable_declaration" => true
     "verb" => true
     "ERROR" =>
-        static_fail(node, source)
+        static_fail(node, source_file)
         false
     _ =>
         warning(f"missing lint for {node_kind} {string(node)}")&
         true
 
-validates module(node Node, source SourceFile)
+/// Module decleration linting
+validates module(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
       iterates and lint all children of a module
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates verb(node Node, source SourceFile)
+/// Verb decleration linting
+validates verb(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates expression(node Node, source SourceFile)
+validates expression(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates main_block(node Node, source SourceFile)
+/// Main block decleration linting
+validates main_block(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates type(node Node, source SourceFile)
+/// Type decleration linting
+validates type(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates foreign(node Node, source SourceFile)
+/// Foreign decleration linting
+validates foreign(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates arm(node Node, source SourceFile)
+/// Arm decleration linting
+validates arm(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates match_block(node Node, source SourceFile)
+/// Match block decleration linting
+validates match_block(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
 from
-    all(children(node), |child| node(kind(child), child, source))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
-validates source(source SourceFile)
+validates source(content Content, source_file SourceFile)
   ensures valid boolean(result)
-  requires valid string(source.content)
+  requires valid string(source_file.content)
 from
-    all(children(root(source.source)), |node| node(kind(node), node, source))
+    all(
+        children(root(source_file.source)),
+        |node| node(kind(node), content, node, source_file))
 
-validates lint(source List<SourceFile>)
+validates lint(content Content)
   ensures valid boolean(result)
-  requires length(source) > 0
+  requires length(content.files) > 0
 from
-    all(source, |file| source(file))
+    all(content.files, |file| source(content, file))
 
 /// After a successful native lint, we continue with python check
 dispatches source_check(
@@ -178,6 +188,7 @@ from
             no_intent,
             nlp_status)!
 
+/// Python FFI check
 outputs pycheck(
     path String,
     md Boolean,

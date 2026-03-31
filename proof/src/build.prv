@@ -6,10 +6,8 @@ module Build
     or prvbuild for a prove only build
   """
   System validates dir
-  Source types SourceFile
-  Types validates unit
+  Source types SourceFile Content
   Log detached info error
-  Check outputs lint
 
   foreign "libpython3"
     py_initialize() Unit
@@ -39,14 +37,13 @@ from
     Unit
 
 outputs source_build(
-    source List<Option<SourceFile>>,
+    successful_lint Boolean,
+    source Content,
     path String,
     debug Boolean,
     no_mutate Boolean
 )!
 from
-    clean_source as List<SourceFile> = filter(source, |file| unit(file) == false)
-    match lint(clean_source)
-        true =>
-            pybuild(path, debug, no_mutate)!
-        false => error("Source parsing failed!")&
+    true =>
+        pybuild(path, debug, no_mutate)!
+    false => error("Source parsing failed!")&
