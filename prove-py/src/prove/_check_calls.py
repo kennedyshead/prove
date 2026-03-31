@@ -869,6 +869,14 @@ class CallCheckMixin:
                     expr.span,
                 )
                 return ERROR_TY
+            # Lookup types: variant access returns the value type, not the
+            # algebraic type (e.g. LintCode.E100 → Integer, not LintCode).
+            lookup = self._lookup_tables.get(obj_type.name)
+            if lookup is not None:
+                from prove.ast_nodes import LookupTypeDef
+
+                if isinstance(lookup, LookupTypeDef):
+                    return self._resolve_type_expr(lookup.value_type)
             return obj_type
 
         # Allow field access on GenericInstance, etc. without error

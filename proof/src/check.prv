@@ -3,7 +3,8 @@ module Check
   Handles the source code linting and check command.
 
   outputs the command to python for a pycheck
-  validates syntax for file, module and node
+  validates syntax for file, module, verb, expression, main, type, foreign, match arm 
+    and node
   outputs lint messages
   matches the declaration and lint for each statement
   """
@@ -30,31 +31,57 @@ matches node(node_kind String, node Node, source SourceFile) Boolean
   ensures valid boolean(result)
   requires valid string(node_kind)
 from
-    "module_declaration" => module(node_kind, node, source)
-    "narrative_annotation" =>
-        // info(f"NARRATIVE {string(node)}")&
-        true
-    "import_declaration" =>
-        // debug(f"IMPORT {string(node)}")&
-        true
-    "constant_definition" =>
-        // debug(f"CONSTANT {string(node)}")&
-        true
-    "function_definition" =>
-        // debug(f"FUNCTION {string(node)}")&
-        true
-    "type_definition" =>
-        // debug(f"TYPE {string(node)}")&
-        true
-    "foreign_block" =>
-        // debug(f"TYPE {string(node)}")&
-        true
-    "main_definition" =>
-        true
-    "type_identifier" =>
-        true
-    "module" =>
-        true
+    ":" => true
+    "=>" => true
+    ")" => true
+    "(" => true
+    "assignment" => true
+    "async_marker" => true
+    "async_verb" => true
+    "boolean_literal" => true
+    "call_expression" => true
+    "constant_definition" => true
+    "doc_comment_block" => true
+    "ensures_clause" => true
+    "event_type_annotation" => true
+    "explain_annotation" => true
+    "expression" => expression(node, source)
+    "fail_marker" => true
+    "fail_propagation" => true
+    "foreign" => true
+    "foreign_block" => foreign(node, source)
+    "foreign_function" => true
+    "from" => true
+    "function_definition" => verb(node, source)
+    "identifier" => true
+    "import_declaration" => true
+    "import_group" => true
+    "is" => true
+    "line_comment" => true
+    "main" => true
+    "main_definition" => main_block(node, source)
+    "match" => true
+    "match_arm" => arm(node, source)
+    "match_expression" => match_block(node, source)
+    "module" => true
+    "module_declaration" => module(node, source)
+    "narrative_annotation" => true
+    "parameter_list" => true
+    "pattern" => true
+    "record_type_body" => true
+    "requires_clause" => true
+    "state_type_annotation" => true
+    "string_literal" => true
+    "terminates_annotation" => true
+    "trusted_annotation" => true
+    "type" => true
+    "type_definition" => type(node, source)
+    "type_expression" => true
+    "type_identifier" => true
+    "type_modifier_bracket" => true
+    "lookup_type_body" => true
+    "variable_declaration" => true
+    "verb" => true
     "ERROR" =>
         static_fail(node, source)
         false
@@ -62,11 +89,53 @@ from
         warning(f"missing lint for {node_kind} {string(node)}")&
         true
 
-validates module(node_kind String, node Node, source SourceFile)
+validates module(node Node, source SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
       iterates and lint all children of a module
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates verb(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates expression(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates main_block(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates type(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates foreign(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates arm(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
+from
+    all(children(node), |child| node(kind(child), child, source))
+
+validates match_block(node Node, source SourceFile)
+  ensures valid boolean(result)
+  requires children(node) > 0
 from
     all(children(node), |child| node(kind(child), child, source))
 

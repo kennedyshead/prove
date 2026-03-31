@@ -413,6 +413,22 @@ class ExprEmitterMixin:
         obj_type = self._infer_expr_type(expr.obj)
         # Variant access on algebraic type: Severity.Error → Prove_Severity_Error()
         if isinstance(obj_type, AlgebraicType) and isinstance(expr.obj, TypeIdentifierExpr):
+            # Lookup types: variant access returns the mapped value, not a
+            # variant constructor (e.g. LintCode.E100 → 100, not Prove_LintCode_E100())
+            lookup = self._lookup_tables.get(obj_type.name)
+            if lookup is not None and isinstance(lookup, LookupTypeDef):
+                for entry in lookup.entries:
+                    if entry.variant == expr.field:
+                        value_type_name = (
+                            lookup.value_type.name
+                            if hasattr(lookup.value_type, "name")
+                            else "String"
+                        )
+                        if value_type_name == "String":
+                            return f'prove_string_from_cstr("{entry.value}")'
+                        if value_type_name == "Boolean":
+                            return "true" if entry.value == "true" else "false"
+                        return entry.value
             cname = mangle_type_name(obj_type.name)
             return f"{cname}_{expr.field}()"
         if isinstance(obj_type, (RecordType, AlgebraicType)):

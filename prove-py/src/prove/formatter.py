@@ -963,14 +963,41 @@ class ProveFormatter:
         brace_indent = " " * col
 
         result_parts: list[str] = ['f"']
-        for part in expr.parts:
+        parts_list = expr.parts
+        for idx, part in enumerate(parts_list):
             if isinstance(part, StringLit):
                 result_parts.append(_escape_string(part.value))
             else:
                 formatted = self._format_expr(part)
                 is_simple = isinstance(part, (IdentifierExpr, FieldExpr))
                 if is_simple:
-                    result_parts.append("{" + formatted + "}")
+                    # Check if keeping inline would exceed line length,
+                    # including any trailing literal text up to the next
+                    # fold point (newline or complex expression).
+                    joined = "".join(result_parts)
+                    last_nl = joined.rfind("\n")
+                    if last_nl >= 0:
+                        # After a fold break, _indent() will add base indent
+                        cur_len = self._indent_level * 4 + len(joined) - last_nl - 1
+                    else:
+                        cur_len = col + len(joined)
+                    inline = "{" + formatted + "}"
+                    # Peek at trailing literal (and the opening brace of the
+                    # next expression) to avoid lines that overflow after the
+                    # inline expression is placed.
+                    trail = 0
+                    if idx + 1 < len(parts_list) and isinstance(parts_list[idx + 1], StringLit):
+                        lit = _escape_string(parts_list[idx + 1].value)
+                        trail = len(lit)
+                        # The expression after the literal adds at least "{"
+                        if idx + 2 < len(parts_list):
+                            trail += 1
+                    if cur_len + len(inline) + trail > self.MAX_LINE_LENGTH:
+                        result_parts.append(
+                            "{\n" + expr_indent + formatted + "\n" + brace_indent + "}"
+                        )
+                    else:
+                        result_parts.append(inline)
                 else:
                     result_parts.append("{\n" + expr_indent + formatted + "\n" + brace_indent + "}")
         result_parts.append('"')

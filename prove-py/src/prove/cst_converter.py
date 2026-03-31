@@ -1962,6 +1962,19 @@ class CSTConverter:
         # Simple string — extract value between quotes
         return StringLit(self._extract_string_value(node), self._span(node))
 
+    @staticmethod
+    def _fold_fstring_gap(gap: str) -> str:
+        """Strip source-level newlines and indentation from f-string gap text.
+
+        When an f-string spans multiple source lines, real newlines and their
+        leading whitespace are formatting artifacts — they should not appear in
+        the output string.  Explicit newlines use escape sequences (``\\n``)
+        which are handled separately as ``escape_sequence`` nodes.
+        """
+        import re
+
+        return re.sub(r"\n[ \t]*", "", gap)
+
     def _convert_format_string(self, node: TSNode) -> StringInterp:
         """Convert f"..." format string to StringInterp."""
         parts: list[Expr] = []
@@ -1980,6 +1993,7 @@ class CSTConverter:
         # child nodes — they exist only as byte gaps in the source.
         # Use UTF-8 bytes for gap extraction because tree-sitter offsets
         # are byte offsets, not character offsets.
+        is_multiline = node.start_point[0] != node.end_point[0]
         result_parts: list[Expr] = []
         current_text = ""
         src_bytes = self.source.encode("utf-8")
@@ -1988,6 +2002,8 @@ class CSTConverter:
             # Collect any gap text between previous position and this child
             if child.start_byte > pos:
                 gap = src_bytes[pos : child.start_byte].decode("utf-8")
+                if is_multiline:
+                    gap = self._fold_fstring_gap(gap)
                 current_text += gap
 
             if child.type == "interpolation":
@@ -2013,6 +2029,8 @@ class CSTConverter:
         if node.end_byte > pos:
             gap = src_bytes[pos : node.end_byte].decode("utf-8")
             if gap not in ('"',):
+                if is_multiline:
+                    gap = self._fold_fstring_gap(gap)
                 current_text += gap
 
         if current_text:

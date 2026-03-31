@@ -4,8 +4,7 @@ module Diagnostic
   dispatches a search for syntax failures
   matches location and syntax fail 
   sends a detatched background diagnostic message with a severity prefix
-  e100 generic syntax error
-  e210 token X is not given
+  creates exxx diagnosting messages
   """
   Log types Severity matches severity_color
   Source types SourceFile
@@ -27,50 +26,41 @@ module Diagnostic
     column Integer
     actual_line String
 
+  type LintCode:[Lookup] is Integer String where
+    E100 | 100 | "Syntax Error"
+    E210 | 210 | "Expected token but found"
+
 dispatches syntax(search String, node Node, source SourceFile) Boolean
 from
     "1" =>
-        e210("module `name`", node, source)
+        // Module name check
+        exxx("module `name`", LintCode.E210, node, source)
         true
     "type" =>
+        // type decleration check
         match contains(get(split(source.content, "\n"), line(node) - 1), "is")
             true =>
-                e100(node, source)
+                exxx("Syntax Error", LintCode.E100, node, source)
                 true
             false =>
-                e210("`is`", node, source)
+                exxx(f"Expected `is` but found", LintCode.E210, node, source)
                 true
     _ =>
         false
 
-creates static_fail(node Node, source SourceFile) Unit
+creates static_fail(node Node, source SourceFile)
 from
     match any([f"{line(node)}", "type"], |search| syntax(search, node, source))
         true => Unit
-        false => e100(node, source)
+        false => exxx("Syntax error", LintCode.E100, node, source)
 
 /// Generic syntax error
-creates e100(node Node, source SourceFile) Unit
+creates exxx(message String, code Integer, node Node, source SourceFile) Unit
 from
     actual_code as String = get(split(source.content, "\n"), line(node) - 1)
     diagnostic(DiagnosticMessage(
         Severity.Error,
-        100,
-        source.path,
-        get(split(string(node), "\n"), 0),
-        "Syntax error",
-        line(node),
-        column(node),
-        actual_code))&
-
-/// Missing token X error
-creates e210(from String, node Node, source SourceFile) Unit
-from
-    actual_code as String = get(split(source.content, "\n"), line(node) - 1)
-    message as String = f"Expected {from} but found"
-    diagnostic(DiagnosticMessage(
-        Severity.Error,
-        210,
+        code,
         source.path,
         get(split(string(node), "\n"), 0),
         message,
@@ -102,8 +92,10 @@ from
               ansi(Color:Blue)
             }-->{
               ansi(Color:Default)
-            } {message.file}:{message.line}:{message.column}\n     |\n   {message.line} | {message.actual_line}\n     |{
-              repeat(" ", message.column + 2)
+            } {message.file}:{message.line}:{message.column}\n     |\n  {
+              message.line
+            } |  {message.actual_line}\n     |  {
+              repeat(" ", message.column + 4)
             }{color}{
               repeat("^", length(message.found))
             }{
