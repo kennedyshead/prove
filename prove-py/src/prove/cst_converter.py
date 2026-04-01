@@ -1125,12 +1125,19 @@ class CSTConverter:
                         else None
                     )
                     if isinstance(tracked, MatchExpr) and last_match_idx is not None:
+                        prev_count = len(tracked.arms)
                         body[last_match_idx] = self._merge_arm_into_match(tracked, a, arm_col)
+                        # Only update last_arm_col when the arm was added at
+                        # the top level of the tracked match, not when it was
+                        # absorbed into a nested inner match.
+                        if len(body[last_match_idx].arms) > prev_count:
+                            last_arm_col = arm_col
                     elif (
                         isinstance(tracked, VarDecl)
                         and isinstance(tracked.value, MatchExpr)
                         and last_match_idx is not None
                     ):
+                        prev_count = len(tracked.value.arms)
                         new_match = self._merge_arm_into_match(tracked.value, a, arm_col)
                         body[last_match_idx] = VarDecl(
                             name=tracked.name,
@@ -1138,6 +1145,8 @@ class CSTConverter:
                             value=new_match,
                             span=tracked.span,
                         )
+                        if len(new_match.arms) > prev_count:
+                            last_arm_col = arm_col
                     else:
                         # Wrap in MatchExpr immediately so continuation
                         # statements can be absorbed into the arm's body.
@@ -1148,9 +1157,8 @@ class CSTConverter:
                                 span=a.span,
                             )
                         )
+                        last_arm_col = arm_col
                     last_match_idx = len(body) - 1
-
-                last_arm_col = arm_col
             else:
                 # Check if this statement should be absorbed into the last match arm.
                 # If it's more indented than the arm pattern, it's a continuation.

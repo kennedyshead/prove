@@ -335,8 +335,17 @@ Prove_List *prove_list_ops_range_step(int64_t start, int64_t end, int64_t step) 
 
 Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value) {
 #ifndef PROVE_RELEASE
-    if (!list || idx < 0 || idx >= list->length) return list;
+    if (!list || idx < 0 || idx > list->length) return list;
 #endif
+    if (idx == list->length) {
+        Prove_List *result = prove_list_new(list->length + 1);
+        if (list->length > 0) {
+            memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
+        }
+        result->data[idx] = value;
+        result->length = list->length + 1;
+        return result;
+    }
     Prove_List *result = prove_list_new(list->length);
     if (idx > 0) {
         memcpy(result->data, list->data, sizeof(void *) * (size_t)idx);

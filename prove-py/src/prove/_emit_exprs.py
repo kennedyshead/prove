@@ -957,6 +957,13 @@ class ExprEmitterMixin:
                             self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                             self._indent -= 1
                     elif map_type(subj_type).is_pointer:
+                        # Store subject in temp to avoid re-evaluating
+                        # side-effectful expressions (e.g. GUI widget calls).
+                        if first and "(" in subj:
+                            sct = map_type(subj_type)
+                            subj_tmp = self._tmp()
+                            self._line(f"{sct.decl} {subj_tmp} = {subj};")
+                            subj = subj_tmp
                         if vp.name == "Some":
                             keyword = "if" if first else "} else if"
                             self._line(f"{keyword} ({subj} != NULL) {{")

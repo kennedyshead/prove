@@ -20,8 +20,8 @@ void prove_gui_label(Prove_String *text);
 /* Render an editable text field. Returns the current string contents. */
 Prove_String *prove_gui_text_input(Prove_String *label, Prove_String *value);
 
-/* Render a checkbox. Returns the current boolean state. */
-bool prove_gui_checkbox(Prove_String *label, bool checked);
+/* Render a checkbox with a unique integer ID, label, and state. */
+bool prove_gui_checkbox(int64_t id, Prove_String *label, bool checked);
 
 /* Render a horizontal slider. Returns the current float value. */
 double prove_gui_slider(Prove_String *label, double min, double max, double value);

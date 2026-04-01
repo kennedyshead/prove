@@ -34,10 +34,11 @@ module Graphic
   outputs text_input(label String, value String) String
   binary
 
-  /// Render a checkbox with a label and current checked state.
+  /// Render a checkbox with a unique integer ID, label, and checked state.
+  /// The ID ensures each checkbox is unique even if labels are identical.
   /// Returns the current boolean state (toggled when user clicks).
   /// Pass the returned value back on the next frame to preserve state.
-  outputs checkbox(label String, checked Boolean) Boolean
+  outputs checkbox(id Integer, label String, checked Boolean) Boolean
   binary
 
   /// Render a horizontal slider with a label, min/max range, and current value.

@@ -1983,34 +1983,38 @@ class CEmitter(
             self._indent += 1
             self._line("prove_gui_frame_begin();")
 
-            # Drain all queued events (state changes, exit)
-            self._line("{")
-            self._indent += 1
-            self._line("Prove_EventNode *_node;")
-            self._line("while ((_node = _eq->head) != NULL) {")
-            self._indent += 1
-            self._line("_eq->head = _node->next;")
-            self._line("if (!_eq->head) _eq->tail = NULL;")
-            self._line("_eq->count--;")
-            self._line("int _tag = _node->tag;")
-            self._line("if (_node->payload) free(_node->payload);")
-            self._line("free(_node);")
-
-            # Only process Exit events from the drain (state mutations
-            # happen via self-dispatch which is already handled)
+            # Drain all queued events, dispatching each through the switch.
+            # Non-Draw events loop back to drain more; Draw falls through
+            # to frame_end so every frame renders.
             if event_type:
+                draw_tag = f"{ct.decl}_TAG_DRAW"
                 exit_tag = f"{ct.decl}_TAG_EXIT"
-                self._line(f"if (_tag == {exit_tag}) goto _renders_exit;")
-
-            self._indent -= 1
-            self._line("}")
-            self._indent -= 1
-            self._line("}")
-
-            # Always dispatch Draw — immediate-mode renders every frame
-            if event_type:
                 self._line(f"{ct.decl} _ev;")
-                self._line(f"_ev.tag = {ct.decl}_TAG_DRAW;")
+                self._line("_next_event:;")
+                self._line("if (_eq->head) {")
+                self._indent += 1
+                self._line("Prove_EventNode *_node = _eq->head;")
+                self._line("_eq->head = _node->next;")
+                self._line("if (!_eq->head) _eq->tail = NULL;")
+                self._line("_eq->count--;")
+                self._line("_ev.tag = _node->tag;")
+                self._line("if (_node->payload) {")
+                self._indent += 1
+                self._line(f"_ev = *({ct.decl}*)_node->payload;")
+                self._line("free(_node->payload);")
+                self._indent -= 1
+                self._line("}")
+                self._line("free(_node);")
+                self._line(f"if (_ev.tag == {exit_tag}) goto _renders_exit;")
+                # Skip Draw events during drain — only the forced Draw
+                # after draining should render, to avoid duplicate widgets.
+                self._line(f"if (_ev.tag == {draw_tag}) goto _next_event;")
+                self._indent -= 1
+                self._line("} else {")
+                self._indent += 1
+                self._line(f"_ev.tag = {draw_tag};")
+                self._indent -= 1
+                self._line("}")
         else:
             # TUI: blocking event-driven loop
             self._line("while (1) {")
@@ -2065,6 +2069,11 @@ class CEmitter(
         self._in_renders_loop = False
 
         if is_graphic:
+            # After dispatching a non-Draw event, loop back to drain more
+            # events.  Draw falls through to frame_end so every frame renders.
+            if event_type:
+                draw_tag = f"{ct.decl}_TAG_DRAW"
+                self._line(f"if (_ev.tag != {draw_tag}) goto _next_event;")
             # End Nuklear window + render frame
             self._line("prove_gui_window_end();")
             self._line("prove_gui_frame_end();")

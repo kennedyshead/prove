@@ -7,13 +7,13 @@ license = ""
 [build]
 target = "native"
 mutate = true
-debug = true
+debug = false
 ccache = true
 
 [optimize]
 enabled = false
 pgo = false
-strip = false
+strip = true
 tune_host = false
 gc_sections = false
 

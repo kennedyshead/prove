@@ -1321,7 +1321,7 @@ class StmtEmitterMixin:
                                     # render state managed by the event loop.
                                     if (
                                         self._in_renders_loop or self._in_listens_loop
-                                    ) and sub_pat.name in self._locals:
+                                    ) and sub_pat.name == "state":
                                         continue
                                     fct = map_type(ft)
                                     self._locals[sub_pat.name] = ft
@@ -1736,7 +1736,17 @@ class StmtEmitterMixin:
                 self._indent -= 1
                 self._line("}")
             elif isinstance(arm.pattern, VariantPattern):
-                # Some/None on pointer type — emit as null check
+                # Some/None on pointer type — emit as null check.
+                # Store subject in a temp to avoid re-evaluating side-effectful
+                # expressions (e.g. GUI widget calls) in both condition and binding.
+                if arm.pattern.name == "Some" and first and "(" in subj:
+                    if subj_type:
+                        bct = map_type(subj_type)
+                    else:
+                        bct = map_type(STRING)
+                    subj_tmp = self._tmp()
+                    self._line(f"{bct.decl} {subj_tmp} = {subj};")
+                    subj = subj_tmp
                 if arm.pattern.name == "Some":
                     keyword = "if" if first else "} else if"
                     self._line(f"{keyword} ({subj} != NULL) {{")

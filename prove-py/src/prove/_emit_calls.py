@@ -1235,7 +1235,21 @@ class CallEmitterMixin:
                     evt_cname = map_type(event_type).decl
                     tag = f"{evt_cname}_TAG_{name.upper()}"
                     if self._in_renders_loop:
-                        self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
+                        variant = next((v for v in event_type.variants if v.name == name), None)
+                        has_data_fields = (
+                            variant
+                            and variant.fields
+                            and args
+                            and not all(a == "state" for a in args)
+                        )
+                        if has_data_fields:
+                            # Variant has non-state payload fields — allocate and send
+                            payload_tmp = self._tmp()
+                            self._line(f"{evt_cname} *{payload_tmp} = malloc(sizeof({evt_cname}));")
+                            self._line(f"*{payload_tmp} = {evt_cname}_{name}({', '.join(args)});")
+                            self._line(f"prove_event_queue_send(_eq, {tag}, {payload_tmp});")
+                        else:
+                            self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
                     else:
                         # In listens translator — set result tag.
                         # Do NOT return here: the switch break + function
@@ -1572,7 +1586,45 @@ class CallEmitterMixin:
                         )
                         body_code = f"{mangled}({param})"
             self._locals = saved_locals
-            self._line(f"{body_code};")
+            # In renders loop: if the lambda body returns the event type,
+            # capture the result and dispatch it to the event queue.
+            if self._in_renders_loop and self._current_func:
+                ret_type = self._infer_expr_type(lam.body) if lam.body else None
+                evt_type = getattr(self._current_func, "event_type", None)
+                # Resolve SimpleType → AlgebraicType for comparison
+                if ret_type is not None:
+                    ret_type = self._resolve_prim_type(ret_type)
+                if evt_type is not None:
+                    evt_type = self._resolve_prim_type(evt_type)
+                # Compare by name — evt_type may be a SimpleType AST node
+                # while ret_type is a resolved AlgebraicType.
+                evt_name = getattr(evt_type, "name", None)
+                ret_name = getattr(ret_type, "name", None)
+                resolved_evt = (
+                    ret_type
+                    if isinstance(ret_type, AlgebraicType) and ret_name == evt_name
+                    else evt_type
+                    if isinstance(evt_type, AlgebraicType)
+                    else None
+                )
+                if (
+                    evt_name is not None
+                    and ret_name is not None
+                    and evt_name == ret_name
+                    and resolved_evt is not None
+                    and isinstance(resolved_evt, AlgebraicType)
+                ):
+                    evt_ct = map_type(resolved_evt)
+                    evt_tmp = self._tmp()
+                    payload_tmp = self._tmp()
+                    self._line(f"{evt_ct.decl} {evt_tmp} = {body_code};")
+                    self._line(f"{evt_ct.decl} *{payload_tmp} = malloc(sizeof({evt_ct.decl}));")
+                    self._line(f"*{payload_tmp} = {evt_tmp};")
+                    self._line(f"prove_event_queue_send(_eq, {evt_tmp}.tag, {payload_tmp});")
+                else:
+                    self._line(f"{body_code};")
+            else:
+                self._line(f"{body_code};")
             self._indent -= 1
             self._line("}")
             return "(void)0"

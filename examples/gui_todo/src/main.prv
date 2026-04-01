@@ -5,12 +5,9 @@ module TodoApp
     listens for key events
     outputs check items and a button to add new
   """
-  Graphic types GraphicAppEvent outputs window button checkbox
+  Graphic types GraphicAppEvent outputs window button checkbox text_input
   UI types Key
-  Types creates string
-  System outputs console
   Sequence derives set remove creates length
-  Text creates length
 
   type TodoItem is
     text String
@@ -19,42 +16,37 @@ module TodoApp
 
   type TodoState is
     items List<TodoItem>
-    new_text String
 
   type TodoApp is GraphicAppEvent
-    | AddItem
+    | AddItem(text String)
     | RemoveItem(index Integer)
 
 outputs check(item TodoItem) TodoApp
 from
-    done as Boolean = checkbox(item.text, item.done)
-    console(f"Done: {done}")
-    match button(f"Delete##{string(item.idx)}")
+    checkbox(item.idx, item.text, item.done)
+    match button(f"{item.text}")
         true => RemoveItem(item.idx)
         false => Tick(Unit)
 
 renders interface(registered_attached_verbs List<Listens>)
   event_type TodoApp
-  state_init TodoState([], "")
+  state_init TodoState([])
 from
     Draw(state) =>
         window("Todo List", 400, 500)
+        text as String = match text_input("Todo", "")
+            Some(text) => text
+            _ => "New item"
         match button("Add")
-            true => AddItem()
+            true =>
+                AddItem(text)
             false =>
                 each(state.items, |item| check(item))
                 Draw(state)
-    AddItem =>
-        match length(state.new_text) > 0
-            true =>
-                items as List<TodoItem> = state.items
-                set(
-                    items,
-                    length(state.items),
-                    TodoItem("New item", false, length(items)))
-                state.items = items
-                Draw(state)
-            false => Draw(state)
+    AddItem(text) =>
+        items as List<TodoItem> = state.items
+        state.items = set(items, length(state.items), TodoItem(text, false, length(items)))
+        Draw(state)
     RemoveItem(index) =>
         state.items = remove(state.items, index)
         Draw(state)
@@ -66,7 +58,7 @@ listens on_key() TodoApp
   state_type TodoState
 from
     Key:Escape => Exit(state)
-    Key:Enter => AddItem()
+    Key:Enter => AddItem("new item")
     _ => Tick(state)
 
 main()

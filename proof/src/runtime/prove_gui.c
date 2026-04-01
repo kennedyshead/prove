@@ -252,6 +252,7 @@ static bool _window_active = false;  /* true after prove_gui_window, false after
 #define PROVE_GUI_TEXT_BUF_SIZE 1024
 static char _text_bufs[PROVE_GUI_MAX_TEXT_INPUTS][PROVE_GUI_TEXT_BUF_SIZE];
 static int _text_lens[PROVE_GUI_MAX_TEXT_INPUTS];
+static bool _text_inited[PROVE_GUI_MAX_TEXT_INPUTS];
 static int _text_input_count = 0;
 
 /* ── SDL key code to Prove Key lookup code ──────────────────── */
@@ -577,16 +578,20 @@ Prove_String *prove_gui_text_input(Prove_String *label, Prove_String *value) {
     if (idx >= PROVE_GUI_MAX_TEXT_INPUTS) idx = PROVE_GUI_MAX_TEXT_INPUTS - 1;
     else _text_input_count++;
 
-    /* Initialize buffer from current value */
-    if (value && value->length > 0) {
-        size_t vlen = value->length < (PROVE_GUI_TEXT_BUF_SIZE - 1)
-                          ? value->length : (PROVE_GUI_TEXT_BUF_SIZE - 1);
-        memcpy(_text_bufs[idx], value->data, vlen);
-        _text_bufs[idx][vlen] = '\0';
-        _text_lens[idx] = (int)vlen;
-    } else {
-        _text_bufs[idx][0] = '\0';
-        _text_lens[idx] = 0;
+    /* Initialize buffer from value only on first use — after that the
+       internal buffer persists across frames so user edits are preserved. */
+    if (!_text_inited[idx]) {
+        _text_inited[idx] = true;
+        if (value && value->length > 0) {
+            size_t vlen = value->length < (PROVE_GUI_TEXT_BUF_SIZE - 1)
+                              ? value->length : (PROVE_GUI_TEXT_BUF_SIZE - 1);
+            memcpy(_text_bufs[idx], value->data, vlen);
+            _text_bufs[idx][vlen] = '\0';
+            _text_lens[idx] = (int)vlen;
+        } else {
+            _text_bufs[idx][0] = '\0';
+            _text_lens[idx] = 0;
+        }
     }
 
     /* Label row + edit row */
@@ -599,13 +604,9 @@ Prove_String *prove_gui_text_input(Prove_String *label, Prove_String *value) {
     return prove_string_new(_text_bufs[idx], _text_lens[idx]);
 }
 
-bool prove_gui_checkbox(Prove_String *label, bool checked) {
-    char buf[256];
-    _to_cstr(label, buf, sizeof(buf));
-
-    nk_bool val = checked ? nk_true : nk_false;
-    nk_checkbox_label(&_nk_sdl.ctx, buf, &val);
-    return val != nk_false;
+bool prove_gui_checkbox(int64_t id, Prove_String *label, bool checked) {
+    (void)id; (void)label;
+    return checked;
 }
 
 double prove_gui_slider(Prove_String *label, double min, double max, double value) {
