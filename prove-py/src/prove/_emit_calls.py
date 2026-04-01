@@ -1131,6 +1131,14 @@ class CallEmitterMixin:
             if parent is not None:
                 cname = mangle_type_name(parent.name)
                 args = self._wrap_recursive_constructor_args(name, args, expr.args)
+                # Coerce (void)0 → NULL for variant fields with pointer types
+                variant = next((v for v in parent.variants if v.name == name), None)
+                if variant:
+                    for i, (fname, ftype) in enumerate(variant.fields.items()):
+                        if i < len(args) and args[i] == "(void)0":
+                            ct = map_type(ftype)
+                            if ct.is_pointer:
+                                args[i] = "NULL"
                 return f"{cname}_{name}({', '.join(args)})"
             args = self._wrap_recursive_constructor_args(name, args, expr.args)
             return f"{name}({', '.join(args)})"
@@ -1239,6 +1247,14 @@ class CallEmitterMixin:
             if parent is not None:
                 cname = mangle_type_name(parent.name)
                 args = self._wrap_recursive_constructor_args(name, args, expr.args)
+                # Coerce (void)0 → NULL for variant fields with pointer types
+                variant = next((v for v in parent.variants if v.name == name), None)
+                if variant:
+                    for i, (fname, ftype) in enumerate(variant.fields.items()):
+                        if i < len(args) and args[i] == "(void)0":
+                            ct = map_type(ftype)
+                            if ct.is_pointer:
+                                args[i] = "NULL"
                 return f"{cname}_{name}({', '.join(args)})"
             sig = self._symbols.resolve_function(None, name, len(expr.args))
             if sig:
@@ -1336,6 +1352,38 @@ class CallEmitterMixin:
                 )
                 return call_str
             return f"{name}({', '.join(args)})"
+
+        # Method-style call on a value: obj.method(args) → stdlib_func(obj, args)
+        if isinstance(expr.func, FieldExpr):
+            obj_type = self._infer_expr_type(expr.func.obj)
+            if isinstance(obj_type, (GenericInstance, ListType)):
+                method_name = expr.func.field
+                # Look up as a function with the object as first argument
+                total_arity = len(expr.args) + 1
+                sig = self._symbols.resolve_function(None, method_name, total_arity)
+                if sig is None:
+                    sig = self._symbols.resolve_function_any(method_name, arity=total_arity)
+                if sig and sig.module:
+                    obj_emitted = self._emit_expr(expr.func.obj)
+                    full_args = [obj_emitted] + args
+                    full_expr_args = [expr.func.obj] + list(expr.args)
+                    full_args = self._coerce_call_args(full_args, full_expr_args, sig)
+                    resolved_c = self._resolve_stdlib_c_name(sig, call_args=full_expr_args)
+                    if resolved_c:
+                        call_str = f"{resolved_c}({', '.join(full_args)})"
+                        call_str = self._maybe_unwrap_option(
+                            call_str,
+                            sig,
+                            full_expr_args,
+                            sig.module,
+                        )
+                        call_str = self._maybe_unwrap_result(
+                            call_str,
+                            sig,
+                            full_expr_args,
+                            sig.module,
+                        )
+                        return call_str
 
         # Complex callable expression
         func = self._emit_expr(expr.func)

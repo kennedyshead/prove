@@ -1007,3 +1007,39 @@ class TestRecursiveVariantEmission:
         # Match bindings for recursive fields should be pointers
         assert "Prove_Expr *l =" in c_code
         assert "Prove_Expr *r =" in c_code
+
+
+class TestUnitToNullCoercion:
+    def test_unit_in_variant_constructor_with_pointer_field(self):
+        """Unit passed to a variant field expecting Prove_Value* should emit NULL."""
+        source = (
+            "module Test\n"
+            "    type Event is\n"
+            "        Tick(state Value)\n"
+            "        Draw\n"
+            "\n"
+            "transforms make_event() Event\n"
+            "    from\n"
+            "        Tick(Unit)\n"
+        )
+        c_code = _emit(source)
+        # (void)0 would be invalid for a Prove_Value* parameter — should be NULL
+        assert "Prove_Event_Tick(NULL)" in c_code
+        assert "Prove_Event_Tick((void)0)" not in c_code
+
+
+class TestMethodStyleListCalls:
+    def test_list_remove_method_style(self):
+        """list.remove(idx) should emit prove_list_ops_remove(list, idx)."""
+        source = (
+            "module Test\n"
+            "    Sequence derives remove\n"
+            "\n"
+            "derives trim(items List<Integer>, idx Integer) List<Integer>\n"
+            "    from\n"
+            "        items.remove(idx)\n"
+        )
+        c_code = _emit(source)
+        assert "prove_list_ops_remove" in c_code
+        # Should NOT emit as a struct member access
+        assert "->remove(" not in c_code

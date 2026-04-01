@@ -846,7 +846,18 @@ class ExprEmitterMixin:
                     self._indent -= 1
                     self._line("}")
                 elif isinstance(arm.pattern, LiteralPattern):
-                    if is_option_subj:
+                    # For boolean matches, the second arm should use plain
+                    # `else` to avoid re-evaluating the subject expression
+                    # (important for side-effectful subjects like GUI calls).
+                    is_bool_complement = (
+                        not first
+                        and arm.pattern.value in ("true", "false")
+                        and isinstance(subj_type, PrimitiveType)
+                        and subj_type.name == "Boolean"
+                    )
+                    if is_bool_complement:
+                        self._line("} else {")
+                    elif is_option_subj:
                         # Unwrap Option: check tag==1 (Some) and compare inner value
                         inner_ty = subj_type.args[0]
                         inner_ct = map_type(inner_ty)
@@ -861,10 +872,12 @@ class ExprEmitterMixin:
                         unwrapped = f"{cast}{subj}.value"
                         inner_cond = self._emit_literal_cond(unwrapped, arm.pattern, inner_ty)
                         cond = f"{subj}.tag == 1 && {inner_cond}"
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({cond}) {{")
                     else:
                         cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
-                    keyword = "if" if first else "} else if"
-                    self._line(f"{keyword} ({cond}) {{")
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({cond}) {{")
                     self._indent += 1
                     self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                     self._indent -= 1
