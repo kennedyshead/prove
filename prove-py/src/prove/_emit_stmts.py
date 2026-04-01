@@ -1102,7 +1102,12 @@ class StmtEmitterMixin:
 
     def _emit_assignment(self, assign: Assignment) -> None:
         val = self._emit_expr(assign.value)
-        self._line(f"{assign.target} = {val};")
+        # If the RHS is a void function call, emit just the call (no assignment)
+        call_sig = self._resolve_call_sig(assign.value)
+        if call_sig is not None and isinstance(call_sig.return_type, UnitType):
+            self._line(f"{val};")
+        else:
+            self._line(f"{assign.target} = {val};")
         # Validate refinement constraints on reassignment
         # Skip when source is a compile-time literal (checker already verified via E355)
         target_ty = self._locals.get(assign.target)

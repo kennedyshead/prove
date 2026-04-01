@@ -2,6 +2,7 @@ module Config
   narrative: """Inputs a prove.toml and transforms it to Config struct"""
   Parse creates toml validates toml
   System inputs file
+  Log detached info
 
   type Package is
     name String
@@ -36,7 +37,9 @@ module Config
 inputs config() Config!
 from
     load as Result<String, Error> = file(PROVE_TOML)
-    struct(load)!
+    config as Config = struct(load)!
+    info(f"Found project {config.package.name}")&
+    config
 
 /// Parse the toml data to Config struct
 transforms struct(data Result<String, Error>) Result<Config, Error>!

@@ -262,23 +262,23 @@ class TestConstantImport:
 
 
 class TestSelfImport:
-    """Test E318 self-import detection."""
+    """Test I318 self-import detection (auto-fixed by formatter)."""
 
-    def test_self_import_errors(self):
-        """E318: module importing from itself should error."""
-        check_fails(
+    def test_self_import_warns(self):
+        """I318: module importing from itself should warn."""
+        check_warns(
             "module Foo\n  Foo outputs bar\n\noutputs bar() Unit\n    from\n        0\n",
-            "E318",
+            "I318",
         )
 
     def test_self_import_case_insensitive(self):
-        """E318: self-import detection is case-insensitive."""
-        check_fails(
+        """I318: self-import detection is case-insensitive."""
+        check_warns(
             "module MyMod\n"
             "  Mymod outputs something\n"
             "\n"
             "outputs something() Unit\n"
             "    from\n"
             "        0\n",
-            "E318",
+            "I318",
         )

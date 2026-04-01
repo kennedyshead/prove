@@ -12,7 +12,7 @@ module Check
   Prove types Node derives root creates children kind
   Source types SourceFile Content
   Types creates string validates boolean
-  Log detached info error warning
+  Log detached info error
   Sequence creates length validates contains
   Config types Config
   Diagnostic creates static_fail
@@ -32,134 +32,29 @@ matches node(node_kind String, content Content, node Node, source_file SourceFil
   ensures valid boolean(result)
   requires valid string(node_kind)
 from
-    ":" => true
-    "=>" => true
-    ")" => true
-    "(" => true
-    "assignment" => true
-    "async_marker" => true
-    "async_verb" => true
-    "boolean_literal" => true
-    "call_expression" => true
-    "constant_definition" => true
-    "doc_comment_block" => true
-    "ensures_clause" => true
-    "event_type_annotation" => true
-    "explain_annotation" => true
-    "expression" => expression(content, node, source_file)
-    "fail_marker" => true
-    "fail_propagation" => true
-    "foreign" => true
-    "foreign_block" => foreign(content, node, source_file)
-    "foreign_function" => true
-    "from" => true
-    "function_definition" => verb(content, node, source_file)
-    "identifier" => true
-    "import_declaration" => true
-    "import_group" => true
-    "is" => true
-    "line_comment" => true
-    "main" => true
-    "main_definition" => main_block(content, node, source_file)
-    "match" => true
-    "match_arm" => arm(content, node, source_file)
-    "match_expression" => match_block(content, node, source_file)
-    "module" => true
-    "module_declaration" => module(content, node, source_file)
-    "narrative_annotation" => true
-    "parameter_list" => true
-    "pattern" => true
-    "record_type_body" => true
-    "requires_clause" => true
-    "state_type_annotation" => true
-    "string_literal" => true
-    "terminates_annotation" => true
-    "trusted_annotation" => true
-    "type" => true
-    "type_definition" => type(content, node, source_file)
-    "type_expression" => true
-    "type_identifier" => true
-    "type_modifier_bracket" => true
-    "lookup_type_body" => true
-    "variable_declaration" => true
-    "verb" => true
     "ERROR" =>
         static_fail(node, source_file)
         false
     _ =>
-        warning(f"missing lint for {node_kind} {string(node)}")&
+        check(content, node, source_file)
         true
 
-/// Module decleration linting
-validates module(content Content, node Node, source_file SourceFile)
+/// check decleration linting
+validates check(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
   explain
       iterates and lint all children of a module
 from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Verb decleration linting
-validates verb(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-validates expression(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Main block decleration linting
-validates main_block(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Type decleration linting
-validates type(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Foreign decleration linting
-validates foreign(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Arm decleration linting
-validates arm(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-/// Match block decleration linting
-validates match_block(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
-validates source(content Content, source_file SourceFile)
-  ensures valid boolean(result)
-  requires valid string(source_file.content)
-from
-    all(
-        children(root(source_file.source)),
-        |node| node(kind(node), content, node, source_file))
+    any(children(node), |child| node(kind(child), content, child, source_file))
 
 validates lint(content Content)
   ensures valid boolean(result)
   requires length(content.files) > 0
 from
-    all(content.files, |file| source(content, file))
+    all(
+        content.files,
+        |file| all(children(root(file.source)), |node| node(kind(node), content, node, file)))
 
 /// After a successful native lint, we continue with python check
 dispatches source_check(

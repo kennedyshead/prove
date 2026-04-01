@@ -2501,6 +2501,7 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
     _FMT_CODES = {
         "I302",  # unused import (safe: imports are declarative)
         "I310",  # implicitly typed variable → add type annotation
+        "I318",  # self-import (safe: always a no-op import)
         "I360",  # validates explicit Boolean return → strip
         "I375",  # & on non-async function → strip
         "I378",  # add async marker
@@ -2586,6 +2587,15 @@ def _build_import_edit_text(
     lines = source.splitlines()
     verb_prefix = f"{suggestion.verb} " if suggestion.verb else ""
     new_import = f"  {suggestion.module} {verb_prefix}{suggestion.name}\n"
+
+    # Never suggest importing from the current module (I318)
+    for line in lines:
+        stripped = line.strip()
+        if (
+            stripped.startswith("module ")
+            and suggestion.module.lower() == stripped[7:].strip().lower()
+        ):
+            return None
 
     # Check if already imported (simple text match)
     for line in lines:
@@ -2680,6 +2690,10 @@ def _build_import_edit(
         if isinstance(decl, ModuleDecl):
             mod_decl = decl
             break
+
+    # Never suggest importing from the current module (I318)
+    if mod_decl is not None and mod_decl.name.lower() == suggestion.module.lower():
+        return None
 
     if mod_decl is None:
         # No module declaration — insert one at line 0 with the import.

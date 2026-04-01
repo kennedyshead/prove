@@ -171,7 +171,7 @@ class ProveFormatter:
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_constant_spans.add((s.file, s.start_line, s.start_col))
-            elif d.code == "I314":
+            elif d.code in ("I314", "I318"):
                 for lbl in d.labels:
                     s = lbl.span
                     self._unknown_module_spans.add((s.file, s.start_line, s.start_col))

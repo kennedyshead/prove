@@ -17,14 +17,14 @@ module Main
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
 
-dispatches parsed_command(command Option<String>, arguments List<String>)!
+dispatches parsed_command(command Option<String>, help Boolean, arguments List<String>)!
 from
-    Some("build") => build(contains(arguments, "--help"), arguments)!
-    Some("check") => check(contains(arguments, "--help"), arguments)!
-    Some("format") => format(arguments)!
-    Some("lsp") => lsp(arguments)!
-    Some("new") => new(arguments)!
-    Some("test") => test(arguments)!
+    Some("build") => build(help, arguments)!
+    Some("check") => check(help, arguments)!
+    Some("format") => format(help, arguments)!
+    Some("lsp") => lsp(help, arguments)!
+    Some("new") => new(help, arguments)!
+    Some("test") => test(help, arguments)!
     Some("--version") =>
         config as Config = config()!
         console(f"{config.package.version}")
@@ -35,4 +35,5 @@ from
     arguments as List<String> = process()
     sub_arguments as List<String> = slice(arguments, 2, length(arguments))
     command as Option<String> = value(1, arguments)
-    parsed_command(command, sub_arguments)!
+    help as Boolean = contains(arguments, "--help")
+    parsed_command(command, help, sub_arguments)!

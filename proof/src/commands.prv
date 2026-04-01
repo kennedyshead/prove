@@ -60,45 +60,41 @@ from
         source_check(lint(source), source.files, arguments, config)!
 
 /// Run the format command
-outputs format(arguments List<String>)!
+dispatches format(help Boolean, arguments List<String>)!
 from
-    info("Running format")&
-    match contains(arguments, "--help")
-        true => console(HELP_FORMAT_TEXT)
-        _ =>
-            md as Boolean = contains(arguments, "--md")
-            status as Boolean = contains(arguments, "--status")
-            stdin as Boolean = contains(arguments, "--stdin")
-            config as Config = config()!
-            pyformat(config, cwd(), md, status, stdin)!
-            info(f"{config.package.name}{config.package.version}")&
+    true => console(HELP_FORMAT_TEXT)
+    _ =>
+        info("Running format")&
+        md as Boolean = contains(arguments, "--md")
+        status as Boolean = contains(arguments, "--status")
+        stdin as Boolean = contains(arguments, "--stdin")
+        config as Config = config()!
+        pyformat(config, cwd(), md, status, stdin)!
+        info(f"{config.package.name}{config.package.version}")&
 
 /// Run the lsp command
-outputs lsp(arguments List<String>)!
+dispatches lsp(help Boolean, arguments List<String>)!
 from
-    match contains(arguments, "--help")
-        true => console(HELP_LSP_TEXT)
-        _ =>
-            pylsp()
-            info("Lsp ended")&
+    true => console(HELP_LSP_TEXT)
+    _ =>
+        pylsp()
+        info("Lsp ended")&
 
 /// Run the new command
-outputs new(arguments List<String>)!
+dispatches new(help Boolean, arguments List<String>)!
 from
-    match contains(arguments, "--help")
-        true => console(HELP_NEW_TEXT)
-        _ =>
-            name as String = get(arguments, 0)
-            info(f"{name}")&
-            new_project(name)!
-            info(f"{name}")&
+    true => console(HELP_NEW_TEXT)
+    _ =>
+        name as String = get(arguments, 0)
+        info(f"{name}")&
+        new_project(name)!
+        info(f"{name}")&
 
 /// Run the test command
-outputs test(arguments List<String>)!
+dispatches test(help Boolean, arguments List<String>)!
 from
-    match contains(arguments, "--help")
-        true => console(HELP_TEST_TEXT)
-        _ =>
-            config as Config = config()!
-            pytest(config, cwd())!
-            info(f"{config.package.name}{config.package.version}")&
+    true => console(HELP_TEST_TEXT)
+    _ =>
+        config as Config = config()!
+        pytest(config, cwd())!
+        info(f"{config.package.name}{config.package.version}")&

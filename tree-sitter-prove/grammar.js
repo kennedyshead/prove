@@ -637,7 +637,7 @@ module.exports = grammar({
     field_expression: $ => prec.left(PREC.FIELD, seq(
       $.expression,
       '.',
-      $.identifier,
+      choice($.identifier, $.type_identifier),
     )),
 
     fail_propagation: $ => prec.left(PREC.POSTFIX, seq(

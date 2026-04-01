@@ -263,13 +263,30 @@ class SymbolTable:
             if by_arity:
                 candidates = by_arity
 
-        # Disambiguate by expected return type
+        # Disambiguate by expected return type.
+        # When arg_types are available, don't let a TypeVariable return type
+        # be the sole winner — it matches everything and would shadow concrete
+        # overloads from other modules (e.g. Sequence.get(List<Value>,Integer)
+        # ->Value beating Table.get(String,Table<Value>)->Option<Value>).
+        # Instead, narrow candidates but defer the final pick to structural
+        # matching below.
         if expected_return is not None:
             matches = [s for s in candidates if types_compatible(expected_return, s.return_type)]
             if len(matches) == 1:
-                return matches[0]
+                # If the sole match is only via TypeVariable return and we have
+                # arg_types to do structural disambiguation, don't commit yet —
+                # TypeVariable matches everything so it's not a real signal.
+                if not (arg_types and isinstance(matches[0].return_type, TypeVariable)):
+                    return matches[0]
+            # Only narrow candidates if we have concrete (non-TypeVariable)
+            # return matches.  If ALL matches are TypeVariable returns, keep
+            # the full candidate list so structural matching can disambiguate
+            # by parameter types instead.
             if matches:
-                candidates = matches
+                concrete_ret = [s for s in matches if not isinstance(s.return_type, TypeVariable)]
+                if concrete_ret:
+                    candidates = matches
+                # else: all matches have TypeVariable returns — don't narrow
 
         # Disambiguate by structural match (best for generics)
         if arg_types:
@@ -293,6 +310,21 @@ class SymbolTable:
             if len(structural_matches) == 1:
                 return structural_matches[0]
             if structural_matches:
+                # Among multiple structural matches, prefer those whose return
+                # type matches the expected return (when available).  This
+                # prevents e.g. validates float(Float)->Boolean from winning
+                # over creates float(Value)->Float when Float is expected.
+                if expected_return is not None:
+                    ret_matches = [
+                        s
+                        for s in structural_matches
+                        if types_compatible(expected_return, s.return_type)
+                    ]
+                    if len(ret_matches) == 1:
+                        return ret_matches[0]
+                    if ret_matches:
+                        structural_matches = ret_matches
+
                 # Prefer overloads with concrete (non-TypeVariable) params over
                 # generic ones.  e.g. string(Value<Csv>) over string(Value).
                 # But when the actual arg is a simple type (not GenericInstance),

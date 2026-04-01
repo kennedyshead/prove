@@ -14,11 +14,11 @@ from
     coords as List<Value> = list(unwrap(get("coordinates", root_obj), ""))
     len as Integer = length(coords)
     x_sum as Float =
-        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("x", table(c)), 0)))
+        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("x", table(c)), 0.0f)))
     y_sum as Float =
-        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("y", table(c)), 0)))
+        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("y", table(c)), 0.0f)))
     z_sum as Float =
-        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("z", table(c)), 0)))
+        reduce(coords, 0.0, |acc, c| acc + float(unwrap(get("z", table(c)), 0.0f)))
     len_f as Float = float(len)
     console(string(x_sum / len_f))
     console(string(y_sum / len_f))

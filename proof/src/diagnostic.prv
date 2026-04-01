@@ -2,7 +2,8 @@ module Diagnostic
   narrative: """
   creates all info, warnings and errors from static analysis fails
   dispatches a search for syntax failures
-  matches location and syntax fail 
+  derives location and static fail 
+  matches severity prefix
   sends a detatched background diagnostic message with a severity prefix
   creates exxx diagnosting messages
   """
@@ -13,7 +14,7 @@ module Diagnostic
   Types creates string
   System outputs console
   Terminal derives ansi
-  Text derives trim repeat creates length split validates contains
+  Text derives trim repeat creates length split
   UI types Color
 
   type DiagnosticMessage is
@@ -30,31 +31,11 @@ module Diagnostic
     E100 | 100 | "Syntax Error"
     E210 | 210 | "Expected token but found"
 
-dispatches syntax(search String, node Node, source SourceFile) Boolean
-from
-    "1" =>
-        // Module name check
-        exxx("Expected module `name` but found", LintCode.E210, node, source)
-        true
-    "type" =>
-        // type decleration check
-        match contains(get(split(source.content, "\n"), line(node) - 1), "is")
-            true =>
-                exxx("Syntax Error", LintCode.E100, node, source)
-                true
-            false =>
-                exxx(f"Expected `is` but found", LintCode.E210, node, source)
-                true
-    _ =>
-        false
-
 creates static_fail(node Node, source SourceFile)
 from
-    match any([f"{line(node)}", "type"], |search| syntax(search, node, source))
-        true => Unit
-        false => exxx("Syntax error", LintCode.E100, node, source)
+    message as String = LintCode:E100
+    exxx(message, LintCode:E100, node, source)
 
-/// Generic syntax error
 creates exxx(message String, code Integer, node Node, source SourceFile) Unit
 from
     actual_code as String = get(split(source.content, "\n"), line(node) - 1)

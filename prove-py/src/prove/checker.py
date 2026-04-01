@@ -1112,10 +1112,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         """Register imported names, loading from stdlib if available."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib, load_stdlib_types
 
-        # E318: module importing from itself
+        # I318: module importing from itself (auto-fixed by formatter)
         if self._module_name and imp.module.lower() == self._module_name:
-            self._error(
-                "E318",
+            self._info(
+                "I318",
                 f"module '{imp.module}' cannot import from itself",
                 imp.span,
             )
@@ -1151,16 +1151,6 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             )
             return
 
-        # Ambiguity check: local module shadows stdlib module
-        if self._local_modules and imp.module in self._local_modules:
-            self._error(
-                "E316",
-                f"module '{imp.module}' is ambiguous: a local module and a stdlib module share "
-                f"this name. Use '.{imp.module}' to import the local module.",
-                imp.span,
-            )
-            return
-
         # Track which functions are imported from this known module
         names = self._module_imports.setdefault(imp.module, set())
         for item in imp.items:
@@ -1169,6 +1159,15 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 (imp.module.lower(), item.name),
                 [],
             ).append(item.span)
+
+        # Ambiguity check: local module shadows stdlib module
+        if self._local_modules and imp.module in self._local_modules:
+            self._error(
+                "E316",
+                f"module '{imp.module}' is ambiguous: a local module and a stdlib module share "
+                f"this name. Use '.{imp.module}' to import the local module.",
+                imp.span,
+            )
 
         stdlib_sigs = load_stdlib(imp.module)
         # Index by name → all overloads (different verbs)
@@ -2977,7 +2976,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
     def _infer_expr(self, expr: Expr, expected_type: Type | None = None) -> Type:
         """Infer the type of an expression."""
         if expected_type is not None:
+            old_expected = self._expected_type
             self._expected_type = expected_type
+            try:
+                return self._infer_expr_inner(expr)
+            finally:
+                self._expected_type = old_expected
+        return self._infer_expr_inner(expr)
+
+    def _infer_expr_inner(self, expr: Expr) -> Type:
+        """Inner expression type inference dispatch."""
         if isinstance(expr, IntegerLit):
             return INTEGER
         if isinstance(expr, DecimalLit):
@@ -3010,7 +3018,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         )
             return STRING
         if isinstance(expr, ListLiteral):
-            return self._infer_list(expr, expected_type=expected_type)
+            return self._infer_list(expr, expected_type=self._expected_type)
         if isinstance(expr, IdentifierExpr):
             return self._infer_identifier(expr)
         if isinstance(expr, TypeIdentifierExpr):
@@ -3020,17 +3028,17 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if isinstance(expr, UnaryExpr):
             return self._infer_unary(expr)
         if isinstance(expr, CallExpr):
-            return self._infer_call(expr, expected_type=expected_type)
+            return self._infer_call(expr, expected_type=self._expected_type)
         if isinstance(expr, FieldExpr):
             return self._infer_field(expr)
         if isinstance(expr, PipeExpr):
             return self._infer_pipe(expr)
         if isinstance(expr, FailPropExpr):
-            return self._infer_fail_prop(expr, expected_type=expected_type)
+            return self._infer_fail_prop(expr, expected_type=self._expected_type)
         if isinstance(expr, AsyncCallExpr):
-            return self._infer_async_call(expr, expected_type=expected_type)
+            return self._infer_async_call(expr, expected_type=self._expected_type)
         if isinstance(expr, MatchExpr):
-            return self._infer_match(expr, expected_type=expected_type)
+            return self._infer_match(expr, expected_type=self._expected_type)
         if isinstance(expr, LambdaExpr):
             return self._infer_lambda(expr)
         if isinstance(expr, IndexExpr):

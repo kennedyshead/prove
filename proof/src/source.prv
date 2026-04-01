@@ -4,7 +4,7 @@ module Source
   """
   Config types Config
   System validates file inputs dir file outputs console
-  Parse types Token creates tokens tree
+  Parse creates tree
   Prove types Tree
   Text validates ends
   Types validates unit
@@ -26,7 +26,6 @@ from
     source as Result<Value<Tree>, Error> = tree(content)
     match source
         Ok(source) =>
-            lexed as List<Token> = tokens(content, [])
             SourceFile(path, content, source, [])
         Err(error) => console(f"{error}")
 
