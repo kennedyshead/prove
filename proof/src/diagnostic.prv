@@ -4,17 +4,18 @@ module Diagnostic
   dispatches a search for syntax failures
   derives location and static fail 
   matches severity prefix
+  validates module
   sends a detatched background diagnostic message with a severity prefix
   creates exxx diagnosting messages
   """
-  Log types Severity matches severity_color
+  Log types Severity matches severity_color detached error
   Source types SourceFile
   Prove types Node creates line column
   Sequence derives get
-  Types creates string
+  Types creates string validates string
   System outputs console
   Terminal derives ansi
-  Text derives trim repeat creates length split
+  Text derives trim repeat creates length split validates ends
   UI types Color
 
   type DiagnosticMessage is
@@ -31,14 +32,27 @@ module Diagnostic
     E100 | 100 | "Syntax Error"
     E210 | 210 | "Expected token but found"
 
+validates module(line String, node Node, source SourceFile)
+from
+    error(f"{line}")&
+    match ends(trim(line), "module")
+        true =>
+            exxx("Expected `module Name` but found", LintCode.E210, node, source)
+            true
+        _ => false
+
 creates static_fail(node Node, source SourceFile)
 from
-    message as String = LintCode:E100
-    exxx(message, LintCode:E100, node, source)
+    lines as List<String> = split(string(node), "\n")
+    match module(get(lines, 0), node, source)
+        true => Unit
+        false =>
+            message as String = LintCode:E100
+            exxx(message, LintCode:E100, node, source)
 
 creates exxx(message String, code Integer, node Node, source SourceFile) Unit
 from
-    actual_code as String = get(split(source.content, "\n"), line(node) - 1)
+    actual_code as String = get(split(string(node), "\n"), 0)
     diagnostic(DiagnosticMessage(
         Severity.Error,
         code,
@@ -63,6 +77,7 @@ from
 detached diagnostic(message DiagnosticMessage)
 from
     color as String = severity_color(message.severity)
+    number_pad as String = repeat(" ", 4 - length(f"{message.line}"))
     console(f"{color}error[{
               severity_prefix(message.severity)
             }{message.code}]:{
@@ -73,10 +88,10 @@ from
               ansi(Color:Blue)
             }-->{
               ansi(Color:Default)
-            } {message.file}:{message.line}:{message.column}\n     |\n  {
+            } {message.file}:{message.line}:{message.column}\n     |\n{number_pad}{
               message.line
             } |  {message.actual_line}\n     |  {
-              repeat(" ", message.column + 4)
+              repeat(" ", message.column)
             }{color}{
               repeat("^", length(message.found))
             }{

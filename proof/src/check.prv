@@ -37,7 +37,6 @@ from
         false
     _ =>
         check(content, node, source_file)
-        true
 
 /// check decleration linting
 validates check(content Content, node Node, source_file SourceFile)
@@ -46,7 +45,7 @@ validates check(content Content, node Node, source_file SourceFile)
   explain
       iterates and lint all children of a module
 from
-    any(children(node), |child| node(kind(child), content, child, source_file))
+    all(children(node), |child| node(kind(child), content, child, source_file))
 
 validates lint(content Content)
   ensures valid boolean(result)
