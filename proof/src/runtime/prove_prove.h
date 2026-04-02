@@ -49,6 +49,7 @@ Prove_Option  prove_prove_child(Prove_Node node, Prove_String *name);
 int64_t       prove_prove_line(Prove_Node node);
 int64_t       prove_prove_column(Prove_Node node);
 bool          prove_prove_error(Prove_Node node);
+Prove_String *prove_prove_origin(Prove_Node node);
 int64_t       prove_prove_count(Prove_Node node);
 Prove_List   *prove_prove_named_children(Prove_Node node);
 

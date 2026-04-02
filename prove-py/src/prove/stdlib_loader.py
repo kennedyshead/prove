@@ -824,6 +824,7 @@ _register_module(
     c_map={
         ("derives", "root"): "prove_prove_root",
         ("creates", "kind"): "prove_prove_kind",
+        ("creates", "origin"): "prove_prove_origin",
         ("creates", "children"): "prove_prove_children",
         ("creates", "child"): "prove_prove_child",
         ("creates", "line"): "prove_prove_line",

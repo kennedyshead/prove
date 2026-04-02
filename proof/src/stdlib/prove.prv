@@ -9,38 +9,42 @@ module Prove
   /// A node in the syntax tree.
   type Node is binary
 
-  /// Root node of a parsed tree.
-  reads root(tree Tree) Node
-  binary
+/// Root node of a parsed tree.
+derives root(tree Tree) Node
+binary
 
-  /// Node kind name (e.g. "function_definition", "call_expression").
-  creates kind(node Node) String
-  binary
+/// Node kind name (e.g. "function_definition", "call_expression").
+creates kind(node Node) String
+binary
 
-  /// All child nodes (including anonymous tokens).
-  creates children(node Node) List<Node>
-  binary
+/// Origin kind of an error node (first named child's kind, or "UNKNOWN").
+creates origin(node Node) String
+binary
 
-  /// Named child by field name. Returns None if the field does not exist.
-  creates child(node Node, name String) Option<Node>
-  binary
+/// All child nodes (including anonymous tokens).
+creates children(node Node) List<Node>
+binary
 
-  /// Line number (1-based).
-  creates line(node Node) Integer
-  binary
+/// Named child by field name. Returns None if the field does not exist.
+creates child(node Node, name String) Option<Node>
+binary
 
-  /// Column number (0-based).
-  creates column(node Node) Integer
-  binary
+/// Line number (1-based).
+creates line(node Node) Integer
+binary
 
-  /// Whether the node represents a syntax error.
-  validates error(node Node) Boolean
-  binary
+/// Column number (0-based).
+creates column(node Node) Integer
+binary
 
-  /// Number of child nodes.
-  creates count(node Node) Integer
-  binary
+/// Whether the node represents a syntax error.
+validates error(node Node)
+binary
 
-  /// Named children only (skipping anonymous tokens like punctuation).
-  creates named_children(node Node) List<Node>
-  binary
+/// Number of child nodes.
+creates count(node Node) Integer
+binary
+
+/// Named children only (skipping anonymous tokens like punctuation).
+creates named_children(node Node) List<Node>
+binary

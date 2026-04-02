@@ -706,6 +706,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_parse_string_tree",
         "prove_prove_root",
         "prove_prove_kind",
+        "prove_prove_origin",
         "prove_prove_string",
         "prove_prove_children",
         "prove_prove_child",

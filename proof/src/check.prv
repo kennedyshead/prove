@@ -9,7 +9,7 @@ module Check
   matches the declaration and lint for each statement
   """
   System validates dir inputs cwd
-  Prove types Node derives root creates children kind
+  Prove types Node derives root creates children kind origin
   Source types SourceFile Content
   Types creates string validates boolean
   Log detached info error
@@ -33,7 +33,7 @@ matches node(node_kind String, content Content, node Node, source_file SourceFil
   requires valid string(node_kind)
 from
     "ERROR" =>
-        static_fail(node, source_file)
+        static_fail(origin(node), node, source_file)
         false
     _ =>
         check(content, node, source_file)
