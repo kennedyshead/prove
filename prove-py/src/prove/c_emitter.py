@@ -1194,7 +1194,8 @@ class CEmitter(
                 params.append(f"{decl_str} {safe_c_name(p.name)}")
             param_str = ", ".join(params) if params else "void"
             has_ptrs = any(map_type(pt).is_pointer for pt in sig.param_types)
-            attr = self._function_attributes(decl.verb, has_ptrs)
+            has_async = self._body_has_async_calls(decl.body)
+            attr = self._function_attributes(decl.verb, has_ptrs, has_side_effects=has_async)
             self._line(f"{attr}{ret_decl} {mangled}({param_str});")
             any_emitted = True
         if any_emitted:
@@ -1203,9 +1204,23 @@ class CEmitter(
     # ── Function emission ──────────────────────────────────────
 
     @staticmethod
+    def _body_has_async_calls(body: list) -> bool:
+        """Return True if any statement in body contains an AsyncCallExpr."""
+        from prove.ast_nodes import AsyncCallExpr, ExprStmt, VarDecl
+
+        for stmt in body:
+            if isinstance(stmt, ExprStmt) and isinstance(stmt.expr, AsyncCallExpr):
+                return True
+            if isinstance(stmt, VarDecl) and isinstance(stmt.value, AsyncCallExpr):
+                return True
+        return False
+
+    @staticmethod
     def _function_attributes(
         verb: str,
         has_pointer_params: bool,
+        *,
+        has_side_effects: bool = False,
     ) -> str:
         """Return GCC/Clang function attributes based on verb semantics.
 
@@ -1217,9 +1232,11 @@ class CEmitter(
           allocation modifies global heap state, violating C pure semantics.
         - blocking/IO verbs get __attribute__((noinline)) — keeps cold
           IO paths out of the instruction cache during hot pure loops.
+        - Functions with detached/async calls have side effects and must
+          not be marked pure/const (compiler would eliminate those calls).
         """
         attrs: list[str] = []
-        if verb in NON_ALLOCATING_VERBS:
+        if verb in NON_ALLOCATING_VERBS and not has_side_effects:
             if not has_pointer_params:
                 attrs.append("const")
             else:
@@ -1353,7 +1370,8 @@ class CEmitter(
         param_str = ", ".join(params) if params else "void"
 
         has_ptrs = any(map_type(pt).is_pointer for pt in param_types)
-        attr = self._function_attributes(fd.verb, has_ptrs)
+        has_async = self._body_has_async_calls(fd.body)
+        attr = self._function_attributes(fd.verb, has_ptrs, has_side_effects=has_async)
         self._line(f"{attr}{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 

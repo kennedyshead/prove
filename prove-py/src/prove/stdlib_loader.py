@@ -448,6 +448,7 @@ _register_module(
     c_map={
         ("creates", "code"): "prove_convert_code",
         ("creates", "string"): "prove_value_as_text",
+        ("validates", "string"): "prove_string_is_valid",
         ("validates", "text"): "prove_value_is_text",
         ("validates", "number"): "prove_value_is_number",
         ("validates", "decimal"): "prove_value_is_decimal",
@@ -824,7 +825,7 @@ _register_module(
     c_map={
         ("derives", "root"): "prove_prove_root",
         ("creates", "kind"): "prove_prove_kind",
-        ("creates", "origin"): "prove_prove_origin",
+        ("creates", "parent"): "prove_prove_parent",
         ("creates", "children"): "prove_prove_children",
         ("creates", "child"): "prove_prove_child",
         ("creates", "line"): "prove_prove_line",

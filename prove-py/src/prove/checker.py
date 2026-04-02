@@ -1618,6 +1618,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         ],
                     )
                 )
+            # Body must return Boolean (or compatible)
+            if not isinstance(body_type, ErrorType) and not types_compatible(BOOLEAN, body_type):
+                self._error(
+                    "E322",
+                    f"validates body must return Boolean, got '{type_name(body_type)}'",
+                    fd.span,
+                )
         elif (
             fd.verb not in ("renders", "listens")
             and not isinstance(body_type, ErrorType)

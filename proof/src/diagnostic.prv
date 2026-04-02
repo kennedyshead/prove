@@ -1,22 +1,23 @@
 module Diagnostic
   narrative: """
-  creates all info, warnings and errors from static analysis fails
+  creates all info, warnings and errors from static analysis fails 
+    first token of the line
   dispatches a search for syntax failures
   derives location and static fail 
-  matches severity prefix
+  matches severity prefix, narrowing down to root, module, type and lookup
   validates module
   sends a detatched background diagnostic message with a severity prefix
   creates exxx diagnosting messages
   reads and creates the code line from node
   """
-  Log types Severity matches severity_color
+  Log types Severity matches severity_color detached warning
   Source types SourceFile
-  Prove types Node creates line column
-  Sequence derives get
-  Types creates string validates string
+  Prove types Node creates line column parent
+  Sequence derives get slice creates length
+  Types creates string integer validates string
   System outputs console
   Terminal derives ansi
-  Text derives trim repeat creates length split validates ends starts
+  Text derives trim repeat replace creates length split join validates starts ends
   UI types Color
 
   type DiagnosticMessage is
@@ -32,35 +33,84 @@ module Diagnostic
   type LintCode:[Lookup] is Integer String where
     E100 | 100 | "Syntax Error"
     E210 | 210 | "Expected token but found"
+    E379 | 379 | "Lookup table row is not matching the type declaration"
 
 creates code_line(node Node) String
 from
     lines as List<String> = split(string(node), "\n")
     trim(get(lines, 0))
 
-creates module_fail(node Node, source SourceFile)
+creates first_token(node Node) String
 from
-    match ends(code_line(node), "module")
-        true => exxx("Expected `module Name` but found", LintCode.E210, node, source)
+    get(split(trim(code_line(node)), " "), 0)
+
+/// Root level narrowing
+matches root(start String, node Node, source SourceFile)
+from
+    "module" => exxx("Expected `module Name` but found", LintCode.E210, node, source)
+    _ =>
+        warning(f"Missed root match {start}")&
+        message as String = LintCode:E100
+        exxx(message, LintCode:E100, node, source)
+
+matches module(start String, node Node, source SourceFile)
+from
+    "type" => exxx("Expected `type Name is` but found", LintCode.E210, node, source)
+    _ =>
+        warning(f"Missed module match {start}")&
+        message as String = LintCode:E100
+        exxx(message, LintCode:E100, node, source)
+
+/// Validates types from names to value
+matches type_check(type_name String, value String) Boolean
+from
+    "Integer" =>
+        match integer(value)
+            Ok => starts(value, "\"") == false && ends(value, "\"") == false
+            Err => false
+    "String" => starts(value, "\"") && ends(value, "\"")
+
+validates lookup_type_check(tokens List<String>, type_declaration List<String>)
+from
+    match length(tokens) == length(type_declaration)
+        true =>
+            values as List<String> = slice(tokens, 1, length(tokens))
+            str_values as String = join(values, " ")
+            all(
+                type_declaration,
+                |declaration, index| type_check(declaration, get(values, index)))
+        false => false
+
+creates lookup(code String, node Node, source SourceFile)
+from
+    rows as List<String> = split(code, "\n")
+    type_declaration as List<String> = split(replace(get(rows, 0), "where", ""), " ")
+    match all(
+        slice(rows, 1, length(rows)),
+        |row| lookup_type_check(split(row, "|"), type_declaration))
         false =>
+            message as String = LintCode:E379
+            exxx(message, LintCode.E379, node, source)
+        true =>
             message as String = LintCode:E100
             exxx(message, LintCode:E100, node, source)
 
-creates type_fail(node Node, source SourceFile)
-from
-    match starts(code_line(node), "type")
-        true => exxx("Expected `type Name is` but found", LintCode.E210, node, source)
-        false =>
-            message as String = LintCode:E100
-            exxx(message, LintCode:E100, node, source)
-
-matches static_fail(origin String, node Node, source SourceFile)
+matches static_fail(parent String, node Node, source SourceFile)
 from
     "source_file" =>
-        module_fail(node, source)
-    "type_identifier" =>
-        type_fail(node, source)
+        root(first_token(node), node, source)
+    "module_declaration" =>
+        module(first_token(node), node, source)
+    "lookup_variant" =>
+        code as String = match parent(node)
+            Some(parent) =>
+                match parent(parent)
+                    Some(parent) => string(parent)
+                    None => ""
+            None => ""
+        lookup(code, node, source)
     _ =>
+        warning(f"Missed parent match {parent}")&
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
@@ -104,7 +154,7 @@ from
               ansi(Color:Default)
             } {message.file}:{message.line}:{message.column}\n     |\n{number_pad}{
               message.line
-            } |  `{message.actual_line}`\n     |  {
+            } |  {message.actual_line}\n     |  {
               repeat(" ", message.column)
             }{color}{
               repeat("^", length(message.found))

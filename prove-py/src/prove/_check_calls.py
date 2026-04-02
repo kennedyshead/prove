@@ -22,6 +22,7 @@ from prove.source import Span
 from prove.types import (
     ATTACHED,
     ERROR_TY,
+    INTEGER,
     AlgebraicType,
     ArrayType,
     BorrowType,
@@ -145,9 +146,23 @@ class CallCheckMixin:
                     arg_types = [list_type] + mid_types + [lam_type]
                 else:
                     # Single-param lambda: element type
-                    self._hof_param_types = [elem_type] if elem_type is not None else None
+                    params = [elem_type] if elem_type is not None else []
+                    # Optional index param: |value, idx| → second param is Integer
+                    lam_expr = expr.args[-1]
+                    if isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2:
+                        params.append(INTEGER)
+                    has_idx = isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2
+                    self._hof_param_types = params if params else None
                     lam_type = self._infer_expr(expr.args[-1])
                     self._hof_param_types = None
+                    # Strip injected idx param from type so it matches the
+                    # 1-param builtin signature (Value) -> Boolean
+                    if (
+                        has_idx
+                        and isinstance(lam_type, FunctionType)
+                        and len(lam_type.param_types) == 2
+                    ):
+                        lam_type = FunctionType([lam_type.param_types[0]], lam_type.return_type)
                     arg_types = [list_type, lam_type]
             else:
                 arg_types = [self._infer_expr(a) for a in expr.args]

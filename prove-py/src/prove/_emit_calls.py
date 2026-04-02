@@ -1556,6 +1556,10 @@ class CallEmitterMixin:
             self._line(f"{elem_ct.decl} {param} = {elem_get};")
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            if len(lam.params) == 2:
+                idx_param = lam.params[1]
+                self._line(f"int64_t {idx_param} = {idx};")
+                self._locals[idx_param] = INTEGER
             # Retain captured pointer vars before the call — the callee
             # releases its params, but we reuse captured vars each iteration.
             self._emit_loop_body_retains(lam.body, param)
@@ -1730,6 +1734,10 @@ class CallEmitterMixin:
             self._line(f"{elem_ct.decl} {param} = {elem_get};")
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            if len(lam.params) == 2:
+                idx_param = lam.params[1]
+                self._line(f"int64_t {idx_param} = {idx};")
+                self._locals[idx_param] = INTEGER
             body_code = self._emit_expr(lam.body)
             self._locals = saved_locals
             self._line(f"if (!({body_code})) {{ {result_var} = false; break; }}")
@@ -1767,6 +1775,10 @@ class CallEmitterMixin:
             self._line(f"{elem_ct.decl} {param} = {elem_get};")
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            if len(lam.params) == 2:
+                idx_param = lam.params[1]
+                self._line(f"int64_t {idx_param} = {idx};")
+                self._locals[idx_param] = INTEGER
             body_code = self._emit_expr(lam.body)
             self._locals = saved_locals
             self._line(f"if ({body_code}) {{ {result_var} = true; break; }}")
@@ -1804,6 +1816,10 @@ class CallEmitterMixin:
             self._line(f"{elem_ct.decl} {param} = {elem_get};")
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            if len(lam.params) == 2:
+                idx_param = lam.params[1]
+                self._line(f"int64_t {idx_param} = {idx};")
+                self._locals[idx_param] = INTEGER
             body_code = self._emit_expr(lam.body)
             self._locals = saved_locals
             if elem_ct.is_pointer or elem_ct.decl == "Prove_String*":

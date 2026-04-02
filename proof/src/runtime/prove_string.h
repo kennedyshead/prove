@@ -24,6 +24,10 @@ Prove_String *prove_string_from_double(double val);
 Prove_String *prove_string_from_bool(bool val);
 Prove_String *prove_string_from_char(char val);
 
+static inline bool prove_string_is_valid(Prove_String *s) {
+    return s != NULL && s->length > 0;
+}
+
 void prove_println(Prove_String *s);
 void prove_print(Prove_String *s);
 Prove_String *prove_readln(void);

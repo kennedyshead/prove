@@ -17,8 +17,8 @@ binary
 creates kind(node Node) String
 binary
 
-/// Origin kind of an error node (first named child's kind, or "UNKNOWN").
-creates origin(node Node) String
+/// Parent node. Returns None for the root node.
+creates parent(node Node) Option<Node>
 binary
 
 /// All child nodes (including anonymous tokens).

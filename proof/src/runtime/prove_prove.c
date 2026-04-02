@@ -114,39 +114,12 @@ bool prove_prove_error(Prove_Node node) {
     return ts_node_has_error(node->node) || ts_node_is_missing(node->node);
 }
 
-Prove_String *prove_prove_origin(Prove_Node node) {
-    /* For ERROR nodes, find the most descriptive child kind:
-       1. First named child that isn't "verb" or "ERROR"
-       2. Fall back to first child (anonymous keyword like "module", "type")
-       3. Fall back to "UNKNOWN" */
-    TSNode cur = node->node;
-    if (ts_node_is_null(cur)) {
-        return prove_string_from_cstr("UNKNOWN");
+Prove_Option prove_prove_parent(Prove_Node node) {
+    TSNode parent = ts_node_parent(node->node);
+    if (ts_node_is_null(parent)) {
+        return prove_option_none();
     }
-    if (strcmp(ts_node_type(cur), "ERROR") == 0) {
-        /* Try first meaningful named child */
-        uint32_t named_count = ts_node_named_child_count(cur);
-        for (uint32_t i = 0; i < named_count; i++) {
-            TSNode child = ts_node_named_child(cur, i);
-            const char *kind = ts_node_type(child);
-            if (kind && strcmp(kind, "ERROR") != 0
-                     && strcmp(kind, "verb") != 0) {
-                return prove_string_from_cstr(kind);
-            }
-        }
-        /* Fall back to first child (keyword token) */
-        uint32_t count = ts_node_child_count(cur);
-        if (count > 0) {
-            TSNode child = ts_node_child(cur, 0);
-            const char *kind = ts_node_type(child);
-            if (kind) {
-                return prove_string_from_cstr(kind);
-            }
-        }
-        return prove_string_from_cstr("UNKNOWN");
-    }
-    /* Not an ERROR node — just return its own kind. */
-    return prove_string_from_cstr(ts_node_type(cur));
+    return prove_option_some((Prove_Value *)prove_node_wrap(node->tree, parent));
 }
 
 int64_t prove_prove_count(Prove_Node node) {
