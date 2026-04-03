@@ -35,11 +35,13 @@ module Diagnostic
     E210 | 210 | "Expected token but found"
     E379 | 379 | "Lookup table row is not matching the type declaration"
 
+/// Gets the actual code line from a node
 creates code_line(node Node) String
 from
     lines as List<String> = split(string(node), "\n")
     trim(get(lines, 0))
 
+/// Gets the first token from a node
 creates first_token(node Node) String
 from
     get(split(trim(code_line(node)), " "), 0)
@@ -53,6 +55,7 @@ from
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
+/// Module declaration linting
 matches module(start String, node Node, source SourceFile)
 from
     "type" => exxx("Expected `type Name is` but found", LintCode.E210, node, source)
@@ -70,6 +73,7 @@ from
             Err => false
     "String" => starts(value, "\"") && ends(value, "\"")
 
+/// Lookup type linting each row
 validates lookup_type_check(tokens List<String>, type_declaration List<String>)
 from
     match length(tokens) == length(type_declaration)
@@ -81,6 +85,7 @@ from
                 |declaration, index| type_check(declaration, get(values, index)))
         false => false
 
+/// Lookup type static linting
 creates lookup(code String, node Node, source SourceFile)
 from
     rows as List<String> = split(code, "\n")
@@ -95,6 +100,7 @@ from
             message as String = LintCode:E100
             exxx(message, LintCode:E100, node, source)
 
+/// Static fail linting
 matches static_fail(parent String, node Node, source SourceFile)
 from
     "source_file" =>
@@ -114,6 +120,7 @@ from
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
+/// Error diagnostic message
 creates exxx(message String, code Integer, node Node, source SourceFile) Unit
 from
     actual_code as String = code_line(node)

@@ -10,7 +10,7 @@ module Check
   """
   System validates dir inputs cwd
   Prove types Node derives root creates children kind parent
-  Source types SourceFile Content
+  Source types SourceFile Content creates source_verb
   Types creates string validates boolean string
   Log detached info error
   Sequence creates length validates contains
@@ -38,10 +38,12 @@ from
             None => ""
         static_fail(parent, node, source_file)
         false
+    "function_definition" =>
+        check(content, node, source_verb(content, node, source_file))
     _ =>
         check(content, node, source_file)
 
-/// check decleration linting
+/// Declaration (static) linting
 validates check(content Content, node Node, source_file SourceFile)
   ensures valid boolean(result)
   requires children(node) > 0
@@ -50,6 +52,7 @@ validates check(content Content, node Node, source_file SourceFile)
 from
     all(children(node), |child| node(kind(child), content, child, source_file))
 
+/// Lint content
 validates lint(content Content)
   ensures valid boolean(result)
   requires length(content.files) > 0

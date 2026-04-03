@@ -1,13 +1,16 @@
 module Source
   narrative: """
   Reads all source content through dir inputs
+  creates mangled verbs through matches verb token
   """
   Config types Config
   System validates file inputs dir file outputs console
   Parse creates tree
-  Prove types Tree
-  Text validates ends
-  Types validates unit
+  Prove types Tree Node creates kind children
+  Text derives lower replace creates join split validates ends contains
+  Types validates unit string
+  Sequence derives set creates length
+  Log detached warning
 
   type SourceFile is
     path String
@@ -28,6 +31,42 @@ from
         Ok(source) =>
             SourceFile(path, content, source, [])
         Err(error) => console(f"{error}")
+
+creates params(nodes List<Node>) Option<String>
+from
+    join(map(nodes, |node| split(string(node), " ")), "_")
+
+matches verb_token(kind_name String, node Node) Option<String>
+from
+    "verb" => string(node)
+    "identifier" => string(node)
+    "parameter_list" => params(filter(children(node), |child| kind(child) == "parameter"))
+    "type_expression" => f"ret_{string(node)}"
+    _ =>
+        Unit
+
+creates mangled(node Node) String
+from
+    warning("Mangling")&
+    mangle as String =
+        lower(join(
+        filter(
+        map(children(node), |child| verb_token(kind(child), child)),
+        |verb_name| unit(verb_name) == false),
+        "_"))
+    ret_mangle as String = match contains(mangle, "_ret_")
+        true => mangle
+        false => f"{mangle}_ret_unit"
+    replace(replace(ret_mangle, "<", "_w_"), ">", "_e")
+
+creates source_verb(content Content, node Node, source_file SourceFile) SourceFile
+from
+    mangled_verbs as List<String> = source_file.verbs
+    SourceFile(
+        source_file.path,
+        source_file.content,
+        source_file.source,
+        set(mangled_verbs, length(source_file.verbs), mangled(node)))
 
 inputs source(config Config) Content
 from

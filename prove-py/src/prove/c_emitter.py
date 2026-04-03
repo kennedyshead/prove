@@ -1203,16 +1203,28 @@ class CEmitter(
 
     # ── Function emission ──────────────────────────────────────
 
-    @staticmethod
-    def _body_has_async_calls(body: list) -> bool:
+    @classmethod
+    def _body_has_async_calls(cls, body: list) -> bool:
         """Return True if any statement in body contains an AsyncCallExpr."""
-        from prove.ast_nodes import AsyncCallExpr, ExprStmt, VarDecl
+        from prove.ast_nodes import AsyncCallExpr, ExprStmt, MatchExpr, VarDecl
 
         for stmt in body:
             if isinstance(stmt, ExprStmt) and isinstance(stmt.expr, AsyncCallExpr):
                 return True
             if isinstance(stmt, VarDecl) and isinstance(stmt.value, AsyncCallExpr):
                 return True
+            # Check inside match arms (e.g. matches functions with detached calls)
+            match_expr = (
+                stmt.expr
+                if isinstance(stmt, ExprStmt)
+                else stmt
+                if isinstance(stmt, MatchExpr)
+                else None
+            )
+            if isinstance(match_expr, MatchExpr):
+                for arm in match_expr.arms:
+                    if cls._body_has_async_calls(arm.body):
+                        return True
         return False
 
     @staticmethod

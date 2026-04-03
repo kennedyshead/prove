@@ -814,11 +814,13 @@ class ExprEmitterMixin:
                 isinstance(self._current_func_return, GenericInstance)
                 and self._current_func_return.base_name == "Option"
                 and self._current_func_return.args
-                and not isinstance(result_type, UnitType)
                 and not (
                     isinstance(result_type, GenericInstance) and result_type.base_name == "Option"
                 )
-                and types_compatible(self._current_func_return.args[0], result_type)
+                and (
+                    isinstance(result_type, UnitType)
+                    or types_compatible(self._current_func_return.args[0], result_type)
+                )
             ):
                 result_type = self._current_func_return
                 _option_wrap = True
@@ -1140,6 +1142,9 @@ class ExprEmitterMixin:
                         if isinstance(arm_ty, UnitType):
                             self._line(f"{val};")
                             self._line(f"{tmp} = prove_option_none();")
+                        elif isinstance(arm_ty, GenericInstance) and arm_ty.base_name == "Option":
+                            # Already an Option — pass through, don't double-wrap
+                            self._line(f"{tmp} = {val};")
                         else:
                             ct_inner = map_type(arm_ty)
                             if ct_inner.is_pointer:

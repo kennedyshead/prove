@@ -2324,7 +2324,13 @@ class CallEmitterMixin:
                     f"}}\n"
                 )
             else:
+                # Capture any side-effect lines (e.g. Option unwrap temps)
+                # that _emit_expr writes via self._line() — they must go
+                # inside the lambda, not in the enclosing function.
+                out_before = len(self._out)
                 body_code = self._emit_expr(expr.body)
+                hoisted = self._out[out_before:]
+                del self._out[out_before:]
                 body_type = self._infer_expr_type(expr.body)
                 self._locals = saved_locals
                 body_ct = map_type(body_type)
@@ -2332,12 +2338,14 @@ class CallEmitterMixin:
                 # Own/borrow: retain pointer fields passed to function calls
                 retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
                 retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
+                hoisted_lines = "".join(f"{h}\n" for h in hoisted)
                 lam = (
                     f"static void *{name}(void *_arg, void *_ctx) {{\n"
                     f"{void_ctx}"
                     f"{ctx_unpack}"
                     f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                     f"{retain_lines}"
+                    f"{hoisted_lines}"
                     f"    return {body_box};\n"
                     f"}}\n"
                 )
@@ -2346,16 +2354,21 @@ class CallEmitterMixin:
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            out_before = len(self._out)
             body_code = self._emit_expr(expr.body)
+            hoisted = self._out[out_before:]
+            del self._out[out_before:]
             self._locals = saved_locals
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
             retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
+            hoisted_lines = "".join(f"{h}\n" for h in hoisted)
             lam = (
                 f"static bool {name}(void *_arg, void *_ctx) {{\n"
                 f"{void_ctx}"
                 f"{ctx_unpack}"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"{retain_lines}"
+                f"{hoisted_lines}"
                 f"    return {body_code};\n"
                 f"}}\n"
             )
@@ -2368,15 +2381,20 @@ class CallEmitterMixin:
             saved_locals = dict(self._locals)
             self._locals[accum_param] = accum_type if accum_type else elem_type
             self._locals[elem_param] = elem_type
+            out_before = len(self._out)
             body_code = self._emit_expr(expr.body)
+            hoisted = self._out[out_before:]
+            del self._out[out_before:]
             self._locals = saved_locals
             ret_box = self._hof_box(body_code, accum_ct)
+            hoisted_lines = "".join(f"{h}\n" for h in hoisted)
             lam = (
                 f"static void *{name}(void *_accum, void *_elem, void *_ctx) {{\n"
                 f"{void_ctx}"
                 f"{ctx_unpack}"
                 f"    {accum_ct.decl} {accum_param} = {accum_unbox};\n"
                 f"    {elem_ct.decl} {elem_param} = {elem_unbox_elem};\n"
+                f"{hoisted_lines}"
                 f"    return {ret_box};\n"
                 f"}}\n"
             )
@@ -2385,16 +2403,21 @@ class CallEmitterMixin:
             param = expr.params[0] if expr.params else "_x"
             saved_locals = dict(self._locals)
             self._locals[param] = elem_type
+            out_before = len(self._out)
             body_code = self._emit_expr(expr.body)
+            hoisted = self._out[out_before:]
+            del self._out[out_before:]
             self._locals = saved_locals
             retains = self._lambda_owned_field_retains(expr.body, param, elem_type)
             retain_lines = "".join(f"    prove_retain({r});\n" for r in retains)
+            hoisted_lines = "".join(f"{h}\n" for h in hoisted)
             lam = (
                 f"static void {name}(void *_arg, void *_ctx) {{\n"
                 f"{void_ctx}"
                 f"{ctx_unpack}"
                 f"    {elem_ct.decl} {param} = {elem_unbox_arg};\n"
                 f"{retain_lines}"
+                f"{hoisted_lines}"
                 f"    {body_code};\n"
                 f"}}\n"
             )
