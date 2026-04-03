@@ -17,6 +17,7 @@
   "inputs"
   "matches"
   "outputs"
+  "reads"
   "transforms"
   "validates"
 ] @keyword.function

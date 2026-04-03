@@ -12,12 +12,22 @@
 
 [
   "creates"
+  "derives"
+  "dispatches"
   "inputs"
   "matches"
   "outputs"
   "reads"
   "transforms"
   "validates"
+] @keyword.function
+
+[
+  "attached"
+  "detached"
+  "listens"
+  "renders"
+  "streams"
 ] @keyword.function
 
 "main" @keyword.function
