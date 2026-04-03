@@ -49,6 +49,7 @@ jobs:
           python3 -m venv ../.venv
           source ../.venv/bin/activate
           pip install -e ".[dev]" -q
+          pip install ../tree-sitter-prove -q
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Build proof binary

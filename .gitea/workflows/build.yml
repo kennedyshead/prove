@@ -23,11 +23,22 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pkg-config
+          git clone --depth 1 --branch v0.25.4 https://github.com/tree-sitter/tree-sitter.git /tmp/tree-sitter
+          cd /tmp/tree-sitter
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+
       - name: Create venv and install
         run: |
           python3 -m venv ../.venv
           source ../.venv/bin/activate
           pip install -e ".[dev,nlp]" build -q
+          pip install ../tree-sitter-prove -q
           python -m spacy download en_core_web_lg -q
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
