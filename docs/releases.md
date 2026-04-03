@@ -1,5 +1,24 @@
 # Releases
 
+## v1.3.0 — April 2026
+
+Tree-sitter migration, new verbs, linting infrastructure, and diagnostic improvements.
+
+**Highlights:**
+
+- **Tree-sitter as sole parser** — the legacy recursive-descent parser is removed; tree-sitter is now the only parser, with syntax and lint combined into a single `check` pass
+- **`reads` renamed to `derives`** — the `reads` verb is renamed to `derives` across the language, stdlib, and docs to better reflect its semantics
+- **`dispatches` verb** — new verb for dispatch-style functions
+- **Verb name mangling** — verb names are now mangled in generated C output for cleaner symbol names
+- **Linting infrastructure** — new lint pass integrated into the compiler check pipeline
+- **Lookup table static checks** — compile-time validation of lookup table entries
+- **`Option<T>` match arm coercion** — match arms mixing Unit and value returns now correctly produce `Option<T>`
+- **Input/Output runtime requires guards** — runtime guards inserted for IO verb `requires` contracts
+- **Improved diagnostics** — better E210/E100 error messages for missing types and modules; reliable diagnostic messages with AST error origin tracking
+- **CI improvements** — tree-sitter v0.25.4 built from source for ABI 15 compatibility; linker and warning fixes for test command
+
+---
+
 ## v1.2.0 — March 2026
 
 Verb semantic guarantees, type system improvements, and compiler optimizations.
