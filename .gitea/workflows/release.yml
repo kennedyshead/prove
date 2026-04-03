@@ -59,7 +59,9 @@ jobs:
           cp src/prove/data/verb_synonyms.dat ~/.prove/
 
       - name: Build proof binary
-        run: python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))"
+        run: |
+          python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))"
+          ls -la ../proof/dist/proof || { echo "ERROR: proof binary not found after build"; exit 1; }
 
       - name: Run all checks
         run: |
