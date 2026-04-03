@@ -83,7 +83,7 @@ var (
 				{`!`, chroma.KeywordPseudo, nil},
 
 				// PROVE-EXPORT-BEGIN: verbs
-				{`\b(creates|inputs|matches|outputs|reads|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
+				{`\b(creates|derives|dispatches|inputs|matches|outputs|reads|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
 				// PROVE-EXPORT-END: verbs
 
 				// PROVE-EXPORT-BEGIN: contract-keywords

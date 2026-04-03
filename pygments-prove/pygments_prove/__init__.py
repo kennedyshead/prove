@@ -53,6 +53,8 @@ class ProveLexer(RegexLexer):
                 words(
                     (
                         "creates",
+                        "derives",
+                        "dispatches",
                         "inputs",
                         "matches",
                         "outputs",
