@@ -123,6 +123,9 @@ DIAGNOSTIC_DOCS["E409"] = f"{_DOCS_BASE}#E409"
 _register_doc_range("E", 410, 422)
 # Row polymorphism E430-E435
 _register_doc_range("E", 430, 435)
+# IO verb requires failable E436, Mutable purity E437
+DIAGNOSTIC_DOCS["E436"] = f"{_DOCS_BASE}#E436"
+DIAGNOSTIC_DOCS["E437"] = f"{_DOCS_BASE}#E437"
 # Warnings
 for _c in ("W300", "W304", "W311", "W312", "W313"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
@@ -145,6 +148,8 @@ _register_doc_range("W", 370, 372)
 _register_doc_range("W", 390, 391)
 # Warning — prose coherence W501-W506
 _register_doc_range("W", 501, 506)
+# Warning — intent file W601-W603
+_register_doc_range("W", 601, 603)
 # Info
 for _c in (
     "I201",
@@ -164,6 +169,9 @@ for _c in (
     "I375",
     "I377",
     "I378",
+    "I438",
+    "I439",
+    "I440",
     "I601",
 ):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"

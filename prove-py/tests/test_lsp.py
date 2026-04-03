@@ -291,10 +291,10 @@ class TestBuildImportEdit:
         source = (
             'module Source\n  narrative: """\n  Reads all source files through dir inputs,\n  """\n'
         )
-        suggestion = ImportSuggestion(module="Pattern", verb="reads", name="string")
+        suggestion = ImportSuggestion(module="Pattern", verb="derives", name="string")
         edit = _build_import_edit_text(source, suggestion)
         assert edit is not None
-        assert "Pattern reads string" in edit.new_text
+        assert "Pattern derives string" in edit.new_text
         assert edit.range.start.line == 4
 
     def test_extend_existing_import_different_verb(self):

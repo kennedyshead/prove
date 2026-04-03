@@ -54,7 +54,7 @@ class TestGenerateBody:
 
         index = {"math": load_stdlib("math")}
         body = generate_body(
-            verb="reads",
+            verb="derives",
             name="absolute",
             nouns=["abs", "absolute"],
             param_names=["n"],

@@ -36,6 +36,7 @@ def grammar_lits():
             "inputs",
             "outputs",
             "validates",
+            "derives",
             "reads",
             "creates",
             "matches",
@@ -122,6 +123,11 @@ def test_verbs_complete(lists):
         "creates",
         "matches",
         "dispatches",
+        "detached",
+        "attached",
+        "listens",
+        "renders",
+        "streams",
     }
     assert set(lists["verbs"]) == expected
 
@@ -218,7 +224,16 @@ def test_sentinel_preserves_surrounding():
 
 def test_treesitter_grammar_literals(grammar_lits):
     """grammar.js contains all verb literals."""
-    for verb in ["transforms", "inputs", "outputs", "validates", "reads", "creates", "matches"]:
+    for verb in [
+        "transforms",
+        "inputs",
+        "outputs",
+        "validates",
+        "derives",
+        "reads",
+        "creates",
+        "matches",
+    ]:
         assert verb in grammar_lits, f"{verb} missing from grammar.js"
 
 

@@ -82,8 +82,9 @@ class TestCLI:
         queries_dir = ts_dir / "queries"
         queries_dir.mkdir()
         (ts_dir / "grammar.js").write_text(
-            "verb: $ => choice('creates', 'derives', 'dispatches', 'inputs', "
-            "'matches', 'outputs', 'reads', 'transforms', 'validates'),\n"
+            "verb: $ => choice('attached', 'creates', 'derives', 'detached', "
+            "'dispatches', 'inputs', 'listens', 'matches', 'outputs', "
+            "'reads', 'renders', 'streams', 'transforms', 'validates'),\n"
             "'as', 'binary', 'comptime', 'domain', 'foreign', 'from', "
             "'is', 'match', 'module', 'type', 'valid', 'where',\n"
             "'ensures', 'explain', 'requires', 'terminates', 'when', 'trusted',\n"
@@ -91,8 +92,8 @@ class TestCLI:
             "'know', 'narrative', 'near_miss', 'satisfies', 'temporal', 'why_not',\n"
         )
         (queries_dir / "highlights.scm").write_text(
-            '"creates" "derives" "dispatches" "inputs" "matches" "outputs" '
-            '"reads" "transforms" "validates"\n'
+            '"attached" "creates" "derives" "detached" "dispatches" "inputs" '
+            '"listens" "matches" "outputs" "reads" "renders" "streams" "transforms" "validates"\n'
             '"as" "binary" "comptime" "domain" "foreign" "from" "is" "match" '
             '"module" "type" "valid" "where"\n'
             '"ensures" "explain" "requires" "terminates" "trusted" "when"\n'

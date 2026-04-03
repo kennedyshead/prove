@@ -51,7 +51,7 @@ VERB_SYNONYMS: dict[str, list[str]] = {
     "derives": [
         "derives",
         "derive",
-        "derives",
+        "reads",
         "read",
         "accesses",
         "access",

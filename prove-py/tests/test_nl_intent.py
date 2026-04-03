@@ -56,7 +56,7 @@ class TestImpliedVerbs:
         assert implied_verbs("") == set()
 
     def test_no_action_words(self) -> None:
-        assert implied_verbs("A module for handling data.") == set()
+        assert implied_verbs("A module about data.") == set()
 
     def test_checks_synonym(self) -> None:
         assert "validates" in implied_verbs("Checks that the input is valid.")

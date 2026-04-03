@@ -43,7 +43,7 @@ class TestLoadVerbSynonyms:
         expected_verbs = {
             "transforms",
             "validates",
-            "reads",
+            "derives",
             "creates",
             "matches",
             "outputs",
@@ -63,7 +63,7 @@ class TestLoadVerbSynonyms:
         result = load_verb_synonyms()
         assert result["convert"] == "transforms"
         assert result["check"] == "validates"
-        assert result["fetch"] == "reads"
+        assert result["fetch"] == "derives"
         assert result["build"] == "creates"
         assert result["compare"] == "matches"
         assert result["write"] == "outputs"
@@ -80,7 +80,7 @@ class TestLoadVerbSynonyms:
 
     def test_canonical_forms_map_to_self(self) -> None:
         result = load_verb_synonyms()
-        for verb in ["transforms", "validates", "reads", "creates"]:
+        for verb in ["transforms", "validates", "derives", "creates"]:
             assert result[verb] == verb
 
 
@@ -346,7 +346,7 @@ class TestSemanticFeatures:
         prove_dir.mkdir()
         dat = prove_dir / "semantic_features.dat"
         variants = [
-            ("text.length", ["text", "reads", "length string character count"]),
+            ("text.length", ["text", "derives", "length string character count"]),
             ("math.add", ["math", "transforms", "add number sum"]),
         ]
         write_pdat(dat, "SemanticFeatures", ["String", "String", "String"], variants)
@@ -356,7 +356,7 @@ class TestSemanticFeatures:
         assert "text.length" in result
         entry = result["text.length"]
         assert entry["module"] == "text"
-        assert entry["verb"] == "reads"
+        assert entry["verb"] == "derives"
         assert "length" in entry["keywords"]
 
     def test_fallback_to_empty_dict(self, tmp_path) -> None:
