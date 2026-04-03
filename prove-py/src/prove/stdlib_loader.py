@@ -271,6 +271,7 @@ _register_module(
         ("validates", "empty"): "prove_list_ops_empty",
         ("derives", "slice"): "prove_list_ops_slice",
         ("derives", "reverse"): "prove_list_ops_reverse",
+        ("derives", "extend"): "prove_list_ops_extend",
         ("derives", "set"): "prove_list_ops_set",
         ("derives", "remove"): "prove_list_ops_remove",
         ("creates", "range"): "prove_list_ops_range",
@@ -431,6 +432,15 @@ _register_module(
         ("derives", "reverse", "Array<Decimal>:Mutable"): "prove_array_reverse_float",
         ("derives", "reverse", "Array<Float>"): "prove_array_reverse_float",
         ("derives", "reverse", "Array<Float>:Mutable"): "prove_array_reverse_float",
+        # Array extend
+        ("derives", "extend", "Array<Integer>"): "prove_array_extend_int",
+        ("derives", "extend", "Array<Integer>:Mutable"): "prove_array_extend_int",
+        ("derives", "extend", "Array<Boolean>"): "prove_array_extend_bool",
+        ("derives", "extend", "Array<Boolean>:Mutable"): "prove_array_extend_bool",
+        ("derives", "extend", "Array<Decimal>"): "prove_array_extend_float",
+        ("derives", "extend", "Array<Decimal>:Mutable"): "prove_array_extend_float",
+        ("derives", "extend", "Array<Float>"): "prove_array_extend_float",
+        ("derives", "extend", "Array<Float>:Mutable"): "prove_array_extend_float",
         # Array sort
         ("derives", "sort", "Array<Integer>"): "prove_array_sort_int",
         ("derives", "sort", "Array<Integer>:Mutable"): "prove_array_sort_int",

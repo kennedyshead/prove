@@ -434,6 +434,34 @@ Prove_Array *prove_array_reverse_float(Prove_Array *arr) {
     return _prove_array_reverse(arr);
 }
 
+/* ── Extend (concatenate two arrays) ──────────────────────────── */
+
+static Prove_Array *_prove_array_extend(Prove_Array *a, Prove_Array *b) {
+    int64_t new_len = a->length + b->length;
+    Prove_Array *result = prove_array_new(new_len, a->elem_size, NULL);
+    if (a->length > 0) {
+        memcpy(result->data, a->data, (size_t)(a->length * a->elem_size));
+    }
+    if (b->length > 0) {
+        memcpy((char *)result->data + a->length * a->elem_size,
+               b->data, (size_t)(b->length * b->elem_size));
+    }
+    result->length = new_len;
+    return result;
+}
+
+Prove_Array *prove_array_extend_bool(Prove_Array *a, Prove_Array *b) {
+    return _prove_array_extend(a, b);
+}
+
+Prove_Array *prove_array_extend_int(Prove_Array *a, Prove_Array *b) {
+    return _prove_array_extend(a, b);
+}
+
+Prove_Array *prove_array_extend_float(Prove_Array *a, Prove_Array *b) {
+    return _prove_array_extend(a, b);
+}
+
 /* ── Sort ─────────────────────────────────────────────────────── */
 
 static int _cmp_arr_int(const void *a, const void *b) {

@@ -1452,7 +1452,7 @@ class StmtEmitterMixin:
                     self._indent -= 1
                 elif arm.pattern.name == "None":
                     if first:
-                        self._line("{")
+                        self._line(f"if ({subj}.tag == 0) {{")
                     else:
                         self._line("} else {")
                     self._indent += 1

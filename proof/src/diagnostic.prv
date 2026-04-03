@@ -33,6 +33,7 @@ module Diagnostic
   type LintCode:[Lookup] is Integer String where
     E100 | 100 | "Syntax Error"
     E210 | 210 | "Expected token but found"
+    E314 | 314 | "Unknown module in import"
     E379 | 379 | "Lookup table row is not matching the type declaration"
 
 /// Gets the actual code line from a node

@@ -10,7 +10,7 @@ module Source
   Prove types Tree Node creates kind children
   Text derives replace creates join split validates ends contains
   Types validates unit string
-  Sequence derives set first last creates length
+  Sequence derives set first last extend creates length
 
   type SourceFile is
     path String
@@ -44,7 +44,11 @@ from
     files as List<SourceFile> = filter(source, |file| unit(file) == false)
     Content(
         files,
-        filter(map(files, |file| module_name(file)), |module| unit(module) == false))
+        extend(
+        ["Bytes", "Character", "Format", "Graphic", "Hash", "Language", "Math", "Network",
+            "Parse", "Path", "Pattern", "Prove", "Random", "Sequence", "Store", "System",
+            "Table", "Terminal", "Text", "Time", "Types", "Log", "UI"],
+        filter(map(files, |file| module_name(file)), |module| unit(module) == false)))
 
 creates parameter_types(nodes List<Node>) Option<String>
 from

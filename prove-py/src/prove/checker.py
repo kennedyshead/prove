@@ -1127,8 +1127,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._register_local_import(imp)
             else:
                 self._module_imports.setdefault(imp.module, set())
-                self._info(
-                    "I314",
+                self._error(
+                    "E314",
                     f"unknown local module '{imp.module}'",
                     imp.span,
                 )
@@ -1144,8 +1144,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             # Register the module name so we know it was declared,
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
-            self._info(
-                "I314",
+            self._error(
+                "E314",
                 f"unknown module '{imp.module}'",
                 imp.span,
             )
@@ -1342,6 +1342,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             is_imported=True,
                         )
                     )
+                    # Register lookup tables for imported lookup types
+                    if item.name in local_info.lookup_tables:
+                        self._lookup_tables[item.name] = local_info.lookup_tables[item.name]
                     # Register variant constructors for algebraic types
                     if isinstance(resolved, AlgebraicType):
                         for vsig in local_info.functions:

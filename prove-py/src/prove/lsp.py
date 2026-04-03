@@ -2499,7 +2499,7 @@ def formatting(params: lsp.DocumentFormattingParams) -> list[lsp.TextEdit] | Non
         return None
 
     # Auto-fixable diagnostics safe for live editing (LSP).
-    # Destructive removals (I300, I301, I303, I304, I314) are CLI-only —
+    # Destructive removals (I300, I301, I303, I304, E314) are CLI-only —
     # too disruptive during active editing.
     _FMT_CODES = {
         "I302",  # unused import (safe: imports are declarative)

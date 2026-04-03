@@ -4,7 +4,7 @@ module Sequence
 
   derives first, last, value at position, get at index unsafe or safe
   validates empty and if it contains
-  derives slice, reverse, sort, set and remove
+  derives slice, reverse, sort, set, extend and remove
   creates length, Array of size, list of range and converts Array to list
   creates list from Value<Csv> to List<List<String>> and from Value to List<Value>
   creates index
@@ -322,6 +322,22 @@ binary
 
 /// Get element at index, or None if out of bounds
 derives get_safe(arr Array<Decimal>, idx Integer) Option<Decimal>
+binary
+
+/// Extend a list with another list
+derives extend(items List<Value>, other List<Value>) List<Value>
+binary
+
+/// Extend an array with another array
+derives extend(arr Array<Integer>, other Array<Integer>) Array<Integer>
+binary
+
+/// Extend an array with another array
+derives extend(arr Array<Boolean>, other Array<Boolean>) Array<Boolean>
+binary
+
+/// Extend an array with another array
+derives extend(arr Array<Decimal>, other Array<Decimal>) Array<Decimal>
 binary
 
 /// Copy array contents into a new List

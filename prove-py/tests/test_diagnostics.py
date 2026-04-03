@@ -9,7 +9,7 @@ Each diagnostic is tested for:
 from __future__ import annotations
 
 from prove.errors import Diagnostic
-from tests.helpers import check_all, check_info, check_warns
+from tests.helpers import check_all, check_fails, check_info, check_warns
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
@@ -582,15 +582,15 @@ class TestI310:
         assert "I310" not in _codes(diags)
 
 
-# ── I314: unknown module in import ──────────────────────────────────
+# ── E314: unknown module in import ──────────────────────────────────
 
 
-class TestI314:
-    """I314 fires when an import references an unknown module."""
+class TestE314:
+    """E314 fires when an import references an unknown module."""
 
     def test_fires_for_unknown_module(self):
         source = "module Main\n  FakeModule transforms fake\ntransforms f() Integer\nfrom\n    1\n"
-        diags = check_info(source, "I314")
+        diags = check_fails(source, "E314")
         assert len(diags) == 1
 
     def test_not_fired_for_known_module(self):
@@ -602,7 +602,7 @@ class TestI314:
             "    Text.upper(s)\n"
         )
         diags = check_all(source)
-        assert "I314" not in _codes(diags)
+        assert "E314" not in _codes(diags)
 
 
 # ── I360: validates with explicit Boolean return ────────────────────

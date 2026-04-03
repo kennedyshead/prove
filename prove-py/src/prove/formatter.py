@@ -171,7 +171,7 @@ class ProveFormatter:
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_constant_spans.add((s.file, s.start_line, s.start_col))
-            elif d.code in ("I314", "I318"):
+            elif d.code in ("E314", "I318"):
                 for lbl in d.labels:
                     s = lbl.span
                     self._unknown_module_spans.add((s.file, s.start_line, s.start_col))
@@ -210,6 +210,7 @@ class ProveFormatter:
                 parts.append("")  # blank line between top-level decls
             parts.append(self._format_declaration(decl))
         result = "\n".join(parts)
+        result = self._fold_long_lines(result)
         if not result.endswith("\n"):
             result += "\n"
         return result
@@ -1317,7 +1318,7 @@ class ProveFormatter:
         return (span.file, span.start_line, span.start_col) in self._unused_import_spans
 
     def _is_unknown_module(self, span: object) -> bool:
-        """Check if an import declaration span was flagged as I314."""
+        """Check if an import declaration span was flagged as E314."""
         return (span.file, span.start_line, span.start_col) in self._unknown_module_spans
 
     # ── Helpers ────────────────────────────────────────────────
@@ -1331,3 +1332,138 @@ class ProveFormatter:
     def _indent_spaces(text: str, spaces: int) -> str:
         prefix = " " * spaces
         return "\n".join(prefix + line if line else line for line in text.splitlines())
+
+    def _fold_long_lines(self, text: str) -> str:
+        """Post-processing pass: fold any line that still exceeds MAX_LINE_LENGTH.
+
+        Tries to break at logical operators (&&, ||), then commas, then spaces.
+        Continuation lines are indented 4 spaces deeper than the original.
+        Lines inside triple-quoted strings and doc comments are skipped.
+        """
+        limit = self.MAX_LINE_LENGTH
+        lines = text.split("\n")
+        result: list[str] = []
+        in_triple = False
+        for line in lines:
+            # Track triple-quoted string regions — don't fold inside them
+            triple_count = line.count('"""')
+            if in_triple:
+                result.append(line)
+                if triple_count % 2 == 1:
+                    in_triple = False
+                continue
+            if triple_count % 2 == 1:
+                in_triple = True
+                result.append(line)
+                continue
+
+            if len(line) <= limit:
+                result.append(line)
+                continue
+
+            # Skip doc comments, plain comments, and lines with string literals
+            stripped = line.lstrip()
+            if stripped.startswith("///") or stripped.startswith("//"):
+                result.append(line)
+                continue
+            # Skip lines containing triple-quoted strings (balanced on one line)
+            if '"""' in line:
+                result.append(line)
+                continue
+
+            folded = self._fold_line(line, limit)
+            result.append(folded)
+        return "\n".join(result)
+
+    def _fold_line(self, line: str, limit: int) -> str:
+        """Fold a single long line at the best break point."""
+        # Compute leading whitespace for continuation indent
+        content = line.lstrip(" ")
+        base_indent = len(line) - len(content)
+        cont_indent = " " * (base_indent + 4)
+
+        # Try break points in priority order
+        for sep in (" && ", " || ", ", ", " "):
+            folded = self._try_fold_at(line, content, base_indent, cont_indent, sep, limit)
+            if folded is not None:
+                return folded
+
+        # Can't fold — return as-is
+        return line
+
+    @staticmethod
+    def _try_fold_at(
+        line: str,
+        content: str,
+        base_indent: int,
+        cont_indent: str,
+        sep: str,
+        limit: int,
+    ) -> str | None:
+        """Try to fold a line by breaking at occurrences of sep.
+
+        The separator stays at the end of each segment (before the break).
+        Returns None if folding doesn't help or sep doesn't appear.
+        """
+        # Don't split inside strings — find separator positions outside quotes
+        positions: list[int] = []
+        in_str = False
+        in_fstr = False
+        depth = 0  # paren/bracket depth
+        i = 0
+        while i < len(content):
+            ch = content[i]
+            if ch == '"' and not in_str:
+                in_str = True
+                if i > 0 and content[i - 1] == "f":
+                    in_fstr = True
+            elif ch == '"' and in_str and not in_fstr:
+                in_str = False
+            elif ch == '"' and in_fstr and depth == 0:
+                in_str = False
+                in_fstr = False
+            elif in_fstr and ch == "{":
+                depth += 1
+            elif in_fstr and ch == "}":
+                depth -= 1
+            elif not in_str and content[i : i + len(sep)] == sep:
+                positions.append(i)
+            i += 1
+
+        if not positions:
+            return None
+
+        # Build segments by breaking at separator positions
+        # Keep separator at end of each segment (except last)
+        segments: list[str] = []
+        prev = 0
+        for pos in positions:
+            end = pos + len(sep)
+            segments.append(content[prev:end].rstrip())
+            prev = end
+        # Add the remainder
+        remainder = content[prev:]
+        if remainder:
+            segments.append(remainder)
+
+        if len(segments) < 2:
+            return None
+
+        # Greedily pack segments into lines that fit within limit
+        result_lines: list[str] = []
+        current = " " * base_indent + segments[0]
+        for seg in segments[1:]:
+            # Check if appending fits — for &&/|| keep separator trailing
+            test_line = current + " " + seg
+            if len(test_line) <= limit:
+                current = test_line
+            else:
+                result_lines.append(current)
+                current = cont_indent + seg
+        result_lines.append(current)
+
+        # Only fold if it actually shortened the longest line
+        if max(len(line_) for line_ in result_lines) >= len(line):
+            return None
+
+        return "\n".join(result_lines)

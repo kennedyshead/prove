@@ -441,6 +441,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_list_ops_get_safe_value",
         "prove_list_ops_set",
         "prove_list_ops_remove",
+        "prove_list_ops_extend",
     ],
     "prove_format": [
         "prove_format_pad_left",
@@ -637,6 +638,9 @@ _RUNTIME_FUNCTIONS = {
         "prove_array_reverse_bool",
         "prove_array_reverse_int",
         "prove_array_reverse_float",
+        "prove_array_extend_bool",
+        "prove_array_extend_int",
+        "prove_array_extend_float",
         "prove_array_sort_int",
         "prove_array_sort_float",
         "prove_array_free",

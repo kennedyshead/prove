@@ -6,7 +6,7 @@ Each auto-fixable diagnostic is tested for correct formatter behavior:
 - I302: unused import → remove item or entire line
 - I303: unused type → remove definition
 - I304: unused constant → remove definition
-- I314: unknown module → remove import line
+- E314: unknown module → remove import line
 - I360: validates Boolean → strip return type
 """
 
@@ -233,10 +233,10 @@ class TestFixI304:
         assert "USED as Integer = 42" in result
 
 
-# ── I314: unknown module — formatter removes ────────────────────────
+# ── E314: unknown module — formatter removes ────────────────────────
 
 
-class TestFixI314:
+class TestFixE314:
     """Formatter removes unknown module import lines."""
 
     def test_removes_unknown_module_import(self):

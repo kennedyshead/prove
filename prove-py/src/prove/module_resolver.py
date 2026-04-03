@@ -46,6 +46,7 @@ class LocalModuleInfo:
     types: dict[str, Type] = field(default_factory=dict)
     functions: list[FunctionSignature] = field(default_factory=list)
     constants: list[str] = field(default_factory=list)
+    lookup_tables: dict[str, object] = field(default_factory=dict)
 
 
 def build_module_registry(
@@ -63,6 +64,7 @@ def build_module_registry(
     from prove.ast_nodes import (
         AlgebraicTypeDef,
         FunctionDef,
+        LookupTypeDef,
         ModuleDecl,
     )
 
@@ -113,6 +115,10 @@ def build_module_registry(
             if resolved is not None:
                 type_registry[td.name] = resolved
                 info.types[td.name] = resolved
+
+                # Register lookup tables for imported lookup types
+                if isinstance(td.body, LookupTypeDef):
+                    info.lookup_tables[td.name] = td.body
 
                 # Register variant constructors for algebraic types
                 if isinstance(td.body, AlgebraicTypeDef) and isinstance(resolved, AlgebraicType):
@@ -203,6 +209,9 @@ def _resolve_type_def(
         RefinementTypeDef,
         TypeDef,
     )
+    from prove.ast_nodes import (
+        LookupTypeDef as LookupTypeDefNode,
+    )
 
     if not isinstance(td, TypeDef):
         return None
@@ -231,6 +240,14 @@ def _resolve_type_def(
 
     if isinstance(body, BinaryDef):
         return PrimitiveType(td.name)
+
+    if isinstance(body, LookupTypeDefNode):
+        # Static lookup types: build AlgebraicType from entry variants
+        seen: dict[str, None] = {}
+        for entry in body.entries:
+            seen[entry.variant] = None
+        variants = [VariantInfo(name, {}) for name in seen]
+        return AlgebraicType(td.name, variants, type_params)
 
     return None
 

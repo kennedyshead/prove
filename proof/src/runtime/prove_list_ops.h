@@ -76,6 +76,10 @@ Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value);
 
 Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx);
 
+/* ── Extend (concatenate two lists) ──────────────────────────── */
+
+Prove_List *prove_list_ops_extend(Prove_List *list, Prove_List *other);
+
 /* ── Get safe (bounds-checked, returns Option) ───────────────── */
 
 Prove_Option prove_list_ops_get_safe_int(Prove_List *list, int64_t idx);

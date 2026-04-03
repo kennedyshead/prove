@@ -260,7 +260,7 @@ class TestIntegration:
             "transforms angle(x Integer) Integer\n"
             "    from\n"
             "        spin(x)\n",
-            "I314",
+            "E314",
         )
 
     def test_imports_known_module(self):

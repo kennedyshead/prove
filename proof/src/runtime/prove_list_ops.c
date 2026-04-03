@@ -377,3 +377,19 @@ Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx) {
     result->length = new_len;
     return result;
 }
+
+/* ── Extend (concatenate two lists) ──────────────────────────── */
+
+Prove_List *prove_list_ops_extend(Prove_List *list, Prove_List *other) {
+    int64_t new_len = list->length + other->length;
+    Prove_List *result = prove_list_new(new_len);
+    if (list->length > 0) {
+        memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
+    }
+    if (other->length > 0) {
+        memcpy(result->data + list->length, other->data,
+               sizeof(void *) * (size_t)other->length);
+    }
+    result->length = new_len;
+    return result;
+}

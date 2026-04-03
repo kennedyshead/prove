@@ -103,6 +103,7 @@ class CEmitter(
         escape_info: "EscapeInfo | None" = None,  # noqa: E501
         *,
         optimize: bool = False,
+        local_modules: dict[str, object] | None = None,
     ) -> None:
         self._module = module
         self._symbols = symbols
@@ -134,6 +135,7 @@ class CEmitter(
         self._store_var_types: dict[str, str] = {}  # var_name → lookup type name
         self._record_to_value: set[str] = set()  # record names needing Value converters
         self._expected_emit_type: Type | None = None
+        self._local_modules = local_modules
         self.diagnostics: list[Diagnostic] = []  # for comptime errors
         self.comptime_dependencies: set["Path"] = set()  # files read by comptime
         self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
@@ -201,11 +203,11 @@ class CEmitter(
                         self._lookup_tables[td.name] = td.body
                         if td.body.is_store_backed:
                             self._store_lookup_types.add(td.name)
-        # Also collect lookup tables from imported stdlib modules
+        # Also collect lookup tables from imported stdlib and local modules
         self._load_imported_lookup_tables()
 
     def _load_imported_lookup_tables(self) -> None:
-        """Load lookup tables from imported stdlib modules (e.g. UI.Key)."""
+        """Load lookup tables from imported stdlib and local modules."""
         from prove.stdlib_loader import is_stdlib_module, load_stdlib_prv_source
 
         imported_type_names: set[str] = set()
@@ -214,6 +216,14 @@ class CEmitter(
             if not isinstance(decl, ModuleDecl):
                 continue
             for imp in decl.imports:
+                # Check local modules first
+                if self._local_modules and imp.module in self._local_modules:
+                    local_info = self._local_modules[imp.module]
+                    if hasattr(local_info, "lookup_tables"):
+                        for item in imp.items:
+                            if item.name in local_info.lookup_tables:
+                                self._lookup_tables[item.name] = local_info.lookup_tables[item.name]
+                    continue
                 if not is_stdlib_module(imp.module):
                     continue
                 for item in imp.items:
@@ -2282,6 +2292,25 @@ class CEmitter(
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
             actual_types = [self._infer_expr_type(a) for a in expr.args] if expr.args else []
+            # HOF builtins: infer concrete return types from arguments
+            if name in ("map", "filter", "reduce", "all", "any") and n >= 2:
+                coll_ty = actual_types[0] if actual_types else None
+                if name == "filter" and isinstance(coll_ty, ListType):
+                    return coll_ty
+                if name in ("all", "any"):
+                    return BOOLEAN
+                if name == "map" and isinstance(coll_ty, ListType):
+                    fn_expr = expr.args[1] if len(expr.args) > 1 else None
+                    if isinstance(fn_expr, LambdaExpr):
+                        saved = dict(self._locals)
+                        if fn_expr.params:
+                            self._locals[fn_expr.params[0]] = coll_ty.element
+                        result_ty = self._infer_expr_type(fn_expr.body)
+                        self._locals = saved
+                        return ListType(result_ty)
+                    return coll_ty
+                if name == "reduce" and len(actual_types) > 1:
+                    return actual_types[1]
             # unwrap(Option<Value>, default) returns Value, not the matched overload's type
             if name == "unwrap" and n == 2 and actual_types:
                 first_ty = actual_types[0]

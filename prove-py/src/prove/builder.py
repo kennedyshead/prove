@@ -330,6 +330,7 @@ def build_project(
         debug=debug,
         user_module_count=user_module_count,
         standalone=standalone,
+        local_modules=local_modules,
     )
 
 
@@ -379,6 +380,7 @@ def _build_c(
     debug: bool = False,
     user_module_count: int | None = None,
     standalone: bool = False,
+    local_modules: dict[str, object] | None = None,
 ) -> BuildResult:
     """C backend: emit C, compile with gcc/clang."""
     c_sources: list[str] = []
@@ -405,7 +407,14 @@ def _build_c(
                     for imp in decl.imports:
                         runtime_deps.add_module(imp.module)
         optimized = config.optimize.enabled and not debug
-        emitter = CEmitter(module, symbols, memo_info, escape_info, optimize=optimized)
+        emitter = CEmitter(
+            module,
+            symbols,
+            memo_info,
+            escape_info,
+            optimize=optimized,
+            local_modules=local_modules,
+        )
         c_sources.append(emitter.emit())
         comptime_deps.update(emitter.comptime_dependencies)
         if runtime_deps:

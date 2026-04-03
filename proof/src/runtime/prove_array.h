@@ -145,6 +145,12 @@ Prove_Array *prove_array_reverse_bool(Prove_Array *arr);
 Prove_Array *prove_array_reverse_int(Prove_Array *arr);
 Prove_Array *prove_array_reverse_float(Prove_Array *arr);
 
+/* ── Extend (concatenate two arrays) ──────────────────────────── */
+
+Prove_Array *prove_array_extend_bool(Prove_Array *a, Prove_Array *b);
+Prove_Array *prove_array_extend_int(Prove_Array *a, Prove_Array *b);
+Prove_Array *prove_array_extend_float(Prove_Array *a, Prove_Array *b);
+
 /* ── Sort ─────────────────────────────────────────────────────── */
 
 Prove_Array *prove_array_sort_int(Prove_Array *arr);

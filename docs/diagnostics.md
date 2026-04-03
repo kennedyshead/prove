@@ -115,6 +115,12 @@ A qualified call (`Module.function()`) references a function that was not explic
 
 A qualified call references a module that has no import declaration. If the module exists (in stdlib or as a local module), the compiler tells you to add an import. If the module name is misspelled, it suggests the closest match.
 
+### E314 — Unknown module in import
+
+An import references a module that is neither part of the standard library nor a known local (sibling) module. The formatter removes the import line.
+
+If the module is a local file and its name collides with a stdlib module, use `.ModuleName` to disambiguate (see [E316](#e316-ambiguous-module-name-local-shadows-stdlib)).
+
 ### E315 — Function not found in module
 
 An import declaration names a function or type that does not exist in the specified module (stdlib or local).
@@ -1114,12 +1120,6 @@ A variable declared via `x = expr` without a type annotation. The formatter adds
 ### I311 — Value coercion is checked at runtime
 
 A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is assigned from a `Value` expression. The compiler inserts a runtime coercion via `prove_value_as_*()`, but the type cannot be verified at compile time.
-
-### I314 — Unknown module in import
-
-An import references a module that is neither part of the standard library nor a known local (sibling) module. The formatter removes the import line.
-
-If the module is a local file and its name collides with a stdlib module, use `.ModuleName` to disambiguate (see [E316](#e316-ambiguous-module-name-local-shadows-stdlib)).
 
 ### I320 — Function without contracts
 
