@@ -25,7 +25,7 @@ V1.0 has shipped. V2.0 planning is underway.
 
 ## Proposed
 
-### V1.3 — Package Manager
+### V1.4 — Package Manager
 
 Pure-Prove package distribution via AST-level sharing in SQLite archives.
 
@@ -40,7 +40,7 @@ Pure-Prove package distribution via AST-level sharing in SQLite archives.
 - Checker integration: package signatures loaded from exports table without full AST deserialization
 - Full design: [`future/14-package-manager.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/14-package-manager.md)
 
-### V1.3 — Sqlite Stdlib
+### V1.4 — Sqlite Stdlib
 
 General-purpose SQLite database access with cursor-based iteration.
 
