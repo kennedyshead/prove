@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.resources
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -815,7 +816,7 @@ _register_module(
         ("outputs", "quit"): "prove_gui_quit",
     },
     pkg_config="sdl2",
-    link_flags=["-framework", "OpenGL"],
+    link_flags=["-framework", "OpenGL"] if sys.platform == "darwin" else ["-lGL"],
 )
 
 _register_module(
