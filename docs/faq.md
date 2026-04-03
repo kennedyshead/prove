@@ -184,6 +184,7 @@ from
 
 ## Getting Help
 
+- **Chat**: Join [#prove on Libera.Chat](https://web.libera.chat/) (just do a [/knock](https://gist.github.com/xero/2d6e4b061b4ecbeb9f99#knock) and you will be let in ASAP)
 - Check the [Diagnostic Codes](diagnostics.md) for error/warning explanations
 - Review the [Tutorial](tutorial.md) for step-by-step guidance
 - See [Examples](examples/inventory_service.md) for full applications

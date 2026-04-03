@@ -120,7 +120,7 @@ python scripts/test_e2e.py      # end-to-end CLI tests (from workspace root)
 
 Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove).
 
-Contributors welcome — reach out to magnusknutas[at]botwork.se for access.
+Contributors welcome — join [#prove on Libera.Chat](https://web.libera.chat/) (just do a [/knock](https://gist.github.com/xero/2d6e4b061b4ecbeb9f99#knock) and you will be let in ASAP) or reach out at magnusknutas[at]botwork.se for access.
 
 ## AI Transparency
 

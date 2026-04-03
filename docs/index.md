@@ -195,7 +195,7 @@ Source code is hosted at [code.botwork.se/Botwork/prove](https://code.botwork.se
 
 ## Contributing
 
-For information on contributing to Prove, see our [Contributing section](design.md#contributing).
+Join [#prove on Libera.Chat](https://web.libera.chat/) (just do a [/knock](https://gist.github.com/xero/2d6e4b061b4ecbeb9f99#knock) and you will be let in ASAP) for questions and discussion. For more details, see our [Contributing section](design.md#contributing).
 
 ## License
 
