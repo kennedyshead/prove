@@ -1,7 +1,7 @@
 module Source
   narrative: """
   Reads all source content through dir inputs
-  creates mangled verbs through matches verb token
+  matches and creates mangled verb signatures through verb token and parameters
   """
   Config types Config
   System validates file inputs dir file outputs console
@@ -32,15 +32,16 @@ from
             SourceFile(path, content, source, [])
         Err(error) => console(f"{error}")
 
-creates params(nodes List<Node>) Option<String>
+creates mangle_parameters(nodes List<Node>) Option<String>
 from
     join(map(nodes, |node| split(string(node), " ")), "_")
 
-matches verb_token(kind_name String, node Node) Option<String>
+matches mangle_verb(kind_name String, node Node) Option<String>
 from
     "verb" => string(node)
     "identifier" => string(node)
-    "parameter_list" => params(filter(children(node), |child| kind(child) == "parameter"))
+    "parameter_list" =>
+        mangle_parameters(filter(children(node), |child| kind(child) == "parameter"))
     "type_expression" => f"ret_{string(node)}"
     _ =>
         Unit
@@ -51,7 +52,7 @@ from
     mangle as String =
         lower(join(
         filter(
-        map(children(node), |child| verb_token(kind(child), child)),
+        map(children(node), |child| mangle_verb(kind(child), child)),
         |verb_name| unit(verb_name) == false),
         "_"))
     ret_mangle as String = match contains(mangle, "_ret_")
