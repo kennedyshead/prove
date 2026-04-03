@@ -1,16 +1,16 @@
 module Source
   narrative: """
   Reads all source content through dir inputs
-  matches and creates mangled verb signatures through verb token and parameters
+  matches and creates mangled verb signatures through verb token and parameter types
+  derives module name from content
   """
   Config types Config
   System validates file inputs dir file outputs console
   Parse creates tree
   Prove types Tree Node creates kind children
-  Text derives lower replace creates join split validates ends contains
+  Text derives replace creates join split validates ends contains
   Types validates unit string
-  Sequence derives set creates length
-  Log detached warning
+  Sequence derives set first last creates length
 
   type SourceFile is
     path String
@@ -22,6 +22,7 @@ module Source
     files List<SourceFile>
     modules List<String>
 
+/// Source a prove file
 inputs source_file(path String) Option<SourceFile>
   requires valid file(path) && ends(path, ".prv")
 from
@@ -32,34 +33,55 @@ from
             SourceFile(path, content, source, [])
         Err(error) => console(f"{error}")
 
-creates mangle_parameters(nodes List<Node>) Option<String>
+creates module_name(file SourceFile) Option<String>
+from
+    last(split(first(split(file.content, "\n")), " "))
+
+/// Source a prove project
+inputs source(config Config) Content
+from
+    source as List<Option<SourceFile>> = map(dir("src/"), |value| source_file(value.path))
+    files as List<SourceFile> = filter(source, |file| unit(file) == false)
+    Content(
+        files,
+        filter(map(files, |file| module_name(file)), |module| unit(module) == false))
+
+creates parameter_types(nodes List<Node>) Option<String>
 from
     join(map(nodes, |node| split(string(node), " ")), "_")
 
+/// Gets representation blocks from verb node
 matches mangle_verb(kind_name String, node Node) Option<String>
 from
     "verb" => string(node)
     "identifier" => string(node)
     "parameter_list" =>
-        mangle_parameters(filter(children(node), |child| kind(child) == "parameter"))
+        parameter_types(filter(children(node), |child| kind(child) == "parameter"))
     "type_expression" => f"ret_{string(node)}"
     _ =>
         Unit
 
+/// Creates a mangled name for a Verb
+/// ret is added before return statement,
+/// type var (aka List<String>) gets opening and closing by w_String_e
+///
+/// Example:
+/// creates test(text String) Option<String>
+/// creates_test_String_ret_Option_w_String_e
 creates mangled(node Node) String
 from
-    warning("Mangling")&
     mangle as String =
-        lower(join(
+        join(
         filter(
         map(children(node), |child| mangle_verb(kind(child), child)),
         |verb_name| unit(verb_name) == false),
-        "_"))
+        "_")
     ret_mangle as String = match contains(mangle, "_ret_")
         true => mangle
         false => f"{mangle}_ret_unit"
     replace(replace(ret_mangle, "<", "_w_"), ">", "_e")
 
+/// Source single verb node and add it to verbs list
 creates source_verb(content Content, node Node, source_file SourceFile) SourceFile
 from
     mangled_verbs as List<String> = source_file.verbs
@@ -68,8 +90,3 @@ from
         source_file.content,
         source_file.source,
         set(mangled_verbs, length(source_file.verbs), mangled(node)))
-
-inputs source(config Config) Content
-from
-    source as List<Option<SourceFile>> = map(dir("src/"), |value| source_file(value.path))
-    Content(filter(source, |file| unit(file) == false), [])
