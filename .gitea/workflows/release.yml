@@ -60,7 +60,19 @@ jobs:
 
       - name: Build proof binary
         run: |
-          python -c "from prove.builder import build_project; from prove.config import load_config; from pathlib import Path; p=Path('../proof'); build_project(p, load_config(p/'prove.toml'))"
+          python -c "
+          import traceback, sys
+          try:
+              from prove.builder import build_project
+              from prove.config import load_config
+              from pathlib import Path
+              p = Path('../proof')
+              result = build_project(p, load_config(p / 'prove.toml'))
+              print(f'Build result: {result}')
+          except Exception as e:
+              traceback.print_exc()
+              sys.exit(1)
+          "
           ls -la ../proof/dist/proof || { echo "ERROR: proof binary not found after build"; exit 1; }
 
       - name: Run all checks
