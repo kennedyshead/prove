@@ -3,10 +3,11 @@ module Math
   Numeric operations.
 
   derives abs, sqrt, floor, ceil, log, log10, log2, exp of Float, Decimal and Integer.
-  sin, cos, tan, asin, acos, atan, atan2 trigonometry in radians.
-  round, power Float. pi and e constants.
-  max, min, clamp of given Integers, Floats or Decimals
-  transforms clamp of given Integers, Floats or Decimals
+    sin, cos, tan, asin, acos, atan, atan2 trigonometry in radians.
+    round, power Float. pi and e constants.
+    max, min, clamp of given Integers, Floats or Decimals
+  derives clamp of given Integers, Floats or Decimals
+  creates floor, ceil and round
   """
 
 /// Absolute value of an integer

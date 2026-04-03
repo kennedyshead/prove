@@ -6,9 +6,9 @@ module Store
 
   validates if store or table exists, if a diff was merged
   loads a table, lookup and version via inputs
-  transforms diff, patch and merge
   outputs rollback store, lookup and row via add
   derives integrity, conflicts, variant and column
+  creates diff, patch and merge
   """
 
   type Store is binary

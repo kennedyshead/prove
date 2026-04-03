@@ -6,6 +6,7 @@ module Text
   creates a new StringBuilder in builder
   derives slice, split, join, lower, upper, trim replace, repeat and char
   validates if a string starts ends or contains.
+  transforms string builder and char
   """
 
   type StringBuilder is binary
@@ -67,11 +68,14 @@ creates builder() StringBuilder:[Mutable]
 binary
 
 /// Append a string to a builder
-derives string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]
+transforms string_builder(
+    builder StringBuilder:[Mutable],
+    text String
+) StringBuilder:[Mutable]
 binary
 
 /// Append a character to a builder
-derives char(
+transforms char(
     builder StringBuilder:[Mutable],
     character Character
 ) StringBuilder:[Mutable]

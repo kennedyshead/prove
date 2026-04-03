@@ -1,7 +1,11 @@
 module Graphic
-  narrative: """GUI primitives via Nuklear immediate-mode library. Extends UI base module.
+  narrative: """
+  GUI primitives via Nuklear immediate-mode library. Extends UI base module.
     Import GraphicAppEvent and extend it for your app's event type.
-    Frame pacing is vsync-driven: continuous rendering at ~60fps."""
+    Frame pacing is vsync-driven: continuous rendering at ~60fps.
+
+  outputs window, button, label, text input, checkbox, slider, progress and quit
+  """
 
   /// GUI event type — extends AppEvent with window-level platform events.
   /// Selecting this as your base type tells the compiler to use
@@ -11,48 +15,48 @@ module Graphic
     | Hidden(state Value)
     | Focused(state Value)
 
-  /// Create or begin a named window with the given dimensions in pixels.
-  /// Must be called once per frame in the Draw arm before any widget calls.
-  /// Subsequent widget calls render inside this window.
-  outputs window(title String, width Integer, height Integer)
-  binary
+/// Create or begin a named window with the given dimensions in pixels.
+/// Must be called once per frame in the Draw arm before any widget calls.
+/// Subsequent widget calls render inside this window.
+outputs window(title String, width Integer, height Integer)
+binary
 
-  /// Render a clickable button with a text label.
-  /// Returns true on the frame the button is clicked, false otherwise.
-  /// Use in a match to branch on click.
-  outputs button(label String) Boolean
-  binary
+/// Render a clickable button with a text label.
+/// Returns true on the frame the button is clicked, false otherwise.
+/// Use in a match to branch on click.
+outputs button(label String) Boolean
+binary
 
-  /// Render a static text label. Non-interactive, used for headings,
-  /// descriptions, and status messages.
-  outputs label(text String)
-  binary
+/// Render a static text label. Non-interactive, used for headings,
+/// descriptions, and status messages.
+outputs label(text String)
+binary
 
-  /// Render an editable text field with a label and current value.
-  /// Returns the current string contents (updated as user types).
-  /// Pass the returned value back on the next frame to preserve input.
-  outputs text_input(label String, value String) String
-  binary
+/// Render an editable text field with a label and current value.
+/// Returns the current string contents (updated as user types).
+/// Pass the returned value back on the next frame to preserve input.
+outputs text_input(label String, value String) String
+binary
 
-  /// Render a checkbox with a unique integer ID, label, and checked state.
-  /// The ID ensures each checkbox is unique even if labels are identical.
-  /// Returns the current boolean state (toggled when user clicks).
-  /// Pass the returned value back on the next frame to preserve state.
-  outputs checkbox(id Integer, label String, checked Boolean) Boolean
-  binary
+/// Render a checkbox with a unique integer ID, label, and checked state.
+/// The ID ensures each checkbox is unique even if labels are identical.
+/// Returns the current boolean state (toggled when user clicks).
+/// Pass the returned value back on the next frame to preserve state.
+outputs checkbox(id Integer, label String, checked Boolean) Boolean
+binary
 
-  /// Render a horizontal slider with a label, min/max range, and current value.
-  /// Returns the current float value (updated as user drags).
-  /// Pass the returned value back on the next frame to preserve position.
-  outputs slider(label String, min Float, max Float, value Float) Float
-  binary
+/// Render a horizontal slider with a label, min/max range, and current value.
+/// Returns the current float value (updated as user drags).
+/// Pass the returned value back on the next frame to preserve position.
+outputs slider(label String, min Float, max Float, value Float) Float
+binary
 
-  /// Render a progress bar showing current out of max.
-  /// Non-interactive — use to display loading, upload, or task progress.
-  outputs progress(current Integer, max Integer)
-  binary
+/// Render a progress bar showing current out of max.
+/// Non-interactive — use to display loading, upload, or task progress.
+outputs progress(current Integer, max Integer)
+binary
 
-  /// Programmatically close the window and exit the render loop.
-  /// Triggers the Exit event. Use for menu-driven quit or error shutdown.
-  outputs quit()
-  binary
+/// Programmatically close the window and exit the render loop.
+/// Triggers the Exit event. Use for menu-driven quit or error shutdown.
+outputs quit()
+binary

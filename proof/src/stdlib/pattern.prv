@@ -5,7 +5,7 @@ module Pattern
   validates if a test pattern matches
   search and find all pattern matching
   derives with replace
-  creates a match
+  creates split and match
   gets start and end
   """
 

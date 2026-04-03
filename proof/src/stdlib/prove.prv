@@ -1,7 +1,12 @@
 module Prove
-  narrative: """Syntax tree access for Prove source code.
+  narrative: """
+  Syntax tree access for Prove source code.
     Parse .prv source with Parse.tree(), then traverse nodes
-    with root, children, kind, and other accessors."""
+    with root, children, kind, and other accessors.
+
+  creates root kind parent children child line column count and named children from Node 
+  Validates error
+  """
 
   /// A parsed syntax tree holding all nodes and source text.
   type Tree is binary
