@@ -943,6 +943,9 @@ def _analyze(uri: str, source: str) -> DocumentState:
     try:
         module = parse(source, filename)
         ds.module = module
+        # Surface parse diagnostics (E2xx) from tree-sitter conversion
+        if module.parse_diagnostics:
+            diags.extend(_compile_diag(d) for d in module.parse_diagnostics)
     except CompileError as e:
         diags.extend(_compile_diag(d) for d in e.diagnostics)
         ds.diagnostics = diags

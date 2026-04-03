@@ -49,7 +49,7 @@ from
 /// Root level narrowing
 matches root(start String, node Node, source SourceFile)
 from
-    "module" => exxx("Expected `module Name` but found", LintCode.E210, node, source)
+    "module" => exxx("Expected `module Name` but found", LintCode:E210, node, source)
     _ =>
         warning(f"Missed root match {start}")&
         message as String = LintCode:E100
@@ -58,7 +58,7 @@ from
 /// Module declaration linting
 matches module(start String, node Node, source SourceFile)
 from
-    "type" => exxx("Expected `type Name is` but found", LintCode.E210, node, source)
+    "type" => exxx("Expected `type Name is` but found", LintCode:E210, node, source)
     _ =>
         warning(f"Missed module match {start}")&
         message as String = LintCode:E100
@@ -95,7 +95,7 @@ from
         |row| lookup_type_check(split(row, "|"), type_declaration))
         false =>
             message as String = LintCode:E379
-            exxx(message, LintCode.E379, node, source)
+            exxx(message, LintCode:E379, node, source)
         true =>
             message as String = LintCode:E100
             exxx(message, LintCode:E100, node, source)

@@ -1569,6 +1569,23 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._current_function = None
             return
 
+        # I210: listens/streams/renders body must be a single match expression
+        if fd.verb in ("listens", "streams", "renders") and fd.body:
+            is_single_match = (
+                len(fd.body) == 1
+                and isinstance(fd.body[0], (ExprStmt, MatchExpr))
+                and (
+                    isinstance(fd.body[0], MatchExpr)
+                    or (isinstance(fd.body[0], ExprStmt) and isinstance(fd.body[0].expr, MatchExpr))
+                )
+            )
+            if not is_single_match:
+                self._info(
+                    "I210",
+                    f"`{fd.verb}` body should be a single match expression",
+                    fd.span,
+                )
+
         # Check body
         has_todo = any(isinstance(s, TodoStmt) for s in fd.body)
         body_type = UNIT

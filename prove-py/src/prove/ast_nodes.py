@@ -654,3 +654,4 @@ Declaration = Union[FunctionDef, MainDef, ModuleDecl, CommentDecl]
 class Module:
     declarations: list[Declaration]
     span: Span
+    parse_diagnostics: tuple = ()  # populated by CSTConverter

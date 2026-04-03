@@ -277,6 +277,12 @@ def build_project(
             all_diags.extend(e.diagnostics)
             continue
 
+        # Surface parse diagnostics (E2xx) from tree-sitter conversion
+        if module.parse_diagnostics:
+            all_diags.extend(module.parse_diagnostics)
+            if any(d.severity == Severity.ERROR for d in module.parse_diagnostics):
+                continue
+
         # Format (type-infer and rewrite), then re-parse only if source changed
         from prove.formatter import ProveFormatter
 
@@ -292,6 +298,10 @@ def build_project(
             except CompileError as e:
                 all_diags.extend(e.diagnostics)
                 continue
+            if module.parse_diagnostics:
+                all_diags.extend(module.parse_diagnostics)
+                if any(d.severity == Severity.ERROR for d in module.parse_diagnostics):
+                    continue
             checker = Checker(local_modules=local_modules)
             symbols = checker.check(module)
 

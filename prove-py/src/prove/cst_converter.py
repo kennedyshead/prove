@@ -87,7 +87,26 @@ from prove.ast_nodes import (
     WildcardPattern,
     WithConstraint,
 )
+from prove.errors import Diagnostic, DiagnosticLabel, Severity, make_diagnostic
 from prove.source import Span
+
+_VERB_KEYWORDS = frozenset(
+    {
+        "transforms",
+        "inputs",
+        "outputs",
+        "validates",
+        "derives",
+        "creates",
+        "matches",
+        "dispatches",
+        "detached",
+        "attached",
+        "listens",
+        "streams",
+        "renders",
+    }
+)
 
 
 class CSTConverter:
@@ -97,6 +116,97 @@ class CSTConverter:
         self.source = source
         self.tree = tree
         self.filename = filename
+        self.diagnostics: list[Diagnostic] = []
+        self._seen_error_spans: set[tuple[int, int]] = set()
+
+    # ── Diagnostic helpers ────────────────────────────────────────
+
+    def _diag(
+        self,
+        severity: Severity,
+        code: str,
+        message: str,
+        span: Span,
+    ) -> None:
+        key = (span.start_line, span.start_col)
+        if key in self._seen_error_spans:
+            return
+        self._seen_error_spans.add(key)
+        self.diagnostics.append(
+            make_diagnostic(
+                severity,
+                code,
+                message,
+                labels=[DiagnosticLabel(span, message)],
+            )
+        )
+
+    def _diag_error(self, code: str, message: str, span: Span) -> None:
+        self._diag(Severity.ERROR, code, message, span)
+
+    def _diag_info(self, code: str, message: str, span: Span) -> None:
+        self._diag(Severity.NOTE, code, message, span)
+
+    def _collect_error_nodes(self, node: TSNode) -> None:
+        """Walk tree and emit diagnostics for ERROR nodes not already reported."""
+        if node.type == "ERROR":
+            text = self._text(node)
+            span = self._span(node)
+            excerpt = text.split("\n")[0][:40]
+            parent_type = node.parent.type if node.parent else ""
+
+            # Skip variant access recovery: Type.Variant is parsed as
+            # type_identifier + ERROR(.Variant) and handled during conversion.
+            # Tree-sitter may also split it as ERROR(".") alone.
+            if text.startswith(".") and (len(text) == 1 or text[1:].isidentifier()):
+                return
+
+            # Skip `as Type` recovery in assignments (handled in conversion).
+            if text.strip().startswith("as ") and parent_type == "assignment":
+                return
+
+            if parent_type == "source_file":
+                code, msg = "E200", f"syntax error near `{excerpt}`"
+            elif parent_type in (
+                "module_declaration",
+                "import_declaration",
+                "import_group",
+            ):
+                code, msg = (
+                    "E211",
+                    f"expected a declaration but found `{excerpt}`",
+                )
+            elif parent_type in ("type_definition", "binary_type_definition"):
+                code, msg = (
+                    "E212",
+                    f"expected a type body after `is` but found `{excerpt}`",
+                )
+            elif parent_type in (
+                "expression",
+                "binary_expression",
+                "call_expression",
+                "function_definition",
+            ):
+                code, msg = (
+                    "E210",
+                    f"unexpected token `{excerpt}`",
+                )
+            elif parent_type in ("pattern", "match_arm"):
+                code, msg = (
+                    "E215",
+                    f"expected a pattern but found `{excerpt}`",
+                )
+            else:
+                code, msg = (
+                    "E210",
+                    f"unexpected token `{excerpt}`",
+                )
+            self._diag_error(code, msg, span)
+            return  # don't recurse into ERROR children
+
+        for child in node.children:
+            if child.is_named or child.type == "ERROR":
+                self._collect_error_nodes(child)
 
     # ── Helpers ───────────────────────────────────────────────────
 
@@ -176,8 +286,23 @@ class CSTConverter:
                 declarations.append(self._convert_main_def(child))
             elif child.type == "intent_file":
                 pass  # Intent files handled separately
+            elif child.type == "ERROR":
+                # E200: general parse error at top level
+                excerpt = self._text(child).split("\n")[0][:40]
+                self._diag_error(
+                    "E200",
+                    f"syntax error near `{excerpt}`",
+                    self._span(child),
+                )
 
-        return Module(declarations, self._span(root))
+        # Walk the full tree for any ERROR nodes not already reported
+        self._collect_error_nodes(root)
+
+        return Module(
+            declarations,
+            self._span(root),
+            parse_diagnostics=tuple(self.diagnostics),
+        )
 
     # ── Module declaration ───────────────────────────────────────
 
@@ -258,6 +383,13 @@ class CSTConverter:
                 body.append(self._convert_function_def(child))
             elif child.type == "main_definition":
                 body.append(self._convert_main_def(child))
+            elif child.type == "ERROR":
+                excerpt = self._text(child).split("\n")[0][:40]
+                self._diag_error(
+                    "E211",
+                    f"expected a declaration (type, verb, constant, ...) but found `{excerpt}`",
+                    self._span(child),
+                )
 
         return ModuleDecl(
             name=name,
@@ -332,6 +464,12 @@ class CSTConverter:
 
     def _convert_type_def(self, node: TSNode) -> TypeDef:
         name = self._child_text(node, "type_identifier") or ""
+        if not name and any(c.type == "ERROR" or c.is_missing for c in node.children):
+            self._diag_error(
+                "E210",
+                "expected a type name",
+                self._span(node),
+            )
         doc = self._extract_doc_comment(node)
 
         type_params: list[str] = []
@@ -425,7 +563,15 @@ class CSTConverter:
             ):
                 return self._convert_lookup(child)
 
-        # Fallback — shouldn't happen with valid grammar
+        # E212: expected type body after `is`
+        has_is = self._has_token(type_def_node, "is")
+        has_error = any(c.type == "ERROR" for c in type_def_node.children)
+        if has_is or has_error:
+            self._diag_error(
+                "E212",
+                "expected a field definition or variant name after `is`",
+                self._span(type_def_node),
+            )
         return BinaryDef(span=self._span(type_def_node))
 
     def _convert_algebraic(self, node: TSNode) -> AlgebraicTypeDef:
@@ -1593,6 +1739,26 @@ class CSTConverter:
         if typ == "constant_identifier":
             return IdentifierExpr(self._text(node), self._span(node))
 
+        # E214: verb keyword used as identifier
+        if typ == "ERROR":
+            text = self._text(node).strip()
+            if text in _VERB_KEYWORDS:
+                self._diag_error(
+                    "E214",
+                    f"`{text}` is a verb keyword and cannot be used as a variable or function name",
+                    self._span(node),
+                )
+            else:
+                # E213: expected expression
+                excerpt = text.split("\n")[0][:40]
+                self._diag_error(
+                    "E213",
+                    f"expected an expression (name, literal, or "
+                    f"parenthesized group) but found `{excerpt}`",
+                    self._span(node),
+                )
+            return IdentifierExpr("_", self._span(node))
+
         # Fallback
         return self._convert_expr_leaf(node)
 
@@ -1918,6 +2084,14 @@ class CSTConverter:
         if child.type == "identifier":
             return BindingPattern(self._text(child), self._span(child))
 
+        # E215: expected pattern
+        if child.type == "ERROR" or node.type == "ERROR":
+            excerpt = self._text(child).split("\n")[0][:40]
+            self._diag_error(
+                "E215",
+                f"expected a pattern (variant, literal, binding, or `_`) but found `{excerpt}`",
+                self._span(child),
+            )
         return WildcardPattern(self._span(node))
 
     def _convert_variant_pattern(self, node: TSNode) -> VariantPattern:

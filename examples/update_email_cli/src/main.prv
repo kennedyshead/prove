@@ -8,7 +8,7 @@ module Example
   """
   System inputs console file outputs console
   Parse types Value creates json validates json
-  Types creates string integer validates object value
+  Types creates string integer validates object value unit
   Table creates table
 
   type Email is String where r"^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$"
@@ -54,8 +54,9 @@ from
     ensure_user(raw)
 
 validates email(email Option<Email>)
+  requires unit(email) == false
 from
-    email
+    true
 
 creates set_email(user User, email Option<Email>) User
   requires valid email(email)
