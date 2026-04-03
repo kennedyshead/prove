@@ -12,10 +12,11 @@
 
 [
   "creates"
+  "derives"
+  "dispatches"
   "inputs"
   "matches"
   "outputs"
-  "reads"
   "transforms"
   "validates"
 ] @keyword.function
