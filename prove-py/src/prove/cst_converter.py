@@ -1875,7 +1875,9 @@ class CSTConverter:
     def _convert_field_expr(self, node: TSNode) -> FieldExpr:
         expr = self._child(node, "expression")
         obj = self._convert_expr(expr) if expr else IdentifierExpr("_", self._span(node))
-        field = self._child_text(node, "identifier") or ""
+        field = (
+            self._child_text(node, "identifier") or self._child_text(node, "type_identifier") or ""
+        )
         return FieldExpr(obj, field, self._span(node))
 
     def _convert_pipe_expr(self, node: TSNode) -> PipeExpr:

@@ -125,7 +125,7 @@ creates exxx(message String, code Integer, node Node, source SourceFile) Unit
 from
     actual_code as String = code_line(node)
     diagnostic(DiagnosticMessage(
-        Severity:Error,
+        Severity.Error,
         code,
         source.path,
         get(split(string(node), "\n"), 0),
