@@ -2,12 +2,12 @@ module Parse
   narrative: """
   Encoding and decoding of structured data formats, and generic tokenization.
 
-  creates validates and reads native values like Value<Json> from json, Value<Toml> from toml,
+  creates validates and derives native values like Value<Json> from json, Value<Toml> from toml,
     Value<Csv> from csv, Value<Tree> from source, Value from Source,
     Url from (scheme host path), duration, date, datetime, hexadecimal,
     time, base64, arguments (CLI arguments)
-  reads Value tag
-  reads port from Url
+  derives Value tag
+  derives port from Url
   transforms Url by adding query params
   creates Token and Rule for generic tokenization
   creates tokens from source text using a list of rules
@@ -53,7 +53,6 @@ binary
 /// Get the tag (type name) of a Value
 creates tag(value Value) String
 binary
-
 
 /// Validate a JSON string
 validates json(source String)

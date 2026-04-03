@@ -46,7 +46,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00033 | "is" | "String" | 10
     r00034 | "is" | "Data" | 1
     r00035 | "is" | "120" | 1
-    r00036 | "binary" | "reads" | 200
+    r00036 | "binary" | "derives" | 200
     r00037 | "binary" | "validates" | 126
     r00038 | "binary" | "transforms" | 106
     r00039 | "binary" | "creates" | 88
@@ -70,7 +70,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00057 | "List" | "<" | 155
     r00058 | "List" | "(" | 2
     r00059 | "List" | "validates" | 1
-    r00060 | "List" | "reads" | 1
+    r00060 | "List" | "derives" | 1
     r00061 | "<" | "Integer" | 126
     r00062 | "<" | "Value" | 98
     r00063 | "<" | "String" | 79
@@ -101,11 +101,11 @@ type Bigram:[Lookup] is String | String | Integer where
     r00088 | "data" | "as" | 9
     r00089 | "data" | "|" | 9
     r00090 | "data" | "String" | 8
-    r00091 | "reads" | "length" | 22
-    r00092 | "reads" | "get" | 16
-    r00093 | "reads" | "text" | 12
-    r00094 | "reads" | "string" | 11
-    r00095 | "reads" | "get_safe" | 10
+    r00091 | "derives" | "length" | 22
+    r00092 | "derives" | "get" | 16
+    r00093 | "derives" | "text" | 12
+    r00094 | "derives" | "string" | 11
+    r00095 | "derives" | "get_safe" | 10
     r00096 | "," | "Error" | 75
     r00097 | "," | "idx" | 49
     r00098 | "," | "|" | 46
@@ -146,7 +146,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00133 | "Character" | ")" | 24
     r00134 | "Character" | "=" | 9
     r00135 | "Character" | "binary" | 4
-    r00136 | "Character" | "reads" | 3
+    r00136 | "Character" | "derives" | 3
     r00137 | "Character" | "narrative" | 2
     r00138 | "
   validates if a character is alphabetic, alphanumeric, digit
@@ -286,7 +286,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00257 | "key" | ")" | 1
     r00258 | "signature" | "ByteArray" | 2
     r00259 | "Language" | "narrative" | 2
-    r00260 | "Language" | "reads" | 1
+    r00260 | "Language" | "derives" | 1
     r00261 | "Natural language processing primitives." | "type" | 2
     r00262 | "Token" | ")" | 8
     r00263 | "Token" | "is" | 2
@@ -328,7 +328,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00299 | "Table" | "<" | 48
     r00300 | "Table" | "|" | 12
     r00301 | "Table" | "types" | 4
-    r00302 | "Table" | "reads" | 4
+    r00302 | "Table" | "derives" | 4
     r00303 | "Table" | "narrative" | 2
     r00304 | "keywords" | "(" | 3
     r00305 | "keywords" | "transforms" | 1
@@ -341,7 +341,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00312 | "end" | "transforms" | 1
     r00313 | "kind" | "(" | 2
     r00314 | "Math" | "narrative" | 2
-    r00315 | "Math" | "reads" | 1
+    r00315 | "Math" | "derives" | 1
     r00316 | "
   Numeric operations.
 
@@ -349,7 +349,7 @@ type Bigram:[Lookup] is String | String | Integer where
   round, power Float
   max, min, clamp of given Integers or Floats
   transforms clamp of given Integers or Floats
-  " | "reads" | 2
+  " | "derives" | 2
     r00317 | "abs" | "(" | 7
     r00318 | "abs" | "min" | 1
     r00319 | "min" | "(" | 5
@@ -436,7 +436,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00400 | "Unit" | ">" | 6
     r00401 | "Unit" | "from" | 6
     r00402 | "Unit" | "py_finalize" | 2
-    r00403 | "Parse" | "reads" | 15
+    r00403 | "Parse" | "derives" | 15
     r00404 | "Parse" | "types" | 4
     r00405 | "Parse" | "|" | 4
     r00406 | "Parse" | "narrative" | 2
@@ -525,7 +525,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00489 | "bin" | "(" | 3
     r00490 | "bin" | "main" | 1
     r00491 | "Path" | "narrative" | 2
-    r00492 | "Path" | "reads" | 1
+    r00492 | "Path" | "derives" | 1
     r00493 | "File path manipulation." | "transforms" | 2
     r00494 | "join" | "(" | 21
     r00495 | "join" | "main" | 6
@@ -551,7 +551,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00515 | "Match" | ">" | 6
     r00516 | "Match" | ")" | 6
     r00517 | "Match" | "is" | 2
-    r00518 | "Match" | "reads" | 1
+    r00518 | "Match" | "derives" | 1
     r00519 | "test" | "(" | 6
     r00520 | "test" | "view" | 2
     r00521 | "test" | "Text" | 1
@@ -689,11 +689,11 @@ type Bigram:[Lookup] is String | String | Integer where
     r00647 | "items" | "," | 1
     r00648 | "shuffle" | "(" | 5
     r00649 | "shuffle" | "Parse" | 1
-    r00650 | "Sequence" | "reads" | 7
+    r00650 | "Sequence" | "derives" | 7
     r00651 | "Sequence" | "narrative" | 2
-    r00652 | "Operations on sequences (ordered collections)." | "reads" | 2
+    r00652 | "Operations on sequences (ordered collections)." | "derives" | 2
     r00653 | "Array" | "<" | 193
-    r00654 | "Array" | "reads" | 3
+    r00654 | "Array" | "derives" | 3
     r00655 | "last" | "(" | 3
     r00656 | "last" | "length" | 1
     r00657 | "position" | "Integer" | 2
@@ -747,7 +747,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00705 | "map" | "(" | 15
     r00706 | "f" | "Function" | 18
     r00707 | "Function" | "<" | 24
-    r00708 | "TODO: Function == Verb" | "reads" | 6
+    r00708 | "TODO: Function == Verb" | "derives" | 6
     r00709 | "reduce" | "(" | 11
     r00710 | "init" | "Boolean" | 2
     r00711 | "init" | "Integer" | 2
@@ -780,7 +780,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00734 | "TableDiff" | "=" | 2
     r00735 | "Version" | ">" | 3
     r00736 | "Version" | "is" | 2
-    r00737 | "Version" | "reads" | 1
+    r00737 | "Version" | "derives" | 1
     r00738 | "Conflict" | ")" | 8
     r00739 | "Conflict" | "is" | 2
     r00740 | "Conflict" | "," | 2
@@ -916,7 +916,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00870 | "keys" | "get" | 2
     r00871 | "keys" | "Text" | 1
     r00872 | "Text" | "transforms" | 8
-    r00873 | "Text" | "reads" | 5
+    r00873 | "Text" | "derives" | 5
     r00874 | "Text" | "validates" | 3
     r00875 | "Text" | "narrative" | 2
     r00876 | "Text" | "contains" | 1
@@ -997,7 +997,7 @@ type Bigram:[Lookup] is String | String | Integer where
     r00951 | "hour" | "Integer" | 4
     r00952 | "minute" | "Integer" | 4
     r00953 | "Types" | "|" | 8
-    r00954 | "Types" | "reads" | 7
+    r00954 | "Types" | "derives" | 7
     r00955 | "Types" | "narrative" | 2
     r00956 | "Types" | "creates" | 2
     r00957 | "Types" | "r00009" | 1
@@ -2618,7 +2618,7 @@ Bob,25,Paris
     r02491 | "131072" | "ITERATIONS" | 1
     r02492 | "ITERATIONS" | "," | 2
     r02493 | "ITERATIONS" | "as" | 1
-    r02494 | "8192" | "reads" | 1
+    r02494 | "8192" | "derives" | 1
     r02495 | "encode_loop" | "(" | 3
     r02496 | "remaining" | "Integer" | 2
     r02497 | "remaining" | "from" | 2

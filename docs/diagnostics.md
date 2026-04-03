@@ -722,6 +722,32 @@ type Config is
 
 Fix: use the intended type (`Boolean`, `Option<String>`, etc.).
 
+### E436 — IO verb with `requires` must be failable
+
+An `inputs`, `outputs`, or `dispatches` function declares a `requires` clause but is neither failable (`!`) nor returns `Option<T>`. The contract needs a runtime enforcement path — either fail on violation or return `None`.
+
+```prove
+// Error — requires with no enforcement path
+inputs load(path String) Config
+  requires len(path) > 0
+
+// Fix — make it failable
+inputs load(path String) Config!
+  requires len(path) > 0
+```
+
+### E437 — Pure verb cannot accept Mutable parameters
+
+A non-allocating pure verb (`derives`, `validates`, `matches`) has a parameter with the `Mutable` modifier. These verbs must not mutate their inputs — mutation violates purity guarantees.
+
+```prove
+// Error — derives cannot take Mutable
+derives total(items List<Item>:[Mutable]) Integer
+
+// Fix — remove Mutable (derives never mutates)
+derives total(items List<Item>) Integer
+```
+
 ---
 
 ## Warnings
@@ -1005,6 +1031,18 @@ A `why_not:` entry contains no function name, type name, or other identifier fro
 
 A `why_not:` entry mentions a function name that the `from` block actually calls. The rejected approach is in use, which contradicts the rationale. Either the `why_not` is outdated, or the implementation should use a different approach.
 
+### W601 — Intent file parse warning
+
+An `.intent` file contains a malformed line — either a vocabulary entry not using `Name is description` format, or an unrecognized verb keyword. Fix the entry format or use a valid verb.
+
+### W602 — Vocabulary term defined but never referenced
+
+A vocabulary entry in an `.intent` file defines a term that is never referenced by any module's intent declarations. Remove the unused vocabulary entry or add a module intent that uses it.
+
+### W603 — Flow references undefined module
+
+A flow declaration in an `.intent` file references a module name that is not defined in any `module` block in the same file. Fix the module name or add the missing module declaration.
+
 ### I340 — Vocabulary drift from narrative
 
 A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Emitted only with `prove check --coherence`.
@@ -1118,6 +1156,18 @@ from
         true => "positive"
         false => "non-positive"
 ```
+
+### I438 — `derives` function returns heap type and allocates
+
+A `derives` function returns a heap-allocated type (String, List, record, etc.) and its body allocates. `derives` is intended for non-allocating derivations — use `creates` instead when the function constructs new heap values. Auto-fixable by `prove format`.
+
+### I439 — `creates` function does not allocate
+
+A `creates` function body does not perform any heap allocation. `creates` signals that the function constructs a new value — if it only extracts or recomputes from inputs, use `derives` instead. Auto-fixable by `prove format`.
+
+### I440 — `transforms` function is not failable
+
+A `transforms` function neither uses `!` nor calls any failable function. `transforms` is the failable pure verb — if the function cannot fail, use `creates` (if it allocates) or `derives` (if it doesn't). Auto-fixable by `prove format`.
 
 ### I375 — `&` on a non-async callee
 

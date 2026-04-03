@@ -3,9 +3,9 @@ module Time
   Time representation, arithmetic, and calendar operations.
   
   inputs time 
-  validates creates and reads time, duration, date, datetime and clock 
+  validates creates and derives time, duration, date, datetime and clock 
   validates if days in a year are leap
-  reads day, weekday
+  derives day, weekday
   transforms date duration and datetime
   """
 
@@ -34,7 +34,7 @@ creates duration(hours Integer, minutes Integer, seconds Integer) Duration
 binary
 
 /// Read total seconds from a duration
-reads duration(duration Duration) Integer
+derives duration(duration Duration) Integer
 binary
 
 /// Check if duration is positive
@@ -58,7 +58,7 @@ validates date(year Integer, month Integer, day Integer)
 binary
 
 /// Add days to a date
-reads date(date Date, days Integer) Date
+derives date(date Date, days Integer) Date
 binary
 
 /// Extract datetime from a time
@@ -78,7 +78,7 @@ creates datetime(datetime DateTime) Time
 binary
 
 /// Get number of days in a month
-reads days(year Integer, month Integer) Integer
+derives days(year Integer, month Integer) Integer
 binary
 
 /// Check if a year is a leap year

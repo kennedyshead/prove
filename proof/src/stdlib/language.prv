@@ -3,9 +3,9 @@ module Language
   Natural language processing primitives.
 
   creates words and sentences and returns as lists
-  reads word to root and stem
+  derives word to root and stem
   creates distance and similarity between two strings
-  reads phonetics trough soundex and metaphone
+  derives phonetics trough soundex and metaphone
   creates ngrams and bigrams
   normalize and transliterate strings
   Get a list of stopwords
@@ -24,11 +24,11 @@ creates sentences(text String) List<String>
 binary
 
 /// Apply the Porter stemming algorithm to a word
-reads stem(word String) String
+derives stem(word String) String
 binary
 
 /// Strip common suffixes to find the root form of a word
-reads root(word String) String
+derives root(word String) String
 binary
 
 /// Compute the Levenshtein edit distance between two strings
@@ -40,11 +40,11 @@ creates similarity(first String, second String) Float
 binary
 
 /// Compute the Soundex phonetic code for a word
-reads soundex(word String) String
+derives soundex(word String) String
 binary
 
 /// Compute the Double Metaphone phonetic code for a word
-reads metaphone(word String) String
+derives metaphone(word String) String
 binary
 
 /// Extract word-level n-grams from text
@@ -56,15 +56,15 @@ creates bigrams(text String) List<String>
 binary
 
 /// Normalize text by lowercasing and folding accented characters to ASCII
-reads normalize(text String) String
+derives normalize(text String) String
 binary
 
 /// Transliterate accented characters to ASCII equivalents preserving case
-reads transliterate(text String) String
+derives transliterate(text String) String
 binary
 
 /// Return a list of common English stopwords
-reads stopwords() List<String>
+derives stopwords() List<String>
 binary
 
 /// Remove common stopwords from text and return remaining words

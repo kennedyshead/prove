@@ -453,7 +453,7 @@ def load_semantic_features(
 ) -> dict[str, dict]:
     """Load semantic features per stdlib function from PDAT.
 
-    Returns ``{"text.length": {"module": "text", "verb": "reads",
+    Returns ``{"text.length": {"module": "text", "verb": "derives",
     "keywords": "length string ..."}, ...}``.
     Falls back to empty dict if the PDAT is missing.
     """

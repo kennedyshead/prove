@@ -5,7 +5,7 @@ module Table
   creates new Table and table from Value
   validates if table has key
   transforms table with add and remove
-  reads keys, values, length and get aa single value from key
+  derives keys, values, length and get aa single value from key
   """
 
 /// Create a new empty table
@@ -17,15 +17,15 @@ validates has(key String, table Table<Value>)
 binary
 
 /// Add a key-value pair to a table (returns new table)
-reads add(key String, value Value, table Table<Value>) Table<Value>
+derives add(key String, value Value, table Table<Value>) Table<Value>
 binary
 
 /// Get a value by key
-reads get(key String, table Table<Value>) Option<Value>
+derives get(key String, table Table<Value>) Option<Value>
 binary
 
 /// Remove a key from a table (returns new table)
-reads remove(key String, table Table<Value>) Table<Value>
+derives remove(key String, table Table<Value>) Table<Value>
 binary
 
 /// Get all keys in a table
@@ -33,7 +33,7 @@ creates keys(table Table<Value>) List<String>
 binary
 
 /// Get all values in a table
-reads values(table Table<Value>) List<Value>
+derives values(table Table<Value>) List<Value>
 binary
 
 /// Get the number of entries in a table

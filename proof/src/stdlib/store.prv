@@ -8,7 +8,7 @@ module Store
   loads a table, lookup and version via inputs
   transforms diff, patch and merge
   outputs rollback store, lookup and row via add
-  reads integrity, conflicts, variant and column
+  derives integrity, conflicts, variant and column
   """
 
   type Store is binary
@@ -50,7 +50,7 @@ creates diff(old StoreTable, new StoreTable) TableDiff
 binary
 
 /// Apply a diff to a table producing a new table
-reads patch(table StoreTable, diff TableDiff) StoreTable
+derives patch(table StoreTable, diff TableDiff) StoreTable
 binary
 
 /// Three-way merge of two diffs against a base table

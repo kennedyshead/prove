@@ -34,7 +34,11 @@ The verb carries strict guarantees that the compiler exploits for optimization:
 | `validates` | Never | Never | Returns `Boolean`. Same safety guarantees as `derives`. |
 | `matches` | Never | Never | Pure dispatch on algebraic type. Same safety guarantees as `derives`. |
 
+Non-allocating pure verbs (`derives`, `validates`, `matches`) cannot accept `Mutable` parameters — mutation violates purity ([E437](diagnostics.md#e437-pure-verb-cannot-accept-mutable-parameters)).
+
 **`derives` never allocates new values.** It extracts or recomputes from existing data — the return is always derivable from the input without heap allocation. If a function needs to allocate a new value (even if input and output types match), use `creates` instead.
+
+**Note:** `reads` is accepted as a backward-compatible alias for `derives`. New code should use `derives`.
 
 **`creates` always allocates.** It constructs a freshly allocated value of a different type. The compiler knows it cannot fail, so no error-handling scaffolding is emitted.
 

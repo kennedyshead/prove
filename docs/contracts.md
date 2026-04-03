@@ -111,6 +111,21 @@ Here `id` is `Option<Integer>`, but inside the body it is narrowed to `Integer` 
 
 The compiler parses each row for an **operation** (action verb), **connectors** (prepositions like `by`, `to`, `all`), and **references** (identifiers from the function). Operations are verified against called functions' contracts — if the called function has no contracts supporting the claimed operation, the compiler warns. References must be real identifiers. Sugar words ("the", "applicable", etc.) are ignored — keeping explain readable as natural English while remaining machine-verifiable.
 
+Named explain entries support an optional `when` condition that gates when the step applies. The condition must be a Boolean expression ([E394](diagnostics.md#e394-explain-condition-must-be-boolean)).
+
+```prove
+transforms classify(input Data) Output
+  explain
+    normalize: "apply normalization" when needs_normalization(input)
+    default: "use raw input"
+from
+    match needs_normalization(input)
+        true => normalize(input)
+        false => raw(input)
+```
+
+When `when` conditions are present, the explain entries map to conditional branches in the generated code — entries with conditions become `if`/`else if` guards, and the entry without a condition becomes the `else` branch.
+
 ```prove
 outputs update_email(id Option<Integer>) User:[Mutable]!
   ensures valid user(user)

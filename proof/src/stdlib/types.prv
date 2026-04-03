@@ -4,7 +4,7 @@ module Types
 
   Validates string integer float decimal boolean character unit value text
   array object number
-  reads the Unicode code point of a character
+  derives the Unicode code point of a character
   creates float integer from string and value
   creates string from integer float boolean character value byte bytearray
   creates string from Value<Json> Value<Toml> Value<Csv> Value<Tree> Url Token
@@ -248,11 +248,11 @@ validates unit(option Option<Value>)
 binary
 
 /// Unwrap an Option or return a default integer
-reads unwrap(option Option<Integer>, default Integer) Integer
+derives unwrap(option Option<Integer>, default Integer) Integer
 binary
 
 /// Unwrap an Option or return a default string
-reads unwrap(option Option<String>, default String) String
+derives unwrap(option Option<String>, default String) String
 binary
 
 /// Check if an Option<Float> is a Value and not Unit
@@ -264,7 +264,7 @@ validates unit(option Option<Float>)
 binary
 
 /// Unwrap an Option<Float> or return a default
-reads unwrap(option Option<Float>, default Float) Float
+derives unwrap(option Option<Float>, default Float) Float
 binary
 
 /// Check if an Option<Decimal> is a Value and not Unit
@@ -276,7 +276,7 @@ validates unit(option Option<Decimal>)
 binary
 
 /// Unwrap an Option<Decimal> or return a default
-reads unwrap(option Option<Decimal>, default Decimal) Decimal
+derives unwrap(option Option<Decimal>, default Decimal) Decimal
 binary
 
 /// Check if an Option<Boolean> is a Value and not Unit
@@ -288,5 +288,5 @@ validates unit(option Option<Boolean>)
 binary
 
 /// Unwrap an Option<Boolean> or return a default
-reads unwrap(option Option<Boolean>, default Boolean) Boolean
+derives unwrap(option Option<Boolean>, default Boolean) Boolean
 binary

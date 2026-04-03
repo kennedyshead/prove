@@ -151,7 +151,7 @@ from
 **Annotations:**
 
 - `event_type` — the algebraic event type (must extend `TerminalAppEvent` or `GraphicAppEvent`, not bare `AppEvent`)
-- `state_init` — initial state value; type is inferred (e.g. `state_init MyState(0)` → state type is `MyState`)
+- `state_init` — initial state value (**required** — [E408](diagnostics.md#e408-scale-mismatch-renders-missing-state_init)); type is inferred (e.g. `state_init MyState(0)` → state type is `MyState`)
 
 **Annotations on `attached` callbacks:**
 

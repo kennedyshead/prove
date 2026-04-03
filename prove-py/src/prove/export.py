@@ -37,6 +37,11 @@ _VERB_KINDS = frozenset(
         TokenKind.CREATES,
         TokenKind.MATCHES,
         TokenKind.DISPATCHES,
+        TokenKind.DETACHED,
+        TokenKind.ATTACHED,
+        TokenKind.LISTENS,
+        TokenKind.RENDERS,
+        TokenKind.STREAMS,
     }
 )
 

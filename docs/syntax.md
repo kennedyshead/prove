@@ -164,6 +164,42 @@ path as String = /users/alice/  // path literal (String-typed)
 
 The **`f` suffix** on floating-point literals (like `9.8f`) creates a `Float` type, suitable for IEEE 754 operations like `Math.sqrt` and `Math.floor`. Without the suffix (like `3.14`), you get a `Decimal` type for exact decimal arithmetic.
 
+### Extended Literal Syntax
+
+**F-strings** interpolate expressions inside `{}`:
+
+```prove
+name as String = "world"
+msg as String = f"Hello, {name}!"
+total as String = f"sum = {a + b}"
+```
+
+**Triple-quoted strings** span multiple lines:
+
+```prove
+description as String = """
+  This is a multi-line
+  string literal.
+"""
+```
+
+**Hex, binary, and octal literals**:
+
+```prove
+color as Integer = 0xFF
+mask as Integer = 0b1010
+perms as Integer = 0o77
+```
+
+**Number underscores** for readability:
+
+```prove
+population as Integer = 1_000_000
+budget as Decimal = 9_999.99
+```
+
+**Escape sequences** in strings and characters: `\n` (newline), `\t` (tab), `\r` (carriage return), `\\` (backslash), `\"` (double quote), `\{` and `\}` (literal braces in f-strings), `\0` (null), `\e` (escape).
+
 ## Variable Declarations
 
 Variables use `name as Type = value`. The `as` keyword reads naturally: *"port, as a Port, equals 8080"*.
@@ -181,6 +217,34 @@ Variables are **immutable by default**. Mutability is a [type modifier](types.md
 counter as Integer:[Mutable] = 0
 counter = counter + 1
 ```
+
+### Compound Assignment
+
+Mutable variables support compound assignment operators:
+
+```prove
+counter as Integer:[Mutable] = 0
+counter += 1
+counter -= 1
+counter *= 2
+counter /= 2
+```
+
+### Operator Precedence
+
+From highest to lowest:
+
+| Precedence | Operators | Description |
+|------------|-----------|-------------|
+| 1 (highest) | `.` | Field access |
+| 2 | `-` `!` | Unary negation, logical not |
+| 3 | `*` `/` `%` | Multiplication, division, modulo |
+| 4 | `+` `-` | Addition, subtraction |
+| 5 | `==` `!=` `<` `>` `<=` `>=` | Comparison |
+| 6 | `&&` | Logical AND |
+| 7 | `\|\|` | Logical OR |
+| 8 | `\|>` | Pipe |
+| 9 (lowest) | `..` | Range |
 
 ## Type Inference with Formatter Enforcement
 
@@ -207,3 +271,5 @@ The LSP shows inferred types on hover, so you always know what the compiler dedu
 Every keyword in Prove has exactly one purpose. No keyword is overloaded across different contexts. This makes the language predictable and parseable by humans without memorizing context-dependent rules.
 
 For a complete keyword reference with links to detailed documentation, see the [Keyword Reference](types.md#keyword-reference) in the Type System document.
+
+The `comptime` keyword marks compile-time computation — see [Compiler](compiler.md#comptime-compile-time-computation) for details.

@@ -2,9 +2,9 @@ module Sequence
   narrative: """
   Operations on sequences (ordered collections).
 
-  reads first, last, value at position, get at index unsafe or safe
+  derives first, last, value at position, get at index unsafe or safe
   validates empty and if it contains
-  reads slice, reverse, sort, set and remove
+  derives slice, reverse, sort, set and remove
   creates length, Array of size, list of range and converts Array to list
   creates list from Value<Csv> to List<List<String>> and from Value to List<Value>
   creates index
@@ -21,95 +21,95 @@ creates length(items Array<Value>) Integer
 binary
 
 /// Get the first element of a list
-reads first(items List<Value>) Option<Value>
+derives first(items List<Value>) Option<Value>
 binary
 
 /// Get the first element of a list of floats
-reads first(items List<Float>) Option<Float>
+derives first(items List<Float>) Option<Float>
 binary
 
 /// Get the first element of a list of decimals
-reads first(items List<Decimal>) Option<Decimal>
+derives first(items List<Decimal>) Option<Decimal>
 binary
 
 /// Get the first element of an array
-reads first(arr Array<Integer>) Option<Integer>
+derives first(arr Array<Integer>) Option<Integer>
 binary
 
 /// Get the first element of an array
-reads first(arr Array<Boolean>) Option<Boolean>
+derives first(arr Array<Boolean>) Option<Boolean>
 binary
 
 /// Get the first element of an array
-reads first(arr Array<Decimal>) Option<Decimal>
+derives first(arr Array<Decimal>) Option<Decimal>
 binary
 
 /// Get the last element of a list
-reads last(items List<Value>) Option<Value>
+derives last(items List<Value>) Option<Value>
 binary
 
 /// Get the last element of a list of floats
-reads last(items List<Float>) Option<Float>
+derives last(items List<Float>) Option<Float>
 binary
 
 /// Get the last element of a list of decimals
-reads last(items List<Decimal>) Option<Decimal>
+derives last(items List<Decimal>) Option<Decimal>
 binary
 
 /// Get the last element of an array
-reads last(arr Array<Integer>) Option<Integer>
+derives last(arr Array<Integer>) Option<Integer>
 binary
 
 /// Get the last element of an array
-reads last(arr Array<Boolean>) Option<Boolean>
+derives last(arr Array<Boolean>) Option<Boolean>
 binary
 
 /// Get the last element of an array
-reads last(arr Array<Decimal>) Option<Decimal>
+derives last(arr Array<Decimal>) Option<Decimal>
 binary
 
 /// Get the element at a position in a sequence, or None if out of bounds
-reads value(position Integer, items List<Value>) Option<Value>
+derives value(position Integer, items List<Value>) Option<Value>
 binary
 
 /// Get element at index (unchecked)
-reads get(items List<Integer>, idx Integer) Integer
+derives get(items List<Integer>, idx Integer) Integer
 binary
 
 /// Get element at index (unchecked)
-reads get(items List<String>, idx Integer) String
+derives get(items List<String>, idx Integer) String
 binary
 
 /// Get element at index (unchecked)
-reads get(items List<Float>, idx Integer) Float
+derives get(items List<Float>, idx Integer) Float
 binary
 
 /// Get element at index (unchecked)
-reads get(items List<Decimal>, idx Integer) Decimal
+derives get(items List<Decimal>, idx Integer) Decimal
 binary
 
 /// Get element at index (unchecked)
-reads get(items List<Value>, idx Integer) Value
+derives get(items List<Value>, idx Integer) Value
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(items List<Integer>, idx Integer) Option<Integer>
+derives get_safe(items List<Integer>, idx Integer) Option<Integer>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(items List<String>, idx Integer) Option<String>
+derives get_safe(items List<String>, idx Integer) Option<String>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(items List<Float>, idx Integer) Option<Float>
+derives get_safe(items List<Float>, idx Integer) Option<Float>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(items List<Decimal>, idx Integer) Option<Decimal>
+derives get_safe(items List<Decimal>, idx Integer) Option<Decimal>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(items List<Value>, idx Integer) Option<Value>
+derives get_safe(items List<Value>, idx Integer) Option<Value>
 binary
 
 /// Check if a sequence is empty
@@ -193,67 +193,67 @@ creates index(arr Array<Decimal>, value Decimal) Option<Integer>
 binary
 
 /// Get a slice of a sequence from start to end (exclusive)
-reads slice(items List<Value>, start Integer, end Integer) List<Value>
+derives slice(items List<Value>, start Integer, end Integer) List<Value>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-reads slice(arr Array<Integer>, start Integer, end Integer) Array<Integer>
+derives slice(arr Array<Integer>, start Integer, end Integer) Array<Integer>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-reads slice(arr Array<Boolean>, start Integer, end Integer) Array<Boolean>
+derives slice(arr Array<Boolean>, start Integer, end Integer) Array<Boolean>
 binary
 
 /// Get a slice of an array from start to end (exclusive)
-reads slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
+derives slice(arr Array<Decimal>, start Integer, end Integer) Array<Decimal>
 binary
 
 /// Set element at index (copy-on-write: returns new list)
-reads set(items List<Value>, idx Integer, val Value) List<Value>
+derives set(items List<Value>, idx Integer, val Value) List<Value>
 binary
 
 /// Remove element at index (copy-on-write: returns new list)
-reads remove(items List<Value>, idx Integer) List<Value>
+derives remove(items List<Value>, idx Integer) List<Value>
 binary
 
 /// Reverse a sequence
-reads reverse(items List<Value>) List<Value>
+derives reverse(items List<Value>) List<Value>
 binary
 
 /// Reverse an array
-reads reverse(arr Array<Integer>) Array<Integer>
+derives reverse(arr Array<Integer>) Array<Integer>
 binary
 
 /// Reverse an array
-reads reverse(arr Array<Boolean>) Array<Boolean>
+derives reverse(arr Array<Boolean>) Array<Boolean>
 binary
 
 /// Reverse an array
-reads reverse(arr Array<Decimal>) Array<Decimal>
+derives reverse(arr Array<Decimal>) Array<Decimal>
 binary
 
 /// Sort a sequence of integers
-reads sort(items List<Integer>) List<Integer>
+derives sort(items List<Integer>) List<Integer>
 binary
 
 /// Sort a sequence of strings
-reads sort(items List<String>) List<String>
+derives sort(items List<String>) List<String>
 binary
 
 /// Sort a list of floats
-reads sort(items List<Float>) List<Float>
+derives sort(items List<Float>) List<Float>
 binary
 
 /// Sort a list of decimals
-reads sort(items List<Decimal>) List<Decimal>
+derives sort(items List<Decimal>) List<Decimal>
 binary
 
 /// Sort an array of integers
-reads sort(arr Array<Integer>) Array<Integer>
+derives sort(arr Array<Integer>) Array<Integer>
 binary
 
 /// Sort an array of decimals
-reads sort(arr Array<Decimal>) Array<Decimal>
+derives sort(arr Array<Decimal>) Array<Decimal>
 binary
 
 /// Create a sequence of integers from start to end (exclusive)
@@ -277,35 +277,35 @@ creates array(size Integer, default Decimal) Array<Decimal>
 binary
 
 /// Get element at index (unchecked)
-reads get(arr Array<Boolean>, idx Integer) Boolean
+derives get(arr Array<Boolean>, idx Integer) Boolean
 binary
 
 /// Get element at index (unchecked)
-reads get(arr Array<Integer>, idx Integer) Integer
+derives get(arr Array<Integer>, idx Integer) Integer
 binary
 
 /// Get element at index (unchecked)
-reads get(arr Array<Decimal>, idx Integer) Decimal
+derives get(arr Array<Decimal>, idx Integer) Decimal
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-reads set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
+derives set(arr Array<Boolean>, idx Integer, val Boolean) Array<Boolean>
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-reads set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
+derives set(arr Array<Integer>, idx Integer, val Integer) Array<Integer>
 binary
 
 /// Set element at index (copy-on-write for immutable, in-place for mutable)
-reads set(arr Array<Decimal>, idx Integer, val Decimal) Array<Decimal>
+derives set(arr Array<Decimal>, idx Integer, val Decimal) Array<Decimal>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
+derives get_safe(arr Array<Boolean>, idx Integer) Option<Boolean>
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(arr Array<Integer>, idx Integer) Option<Integer>
+derives get_safe(arr Array<Integer>, idx Integer) Option<Integer>
 binary
 
 /// Set element at index; returns None if out of bounds
@@ -321,7 +321,7 @@ creates set_safe(arr Array<Decimal>, idx Integer, val Decimal) Option<Array<Deci
 binary
 
 /// Get element at index, or None if out of bounds
-reads get_safe(arr Array<Decimal>, idx Integer) Option<Decimal>
+derives get_safe(arr Array<Decimal>, idx Integer) Option<Decimal>
 binary
 
 /// Copy array contents into a new List

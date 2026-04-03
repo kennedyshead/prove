@@ -43,7 +43,7 @@ def main() -> None:
 @main.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option("--debug", is_flag=True, help="Debug build (no optimizations, keeps .c files).")
-@click.option("--no-mutate", is_flag=True, help="Don't rewrite source files during format.")
+@click.option("--no-mutate", is_flag=True, help="Skip mutation testing.")
 def build(path: str, debug: bool, no_mutate: bool) -> None:
     """Compile project to native binary (Python fallback)."""
     from prove.builder import build_project

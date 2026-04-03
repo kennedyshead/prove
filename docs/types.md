@@ -157,6 +157,10 @@ from
     // file consumed here
 ```
 
+### Numeric Widening
+
+When mixing numeric types in arithmetic, the compiler automatically widens to the broader type: `Integer` + `Decimal` promotes to `Decimal`, and `Decimal` + `Float` promotes to `Float`. No explicit cast needed — the widening is lossless in both cases. Narrowing in the opposite direction requires an explicit conversion.
+
 ## Refinement Types
 
 Types carry constraints, not just shapes. The compiler validates values against constraints via runtime checks inserted at assignment boundaries. Static rejection of provably-invalid literals at compile time is implemented — literal values that violate refinement constraints are caught at compile time (E355).
@@ -298,6 +302,10 @@ match Parse.json(raw)
 
 The [Types](stdlib/math-types.md#result-and-option-utilities) stdlib module provides utilities like `unwrap` for common patterns.
 
+**Auto-wrapping:** Bare `T` values auto-wrap to `Some(T)` when assigned to `Option<T>`, and `Unit` auto-converts to `None`. This means you can return a plain value from a function that returns `Option<T>` without explicitly writing `Some(...)`.
+
+**Value auto-unwrapping:** `Value<T>` is interchangeable with `T` — the compiler auto-wraps and auto-unwraps transparently, so you can pass a `Value<Json>` where `Json` is expected and vice versa.
+
 ## Algebraic Types with Exhaustive Matching
 
 Compiler errors if you forget a variant.
@@ -431,6 +439,8 @@ from
     Process(data) => handle(data)&
 ```
 
+Internally, the compiler tracks effects via `EffectType` labels (IO, Fail, Async) that wrap base types. These labels are transparent in type checking — they control what a function is *allowed to do*, but don't affect type compatibility between values.
+
 The compiler enforces effect boundaries:
 - Pure verbs cannot call IO or async functions
 - `listens` cannot call blocking IO (`inputs`/`outputs`) — it runs cooperatively and blocking would stall the yield cycle
@@ -494,6 +504,8 @@ from
     content as String = read(file)
     close(file)
 ```
+
+The compiler infers read-only borrows (`&T`) automatically when a value is used without consumption. You never write `&T` explicitly — the compiler inserts borrows where safe, so ownership annotations are only needed for the resource's entry point.
 
 ## No Null
 

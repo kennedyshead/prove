@@ -48,11 +48,11 @@ module Terminal
   /// Convert a Color name to its ANSI SGR escape sequence.
   /// Use with UI Color lookup: ansi(Color:Blue) returns "\033[34m".
   /// Returns empty string for unknown names.
-  reads ansi(name String) String
+  derives ansi(name String) String
   binary
 
   /// Get the current terminal dimensions in character cells.
   /// Returns a Position where x = columns (width) and y = rows (height).
   /// Updates automatically on Resize events.
-  reads size() Position
+  derives size() Position
   binary

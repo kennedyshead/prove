@@ -2,7 +2,7 @@ module Math
   narrative: """
   Numeric operations.
 
-  reads abs, sqrt, floor, ceil, log, log10, log2, exp of Float, Decimal and Integer.
+  derives abs, sqrt, floor, ceil, log, log10, log2, exp of Float, Decimal and Integer.
   sin, cos, tan, asin, acos, atan, atan2 trigonometry in radians.
   round, power Float. pi and e constants.
   max, min, clamp of given Integers, Floats or Decimals
@@ -10,59 +10,59 @@ module Math
   """
 
 /// Absolute value of an integer
-reads abs(number Integer) Integer
+derives abs(number Integer) Integer
 binary
 
 /// Absolute value of a float
-reads abs(value Float) Float
+derives abs(value Float) Float
 binary
 
 /// Absolute value of a decimal
-reads abs(value Decimal) Decimal
+derives abs(value Decimal) Decimal
 binary
 
 /// Minimum of two integers
-reads min(first Integer, second Integer) Integer
+derives min(first Integer, second Integer) Integer
 binary
 
 /// Minimum of two floats
-reads min(first Float, second Float) Float
+derives min(first Float, second Float) Float
 binary
 
 /// Minimum of two decimals
-reads min(first Decimal, second Decimal) Decimal
+derives min(first Decimal, second Decimal) Decimal
 binary
 
 /// Maximum of two integers
-reads max(first Integer, second Integer) Integer
+derives max(first Integer, second Integer) Integer
 binary
 
 /// Maximum of two floats
-reads max(first Float, second Float) Float
+derives max(first Float, second Float) Float
 binary
 
 /// Maximum of two decimals
-reads max(first Decimal, second Decimal) Decimal
+derives max(first Decimal, second Decimal) Decimal
 binary
 
 /// Clamp an integer between lo and hi (inclusive)
-reads clamp(value Integer, minimum Integer, maximum Integer) Integer
+derives clamp(value Integer, minimum Integer, maximum Integer) Integer
 binary
 
 /// Clamp a float between lo and hi (inclusive)
-reads clamp(value Float, minimum Float, maximum Float) Float
+derives clamp(value Float, minimum Float, maximum Float) Float
 binary
 
 /// Clamp a decimal between lo and hi (inclusive)
-reads clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal
+derives clamp(value Decimal, minimum Decimal, maximum Decimal) Decimal
 binary
 
 /// Square root of a float
-reads sqrt(value Float) Float
+derives sqrt(value Float) Float
 binary
 
 /// Base raised to the power of exp
-reads power(base Float, exponent Float) Float
+derives power(base Float, exponent Float) Float
 binary
 
 /// Floor of a float (largest integer <= value)
@@ -78,53 +78,53 @@ creates round(value Float) Integer
 binary
 
 /// Natural logarithm of a float
-reads log(value Float) Float
+derives log(value Float) Float
 binary
 
 /// Base-10 logarithm of a float
-reads log10(value Float) Float
+derives log10(value Float) Float
 binary
 
 /// Sine of an angle in radians
-reads sin(angle Float) Float
+derives sin(angle Float) Float
 binary
 
 /// Cosine of an angle in radians
-reads cos(angle Float) Float
+derives cos(angle Float) Float
 binary
 
 /// Tangent of an angle in radians
-reads tan(angle Float) Float
+derives tan(angle Float) Float
 binary
 
 /// Inverse sine (arc sine), result in radians
-reads asin(value Float) Float
+derives asin(value Float) Float
 binary
 
 /// Inverse cosine (arc cosine), result in radians
-reads acos(value Float) Float
+derives acos(value Float) Float
 binary
 
 /// Inverse tangent (arc tangent), result in radians
-reads atan(value Float) Float
+derives atan(value Float) Float
 binary
 
 /// Two-argument inverse tangent, result in radians (-pi to pi)
-reads atan2(y Float, x Float) Float
+derives atan2(y Float, x Float) Float
 binary
 
 /// Euler's number raised to the power of x (e^x)
-reads exp(value Float) Float
+derives exp(value Float) Float
 binary
 
 /// Base-2 logarithm of a float
-reads log2(value Float) Float
+derives log2(value Float) Float
 binary
 
 /// The constant pi (3.14159...)
-reads pi() Float
+derives pi() Float
 binary
 
 /// The constant e (2.71828...)
-reads e() Float
+derives e() Float
 binary

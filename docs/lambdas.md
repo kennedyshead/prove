@@ -55,6 +55,16 @@ The following functions are **builtins** — always available, no import needed.
 | `each` | `each(items, \|x\| expr)` | Run function for each element (side effects) |
 | `all` | `all(items, \|x\| predicate) Boolean` | True if predicate holds for every element (short-circuits) |
 | `any` | `any(items, \|x\| predicate) Boolean` | True if predicate holds for at least one element (short-circuits) |
+
+
+**Index parameter:** `map`, `filter`, `each`, `all`, and `any` support an optional second lambda parameter for the element index (typed as `Integer`):
+
+```prove
+// With index
+numbered as List<String> = map(users, |u, idx| f"{idx}: {u.name}")
+evens as List<Item> = filter(items, |item, idx| idx % 2 == 0)
+```
+
 | `par_map` | `par_map(items, fn) List<T>` | Parallel map (pure functions only) |
 | `par_filter` | `par_filter(items, fn) List<T>` | Parallel filter (pure functions only) |
 | `par_reduce` | `par_reduce(items, init, fn) T` | Parallel reduce (pure functions only) |

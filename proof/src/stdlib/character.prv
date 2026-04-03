@@ -2,7 +2,7 @@ module Character
   narrative: """
   validates if a character is alphabetic, alphanumeric, digit
   also validates uppercase, lowercase or if its whitespace
-  reads and gets a character from String at a given index
+  creates a character from String at a given index
   """
 
 /// Checks if a character is alphabetic (a-z, A-Z).

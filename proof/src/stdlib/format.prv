@@ -1,8 +1,8 @@
 module Format
   narrative: """
   String formatting and numeric display.
-  Reads a string and adds padding to the left to a given width.
-  Reads a string and adds padding to the right to a given width.
+  derives a string and adds padding to the left to a given width.
+  derives a string and adds padding to the right to a given width.
   Center a string and adds the whitespace even to the sides
   Takes an integer and creates an octal String.
   Add or remove decimal accuracy to a Float or Decimal
@@ -12,15 +12,15 @@ module Format
   Time types Time Date DateTime Duration
 
 /// Pads a string on the left to reach the specified width.
-reads pad_left(text String, width Integer, fill Character) String
+derives pad_left(text String, width Integer, fill Character) String
 binary
 
 /// Pads a string on the right to reach the specified width.
-reads pad_right(text String, width Integer, fill Character) String
+derives pad_right(text String, width Integer, fill Character) String
 binary
 
 /// Centers a string within the specified width.
-reads center(text String, width Integer, fill Character) String
+derives center(text String, width Integer, fill Character) String
 binary
 
 /// Converts an integer to octal string.
