@@ -19,6 +19,7 @@ from prove.ast_nodes import (
 )
 from prove.errors import Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
+from prove.symbols import FunctionSignature
 from prove.types import (
     ATTACHED,
     ERROR_TY,
@@ -47,6 +48,19 @@ from prove.types import (
 from prove.verb_defs import ASYNC_VERBS, PURE_VERBS
 
 _PURE_VERBS = PURE_VERBS
+_HOF_BUILTINS_1 = frozenset(
+    {
+        "map",
+        "filter",
+        "each",
+        "all",
+        "any",
+        "par_map",
+        "par_filter",
+        "par_each",
+    }
+)
+_HOF_BUILTINS_2 = frozenset({"reduce", "par_reduce"})
 
 
 class CallCheckMixin:
@@ -97,77 +111,7 @@ class CallCheckMixin:
             if peek_sig and peek_sig.verb in ("listens", "renders"):
                 self._in_listens_worker_list = True
 
-        # Determine function name and resolve
-        # For HOF builtins: infer the collection arg first so we can set the
-        # concrete element type before inferring the lambda callback.  This
-        # lets _infer_lambda assign real types to its parameters instead of
-        # wildcard TypeVariables, catching mismatches like passing
-        # Option<T> where T is expected.
-        _HOF_BUILTINS_1 = frozenset(
-            {
-                "map",
-                "filter",
-                "each",
-                "all",
-                "any",
-                "par_map",
-                "par_filter",
-                "par_each",
-            }
-        )
-        _HOF_BUILTINS_2 = frozenset({"reduce", "par_reduce"})
-        if (
-            isinstance(expr.func, IdentifierExpr)
-            and len(expr.args) >= 2
-            and isinstance(expr.args[-1], LambdaExpr)
-        ):
-            hof_name = expr.func.name
-            if hof_name in _HOF_BUILTINS_1 or hof_name in _HOF_BUILTINS_2:
-                # Infer collection arg first to extract element type
-                list_type = self._infer_expr(expr.args[0])
-                elem_type = None
-                if isinstance(list_type, ListType):
-                    elem_type = list_type.element
-                elif isinstance(list_type, ArrayType):
-                    elem_type = list_type.element
-                # For reduce: also infer the initial value (2nd arg)
-                if hof_name in _HOF_BUILTINS_2 and len(expr.args) >= 3:
-                    mid_types = [self._infer_expr(a) for a in expr.args[1:-1]]
-                    # reduce lambda: (accumulator Output, element Value)
-                    acc_type = mid_types[0] if mid_types else None
-                    params = []
-                    if acc_type is not None:
-                        params.append(acc_type)
-                    if elem_type is not None:
-                        params.append(elem_type)
-                    self._hof_param_types = params if params else None
-                    lam_type = self._infer_expr(expr.args[-1])
-                    self._hof_param_types = None
-                    arg_types = [list_type] + mid_types + [lam_type]
-                else:
-                    # Single-param lambda: element type
-                    params = [elem_type] if elem_type is not None else []
-                    # Optional index param: |value, idx| → second param is Integer
-                    lam_expr = expr.args[-1]
-                    if isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2:
-                        params.append(INTEGER)
-                    has_idx = isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2
-                    self._hof_param_types = params if params else None
-                    lam_type = self._infer_expr(expr.args[-1])
-                    self._hof_param_types = None
-                    # Strip injected idx param from type so it matches the
-                    # 1-param builtin signature (Value) -> Boolean
-                    if (
-                        has_idx
-                        and isinstance(lam_type, FunctionType)
-                        and len(lam_type.param_types) == 2
-                    ):
-                        lam_type = FunctionType([lam_type.param_types[0]], lam_type.return_type)
-                    arg_types = [list_type, lam_type]
-            else:
-                arg_types = [self._infer_expr(a) for a in expr.args]
-        else:
-            arg_types = [self._infer_expr(a) for a in expr.args]
+        arg_types = self._infer_hof_arg_types(expr)
         self._in_listens_worker_list = _was_in_listens
         arg_count = len(expr.args)
 
@@ -494,108 +438,7 @@ class CallCheckMixin:
             # Ownership tracking: mark variables as moved if passed to Own parameters
             self._track_moved_args(expr.args, sig.param_types)
 
-            # E403/E404: validate registered workers for listens/renders call
-            if sig.verb in ("listens", "renders") and expr.args:
-                first_arg = expr.args[0]
-                if isinstance(first_arg, ListLiteral):
-                    for elem in first_arg.elements:
-                        # Resolve the function name from bare ref or call
-                        if isinstance(elem, IdentifierExpr):
-                            elem_name = elem.name
-                        elif isinstance(elem, CallExpr) and isinstance(elem.func, IdentifierExpr):
-                            elem_name = elem.func.name
-                        else:
-                            continue
-                        elem_sig = self.symbols.resolve_function_any(elem_name)
-                        if elem_sig is None:
-                            continue  # E311 will catch undefined
-                        # renders registers listens verbs; listens registers attached verbs
-                        expected_verb = "listens" if sig.verb == "renders" else "attached"
-                        if elem_sig.verb != expected_verb:
-                            self._error(
-                                "E403",
-                                f"registered function '{elem_name}' "
-                                f"is not a `{expected_verb}` verb",
-                                elem.span,
-                            )
-                        elif sig.event_type is not None and isinstance(
-                            sig.event_type, AlgebraicType
-                        ):
-                            # E404: return type must match event_type or one of its variants
-                            variant_names = {v.name for v in sig.event_type.variants}
-                            ret_name = type_name(elem_sig.return_type)
-                            if ret_name not in variant_names and ret_name != type_name(
-                                sig.event_type
-                            ):  # noqa: E501
-                                self._error(
-                                    "E404",
-                                    f"return type of '{elem_name}' does not match "
-                                    f"a variant of event type '{type_name(sig.event_type)}'",
-                                    elem.span,
-                                )
-
-            # Verb-gated serialization: creates/validates value(V)
-            # requires the argument to be json-serializable.
-            if (
-                sig.module
-                and sig.module in ("parse", "types")
-                and sig.verb in ("creates", "validates")
-                and sig.name == "value"
-                and arg_types
-            ):
-                actual_arg = arg_types[0]
-                if not is_json_serializable(actual_arg):
-                    self._error(
-                        "E320",
-                        f"type '{type_name(actual_arg)}' is not serializable to Value",
-                        expr.span,
-                    )
-
-            ret = sig.return_type
-            # Failable functions return Result<T, Error> at call site
-            if sig.can_fail and not (
-                isinstance(ret, GenericInstance) and ret.base_name == "Result"
-            ):
-                ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
-            # Resolve generic type variables in return type.
-            # For HOF builtins the lambda path (lines 94-127) already infers
-            # concrete types, so only resolve for filter (needs Option unwrap)
-            # and non-HOF calls.
-            _HOF_ALL = _HOF_BUILTINS_1 | _HOF_BUILTINS_2
-            if arg_types and (name not in _HOF_ALL or name == "filter"):
-                bindings = resolve_type_vars(
-                    sig.param_types,
-                    arg_types,
-                )
-                if bindings:
-                    ret = substitute_type_vars(ret, bindings)
-            # filter(List<Option<T>>, |x| unit(x) == false) → List<T>:
-            # When the predicate filters out None values, unwrap Options.
-            if (
-                name == "filter"
-                and isinstance(ret, ListType)
-                and isinstance(ret.element, GenericInstance)
-                and ret.element.base_name == "Option"
-                and ret.element.args
-                and len(expr.args) >= 2
-                and self._is_option_none_filter(expr.args[-1])
-            ):
-                ret = ListType(ret.element.args[0])
-            # Requires-based narrowing for unqualified calls:
-            # Option<Value> → Value, Result<Value, Error> → Value
-            if (
-                isinstance(ret, GenericInstance)
-                and ret.base_name in ("Option", "Result")
-                and ret.args
-                and self._requires_narrowings
-                and sig.module
-            ):
-                if self._has_requires_narrowing(
-                    sig.module,
-                    expr.args,
-                ):
-                    return ret.args[0]
-            return ret
+            return self._post_resolve_call_checks(sig, name, expr, arg_types)
 
         if isinstance(expr.func, TypeIdentifierExpr):
             # Type constructor call — try as function first (variant constructors)
@@ -758,6 +601,146 @@ class CallCheckMixin:
         if isinstance(func_type, FunctionType):
             return func_type.return_type
         return ERROR_TY
+
+    def _infer_hof_arg_types(self, expr: CallExpr) -> list[Type]:
+        """Infer argument types for a call, with special handling for HOF builtins.
+
+        For HOF builtins, infer the collection arg first to extract the element
+        type before inferring the lambda callback.
+        """
+        if (
+            isinstance(expr.func, IdentifierExpr)
+            and len(expr.args) >= 2
+            and isinstance(expr.args[-1], LambdaExpr)
+        ):
+            hof_name = expr.func.name
+            if hof_name in _HOF_BUILTINS_1 or hof_name in _HOF_BUILTINS_2:
+                list_type = self._infer_expr(expr.args[0])
+                elem_type = None
+                if isinstance(list_type, ListType):
+                    elem_type = list_type.element
+                elif isinstance(list_type, ArrayType):
+                    elem_type = list_type.element
+                if hof_name in _HOF_BUILTINS_2 and len(expr.args) >= 3:
+                    mid_types = [self._infer_expr(a) for a in expr.args[1:-1]]
+                    acc_type = mid_types[0] if mid_types else None
+                    params = []
+                    if acc_type is not None:
+                        params.append(acc_type)
+                    if elem_type is not None:
+                        params.append(elem_type)
+                    self._hof_param_types = params if params else None
+                    lam_type = self._infer_expr(expr.args[-1])
+                    self._hof_param_types = None
+                    return [list_type] + mid_types + [lam_type]
+                else:
+                    params = [elem_type] if elem_type is not None else []
+                    lam_expr = expr.args[-1]
+                    if isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2:
+                        params.append(INTEGER)
+                    has_idx = isinstance(lam_expr, LambdaExpr) and len(lam_expr.params) == 2
+                    self._hof_param_types = params if params else None
+                    lam_type = self._infer_expr(expr.args[-1])
+                    self._hof_param_types = None
+                    if (
+                        has_idx
+                        and isinstance(lam_type, FunctionType)
+                        and len(lam_type.param_types) == 2
+                    ):
+                        lam_type = FunctionType([lam_type.param_types[0]], lam_type.return_type)
+                    return [list_type, lam_type]
+        return [self._infer_expr(a) for a in expr.args]
+
+    def _post_resolve_call_checks(
+        self,
+        sig: FunctionSignature,
+        name: str,
+        expr: CallExpr,
+        arg_types: list[Type],
+    ) -> Type:
+        """Post-resolution checks: workers, serialization, return type resolution."""
+        # E403/E404: validate registered workers for listens/renders call
+        if sig.verb in ("listens", "renders") and expr.args:
+            first_arg = expr.args[0]
+            if isinstance(first_arg, ListLiteral):
+                for elem in first_arg.elements:
+                    if isinstance(elem, IdentifierExpr):
+                        elem_name = elem.name
+                    elif isinstance(elem, CallExpr) and isinstance(elem.func, IdentifierExpr):
+                        elem_name = elem.func.name
+                    else:
+                        continue
+                    elem_sig = self.symbols.resolve_function_any(elem_name)
+                    if elem_sig is None:
+                        continue
+                    expected_verb = "listens" if sig.verb == "renders" else "attached"
+                    if elem_sig.verb != expected_verb:
+                        self._error(
+                            "E403",
+                            f"registered function '{elem_name}' is not a `{expected_verb}` verb",
+                            elem.span,
+                        )
+                    elif sig.event_type is not None and isinstance(sig.event_type, AlgebraicType):
+                        variant_names = {v.name for v in sig.event_type.variants}
+                        ret_name = type_name(elem_sig.return_type)
+                        if ret_name not in variant_names and ret_name != type_name(sig.event_type):
+                            self._error(
+                                "E404",
+                                f"return type of '{elem_name}' does not match "
+                                f"a variant of event type '{type_name(sig.event_type)}'",
+                                elem.span,
+                            )
+
+        # Verb-gated serialization: creates/validates value(V)
+        if (
+            sig.module
+            and sig.module in ("parse", "types")
+            and sig.verb in ("creates", "validates")
+            and sig.name == "value"
+            and arg_types
+        ):
+            actual_arg = arg_types[0]
+            if not is_json_serializable(actual_arg):
+                self._error(
+                    "E320",
+                    f"type '{type_name(actual_arg)}' is not serializable to Value",
+                    expr.span,
+                )
+
+        ret = sig.return_type
+        if sig.can_fail and not (isinstance(ret, GenericInstance) and ret.base_name == "Result"):
+            ret = GenericInstance("Result", [ret, PrimitiveType("Error")])
+        _HOF_ALL = _HOF_BUILTINS_1 | _HOF_BUILTINS_2
+        if arg_types and (name not in _HOF_ALL or name == "filter"):
+            bindings = resolve_type_vars(
+                sig.param_types,
+                arg_types,
+            )
+            if bindings:
+                ret = substitute_type_vars(ret, bindings)
+        if (
+            name == "filter"
+            and isinstance(ret, ListType)
+            and isinstance(ret.element, GenericInstance)
+            and ret.element.base_name == "Option"
+            and ret.element.args
+            and len(expr.args) >= 2
+            and self._is_option_none_filter(expr.args[-1])
+        ):
+            ret = ListType(ret.element.args[0])
+        if (
+            isinstance(ret, GenericInstance)
+            and ret.base_name in ("Option", "Result")
+            and ret.args
+            and self._requires_narrowings
+            and sig.module
+        ):
+            if self._has_requires_narrowing(
+                sig.module,
+                expr.args,
+            ):
+                return ret.args[0]
+        return ret
 
     def _infer_store_row_construction(self, expr: CallExpr, name: str) -> Type:
         """Type-check Color(Red, "red", 0xFF0000) for store-backed lookup types."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 
+from prove._emit_helpers import TYPE_TO_STRING_FUNC, hof_box, hof_unbox, option_unwrap_value
 from prove.ast_nodes import (
     BinaryExpr,
     BooleanLit,
@@ -64,6 +65,32 @@ def _has_object_call(expr: Expr, param_name: str) -> bool:
     if isinstance(expr, FieldExpr):
         return _has_object_call(expr.obj, param_name)
     return False
+
+
+# HOF dispatch: name → (arity or None for any, method_name)
+_HOF_DISPATCH: dict[str, tuple[int | None, str]] = {
+    "map": (2, "_emit_hof_map"),
+    "each": (2, "_emit_hof_each"),
+    "filter": (2, "_emit_hof_filter"),
+    "all": (2, "_emit_hof_all"),
+    "any": (2, "_emit_hof_any"),
+    "find": (2, "_emit_hof_find"),
+    "reduce": (3, "_emit_hof_reduce"),
+    "par_map": (2, "_emit_hof_par_map"),
+    "par_filter": (2, "_emit_hof_par_filter"),
+    "par_reduce": (3, "_emit_hof_par_reduce"),
+    "par_each": (2, "_emit_hof_par_each"),
+    "__fused_map_filter": (3, "_emit_fused_map_filter"),
+    "__fused_filter_map": (3, "_emit_fused_filter_map"),
+    "__fused_map_map": (3, "_emit_fused_map_map"),
+    "__fused_filter_filter": (3, "_emit_fused_filter_filter"),
+    "__fused_reduce_map": (4, "_emit_fused_reduce_map"),
+    "__fused_reduce_filter": (4, "_emit_fused_reduce_filter"),
+    "__fused_each_map": (3, "_emit_fused_each_map"),
+    "__fused_each_filter": (3, "_emit_fused_each_filter"),
+    "__fused_multi_reduce": (None, "_emit_fused_multi_reduce"),
+    "__fused_multi_reduce_ref": (None, "_emit_fused_multi_reduce_ref"),
+}
 
 
 class CallEmitterMixin:
@@ -389,8 +416,7 @@ class CallEmitterMixin:
         bindings = resolve_type_vars(sig.param_types, actual_types)
         inner = substitute_type_vars(ret.args[0], bindings)
         inner_ct = map_type(inner)
-        cast = f"({inner_ct.decl})" if inner_ct.is_pointer else f"({inner_ct.decl})(intptr_t)"
-        return f"{cast}{call_str}.value"
+        return option_unwrap_value(f"{call_str}.value", inner_ct)
 
     def _maybe_unwrap_result(
         self,
@@ -479,14 +505,11 @@ class CallEmitterMixin:
             # Check if target type matches the inner Option type
             if target_ct.decl == inner_ct.decl:
                 # Only unwrap if Some (tag == 1), otherwise use a default/zero value
-                # For numeric types, use 0 as default; for pointers, use NULL
-                if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
-                    default_val = "NULL"
-                    cast = f"({inner_ct.decl})"
-                else:
-                    default_val = "0"
-                    cast = f"({inner_ct.decl})(intptr_t)"
-                return f"({expr_str}.tag == 1 ? {cast}{expr_str}.value : {default_val})"
+                default_val = (
+                    "NULL" if inner_ct.is_pointer or inner_ct.decl == "Prove_String*" else "0"
+                )
+                unwrapped = option_unwrap_value(f"{expr_str}.value", inner_ct)
+                return f"({expr_str}.tag == 1 ? {unwrapped} : {default_val})"
         return expr_str
 
     def _coerce_call_args(
@@ -527,22 +550,20 @@ class CallEmitterMixin:
                 self._line(f"Prove_Option {opt_tmp} = {arg_str};")
                 if inner_ct.decl == param_ct.decl:
                     # Inner type matches param type directly
-                    if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
-                        default_val = "NULL"
-                        cast = f"({param_ct.decl})"
-                    else:
-                        default_val = "0"
-                        cast = f"({param_ct.decl})(intptr_t)"
-                    result[i] = f"({opt_tmp}.tag == 1 ? {cast}{opt_tmp}.value : {default_val})"
+                    default_val = (
+                        "NULL" if inner_ct.is_pointer or inner_ct.decl == "Prove_String*" else "0"
+                    )
+                    unwrapped = option_unwrap_value(f"{opt_tmp}.value", param_ct)
+                    result[i] = f"({opt_tmp}.tag == 1 ? {unwrapped} : {default_val})"
                     continue
                 # Inner type is erased (e.g. Value) — unwrap .value then coerce
                 if param_ct.is_pointer:
-                    result[i] = f"({opt_tmp}.tag == 1 ? ({param_ct.decl}){opt_tmp}.value : NULL)"
+                    uv = option_unwrap_value(f"{opt_tmp}.value", param_ct)
+                    result[i] = f"({opt_tmp}.tag == 1 ? {uv} : NULL)"
                     continue
                 if param_ct.decl in ("int64_t", "int32_t", "int16_t", "int8_t"):
-                    result[i] = (
-                        f"({opt_tmp}.tag == 1 ? ({param_ct.decl})(intptr_t){opt_tmp}.value : 0)"
-                    )
+                    uv = option_unwrap_value(f"{opt_tmp}.value", param_ct)
+                    result[i] = f"({opt_tmp}.tag == 1 ? {uv} : 0)"
                     continue
                 if param_ct.decl in ("double", "float"):
                     result[i] = (
@@ -803,49 +824,11 @@ class CallEmitterMixin:
             # Higher-order functions handle their own arg emission
             # (must check before eagerly emitting args to avoid
             # hoisting lambdas that will be inlined)
-            if name == "map" and len(expr.args) == 2:
-                return self._emit_hof_map(expr)
-            if name == "each" and len(expr.args) == 2:
-                return self._emit_hof_each(expr)
-            if name == "filter" and len(expr.args) == 2:
-                return self._emit_hof_filter(expr)
-            if name == "all" and len(expr.args) == 2:
-                return self._emit_hof_all(expr)
-            if name == "any" and len(expr.args) == 2:
-                return self._emit_hof_any(expr)
-            if name == "find" and len(expr.args) == 2:
-                return self._emit_hof_find(expr)
-            if name == "reduce" and len(expr.args) == 3:
-                return self._emit_hof_reduce(expr)
-            if name == "par_map" and len(expr.args) == 2:
-                return self._emit_hof_par_map(expr)
-            if name == "par_filter" and len(expr.args) == 2:
-                return self._emit_hof_par_filter(expr)
-            if name == "par_reduce" and len(expr.args) == 3:
-                return self._emit_hof_par_reduce(expr)
-            if name == "par_each" and len(expr.args) == 2:
-                return self._emit_hof_par_each(expr)
-            # Fused iterator patterns from optimizer
-            if name == "__fused_map_filter" and len(expr.args) == 3:
-                return self._emit_fused_map_filter(expr)
-            if name == "__fused_filter_map" and len(expr.args) == 3:
-                return self._emit_fused_filter_map(expr)
-            if name == "__fused_map_map" and len(expr.args) == 3:
-                return self._emit_fused_map_map(expr)
-            if name == "__fused_filter_filter" and len(expr.args) == 3:
-                return self._emit_fused_filter_filter(expr)
-            if name == "__fused_reduce_map" and len(expr.args) == 4:
-                return self._emit_fused_reduce_map(expr)
-            if name == "__fused_reduce_filter" and len(expr.args) == 4:
-                return self._emit_fused_reduce_filter(expr)
-            if name == "__fused_each_map" and len(expr.args) == 3:
-                return self._emit_fused_each_map(expr)
-            if name == "__fused_each_filter" and len(expr.args) == 3:
-                return self._emit_fused_each_filter(expr)
-            if name == "__fused_multi_reduce":
-                return self._emit_fused_multi_reduce(expr)
-            if name == "__fused_multi_reduce_ref":
-                return self._emit_fused_multi_reduce_ref(expr)
+            hof_entry = _HOF_DISPATCH.get(name)
+            if hof_entry is not None:
+                arity, method_name = hof_entry
+                if arity is None or len(expr.args) == arity:
+                    return getattr(self, method_name)(expr)
 
         args = [self._emit_expr(a) for a in expr.args]
 
@@ -900,9 +883,7 @@ class CallEmitterMixin:
                     if not has_user_unwrap:
                         inner_ty = arg_ty.args[0] if arg_ty.args else INTEGER
                         inner_ct = map_type(inner_ty)
-                        if inner_ct.is_pointer:
-                            return f"({inner_ct.decl})prove_option_unwrap({args[0]})"
-                        return f"({inner_ct.decl})(intptr_t)prove_option_unwrap({args[0]})"
+                        return f"{option_unwrap_value(f'prove_option_unwrap({args[0]})', inner_ct)}"
                 # Result unwrap
                 if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result":
                     if arg_ty.args:
@@ -1243,228 +1224,11 @@ class CallEmitterMixin:
             return f"{name}({', '.join(args)})"
 
         if isinstance(expr.func, TypeIdentifierExpr):
-            name = expr.func.name
-            # Store-backed lookup row construction: Color(Red, "red", 0xFF0000)
-            if name in self._store_lookup_types:
-                return self._emit_store_row_construction(name, expr, args)
-            # Error(String) constructor — produces a Prove_String* error value
-            if name == "Error" and len(args) == 1:
-                return args[0]
-            # ByteArray(String) constructor
-            if name == "ByteArray" and len(args) == 1:
-                return f"prove_bytes_from_string({args[0]})"
-            # List(...) constructor — emit as list creation with pushes
-            if name == "List" and args:
-                elem_type = self._infer_expr_type(expr.args[0])
-                ct = map_type(elem_type)
-                tmp = self._tmp()
-                self._line(f"Prove_List *{tmp} = prove_list_new({len(args)});")
-                for i, arg in enumerate(args):
-                    if ct.is_pointer:
-                        self._line(f"prove_list_push({tmp}, (void*){arg});")
-                    else:
-                        self._line(f"prove_list_push({tmp}, (void*)(intptr_t){arg});")
-                return tmp
-            # Pad record constructors with missing fields using defaults
-            resolved = self._symbols.resolve_type(name)
-            if isinstance(resolved, RecordType):
-                # Single-arg deserialization: Record(structured_data)
-                # Convert Value/Value<T>/Table<Value>/Result<...> to record
-                if len(expr.args) == 1:
-                    arg_ty = self._infer_expr_type(expr.args[0])
-                    is_structured = (
-                        isinstance(arg_ty, PrimitiveType) and arg_ty.name == "Value"
-                    ) or (
-                        isinstance(arg_ty, GenericInstance)
-                        and arg_ty.base_name in ("Value", "Table", "Result")
-                    )
-                    if is_structured:
-                        return self._emit_structured_to_record(
-                            args[0],
-                            arg_ty,
-                            resolved,
-                        )
-                # Coerce args to match record field types
-                field_types = list(resolved.fields.values())
-                fake_sig = type(
-                    "Sig",
-                    (),
-                    {"param_types": field_types},
-                )()
-                args = self._coerce_call_args(
-                    args,
-                    expr.args,
-                    fake_sig,
-                )
-                if len(args) < len(resolved.fields):
-                    for fname, ftype in itertools.islice(
-                        resolved.fields.items(),
-                        len(args),
-                        None,
-                    ):
-                        args.append(self._default_for_type(ftype))
-            elif len(args) < len(getattr(resolved, "fields", {})):
-                for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
-                    args.append(self._default_for_type(ftype))
-            # In renders/listens loop, variant calls are event self-dispatches
-            # (e.g. Draw(state) enqueues a Draw event on the event queue)
-            if self._in_renders_loop or self._in_listens_loop:
-                # Resolve the concrete event type:
-                # - renders: use the function's event_type (TodoEvent)
-                # - listens: use the function's return type (TodoEvent)
-                func_sig = (
-                    self._symbols.resolve_function(
-                        self._current_func.verb,
-                        self._current_func.name,
-                        len(self._current_func.params),
-                    )
-                    if self._current_func
-                    else None
-                )
-                if self._in_renders_loop:
-                    event_type = func_sig.event_type if func_sig else None
-                else:
-                    event_type = func_sig.return_type if func_sig else None
-                # Verify this is actually a variant of the event type
-                if (
-                    event_type
-                    and isinstance(event_type, AlgebraicType)
-                    and any(v.name == name for v in event_type.variants)
-                ):
-                    evt_cname = map_type(event_type).decl
-                    tag = f"{evt_cname}_TAG_{name.upper()}"
-                    if self._in_renders_loop:
-                        variant = next((v for v in event_type.variants if v.name == name), None)
-                        has_data_fields = (
-                            variant
-                            and variant.fields
-                            and args
-                            and not all(a == "state" for a in args)
-                        )
-                        if has_data_fields:
-                            # Variant has non-state payload fields — allocate and send
-                            payload_tmp = self._tmp()
-                            self._line(f"{evt_cname} *{payload_tmp} = malloc(sizeof({evt_cname}));")
-                            self._line(f"*{payload_tmp} = {evt_cname}_{name}({', '.join(args)});")
-                            self._line(f"prove_event_queue_send(_eq, {tag}, {payload_tmp});")
-                        else:
-                            self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
-                    else:
-                        # In listens translator — set result tag.
-                        # Do NOT return here: the switch break + function
-                        # epilogue handles *_state_ptr = state and return.
-                        self._line(f"_result.tag = {tag};")
-                    return "(void)0"
-            # Check if it's a variant constructor — namespace to avoid collisions
-            parent = self._get_variant_parent(name)
-            if parent is not None:
-                cname = mangle_type_name(parent.name)
-                args = self._wrap_recursive_constructor_args(name, args, expr.args)
-                # Coerce (void)0 → NULL for variant fields with pointer types
-                variant = next((v for v in parent.variants if v.name == name), None)
-                if variant:
-                    for i, (fname, ftype) in enumerate(variant.fields.items()):
-                        if i < len(args) and args[i] == "(void)0":
-                            ct = map_type(ftype)
-                            if ct.is_pointer:
-                                args[i] = "NULL"
-                return f"{cname}_{name}({', '.join(args)})"
-            sig = self._symbols.resolve_function(None, name, len(expr.args))
-            if sig:
-                args = self._wrap_recursive_constructor_args(name, args, expr.args)
-                return f"{name}({', '.join(args)})"
-            return f"{name}({', '.join(args)})"
+            return self._emit_constructor_call(expr, args)
 
         # Namespaced call: Module.function(args)
         if isinstance(expr.func, FieldExpr) and isinstance(expr.func.obj, TypeIdentifierExpr):
-            module_name = expr.func.obj.name
-            name = expr.func.field
-            n_args = len(expr.args)
-            # Type-aware resolution for overloaded functions
-            sig = None
-            if expr.args:
-                actual = [self._narrow_for_requires(a, self._infer_expr_type(a)) for a in expr.args]
-                sig = self._symbols.resolve_function_by_types(None, name, actual)
-            if sig is None:
-                sig = self._symbols.resolve_function(None, name, n_args)
-            if sig is None:
-                sig = self._symbols.resolve_function_any(
-                    name,
-                    arity=n_args,
-                )
-            if sig and sig.module:
-                # Emit Verb lambda args before coercion
-                for i, pt in enumerate(sig.param_types):
-                    if isinstance(pt, FunctionType) and i < len(expr.args):
-                        if isinstance(expr.args[i], LambdaExpr):
-                            args[i] = self._emit_verb_lambda(expr.args[i], pt)
-                args = self._coerce_call_args(args, expr.args, sig)
-                c_name: str | None = self._resolve_stdlib_c_name(sig)
-                if c_name:
-                    call_str = f"{c_name}({', '.join(args)})"
-                    call_str = self._maybe_unwrap_option(
-                        call_str,
-                        sig,
-                        expr.args,
-                        module_name,
-                    )
-                    call_str = self._maybe_unwrap_result(
-                        call_str,
-                        sig,
-                        expr.args,
-                        module_name,
-                    )
-                    return call_str
-            if sig and sig.verb is not None:
-                # Struct-polymorphic call — monomorphise
-                if any(isinstance(pt, StructType) for pt in sig.param_types):
-                    concrete_types = list(sig.param_types)
-                    for i, pt in enumerate(sig.param_types):
-                        if isinstance(pt, StructType) and i < len(expr.args):
-                            concrete_types[i] = self._infer_expr_type(expr.args[i])
-                    template_key = (sig.verb, sig.name, len(sig.param_types))
-                    template_fd = self._struct_templates.get(template_key)
-                    if template_fd:
-                        mangled = self._request_struct_specialisation(template_fd, concrete_types)
-                        call_str = f"{mangled}({', '.join(args)})"
-                        call_str = self._maybe_unwrap_option(
-                            call_str,
-                            sig,
-                            expr.args,
-                            module_name,
-                        )
-                        call_str = self._maybe_unwrap_result(
-                            call_str,
-                            sig,
-                            expr.args,
-                            module_name,
-                        )
-                        return call_str
-
-                # Emit Verb lambda args before coercion
-                for i, pt in enumerate(sig.param_types):
-                    if isinstance(pt, FunctionType) and i < len(expr.args):
-                        if isinstance(expr.args[i], LambdaExpr):
-                            args[i] = self._emit_verb_lambda(expr.args[i], pt)
-                args = self._coerce_call_args(args, expr.args, sig)
-                mangled = mangle_name(
-                    sig.verb, sig.name, sig.param_types, module=self._sig_module(sig)
-                )
-                call_str = f"{mangled}({', '.join(args)})"
-                call_str = self._maybe_unwrap_option(
-                    call_str,
-                    sig,
-                    expr.args,
-                    module_name,
-                )
-                call_str = self._maybe_unwrap_result(
-                    call_str,
-                    sig,
-                    expr.args,
-                    module_name,
-                )
-                return call_str
-            return f"{name}({', '.join(args)})"
+            return self._emit_namespaced_call(expr, args)
 
         # Method-style call on a value: obj.method(args) → stdlib_func(obj, args)
         if isinstance(expr.func, FieldExpr):
@@ -1502,31 +1266,236 @@ class CallEmitterMixin:
         func = self._emit_expr(expr.func)
         return f"{func}({', '.join(args)})"
 
+    # ── Namespaced call emission ─────────────────────────────
+
+    def _emit_namespaced_call(self, expr: CallExpr, args: list[str]) -> str:
+        """Emit a Module.function(args) call."""
+        module_name = expr.func.obj.name
+        name = expr.func.field
+        n_args = len(expr.args)
+        # Type-aware resolution for overloaded functions
+        sig = None
+        if expr.args:
+            actual = [self._narrow_for_requires(a, self._infer_expr_type(a)) for a in expr.args]
+            sig = self._symbols.resolve_function_by_types(None, name, actual)
+        if sig is None:
+            sig = self._symbols.resolve_function(None, name, n_args)
+        if sig is None:
+            sig = self._symbols.resolve_function_any(
+                name,
+                arity=n_args,
+            )
+        if sig and sig.module:
+            # Emit Verb lambda args before coercion
+            for i, pt in enumerate(sig.param_types):
+                if isinstance(pt, FunctionType) and i < len(expr.args):
+                    if isinstance(expr.args[i], LambdaExpr):
+                        args[i] = self._emit_verb_lambda(expr.args[i], pt)
+            args = self._coerce_call_args(args, expr.args, sig)
+            c_name: str | None = self._resolve_stdlib_c_name(sig)
+            if c_name:
+                call_str = f"{c_name}({', '.join(args)})"
+                call_str = self._maybe_unwrap_option(
+                    call_str,
+                    sig,
+                    expr.args,
+                    module_name,
+                )
+                call_str = self._maybe_unwrap_result(
+                    call_str,
+                    sig,
+                    expr.args,
+                    module_name,
+                )
+                return call_str
+        if sig and sig.verb is not None:
+            # Struct-polymorphic call — monomorphise
+            if any(isinstance(pt, StructType) for pt in sig.param_types):
+                concrete_types = list(sig.param_types)
+                for i, pt in enumerate(sig.param_types):
+                    if isinstance(pt, StructType) and i < len(expr.args):
+                        concrete_types[i] = self._infer_expr_type(expr.args[i])
+                template_key = (sig.verb, sig.name, len(sig.param_types))
+                template_fd = self._struct_templates.get(template_key)
+                if template_fd:
+                    mangled = self._request_struct_specialisation(template_fd, concrete_types)
+                    call_str = f"{mangled}({', '.join(args)})"
+                    call_str = self._maybe_unwrap_option(
+                        call_str,
+                        sig,
+                        expr.args,
+                        module_name,
+                    )
+                    call_str = self._maybe_unwrap_result(
+                        call_str,
+                        sig,
+                        expr.args,
+                        module_name,
+                    )
+                    return call_str
+
+            # Emit Verb lambda args before coercion
+            for i, pt in enumerate(sig.param_types):
+                if isinstance(pt, FunctionType) and i < len(expr.args):
+                    if isinstance(expr.args[i], LambdaExpr):
+                        args[i] = self._emit_verb_lambda(expr.args[i], pt)
+            args = self._coerce_call_args(args, expr.args, sig)
+            mangled = mangle_name(sig.verb, sig.name, sig.param_types, module=self._sig_module(sig))
+            call_str = f"{mangled}({', '.join(args)})"
+            call_str = self._maybe_unwrap_option(
+                call_str,
+                sig,
+                expr.args,
+                module_name,
+            )
+            call_str = self._maybe_unwrap_result(
+                call_str,
+                sig,
+                expr.args,
+                module_name,
+            )
+            return call_str
+        return f"{name}({', '.join(args)})"
+
+    # ── Constructor call emission ─────────────────────────────
+
+    def _emit_constructor_call(self, expr: CallExpr, args: list[str]) -> str:
+        """Emit a TypeIdentifierExpr call: record/algebraic/builtin constructors."""
+        name = expr.func.name
+        # Store-backed lookup row construction: Color(Red, "red", 0xFF0000)
+        if name in self._store_lookup_types:
+            return self._emit_store_row_construction(name, expr, args)
+        # Error(String) constructor — produces a Prove_String* error value
+        if name == "Error" and len(args) == 1:
+            return args[0]
+        # ByteArray(String) constructor
+        if name == "ByteArray" and len(args) == 1:
+            return f"prove_bytes_from_string({args[0]})"
+        # List(...) constructor — emit as list creation with pushes
+        if name == "List" and args:
+            elem_type = self._infer_expr_type(expr.args[0])
+            ct = map_type(elem_type)
+            tmp = self._tmp()
+            self._line(f"Prove_List *{tmp} = prove_list_new({len(args)});")
+            for i, arg in enumerate(args):
+                self._line(f"prove_list_push({tmp}, {hof_box(arg, ct)});")
+            return tmp
+        # Pad record constructors with missing fields using defaults
+        resolved = self._symbols.resolve_type(name)
+        if isinstance(resolved, RecordType):
+            # Single-arg deserialization: Record(structured_data)
+            # Convert Value/Value<T>/Table<Value>/Result<...> to record
+            if len(expr.args) == 1:
+                arg_ty = self._infer_expr_type(expr.args[0])
+                is_structured = (isinstance(arg_ty, PrimitiveType) and arg_ty.name == "Value") or (
+                    isinstance(arg_ty, GenericInstance)
+                    and arg_ty.base_name in ("Value", "Table", "Result")
+                )
+                if is_structured:
+                    return self._emit_structured_to_record(
+                        args[0],
+                        arg_ty,
+                        resolved,
+                    )
+            # Coerce args to match record field types
+            field_types = list(resolved.fields.values())
+            fake_sig = type(
+                "Sig",
+                (),
+                {"param_types": field_types},
+            )()
+            args = self._coerce_call_args(
+                args,
+                expr.args,
+                fake_sig,
+            )
+            if len(args) < len(resolved.fields):
+                for fname, ftype in itertools.islice(
+                    resolved.fields.items(),
+                    len(args),
+                    None,
+                ):
+                    args.append(self._default_for_type(ftype))
+        elif len(args) < len(getattr(resolved, "fields", {})):
+            for fname, ftype in itertools.islice(resolved.fields.items(), len(args), None):
+                args.append(self._default_for_type(ftype))
+        # In renders/listens loop, variant calls are event self-dispatches
+        # (e.g. Draw(state) enqueues a Draw event on the event queue)
+        if self._in_renders_loop or self._in_listens_loop:
+            # Resolve the concrete event type:
+            # - renders: use the function's event_type (TodoEvent)
+            # - listens: use the function's return type (TodoEvent)
+            func_sig = (
+                self._symbols.resolve_function(
+                    self._current_func.verb,
+                    self._current_func.name,
+                    len(self._current_func.params),
+                )
+                if self._current_func
+                else None
+            )
+            if self._in_renders_loop:
+                event_type = func_sig.event_type if func_sig else None
+            else:
+                event_type = func_sig.return_type if func_sig else None
+            # Verify this is actually a variant of the event type
+            if (
+                event_type
+                and isinstance(event_type, AlgebraicType)
+                and any(v.name == name for v in event_type.variants)
+            ):
+                evt_cname = map_type(event_type).decl
+                tag = f"{evt_cname}_TAG_{name.upper()}"
+                if self._in_renders_loop:
+                    variant = next((v for v in event_type.variants if v.name == name), None)
+                    has_data_fields = (
+                        variant and variant.fields and args and not all(a == "state" for a in args)
+                    )
+                    if has_data_fields:
+                        # Variant has non-state payload fields — allocate and send
+                        payload_tmp = self._tmp()
+                        self._line(f"{evt_cname} *{payload_tmp} = malloc(sizeof({evt_cname}));")
+                        self._line(f"*{payload_tmp} = {evt_cname}_{name}({', '.join(args)});")
+                        self._line(f"prove_event_queue_send(_eq, {tag}, {payload_tmp});")
+                    else:
+                        self._line(f"prove_event_queue_send(_eq, {tag}, NULL);")
+                else:
+                    # In listens translator — set result tag.
+                    # Do NOT return here: the switch break + function
+                    # epilogue handles *_state_ptr = state and return.
+                    self._line(f"_result.tag = {tag};")
+                return "(void)0"
+        # Check if it's a variant constructor — namespace to avoid collisions
+        parent = self._get_variant_parent(name)
+        if parent is not None:
+            cname = mangle_type_name(parent.name)
+            args = self._wrap_recursive_constructor_args(name, args, expr.args)
+            # Coerce (void)0 → NULL for variant fields with pointer types
+            variant = next((v for v in parent.variants if v.name == name), None)
+            if variant:
+                for i, (fname, ftype) in enumerate(variant.fields.items()):
+                    if i < len(args) and args[i] == "(void)0":
+                        ct = map_type(ftype)
+                        if ct.is_pointer:
+                            args[i] = "NULL"
+            return f"{cname}_{name}({', '.join(args)})"
+        sig = self._symbols.resolve_function(None, name, len(expr.args))
+        if sig:
+            args = self._wrap_recursive_constructor_args(name, args, expr.args)
+            return f"{name}({', '.join(args)})"
+        return f"{name}({', '.join(args)})"
+
     # ── Higher-order function emission ─────────────────────────
 
     @staticmethod
     def _hof_box(expr: str, ct: CType) -> str:
         """Box a typed value into void* for HOF callbacks."""
-        if ct.is_pointer:
-            return f"(void*){expr}"
-        if ct.decl in ("double", "float"):
-            return f"_prove_f64_box({expr})"
-        # Struct types (non-pointer Prove_* types) must be heap-allocated
-        if ct.decl.startswith("Prove_"):
-            return f"({{{ct.decl} *_bx = malloc(sizeof({ct.decl})); *_bx = {expr}; (void*)_bx;}})"
-        return f"(void*)(intptr_t){expr}"
+        return hof_box(expr, ct)
 
     @staticmethod
     def _hof_unbox(expr: str, ct: CType) -> str:
         """Unbox a void* into a typed value for HOF callbacks."""
-        if ct.is_pointer:
-            return f"({ct.decl}){expr}"
-        if ct.decl in ("double", "float"):
-            return f"_prove_f64_unbox({expr})"
-        # Struct types: dereference the heap-allocated pointer
-        if ct.decl.startswith("Prove_"):
-            return f"(*({ct.decl}*){expr})"
-        return f"({ct.decl})(intptr_t){expr}"
+        return hof_unbox(expr, ct)
 
     @staticmethod
     def _infer_hof_elem_type(coll_type: Type) -> Type:
@@ -1927,10 +1896,7 @@ class CallEmitterMixin:
                 self._locals[idx_param] = INTEGER
             body_code = self._emit_expr(lam.body)
             self._locals = saved_locals
-            if elem_ct.is_pointer or elem_ct.decl == "Prove_String*":
-                box = f"(void*){param}"
-            else:
-                box = f"(void*)(intptr_t){param}"
+            box = hof_box(param, elem_ct)
             self._line(
                 f"if ({body_code}) {{ {result_var}.tag = 1; {result_var}.value = {box}; break; }}"
             )
@@ -2277,122 +2243,121 @@ class CallEmitterMixin:
             self._lambdas.append(lam)
             return wrapper, "NULL"
         if not isinstance(expr, LambdaExpr):
-            # Not a lambda — resolve function reference and generate wrapper
-            if isinstance(expr, IdentifierExpr) and kind in ("map", "filter"):
-                # Check for common type-to-string conversions
-                c_fn = None
-                fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
+            return self._emit_hof_lambda_from_funcref(expr, elem_type, kind)
 
-                # If the function parameter type doesn't match elem_type,
-                # use a built-in conversion (e.g., Integer → String)
-                elem_ct = map_type(elem_type)
-                elem_name = getattr(elem_type, "name", "")
-                ret_type = fn_sig.return_type if fn_sig else None
-                ret_name = getattr(ret_type, "name", "")
+        return self._emit_hof_lambda_from_lambda(expr, elem_type, kind, accum_type=accum_type)
 
-                # Types.string() dispatches by element type
-                _STRING_DISPATCH = {
-                    "Integer": "prove_string_from_int",
-                    "Float": "prove_string_from_double",
-                    "Decimal": "prove_string_from_double",
-                    "Boolean": "prove_string_from_bool",
-                    "Character": "prove_string_from_char",
-                    "Value": "prove_value_as_text",
-                    "Time": "prove_time_string_time",
-                    "Date": "prove_time_string_date",
-                    "DateTime": "prove_time_string_datetime",
-                    "Clock": "prove_time_string_clock",
-                    "Duration": "prove_time_string_duration",
-                }
-                if expr.name == "string" and elem_name in _STRING_DISPATCH:
-                    c_fn = _STRING_DISPATCH[elem_name]
-                    ret_type = STRING
-                elif ret_name == "String" and elem_name == "Integer":
-                    c_fn = "prove_string_from_int"
-                elif ret_name == "String" and elem_name in ("Float", "Decimal"):
-                    c_fn = "prove_string_from_double"
-                elif ret_name == "String" and elem_name == "Boolean":
-                    c_fn = "prove_string_from_bool"
-                elif fn_sig and fn_sig.module:
-                    c_fn = self._resolve_stdlib_c_name(fn_sig, None)
-                    if c_fn is None:
-                        # Local module function — use mangled name
-                        c_fn = mangle_name(
-                            fn_sig.verb,
-                            fn_sig.name,
-                            list(fn_sig.param_types) if fn_sig.param_types else None,
-                            module=fn_sig.module,
-                        )
-                elif fn_sig and not fn_sig.module:
-                    # Same-module function — use mangled name
+    def _emit_hof_lambda_from_funcref(
+        self,
+        expr: Expr,
+        elem_type: Type,
+        kind: str,
+    ) -> tuple[str, str]:
+        """Emit a HOF wrapper for a function reference (not a lambda)."""
+        if isinstance(expr, IdentifierExpr) and kind in ("map", "filter"):
+            c_fn = None
+            fn_sig = self._symbols.resolve_function_any(expr.name, arity=1)
+
+            elem_ct = map_type(elem_type)
+            elem_name = getattr(elem_type, "name", "")
+            ret_type = fn_sig.return_type if fn_sig else None
+            ret_name = getattr(ret_type, "name", "")
+
+            if expr.name == "string" and elem_name in TYPE_TO_STRING_FUNC:
+                c_fn = TYPE_TO_STRING_FUNC[elem_name]
+                ret_type = STRING
+            elif ret_name == "String" and elem_name == "Integer":
+                c_fn = "prove_string_from_int"
+            elif ret_name == "String" and elem_name in ("Float", "Decimal"):
+                c_fn = "prove_string_from_double"
+            elif ret_name == "String" and elem_name == "Boolean":
+                c_fn = "prove_string_from_bool"
+            elif fn_sig and fn_sig.module:
+                c_fn = self._resolve_stdlib_c_name(fn_sig, None)
+                if c_fn is None:
                     c_fn = mangle_name(
                         fn_sig.verb,
                         fn_sig.name,
                         list(fn_sig.param_types) if fn_sig.param_types else None,
-                        module=self._module.name.lower() if self._module else None,
+                        module=fn_sig.module,
                     )
+            elif fn_sig and not fn_sig.module:
+                c_fn = mangle_name(
+                    fn_sig.verb,
+                    fn_sig.name,
+                    list(fn_sig.param_types) if fn_sig.param_types else None,
+                    module=self._module.name.lower() if self._module else None,
+                )
 
-                # Failable function as HOF callback needs Result unwrapping
-                if c_fn and fn_sig and fn_sig.can_fail and kind == "map":
-                    wrapper = f"_lambda_{self._tmp_counter}"
-                    self._tmp_counter += 1
-                    elem_unbox = self._hof_unbox("_arg", elem_ct)
-                    # Determine success type from Result<T, Error>
-                    success_type = ret_type
-                    if (
-                        isinstance(ret_type, GenericInstance)
-                        and ret_type.base_name == "Result"
-                        and ret_type.args
-                    ):
-                        success_type = ret_type.args[0]
-                    success_ct = map_type(success_type)
-                    ret_box = self._hof_box(
-                        f"({success_ct.decl})prove_result_unwrap_ptr(_r)"
-                        if success_ct.is_pointer
-                        else f"({success_ct.decl})(intptr_t)prove_result_unwrap_int(_r)",
-                        success_ct,
-                    )
-                    self._needed_headers.add("prove_result.h")
+            # Failable function as HOF callback needs Result unwrapping
+            if c_fn and fn_sig and fn_sig.can_fail and kind == "map":
+                wrapper = f"_lambda_{self._tmp_counter}"
+                self._tmp_counter += 1
+                elem_unbox = self._hof_unbox("_arg", elem_ct)
+                success_type = ret_type
+                if (
+                    isinstance(ret_type, GenericInstance)
+                    and ret_type.base_name == "Result"
+                    and ret_type.args
+                ):
+                    success_type = ret_type.args[0]
+                success_ct = map_type(success_type)
+                ret_box = self._hof_box(
+                    f"({success_ct.decl})prove_result_unwrap_ptr(_r)"
+                    if success_ct.is_pointer
+                    else f"({success_ct.decl})(intptr_t)prove_result_unwrap_int(_r)",
+                    success_ct,
+                )
+                self._needed_headers.add("prove_result.h")
+                lam = (
+                    f"static void *{wrapper}(void *_arg, void *_ctx) {{\n"
+                    f"    (void)_ctx;\n"
+                    f"    {elem_ct.decl} _x = {elem_unbox};\n"
+                    f"    Prove_Result _r = {c_fn}(_x);\n"
+                    f'    if (prove_result_is_err(_r)) prove_panic("error in map callback");\n'
+                    f"    return {ret_box};\n"
+                    f"}}\n"
+                )
+                self._lambdas.append(lam)
+                return wrapper, "NULL"
+
+            if c_fn:
+                wrapper = f"_lambda_{self._tmp_counter}"
+                self._tmp_counter += 1
+                ret_ct = map_type(ret_type) if ret_type else elem_ct
+                elem_unbox = self._hof_unbox("_arg", elem_ct)
+                if kind == "map":
+                    ret_box = self._hof_box(f"{c_fn}(_x)", ret_ct)
                     lam = (
                         f"static void *{wrapper}(void *_arg, void *_ctx) {{\n"
                         f"    (void)_ctx;\n"
                         f"    {elem_ct.decl} _x = {elem_unbox};\n"
-                        f"    Prove_Result _r = {c_fn}(_x);\n"
-                        f'    if (prove_result_is_err(_r)) prove_panic("error in map callback");\n'
                         f"    return {ret_box};\n"
                         f"}}\n"
                     )
-                    self._lambdas.append(lam)
-                    return wrapper, "NULL"
+                elif kind == "filter":
+                    lam = (
+                        f"static bool {wrapper}(void *_arg, void *_ctx) {{\n"
+                        f"    (void)_ctx;\n"
+                        f"    {elem_ct.decl} _x = {elem_unbox};\n"
+                        f"    return {c_fn}(_x);\n"
+                        f"}}\n"
+                    )
+                else:
+                    return self._emit_expr(expr), "NULL"
+                self._lambdas.append(lam)
+                return wrapper, "NULL"
+        return self._emit_expr(expr), "NULL"
 
-                if c_fn:
-                    wrapper = f"_lambda_{self._tmp_counter}"
-                    self._tmp_counter += 1
-                    ret_ct = map_type(ret_type) if ret_type else elem_ct
-                    elem_unbox = self._hof_unbox("_arg", elem_ct)
-                    if kind == "map":
-                        ret_box = self._hof_box(f"{c_fn}(_x)", ret_ct)
-                        lam = (
-                            f"static void *{wrapper}(void *_arg, void *_ctx) {{\n"
-                            f"    (void)_ctx;\n"
-                            f"    {elem_ct.decl} _x = {elem_unbox};\n"
-                            f"    return {ret_box};\n"
-                            f"}}\n"
-                        )
-                    elif kind == "filter":
-                        lam = (
-                            f"static bool {wrapper}(void *_arg, void *_ctx) {{\n"
-                            f"    (void)_ctx;\n"
-                            f"    {elem_ct.decl} _x = {elem_unbox};\n"
-                            f"    return {c_fn}(_x);\n"
-                            f"}}\n"
-                        )
-                    else:
-                        return self._emit_expr(expr), "NULL"
-                    self._lambdas.append(lam)
-                    return wrapper, "NULL"
-            return self._emit_expr(expr), "NULL"
-
+    def _emit_hof_lambda_from_lambda(
+        self,
+        expr: LambdaExpr,
+        elem_type: Type,
+        kind: str,
+        *,
+        accum_type: Type | None = None,
+    ) -> tuple[str, str]:
+        """Emit a HOF wrapper for a lambda expression body."""
         name = f"_lambda_{self._tmp_counter}"
         self._tmp_counter += 1
         elem_ct = map_type(elem_type)
@@ -2891,11 +2856,7 @@ class CallEmitterMixin:
 
         # Apply map function then test predicate
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        # Struct types need boxing (e.g. Prove_Option)
-        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
-            self._line(f"void *{mapped_var} = {map_code};")
-        else:
-            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
 
         # Test predicate on mapped result — unbox if map produced a boxed struct
         mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer
@@ -2950,10 +2911,7 @@ class CallEmitterMixin:
         # Apply f then g
         f_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         mid_var = self._tmp()
-        if f_result_ct.decl.startswith("Prove_") and not f_result_ct.is_pointer:
-            self._line(f"void *{mid_var} = {f_code};")
-        else:
-            self._line(f"void *{mid_var} = (void*)(intptr_t){f_code};")
+        self._line(f"void *{mid_var} = {hof_box(str(f_code), f_result_ct)};")
 
         # Infer g's return type for final boxing
         g_fn = expr.args[2]
@@ -3056,11 +3014,7 @@ class CallEmitterMixin:
         mapped_ct = map_type(mapped_type)
 
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        # Struct types are already boxed as void* by _emit_fused_lambda_inline
-        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
-            self._line(f"void *{mapped_var} = {map_code};")
-        else:
-            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
 
         # Accumulate: accum = g(accum, mapped)
         g_expr = expr.args[3]
@@ -3296,11 +3250,7 @@ class CallEmitterMixin:
         mapped_ct = map_type(mapped_type)
 
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        # Struct types are already boxed as void* by _emit_fused_lambda_inline
-        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
-            self._line(f"void *{mapped_var} = {map_code};")
-        else:
-            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
 
         # Pass correct mapped type to consumer; unbox if map produced a boxed struct
         mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer
@@ -3337,14 +3287,8 @@ class CallEmitterMixin:
             inner_type = self._resolve_option_inner_type(elem_type, expr.args[2])
             inner_ct = map_type(inner_type)
             unwrapped = self._tmp()
-            if inner_ct.is_pointer:
-                self._line(f"{inner_ct.decl} {unwrapped} = ({inner_ct.decl}){elem_var}.value;")
-            elif inner_ct.decl.startswith("Prove_"):
-                self._line(f"{inner_ct.decl} {unwrapped} = *({inner_ct.decl}*){elem_var}.value;")
-            else:
-                self._line(
-                    f"{inner_ct.decl} {unwrapped} = ({inner_ct.decl})(intptr_t){elem_var}.value;"
-                )
+            uv = option_unwrap_value(f"{elem_var}.value", inner_ct)
+            self._line(f"{inner_ct.decl} {unwrapped} = {uv};")
             consumer_var = unwrapped
             consumer_type = inner_type
 

@@ -87,6 +87,23 @@ from prove.errors import CompileError, Diagnostic, DiagnosticLabel, Severity
 from prove.source import Span
 from prove.tokens import Token, TokenKind
 
+# Literal token → value kind mappings (used in lookup parsing)
+_LIT_KINDS_BASIC: dict[TokenKind, str] = {
+    TokenKind.STRING_LIT: "string",
+    TokenKind.INTEGER_LIT: "integer",
+    TokenKind.BOOLEAN_LIT: "boolean",
+}
+_LIT_KINDS_FULL: dict[TokenKind, str] = {
+    **_LIT_KINDS_BASIC,
+    TokenKind.DECIMAL_LIT: "decimal",
+}
+_VALUE_KINDS: dict[TokenKind, str] = {
+    **_LIT_KINDS_FULL,
+    TokenKind.IDENTIFIER: "identifier",
+    TokenKind.TYPE_IDENTIFIER: "identifier",
+    TokenKind.CONSTANT_IDENTIFIER: "identifier",
+}
+
 # ── Binding powers for Pratt parser ─────────────────────────────
 
 # (left_bp, right_bp) for infix operators
@@ -1715,14 +1732,9 @@ class Parser:
         if start is None:
             start = self._current().span
         tok = self._current()
-        _LIT_KINDS = {
-            TokenKind.STRING_LIT: "string",
-            TokenKind.INTEGER_LIT: "integer",
-            TokenKind.BOOLEAN_LIT: "boolean",
-        }
-        if tok.kind in _LIT_KINDS:
+        if tok.kind in _LIT_KINDS_BASIC:
             value = tok.value
-            value_kind = _LIT_KINDS[tok.kind]
+            value_kind = _LIT_KINDS_BASIC[tok.kind]
             self._advance()
         else:
             self._error(
@@ -1885,18 +1897,6 @@ class Parser:
         else:
             variant_tok = self._expect(TokenKind.TYPE_IDENTIFIER)
 
-        _LIT_KINDS = {
-            TokenKind.STRING_LIT: "string",
-            TokenKind.INTEGER_LIT: "integer",
-            TokenKind.DECIMAL_LIT: "decimal",
-            TokenKind.BOOLEAN_LIT: "boolean",
-        }
-        _VALUE_KINDS = {
-            **_LIT_KINDS,
-            TokenKind.IDENTIFIER: "identifier",
-            TokenKind.TYPE_IDENTIFIER: "identifier",
-            TokenKind.CONSTANT_IDENTIFIER: "identifier",
-        }
         values: list[str] = []
         value_kinds: list[str] = []
         # Parse pipe-separated values until end of line
@@ -1936,19 +1936,6 @@ class Parser:
         Handles flexible entries: val | val | ... where each value can be a
         literal (string, integer, decimal, boolean) or an identifier.
         """
-        _LIT_KINDS = {
-            TokenKind.STRING_LIT: "string",
-            TokenKind.INTEGER_LIT: "integer",
-            TokenKind.DECIMAL_LIT: "decimal",
-            TokenKind.BOOLEAN_LIT: "boolean",
-        }
-        _VALUE_KINDS = {
-            **_LIT_KINDS,
-            TokenKind.IDENTIFIER: "identifier",
-            TokenKind.TYPE_IDENTIFIER: "identifier",
-            TokenKind.CONSTANT_IDENTIFIER: "identifier",
-        }
-
         entries: list[LookupEntry] = []
         while not self._at(TokenKind.DEDENT) and not self._at(TokenKind.EOF):
             self._skip_newlines()

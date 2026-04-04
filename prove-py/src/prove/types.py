@@ -627,22 +627,21 @@ def substitute_type_vars(ty: Type, bindings: dict[str, Type]) -> Type:
 # ── Ownership helpers ─────────────────────────────────────────────
 
 
+def _has_modifier(ty: Type, mod_name: str) -> bool:
+    """Check if a type has a specific modifier."""
+    if isinstance(ty, (PrimitiveType, ArrayType)):
+        return any(v == mod_name for (_, v) in ty.modifiers)
+    return False
+
+
 def has_own_modifier(ty: Type) -> bool:
     """Check if a type has the Own (linear) ownership modifier."""
-    if isinstance(ty, PrimitiveType):
-        return any(v == "Own" for (_, v) in ty.modifiers)
-    if isinstance(ty, ArrayType):
-        return any(v == "Own" for (_, v) in ty.modifiers)
-    return False
+    return _has_modifier(ty, "Own")
 
 
 def has_mutable_modifier(ty: Type) -> bool:
     """Check if a type has the Mutable modifier."""
-    if isinstance(ty, PrimitiveType):
-        return any(v == "Mutable" for (_, v) in ty.modifiers)
-    if isinstance(ty, ArrayType):
-        return any(v == "Mutable" for (_, v) in ty.modifiers)
-    return False
+    return _has_modifier(ty, "Mutable")
 
 
 def get_scale(ty: Type) -> int | None:

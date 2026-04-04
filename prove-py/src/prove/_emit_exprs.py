@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from prove._emit_helpers import hof_box, hof_unbox, option_unwrap_value, to_string_func
 from prove.ast_nodes import (
     AsyncCallExpr,
     BinaryExpr,
@@ -332,29 +333,10 @@ class ExprEmitterMixin:
 
     # -- String conversion helper -----------------------------------
 
-    def _to_string_func(self, ty: Type) -> str:
+    @staticmethod
+    def _to_string_func(ty: Type) -> str:
         """Pick the right prove_string_from_* function."""
-        if isinstance(ty, PrimitiveType):
-            if ty.name == "Integer":
-                return "prove_string_from_int"
-            if ty.name in ("Decimal", "Float"):
-                return "prove_string_from_double"
-            if ty.name == "Boolean":
-                return "prove_string_from_bool"
-            if ty.name == "Character":
-                return "prove_string_from_char"
-            if ty.name == "String":
-                return ""  # identity -- shouldn't happen
-            _TIME_STRING_FUNCS = {
-                "Time": "prove_time_string_time",
-                "Date": "prove_time_string_date",
-                "DateTime": "prove_time_string_datetime",
-                "Clock": "prove_time_string_clock",
-                "Duration": "prove_time_string_duration",
-            }
-            if ty.name in _TIME_STRING_FUNCS:
-                return _TIME_STRING_FUNCS[ty.name]
-        return "prove_string_from_int"  # fallback
+        return to_string_func(ty)
 
     # -- Loop body retains ------------------------------------------
 
@@ -812,217 +794,200 @@ class ExprEmitterMixin:
             subj = res_tmp
 
         if not isinstance(subj_type, AlgebraicType):
-            # Non-algebraic match: emit as if/else-if chain
-            result_type = self._infer_match_result_type(m)
-
-            # Promote to Option<T> when function return is Option<T> and
-            # arms produce bare T / Unit (implicit Option wrapping).
-            _option_wrap = False
-            if (
-                isinstance(self._current_func_return, GenericInstance)
-                and self._current_func_return.base_name == "Option"
-                and self._current_func_return.args
-            ):
-                if isinstance(result_type, GenericInstance) and result_type.base_name == "Option":
-                    # Result already Option — still enable wrapping for arms
-                    # that produce bare values (e.g. None => "UNKNOWN")
-                    _option_wrap = True
-                elif isinstance(result_type, UnitType) or types_compatible(
-                    self._current_func_return.args[0], result_type
-                ):
-                    result_type = self._current_func_return
-                    _option_wrap = True
-
-            ct = map_type(result_type)
-            is_unit = isinstance(result_type, UnitType)
-            tmp = "" if is_unit else self._tmp()
-            if not is_unit:
-                self._line(f"{ct.decl} {tmp};")
-
-            first = True
-            for arm in m.arms:
-                if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
-                    # Default/else branch
-                    if first:
-                        self._line("{")
-                    else:
-                        self._line("} else {")
-                    self._indent += 1
-                    if isinstance(arm.pattern, BindingPattern):
-                        bct = map_type(subj_type)
-                        self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
-                        self._locals[arm.pattern.name] = subj_type
-                    self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                    self._indent -= 1
-                    self._line("}")
-                elif isinstance(arm.pattern, LiteralPattern):
-                    # For boolean matches, the second arm should use plain
-                    # `else` to avoid re-evaluating the subject expression
-                    # (important for side-effectful subjects like GUI calls).
-                    is_bool_complement = (
-                        not first
-                        and arm.pattern.value in ("true", "false")
-                        and isinstance(subj_type, PrimitiveType)
-                        and subj_type.name == "Boolean"
-                    )
-                    if is_bool_complement:
-                        self._line("} else {")
-                    elif is_option_subj:
-                        # Unwrap Option: check tag==1 (Some) and compare inner value
-                        inner_ty = subj_type.args[0]
-                        inner_ct = map_type(inner_ty)
-                        is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
-                        cast = (
-                            f"({inner_ct.decl})"
-                            if inner_ct.is_pointer
-                            else f"*({inner_ct.decl}*)(void*)"
-                            if is_struct
-                            else f"({inner_ct.decl})(intptr_t)"
-                        )
-                        unwrapped = f"{cast}{subj}.value"
-                        inner_cond = self._emit_literal_cond(unwrapped, arm.pattern, inner_ty)
-                        cond = f"{subj}.tag == 1 && {inner_cond}"
-                        keyword = "if" if first else "} else if"
-                        self._line(f"{keyword} ({cond}) {{")
-                    else:
-                        cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
-                        keyword = "if" if first else "} else if"
-                        self._line(f"{keyword} ({cond}) {{")
-                    self._indent += 1
-                    self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                    self._indent -= 1
-                elif isinstance(arm.pattern, VariantPattern):
-                    vp = arm.pattern
-                    if isinstance(subj_type, GenericInstance) and subj_type.base_name == "Option":
-                        if vp.name == "Some":
-                            keyword = "if" if first else "} else if"
-                            self._line(f"{keyword} ({subj}.tag == 1) {{")
-                            self._indent += 1
-                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
-                                inner_ty = subj_type.args[0] if subj_type.args else INTEGER
-                                inner_ct = map_type(inner_ty)
-                                bind_name = vp.fields[0].name
-                                is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
-                                cast = (
-                                    f"({inner_ct.decl})"
-                                    if inner_ct.is_pointer
-                                    else f"*({inner_ct.decl}*)(void*)"
-                                    if is_struct
-                                    else f"({inner_ct.decl})(intptr_t)"
-                                )
-                                if bind_name == subj:
-                                    alias = self._tmp()
-                                    self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
-                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
-                                else:
-                                    self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
-                                self._locals[bind_name] = inner_ty
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                        elif vp.name == "None":
-                            # None variant -- treated as else
-                            if first:
-                                self._line("{")
-                            else:
-                                self._line("} else {")
-                            self._indent += 1
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                            self._line("}")
-                    elif isinstance(subj_type, GenericInstance) and subj_type.base_name == "Result":
-                        if vp.name == "Ok":
-                            keyword = "if" if first else "} else if"
-                            self._line(f"{keyword} ({subj}.tag == 0) {{")
-                            self._indent += 1
-                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
-                                inner_ty = subj_type.args[0] if subj_type.args else INTEGER
-                                inner_ct = map_type(inner_ty)
-                                bind_name = vp.fields[0].name
-                                is_struct = isinstance(inner_ty, (RecordType, AlgebraicType))
-                                cast = (
-                                    f"({inner_ct.decl})"
-                                    if inner_ct.is_pointer
-                                    else f"*({inner_ct.decl}*)(void*)"
-                                    if is_struct
-                                    else f"({inner_ct.decl})(intptr_t)"
-                                )
-                                if bind_name == subj:
-                                    alias = self._tmp()
-                                    self._line(f"{inner_ct.decl} {alias} = {cast}{subj}.value;")
-                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
-                                else:
-                                    self._line(f"{inner_ct.decl} {bind_name} = {cast}{subj}.value;")
-                                self._locals[bind_name] = inner_ty
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                        elif vp.name == "Err":
-                            keyword = "if" if first else "} else if"
-                            self._line(f"{keyword} ({subj}.tag == 1) {{")
-                            self._indent += 1
-                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
-                                bind_name = vp.fields[0].name
-                                self._line(f"Prove_String* {bind_name} = {subj}.error;")
-                                err_ty = subj_type.args[1] if len(subj_type.args) > 1 else ERROR_TY
-                                self._locals[bind_name] = err_ty
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                    elif map_type(subj_type).is_pointer:
-                        # Store subject in temp to avoid re-evaluating
-                        # side-effectful expressions (e.g. GUI widget calls).
-                        if first and "(" in subj:
-                            sct = map_type(subj_type)
-                            subj_tmp = self._tmp()
-                            self._line(f"{sct.decl} {subj_tmp} = {subj};")
-                            subj = subj_tmp
-                        if vp.name == "Some":
-                            keyword = "if" if first else "} else if"
-                            self._line(f"{keyword} ({subj} != NULL) {{")
-                            self._indent += 1
-                            if vp.fields and isinstance(vp.fields[0], BindingPattern):
-                                bind_name = vp.fields[0].name
-                                # Skip re-declaration when binding name
-                                # matches the subject -- avoids C
-                                # self-init UB (T x = x;)
-                                if bind_name != subj:
-                                    sct = map_type(subj_type)
-                                    self._line(f"{sct.decl} {bind_name} = {subj};")
-                                self._locals[bind_name] = subj_type
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                        else:
-                            # None or other -- else branch
-                            if first:
-                                self._line("{")
-                            else:
-                                self._line("} else {")
-                            self._indent += 1
-                            self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                            self._indent -= 1
-                            self._line("}")
-                    elif isinstance(subj_type, RecordType) and vp.name == subj_type.name:
-                        # Record type always matches its own name -- unconditional.
-                        # Remaining arms are dead code, so break after emitting.
-                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
-                        break
-                first = False
-
-            # Close trailing if without else
-            if not isinstance(
-                m.arms[-1].pattern,
-                (WildcardPattern, BindingPattern),
-            ):
-                # Don't double-close if last was a None variant (already closed)
-                last_pat = m.arms[-1].pattern
-                needs_close = True
-                if isinstance(last_pat, VariantPattern) and last_pat.name == "None":
-                    needs_close = False
-                if needs_close:
-                    self._line("}")
-
+            result = self._emit_non_algebraic_match(m, subj, subj_type, is_option_subj)
             self._locals = saved_locals
-            return "/* match */" if is_unit else tmp
+            return result
 
         # Tagged union switch
+        result = self._emit_algebraic_match(m, subj, subj_type)
+        self._locals = saved_locals
+        return result
+
+    def _emit_non_algebraic_match(
+        self,
+        m: MatchExpr,
+        subj: str,
+        subj_type: Type,
+        is_option_subj: bool,
+    ) -> str:
+        """Emit non-algebraic match as if/else-if chain."""
+        result_type = self._infer_match_result_type(m)
+
+        # Promote to Option<T> when function return is Option<T> and
+        # arms produce bare T / Unit (implicit Option wrapping).
+        _option_wrap = False
+        if (
+            isinstance(self._current_func_return, GenericInstance)
+            and self._current_func_return.base_name == "Option"
+            and self._current_func_return.args
+        ):
+            if isinstance(result_type, GenericInstance) and result_type.base_name == "Option":
+                _option_wrap = True
+            elif isinstance(result_type, UnitType) or types_compatible(
+                self._current_func_return.args[0], result_type
+            ):
+                result_type = self._current_func_return
+                _option_wrap = True
+
+        ct = map_type(result_type)
+        is_unit = isinstance(result_type, UnitType)
+        tmp = "" if is_unit else self._tmp()
+        if not is_unit:
+            self._line(f"{ct.decl} {tmp};")
+
+        first = True
+        for arm in m.arms:
+            if isinstance(arm.pattern, (WildcardPattern, BindingPattern)):
+                # Default/else branch
+                if first:
+                    self._line("{")
+                else:
+                    self._line("} else {")
+                self._indent += 1
+                if isinstance(arm.pattern, BindingPattern):
+                    bct = map_type(subj_type)
+                    self._line(f"{bct.decl} {arm.pattern.name} = {subj};")
+                    self._locals[arm.pattern.name] = subj_type
+                self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                self._indent -= 1
+                self._line("}")
+            elif isinstance(arm.pattern, LiteralPattern):
+                is_bool_complement = (
+                    not first
+                    and arm.pattern.value in ("true", "false")
+                    and isinstance(subj_type, PrimitiveType)
+                    and subj_type.name == "Boolean"
+                )
+                if is_bool_complement:
+                    self._line("} else {")
+                elif is_option_subj:
+                    inner_ty = subj_type.args[0]
+                    inner_ct = map_type(inner_ty)
+                    unwrapped = option_unwrap_value(f"{subj}.value", inner_ct)
+                    inner_cond = self._emit_literal_cond(unwrapped, arm.pattern, inner_ty)
+                    cond = f"{subj}.tag == 1 && {inner_cond}"
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({cond}) {{")
+                else:
+                    cond = self._emit_literal_cond(subj, arm.pattern, subj_type, m.subject)
+                    keyword = "if" if first else "} else if"
+                    self._line(f"{keyword} ({cond}) {{")
+                self._indent += 1
+                self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                self._indent -= 1
+            elif isinstance(arm.pattern, VariantPattern):
+                vp = arm.pattern
+                if isinstance(subj_type, GenericInstance) and subj_type.base_name == "Option":
+                    if vp.name == "Some":
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({subj}.tag == 1) {{")
+                        self._indent += 1
+                        if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                            inner_ty = subj_type.args[0] if subj_type.args else INTEGER
+                            inner_ct = map_type(inner_ty)
+                            bind_name = vp.fields[0].name
+                            val = option_unwrap_value(f"{subj}.value", inner_ct)
+                            if bind_name == subj:
+                                alias = self._tmp()
+                                self._line(f"{inner_ct.decl} {alias} = {val};")
+                                self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                            else:
+                                self._line(f"{inner_ct.decl} {bind_name} = {val};")
+                            self._locals[bind_name] = inner_ty
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                    elif vp.name == "None":
+                        if first:
+                            self._line("{")
+                        else:
+                            self._line("} else {")
+                        self._indent += 1
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                        self._line("}")
+                elif isinstance(subj_type, GenericInstance) and subj_type.base_name == "Result":
+                    if vp.name == "Ok":
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({subj}.tag == 0) {{")
+                        self._indent += 1
+                        if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                            inner_ty = subj_type.args[0] if subj_type.args else INTEGER
+                            inner_ct = map_type(inner_ty)
+                            bind_name = vp.fields[0].name
+                            val = option_unwrap_value(f"{subj}.value", inner_ct)
+                            if bind_name == subj:
+                                alias = self._tmp()
+                                self._line(f"{inner_ct.decl} {alias} = {val};")
+                                self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                            else:
+                                self._line(f"{inner_ct.decl} {bind_name} = {val};")
+                            self._locals[bind_name] = inner_ty
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                    elif vp.name == "Err":
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({subj}.tag == 1) {{")
+                        self._indent += 1
+                        if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                            bind_name = vp.fields[0].name
+                            self._line(f"Prove_String* {bind_name} = {subj}.error;")
+                            err_ty = subj_type.args[1] if len(subj_type.args) > 1 else ERROR_TY
+                            self._locals[bind_name] = err_ty
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                elif map_type(subj_type).is_pointer:
+                    if first and "(" in subj:
+                        sct = map_type(subj_type)
+                        subj_tmp = self._tmp()
+                        self._line(f"{sct.decl} {subj_tmp} = {subj};")
+                        subj = subj_tmp
+                    if vp.name == "Some":
+                        keyword = "if" if first else "} else if"
+                        self._line(f"{keyword} ({subj} != NULL) {{")
+                        self._indent += 1
+                        if vp.fields and isinstance(vp.fields[0], BindingPattern):
+                            bind_name = vp.fields[0].name
+                            if bind_name != subj:
+                                sct = map_type(subj_type)
+                                self._line(f"{sct.decl} {bind_name} = {subj};")
+                            self._locals[bind_name] = subj_type
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                    else:
+                        if first:
+                            self._line("{")
+                        else:
+                            self._line("} else {")
+                        self._indent += 1
+                        self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                        self._indent -= 1
+                        self._line("}")
+                elif isinstance(subj_type, RecordType) and vp.name == subj_type.name:
+                    self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
+                    break
+            first = False
+
+        # Close trailing if without else
+        if not isinstance(
+            m.arms[-1].pattern,
+            (WildcardPattern, BindingPattern),
+        ):
+            last_pat = m.arms[-1].pattern
+            needs_close = True
+            if isinstance(last_pat, VariantPattern) and last_pat.name == "None":
+                needs_close = False
+            if needs_close:
+                self._line("}")
+
+        return "/* match */" if is_unit else tmp
+
+    def _emit_algebraic_match(
+        self,
+        m: MatchExpr,
+        subj: str,
+        subj_type: AlgebraicType,
+    ) -> str:
+        """Emit algebraic type match as a tagged union switch."""
         result_type = self._infer_match_result_type(m)
         ct = map_type(result_type)
         result_tmp = self._tmp()
@@ -1055,7 +1020,6 @@ class ExprEmitterMixin:
                                 ft = variant_info.fields[fname]
                                 fct = map_type(ft)
                                 if (arm.pattern.name, fname) in rec_direct:
-                                    # Recursive field: bind as pointer
                                     self._locals[sub_pat.name] = ft
                                     self._recursive_pointer_locals.add(sub_pat.name)
                                     self._line(
@@ -1077,7 +1041,6 @@ class ExprEmitterMixin:
                             self._emit_stmt(s)
                     else:
                         self._emit_stmt(s)
-                # streams: Exit arm exits the blocking loop
                 if (
                     self._in_streams_loop
                     and isinstance(arm.pattern, VariantPattern)
@@ -1106,8 +1069,6 @@ class ExprEmitterMixin:
                 self._indent -= 1
                 self._line("}")
         self._line("}")
-        # Restore locals (match arm bindings are scoped to arms)
-        self._locals = saved_locals
 
         return result_tmp if not isinstance(result_type, UnitType) else "/* match */"
 
@@ -1262,27 +1223,8 @@ class ExprEmitterMixin:
                 val = self._emit_expr(part)
                 if isinstance(part_type, PrimitiveType) and part_type.name == "String":
                     parts.append(val)
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Integer":
-                    parts.append(f"prove_string_from_int({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name in (
-                    "Decimal",
-                    "Float",
-                ):
-                    parts.append(f"prove_string_from_double({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Boolean":
-                    parts.append(f"prove_string_from_bool({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Character":
-                    parts.append(f"prove_string_from_char({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Time":
-                    parts.append(f"prove_time_string_time({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Date":
-                    parts.append(f"prove_time_string_date({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "DateTime":
-                    parts.append(f"prove_time_string_datetime({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Clock":
-                    parts.append(f"prove_time_string_clock({val})")
-                elif isinstance(part_type, PrimitiveType) and part_type.name == "Duration":
-                    parts.append(f"prove_time_string_duration({val})")
+                elif isinstance(part_type, PrimitiveType) and to_string_func(part_type):
+                    parts.append(f"{to_string_func(part_type)}({val})")
                 elif (
                     isinstance(part_type, GenericInstance)
                     and part_type.base_name == "Option"
@@ -1290,15 +1232,7 @@ class ExprEmitterMixin:
                 ):
                     inner = part_type.args[0]
                     inner_ct = map_type(inner)
-                    is_struct = isinstance(inner, (RecordType, AlgebraicType))
-                    cast = (
-                        f"({inner_ct.decl})"
-                        if inner_ct.is_pointer
-                        else f"*({inner_ct.decl}*)(void*)"
-                        if is_struct
-                        else f"({inner_ct.decl})(intptr_t)"
-                    )
-                    unwrapped = f"{cast}{val}.value"
+                    unwrapped = option_unwrap_value(f"{val}.value", inner_ct)
                     c_name = self._to_string_func(inner)
                     parts.append(f"{c_name}({unwrapped})")
                 elif isinstance(part_type, ErrorType) or (
@@ -1334,18 +1268,9 @@ class ExprEmitterMixin:
             )
         else:
             self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
-        is_struct = isinstance(elem_type, (RecordType, AlgebraicType))
         for elem in expr.elements:
             val = self._emit_expr(elem)
-            if ct.is_pointer:
-                self._line(f"prove_list_push({tmp}, (void*){val});")
-            elif is_struct:
-                heap_tmp = self._tmp()
-                self._line(f"{ct.decl} *{heap_tmp} = malloc(sizeof({ct.decl}));")
-                self._line(f"*{heap_tmp} = {val};")
-                self._line(f"prove_list_push({tmp}, (void*){heap_tmp});")
-            else:
-                self._line(f"prove_list_push({tmp}, (void*)(intptr_t){val});")
+            self._line(f"prove_list_push({tmp}, {hof_box(val, ct)});")
         return tmp
 
     # -- Index expression -------------------------------------------
@@ -1356,11 +1281,7 @@ class ExprEmitterMixin:
         obj_type = self._infer_expr_type(expr.obj)
         if isinstance(obj_type, ListType):
             elem_ct = map_type(obj_type.element)
-            if elem_ct.is_pointer:
-                return f"({elem_ct.decl})prove_list_get({obj}, {idx})"
-            if isinstance(obj_type.element, (RecordType, AlgebraicType)):
-                return f"(*({elem_ct.decl}*)prove_list_get({obj}, {idx}))"
-            return f"({elem_ct.decl})(intptr_t)prove_list_get({obj}, {idx})"
+            return hof_unbox(f"prove_list_get({obj}, {idx})", elem_ct)
         return f"{obj}[{idx}]"
 
     # -- Lookup access ----------------------------------------------

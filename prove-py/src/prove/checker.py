@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import cast
 
 from prove._check_calls import CallCheckMixin
-from prove._check_contracts import ContractCheckMixin
+from prove._check_contracts import ContractCheckMixin, _match_arms_have_fail_prop
 from prove._check_types import TypeCheckMixin
 from prove.ast_nodes import (
     AlgebraicTypeDef,
@@ -265,42 +265,6 @@ def _extract_call_targets(
 
     _walk_stmts(stmts)
     return targets
-
-
-def _match_arms_have_fail_prop(match_expr: MatchExpr) -> bool:
-    """Return True if any arm body contains a FailPropExpr (failable call).
-
-    A match with failable calls cannot be extracted to a 'matches' verb
-    (which must be pure), so I367 must not be suggested.
-    """
-
-    def _expr_has_fail(expr: Expr) -> bool:
-        if isinstance(expr, FailPropExpr):
-            return True
-        if isinstance(expr, CallExpr):
-            return any(_expr_has_fail(a) for a in expr.args)
-        if isinstance(expr, BinaryExpr):
-            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
-        if isinstance(expr, UnaryExpr):
-            return _expr_has_fail(expr.operand)
-        if isinstance(expr, PipeExpr):
-            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
-        if isinstance(expr, LambdaExpr):
-            return _expr_has_fail(expr.body)
-        if isinstance(expr, AsyncCallExpr):
-            return _expr_has_fail(expr.expr)
-        return False
-
-    def _stmt_has_fail(stmt: Stmt | MatchExpr) -> bool:
-        if isinstance(stmt, ExprStmt):
-            return _expr_has_fail(stmt.expr)
-        if isinstance(stmt, VarDecl) and stmt.value is not None:
-            return _expr_has_fail(stmt.value)
-        if isinstance(stmt, Assignment):
-            return _expr_has_fail(stmt.value)
-        return False
-
-    return any(_stmt_has_fail(stmt) for arm in match_expr.arms for stmt in arm.body)
 
 
 class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
@@ -830,6 +794,127 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     stack.append(ref)
         return group
 
+    def _register_record_type(self, td: TypeDef, body: RecordTypeDef) -> Type:
+        """Register a record type and return the resolved type."""
+        type_params = tuple(td.type_params)
+        fields: dict[str, Type] = {}
+        for f in body.fields:
+            ft = self._resolve_type_expr(f.type_expr)
+            fields[f.name] = ft
+        return RecordType(td.name, fields, type_params)
+
+    def _register_algebraic_type(self, td: TypeDef, body: AlgebraicTypeDef) -> Type:
+        """Register an algebraic type with optional inheritance and return the resolved type."""
+        type_params = tuple(td.type_params)
+        variants: list[VariantInfo] = []
+        # Check if first variant is actually a base algebraic type (inheritance)
+        inherited_variants: list[VariantInfo] = []
+        own_variants_start = 0
+        if body.variants:
+            first_v = body.variants[0]
+            if not first_v.fields:
+                base_type = self.symbols.resolve_type(first_v.name)
+                # Type must be explicitly imported — no auto-resolve.
+                # Search stdlib modules to give a helpful error message.
+                if base_type is None:
+                    from prove.stdlib_loader import (
+                        _STDLIB_MODULES,
+                        load_stdlib_types,
+                    )
+
+                    for mod_name in _STDLIB_MODULES:
+                        stdlib_types = load_stdlib_types(mod_name)
+                        if first_v.name in stdlib_types:
+                            hint = (
+                                f" (add `types {first_v.name}` to your "
+                                f"{mod_name.capitalize()} import)"
+                                if mod_name.lower() in {k.lower() for k in self._module_imports}
+                                else f" (available from module '{mod_name}')"
+                            )
+                            self._error(
+                                "E300",
+                                f"undefined type `{first_v.name}`{hint}",
+                                first_v.span,
+                            )
+                            break
+                if isinstance(base_type, AlgebraicType):
+                    inherited_variants = list(base_type.variants)
+                    own_variants_start = 1
+                    self._used_types.add(first_v.name)
+        variants.extend(inherited_variants)
+        for v in body.variants[own_variants_start:]:
+            vfields: dict[str, Type] = {}
+            for f in v.fields:
+                vfields[f.name] = self._resolve_type_expr(f.type_expr)
+            variants.append(VariantInfo(v.name, vfields))
+        resolved = AlgebraicType(td.name, variants, type_params)
+        # Register each variant as a constructor function
+        # (both inherited and own variants)
+        for vi in variants:
+            vsig = FunctionSignature(
+                verb=None,
+                name=vi.name,
+                param_names=list(vi.fields.keys()),
+                param_types=list(vi.fields.values()),
+                return_type=resolved,
+                can_fail=False,
+                span=td.span,
+                requires=[],
+            )
+            self.symbols.define_function(vsig)
+        return resolved
+
+    def _register_lookup_type(self, td: TypeDef, body: LookupTypeDef) -> Type:
+        """Register a lookup type (store-backed or static) and return the resolved type."""
+        type_params = tuple(td.type_params)
+        if body.is_store_backed:
+            # Store-backed lookup: zero variants (dynamic), register schema
+            resolved: Type = AlgebraicType(td.name, [], type_params)
+            self._lookup_tables[td.name] = body
+            self._store_lookup_types.add(td.name)
+            STORE_BACKED_TYPES.add(td.name)
+            # Validate column types
+            if body.is_binary:
+                self._validate_binary_lookup(body, td.span)
+        else:
+            # Static lookup types: build AlgebraicType from entries
+            seen_variants: dict[str, None] = {}
+            for entry in body.entries:
+                seen_variants[entry.variant] = None
+            variant_names = list(seen_variants.keys())
+            variants = [VariantInfo(name, {}) for name in variant_names]
+            resolved = AlgebraicType(td.name, variants, type_params)
+            # Store lookup table for accessor resolution
+            self._lookup_tables[td.name] = body
+            # Register each variant as a zero-arg constructor
+            for name in variant_names:
+                vsig = FunctionSignature(
+                    verb=None,
+                    name=name,
+                    param_names=[],
+                    param_types=[],
+                    return_type=resolved,
+                    can_fail=False,
+                    span=td.span,
+                )
+                self.symbols.define_function(vsig)
+
+            if body.is_binary:
+                # Validate binary lookup table
+                self._validate_binary_lookup(body, td.span)
+            else:
+                # Validate: check for duplicate values (E375)
+                seen_values: set[str] = set()
+                for entry in body.entries:
+                    if entry.value in seen_values:
+                        self._error(
+                            "E375",
+                            f"duplicate value '{entry.value}' in lookup table",
+                            entry.span,
+                        )
+                    seen_values.add(entry.value)
+        return resolved
+
     def _register_type(self, td: TypeDef) -> None:
         """Register a user-defined type."""
         # E317: type name shadows builtin type (but allow Table for module<>type collision)
@@ -850,73 +935,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._error("E301", f"duplicate definition of '{td.name}'", td.span)
             return
 
-        type_params = tuple(td.type_params)
         body = td.body
 
         if isinstance(body, RecordTypeDef):
-            fields: dict[str, Type] = {}
-            for f in body.fields:
-                ft = self._resolve_type_expr(f.type_expr)
-                fields[f.name] = ft
-            resolved: Type = RecordType(td.name, fields, type_params)
+            resolved: Type = self._register_record_type(td, body)
 
         elif isinstance(body, AlgebraicTypeDef):
-            variants: list[VariantInfo] = []
-            # Check if first variant is actually a base algebraic type (inheritance)
-            inherited_variants: list[VariantInfo] = []
-            own_variants_start = 0
-            if body.variants:
-                first_v = body.variants[0]
-                if not first_v.fields:
-                    base_type = self.symbols.resolve_type(first_v.name)
-                    # Type must be explicitly imported — no auto-resolve.
-                    # Search stdlib modules to give a helpful error message.
-                    if base_type is None:
-                        from prove.stdlib_loader import (
-                            _STDLIB_MODULES,
-                            load_stdlib_types,
-                        )
-
-                        for mod_name in _STDLIB_MODULES:
-                            stdlib_types = load_stdlib_types(mod_name)
-                            if first_v.name in stdlib_types:
-                                hint = (
-                                    f" (add `types {first_v.name}` to your "
-                                    f"{mod_name.capitalize()} import)"
-                                    if mod_name.lower() in {k.lower() for k in self._module_imports}
-                                    else f" (available from module '{mod_name}')"
-                                )
-                                self._error(
-                                    "E300",
-                                    f"undefined type `{first_v.name}`{hint}",
-                                    first_v.span,
-                                )
-                                break
-                    if isinstance(base_type, AlgebraicType):
-                        inherited_variants = list(base_type.variants)
-                        own_variants_start = 1
-                        self._used_types.add(first_v.name)
-            variants.extend(inherited_variants)
-            for v in body.variants[own_variants_start:]:
-                vfields: dict[str, Type] = {}
-                for f in v.fields:
-                    vfields[f.name] = self._resolve_type_expr(f.type_expr)
-                variants.append(VariantInfo(v.name, vfields))
-            resolved = AlgebraicType(td.name, variants, type_params)
-            # Register each variant as a constructor function
-            # (both inherited and own variants)
-            for vi in variants:
-                vsig = FunctionSignature(
-                    verb=None,
-                    name=vi.name,
-                    param_names=list(vi.fields.keys()),
-                    param_types=list(vi.fields.values()),
-                    return_type=resolved,
-                    can_fail=False,
-                    span=td.span,
-                    requires=[],
-                )
-                self.symbols.define_function(vsig)
+            resolved = self._register_algebraic_type(td, body)
 
         elif isinstance(body, RefinementTypeDef):
             base = self._resolve_type_expr(body.base_type)
@@ -934,52 +959,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             resolved = PrimitiveType(td.name)
 
         elif isinstance(body, LookupTypeDef):
-            if body.is_store_backed:
-                # Store-backed lookup: zero variants (dynamic), register schema
-                resolved = AlgebraicType(td.name, [], type_params)
-                self._lookup_tables[td.name] = body
-                self._store_lookup_types.add(td.name)
-                STORE_BACKED_TYPES.add(td.name)
-                # Validate column types
-                if body.is_binary:
-                    self._validate_binary_lookup(body, td.span)
-            else:
-                # Static lookup types: build AlgebraicType from entries
-                seen_variants: dict[str, None] = {}
-                for entry in body.entries:
-                    seen_variants[entry.variant] = None
-                variant_names = list(seen_variants.keys())
-                variants = [VariantInfo(name, {}) for name in variant_names]
-                resolved = AlgebraicType(td.name, variants, type_params)
-                # Store lookup table for accessor resolution
-                self._lookup_tables[td.name] = body
-                # Register each variant as a zero-arg constructor
-                for name in variant_names:
-                    vsig = FunctionSignature(
-                        verb=None,
-                        name=name,
-                        param_names=[],
-                        param_types=[],
-                        return_type=resolved,
-                        can_fail=False,
-                        span=td.span,
-                    )
-                    self.symbols.define_function(vsig)
-
-                if body.is_binary:
-                    # Validate binary lookup table
-                    self._validate_binary_lookup(body, td.span)
-                else:
-                    # Validate: check for duplicate values (E375)
-                    seen_values: set[str] = set()
-                    for entry in body.entries:
-                        if entry.value in seen_values:
-                            self._error(
-                                "E375",
-                                f"duplicate value '{entry.value}' in lookup table",
-                                entry.span,
-                            )
-                        seen_values.add(entry.value)
+            resolved = self._register_lookup_type(td, body)
 
         else:
             resolved = ERROR_TY
@@ -1429,18 +1409,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
 
     # ── Pass 2: Checking ────────────────────────────────────────
 
-    def _check_function(self, fd: FunctionDef) -> None:
-        """Check a function body."""
-        self._current_function = fd
-        self._is_recursive = False
-        self._inside_async_call = False
-        self.symbols.push_scope(fd.name)
-        # Reset ownership tracking for this function
-        self._moved_vars.clear()
-        self._ownership_scope_stack.clear()
-        self._ownership_scope_stack.append(set())
+    # ── _check_function helpers ─────────────────────────────────
 
-        # Register parameters
+    def _setup_function_params(self, fd: FunctionDef) -> list:
+        """Register parameters, infer borrows, apply With constraints."""
         param_types = [self._resolve_type_expr(p.type_expr) for p in fd.params]
 
         # Infer borrows for non-pure verbs that don't need ownership (e.g. renders).
@@ -1499,6 +1471,13 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
             )
 
+        return param_types
+
+    def _setup_function_scope(self, fd: FunctionDef) -> bool:
+        """Set up requires narrowings, implicit variables for renders/listens.
+
+        Returns True if function is binary (caller should early-exit).
+        """
         # Collect requires-based option narrowings
         self._requires_narrowings = self._collect_requires_narrowings(fd)
 
@@ -1570,7 +1549,157 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         if fd.binary:
             self.symbols.pop_scope()
             self._current_function = None
-            return
+            return True
+
+        return False
+
+    def _check_function_annotations(
+        self, fd: FunctionDef, return_type: "Type", param_types: list, body_type: "Type"
+    ) -> None:
+        """Check contracts, intent prose, explain conditions, recursion, proof verification."""
+        # ── Contract type-checking ──
+        self._check_contracts(fd, return_type, param_types)
+
+        # ── Intent prose check ──
+        if fd.intent:
+            self._check_intent_prose(fd)
+
+        # ── Counterfactual annotation checks (always active) ──
+        if fd.chosen or fd.why_not:
+            self._check_chosen_has_why_not(fd)
+            self._check_chosen_body_coherence(fd)
+            self._check_why_not_names(fd, self.symbols.all_known_names())
+            self._check_why_not_contradiction(fd)
+
+        # ── Explain condition type-checking ──
+        if fd.explain is not None:
+            for entry in fd.explain.entries:
+                if entry.condition is not None:
+                    cond_type = self._infer_expr(entry.condition)
+                    if not isinstance(cond_type, ErrorType) and not types_compatible(
+                        BOOLEAN, cond_type
+                    ):
+                        self._error(
+                            "E394",
+                            f"explain condition must be Boolean, got '{type_name(cond_type)}'",
+                            entry.condition.span,
+                        )
+
+        # ── Recursion checks (verb-aware, using resolved signatures) ──
+        if self._is_recursive:
+            if fd.terminates is None and fd.trusted is None:
+                self._error(
+                    "E366",
+                    f"recursive function '{fd.name}' missing terminates",
+                    fd.span,
+                )
+
+        # ── Explain verification ──
+        verifier = ProofVerifier()
+        verifier.verify(fd)
+        self.diagnostics.extend(verifier.diagnostics)
+
+    def _finalize_function_check(self, fd: FunctionDef) -> None:
+        """Mutation testing, survivor warnings, unused vars, scope cleanup."""
+        # ── Mutation testing recommendation ──
+        # Flag functions with >1 statement but no contracts
+        # Also flag transforms/matches (even with 1 statement, complex logic needs contracts)
+        # Skip inputs without arguments - nothing meaningful to mutate
+        is_inputs_no_args = fd.verb == "inputs" and not fd.params
+        body_len = len(fd.body)
+        no_contracts = not fd.requires and not fd.ensures
+        is_trusted = fd.trusted is not None
+        if body_len > 5 and no_contracts and not is_inputs_no_args and not is_trusted:
+            self._info(
+                "I320",
+                f"Function '{fd.name}' has {body_len} statements but no contracts. "
+                "Consider adding requires/ensures for mutation testing.",
+                fd.span,
+            )
+        elif (
+            body_len > 1
+            and fd.verb in ("transforms", "matches")
+            and no_contracts
+            and not is_trusted
+        ):
+            self._info(
+                "I320",
+                f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
+                "Consider adding requires/ensures for mutation testing.",
+                fd.span,
+            )
+
+        # Check if this function had surviving mutants in previous mutation testing
+        for survivor in self._survivors:
+            loc = survivor.get("location", "")
+            if loc and ":" in loc:
+                parts = loc.split(":")
+                try:
+                    line_num = int(parts[0])
+                    col_num = int(parts[1]) if len(parts) > 1 else 0
+                    # Check if survivor location falls within function span
+                    in_line_range = fd.span.start_line <= line_num <= fd.span.end_line
+                    in_col_range = (
+                        fd.span.start_col <= col_num <= fd.span.end_col
+                        if line_num == fd.span.start_line
+                        else True
+                    )
+                    if in_line_range and in_col_range:
+                        self._warning(
+                            "W330",
+                            f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "  # noqa: E501
+                            "Add contracts to catch this mutation.",
+                            fd.span,
+                        )
+                except (ValueError, IndexError):
+                    pass
+
+        # Track verification status for chain analysis
+        if fd.trusted is not None:
+            self._verification_status[fd.name] = "trusted"
+        elif fd.ensures:
+            self._verification_status[fd.name] = "verified"
+        else:
+            self._verification_status[fd.name] = "unverified"
+
+        # W300: warn about unused local variables
+        # I301: variable initialized outside its used scope
+        for sym in self.symbols.current_scope.all_symbols():
+            if sym.kind == SymbolKind.VARIABLE and not sym.name.startswith("_"):
+                if not sym.used:
+                    self._warning("W300", f"unused variable '{sym.name}'", sym.span)
+                elif sym.used and not sym.used_outside_match and len(sym.match_arm_ids) == 1:
+                    self._info(
+                        "I305",
+                        f"'{sym.name}' is initialized at function scope but "
+                        f"only used inside a single match arm; consider "
+                        f"moving it into the arm where it is used",
+                        sym.span,
+                    )
+
+        self.symbols.pop_scope()
+        self._current_function = None
+        self._requires_narrowings = []
+
+    # ── _check_function (dispatcher) ─────────────────────────────
+
+    def _check_function(self, fd: FunctionDef) -> None:
+        """Check a function body."""
+        self._current_function = fd
+        self._is_recursive = False
+        self._inside_async_call = False
+        self.symbols.push_scope(fd.name)
+        # Reset ownership tracking for this function
+        self._moved_vars.clear()
+        self._ownership_scope_stack.clear()
+        self._ownership_scope_stack.append(set())
+
+        # Phase 1: Register parameters, infer borrows, apply With constraints
+        param_types = self._setup_function_params(fd)
+
+        # Phase 2: Set up scope (requires narrowings, implicit vars, verb rules)
+        if self._setup_function_scope(fd):
+            return  # binary function — early exit
 
         # I210: listens/streams/renders body must be a single match expression
         if fd.verb in ("listens", "streams", "renders") and fd.body:
@@ -1687,127 +1816,11 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 fd.span,
             )
 
-        # ── Contract type-checking ──
-        self._check_contracts(fd, return_type, param_types)
+        # Phase 3: Check annotations (contracts, intent, explain, recursion, proofs)
+        self._check_function_annotations(fd, return_type, param_types, body_type)
 
-        # ── Intent prose check ──
-        if fd.intent:
-            self._check_intent_prose(fd)
-
-        # ── Counterfactual annotation checks (always active) ──
-        if fd.chosen or fd.why_not:
-            self._check_chosen_has_why_not(fd)
-            self._check_chosen_body_coherence(fd)
-            self._check_why_not_names(fd, self.symbols.all_known_names())
-            self._check_why_not_contradiction(fd)
-
-        # ── Explain condition type-checking ──
-        if fd.explain is not None:
-            for entry in fd.explain.entries:
-                if entry.condition is not None:
-                    cond_type = self._infer_expr(entry.condition)
-                    if not isinstance(cond_type, ErrorType) and not types_compatible(
-                        BOOLEAN, cond_type
-                    ):
-                        self._error(
-                            "E394",
-                            f"explain condition must be Boolean, got '{type_name(cond_type)}'",
-                            entry.condition.span,
-                        )
-
-        # ── Recursion checks (verb-aware, using resolved signatures) ──
-        if self._is_recursive:
-            if fd.terminates is None and fd.trusted is None:
-                self._error(
-                    "E366",
-                    f"recursive function '{fd.name}' missing terminates",
-                    fd.span,
-                )
-
-        # ── Explain verification ──
-        verifier = ProofVerifier()
-        verifier.verify(fd)
-        self.diagnostics.extend(verifier.diagnostics)
-
-        # ── Mutation testing recommendation ──
-        # Flag functions with >1 statement but no contracts
-        # Also flag transforms/matches (even with 1 statement, complex logic needs contracts)
-        # Skip inputs without arguments - nothing meaningful to mutate
-        is_inputs_no_args = fd.verb == "inputs" and not fd.params
-        body_len = len(fd.body)
-        no_contracts = not fd.requires and not fd.ensures
-        is_trusted = fd.trusted is not None
-        if body_len > 5 and no_contracts and not is_inputs_no_args and not is_trusted:
-            self._info(
-                "I320",
-                f"Function '{fd.name}' has {body_len} statements but no contracts. "
-                "Consider adding requires/ensures for mutation testing.",
-                fd.span,
-            )
-        elif (
-            body_len > 1
-            and fd.verb in ("transforms", "matches")
-            and no_contracts
-            and not is_trusted
-        ):
-            self._info(
-                "I320",
-                f"Function '{fd.name}' ({fd.verb}) has {body_len} statements but no contracts. "
-                "Consider adding requires/ensures for mutation testing.",
-                fd.span,
-            )
-
-        # Check if this function had surviving mutants in previous mutation testing
-        for survivor in self._survivors:
-            loc = survivor.get("location", "")
-            if loc and ":" in loc:
-                parts = loc.split(":")
-                try:
-                    line_num = int(parts[0])
-                    col_num = int(parts[1]) if len(parts) > 1 else 0
-                    # Check if survivor location falls within function span
-                    in_line_range = fd.span.start_line <= line_num <= fd.span.end_line
-                    in_col_range = (
-                        fd.span.start_col <= col_num <= fd.span.end_col
-                        if line_num == fd.span.start_line
-                        else True
-                    )
-                    if in_line_range and in_col_range:
-                        self._warning(
-                            "W330",
-                            f"Function '{fd.name}' had a surviving mutant: {survivor.get('description', 'unknown')}. "  # noqa: E501
-                            "Add contracts to catch this mutation.",
-                            fd.span,
-                        )
-                except (ValueError, IndexError):
-                    pass
-
-        # Track verification status for chain analysis
-        if fd.trusted is not None:
-            self._verification_status[fd.name] = "trusted"
-        elif fd.ensures:
-            self._verification_status[fd.name] = "verified"
-        else:
-            self._verification_status[fd.name] = "unverified"
-
-        # W300: warn about unused local variables
-        # I301: variable initialized outside its used scope
-        for sym in self.symbols.current_scope.all_symbols():
-            if sym.kind == SymbolKind.VARIABLE and not sym.name.startswith("_"):
-                if not sym.used:
-                    self._warning("W300", f"unused variable '{sym.name}'", sym.span)
-                elif sym.used and not sym.used_outside_match and len(sym.match_arm_ids) == 1:
-                    self._info(
-                        "I305",
-                        f"'{sym.name}' is initialized at function scope but "
-                        f"only used inside a single match arm; consider "
-                        f"moving it into the arm where it is used",
-                        sym.span,
-                    )
-
-        self.symbols.pop_scope()
-        self._current_function = None
-        self._requires_narrowings = []
+        # Phase 4: Finalize (mutation testing, survivors, unused vars, scope cleanup)
+        self._finalize_function_check(fd)
 
     def _check_main(self, md: MainDef) -> None:
         """Check the main function body."""

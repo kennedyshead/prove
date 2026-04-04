@@ -6,6 +6,7 @@ import re
 
 from prove.ast_nodes import (
     Assignment,
+    AsyncCallExpr,
     BinaryExpr,
     BindingPattern,
     CallExpr,
@@ -49,6 +50,42 @@ from prove.verb_defs import PURE_VERBS
 
 _PURE_VERBS = PURE_VERBS
 _IO_FUNCTIONS = frozenset({"sleep"})
+
+
+def _match_arms_have_fail_prop(match_expr: MatchExpr) -> bool:
+    """Return True if any arm body contains a FailPropExpr (failable call).
+
+    A match with failable calls cannot be extracted to a 'matches' verb
+    (which must be pure), so I367 must not be suggested.
+    """
+
+    def _expr_has_fail(expr: Expr) -> bool:
+        if isinstance(expr, FailPropExpr):
+            return True
+        if isinstance(expr, CallExpr):
+            return any(_expr_has_fail(a) for a in expr.args)
+        if isinstance(expr, BinaryExpr):
+            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+        if isinstance(expr, UnaryExpr):
+            return _expr_has_fail(expr.operand)
+        if isinstance(expr, PipeExpr):
+            return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
+        if isinstance(expr, LambdaExpr):
+            return _expr_has_fail(expr.body)
+        if isinstance(expr, AsyncCallExpr):
+            return _expr_has_fail(expr.expr)
+        return False
+
+    def _stmt_has_fail(stmt: Stmt | MatchExpr) -> bool:
+        if isinstance(stmt, ExprStmt):
+            return _expr_has_fail(stmt.expr)
+        if isinstance(stmt, VarDecl) and stmt.value is not None:
+            return _expr_has_fail(stmt.value)
+        if isinstance(stmt, Assignment):
+            return _expr_has_fail(stmt.value)
+        return False
+
+    return any(_stmt_has_fail(stmt) for arm in match_expr.arms for stmt in arm.body)
 
 
 def _expr_references_name(expr: Expr, name: str) -> bool:
@@ -646,40 +683,6 @@ class ContractCheckMixin:
 
     # ── Match restriction (I367) ────────────────────────────────
 
-    @staticmethod
-    def _match_arms_have_fail_prop(match_expr: MatchExpr) -> bool:
-        """Return True if any arm body contains a FailPropExpr (failable call).
-
-        A match with failable calls cannot be extracted to a 'matches' verb
-        (which must be pure), so I367 must not be suggested.
-        """
-
-        def _expr_has_fail(expr: Expr) -> bool:
-            if isinstance(expr, FailPropExpr):
-                return True
-            if isinstance(expr, CallExpr):
-                return any(_expr_has_fail(a) for a in expr.args)
-            if isinstance(expr, BinaryExpr):
-                return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
-            if isinstance(expr, UnaryExpr):
-                return _expr_has_fail(expr.operand)
-            if isinstance(expr, PipeExpr):
-                return _expr_has_fail(expr.left) or _expr_has_fail(expr.right)
-            if isinstance(expr, LambdaExpr):
-                return _expr_has_fail(expr.body)
-            return False
-
-        def _stmt_has_fail(stmt: Stmt) -> bool:
-            if isinstance(stmt, ExprStmt):
-                return _expr_has_fail(stmt.expr)
-            if isinstance(stmt, VarDecl) and stmt.value is not None:
-                return _expr_has_fail(stmt.value)
-            if isinstance(stmt, Assignment):
-                return _expr_has_fail(stmt.value)
-            return False
-
-        return any(_stmt_has_fail(stmt) for arm in match_expr.arms for stmt in arm.body)
-
     def _check_match_restriction(
         self,
         body: list[Stmt | MatchExpr],
@@ -690,7 +693,7 @@ class ContractCheckMixin:
         target = "matches" if verb in _PURE_VERBS else "dispatches"
         for stmt in body:
             if isinstance(stmt, MatchExpr):
-                if len(stmt.arms) >= 3 and not self._match_arms_have_fail_prop(stmt):
+                if len(stmt.arms) >= 3 and not _match_arms_have_fail_prop(stmt):
                     self._info(
                         "I367",
                         f"consider extracting match to a '{target}' verb function for better code flow",  # noqa: E501
@@ -708,7 +711,7 @@ class ContractCheckMixin:
     def _check_match_in_expr(self, expr: Expr, target: str) -> None:
         """Walk an expression looking for MatchExpr nodes."""
         if isinstance(expr, MatchExpr):
-            if len(expr.arms) >= 3 and not self._match_arms_have_fail_prop(expr):
+            if len(expr.arms) >= 3 and not _match_arms_have_fail_prop(expr):
                 self._info(
                     "I367",
                     f"consider extracting match to a '{target}' verb function for better code flow",

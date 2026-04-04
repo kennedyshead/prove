@@ -203,34 +203,23 @@ class Lexer:
 
     # ── Comments ─────────────────────────────────────────────────
 
-    def _lex_doc_comment(self) -> None:
+    def _lex_comment(self, prefix_len: int, kind: TokenKind) -> None:
         start_line = self.line
         start_col = self.col
-        # Skip ///
-        self._advance()
-        self._advance()
-        self._advance()
-        # Skip optional leading space
-        if self.pos < len(self.source) and self.source[self.pos] == " ":
+        for _ in range(prefix_len):
             self._advance()
-        text = []
-        while self.pos < len(self.source) and self.source[self.pos] != "\n":
-            text.append(self._advance())
-        self._emit(TokenKind.DOC_COMMENT, "".join(text), start_line, start_col)
-
-    def _lex_line_comment(self) -> None:
-        start_line = self.line
-        start_col = self.col
-        # Skip //
-        self._advance()
-        self._advance()
-        # Skip optional leading space
         if self.pos < len(self.source) and self.source[self.pos] == " ":
             self._advance()
         text: list[str] = []
         while self.pos < len(self.source) and self.source[self.pos] != "\n":
             text.append(self._advance())
-        self._emit(TokenKind.COMMENT, "".join(text), start_line, start_col)
+        self._emit(kind, "".join(text), start_line, start_col)
+
+    def _lex_doc_comment(self) -> None:
+        self._lex_comment(3, TokenKind.DOC_COMMENT)
+
+    def _lex_line_comment(self) -> None:
+        self._lex_comment(2, TokenKind.COMMENT)
 
     # ── Strings ──────────────────────────────────────────────────
 
@@ -520,17 +509,22 @@ class Lexer:
         else:
             self._emit(TokenKind.INTEGER_LIT, "".join(text), start_line, start_col)
 
-    def _lex_hex_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and (self.source[self.pos] in "0123456789abcdefABCDEF_"):
+    _HEX_CHARS = frozenset("0123456789abcdefABCDEF_")
+    _BIN_CHARS = frozenset("01_")
+    _OCT_CHARS = frozenset("01234567_")
+
+    def _lex_digits(self, text: list[str], valid: frozenset[str]) -> None:
+        while self.pos < len(self.source) and self.source[self.pos] in valid:
             text.append(self._advance())
+
+    def _lex_hex_digits(self, text: list[str]) -> None:
+        self._lex_digits(text, self._HEX_CHARS)
 
     def _lex_bin_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] in "01_":
-            text.append(self._advance())
+        self._lex_digits(text, self._BIN_CHARS)
 
     def _lex_oct_digits(self, text: list[str]) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] in "01234567_":
-            text.append(self._advance())
+        self._lex_digits(text, self._OCT_CHARS)
 
     # ── Identifiers and Keywords ─────────────────────────────────
 

@@ -11,7 +11,6 @@ from prove.ast_nodes import (
     ComptimeExpr,
     DecimalLit,
     Expr,
-    ExprStmt,
     FailPropExpr,
     FieldExpr,
     FloatLit,
@@ -77,6 +76,19 @@ from prove.types import (
     types_compatible,
 )
 
+_LITERAL_TYPES: dict[type, Type] = {
+    IntegerLit: INTEGER,
+    DecimalLit: DECIMAL,
+    FloatLit: FLOAT,
+    StringLit: STRING,
+    BooleanLit: BOOLEAN,
+    CharLit: CHARACTER,
+    RegexLit: STRING,
+    RawStringLit: PrimitiveType("String", ((None, "Reg"),)),
+    PathLit: STRING,
+    TripleStringLit: STRING,
+}
+
 
 class TypeCheckMixin:
     """Mixin providing type inference, pattern checking, and type resolution."""
@@ -85,26 +97,9 @@ class TypeCheckMixin:
 
     def _infer_expr(self, expr: Expr) -> Type:
         """Infer the type of an expression."""
-        if isinstance(expr, IntegerLit):
-            return INTEGER
-        if isinstance(expr, DecimalLit):
-            return DECIMAL
-        if isinstance(expr, FloatLit):
-            return FLOAT
-        if isinstance(expr, StringLit):
-            return STRING
-        if isinstance(expr, BooleanLit):
-            return BOOLEAN
-        if isinstance(expr, CharLit):
-            return CHARACTER
-        if isinstance(expr, RegexLit):
-            return STRING  # regex patterns are strings at type level
-        if isinstance(expr, RawStringLit):
-            return PrimitiveType("String", ((None, "Reg"),))
-        if isinstance(expr, PathLit):
-            return STRING  # path literals are string-typed
-        if isinstance(expr, TripleStringLit):
-            return STRING
+        lit_type = _LITERAL_TYPES.get(type(expr))
+        if lit_type is not None:
+            return lit_type
         if isinstance(expr, StringInterp):
             for part in expr.parts:
                 if not isinstance(part, StringLit):
@@ -423,61 +418,6 @@ class TypeCheckMixin:
         body_type = self._infer_expr(expr.body)
         self.symbols.pop_scope()
         return FunctionType(param_types, body_type)
-
-    def _collect_lambda_captures(
-        self,
-        expr: Expr,
-        param_names: set[str],
-        captures: list[str],
-    ) -> None:
-        """Walk lambda body; collect names of captured enclosing-scope locals."""
-        if isinstance(expr, IdentifierExpr):
-            if expr.name not in param_names and expr.name not in captures:
-                sym = self.symbols.lookup(expr.name)
-                if sym is not None and sym.kind == SymbolKind.VARIABLE:
-                    captures.append(expr.name)
-        elif isinstance(expr, BinaryExpr):
-            self._collect_lambda_captures(expr.left, param_names, captures)
-            self._collect_lambda_captures(expr.right, param_names, captures)
-        elif isinstance(expr, UnaryExpr):
-            self._collect_lambda_captures(expr.operand, param_names, captures)
-        elif isinstance(expr, CallExpr):
-            for arg in expr.args:
-                self._collect_lambda_captures(arg, param_names, captures)
-        elif isinstance(expr, FieldExpr):
-            self._collect_lambda_captures(expr.obj, param_names, captures)
-        elif isinstance(expr, StringInterp):
-            for part in expr.parts:
-                if not isinstance(part, str):
-                    self._collect_lambda_captures(part, param_names, captures)
-        elif isinstance(expr, IndexExpr):
-            self._collect_lambda_captures(expr.obj, param_names, captures)
-            self._collect_lambda_captures(expr.index, param_names, captures)
-        elif isinstance(expr, ValidExpr):
-            if expr.args:
-                for arg in expr.args:
-                    self._collect_lambda_captures(arg, param_names, captures)
-        elif isinstance(expr, FailPropExpr):
-            self._collect_lambda_captures(expr.expr, param_names, captures)
-        elif isinstance(expr, MatchExpr):
-            if expr.subject is not None:
-                self._collect_lambda_captures(expr.subject, param_names, captures)
-            for arm in expr.arms:
-                arm_names = set(param_names)
-                pat = arm.pattern
-                if isinstance(pat, BindingPattern):
-                    arm_names.add(pat.name)
-                elif isinstance(pat, VariantPattern):
-                    for f in pat.fields:
-                        if isinstance(f, BindingPattern):
-                            arm_names.add(f.name)
-                for stmt in arm.body:
-                    e = stmt.expr if isinstance(stmt, ExprStmt) else stmt
-                    if isinstance(e, Expr):
-                        self._collect_lambda_captures(e, arm_names, captures)
-        elif isinstance(expr, LambdaExpr):
-            inner_params = set(expr.params) if expr.params else set()
-            self._collect_lambda_captures(expr.body, param_names | inner_params, captures)
 
     def _infer_index(self, expr: IndexExpr) -> Type:
         obj_type = self._infer_expr(expr.obj)

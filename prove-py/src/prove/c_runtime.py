@@ -31,6 +31,9 @@ import re
 import shutil
 from pathlib import Path
 
+_FUNC_CALL_RE = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(")
+_INCLUDE_RE = re.compile(r'#include\s+"(prove_[a-zA-Z0-9_]+)\.h"')
+
 
 def _discover_runtime_files() -> list[str]:
     """Auto-discover prove_*.{c,h} files from the prove.runtime package."""
@@ -728,8 +731,7 @@ _RUNTIME_FUNCTIONS = {
 def _extract_function_calls(c_code: str) -> set[str]:
     """Extract all function calls from C code."""
     calls = set()
-    func_call_pattern = r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\("
-    for match in re.finditer(func_call_pattern, c_code):
+    for match in _FUNC_CALL_RE.finditer(c_code):
         func_name = match.group(1)
         if func_name.startswith("prove_") or func_name.startswith("_prove_"):
             calls.add(func_name)
@@ -773,10 +775,9 @@ def copy_runtime(
 
     all_calls = set()
     all_includes: set[str] = set()
-    include_pattern = re.compile(r'#include\s+"(prove_[a-zA-Z0-9_]+)\.h"')
     for src in c_sources:
         all_calls.update(_extract_function_calls(src))
-        for m in include_pattern.finditer(src):
+        for m in _INCLUDE_RE.finditer(src):
             all_includes.add(m.group(1))
 
     needed_libs = set()
