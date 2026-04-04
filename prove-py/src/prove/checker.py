@@ -3634,6 +3634,19 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         elif isinstance(expr, LambdaExpr):
             inner_params = set(expr.params) if expr.params else set()
             self._collect_lambda_captures(expr.body, param_names | inner_params, captures)
+        elif isinstance(expr, StringInterp):
+            for part in expr.parts:
+                if not isinstance(part, str):
+                    self._collect_lambda_captures(part, param_names, captures)
+        elif isinstance(expr, IndexExpr):
+            self._collect_lambda_captures(expr.obj, param_names, captures)
+            self._collect_lambda_captures(expr.index, param_names, captures)
+        elif isinstance(expr, ValidExpr):
+            if expr.args:
+                for arg in expr.args:
+                    self._collect_lambda_captures(arg, param_names, captures)
+        elif isinstance(expr, FailPropExpr):
+            self._collect_lambda_captures(expr.expr, param_names, captures)
 
     def _infer_index(self, expr: IndexExpr) -> Type:
         obj_type = self._infer_expr(expr.obj)

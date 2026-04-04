@@ -2194,12 +2194,15 @@ class CallEmitterMixin:
             BindingPattern,
             CallExpr,
             ExprStmt,
+            FailPropExpr,
             FieldExpr,
             IdentifierExpr,
+            IndexExpr,
             LambdaExpr,
             MatchExpr,
             StringInterp,
             UnaryExpr,
+            ValidExpr,
             VariantPattern,
         )
 
@@ -2245,6 +2248,15 @@ class CallEmitterMixin:
             for part in body.parts:
                 if not isinstance(part, str):
                     self._collect_emitter_captures(part, param_names, captures)
+        elif isinstance(body, IndexExpr):
+            self._collect_emitter_captures(body.obj, param_names, captures)
+            self._collect_emitter_captures(body.index, param_names, captures)
+        elif isinstance(body, ValidExpr):
+            if body.args:
+                for arg in body.args:
+                    self._collect_emitter_captures(arg, param_names, captures)
+        elif isinstance(body, FailPropExpr):
+            self._collect_emitter_captures(body.expr, param_names, captures)
 
     def _emit_hof_lambda(
         self,
