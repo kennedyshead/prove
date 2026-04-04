@@ -183,8 +183,8 @@ _register_module(
         ("derives", "replace"): "prove_text_replace",
         ("derives", "repeat"): "prove_text_repeat",
         ("creates", "builder"): "prove_text_builder",
-        ("derives", "string_builder"): "prove_text_write",
-        ("derives", "char"): "prove_text_write_char",
+        ("transforms", "string_builder"): "prove_text_write",
+        ("transforms", "char"): "prove_text_write_char",
         ("creates", "build"): "prove_text_build",
     },
     overloads={
