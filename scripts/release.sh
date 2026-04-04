@@ -113,8 +113,16 @@ echo "  $PYPROJECT"
 echo "  $INIT_PY"
 echo "  $PROVE_TOML"
 
+# ── Update docs/releases.md "Latest" pointer ────────────────────────
+RELEASES_MD="${REPO_ROOT}/docs/releases.md"
+if [ -f "$RELEASES_MD" ]; then
+  sed -i.bak "s|^\*\*Latest: v[^*]*\*\*.*|**Latest: ${TAG}** — [:octicons-tag-16: Release notes](https://code.botwork.se/Botwork/prove/releases/tag/${TAG}){ .md-button } · [:octicons-file-16: Full changelog](https://code.botwork.se/Botwork/prove/src/branch/main/CHANGELOG.md){ .md-button }|" "$RELEASES_MD"
+  rm -f "${RELEASES_MD}.bak"
+  echo "  $RELEASES_MD (Latest pointer)"
+fi
+
 # ── Commit and tag ──────────────────────────────────────────────────
-git add "$CHANGELOG" "$PYPROJECT" "$INIT_PY" "$PROVE_TOML"
+git add "$CHANGELOG" "$PYPROJECT" "$INIT_PY" "$PROVE_TOML" "$RELEASES_MD"
 git commit -m "Release ${TAG}"
 git tag "$TAG"
 

@@ -1,5 +1,9 @@
 # Releases
 
+**Latest: v1.3.1** — [:octicons-tag-16: Release notes](https://code.botwork.se/Botwork/prove/releases/tag/v1.3.1){ .md-button } · [:octicons-file-16: Full changelog](https://code.botwork.se/Botwork/prove/src/branch/main/CHANGELOG.md){ .md-button }
+
+---
+
 ## v1.3.0 — April 2026
 
 Tree-sitter migration, new verbs, linting infrastructure, and diagnostic improvements.
