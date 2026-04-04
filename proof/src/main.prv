@@ -19,6 +19,7 @@ module Main
   Source creates module_name inputs source_file
   Types validates unit string
   Table derives add creates new
+  Log detached info
 
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
@@ -35,6 +36,7 @@ from
 
 inputs parse_stdlibs()!
 from
+    info("Generating stdlib mapping")&
     source as List<Option<SourceFile>> =
         map(dir("src/stdlib"), |value| source_file(value.path))
     source_pure as List<Option<SourceFile>> =
@@ -47,13 +49,16 @@ from
 
 dispatches parsed_command(command Option<String>, help Boolean, arguments List<String>)!
 from
-    Some("build") => build(help, arguments)!
+    Some("build") =>
+        match contains(arguments, "--compiler")
+            true =>
+                parse_stdlibs()!
+        build(help, arguments)!
     Some("check") => check(help, arguments)!
     Some("format") => format(help, arguments)!
     Some("lsp") => lsp(help, arguments)!
     Some("new") => new(help, arguments)!
     Some("test") => test(help, arguments)!
-    Some("export_stdlibs") => parse_stdlibs()!
     Some("--version") =>
         config as Config = config()!
         console(f"{config.package.version}")
