@@ -20,3 +20,10 @@ repos:
         entry: bash -c "cd prove-py && mypy src/ --config-file=pyproject.toml"
         language: system
         pass_filenames: false
+
+      - id: sync-checks
+        name: sync-checks
+        entry: bash -c "cd prove-py && python -m pytest tests/test_diagnostic_links.py tests/test_runtime_functions_sync.py -x -q"
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

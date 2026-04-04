@@ -59,7 +59,9 @@ class TestCLI:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "1.3.0" in result.output
+        from prove import __version__
+
+        assert __version__ in result.output
 
     def test_view_command(self, runner, tmp_project):
         prv_file = tmp_project / "src" / "main.prv"
