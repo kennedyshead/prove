@@ -2791,11 +2791,16 @@ class CallEmitterMixin:
 
     # ── Fused iterator emission ─────────────────────────────────
 
-    def _emit_fused_map_filter(self, expr: CallExpr) -> str:
-        """Emit map(filter(list, pred), func) as a single-pass loop.
+    def _fused_loop_preamble(
+        self,
+        expr: CallExpr,
+        *,
+        result_list: bool = False,
+    ) -> tuple[str, Type, "CType", str, str, str | None]:
+        """Common setup for fused HOF loops.
 
-        Args: [list, pred, func]
-        Fuses filter+map into one loop: iterate, test predicate, if passes apply func.
+        Returns (list_arg, elem_type, elem_ct, idx, elem_var, result_tmp).
+        result_tmp is None when *result_list* is False.
         """
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
@@ -2803,16 +2808,37 @@ class CallEmitterMixin:
         elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
-        result_tmp = self._tmp()
+        result_tmp: str | None = None
+        if result_list:
+            result_tmp = self._tmp()
+            self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
+
         idx = self._named_tmp("i")
         elem_var = self._tmp()
 
-        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
         elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
         self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+
+        return list_arg, elem_type, elem_ct, idx, elem_var, result_tmp
+
+    def _fused_loop_epilogue(self) -> None:
+        """Close a fused loop opened by _fused_loop_preamble."""
+        self._indent -= 1
+        self._line("}")
+
+    def _emit_fused_map_filter(self, expr: CallExpr) -> str:
+        """Emit map(filter(list, pred), func) as a single-pass loop.
+
+        Args: [list, pred, func]
+        Fuses filter+map into one loop: iterate, test predicate, if passes apply func.
+        """
+        _la, elem_type, _ec, _i, elem_var, result_tmp = self._fused_loop_preamble(
+            expr, result_list=True
+        )
+        assert result_tmp is not None
 
         # Emit predicate test
         pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
@@ -2838,8 +2864,7 @@ class CallEmitterMixin:
 
         self._indent -= 1
         self._line("}")
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return result_tmp
 
     def _emit_fused_filter_map(self, expr: CallExpr) -> str:
@@ -2848,23 +2873,11 @@ class CallEmitterMixin:
         Args: [list, func, pred]
         Fuses map+filter into one loop: iterate, apply func, test predicate on result.
         """
-        self._needed_headers.add("prove_list.h")
-        list_arg, list_type = self._cache_list_arg(expr.args[0])
-
-        elem_type = self._infer_hof_elem_type(list_type)
-        elem_ct = map_type(elem_type)
-
-        result_tmp = self._tmp()
-        idx = self._named_tmp("i")
-        elem_var = self._tmp()
+        _la, elem_type, _ec, _i, elem_var, result_tmp = self._fused_loop_preamble(
+            expr, result_list=True
+        )
+        assert result_tmp is not None
         mapped_var = self._tmp()
-
-        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
-        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
-        self._indent += 1
-
-        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
-        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         # Infer the mapped element type from the map lambda
         map_fn = expr.args[1]
@@ -2910,8 +2923,7 @@ class CallEmitterMixin:
 
         self._indent -= 1
         self._line("}")
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return result_tmp
 
     def _emit_fused_map_map(self, expr: CallExpr) -> str:
@@ -2920,22 +2932,10 @@ class CallEmitterMixin:
         Args: [list, f, g]
         Fuses two maps into one loop: iterate, apply f then g.
         """
-        self._needed_headers.add("prove_list.h")
-        list_arg, list_type = self._cache_list_arg(expr.args[0])
-
-        elem_type = self._infer_hof_elem_type(list_type)
-        elem_ct = map_type(elem_type)
-
-        result_tmp = self._tmp()
-        idx = self._named_tmp("i")
-        elem_var = self._tmp()
-
-        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
-        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
-        self._indent += 1
-
-        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
-        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+        _la, elem_type, _ec, _i, elem_var, result_tmp = self._fused_loop_preamble(
+            expr, result_list=True
+        )
+        assert result_tmp is not None
 
         # Infer f's return type for correct intermediate boxing
         f_fn = expr.args[1]
@@ -2979,8 +2979,7 @@ class CallEmitterMixin:
             wrap = self._hof_box(str(g_code), g_result_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return result_tmp
 
     def _emit_fused_filter_filter(self, expr: CallExpr) -> str:
@@ -2989,22 +2988,10 @@ class CallEmitterMixin:
         Args: [list, p1, p2]
         Fuses two filters into one loop: keep elements passing both predicates.
         """
-        self._needed_headers.add("prove_list.h")
-        list_arg, list_type = self._cache_list_arg(expr.args[0])
-
-        elem_type = self._infer_hof_elem_type(list_type)
-        elem_ct = map_type(elem_type)
-
-        result_tmp = self._tmp()
-        idx = self._named_tmp("i")
-        elem_var = self._tmp()
-
-        self._line(f"Prove_List *{result_tmp} = prove_list_new(8);")
-        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
-        self._indent += 1
-
-        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
-        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+        _la, elem_type, elem_ct, _i, elem_var, result_tmp = self._fused_loop_preamble(
+            expr, result_list=True
+        )
+        assert result_tmp is not None
 
         p1_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         p2_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
@@ -3016,8 +3003,7 @@ class CallEmitterMixin:
 
         self._indent -= 1
         self._line("}")
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return result_tmp
 
     def _emit_fused_reduce_map(self, expr: CallExpr) -> str:
@@ -3296,21 +3282,8 @@ class CallEmitterMixin:
         Args: [list, f, g]
         Fuses map+each into one loop: apply f then pass result to side-effect g.
         """
-        self._needed_headers.add("prove_list.h")
-        list_arg, list_type = self._cache_list_arg(expr.args[0])
-
-        elem_type = self._infer_hof_elem_type(list_type)
-        elem_ct = map_type(elem_type)
-
-        idx = self._named_tmp("i")
-        elem_var = self._tmp()
+        _la, elem_type, _ec, _i, elem_var, _ = self._fused_loop_preamble(expr)
         mapped_var = self._tmp()
-
-        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
-        self._indent += 1
-
-        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
-        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         # Infer the mapped element type from the map lambda
         map_fn = expr.args[1]
@@ -3336,8 +3309,7 @@ class CallEmitterMixin:
         )
         self._line(f"(void){consumer_code};")
 
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return "((void*)0)"
 
     def _emit_fused_each_filter(self, expr: CallExpr) -> str:
@@ -3346,22 +3318,7 @@ class CallEmitterMixin:
         Args: [list, p, g]
         Fuses filter+each into one loop: test predicate, if passes run side-effect g.
         """
-        self._needed_headers.add("prove_list.h")
-        list_arg, list_type = self._cache_list_arg(expr.args[0])
-
-        elem_type: Type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element
-        elem_ct = map_type(elem_type)
-
-        idx = self._named_tmp("i")
-        elem_var = self._tmp()
-
-        self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
-        self._indent += 1
-
-        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
-        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
+        _la, elem_type, _ec, _i, elem_var, _ = self._fused_loop_preamble(expr)
 
         pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         self._line(f"if ({pred_code}) {{")
@@ -3396,8 +3353,7 @@ class CallEmitterMixin:
 
         self._indent -= 1
         self._line("}")
-        self._indent -= 1
-        self._line("}")
+        self._fused_loop_epilogue()
         return "((void*)0)"
 
     def _resolve_option_inner_type(self, option_type: GenericInstance, consumer: Expr) -> Type:
