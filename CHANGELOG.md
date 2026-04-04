@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.3.1 — April 2026
+
+### Features
+
+- Add _infer_hof_elem_type helper for consistent ErrorType fallback
+
+### Fixes
+
+- Fix struct boxing in fused emitters: filter_filter, each_map, reduce_map
+
+### Other
+
+- adding CHANGELOG.md
+- adding release script
+- Compiler collecting stdlibs needs to be a flag on build
+- Extract _fused_loop_preamble/_epilogue to consolidate fused emitter boilerplate
+- Complete lambda capture walkers with missing expression types
+- text_demo fails fixed, some stdlib changes that where not populated
+- Adding verbs to sourced file in native compiler
+- StdLibs+modules checked for imports in native compiler
+- Fixing some chat links in docs
+
+---
+
+
 ## v1.3.0 — April 2026
 
 ### Features
