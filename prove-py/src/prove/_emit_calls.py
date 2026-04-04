@@ -2856,7 +2856,11 @@ class CallEmitterMixin:
 
         # Apply map function then test predicate
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
+        # Struct types are already boxed as void* by _emit_fused_lambda_inline
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
 
         # Test predicate on mapped result — unbox if map produced a boxed struct
         mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer
@@ -2911,7 +2915,10 @@ class CallEmitterMixin:
         # Apply f then g
         f_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         mid_var = self._tmp()
-        self._line(f"void *{mid_var} = {hof_box(str(f_code), f_result_ct)};")
+        if f_result_ct.decl.startswith("Prove_") and not f_result_ct.is_pointer:
+            self._line(f"void *{mid_var} = {f_code};")
+        else:
+            self._line(f"void *{mid_var} = (void*)(intptr_t){f_code};")
 
         # Infer g's return type for final boxing
         g_fn = expr.args[2]
@@ -3014,7 +3021,10 @@ class CallEmitterMixin:
         mapped_ct = map_type(mapped_type)
 
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
 
         # Accumulate: accum = g(accum, mapped)
         g_expr = expr.args[3]
@@ -3250,7 +3260,10 @@ class CallEmitterMixin:
         mapped_ct = map_type(mapped_type)
 
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = {hof_box(str(map_code), mapped_ct)};")
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
 
         # Pass correct mapped type to consumer; unbox if map produced a boxed struct
         mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer

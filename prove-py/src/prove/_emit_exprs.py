@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from prove._emit_helpers import hof_box, hof_unbox, option_unwrap_value, to_string_func
+from prove._emit_helpers import option_unwrap_value, to_string_func
 from prove.ast_nodes import (
     AsyncCallExpr,
     BinaryExpr,
@@ -1223,6 +1223,11 @@ class ExprEmitterMixin:
                 val = self._emit_expr(part)
                 if isinstance(part_type, PrimitiveType) and part_type.name == "String":
                     parts.append(val)
+                elif isinstance(part_type, ErrorType) or (
+                    isinstance(part_type, PrimitiveType) and part_type.name == "Error"
+                ):
+                    # Error is Prove_String* — use directly
+                    parts.append(val)
                 elif isinstance(part_type, PrimitiveType) and to_string_func(part_type):
                     parts.append(f"{to_string_func(part_type)}({val})")
                 elif (
@@ -1235,11 +1240,6 @@ class ExprEmitterMixin:
                     unwrapped = option_unwrap_value(f"{val}.value", inner_ct)
                     c_name = self._to_string_func(inner)
                     parts.append(f"{c_name}({unwrapped})")
-                elif isinstance(part_type, ErrorType) or (
-                    isinstance(part_type, PrimitiveType) and part_type.name == "Error"
-                ):
-                    # Error is Prove_String* — use directly
-                    parts.append(val)
                 else:
                     parts.append(f"prove_string_from_int({val})")
 
@@ -1268,9 +1268,18 @@ class ExprEmitterMixin:
             )
         else:
             self._line(f"Prove_List *{tmp} = prove_list_new({len(expr.elements)});")
+        is_struct = isinstance(elem_type, (RecordType, AlgebraicType))
         for elem in expr.elements:
             val = self._emit_expr(elem)
-            self._line(f"prove_list_push({tmp}, {hof_box(val, ct)});")
+            if ct.is_pointer:
+                self._line(f"prove_list_push({tmp}, (void*){val});")
+            elif is_struct:
+                heap_tmp = self._tmp()
+                self._line(f"{ct.decl} *{heap_tmp} = malloc(sizeof({ct.decl}));")
+                self._line(f"*{heap_tmp} = {val};")
+                self._line(f"prove_list_push({tmp}, (void*){heap_tmp});")
+            else:
+                self._line(f"prove_list_push({tmp}, (void*)(intptr_t){val});")
         return tmp
 
     # -- Index expression -------------------------------------------
@@ -1281,7 +1290,11 @@ class ExprEmitterMixin:
         obj_type = self._infer_expr_type(expr.obj)
         if isinstance(obj_type, ListType):
             elem_ct = map_type(obj_type.element)
-            return hof_unbox(f"prove_list_get({obj}, {idx})", elem_ct)
+            if elem_ct.is_pointer:
+                return f"({elem_ct.decl})prove_list_get({obj}, {idx})"
+            if isinstance(obj_type.element, (RecordType, AlgebraicType)):
+                return f"(*({elem_ct.decl}*)prove_list_get({obj}, {idx}))"
+            return f"({elem_ct.decl})(intptr_t)prove_list_get({obj}, {idx})"
         return f"{obj}[{idx}]"
 
     # -- Lookup access ----------------------------------------------
