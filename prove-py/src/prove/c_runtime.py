@@ -308,6 +308,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_value_decimal",
         "prove_value_bool",
         "prove_value_array",
+        "prove_value_string_array",
         "prove_value_object",
         "prove_value_tag",
         "prove_value_as_text",

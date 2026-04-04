@@ -756,6 +756,24 @@ derives total(items List<Item>) Integer
 
 ---
 
+### E438 — Option\<T\> passed where T expected
+
+An `Option<T>` value is passed to a parameter that expects `T` directly. This would cause a null pointer dereference at runtime if the value is `None`. Unwrap the option explicitly before passing it.
+
+```prove
+derives double(n Integer) Integer
+
+outputs main(arguments List<String>)!
+from
+    maybe as Option<Integer> = find(items, "key")
+    // Error — passing Option<Integer> where Integer expected
+    double(maybe)
+    // Fix — unwrap with match or unwrap()
+    double(unwrap(maybe, 0))
+```
+
+---
+
 ## Warnings
 
 ### W300 — Unused local variable
