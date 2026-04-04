@@ -606,7 +606,9 @@ class TestModuleConstants:
             "        MY_FILE\n"
         )
         c_code = _emit(source)
-        assert '#define MY_FILE prove_string_from_cstr("data.json")' in c_code
+        # String constants are emitted as static immortal structs
+        assert '"data.json"' in c_code
+        assert "#define MY_FILE ((Prove_String*)&" in c_code
 
     def test_integer_constant(self):
         source = (

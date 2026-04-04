@@ -35,6 +35,8 @@ validates module_import(
     node Node,
     source_file SourceFile
 )
+  ensures contains(content.modules, name)
+  ensures valid boolean(result)
   requires unit(name) == false
 from
     match contains(content.modules, name)

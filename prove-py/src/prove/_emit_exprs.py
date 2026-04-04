@@ -803,6 +803,14 @@ class ExprEmitterMixin:
             self._line(f"Prove_Option {opt_tmp} = {subj};")
             subj = opt_tmp
 
+        # Hoist Result subject into a temporary to avoid double evaluation
+        # when the expression is a function call (e.g. prove_parse_json(...)).
+        is_result_subj = isinstance(subj_type, GenericInstance) and subj_type.base_name == "Result"
+        if is_result_subj and "(" in subj:
+            res_tmp = self._tmp()
+            self._line(f"Prove_Result {res_tmp} = {subj};")
+            subj = res_tmp
+
         if not isinstance(subj_type, AlgebraicType):
             # Non-algebraic match: emit as if/else-if chain
             result_type = self._infer_match_result_type(m)

@@ -237,11 +237,18 @@ class StmtEmitterMixin:
                         and ret_type.base_name == "Result"
                         and not last_is_failprop
                     ):
-                        # Already returns Result — just emit and return ok
-                        self._emit_stmt(stmt)
-                        self._emit_releases(None)
-                        self._emit_region_exit()
-                        self._line("return prove_result_ok();")
+                        # Already returns Result — capture and return it
+                        expr = self._stmt_expr(stmt)
+                        if expr is not None:
+                            ret_val = self._emit_expr(expr)
+                            self._emit_releases(None)
+                            self._emit_region_exit()
+                            self._line(f"return {ret_val};")
+                        else:
+                            self._emit_stmt(stmt)
+                            self._emit_releases(None)
+                            self._emit_region_exit()
+                            self._line("return prove_result_ok();")
                     elif isinstance(ret_type, UnitType):
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
@@ -261,40 +268,45 @@ class StmtEmitterMixin:
                                 and ret_type.args
                             ):
                                 wrap_type = ret_type.args[0]
-                            ret_tmp = self._tmp()
                             ret_ct = map_type(wrap_type)
-                            self._in_return_position = True
-                            ret_val = self._emit_expr(expr)
-                            self._in_return_position = False
-                            self._line(f"{ret_ct.decl} {ret_tmp} = {ret_val};")
-                            self._emit_releases(ret_tmp)
-                            self._emit_region_exit()
-                            if isinstance(wrap_type, RecordType):
+                            needs_heap = isinstance(wrap_type, RecordType) or (
+                                isinstance(wrap_type, GenericInstance) and not ret_ct.is_pointer
+                            )
+                            if needs_heap:
+                                # Allocate on heap directly — avoids stack temp + copy
                                 heap_tmp = self._tmp()
                                 self._line(
                                     f"{ret_ct.decl}* {heap_tmp} = malloc(sizeof({ret_ct.decl}));"
                                 )
-                                self._line(f"*{heap_tmp} = {ret_tmp};")
-                                self._line(f"return prove_result_ok_ptr({heap_tmp});")
-                            elif ret_ct.is_pointer:
-                                self._line(f"return prove_result_ok_ptr({ret_tmp});")
-                            elif ret_ct.decl == "double":
-                                self._line(f"return prove_result_ok_double({ret_tmp});")
-                            elif isinstance(wrap_type, GenericInstance) and not ret_ct.is_pointer:
-                                # Struct-like generic (Option<Value>, etc.) — heap-allocate
-                                heap_tmp = self._tmp()
-                                self._line(
-                                    f"{ret_ct.decl}* {heap_tmp} = malloc(sizeof({ret_ct.decl}));"
-                                )
-                                self._line(f"*{heap_tmp} = {ret_tmp};")
+                                self._in_return_position = True
+                                ret_val = self._emit_expr(expr)
+                                self._in_return_position = False
+                                self._line(f"*{heap_tmp} = {ret_val};")
+                                self._emit_releases(heap_tmp)
+                                self._emit_region_exit()
                                 self._line(f"return prove_result_ok_ptr({heap_tmp});")
                             else:
-                                self._line(f"return prove_result_ok_int({ret_tmp});")
+                                ret_tmp = self._tmp()
+                                self._in_return_position = True
+                                ret_val = self._emit_expr(expr)
+                                self._in_return_position = False
+                                self._line(f"{ret_ct.decl} {ret_tmp} = {ret_val};")
+                                self._emit_releases(ret_tmp)
+                                self._emit_region_exit()
+                                if ret_ct.is_pointer:
+                                    self._line(f"return prove_result_ok_ptr({ret_tmp});")
+                                elif ret_ct.decl == "double":
+                                    self._line(f"return prove_result_ok_double({ret_tmp});")
+                                else:
+                                    self._line(f"return prove_result_ok_int({ret_tmp});")
                         else:
                             self._emit_stmt(stmt)
                             self._emit_releases(None)
                             self._emit_region_exit()
                             self._line("return prove_result_ok();")
+                    # Body emitted region_exit before each return above;
+                    # clear the flag so the caller doesn't emit a duplicate.
+                    self._in_region_scope = False
                 else:
                     expr = self._stmt_expr(stmt)
                     if expr is not None:
@@ -433,10 +445,15 @@ class StmtEmitterMixin:
                         self._emit_releases(ret_tmp)
                         self._emit_region_exit()
                         self._line(f"return {ret_tmp};")
+                        # Body emitted region_exit before return;
+                        # clear so caller doesn't emit a duplicate.
+                        self._in_region_scope = False
                     else:
                         self._emit_stmt(stmt)
                         self._emit_releases(None)
                         self._emit_region_exit()
+                        # Clear so caller doesn't emit a duplicate.
+                        self._in_region_scope = False
             else:
                 self._emit_stmt(stmt)
 

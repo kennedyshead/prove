@@ -38,7 +38,6 @@ module Commands
 
 /// Run the build command
 dispatches build(help Boolean, arguments List<String>)!
-  trusted: "For now"
 from
     true => console(HELP_BUILD_TEXT)
     false =>

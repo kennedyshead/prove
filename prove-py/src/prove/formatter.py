@@ -1193,6 +1193,19 @@ class ProveFormatter:
         if isinstance(expr, CallExpr):
             return self._resolve_call_return_str(expr)
 
+        # Field access: obj.field — resolve via record type
+        if isinstance(expr, FieldExpr):
+            obj_type_str = self._infer_expr_type_str(expr.obj)
+            if obj_type_str is not None and self._symbols is not None:
+                from prove.types import RecordType
+
+                # Strip generic args to get base name (e.g. "List<Integer>" → "List")
+                base_name = obj_type_str.split("<", 1)[0]
+                resolved = self._symbols.resolve_type(base_name)
+                if isinstance(resolved, RecordType) and expr.field in resolved.fields:
+                    return self._type_to_str(resolved.fields[expr.field])
+            return None
+
         # List literal
         if isinstance(expr, ListLiteral):
             if expr.elements:

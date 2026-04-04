@@ -38,6 +38,7 @@ module Diagnostic
 
 /// Gets the actual code line from a node
 creates code_line(node Node) String
+  requires length(string(node)) > 0
 from
     lines as List<String> = split(string(node), "\n")
     trim(get(lines, 0))
@@ -73,27 +74,36 @@ from
             Ok => starts(value, "\"") == false && ends(value, "\"") == false
             Err => false
     "String" => starts(value, "\"") && ends(value, "\"")
+    _ =>
+        warning(f"Type check missing for {type_name}")&
+        true
 
 /// Lookup type linting each row
-validates lookup_type_check(tokens List<String>, type_declaration List<String>)
+matches lookup_type_check(
+    same_length Boolean,
+    tokens List<String>,
+    type_declaration List<String>
+) Boolean
+  requires length(tokens) > 0 && length(type_declaration) > 0
 from
-    match length(tokens) == length(type_declaration)
-        true =>
-            values as List<String> = slice(tokens, 1, length(tokens))
-            str_values as String = join(values, " ")
-            all(
-                type_declaration,
-                |declaration, index| type_check(declaration, get(values, index)))
-        false => false
+    true =>
+        values as List<String> = slice(tokens, 1, length(tokens))
+        str_values as String = join(values, " ")
+        all(
+            type_declaration,
+            |declaration, index| type_check(declaration, get(values, index)))
+    false => false
 
 /// Lookup type static linting
-creates lookup(code String, node Node, source SourceFile)
+creates lookup_lint(rows List<String>, node Node, source SourceFile)
 from
-    rows as List<String> = split(code, "\n")
     type_declaration as List<String> = split(replace(get(rows, 0), "where", ""), " ")
     match all(
         slice(rows, 1, length(rows)),
-        |row| lookup_type_check(split(row, "|"), type_declaration))
+        |row| lookup_type_check(
+        length(split(row, "|")) == length(type_declaration),
+        split(row, "|"),
+        type_declaration))
         false =>
             message as String = LintCode:E379
             exxx(message, LintCode:E379, node, source)
@@ -115,7 +125,7 @@ from
                     Some(parent) => string(parent)
                     None => ""
             None => ""
-        lookup(code, node, source)
+        lookup_lint(split(code, "\n"), node, source)
     _ =>
         warning(f"Missed parent match {parent}")&
         message as String = LintCode:E100

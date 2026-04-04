@@ -1978,6 +1978,15 @@ class Optimizer:
         if sig is None or not sig.param_types:
             return
 
+        # Only memoize functions returning Integer or Boolean — the emitter's
+        # memo lookup only handles these scalar types (is_simple check).
+        from prove.types import PrimitiveType as _PT
+
+        if not (
+            isinstance(sig.return_type, _PT) and sig.return_type.name in ("Integer", "Boolean")
+        ):
+            return
+
         # Skip memoization if any parameter is a struct type (Option, Result, record)
         # — these can't be cast to uint64_t for hashing.
         for pt in sig.param_types:

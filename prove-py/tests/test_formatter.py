@@ -532,6 +532,24 @@ class TestFormatterTypeInference:
         result = _format_with_types(source)
         assert 'u as User:[Mutable] = make_user(id, "test")' in result
 
+    def test_field_access_infers_type(self):
+        """Field access on a record type should infer the field's type."""
+        source = (
+            "module Main\n"
+            '  narrative: """test"""\n'
+            "\n"
+            "  type User is\n"
+            "    name String\n"
+            "    age Integer\n"
+            "\n"
+            "creates get_name(u User) String\n"
+            "from\n"
+            "    n = u.name\n"
+            "    n\n"
+        )
+        result = _format_with_types(source)
+        assert "n as String = u.name" in result
+
     def test_mutable_type_preserved_when_already_annotated(self):
         """Existing User:[Mutable] annotation must not be stripped."""
         source = (

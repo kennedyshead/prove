@@ -890,7 +890,7 @@ class CEmitter(
                 val = const.value
                 if isinstance(val, StringLit):
                     escaped = self._escape_c_string(val.value)
-                    self._line(f'#define {name} prove_string_from_cstr("{escaped}")')
+                    self._emit_static_string_constant(name, escaped)
                 elif isinstance(val, IntegerLit):
                     self._line(f"#define {name} {val.value}L")
                 elif isinstance(val, BooleanLit):
@@ -902,12 +902,17 @@ class CEmitter(
                     self._line(f"#define {name} {val.value[:-1]}")
                 elif isinstance(val, PathLit):
                     escaped = self._escape_c_string(val.value)
-                    self._line(f'#define {name} prove_string_from_cstr("{escaped}")')
+                    self._emit_static_string_constant(name, escaped)
                 elif isinstance(val, ComptimeExpr):
                     result = self._eval_comptime(const, val)
                     if result is not None:
-                        c_code = self._comptime_result_to_c(result)
-                        self._line(f"#define {name} {c_code}")
+                        if isinstance(result, str):
+                            # Comptime evaluated to a string — emit as static
+                            escaped = self._escape_c_string(result)
+                            self._emit_static_string_constant(name, escaped)
+                        else:
+                            c_code = self._comptime_result_to_c(result)
+                            self._line(f"#define {name} {c_code}")
                     else:
                         self._line(f"/* comptime evaluation failed for {name} */")
                 else:
@@ -940,7 +945,7 @@ class CEmitter(
                     stdlib_const = consts_by_name.get(item.name)
                     if stdlib_const is not None:
                         escaped = self._escape_c_string(stdlib_const.raw_value)
-                        self._line(f'#define {item.name} prove_string_from_cstr("{escaped}")')
+                        self._emit_static_string_constant(item.name, escaped)
                         any_emitted = True
                         continue
 
@@ -1280,6 +1285,24 @@ class CEmitter(
         immutable pointer params separately.
         """
         return ct_decl
+
+    def _emit_static_string_constant(self, name: str, escaped: str) -> None:
+        """Emit a string constant as a static immortal struct + #define.
+
+        Instead of ``#define NAME prove_string_from_cstr("...")``, which
+        allocates at every expansion, this emits a statically-initialised
+        ``Prove_String`` with an immortal refcount (INT32_MAX) and a
+        ``#define`` that casts its address.
+        """
+        byte_len = self._c_byte_length(escaped)
+        mod = self._module_name or "g"
+        var = f"_const_{mod}_{name.lower()}"
+        self._line(
+            f"static struct {{ Prove_Header header; int64_t length; "
+            f"char data[{byte_len + 1}]; }} {var} = "
+            f'{{ {{ INT32_MAX }}, {byte_len}, "{escaped}" }};'
+        )
+        self._line(f"#define {name} ((Prove_String*)&{var})")
 
     def _static_error_ref(self, c_literal: str) -> str:
         """Return C expression for a static immortal Prove_String.

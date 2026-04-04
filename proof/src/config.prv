@@ -3,6 +3,7 @@ module Config
   Parse creates toml validates toml
   System inputs file
   Log detached info
+  Types validates unit
 
   type Package is
     name String
@@ -35,14 +36,21 @@ module Config
   PROVE_TOML as String = "prove.toml"
 
 inputs config() Config!
+  ensures unit(result) == false
+  requires valid file(PROVE_TOML)
+  explain
+      loads settings as String from prove.toml file
+      transform string to Config struct
+      info message with name of the project
 from
-    load as Result<String, Error> = file(PROVE_TOML)
+    load as String = file(PROVE_TOML)
     config as Config = struct(load)!
     info(f"Found project {config.package.name}")&
     config
 
 /// Parse the toml data to Config struct
-transforms struct(data Result<String, Error>) Result<Config, Error>!
+transforms struct(data String) Result<Config, Error>!
+  ensures unit(result) != false
   requires valid toml(data)
 from
-    Config(toml(data))!
+    Config(toml(data))
