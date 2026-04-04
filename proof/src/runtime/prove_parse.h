@@ -45,6 +45,7 @@ Prove_Value *prove_value_number(int64_t n);
 Prove_Value *prove_value_decimal(double d);
 Prove_Value *prove_value_bool(bool b);
 Prove_Value *prove_value_array(Prove_List *arr);
+Prove_Value *prove_value_string_array(Prove_List *strings);
 Prove_Value *prove_value_object(Prove_Table *obj);
 
 /* ── Accessors ───────────────────────────────────────────────── */

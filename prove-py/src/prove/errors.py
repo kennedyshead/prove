@@ -126,6 +126,8 @@ _register_doc_range("E", 430, 435)
 # IO verb requires failable E436, Mutable purity E437
 DIAGNOSTIC_DOCS["E436"] = f"{_DOCS_BASE}#E436"
 DIAGNOSTIC_DOCS["E437"] = f"{_DOCS_BASE}#E437"
+# Option<T> passed where T expected — null pointer risk E438
+DIAGNOSTIC_DOCS["E438"] = f"{_DOCS_BASE}#E438"
 # Warnings
 for _c in ("W300", "W304", "W311", "W312", "W313"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"

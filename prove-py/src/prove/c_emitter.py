@@ -2349,11 +2349,24 @@ class CEmitter(
                         sig = better
             if sig:
                 ret = sig.return_type
-                # Resolve type variables using actual arg types
+                # Resolve type variables using actual arg types.
+                # Strip Option<T> → T so e.g. list(Option<Value>) resolves
+                # return type as List<Value> not List<Option<Value>>.
                 if actual_types and sig.param_types:
+                    stripped = actual_types
+                    if len(actual_types) == len(sig.param_types):
+                        stripped = [
+                            t.args[0]
+                            if isinstance(t, GenericInstance)
+                            and t.base_name == "Option"
+                            and t.args
+                            and not (isinstance(p, GenericInstance) and p.base_name == "Option")
+                            else t
+                            for t, p in zip(actual_types, sig.param_types)
+                        ]
                     bindings = resolve_type_vars(
                         sig.param_types,
-                        actual_types,
+                        stripped,
                     )
                     ret = substitute_type_vars(ret, bindings)
                 if (

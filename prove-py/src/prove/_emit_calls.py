@@ -29,6 +29,7 @@ from prove.types import (
     STRING,
     AlgebraicType,
     ArrayType,
+    ErrorType,
     FunctionType,
     GenericInstance,
     ListType,
@@ -513,14 +514,19 @@ class CallEmitterMixin:
             param_ct = map_type(param_ty)
             if arg_ct.decl == param_ct.decl:
                 continue
-            # Option<Value> → Value: unwrap .value with tag check
-            if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Option" and arg_ty.args:
+            # Option<T> → T: unwrap .value with tag check
+            # Skip for functions that check Option state directly (unit, valid)
+            if (
+                isinstance(arg_ty, GenericInstance)
+                and arg_ty.base_name == "Option"
+                and arg_ty.args
+                and sig.name not in ("unit",)
+            ):
                 inner_ct = map_type(arg_ty.args[0])
+                opt_tmp = self._tmp()
+                self._line(f"Prove_Option {opt_tmp} = {arg_str};")
                 if inner_ct.decl == param_ct.decl:
-                    # Use a temp to avoid double-evaluation of the expression
-                    opt_tmp = self._tmp()
-                    self._line(f"Prove_Option {opt_tmp} = {arg_str};")
-                    # Only unwrap if Some (tag == 1), otherwise use default value
+                    # Inner type matches param type directly
                     if inner_ct.is_pointer or inner_ct.decl == "Prove_String*":
                         default_val = "NULL"
                         cast = f"({param_ct.decl})"
@@ -528,6 +534,35 @@ class CallEmitterMixin:
                         default_val = "0"
                         cast = f"({param_ct.decl})(intptr_t)"
                     result[i] = f"({opt_tmp}.tag == 1 ? {cast}{opt_tmp}.value : {default_val})"
+                    continue
+                # Inner type is erased (e.g. Value) — unwrap .value then coerce
+                if param_ct.is_pointer:
+                    result[i] = f"({opt_tmp}.tag == 1 ? ({param_ct.decl}){opt_tmp}.value : NULL)"
+                    continue
+                if param_ct.decl in ("int64_t", "int32_t", "int16_t", "int8_t"):
+                    result[i] = (
+                        f"({opt_tmp}.tag == 1 ? ({param_ct.decl})(intptr_t){opt_tmp}.value : 0)"
+                    )
+                    continue
+                if param_ct.decl in ("double", "float"):
+                    result[i] = (
+                        f"({opt_tmp}.tag == 1"
+                        f" ? prove_value_as_decimal((Prove_Value*){opt_tmp}.value) : 0.0)"
+                    )
+                    continue
+                if param_ct.decl == "bool":
+                    result[i] = (
+                        f"({opt_tmp}.tag == 1"
+                        f" ? prove_value_as_bool((Prove_Value*){opt_tmp}.value) : false)"
+                    )
+                    continue
+                # Struct types: dereference heap-allocated pointer
+                if not param_ct.is_pointer and param_ct.decl.startswith("Prove_"):
+                    result[i] = (
+                        f"({opt_tmp}.tag == 1"
+                        f" ? *({param_ct.decl}*){opt_tmp}.value"
+                        f" : ({param_ct.decl}){{0}})"
+                    )
                     continue
             # Result<Value, Error> → Value: unwrap
             if isinstance(arg_ty, GenericInstance) and arg_ty.base_name == "Result" and arg_ty.args:
@@ -618,7 +653,18 @@ class CallEmitterMixin:
                 elif arg_ct.decl == "Prove_String*":
                     result[i] = f"prove_value_text({arg_str})"
                 elif arg_ct.decl == "Prove_List*":
-                    result[i] = f"prove_value_array({arg_str})"
+                    # Use string_array when list element type is String
+                    arg_ty_inner = (
+                        self._infer_expr_type(arg_exprs[i]) if i < len(arg_exprs) else None
+                    )
+                    if (
+                        isinstance(arg_ty_inner, ListType)
+                        and isinstance(arg_ty_inner.element, PrimitiveType)
+                        and arg_ty_inner.element.name == "String"
+                    ):
+                        result[i] = f"prove_value_string_array({arg_str})"
+                    else:
+                        result[i] = f"prove_value_array({arg_str})"
                 elif arg_ct.decl == "double":
                     result[i] = f"prove_value_decimal({arg_str})"
                 elif arg_ct.decl == "bool":
@@ -928,13 +974,32 @@ class CallEmitterMixin:
                 narrowed_types = [
                     self._narrow_for_requires(a, t) for a, t in zip(expr.args, actual_types)
                 ]
-                if sig is None or (
+                # Strip Option<T> → T for overload resolution so that
+                # e.g. contains(list, Option<String>) finds the String overload
+                narrowed_types = [
+                    t.args[0]
+                    if isinstance(t, GenericInstance) and t.base_name == "Option" and t.args
+                    else t
+                    for t in narrowed_types
+                ]
+                # Re-resolve when: sig is None, types mismatch, or when
+                # arg is a TypeVariable but sig has concrete params (the initial
+                # resolve_function picks the first arity match, which might be
+                # the wrong overload for generic args).
+                _needs_reresolution = sig is None or (
                     sig.param_types
                     and not all(
                         isinstance(p, TypeVariable) or types_compatible(p, a)
                         for p, a in zip(sig.param_types, narrowed_types)
                     )
-                ):
+                )
+                if not _needs_reresolution and narrowed_types and sig and sig.param_types:
+                    # Force re-resolve when arg is TypeVariable but param is concrete
+                    _needs_reresolution = any(
+                        isinstance(a, TypeVariable) and not isinstance(p, TypeVariable)
+                        for p, a in zip(sig.param_types, narrowed_types)
+                    )
+                if _needs_reresolution:
                     any_sig = self._symbols.resolve_function_any(
                         name,
                         narrowed_types,
@@ -979,6 +1044,40 @@ class CallEmitterMixin:
                                 return f"prove_store_table_add_variant({args[0]}, {variant_name}, {vals_name})"  # noqa: E501
                     # Heap-allocate struct args for list ops that take void*
                     if c_name == "prove_list_ops_set" and len(args) >= 3:
+                        # Detect append pattern: set(list, length(list), value)
+                        # Emit prove_list_push (mutates in-place) instead of
+                        # prove_list_ops_set (returns new list, lost in each).
+                        _is_append = False
+                        if (
+                            len(expr.args) >= 2
+                            and isinstance(expr.args[1], CallExpr)
+                            and isinstance(expr.args[1].func, IdentifierExpr)
+                            and expr.args[1].func.name == "length"
+                            and len(expr.args[1].args) == 1
+                            and isinstance(expr.args[0], IdentifierExpr)
+                            and isinstance(expr.args[1].args[0], IdentifierExpr)
+                            and expr.args[0].name == expr.args[1].args[0].name
+                        ):
+                            _is_append = True
+                        if _is_append:
+                            val_type = (
+                                self._infer_expr_type(expr.args[2]) if len(expr.args) > 2 else None
+                            )
+                            # Use the already-coerced arg, but strip
+                            # prove_value_text() wrapping since list elements
+                            # should be raw Prove_String*, not Prove_Value*.
+                            val_arg = args[2]
+                            if val_arg.startswith("prove_value_text(") and val_arg.endswith(")"):
+                                val_arg = val_arg[len("prove_value_text(") : -1]
+                            if val_type and isinstance(val_type, (RecordType, AlgebraicType)):
+                                vct = map_type(val_type)
+                                heap_tmp = self._tmp()
+                                self._line(f"{vct.decl} *{heap_tmp} = malloc(sizeof({vct.decl}));")
+                                self._line(f"*{heap_tmp} = {val_arg};")
+                                val_arg = f"(void*){heap_tmp}"
+                            self._needed_headers.add("prove_list.h")
+                            self._line(f"prove_list_push({args[0]}, (void*){val_arg});")
+                            return args[0]
                         val_type = (
                             self._infer_expr_type(expr.args[2]) if len(expr.args) > 2 else None
                         )
@@ -1439,6 +1538,10 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_hof.h")
         list_arg = self._emit_expr(expr.args[0])
 
+        # Unwrap failable calls (e.g. outputs dir() returns Prove_Result)
+        if self._is_failable_call_expr(expr.args[0]):
+            list_arg = self._emit_failable_unwrap(list_arg, "Prove_List*")
+
         # Infer element type from the list
         elem_type = INTEGER
         if isinstance(coll_type, ListType):
@@ -1631,7 +1734,7 @@ class CallEmitterMixin:
                 self._line(f"{body_code};")
             self._indent -= 1
             self._line("}")
-            return "(void)0"
+            return "((void*)0)"
         # Non-lambda IdentifierExpr: inline loop with resolved function call
         if isinstance(lam, IdentifierExpr):
             fn_sig = self._symbols.resolve_function_any(lam.name, arity=1)
@@ -1660,7 +1763,7 @@ class CallEmitterMixin:
                     self._line(f"{c_fn}({param});")
                     self._indent -= 1
                     self._line("}")
-                    return "(void)0"
+                    return "((void*)0)"
         # Fall back to prove_list_each with callback wrapper
         self._needed_headers.add("prove_hof.h")
         fn_name, ctx_arg = self._emit_hof_lambda(lam, elem_type, "each")
@@ -1676,9 +1779,21 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_hof.h")
         list_arg = self._emit_expr(expr.args[0])
 
-        elem_type = INTEGER
+        # Unwrap failable calls (e.g. outputs dir() returns Prove_Result)
+        if self._is_failable_call_expr(expr.args[0]):
+            list_arg = self._emit_failable_unwrap(list_arg, "Prove_List*")
+
+        elem_type: Type = INTEGER
         if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+            elem_type = coll_type.element
+        elif isinstance(coll_type, ErrorType):
+            # Fallback: when collection type inference fails (e.g. inlined
+            # function), detect option-none filter pattern and set element
+            # type to Option<Value> so the filter lambda gets Prove_Option.
+            if self._is_option_none_filter(expr.args[1]):
+                from prove.types import TypeVariable as TV
+
+                elem_type = GenericInstance("Option", [TV("Value")])
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         filtered = f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
@@ -2076,10 +2191,16 @@ class CallEmitterMixin:
         """Walk a lambda body to find references to enclosing local variables."""
         from prove.ast_nodes import (
             BinaryExpr,
+            BindingPattern,
             CallExpr,
+            ExprStmt,
             FieldExpr,
             IdentifierExpr,
+            LambdaExpr,
+            MatchExpr,
+            StringInterp,
             UnaryExpr,
+            VariantPattern,
         )
 
         if isinstance(body, IdentifierExpr):
@@ -2100,6 +2221,30 @@ class CallEmitterMixin:
             self._collect_emitter_captures(body.obj, param_names, captures)
         elif isinstance(body, UnaryExpr):
             self._collect_emitter_captures(body.operand, param_names, captures)
+        elif isinstance(body, MatchExpr):
+            if body.subject is not None:
+                self._collect_emitter_captures(body.subject, param_names, captures)
+            for arm in body.arms:
+                # Exclude bindings introduced by the arm's pattern
+                arm_names = set(param_names)
+                pat = arm.pattern
+                if isinstance(pat, BindingPattern):
+                    arm_names.add(pat.name)
+                elif isinstance(pat, VariantPattern):
+                    for f in pat.fields:
+                        if isinstance(f, BindingPattern):
+                            arm_names.add(f.name)
+                for stmt in arm.body:
+                    e = stmt.expr if isinstance(stmt, ExprStmt) else stmt
+                    if hasattr(e, "span"):  # Is an Expr node
+                        self._collect_emitter_captures(e, arm_names, captures)
+        elif isinstance(body, LambdaExpr):
+            inner_params = set(body.params) if body.params else set()
+            self._collect_emitter_captures(body.body, param_names | inner_params, captures)
+        elif isinstance(body, StringInterp):
+            for part in body.parts:
+                if not isinstance(part, str):
+                    self._collect_emitter_captures(part, param_names, captures)
 
     def _emit_hof_lambda(
         self,
@@ -2562,7 +2707,7 @@ class CallEmitterMixin:
             self._line(f"{body_code};")
             self._indent -= 1
             self._line("}")
-            return "(void)0"
+            return "((void*)0)"
 
         # Non-lambda: use runtime function
         self._needed_headers.add("prove_hof.h")
@@ -2670,8 +2815,8 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         # Emit predicate test
         pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
@@ -2688,7 +2833,11 @@ class CallEmitterMixin:
             self._locals = saved_locals
         map_result_ct = map_type(map_result_type)
         map_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
-        wrap = self._hof_box(str(map_code), map_result_ct)
+        # Struct types are already boxed as void* by _emit_fused_lambda_inline
+        if map_result_ct.decl.startswith("Prove_") and not map_result_ct.is_pointer:
+            wrap = str(map_code)  # already void*
+        else:
+            wrap = self._hof_box(str(map_code), map_result_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -2720,8 +2869,8 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         # Infer the mapped element type from the map lambda
         map_fn = expr.args[1]
@@ -2793,8 +2942,8 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         # Infer f's return type for correct intermediate boxing
         f_fn = expr.args[1]
@@ -2832,7 +2981,10 @@ class CallEmitterMixin:
             f_result_type,
             boxed=f_is_boxed,
         )
-        wrap = self._hof_box(str(g_code), g_result_ct)
+        if g_result_ct.decl.startswith("Prove_") and not g_result_ct.is_pointer:
+            wrap = str(g_code)
+        else:
+            wrap = self._hof_box(str(g_code), g_result_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -2861,8 +3013,8 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         p1_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         p2_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
@@ -3161,8 +3313,8 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
@@ -3183,9 +3335,9 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
+        elem_type: Type = INTEGER
         if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+            elem_type = list_type.element
         elem_ct = map_type(elem_type)
 
         idx = self._named_tmp("i")
@@ -3194,14 +3346,38 @@ class CallEmitterMixin:
         self._line(f"for (int64_t {idx} = 0; {idx} < {list_arg}->length; {idx}++) {{")
         self._indent += 1
 
-        unwrap = f"({elem_ct.decl})" if elem_ct.is_pointer else f"({elem_ct.decl})(intptr_t)"
-        self._line(f"{elem_ct.decl} {elem_var} = {unwrap}{list_arg}->data[{idx}];")
+        elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
+        self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
         pred_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
         self._line(f"if ({pred_code}) {{")
         self._indent += 1
 
-        consumer_code = self._emit_fused_lambda_inline(expr.args[2], elem_var, elem_type)
+        # Option unwrap: if filter is |x| unit(x) == false, unwrap Option
+        # to inner type for the consumer lambda
+        consumer_var = elem_var
+        consumer_type = elem_type
+        if (
+            isinstance(elem_type, GenericInstance)
+            and elem_type.base_name == "Option"
+            and elem_type.args
+            and self._is_option_none_filter(expr.args[1])
+        ):
+            inner_type = self._resolve_option_inner_type(elem_type, expr.args[2])
+            inner_ct = map_type(inner_type)
+            unwrapped = self._tmp()
+            if inner_ct.is_pointer:
+                self._line(f"{inner_ct.decl} {unwrapped} = ({inner_ct.decl}){elem_var}.value;")
+            elif inner_ct.decl.startswith("Prove_"):
+                self._line(f"{inner_ct.decl} {unwrapped} = *({inner_ct.decl}*){elem_var}.value;")
+            else:
+                self._line(
+                    f"{inner_ct.decl} {unwrapped} = ({inner_ct.decl})(intptr_t){elem_var}.value;"
+                )
+            consumer_var = unwrapped
+            consumer_type = inner_type
+
+        consumer_code = self._emit_fused_lambda_inline(expr.args[2], consumer_var, consumer_type)
         self._line(f"(void){consumer_code};")
 
         self._indent -= 1
@@ -3209,6 +3385,87 @@ class CallEmitterMixin:
         self._indent -= 1
         self._line("}")
         return "((void*)0)"
+
+    def _resolve_option_inner_type(self, option_type: GenericInstance, consumer: Expr) -> Type:
+        """Resolve the inner type of an Option<T> for unwrapping.
+
+        Generic type args may be erased to TypeVariable('Value').
+        Falls back to inferring the type from the consumer lambda's function calls.
+        """
+        inner = option_type.args[0]
+        # If the inner type resolved to a concrete type, use it
+        if not isinstance(inner, TypeVariable):
+            return inner
+        # Try resolving via symbol table
+        type_name = getattr(inner, "name", "")
+        if type_name and type_name != "Value":
+            resolved = self._symbols.resolve_type(type_name)
+            if resolved is not None and not isinstance(resolved, TypeVariable):
+                return resolved
+        # Infer from consumer lambda's function parameter types
+        if isinstance(consumer, LambdaExpr) and consumer.params:
+            param_name = consumer.params[0]
+            body = consumer.body
+            if isinstance(body, CallExpr) and isinstance(body.func, IdentifierExpr):
+                for i, arg in enumerate(body.args):
+                    if isinstance(arg, IdentifierExpr) and arg.name == param_name:
+                        sig = self._symbols.resolve_function_any(
+                            body.func.name, arity=len(body.args)
+                        )
+                        if sig and sig.param_types and i < len(sig.param_types):
+                            return sig.param_types[i]
+                        break
+        return inner
+
+    def _is_failable_call_expr(self, expr: Expr) -> bool:
+        """Check if an expression is a call to a failable function (can_fail=True).
+
+        Failable stdlib functions (e.g. outputs dir) return Prove_Result in C
+        even though the type system tracks the success type.
+        """
+        if not isinstance(expr, CallExpr):
+            return False
+        if not isinstance(expr.func, IdentifierExpr):
+            return False
+        name = expr.func.name
+        n_args = len(expr.args)
+        sig = self._symbols.resolve_function(None, name, n_args)
+        if sig is None:
+            current_verb = getattr(self._current_func, "verb", None)
+            if current_verb:
+                sig = self._symbols.resolve_function(current_verb, name, n_args)
+        if sig is None:
+            sig = self._symbols.resolve_function_any(name, arity=n_args)
+        return bool(sig and sig.can_fail)
+
+    def _emit_failable_unwrap(self, emitted: str, cast_type: str) -> str:
+        """Emit Result unwrap for a failable call expression.
+
+        Emits a temp variable, error check, and returns the unwrapped expression.
+        """
+        tmp = self._tmp()
+        self._needed_headers.add("prove_result.h")
+        self._line(f"Prove_Result {tmp} = {emitted};")
+        if self._in_main:
+            err = self._tmp()
+            self._line(f"if (prove_result_is_err({tmp})) {{")
+            self._indent += 1
+            self._line(f"Prove_String *{err} = (Prove_String*){tmp}.error;")
+            self._line(f'fprintf(stderr, "error: %.*s\\n", (int){err}->length, {err}->data);')
+            self._line("prove_runtime_cleanup();")
+            self._line("return 1;")
+            self._indent -= 1
+            self._line("}")
+        elif getattr(self, "_in_region_scope", False):
+            self._line(f"if (prove_result_is_err({tmp})) {{")
+            self._indent += 1
+            self._line("prove_region_exit(prove_global_region());")
+            self._line(f"return {tmp};")
+            self._indent -= 1
+            self._line("}")
+        else:
+            self._line(f"if (prove_result_is_err({tmp})) return {tmp};")
+        return f"({cast_type})prove_result_unwrap_ptr({tmp})"
 
     def _cache_list_arg(self, expr: Expr) -> tuple[str, "Type"]:
         """Emit a list expression into a temp variable before loop use.
@@ -3224,6 +3481,9 @@ class CallEmitterMixin:
             if not isinstance(list_type, ArrayType):
                 return expr.name, list_type
         list_code = self._emit_expr(expr)
+        # Unwrap failable calls (e.g. outputs dir() returns Prove_Result)
+        if self._is_failable_call_expr(expr):
+            list_code = self._emit_failable_unwrap(list_code, "Prove_List*")
         tmp = self._tmp()
         if isinstance(list_type, ArrayType):
             self._needed_headers.add("prove_array.h")

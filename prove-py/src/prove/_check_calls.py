@@ -414,11 +414,20 @@ class CallCheckMixin:
                     extra = self._builtin_extra_types.get((name, i))
                     if extra and any(types_compatible(e, actual) for e in extra):
                         continue
-                    # Option<T> auto-unwraps where T is expected
+                    # Option<T> passed where T is expected — potential null deref
                     if isinstance(actual, GenericInstance):
                         if actual.base_name == "Option" and actual.args:
                             inner = actual.args[0]
                             if types_compatible(expected, inner):
+                                arg_span = expr.args[i].span if i < len(expr.args) else expr.span
+                                self._error(
+                                    "E438",
+                                    f"passing 'Option<{type_name(inner)}>' where"
+                                    f" '{type_name(expected)}' is expected"
+                                    f" — unwrap with match or unwrap() to avoid"
+                                    f" null pointer dereference",
+                                    arg_span,
+                                )
                                 continue
                     if (
                         sig.module in ("parse", "types")

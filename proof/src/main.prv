@@ -5,17 +5,45 @@ module Main
   the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
 
+  outputs stdlibs in export creates a table and add module
+
   dispatches parsed command to correct flow
 
   secures config makes sure that prove.toml exist
   """
-  System inputs process outputs console
-  Sequence derives value slice creates length validates contains
+  System inputs process dir file outputs console file
+  Sequence derives value slice extend creates length validates contains
   Config types Config inputs config
   Commands outputs new check format lsp test build
+  Build types SourceFile
+  Source creates module_name inputs source_file
+  Types validates unit string
+  Table derives add creates new
 
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
+
+creates add_module(data Table<List<String>>, file SourceFile) Table<List<String>>
+from
+    match module_name(file)
+        Some(value) => add(value, file.verbs, data)
+        None => data
+
+outputs export_stdlibs(data String)!
+from
+    file("src/static/stdlib_definitions.json", data)!
+
+inputs parse_stdlibs()!
+from
+    source as List<Option<SourceFile>> =
+        map(dir("src/stdlib"), |value| source_file(value.path))
+    source_pure as List<Option<SourceFile>> =
+        map(dir("src/stdlib/pure"), |value| source_file(value.path))
+    json_data as Table<List<String>> = new()
+    each(
+        filter(extend(source, source_pure), |file| unit(file) == false),
+        |source_file| add_module(json_data, source_file))
+    export_stdlibs(string(json_data))!
 
 dispatches parsed_command(command Option<String>, help Boolean, arguments List<String>)!
 from
@@ -25,6 +53,7 @@ from
     Some("lsp") => lsp(help, arguments)!
     Some("new") => new(help, arguments)!
     Some("test") => test(help, arguments)!
+    Some("export_stdlibs") => parse_stdlibs()!
     Some("--version") =>
         config as Config = config()!
         console(f"{config.package.version}")

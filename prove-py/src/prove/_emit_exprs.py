@@ -814,16 +814,16 @@ class ExprEmitterMixin:
                 isinstance(self._current_func_return, GenericInstance)
                 and self._current_func_return.base_name == "Option"
                 and self._current_func_return.args
-                and not (
-                    isinstance(result_type, GenericInstance) and result_type.base_name == "Option"
-                )
-                and (
-                    isinstance(result_type, UnitType)
-                    or types_compatible(self._current_func_return.args[0], result_type)
-                )
             ):
-                result_type = self._current_func_return
-                _option_wrap = True
+                if isinstance(result_type, GenericInstance) and result_type.base_name == "Option":
+                    # Result already Option — still enable wrapping for arms
+                    # that produce bare values (e.g. None => "UNKNOWN")
+                    _option_wrap = True
+                elif isinstance(result_type, UnitType) or types_compatible(
+                    self._current_func_return.args[0], result_type
+                ):
+                    result_type = self._current_func_return
+                    _option_wrap = True
 
             ct = map_type(result_type)
             is_unit = isinstance(result_type, UnitType)

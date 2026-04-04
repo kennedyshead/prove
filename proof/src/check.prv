@@ -10,13 +10,13 @@ module Check
   """
   System validates dir inputs cwd
   Prove types Node derives root creates children kind parent
-  Source types SourceFile Content creates source_verb
+  Source types SourceFile Content
   Types creates string validates boolean string unit
-  Log detached info error warning
+  Log detached info error
   Sequence derives first creates length validates contains
   Config types Config
   Diagnostic types LintCode creates static_fail exxx
-  Text creates join validates contains
+  Text creates join
   Pattern creates split
 
   foreign "libpython3"
@@ -29,13 +29,17 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-validates module_import(name String, content Content, node Node, source_file SourceFile)
+validates module_import(
+    name Option<String>,
+    content Content,
+    node Node,
+    source_file SourceFile
+)
   requires unit(name) == false
 from
     match contains(content.modules, name)
         false =>
             modules as String = join(content.modules, ", ")
-            warning(f"{name} in {modules}")&
             message as String = LintCode:E314
             exxx(message, LintCode:E314, node, source_file)
             false
@@ -53,15 +57,13 @@ from
         static_fail(parent, node, source_file)
         false
     "function_definition" =>
-        check(content, node, source_verb(content, node, source_file))
+        check(content, node, source_file)
     "import_declaration" =>
         match module_import(first(split(string(node), " ")), content, node, source_file)
             true =>
                 check(content, node, source_file)
             false => false
     _ =>
-        match contains(node_kind, "import_declaration")
-            true => warning(f"{node_kind} {string(node)}")&
         check(content, node, source_file)
 
 /// Declaration (static) linting

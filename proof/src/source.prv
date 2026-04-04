@@ -3,14 +3,20 @@ module Source
   Reads all source content through dir inputs
   matches and creates mangled verb signatures through verb token and parameter types
   derives module name from content
+  creates stdlibs list
   """
   Config types Config
   System validates file inputs dir file outputs console
-  Parse creates tree
-  Prove types Tree Node creates kind children
-  Text derives replace creates join split validates ends contains
+  Parse types Json creates tree json
+  Prove types Tree Node derives root creates kind children
+  Text derives replace creates join split length validates ends contains
   Types validates unit string
-  Sequence derives set first last extend creates length
+  Sequence derives set first last extend creates length list
+  Table derives get creates table keys
+
+  type ModuleDefinition is
+    name String
+    verbs List<String>
 
   type SourceFile is
     path String
@@ -21,6 +27,10 @@ module Source
   type Content is
     files List<SourceFile>
     modules List<String>
+    stdlibs List<ModuleDefinition>
+
+  STDLIB_DEFINITIONS as String = comptime
+      read("static/stdlib_definitions.json")
 
 /// Source a prove file
 inputs source_file(path String) Option<SourceFile>
@@ -30,29 +40,44 @@ from
     source as Result<Value<Tree>, Error> = tree(content)
     match source
         Ok(source) =>
-            SourceFile(path, content, source, [])
+            verbs as List<String> = []
+            each(
+                children(root(source)),
+                |node| each(
+                children(node),
+                |level2| match kind(level2) == "function_definition"
+                true => set(verbs, length(verbs), mangled(level2))
+                false => ""))
+            SourceFile(path, content, source, verbs)
         Err(error) => console(f"{error}")
 
 creates module_name(file SourceFile) Option<String>
+  requires length(file.content) > 0
 from
-    last(split(first(split(file.content, "\n")), " "))
+    match first(split(file.content, "\n"))
+        Some(value) => last(split(value, " "))
+        None => "UNKNOWN"
 
 /// Source a prove project
 inputs source(config Config) Content
 from
     source as List<Option<SourceFile>> = map(dir("src/"), |value| source_file(value.path))
     files as List<SourceFile> = filter(source, |file| unit(file) == false)
+    libs as List<ModuleDefinition> = stdlibs()
     Content(
         files,
         extend(
-        ["Bytes", "Character", "Format", "Graphic", "Hash", "Language", "Math", "Network",
-            "Parse", "Path", "Pattern", "Prove", "Random", "Sequence", "Store", "System",
-            "Table", "Terminal", "Text", "Time", "Types", "Log", "UI"],
-        filter(map(files, |file| module_name(file)), |module| unit(module) == false)))
+        map(libs, |lib| lib.name),
+        filter(map(files, |file| module_name(file)), |module| unit(module) == false)),
+        libs)
 
+/// Extracting only types of parameters
 creates parameter_types(nodes List<Node>) Option<String>
 from
-    join(map(nodes, |node| split(string(node), " ")), "_")
+    join(
+        filter(map(nodes, |node| last(split(string(node), " "))),
+            |str| unit(str) == false),
+        "_")
 
 /// Gets representation blocks from verb node
 matches mangle_verb(kind_name String, node Node) Option<String>
@@ -66,12 +91,12 @@ from
         Unit
 
 /// Creates a mangled name for a Verb
-/// ret is added before return statement,
-/// type var (aka List<String>) gets opening and closing by w_String_e
+/// __ is added between identifier, parameters and return statement,
+/// type var (aka List<String>) gets opening and closing by List_w_String_e
 ///
 /// Example:
 /// creates test(text String) Option<String>
-/// creates_test_String_ret_Option_w_String_e
+/// creates_test__String__Option_w_String_e
 creates mangled(node Node) String
 from
     mangle as String =
@@ -84,6 +109,22 @@ from
         true => mangle
         false => f"{mangle}_ret_unit"
     replace(replace(ret_mangle, "<", "_w_"), ">", "_e")
+
+creates stdlibs() List<ModuleDefinition>
+from
+    match json(STDLIB_DEFINITIONS)
+        Ok(value) =>
+            modules as Table<Value<Json>> = table(value)
+            map(
+                keys(modules),
+                |module| ModuleDefinition(
+                module,
+                map(
+                list(match get(module, modules)
+                Some(val) => val
+                None => []),
+                |verb| string(verb))))
+        Err => Error("No stdlib mappings")
 
 /// Source single verb node and add it to verbs list
 creates source_verb(content Content, node Node, source_file SourceFile) SourceFile

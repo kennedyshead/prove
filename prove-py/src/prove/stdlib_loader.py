@@ -492,6 +492,8 @@ _register_module(
         ("creates", "string", "Clock"): "prove_time_string_clock",
         ("creates", "string", "Duration"): "prove_time_string_duration",
         ("creates", "string", "Value"): "prove_value_as_text",
+        ("creates", "string", "Table"): "prove_emit_json",
+        ("creates", "string", "Table<T>"): "prove_emit_json",
         ("creates", "string", "ByteArray"): "prove_bytes_to_string",
         ("creates", "string", "Value<Json>"): "prove_emit_json",
         ("creates", "string", "Value<Toml>"): "prove_emit_toml",

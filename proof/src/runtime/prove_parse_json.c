@@ -372,6 +372,14 @@ static void _json_emit_value(Prove_Value *v, Prove_Builder **b) {
     }
 }
 
+Prove_Value *prove_value_string_array(Prove_List *strings) {
+    Prove_List *wrapped = prove_list_new(strings->length);
+    for (int64_t i = 0; i < strings->length; i++) {
+        prove_list_push(wrapped, prove_value_text((Prove_String *)strings->data[i]));
+    }
+    return prove_value_array(wrapped);
+}
+
 Prove_String *prove_emit_json(Prove_Value *value) {
     Prove_Builder *b = prove_text_builder();
     _json_emit_value(value, &b);

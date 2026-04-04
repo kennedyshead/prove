@@ -8,9 +8,9 @@ module Main
   """
   System outputs console
   Math
-    derives abs min max sqrt power log log10 log2 exp sin cos tan asin acos atan atan2 pi e
+    derives abs min max sqrt power log log10 log2 exp sin cos tan asin acos atan atan2 pi
     creates ceil round floor
-     clamp
+     e clamp
   Types creates string
 
 main() Result<Unit, Error>!

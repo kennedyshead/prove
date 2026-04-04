@@ -45,7 +45,8 @@ from
                 Draw(state)
     AddItem(text) =>
         items as List<TodoItem> = state.items
-        state.items = set(items, length(state.items), TodoItem(text, false, length(items)))
+        state.items = set(items, length(state.items), TodoItem(text, false,
+            length(items)))
         Draw(state)
     RemoveItem(index) =>
         state.items = remove(state.items, index)
