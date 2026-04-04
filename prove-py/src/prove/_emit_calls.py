@@ -1528,6 +1528,21 @@ class CallEmitterMixin:
             return f"(*({ct.decl}*){expr})"
         return f"({ct.decl})(intptr_t){expr}"
 
+    @staticmethod
+    def _infer_hof_elem_type(coll_type: Type) -> Type:
+        """Infer element type from a collection type for HOF emission.
+
+        Returns TypeVariable("Value") as the universal fallback instead of
+        INTEGER, so generated code compiles correctly for unknown types.
+        """
+        if isinstance(coll_type, ListType):
+            return coll_type.element
+        if isinstance(coll_type, ArrayType):
+            return coll_type.element
+        if isinstance(coll_type, ErrorType):
+            return TypeVariable("Value")
+        return INTEGER
+
     def _emit_hof_map(self, expr: CallExpr) -> str:
         """Emit prove_list_map or prove_array_map depending on collection type."""
         coll_type = self._infer_expr_type(expr.args[0])
@@ -1543,9 +1558,7 @@ class CallEmitterMixin:
             list_arg = self._emit_failable_unwrap(list_arg, "Prove_List*")
 
         # Infer element type from the list
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
 
         # Determine result element type (may differ from input, e.g. Integer → String)
         fn_expr = expr.args[1]
@@ -1569,9 +1582,7 @@ class CallEmitterMixin:
         list_arg = self._emit_expr(expr.args[0])
 
         coll_type = self._infer_expr_type(expr.args[0])
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "map")
         return f"prove_par_map({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1582,9 +1593,7 @@ class CallEmitterMixin:
         list_arg = self._emit_expr(expr.args[0])
 
         coll_type = self._infer_expr_type(expr.args[0])
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         return f"prove_par_filter({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1596,9 +1605,7 @@ class CallEmitterMixin:
         list_arg = self._emit_expr(expr.args[0])
 
         coll_type = self._infer_expr_type(expr.args[0])
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
 
         accum_type = self._infer_expr_type(expr.args[1])
         accum_ct = map_type(accum_type)
@@ -1627,9 +1634,7 @@ class CallEmitterMixin:
         list_arg = self._emit_expr(expr.args[0])
 
         coll_type = self._infer_expr_type(expr.args[0])
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "each")
         return f"prove_par_each({list_arg}, {fn_name}, {ctx_arg}, 0)"
@@ -1643,9 +1648,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         lam = expr.args[1]
@@ -1783,17 +1786,10 @@ class CallEmitterMixin:
         if self._is_failable_call_expr(expr.args[0]):
             list_arg = self._emit_failable_unwrap(list_arg, "Prove_List*")
 
-        elem_type: Type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element
-        elif isinstance(coll_type, ErrorType):
-            # Fallback: when collection type inference fails (e.g. inlined
-            # function), detect option-none filter pattern and set element
-            # type to Option<Value> so the filter lambda gets Prove_Option.
-            if self._is_option_none_filter(expr.args[1]):
-                from prove.types import TypeVariable as TV
-
-                elem_type = GenericInstance("Option", [TV("Value")])
+        elem_type: Type = self._infer_hof_elem_type(coll_type)
+        # Refine: when ErrorType + option-none filter, use Option<Value>
+        if isinstance(coll_type, ErrorType) and self._is_option_none_filter(expr.args[1]):
+            elem_type = GenericInstance("Option", [TypeVariable("Value")])
 
         fn_name, ctx_arg = self._emit_hof_lambda(expr.args[1], elem_type, "filter")
         filtered = f"prove_list_filter({list_arg}, {fn_name}, {ctx_arg})"
@@ -1831,9 +1827,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg = self._emit_expr(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
         elem_ct = map_type(elem_type)
 
         lam = expr.args[1]
@@ -1872,9 +1866,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg = self._emit_expr(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
         elem_ct = map_type(elem_type)
 
         lam = expr.args[1]
@@ -1913,9 +1905,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg = self._emit_expr(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(coll_type, ListType):
-            elem_type = coll_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(coll_type)
         elem_ct = map_type(elem_type)
 
         lam = expr.args[1]
@@ -1999,9 +1989,7 @@ class CallEmitterMixin:
             self._needed_headers.add("prove_list.h")
             list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-            elem_type = INTEGER
-            if isinstance(list_type, ListType):
-                elem_type = list_type.element  # type: ignore[assignment]
+            elem_type = self._infer_hof_elem_type(list_type)
             elem_ct = map_type(elem_type)
 
             accum_type = self._infer_expr_type(expr.args[1])
@@ -2043,9 +2031,7 @@ class CallEmitterMixin:
         list_arg = self._emit_expr(expr.args[0])
         list_type = self._infer_expr_type(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
 
         accum_type = self._infer_expr_type(expr.args[1])
         accum_ct = map_type(accum_type)
@@ -2814,9 +2800,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -2867,9 +2851,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -2941,9 +2923,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -3012,9 +2992,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         result_tmp = self._tmp()
@@ -3051,9 +3029,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         accum_type = self._infer_expr_type(expr.args[2])
@@ -3135,9 +3111,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         accum_type = self._infer_expr_type(expr.args[2])
@@ -3205,9 +3179,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         # Parse triples: (name, init, lambda)
@@ -3327,9 +3299,7 @@ class CallEmitterMixin:
         self._needed_headers.add("prove_list.h")
         list_arg, list_type = self._cache_list_arg(expr.args[0])
 
-        elem_type = INTEGER
-        if isinstance(list_type, ListType):
-            elem_type = list_type.element  # type: ignore[assignment]
+        elem_type = self._infer_hof_elem_type(list_type)
         elem_ct = map_type(elem_type)
 
         idx = self._named_tmp("i")
