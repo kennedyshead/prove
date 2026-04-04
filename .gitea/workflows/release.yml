@@ -92,64 +92,32 @@ jobs:
           wait $E2E_PID    || { echo "e2e failed";     FAIL=1; }
           exit $FAIL
 
-      - name: Generate release notes
+      - name: Extract release notes from CHANGELOG.md
         id: notes
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1)
+          VERSION="${TAG#v}"
 
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="${PREV_TAG}..${TAG}"
-          else
-            RANGE="$TAG"
+          # Extract section for this version (between its header and the next --- or EOF)
+          awk "/^## v${VERSION//./\\.} /{found=1; next} /^---$/{if(found) exit} found" \
+            ../CHANGELOG.md > ../release-notes.md
+
+          if [ ! -s ../release-notes.md ]; then
+            echo "WARNING: no CHANGELOG.md entry found for ${TAG}, falling back to commit log" >&2
+            PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1)
+            git log "${PREV_TAG}..${TAG}" --pretty=format:"- %s" --no-merges > ../release-notes.md
           fi
 
-          # Group commits by category
+          # Append install instructions
           {
-            echo "## What's Changed"
             echo ""
-
-            # Collect categorised lines
-            FEATURES=""
-            FIXES=""
-            OTHER=""
-            while IFS= read -r MSG; do
-              case "$MSG" in
-                feat:*|feat\(*|add:*|Add\ *|add\ *)
-                  FEATURES="${FEATURES}- ${MSG}\n" ;;
-                fix:*|fix\(*|Fix\ *|fix\ *|Bugfix*)
-                  FIXES="${FIXES}- ${MSG}\n" ;;
-                *)
-                  OTHER="${OTHER}- ${MSG}\n" ;;
-              esac
-            done < <(git log "$RANGE" --pretty=format:"%s" --no-merges)
-
-            if [ -n "$FEATURES" ]; then
-              echo "### Features"
-              echo ""
-              printf '%b' "$FEATURES"
-              echo ""
-            fi
-            if [ -n "$FIXES" ]; then
-              echo "### Fixes"
-              echo ""
-              printf '%b' "$FIXES"
-              echo ""
-            fi
-            if [ -n "$OTHER" ]; then
-              echo "### Other"
-              echo ""
-              printf '%b' "$OTHER"
-              echo ""
-            fi
-
             echo "---"
             echo ""
             echo "**Install:**"
             echo '```sh'
             echo "curl -sSf https://code.botwork.se/Botwork/prove/raw/branch/main/scripts/install.sh | sh"
             echo '```'
-          } > ../release-notes.md
+          } >> ../release-notes.md
 
       - name: Package and upload binary
         env:
