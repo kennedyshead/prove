@@ -3021,7 +3021,7 @@ class CallEmitterMixin:
         self._line(f"if (({p1_code}) && ({p2_code})) {{")
         self._indent += 1
 
-        wrap = f"(void*){elem_var}" if elem_ct.is_pointer else f"(void*)(intptr_t){elem_var}"
+        wrap = self._hof_box(elem_var, elem_ct)
         self._line(f"prove_list_push({result_tmp}, {wrap});")
 
         self._indent -= 1
@@ -3071,18 +3071,32 @@ class CallEmitterMixin:
         elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
         self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
+        # Infer the mapped element type from the map lambda
+        map_fn = expr.args[1]
+        mapped_type = elem_type
+        if isinstance(map_fn, LambdaExpr) and map_fn.params:
+            saved_locals = dict(self._locals)
+            self._locals[map_fn.params[0]] = elem_type
+            mapped_type = self._infer_expr_type(map_fn.body)
+            self._locals = saved_locals
+        mapped_ct = map_type(mapped_type)
+
         map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        # Struct types are already boxed as void* by _emit_fused_lambda_inline
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
 
         # Accumulate: accum = g(accum, mapped)
         g_expr = expr.args[3]
         if isinstance(g_expr, LambdaExpr) and len(g_expr.params) == 2:
             saved = dict(self._locals)
             self._locals[g_expr.params[0]] = accum_type
-            self._locals[g_expr.params[1]] = elem_type
+            self._locals[g_expr.params[1]] = mapped_type
             self._line(f"{accum_ct.decl} {g_expr.params[0]} = {accum_tmp};")
-            mapped_cast = self._hof_unbox(mapped_var, elem_ct)
-            self._line(f"{elem_ct.decl} {g_expr.params[1]} = {mapped_cast};")
+            mapped_cast = self._hof_unbox(mapped_var, mapped_ct)
+            self._line(f"{mapped_ct.decl} {g_expr.params[1]} = {mapped_cast};")
             body_code = self._emit_expr(g_expr.body)
             self._locals = saved
             self._line(f"{accum_tmp} = {body_code};")
@@ -3316,10 +3330,28 @@ class CallEmitterMixin:
         elem_get = self._hof_unbox(f"{list_arg}->data[{idx}]", elem_ct)
         self._line(f"{elem_ct.decl} {elem_var} = {elem_get};")
 
-        map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
-        self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+        # Infer the mapped element type from the map lambda
+        map_fn = expr.args[1]
+        mapped_type = elem_type
+        if isinstance(map_fn, LambdaExpr) and map_fn.params:
+            saved_locals = dict(self._locals)
+            self._locals[map_fn.params[0]] = elem_type
+            mapped_type = self._infer_expr_type(map_fn.body)
+            self._locals = saved_locals
+        mapped_ct = map_type(mapped_type)
 
-        consumer_code = self._emit_fused_lambda_inline(expr.args[2], mapped_var, elem_type)
+        map_code = self._emit_fused_lambda_inline(expr.args[1], elem_var, elem_type)
+        # Struct types are already boxed as void* by _emit_fused_lambda_inline
+        if mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer:
+            self._line(f"void *{mapped_var} = {map_code};")
+        else:
+            self._line(f"void *{mapped_var} = (void*)(intptr_t){map_code};")
+
+        # Pass correct mapped type to consumer; unbox if map produced a boxed struct
+        mapped_is_boxed = mapped_ct.decl.startswith("Prove_") and not mapped_ct.is_pointer
+        consumer_code = self._emit_fused_lambda_inline(
+            expr.args[2], mapped_var, mapped_type, boxed=mapped_is_boxed
+        )
         self._line(f"(void){consumer_code};")
 
         self._indent -= 1
