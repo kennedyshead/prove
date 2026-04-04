@@ -59,6 +59,7 @@ _CORE_FILES = {
     "prove_result",
     "prove_text",
     "prove_bitarray",
+    "prove_error",
 }
 
 # Field declarations for binary (C-backed) stdlib types.

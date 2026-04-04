@@ -54,6 +54,10 @@ A backslash at the end of a string with no character following it.
 
 A character that doesn't belong to any valid token. The error message shows the problematic character (e.g., `` `@` ``, `` `#` ``, `` `$` ``).
 
+### E150 — Reactive verb body must be a single match expression
+
+The body of a `listens`, `streams`, or `renders` verb must consist of a single `match` expression. Multiple statements or non-match expressions are not allowed.
+
 ### E200 — Missing module declaration
 
 Every `.prv` file must begin with a `module` declaration and narrative. When a filename is available, the compiler suggests a module name derived from it (e.g., `my_utils.prv` suggests `module MyUtils`).
@@ -195,6 +199,10 @@ from
     user
 ```
 
+### E335 — Type cannot be used as Value
+
+An argument passed to a `Value` parameter has a type that cannot be automatically converted to `Value`. Only scalar types (`Integer`, `Float`, `String`, `Boolean`) and types with known Value representations can be passed where `Value` is expected.
+
 ### E340 — Field not found
 
 Field access (`.field`) on a type that either doesn't have that field or doesn't support field access.
@@ -216,6 +224,10 @@ transforms run(path String) String!
 from
     read_file(path)!
 ```
+
+### E351 — `!` applied to non-failable expression
+
+The `!` fail propagation operator was applied to an expression that cannot fail. Only calls to failable functions (those declared with `!`) can be propagated.
 
 ### E352 — Function calls not allowed in `where` constraints
 
@@ -271,7 +283,7 @@ transforms bad(x Integer) Integer
 
 ### E361 — Pure function cannot be failable
 
-Functions with pure verbs cannot use the `!` fail marker.
+Functions with pure verbs cannot use the `!` fail marker. The exception is `transforms`, which is allowed to be failable.
 
 ### E362 — Pure function cannot call IO function
 
@@ -686,6 +698,10 @@ The file path passed to `read()` in a `comptime` block does not exist relative t
 
 A `comptime` block calls a function that is not available in the compile-time interpreter. Built-in comptime functions: `read`, `platform`, `len`, `contains`, `to_upper`, `to_lower`. User-defined pure functions are also callable.
 
+### E423 — Recursive type has no base case
+
+A recursive algebraic type references itself in every variant. At least one variant must not reference the type, otherwise values of this type can never be constructed.
+
 ---
 
 ### E430 — `with` references unknown parameter
@@ -820,6 +836,10 @@ transforms abs_val(n Integer) Integer
 from
     n
 ```
+
+### W305 — Duplicate match arm for variant
+
+A `match` expression has two or more arms matching the same variant without field destructuring. The later arm is unreachable.
 
 ### W311 — Intent without contracts
 
@@ -995,9 +1015,11 @@ transforms caller(n Integer) Integer
 
 Same as W370 but for internal (underscore-prefixed) functions. Only emitted with `--strict`.
 
-### W372 — Arm-bound `know` claim cannot be proven
+### W372 — Arm-bound `know` claim cannot be proven / Failable call result discarded
 
-A `know:` claim in the function header references a variable that is bound inside a match arm (e.g., `inner` from `Some(inner)`), but the proof context cannot establish the claim. The claim is treated as a runtime assertion.
+This warning has two triggers:
+
+**1. Arm-bound know claim.** A `know:` claim in the function header references a variable that is bound inside a match arm (e.g., `inner` from `Some(inner)`), but the proof context cannot establish the claim. The claim is treated as a runtime assertion.
 
 ```prove
 // Warning — inner is arm-bound but know claim is not provable
@@ -1010,6 +1032,14 @@ from
 ```
 
 Add a `requires` that constrains the subject, or remove the `know` if the claim is not needed as a checked assertion.
+
+**2. Failable call result discarded.** A failable function is called as a statement but its result is not propagated with `!` or handled with `match`. The error is silently ignored.
+
+Use `!` to propagate the failure, or `match` to handle it explicitly.
+
+### W373 — Failable call in lambda without `!`
+
+A failable function is called inside a lambda body without the `!` propagation operator. The lambda returns a `Result` instead of the unwrapped value, which is likely unintended.
 
 ### W390 — Temporal operation out of declared order
 
@@ -1087,6 +1117,13 @@ module MyModule
   narrative: """Handles user authentication and session management"""
 ```
 
+### I210 — Verb body should be a single match expression / Trailing comma
+
+This code is used in two contexts:
+
+1. **Checker:** A `listens`, `streams`, or `renders` verb body should be a single `match` expression for clarity.
+2. **Parser:** A trailing comma was found in a parameter list. `prove format` removes it automatically.
+
 ### I300 — Unused variable
 
 A declared variable is never referenced. The formatter prefixes the name with `_`.
@@ -1139,9 +1176,13 @@ A variable declared via `x = expr` without a type annotation. The formatter adds
 
 A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is assigned from a `Value` expression. The compiler inserts a runtime coercion via `prove_value_as_*()`, but the type cannot be verified at compile time.
 
+### I318 — Module cannot import from itself
+
+A module's import block references itself. This is a no-op and is automatically removed by `prove format`.
+
 ### I320 — Function without contracts
 
-A function has multiple statements (or uses `transforms`/`matches` verb) but no `requires` or `ensures` clauses. Adding contracts enables mutation testing and helps the compiler reason about correctness.
+A function has more than 5 statements (or more than 1 statement for `transforms`/`matches` verbs) but no `requires` or `ensures` clauses. Adding contracts enables mutation testing and helps the compiler reason about correctness.
 
 ### I360 — `validates` has implicit Boolean return
 

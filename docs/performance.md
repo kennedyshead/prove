@@ -161,6 +161,10 @@ Passes `-march=native` to the C compiler, enabling instruction set extensions av
 
 Compiles with `-ffunction-sections -fdata-sections` and links with `--gc-sections` (Linux) or `-dead_strip` (macOS). This allows the linker to discard unreferenced functions and data, complementing Prove's runtime stripping at a finer granularity. Enabled by default; automatically disabled in debug builds.
 
+### Unity build
+
+When optimizations are enabled and the project has multiple modules, the compiler merges all generated C sources into a single translation unit (`build/gen/unity.c`). This lets the C compiler inline and propagate constants across module boundaries without relying solely on LTO. Debug builds (`--debug`) compile each module separately for clearer error messages.
+
 ### Compiler cache (`ccache`)
 
 When `ccache = true` (the default) and [ccache](https://ccache.dev) is installed, the build system prepends `ccache` to the compiler command. This caches object files by input hash, making incremental rebuilds near-instant. If ccache is not installed, the setting is silently ignored.

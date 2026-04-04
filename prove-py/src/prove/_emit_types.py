@@ -50,13 +50,13 @@ class TypeEmitterMixin:
             else:
                 self._line(f"typedef struct {cname} {cname};")
         # Forward declarations for imported local types.
-        # Lookup types (from stdlib) need full enum definitions here
-        # because C requires the complete type for by-value fields.
-        stdlib_lookup_names: set[str] = set()
+        # Lookup types (from stdlib or local modules) need full enum definitions
+        # here because C requires the complete type for by-value fields.
+        lookup_names: set[str] = set()
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
-            if self._is_stdlib_lookup_type(name):
-                stdlib_lookup_names.add(name)
+            if self._is_stdlib_lookup_type(name) or name in self._lookup_tables:
+                lookup_names.add(name)
                 self._line(f"typedef enum {cname} {cname};")
                 self._line(f"enum {cname} {{")
                 self._indent += 1
@@ -69,7 +69,7 @@ class TypeEmitterMixin:
                 self._line(f"typedef struct {cname} {cname};")
         self._line("")
         # Full struct definitions for imported local types
-        self._emit_imported_type_defs(stdlib_lookup_names)
+        self._emit_imported_type_defs(lookup_names)
 
     def _imported_local_types(self) -> list[tuple[str, Type]]:
         """Collect types imported from local modules (not defined in this module).
@@ -151,14 +151,14 @@ class TypeEmitterMixin:
                     result.add(name)
         return result
 
-    def _emit_imported_type_defs(self, stdlib_lookup_names: set[str] | None = None) -> None:
+    def _emit_imported_type_defs(self, lookup_names: set[str] | None = None) -> None:
         """Emit full struct definitions for imported local types.
 
         Constructors are only emitted for directly imported types — transitive
         field dependencies only need the struct definition (no constructor), to
         avoid name collisions with locally-defined constructors.
         """
-        skip = stdlib_lookup_names or set()
+        skip = lookup_names or set()
         direct_names = self._direct_imported_local_type_names()
         for name, ty in self._imported_local_types():
             if name in skip:

@@ -8,7 +8,8 @@
 /* ── Position type (matches UI.Position) ─────────────────────── */
 #ifndef PROVE_POSITION_DEFINED
 #define PROVE_POSITION_DEFINED
-typedef struct {
+#define _PROVE_UNITY_Prove_Position
+typedef struct Prove_Position {
     int64_t x;
     int64_t y;
 } Prove_Position;

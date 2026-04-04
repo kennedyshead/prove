@@ -72,7 +72,8 @@ def _register_doc_range(prefix: str, start: int, end: int) -> None:
 
 # Lexer E101-E109
 _register_doc_range("E", 101, 109)
-# Parser E151
+# Parser E150-E151
+DIAGNOSTIC_DOCS["E150"] = f"{_DOCS_BASE}#E150"
 DIAGNOSTIC_DOCS["E151"] = f"{_DOCS_BASE}#E151"
 # Parser
 for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215"):
@@ -83,13 +84,13 @@ _register_doc_range("E", 300, 302)
 for _c in ("E310", "E311", "E312", "E313", "E314", "E315", "E316", "E317"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Type checking
-for _c in ("E320", "E321", "E322", "E325", "E326", "E330", "E331"):
+for _c in ("E320", "E321", "E322", "E325", "E326", "E330", "E331", "E335"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Field access E340-E341
 for _c in ("E340", "E341"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
-# Control flow E350, E352, E355-E357
-for _c in ("E350", "E352", "E355", "E356", "E357"):
+# Control flow E350-E352, E355-E357
+for _c in ("E350", "E351", "E352", "E355", "E356", "E357"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Verb enforcement E361-E366 (E360 moved to I360, E367 moved to I367), E368 par_* purity
 _register_doc_range("E", 361, 366)
@@ -119,8 +120,8 @@ _register_doc_range("E", 401, 406)
 _register_doc_range("E", 407, 408)
 # Mutable capture in parallel lambda E409
 DIAGNOSTIC_DOCS["E409"] = f"{_DOCS_BASE}#E409"
-# Comptime execution E410-E422
-_register_doc_range("E", 410, 422)
+# Comptime execution E410-E423
+_register_doc_range("E", 410, 423)
 # Row polymorphism E430-E435
 _register_doc_range("E", 430, 435)
 # IO verb requires failable E436, Mutable purity E437
@@ -129,7 +130,7 @@ DIAGNOSTIC_DOCS["E437"] = f"{_DOCS_BASE}#E437"
 # Option<T> passed where T expected — null pointer risk E438
 DIAGNOSTIC_DOCS["E438"] = f"{_DOCS_BASE}#E438"
 # Warnings
-for _c in ("W300", "W304", "W311", "W312", "W313"):
+for _c in ("W300", "W304", "W305", "W311", "W312", "W313"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Warnings — contracts W321-W328
 _register_doc_range("W", 321, 328)
@@ -144,8 +145,8 @@ DIAGNOSTIC_DOCS["W350"] = f"{_DOCS_BASE}#W350"
 # Warning — own/borrow overlap W360, unwrap panic W361
 DIAGNOSTIC_DOCS["W360"] = f"{_DOCS_BASE}#W360"
 DIAGNOSTIC_DOCS["W361"] = f"{_DOCS_BASE}#W361"
-# Warning — verification chain W370-W372
-_register_doc_range("W", 370, 372)
+# Warning — verification chain W370-W373
+_register_doc_range("W", 370, 373)
 # Warning — temporal/satisfies W390-W391
 _register_doc_range("W", 390, 391)
 # Warning — prose coherence W501-W506
@@ -155,6 +156,7 @@ _register_doc_range("W", 601, 603)
 # Info
 for _c in (
     "I201",
+    "I210",
     "I300",
     "I301",
     "I302",
@@ -163,6 +165,7 @@ for _c in (
     "I305",
     "I310",
     "I311",
+    "I318",
     "I320",
     "I340",
     "I360",

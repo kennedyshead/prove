@@ -440,11 +440,19 @@ def _build_c(
         (gen_dir / ".clangd").write_text("CompileFlags:\n  Add: -I../runtime\n")
 
     # Write generated C
+    # Unity build: when optimizing, concatenate all generated modules into a
+    # single translation unit so the C compiler can inline and propagate
+    # constants across module boundaries without relying solely on LTO.
     gen_c_files: list[Path] = []
-    for i, c_src in enumerate(c_sources):
-        c_path = gen_dir / f"module_{i}.c"
-        c_path.write_text(c_src)
-        gen_c_files.append(c_path)
+    if config.optimize.enabled and not debug and len(c_sources) > 1:
+        unity_path = gen_dir / "unity.c"
+        unity_path.write_text(_build_unity_source(c_sources))
+        gen_c_files.append(unity_path)
+    else:
+        for i, c_src in enumerate(c_sources):
+            c_path = gen_dir / f"module_{i}.c"
+            c_path.write_text(c_src)
+            gen_c_files.append(c_path)
 
     # Auto-bundle Python packages if the project embeds libpython3
     from prove._python_bundle import maybe_generate_bundle
@@ -866,3 +874,151 @@ def _inject_forward_decls(c_source: str, decls: str, type_defs: str = "") -> str
     for j, part in enumerate(parts):
         lines.insert(inject_at + j, part)
     return "\n".join(lines)
+
+
+# ── Unity build merging ──────────────────────────────────────────────
+
+
+def _collect_brace_block(lines: list[str], start: int) -> tuple[list[str], int]:
+    """Collect lines from *start* until braces balance.  Returns (block, next_index)."""
+    block = [lines[start]]
+    depth = lines[start].count("{") - lines[start].count("}")
+    i = start + 1
+    while i < len(lines) and depth > 0:
+        block.append(lines[i])
+        depth += lines[i].count("{") - lines[i].count("}")
+        i += 1
+    return block, i
+
+
+_RE_STRUCT_DEF = re.compile(r"^struct\s+(\w+)\s*\{")
+_RE_ENUM_DEF = re.compile(r"^enum\s+(\w+)\s*\{")
+_RE_ANON_ENUM = re.compile(r"^enum\s*\{")
+_RE_STATIC_INLINE = re.compile(r"^static\s+inline\s+\S+\s+(\w+)\s*\(")
+# typedef forward declarations:  typedef struct Foo Foo;  /  typedef enum Foo Foo;
+_RE_TYPEDEF_FWD = re.compile(r"^typedef\s+(?:struct|enum)\s+(\w+)\s+\w+\s*;$")
+# typedef anonymous struct block:  typedef struct { ... } Name;
+_RE_TYPEDEF_STRUCT_BLOCK = re.compile(r"^typedef\s+struct\s*\{")
+
+
+def _build_unity_source(c_sources: list[str]) -> str:
+    """Merge multiple C module sources into a single translation unit.
+
+    Deduplicates #include directives, typedef forward declarations,
+    struct/enum definitions, static-inline constructors, and extern
+    declarations.  Static error-string names (``_err_str_N``) are made
+    unique per module to avoid symbol collisions.
+    """
+    # 1. Make _err_str_ names unique per module *before* merging so that
+    #    both the definition and all references within each module agree.
+    prefixed: list[str] = []
+    for idx, src in enumerate(c_sources):
+        prefixed.append(src.replace("_err_str_", f"_err_str_m{idx}_"))
+
+    seen_lines: set[str] = set()  # single-line dedup (includes, externs)
+    seen_names: set[str] = set()  # typedef forward decl dedup by type name
+    seen_blocks: set[str] = set()  # multi-line dedup key (struct/enum/inline name or content)
+    out: list[str] = []
+
+    for source in prefixed:
+        lines = source.split("\n")
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            # ── single-line dedup ────────────────────────────────
+            if stripped.startswith("#include"):
+                if stripped not in seen_lines:
+                    seen_lines.add(stripped)
+                    out.append(line)
+                i += 1
+                continue
+
+            # typedef forward declarations — dedup by type name so
+            # `typedef struct X X;` and `typedef enum X X;` don't clash.
+            # Wrapped in guards to avoid conflict with runtime headers.
+            m = _RE_TYPEDEF_FWD.match(stripped)
+            if m:
+                tname = m.group(1)
+                if tname not in seen_names:
+                    seen_names.add(tname)
+                    guard = f"_PROVE_UNITY_{tname}"
+                    out.append(f"#ifndef {guard}")
+                    out.append(line)
+                    out.append("#endif")
+                i += 1
+                continue
+
+            # typedef struct { ... } Name;  (multi-line anonymous struct)
+            if _RE_TYPEDEF_STRUCT_BLOCK.match(stripped):
+                block, i = _collect_brace_block(lines, i)
+                # Extract the typedef name after the closing brace
+                last_line = block[-1].strip()
+                # e.g.  "} _prv_detached_debug_String_args;"
+                td_m = re.match(r"\}\s*(\w+)\s*;", last_line)
+                key = td_m.group(1) if td_m else "\n".join(block)
+                if key not in seen_blocks:
+                    seen_blocks.add(key)
+                    out.extend(block)
+                continue
+
+            if stripped.startswith("extern "):
+                if stripped not in seen_lines:
+                    seen_lines.add(stripped)
+                    out.append(line)
+                i += 1
+                continue
+
+            # ── multi-line struct definition ─────────────────────
+            m = _RE_STRUCT_DEF.match(stripped)
+            if m:
+                name = m.group(1)
+                block, i = _collect_brace_block(lines, i)
+                if name not in seen_blocks:
+                    seen_blocks.add(name)
+                    guard = f"_PROVE_UNITY_{name}"
+                    out.append(f"#ifndef {guard}")
+                    out.append(f"#define {guard}")
+                    out.extend(block)
+                    out.append("#endif")
+                continue
+
+            # ── named enum definition ────────────────────────────
+            m = _RE_ENUM_DEF.match(stripped)
+            if m:
+                name = m.group(1)
+                block, i = _collect_brace_block(lines, i)
+                if name not in seen_blocks:
+                    seen_blocks.add(name)
+                    guard = f"_PROVE_UNITY_{name}"
+                    out.append(f"#ifndef {guard}")
+                    out.append(f"#define {guard}")
+                    out.extend(block)
+                    out.append("#endif")
+                continue
+
+            # ── anonymous enum (algebraic type tags) ─────────────
+            if _RE_ANON_ENUM.match(stripped):
+                block, i = _collect_brace_block(lines, i)
+                content_key = "\n".join(b.strip() for b in block)
+                if content_key not in seen_blocks:
+                    seen_blocks.add(content_key)
+                    out.extend(block)
+                continue
+
+            # ── static inline constructors ───────────────────────
+            m = _RE_STATIC_INLINE.match(stripped)
+            if m:
+                name = m.group(1)
+                block, i = _collect_brace_block(lines, i)
+                if name not in seen_blocks:
+                    seen_blocks.add(name)
+                    out.extend(block)
+                continue
+
+            # ── everything else passes through ───────────────────
+            out.append(line)
+            i += 1
+
+    return "\n".join(out)
