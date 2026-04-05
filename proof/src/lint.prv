@@ -29,32 +29,32 @@ from
         warning(f"Type check missing for {type_name}")&
         true
 
-validates import_verb(
+matches import_verb(
+    exists Boolean,
     verb_identifier String,
     module ModuleDefinition,
     node Node,
     source SourceFile
-)
+) Boolean
 from
-    match any(module.verbs, |exist| starts(exist, verb_identifier))
-        false =>
-            str_verbs as String = join(module.verbs, " ")
-            debug(f"{verb_identifier}")&
-            debug(f"{str_verbs}")&
-            identifier as List<String> = split(verb_identifier, "_")
-            verb as String = match first(identifier)
-                Some(value) => value
-                None => ""
-            name as String = match last(identifier)
-                Some(value) => value
-                None => ""
-            ixxx(
-                f"{name} is not declared as {verb} in {module.name}",
-                LintCode:I315,
-                node,
-                source)
-            true
-        true => true
+    false =>
+        str_verbs as String = join(module.verbs, " ")
+        debug(f"{verb_identifier}")&
+        debug(f"{str_verbs}")&
+        identifier as List<String> = split(verb_identifier, "_")
+        verb as String = match first(identifier)
+            Some(value) => value
+            None => ""
+        name as String = match last(identifier)
+            Some(value) => value
+            None => ""
+        ixxx(
+            f"{name} is not declared as {verb} in {module.name}",
+            LintCode:I315,
+            node,
+            source)
+        true
+    true => true
 
 validates import_group(module ModuleDefinition, node Node, source SourceFile)
 from
@@ -65,10 +65,14 @@ from
                 false =>
                     all(
                         slice(statements, 1, length(statements)),
-                        |name| import_verb(f"{verb}_{name}", module, node, source))
+                        |name| import_verb(
+                        any(module.verbs, |exist| starts(exist, f"{verb}_{name}")),
+                        f"{verb}_{name}",
+                        module,
+                        node,
+                        source))
                 true => true
         None => true
-    true
 
 /// Validate if the module exist
 validates import_module(
@@ -104,7 +108,7 @@ validates not_import_from_self(
 from
     message as String = LintCode:I318
     ixxx(message, LintCode:I318, node, source_file)
-    true
+    false
 
 /// Validate import statements
 validates import(content Content, node Node, source_file SourceFile)
