@@ -2,7 +2,8 @@ module Lint
   narrative: """
   Takes care of linting of source
 
-  validates import statements, makes sure the module exist, not import from self, lookup
+  validates import statements, makes sure the module exist, not import from self, lookup,
+    narrative
   matches type to string name
   """
   Prove types Node creates children kind
@@ -101,11 +102,20 @@ validates not_import_from_self(
 )
 from
     match source_file.definition.name == module_name
-        true => true
-        false =>
+        false => true
+        true =>
             message as String = LintCode:I318
             ixxx(message, LintCode:I318, node, source_file)
-            false
+            true
+
+validates narrative_check(content Content, node Node, source_file SourceFile)
+from
+    match any(children(node), |child| kind(child) == "narrative_annotation")
+        true => true
+        false =>
+            message as String = LintCode:I201
+            ixxx(message, LintCode:I201, node, source_file)
+            true
 
 /// Validate import statements
 validates import(content Content, node Node, source_file SourceFile)

@@ -16,7 +16,7 @@ module Check
   Sequence creates length validates contains
   Config types Config
   Diagnostic matches ast_parse_error
-  Lint validates import
+  Lint validates import narrative_check
 
   foreign "libpython3"
     py_initialize() Unit
@@ -46,6 +46,8 @@ from
             true =>
                 check(content, node, source_file)
             false => false
+    "module_declaration" =>
+        narrative_check(content, node, source_file) && check(content, node, source_file)
     _ =>
         check(content, node, source_file)
 

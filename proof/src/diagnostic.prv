@@ -26,6 +26,7 @@ module Diagnostic
     actual_line String
 
   type LintCode:[Lookup] is Integer String where
+    I201 | 201 | "Module missing narrative"
     I315 | 315 | "Function not found in module"
     I318 | 318 | "Module cannot import from itself"
     E100 | 100 | "Syntax Error"
@@ -121,12 +122,23 @@ from
     Error => "E"
     Critical => "C"
 
+matches severity_name(severity Severity) String
+from
+    Default => ""
+    Debug => "debug"
+    Info => "info"
+    Warning => "warning"
+    Error => "error"
+    Critical => "critical"
+
 /// Send a diagnostic message to the console
 detached diagnostic(message DiagnosticMessage)
 from
     color as String = severity_color(message.severity)
     number_pad as String = repeat(" ", 4 - length(f"{message.line}"))
-    console(f"{color}error[{
+    console(f"{color}{
+              severity_name(message.severity)
+            }[{
               severity_prefix(message.severity)
             }{message.code}]:{
               ansi(Color:Default)
