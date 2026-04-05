@@ -8,7 +8,7 @@ module Lint
   Build types Content
   Prove types Node creates children kind
   Check types SourceFile
-  Sequence derives slice get first extend creates length
+  Sequence derives slice get first extend last creates length
   Types creates integer validates boolean unit string
   Diagnostic types LintCode creates exxx ixxx
   Text derives replace creates join split validates ends starts
@@ -41,8 +41,18 @@ from
             str_verbs as String = join(module.verbs, " ")
             debug(f"{verb_identifier}")&
             debug(f"{str_verbs}")&
-            message as String = LintCode:I315
-            ixxx(message, LintCode:I315, node, source)
+            identifier as List<String> = split(verb_identifier, "_")
+            verb as String = match first(identifier)
+                Some(value) => value
+                None => ""
+            name as String = match last(identifier)
+                Some(value) => value
+                None => ""
+            ixxx(
+                f"{name} is not declared as {verb} in {module.name}",
+                LintCode:I315,
+                node,
+                source)
             true
         true => true
 
