@@ -37,6 +37,7 @@ from prove.ast_nodes import (
     TypeIdentifierExpr,
     UnaryExpr,
     ValidExpr,
+    VarDecl,
     VariantPattern,
     WildcardPattern,
 )
@@ -1195,6 +1196,13 @@ class ExprEmitterMixin:
                             and len(subj_type.args) > 1
                         ):
                             self._locals[pat.fields[0].name] = subj_type.args[1]
+                    # Register VarDecl bindings from earlier arm body
+                    # statements so the last expression can reference them.
+                    for s in arm.body[:-1]:
+                        if isinstance(s, VarDecl) and s.type_expr is not None:
+                            vt = self._symbols.resolve_type(getattr(s.type_expr, "name", ""))
+                            if vt is not None:
+                                self._locals[s.name] = vt
                     ty = self._infer_expr_type(last.expr)
                     self._locals = saved
                     if not isinstance(ty, ErrorType):

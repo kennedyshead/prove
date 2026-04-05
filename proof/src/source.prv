@@ -1,7 +1,7 @@
 module Source
   narrative: """
   Reads all source content through dir inputs
-  matches and creates mangled verb signatures through verb token and parameter types
+  matches and creates mangled verb and type signatures through verb token and parameter types
   derives module name from content
   creates stdlibs list
   """
@@ -11,7 +11,7 @@ module Source
   Prove types Tree Node derives root creates kind children
   Text derives replace creates join split length validates ends contains
   Types validates unit string
-  Sequence derives set first last extend creates length list
+  Sequence derives set first last extend creates length list validates contains
   Table derives get creates table keys
 
   type ModuleDefinition is
@@ -45,9 +45,10 @@ from
                 children(root(source)),
                 |node| each(
                 children(node),
-                |level2| match kind(level2) == "function_definition"
+                |level2| match contains(["type_definition", "function_definition"],
+                    kind(level2))
                 true => set(verbs, length(verbs), mangled(level2))
-                false => ""))
+                false => verbs))
             SourceFile(
                 path,
                 content,
@@ -99,7 +100,23 @@ from
     _ =>
         Unit
 
-/// Creates a mangled name for a Verb
+matches mangle_type(kind_name String, node Node) Option<String>
+from
+    "type_identifier" => f"types_{string(node)}_is"
+    "binary_type_body" => "_binary"
+    "record_type_body" =>
+        body as String =
+            replace(replace(replace(string(node), " ", "_"), "\n", ""), "____", "__")
+        f"struct__{body}"
+    "named_lookup_type_body" =>
+        f"named_lookup"
+    "lookup_type_body" =>
+        f"lookup"
+    "algebraic_type_body" =>
+        f"algeabraic"
+    _ => Unit
+
+/// Creates a mangled name for a Verb or Type
 /// __ is added between identifier, parameters and return statement,
 /// type var (aka List<String>) gets opening and closing by List_w_String_e
 ///
@@ -108,15 +125,25 @@ from
 /// creates_test__String__Option_w_String_e
 creates mangled(node Node) String
 from
-    mangle as String =
-        join(
-        filter(
-        map(children(node), |child| mangle_verb(kind(child), child)),
-        |verb_name| unit(verb_name) == false),
-        "_")
-    ret_mangle as String = match contains(mangle, "_ret_")
-        true => mangle
-        false => f"{mangle}_ret_unit"
+    ret_mangle as String = match kind(node)
+        "type_definition" =>
+            mangle as String =
+                join(
+                filter(
+                map(children(node), |child| mangle_type(kind(child), child)),
+                |verb_name| unit(verb_name) == false),
+                "_")
+            mangle
+        "function_definition" =>
+            mangle as String =
+                join(
+                filter(
+                map(children(node), |child| mangle_verb(kind(child), child)),
+                |verb_name| unit(verb_name) == false),
+                "_")
+            match contains(mangle, "_ret_")
+                true => mangle
+                false => f"{mangle}_ret_unit"
     replace(replace(ret_mangle, "<", "_w_"), ">", "_e")
 
 creates stdlibs() List<ModuleDefinition>

@@ -63,6 +63,11 @@ def mutate(project_dir: Path):
             for s in mutation_result.survivors:
                 print(f"  {s['id']}: {s['description']} at {s['location']}")
                 print("    suggestion: add contract to kill this mutant")
+        if mutation_result.errors:
+            print(f"\nerrored mutants ({len(mutation_result.errors)}):")
+            for e in mutation_result.errors:
+                print(f"  {e['id']}: {e['description']} at {e['location']}")
+                print(f"    reason: {e['reason']}")
 
 
 def run_build(path: str = ".", *, debug: bool | None = None, no_mutate: bool = False) -> int:

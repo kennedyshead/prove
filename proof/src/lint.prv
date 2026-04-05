@@ -5,15 +5,13 @@ module Lint
   validates import statements, makes sure the module exist, not import from self, lookup
   matches type to string name
   """
-  Build types Content
   Prove types Node creates children kind
-  Check types SourceFile
   Sequence derives slice get first extend last creates length
   Types creates integer validates boolean unit string
   Diagnostic types LintCode creates exxx ixxx
   Text derives replace creates join split validates ends starts
   Log detached warning debug
-  Source types ModuleDefinition SourceFile
+  Source types ModuleDefinition SourceFile Content
 
   IMPORT_VALIDATION_CALL_FLOW as List<Verb> = [not_import_from_self, import_module]
 
@@ -61,17 +59,14 @@ from
     statements as List<String> = split(string(node), " ")
     match first(statements)
         Some(verb) =>
-            match verb == "types"
-                false =>
-                    all(
-                        slice(statements, 1, length(statements)),
-                        |name| import_verb(
-                        any(module.verbs, |exist| starts(exist, f"{verb}_{name}")),
-                        f"{verb}_{name}",
-                        module,
-                        node,
-                        source))
-                true => true
+            all(
+                slice(statements, 1, length(statements)),
+                |name| import_verb(
+                any(module.verbs, |exist| starts(exist, f"{verb}_{name}")),
+                f"{verb}_{name}",
+                module,
+                node,
+                source))
         None => true
 
 /// Validate if the module exist
@@ -104,11 +99,13 @@ validates not_import_from_self(
     node Node,
     source_file SourceFile
 )
-  requires source_file.definition.name == module_name
 from
-    message as String = LintCode:I318
-    ixxx(message, LintCode:I318, node, source_file)
-    false
+    match source_file.definition.name == module_name
+        true => true
+        false =>
+            message as String = LintCode:I318
+            ixxx(message, LintCode:I318, node, source_file)
+            false
 
 /// Validate import statements
 validates import(content Content, node Node, source_file SourceFile)

@@ -466,6 +466,7 @@ class MutationTestResult:
     error_mutants: int = 0
     mutation_score: float = 0.0
     survivors: list[dict] = field(default_factory=list)
+    errors: list[dict] = field(default_factory=list)
 
 
 def run_mutation_tests(
@@ -506,6 +507,17 @@ def run_mutation_tests(
 
             if not suite.cases:
                 result.error_mutants += 1
+                result.errors.append(
+                    {
+                        "id": mutant.id,
+                        "description": mutant.description,
+                        "location": (
+                            f"{mutant.mutated_location.start_line}:"
+                            f"{mutant.mutated_location.start_col}"
+                        ),
+                        "reason": "no test cases generated",
+                    }
+                )
                 continue
 
             test_result = run_tests(
@@ -526,8 +538,18 @@ def run_mutation_tests(
                         ),
                     }
                 )
-        except (CompileError, ValueError, TypeError, KeyError, IndexError, AttributeError):
+        except (CompileError, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
             result.error_mutants += 1
+            result.errors.append(
+                {
+                    "id": mutant.id,
+                    "description": mutant.description,
+                    "location": (
+                        f"{mutant.mutated_location.start_line}:{mutant.mutated_location.start_col}"
+                    ),
+                    "reason": f"{type(exc).__name__}: {exc}",
+                }
+            )
 
     if result.total_mutants > 0:
         result.mutation_score = result.killed_mutants / result.total_mutants

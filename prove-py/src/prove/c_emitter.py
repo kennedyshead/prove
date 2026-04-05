@@ -10,6 +10,7 @@ from prove._emit_exprs import ExprEmitterMixin
 from prove._emit_stmts import StmtEmitterMixin
 from prove._emit_types import TypeEmitterMixin
 from prove.ast_nodes import (
+    AsyncCallExpr,
     BinaryExpr,
     BooleanLit,
     CallExpr,
@@ -2325,6 +2326,9 @@ class CEmitter(
 
         if isinstance(expr, PipeExpr):
             return self._infer_pipe_type(expr)
+
+        if isinstance(expr, AsyncCallExpr):
+            return UNIT
 
         if isinstance(expr, FailPropExpr):
             inner = self._infer_expr_type(expr.expr)
