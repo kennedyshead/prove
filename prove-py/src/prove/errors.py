@@ -81,7 +81,7 @@ for _c in ("E200", "E210", "E211", "E212", "E213", "E214", "E215"):
 # Definition E300-E302
 _register_doc_range("E", 300, 302)
 # Name resolution E310-E317
-for _c in ("E310", "E311", "E312", "E313", "E314", "E315", "E316", "E317"):
+for _c in ("E310", "E311", "E312", "E313", "E314", "E316", "E317"):
     DIAGNOSTIC_DOCS[_c] = f"{_DOCS_BASE}#{_c}"
 # Type checking
 for _c in ("E320", "E321", "E322", "E325", "E326", "E330", "E331", "E335"):
@@ -165,6 +165,7 @@ for _c in (
     "I305",
     "I310",
     "I311",
+    "I315",
     "I318",
     "I320",
     "I340",

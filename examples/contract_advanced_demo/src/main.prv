@@ -7,12 +7,12 @@ module Main
 
 matches factorial(n Integer) Integer
   ensures result >= 1
-  requires n >= 1000
+  requires n >= 1 && n <= 20
   explain
       will run until n is 120
   terminates: n == 0
-  near_miss 70 => 1
-  near_miss 60 => 1
+  near_miss 3 => 1
+  near_miss 4 => 1
 from
     1 => 1
     _ => n * factorial(n - 1)

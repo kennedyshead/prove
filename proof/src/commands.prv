@@ -16,7 +16,7 @@ module Commands
   New outputs new_project
   Sequence derives get validates contains
   Source types Content inputs source
-  Check validates lint outputs source_check
+  Check validates lint dispatches source_check
 
   HELP_BUILD_TEXT as String = comptime
       read("static/cli/build.txt")

@@ -22,7 +22,7 @@ module Source
     path String
     content String
     source Value<Tree>
-    verbs List<String>
+    definition ModuleDefinition
 
   type Content is
     files List<SourceFile>
@@ -48,15 +48,22 @@ from
                 |level2| match kind(level2) == "function_definition"
                 true => set(verbs, length(verbs), mangled(level2))
                 false => ""))
-            SourceFile(path, content, source, verbs)
+            SourceFile(
+                path,
+                content,
+                source,
+                ModuleDefinition(module_name(content), verbs))
         Err(error) => console(f"{error}")
 
-creates module_name(file SourceFile) Option<String>
-  requires length(file.content) > 0
+creates module_name(content String) String
+  requires length(content) > 0
 from
-    match first(split(file.content, "\n"))
-        Some(value) => last(split(value, " "))
-        None => "UNKNOWN"
+    match first(split(content, "\n"))
+        Some(value) =>
+            match last(split(value, " "))
+                Some(val) => val
+                None => ""
+        None => ""
 
 /// Source a prove project
 inputs source(config Config) Content
@@ -68,7 +75,8 @@ from
         files,
         extend(
         map(libs, |lib| lib.name),
-        filter(map(files, |file| module_name(file)), |module| unit(module) == false)),
+        filter(map(files, |file| module_name(file.content)),
+            |module| unit(module) == false)),
         libs)
 
 /// Extracting only types of parameters
@@ -83,6 +91,7 @@ from
 matches mangle_verb(kind_name String, node Node) Option<String>
 from
     "verb" => string(node)
+    "async_verb" => string(node)
     "identifier" => string(node)
     "parameter_list" =>
         parameter_types(filter(children(node), |child| kind(child) == "parameter"))
@@ -129,9 +138,12 @@ from
 /// Source single verb node and add it to verbs list
 creates source_verb(content Content, node Node, source_file SourceFile) SourceFile
 from
-    mangled_verbs as List<String> = source_file.verbs
+    mangled_verbs as List<String> = source_file.definition.verbs
+    module_name as String = module_name(source_file.content)
     SourceFile(
         source_file.path,
         source_file.content,
         source_file.source,
-        set(mangled_verbs, length(source_file.verbs), mangled(node)))
+        ModuleDefinition(
+        module_name,
+        set(mangled_verbs, length(mangled_verbs), mangled(node))))

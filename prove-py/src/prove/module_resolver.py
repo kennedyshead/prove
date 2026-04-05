@@ -47,6 +47,8 @@ class LocalModuleInfo:
     functions: list[FunctionSignature] = field(default_factory=list)
     constants: list[str] = field(default_factory=list)
     lookup_tables: dict[str, object] = field(default_factory=dict)
+    # Types declared in this module (not re-imported from siblings)
+    local_types: set[str] = field(default_factory=set)
 
 
 def build_module_registry(
@@ -115,6 +117,7 @@ def build_module_registry(
             if resolved is not None:
                 type_registry[td.name] = resolved
                 info.types[td.name] = resolved
+                info.local_types.add(td.name)
 
                 # Register lookup tables for imported lookup types
                 if isinstance(td.body, LookupTypeDef):

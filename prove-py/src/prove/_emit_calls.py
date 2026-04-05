@@ -96,6 +96,7 @@ _HOF_DISPATCH: dict[str, tuple[int | None, str]] = {
 class CallEmitterMixin:
     _locals: dict[str, Type]
     _in_hof_inline: bool
+    _hof_predicate: bool
 
     @staticmethod
     def _is_option_none_filter(pred: Expr) -> bool:
@@ -392,6 +393,21 @@ class CallEmitterMixin:
                 for a in req_expr.args:
                     if isinstance(a, IdentifierExpr) and a.name == param_name:
                         return inferred.args[0]
+            # requires unit(param) != false  — param is not unit/None
+            if isinstance(req_expr, BinaryExpr) and req_expr.op == "!=":
+                call_side = None
+                if isinstance(req_expr.left, CallExpr) and isinstance(req_expr.right, BooleanLit):
+                    call_side = req_expr.left
+                elif isinstance(req_expr.right, CallExpr) and isinstance(req_expr.left, BooleanLit):
+                    call_side = req_expr.right
+                if (
+                    call_side is not None
+                    and isinstance(call_side.func, IdentifierExpr)
+                    and call_side.func.name == "unit"
+                ):
+                    for a in call_side.args:
+                        if isinstance(a, IdentifierExpr) and a.name == param_name:
+                            return inferred.args[0]
         return inferred
 
     def _maybe_unwrap_option(
@@ -1195,16 +1211,37 @@ class CallEmitterMixin:
                 return call
 
             # Call through Verb-typed parameter: cast void* to function pointer.
-            # All Verb thunks are normalised to void return (see _emit_verb_thunk),
-            # so the cast here is always void-returning.
+            # Verb thunks are normally void-returning, but in predicate contexts
+            # (all/any) the verb must return bool.
             local_ty = self._locals.get(name)
             if local_ty is not None and (
                 (isinstance(local_ty, PrimitiveType) and local_ty.name == "Verb")
                 or isinstance(local_ty, FunctionType)
             ):
-                arg_c_types = [map_type(self._infer_expr_type(a)).decl for a in expr.args]
-                cast = f"void (*)({', '.join(arg_c_types)})" if arg_c_types else "void (*)(void)"
-                return f"(({cast}){name})({', '.join(args)})"
+                # Apply requires narrowing to Option/Result args so the
+                # function pointer cast and actual arguments match the verb's
+                # real parameter types (e.g. Option<String> → String).
+                narrowed_types = [
+                    self._narrow_for_requires(a, self._infer_expr_type(a)) for a in expr.args
+                ]
+                arg_c_types = [map_type(t).decl for t in narrowed_types]
+                coerced_args = list(args)
+                for i, (raw_ty, nar_ty) in enumerate(
+                    zip(
+                        [self._infer_expr_type(a) for a in expr.args],
+                        narrowed_types,
+                    )
+                ):
+                    if (
+                        raw_ty != nar_ty
+                        and isinstance(raw_ty, GenericInstance)
+                        and raw_ty.base_name == "Option"
+                    ):
+                        inner_ct = map_type(nar_ty)
+                        coerced_args[i] = option_unwrap_value(f"{args[i]}.value", inner_ct)
+                ret = "bool" if self._hof_predicate else "void"
+                cast = f"{ret} (*)({', '.join(arg_c_types)})" if arg_c_types else f"{ret} (*)(void)"
+                return f"(({cast}){name})({', '.join(coerced_args)})"
 
             # Variant constructor or unknown — namespace variant constructors
             parent = self._get_variant_parent(name)
@@ -1816,7 +1853,10 @@ class CallEmitterMixin:
                 idx_param = lam.params[1]
                 self._line(f"int64_t {idx_param} = {idx};")
                 self._locals[idx_param] = INTEGER
+            saved_pred = self._hof_predicate
+            self._hof_predicate = True
             body_code = self._emit_expr(lam.body)
+            self._hof_predicate = saved_pred
             self._locals = saved_locals
             self._line(f"if (!({body_code})) {{ {result_var} = false; break; }}")
             self._indent -= 1
@@ -1855,7 +1895,10 @@ class CallEmitterMixin:
                 idx_param = lam.params[1]
                 self._line(f"int64_t {idx_param} = {idx};")
                 self._locals[idx_param] = INTEGER
+            saved_pred = self._hof_predicate
+            self._hof_predicate = True
             body_code = self._emit_expr(lam.body)
+            self._hof_predicate = saved_pred
             self._locals = saved_locals
             self._line(f"if ({body_code}) {{ {result_var} = true; break; }}")
             self._indent -= 1
@@ -2120,10 +2163,12 @@ class CallEmitterMixin:
         # Keep only pointer-typed fields
         result: list[str] = []
         if isinstance(elem_type, RecordType):
+            elem_ct = map_type(elem_type)
+            accessor = "->" if elem_ct.is_pointer else "."
             for fname in owned:
                 ftype = elem_type.fields.get(fname)
                 if ftype and map_type(ftype).is_pointer:
-                    result.append(f"{param}->{fname}")
+                    result.append(f"{param}{accessor}{fname}")
         else:
             # Binary/opaque struct — we don't have field type info,
             # so retain each owned field access directly (the field

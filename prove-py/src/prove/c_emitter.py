@@ -142,6 +142,7 @@ class CEmitter(
         self._static_error_strings: dict[str, str] = {}  # C literal → generated name
         self._param_names: set[str] = set()  # current function's parameter names
         self._in_hof_inline = False  # True when emitting inline HOF loop body
+        self._hof_predicate = False  # True when verb return must be bool (all/any)
         self._fused_reduce_results: list[str] = []  # accum vars from multi-reduce
         self._fused_object_cache: tuple[str, str] | None = None  # type: ignore[assignment]  # (param, var) for CSE
         self._used_names: set[str] = set()  # collision tracking for _named_tmp()
@@ -157,6 +158,7 @@ class CEmitter(
         self._recursive_fields_cache: dict[str, set[tuple[str, str]]] = {}
         # Locals that are recursive pointers (from match arm bindings)
         self._recursive_pointer_locals: set[str] = set()
+        self._deferred_const_inits: list[str] = []  # constructor functions for list constants
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 from prove.stdlib_loader import is_stdlib_module
@@ -306,6 +308,11 @@ class CEmitter(
 
         # Forward declarations for imported local functions
         self._emit_imported_function_forwards()
+
+        # Deferred constant initialisers (need forward declarations above)
+        if self._deferred_const_inits:
+            self._out.extend(self._deferred_const_inits)
+            self._deferred_const_inits.clear()
 
         # Hoisted lambdas will be inserted here (placeholder position)
         lambda_pos = len(self._out)
@@ -685,6 +692,27 @@ class CEmitter(
             return True
         return True
 
+    def _requires_only_params(self, expr: Expr, param_names: set[str]) -> bool:
+        """Check that a requires expression only references function parameters."""
+        if isinstance(expr, IdentifierExpr):
+            return expr.name in param_names
+        if isinstance(expr, BinaryExpr):
+            return self._requires_only_params(
+                expr.left, param_names
+            ) and self._requires_only_params(expr.right, param_names)
+        if isinstance(expr, CallExpr):
+            return all(self._requires_only_params(a, param_names) for a in expr.args)
+        if isinstance(expr, ValidExpr):
+            if expr.args:
+                return all(self._requires_only_params(a, param_names) for a in expr.args)
+            return True
+        if isinstance(expr, FieldExpr):
+            return self._requires_only_params(expr.obj, param_names)
+        # Literals are always fine
+        if isinstance(expr, (IntegerLit, BooleanLit, StringLit, DecimalLit, FloatLit)):
+            return True
+        return True
+
     def _needs_region_scope(self, fd: FunctionDef) -> bool:
         """Check if function body contains nodes that trigger region allocation.
 
@@ -915,6 +943,21 @@ class CEmitter(
                             self._line(f"#define {name} {c_code}")
                     else:
                         self._line(f"/* comptime evaluation failed for {name} */")
+                elif isinstance(val, ListLiteral):
+                    # List constants need runtime init — emit a static global
+                    # now and defer the constructor to after forward declarations.
+                    self._line(f"static Prove_List *{name};")
+                    saved_out = self._out
+                    self._out = []
+                    init_fn = f"_init_const_{name.lower()}"
+                    self._line(f"__attribute__((constructor)) static void {init_fn}(void) {{")
+                    self._indent += 1
+                    list_var = self._emit_list_literal(val)
+                    self._line(f"{name} = {list_var};")
+                    self._indent -= 1
+                    self._line("}")
+                    self._deferred_const_inits.extend(self._out)
+                    self._out = saved_out
                 else:
                     self._line(f"#define {name} {self._emit_expr(val)}")
                 any_emitted = True
@@ -1452,14 +1495,16 @@ class CEmitter(
                 if ct.is_pointer:
                     self._line(f"prove_retain({p.name});")
 
-        # Emit requires guards for IO verbs (inputs/outputs) —
-        # these receive external data that the compiler cannot verify
-        # statically, so the contract is enforced at runtime.
-        if fd.requires and fd.verb in ("inputs", "outputs"):
+        # Emit requires guards — if the precondition is not met,
+        # the from-block must never execute.
+        if fd.requires:
             flat_reqs = self._flatten_requires(fd.requires)
+            param_names = {p.name for p in fd.params}
             parts: list[str] = []
             for r in flat_reqs:
                 if not self._requires_expr_resolvable(r):
+                    continue
+                if not self._requires_only_params(r, param_names):
                     continue
                 parts.append(self._emit_expr(r))
             if parts:
@@ -1472,6 +1517,15 @@ class CEmitter(
                     ref = self._static_error_ref(f"requires violated: {loc}")
                     self._line(
                         f"if (__builtin_expect(!({cond}), 0)) return prove_result_err({ref});"
+                    )
+                elif ret_type == BOOLEAN:
+                    self._line(f"if (__builtin_expect(!({cond}), 0)) return true;")
+                elif ret_type == UNIT:
+                    self._line(f"if (__builtin_expect(!({cond}), 0)) return;")
+                else:
+                    self._line(
+                        f"if (__builtin_expect(!({cond}), 0))"
+                        f' prove_panic("requires violated: {loc}");'
                     )
 
         # Emit assume assertions at function entry

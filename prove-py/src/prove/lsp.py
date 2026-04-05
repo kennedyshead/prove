@@ -895,10 +895,10 @@ def _build_local_import_index(
 
     index: dict[str, list[ImportSuggestion]] = {}
     for module_name, info in local_modules.items():
-        # Index exported types
-        for type_name in info.types:  # noqa: F402
-            index.setdefault(type_name, []).append(
-                ImportSuggestion(module=module_name, verb="types", name=type_name),
+        # Index locally-declared types (skip re-imports from sibling modules)
+        for tname in info.local_types:
+            index.setdefault(tname, []).append(
+                ImportSuggestion(module=module_name, verb="types", name=tname),
             )
 
         # Index exported functions

@@ -740,6 +740,17 @@ class CallCheckMixin:
                 expr.args,
             ):
                 return ret.args[0]
+        # Narrow first(x)/last(x) Option<T> → T when requires length(x) > 0
+        if (
+            isinstance(ret, GenericInstance)
+            and ret.base_name == "Option"
+            and ret.args
+            and name in ("first", "last")
+            and len(expr.args) == 1
+            and isinstance(expr.args[0], IdentifierExpr)
+            and expr.args[0].name in self._nonempty_lists
+        ):
+            return ret.args[0]
         return ret
 
     def _infer_store_row_construction(self, expr: CallExpr, name: str) -> Type:

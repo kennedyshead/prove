@@ -254,10 +254,10 @@ class TestConstantImport:
     """Test importing constants from stdlib."""
 
     def test_import_nonexistent_constant_errors(self):
-        """import Log NONEXISTENT should produce E315."""
-        check_fails(
+        """import Log NONEXISTENT should produce I315."""
+        check_info(
             "module Main\n  Log NONEXISTENT\n\nmain()\n    from\n        0\n",
-            "E315",
+            "I315",
         )
 
 

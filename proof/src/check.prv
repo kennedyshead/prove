@@ -11,13 +11,12 @@ module Check
   System validates dir inputs cwd
   Prove types Node derives root creates children kind parent
   Source types SourceFile Content
-  Types creates string validates boolean string unit
+  Types creates string validates boolean string
   Log detached info error
-  Sequence derives first creates length validates contains
+  Sequence creates length validates contains
   Config types Config
-  Diagnostic types LintCode creates static_fail exxx
-  Text creates join
-  Pattern creates split
+  Diagnostic matches ast_parse_error
+  Lint validates import
 
   foreign "libpython3"
     py_initialize() Unit
@@ -29,24 +28,6 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-validates module_import(
-    name Option<String>,
-    content Content,
-    node Node,
-    source_file SourceFile
-)
-  ensures contains(content.modules, name)
-  ensures valid boolean(result)
-  requires unit(name) == false
-from
-    match contains(content.modules, name)
-        false =>
-            modules as String = join(content.modules, ", ")
-            message as String = LintCode:E314
-            exxx(message, LintCode:E314, node, source_file)
-            false
-        true => true
-
 /// match all known nodes for routing
 matches node(node_kind String, content Content, node Node, source_file SourceFile) Boolean
   ensures valid boolean(result)
@@ -56,12 +37,12 @@ from
         parent as String = match parent(node)
             Some(parent) => kind(parent)
             None => ""
-        static_fail(parent, node, source_file)
+        ast_parse_error(parent, node, source_file)
         false
     "function_definition" =>
         check(content, node, source_file)
     "import_declaration" =>
-        match module_import(first(split(string(node), " ")), content, node, source_file)
+        match import(content, node, source_file)
             true =>
                 check(content, node, source_file)
             false => false

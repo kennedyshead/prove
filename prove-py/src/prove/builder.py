@@ -909,11 +909,14 @@ def _build_unity_source(c_sources: list[str]) -> str:
     declarations.  Static error-string names (``_err_str_N``) are made
     unique per module to avoid symbol collisions.
     """
-    # 1. Make _err_str_ names unique per module *before* merging so that
-    #    both the definition and all references within each module agree.
+    # 1. Make _err_str_ and _lambda_ names unique per module *before*
+    #    merging so that both the definition and all references within
+    #    each module agree.
     prefixed: list[str] = []
     for idx, src in enumerate(c_sources):
-        prefixed.append(src.replace("_err_str_", f"_err_str_m{idx}_"))
+        src = src.replace("_err_str_", f"_err_str_m{idx}_")
+        src = src.replace("_lambda_", f"_lambda_m{idx}_")
+        prefixed.append(src)
 
     seen_lines: set[str] = set()  # single-line dedup (includes, externs)
     seen_names: set[str] = set()  # typedef forward decl dedup by type name

@@ -279,6 +279,8 @@ class TestGenerator:
 
         near_miss verifies that a specific input does NOT produce
         the expected output (the function should handle it differently).
+        If the input violates a requires precondition, auto-pass
+        (the function would reject the input).
         """
         self._test_counter += 1
         name = f"_test_nearmiss_{fd.name}_{self._test_counter}"
@@ -288,15 +290,31 @@ class TestGenerator:
         if input_c is None or expected_c is None:
             return
 
-        code = (
-            f"int64_t _result = {mangled}({input_c});\n"
-            f"if (_result != {expected_c}) {{\n"
-            f'    _test_pass("{name}");\n'
-            f"}} else {{\n"
-            f'    _test_fail("{name}", '
-            f'"near-miss matched unexpectedly");\n'
-            f"}}"
-        )
+        # Check if the near_miss input violates any requires precondition.
+        # Assign the input to the param name so _expr_to_c_bool can resolve it.
+        lines: list[str] = []
+        if fd.requires and fd.params:
+            param_name = fd.params[0].name
+            pt = param_types[0] if param_types else None
+            ct = map_type(pt) if pt else None
+            decl = ct.decl if ct else "int64_t"
+            lines.append(f"{decl} {param_name} = {input_c};")
+            for req in fd.requires:
+                req_c = self._expr_to_c_bool(req, "_unused")
+                if req_c:
+                    lines.append(f"if (!({req_c})) {{")
+                    lines.append(f'    _test_pass("{name}");')
+                    lines.append("    return;")
+                    lines.append("}")
+
+        lines.append(f"int64_t _result = {mangled}({input_c});")
+        lines.append(f"if (_result != {expected_c}) {{")
+        lines.append(f'    _test_pass("{name}");')
+        lines.append("} else {")
+        lines.append(f'    _test_fail("{name}", "near-miss matched unexpectedly");')
+        lines.append("}")
+
+        code = "\n".join(lines)
         suite.cases.append(
             TestCase(
                 name=name,

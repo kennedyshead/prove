@@ -125,9 +125,6 @@ An import references a module that is neither part of the standard library nor a
 
 If the module is a local file and its name collides with a stdlib module, use `.ModuleName` to disambiguate (see [E316](#e316-ambiguous-module-name-local-shadows-stdlib)).
 
-### E315 — Function not found in module
-
-An import declaration names a function or type that does not exist in the specified module (stdlib or local).
 
 ### E316 — Ambiguous module name (local shadows stdlib)
 
@@ -1175,6 +1172,10 @@ A variable declared via `x = expr` without a type annotation. The formatter adds
 ### I311 — Value coercion is checked at runtime
 
 A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is assigned from a `Value` expression. The compiler inserts a runtime coercion via `prove_value_as_*()`, but the type cannot be verified at compile time.
+
+### I315 — Import not found in module
+
+An import declaration names a function, type, or constant that does not exist in the specified module (stdlib or local). The import is automatically removed by `prove format`.
 
 ### I318 — Module cannot import from itself
 

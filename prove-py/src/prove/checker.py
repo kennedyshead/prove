@@ -296,6 +296,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._user_constants: dict[str, Span] = {}
         # Requires-based narrowing: list of (module, args)
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
+        # Parameters guaranteed non-empty via requires length(x) > 0
+        self._nonempty_lists: set[str] = set()
         # Inferred types for untyped VarDecl nodes: (start_line, start_col) -> type_name
         self.inlay_type_map: dict[tuple[int, int], str] = {}
         # Mutation survivors from previous --mutate runs
@@ -1181,8 +1183,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         )
                     )
                 else:
-                    self._error(
-                        "E315",
+                    self._info(
+                        "I315",
                         f"constant '{item.name}' not found in module '{imp.module}'",
                         item.span,
                     )
@@ -1260,9 +1262,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     )
                     self.symbols.define_function(sig)
             else:
-                # Known stdlib module but function not found — error
-                self._error(
-                    "E315",
+                # Known stdlib module but function not found — info (auto-removed on format)
+                self._info(
+                    "I315",
                     f"function '{item.name}' not found in module '{imp.module}'",
                     item.span,
                 )
@@ -1299,8 +1301,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         )
                     )
                 else:
-                    self._error(
-                        "E315",
+                    self._info(
+                        "I315",
                         f"constant '{item.name}' not found in module '{imp.module}'",
                         item.span,
                     )
@@ -1333,8 +1335,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                             ):
                                 self.symbols.define_function(vsig)
                 else:
-                    self._error(
-                        "E315",
+                    self._info(
+                        "I315",
                         f"type '{item.name}' not found in module '{imp.module}'",
                         item.span,
                     )
@@ -1359,8 +1361,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     self.symbols.define_function(sig)
 
             if not found:
-                self._error(
-                    "E315",
+                self._info(
+                    "I315",
                     f"function '{item.name}' not found in module '{imp.module}'",
                     item.span,
                 )
@@ -1497,6 +1499,9 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Narrow Option<T> → T for requires unit(x) == false
         for req_expr in fd.requires:
             self._narrow_unit_false(req_expr)
+
+        # Track non-empty list params via requires length(x) > 0
+        self._nonempty_lists = self._collect_nonempty_lists(fd)
 
         # Bind implicit variables for renders/listens verbs
         # These are marked as used since they're consumed by the runtime dispatch
@@ -1680,6 +1685,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self.symbols.pop_scope()
         self._current_function = None
         self._requires_narrowings = []
+        self._nonempty_lists = set()
 
     # ── _check_function (dispatcher) ─────────────────────────────
 
@@ -2218,6 +2224,49 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             and sym.resolved_type.args
         ):
             sym.resolved_type = sym.resolved_type.args[0]
+
+    def _collect_nonempty_lists(self, fd: FunctionDef) -> set[str]:
+        """Scan requires for length(x) > 0 patterns.
+
+        Returns the set of parameter names guaranteed to be non-empty,
+        so that first(x)/last(x) can narrow Option<T> → T.
+        """
+        result: set[str] = set()
+        exprs: list[Expr] = []
+        for req_expr in fd.requires:
+            stack = [req_expr]
+            while stack:
+                e = stack.pop()
+                if isinstance(e, BinaryExpr) and e.op == "&&":
+                    stack.append(e.left)
+                    stack.append(e.right)
+                else:
+                    exprs.append(e)
+        for expr in exprs:
+            if not isinstance(expr, BinaryExpr):
+                continue
+            # length(x) > 0  or  length(x) >= 1
+            call, lit, op = None, None, expr.op
+            if op in (">", ">="):
+                call, lit = expr.left, expr.right
+            elif op in ("<", "<="):
+                call, lit = expr.right, expr.left
+                op = ">" if op == "<" else ">="
+            else:
+                continue
+            if not (
+                isinstance(call, CallExpr)
+                and isinstance(call.func, IdentifierExpr)
+                and call.func.name == "length"
+                and len(call.args) == 1
+                and isinstance(call.args[0], IdentifierExpr)
+                and isinstance(lit, IntegerLit)
+            ):
+                continue
+            threshold = int(lit.value)
+            if (op == ">" and threshold >= 0) or (op == ">=" and threshold >= 1):
+                result.add(call.args[0].name)
+        return result
 
     # ── Verb enforcement ────────────────────────────────────────
 
@@ -2800,6 +2849,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 if sig is None:
                     sig = self.symbols.resolve_function_any(expr.func.name, arity=arg_count)
                 if sig is not None and sig.verb in _PURE_VERBS:
+                    # Diagnostic creates functions (exxx, ixxx, wxxx) have
+                    # side effects despite being declared as pure 'creates'.
+                    if sig.module == "diagnostic":
+                        return
                     if (
                         not isinstance(sig.return_type, PrimitiveType)
                         or sig.return_type.name != "Unit"

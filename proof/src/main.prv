@@ -5,6 +5,7 @@ module Main
   the tool to manage prove written all in pure prove code!
   It means we actually understand the code we write and its different structures.
 
+  inputs and parse stdlibs
   outputs stdlibs in export creates a table and add module
 
   dispatches parsed command to correct flow
@@ -12,9 +13,9 @@ module Main
   secures config makes sure that prove.toml exist
   """
   System inputs process dir file outputs console file
-  Sequence derives value slice extend creates length validates contains empty
+  Sequence derives value slice extend creates length validates contains
   Config types Config inputs config
-  Commands outputs new check format lsp test build
+  Commands dispatches new check format lsp test build
   Source types SourceFile creates module_name inputs source_file
   Types validates unit string
   Table derives add creates new
@@ -24,10 +25,9 @@ module Main
       read("static/cli/root.txt")
 
 creates add_module(data Table<List<String>>, file SourceFile) Table<List<String>>
-  requires empty(file.verbs) == false
 from
-    match module_name(file)
-        Some(value) => add(value, file.verbs, data)
+    match module_name(file.content)
+        Some(value) => add(value, file.definition.verbs, data)
         None => data
 
 outputs export_stdlibs(data String)!

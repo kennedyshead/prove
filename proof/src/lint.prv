@@ -1,0 +1,138 @@
+module Lint
+  narrative: """
+  Takes care of linting of source
+
+  validates import statements, makes sure the module exist, not import from self, lookup
+  matches type to string name
+  """
+  Build types Content
+  Prove types Node creates children kind
+  Check types SourceFile
+  Sequence derives slice get first extend creates length
+  Types creates integer validates boolean unit string
+  Diagnostic types LintCode creates exxx ixxx
+  Text derives replace creates join split validates ends starts
+  Log detached warning debug
+  Source types ModuleDefinition SourceFile
+
+  IMPORT_VALIDATION_CALL_FLOW as List<Verb> = [not_import_from_self, import_module]
+
+/// Validates types from names to value
+matches type(type_name String, value String) Boolean
+from
+    "Integer" =>
+        match integer(value)
+            Ok => starts(value, "\"") == false && ends(value, "\"") == false
+            Err => false
+    "String" => starts(value, "\"") && ends(value, "\"")
+    _ =>
+        warning(f"Type check missing for {type_name}")&
+        true
+
+validates import_verb(
+    verb_identifier String,
+    module ModuleDefinition,
+    node Node,
+    source SourceFile
+)
+from
+    match any(module.verbs, |exist| starts(exist, verb_identifier))
+        false =>
+            str_verbs as String = join(module.verbs, " ")
+            debug(f"{verb_identifier}")&
+            debug(f"{str_verbs}")&
+            message as String = LintCode:I315
+            ixxx(message, LintCode:I315, node, source)
+            true
+        true => true
+
+validates import_group(module ModuleDefinition, node Node, source SourceFile)
+from
+    statements as List<String> = split(string(node), " ")
+    match first(statements)
+        Some(verb) =>
+            match verb == "types"
+                false =>
+                    all(
+                        slice(statements, 1, length(statements)),
+                        |name| import_verb(f"{verb}_{name}", module, node, source))
+                true => true
+        None => true
+    true
+
+/// Validate if the module exist
+validates import_module(
+    row List<String>,
+    content Content,
+    node Node,
+    source_file SourceFile
+)
+  ensures valid boolean(result)
+  requires length(row) > 0
+from
+    module_name as String = first(row)
+    match first(filter(
+        extend(content.stdlibs, map(content.files, |file| file.definition)),
+        |module| module.name == module_name))
+        Some(value) =>
+            all(
+                filter(children(node), |child| kind(child) == "import_group"),
+                |group| import_group(value, group, source_file))
+        None =>
+            message as String = LintCode:E314
+            exxx(message, LintCode:E314, node, source_file)
+            false
+
+/// We do not allow imports from self (format will remove the line)
+validates not_import_from_self(
+    module_name String,
+    content Content,
+    node Node,
+    source_file SourceFile
+)
+  requires source_file.definition.name == module_name
+from
+    message as String = LintCode:I318
+    ixxx(message, LintCode:I318, node, source_file)
+    true
+
+/// Validate import statements
+validates import(content Content, node Node, source_file SourceFile)
+  ensures valid boolean(result)
+  requires unit(row) == false
+  explain
+      all of the import statement(s) is validated
+from
+    row as List<String> = split(string(node), " ")
+    all(IMPORT_VALIDATION_CALL_FLOW, |verb| verb(row, content, node, source_file))
+
+/// Lookup type linting each row
+matches lookup_type_check(
+    same_length Boolean,
+    tokens List<String>,
+    type_declaration List<String>
+) Boolean
+  requires length(tokens) > 0 && length(type_declaration) > 0
+from
+    true =>
+        values as List<String> = slice(tokens, 1, length(tokens))
+        str_values as String = join(values, " ")
+        all(type_declaration, |declaration, index| type(declaration, get(values, index)))
+    false => false
+
+/// Lookup type static linting
+creates lookup(rows List<String>, node Node, source SourceFile)
+from
+    type_declaration as List<String> = split(replace(get(rows, 0), "where", ""), " ")
+    match all(
+        slice(rows, 1, length(rows)),
+        |row| lookup_type_check(
+        length(split(row, "|")) == length(type_declaration),
+        split(row, "|"),
+        type_declaration))
+        false =>
+            message as String = LintCode:E379
+            exxx(message, LintCode:E379, node, source)
+        true =>
+            message as String = LintCode:E100
+            exxx(message, LintCode:E100, node, source)

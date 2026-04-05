@@ -137,6 +137,15 @@ class ExprEmitterMixin:
                 c_name = self._resolve_stdlib_c_name(sig)
                 if c_name:
                     return f"{c_name}()"
+            # Resolve as a function reference (verb used as value, e.g. in List<Verb>)
+            ref_sig = self._symbols.resolve_function_any(expr.name)
+            if ref_sig and ref_sig.verb is not None and len(ref_sig.param_types) > 0:
+                return mangle_name(
+                    ref_sig.verb,
+                    ref_sig.name,
+                    ref_sig.param_types,
+                    module=self._sig_module(ref_sig),
+                )
             return safe_c_name(expr.name)
 
         if isinstance(expr, TypeIdentifierExpr):

@@ -1,24 +1,19 @@
 module Diagnostic
   narrative: """
-  creates all info, warnings and errors from static analysis fails 
-    first token of the line
-  dispatches a search for syntax failures
-  derives location and static fail 
-  matches severity prefix, narrowing down to root, module, type and lookup
-  validates module
+  creates ixxx, wxxx, exxx, code line string and first token
+  matches ast parse error, severity prefix, narrowing down to root, module, type and lookup
   sends a detatched background diagnostic message with a severity prefix
-  creates exxx diagnosting messages
-  reads and creates the code line from node
   """
   Log types Severity matches severity_color detached warning
   Source types SourceFile
   Prove types Node creates line column parent
-  Sequence derives get slice creates length
-  Types creates string integer validates string
+  Sequence derives get
+  Types creates string validates string
   System outputs console
   Terminal derives ansi
-  Text derives trim repeat replace creates length split join validates starts ends
+  Text derives trim repeat creates length split
   UI types Color
+  Lint creates lookup
 
   type DiagnosticMessage is
     severity Severity
@@ -31,6 +26,8 @@ module Diagnostic
     actual_line String
 
   type LintCode:[Lookup] is Integer String where
+    I315 | 315 | "Function not found in module"
+    I318 | 318 | "Module cannot import from itself"
     E100 | 100 | "Syntax Error"
     E210 | 210 | "Expected token but found"
     E314 | 314 | "Unknown module in import"
@@ -57,7 +54,7 @@ from
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
-/// Module declaration linting
+/// Module declaration diagnostic
 matches module(start String, node Node, source SourceFile)
 from
     "type" => exxx("Expected `type Name is` but found", LintCode:E210, node, source)
@@ -66,53 +63,8 @@ from
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
-/// Validates types from names to value
-matches type_check(type_name String, value String) Boolean
-from
-    "Integer" =>
-        match integer(value)
-            Ok => starts(value, "\"") == false && ends(value, "\"") == false
-            Err => false
-    "String" => starts(value, "\"") && ends(value, "\"")
-    _ =>
-        warning(f"Type check missing for {type_name}")&
-        true
-
-/// Lookup type linting each row
-matches lookup_type_check(
-    same_length Boolean,
-    tokens List<String>,
-    type_declaration List<String>
-) Boolean
-  requires length(tokens) > 0 && length(type_declaration) > 0
-from
-    true =>
-        values as List<String> = slice(tokens, 1, length(tokens))
-        str_values as String = join(values, " ")
-        all(
-            type_declaration,
-            |declaration, index| type_check(declaration, get(values, index)))
-    false => false
-
-/// Lookup type static linting
-creates lookup_lint(rows List<String>, node Node, source SourceFile)
-from
-    type_declaration as List<String> = split(replace(get(rows, 0), "where", ""), " ")
-    match all(
-        slice(rows, 1, length(rows)),
-        |row| lookup_type_check(
-        length(split(row, "|")) == length(type_declaration),
-        split(row, "|"),
-        type_declaration))
-        false =>
-            message as String = LintCode:E379
-            exxx(message, LintCode:E379, node, source)
-        true =>
-            message as String = LintCode:E100
-            exxx(message, LintCode:E100, node, source)
-
 /// Static fail linting
-matches static_fail(parent String, node Node, source SourceFile)
+matches ast_parse_error(parent String, node Node, source SourceFile)
 from
     "source_file" =>
         root(first_token(node), node, source)
@@ -125,18 +77,32 @@ from
                     Some(parent) => string(parent)
                     None => ""
             None => ""
-        lookup_lint(split(code, "\n"), node, source)
+        lookup(split(code, "\n"), node, source)
     _ =>
         warning(f"Missed parent match {parent}")&
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node, source)
 
 /// Error diagnostic message
-creates exxx(message String, code Integer, node Node, source SourceFile) Unit
+creates exxx(message String, code Integer, node Node, source SourceFile)
 from
     actual_code as String = code_line(node)
     diagnostic(DiagnosticMessage(
         Severity.Error,
+        code,
+        source.path,
+        get(split(string(node), "\n"), 0),
+        message,
+        line(node),
+        column(node),
+        actual_code))&
+
+/// Error diagnostic message
+creates ixxx(message String, code Integer, node Node, source SourceFile)
+from
+    actual_code as String = code_line(node)
+    diagnostic(DiagnosticMessage(
+        Severity.Info,
         code,
         source.path,
         get(split(string(node), "\n"), 0),

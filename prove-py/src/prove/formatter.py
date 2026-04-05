@@ -159,7 +159,7 @@ class ProveFormatter:
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_var_spans.add((s.file, s.start_line, s.start_col))
-            elif d.code == "I302":
+            elif d.code in ("I302", "I315"):
                 for lbl in d.labels:
                     s = lbl.span
                     self._unused_import_spans.add((s.file, s.start_line, s.start_col))
