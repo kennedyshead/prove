@@ -47,20 +47,20 @@ AI-resistance features (implementation explanations, intent declarations, narrat
 
 Compile-time computation (`comptime`) allows IO operations. This enables reading config files, schema definitions, and static assets at compile time. Files accessed during comptime become build dependencies — changing them triggers recompilation. This may be revisited if reproducibility concerns arise.
 
-### CLI-First Toolchain: `prove`
+### CLI-First Toolchain: `proof`
 
-The `prove` CLI is the central interface for all development:
+The `proof` CLI is the central interface for all development:
 
 ```bash
-prove build              # compile the project (mutation testing runs by default)
-prove build --debug      # compile with debug symbols
-prove build --no-mutate  # compile without mutation testing
-prove test               # run auto-generated + manual tests
-prove check              # type-check without building
-prove format             # auto-format source code
-prove format --status    # check formatting without modifying
-prove lsp                # start the language server
-prove new <name>         # scaffold a new project
+proof build              # compile the project (mutation testing runs by default)
+proof build --debug      # compile with debug symbols
+proof build --no-mutate  # compile without mutation testing
+proof test               # run auto-generated + manual tests
+proof check              # type-check without building
+proof format             # auto-format source code
+proof format --status    # check formatting without modifying
+proof lsp                # start the language server
+proof new <name>         # scaffold a new project
 ```
 
 ### Syntax Philosophy
@@ -76,7 +76,7 @@ No shorthands. No abbreviations. Full words everywhere. The language reads like 
 
 ## Concurrency — Structured Concurrency
 
-Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, reads, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
+Prove provides structured concurrency through the [async verb family](functions.md#async-verbs) (`detached`, `attached`, `listens`, `renders`) backed by stackful coroutines (`prove_coro`). Because pure verbs (transforms, validates, derives, creates, matches) guarantee no shared mutable state, the compiler enforces safe concurrency boundaries.
 
 `par_map`, `par_filter`, `par_reduce`, and `par_each` are builtin parallel higher-order functions. `par_map`/`par_filter`/`par_reduce` are restricted to pure verbs at compile time — IO and async verbs are rejected. `par_each` allows IO callbacks but rejects async verbs. See [Parallel Iteration](lambdas.md).
 

@@ -44,7 +44,7 @@ Spawns a coroutine and returns immediately. The caller does not wait for complet
 /// Log an event — fire and forget, caller moves on immediately.
 detached log(message String)
 from
-    console(event.message)
+    console(message)
 ```
 
 ---

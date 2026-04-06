@@ -29,7 +29,7 @@ Defines a binary type: `Table<Value>` (the hash map).
 
 derives lookup(name String, db Table<String>) String
 from
-    Error.unwrap_or(Table.get(name, db), "unknown")
+    Types.unwrap(Table.get(name, db), "unknown")
 ```
 
 ---

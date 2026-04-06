@@ -110,7 +110,7 @@ enabled = true
 pgo = true
 ```
 
-When PGO is enabled, `prove build` runs a three-step build:
+When PGO is enabled, `proof build` runs a three-step build:
 
 1. **Instrument** — compile with profiling instrumentation (`-fprofile-generate`)
 2. **Train** — run the binary to collect execution profile data (stdin is closed so programs exit promptly)

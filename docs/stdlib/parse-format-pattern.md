@@ -167,12 +167,12 @@ Supported patterns: `"ISO8601"`, `"%Y-%m-%d"`, `"%H:%M:%S"`, `"%Y-%m-%d %H:%M:%S
 | `creates` | `duration(source String, pattern String) Duration` | Parse | Parse a string into a duration |
 
 ```prove
-  Format derives pad_left creates hex decimal date creates date
+  Format derives pad_left creates hexadecimal decimal date creates date
   Time creates date types Date
 
 creates format_address(addr Integer) String
 from
-    Format.pad_left(Format.hex(addr), 8, '0')
+    Format.pad_left(Format.hexadecimal(addr), 8, '0')
 
 creates format_date(date Date) String
 from

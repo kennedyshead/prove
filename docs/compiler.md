@@ -30,7 +30,7 @@ The build system performs **runtime stripping** — only the C runtime modules a
 
 ## `prove.toml` Configuration
 
-Every Prove project has a `prove.toml` at its root. The `prove new` command generates one with sensible defaults.
+Every Prove project has a `prove.toml` at its root. The `proof new` command generates one with sensible defaults.
 
 ```toml
 [package]
@@ -139,7 +139,7 @@ When the parser encounters a catastrophic failure, report only the first error. 
 |------|---------|--------|
 | **Error** | Won't compile | Must be fixed by hand |
 | **Warning** | Compiles but should be improved | Should be fixed by hand |
-| **Info** | Compiles and `prove format` can fix it | Run `prove format` |
+| **Info** | Compiles and `proof format` can fix it | Run `proof format` |
 
 Strict mode (`--strict`) promotes warnings to errors. Info stays info.
 
@@ -211,7 +211,7 @@ Dependencies are tracked automatically; no annotation is needed. Every `read()` 
 
 ## Verb Enforcement
 
-The compiler enforces purity rules based on the function's verb. Pure verbs (`validates`, `derives`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](functions.md#intent-verbs) for the full verb reference:
+The compiler enforces purity rules based on the function's verb. Pure verbs (`validates`, `derives`, `creates`, `matches`) cannot perform side effects — see [Functions & Verbs](verbs.md) for the full verb reference:
 
 - Cannot call built-in IO functions like `println` or `read_file` (E362)
 - Cannot call user-defined functions with IO verbs `inputs` or `outputs` (E362)
@@ -287,12 +287,12 @@ match valid merged(result)
 
 ### Subprocess Recompilation
 
-A running Prove program can spawn `prove build` to recompile itself or a sibling module:
+A running Prove program can spawn `proof build` to recompile itself or a sibling module:
 
 ```prove
 System inputs system types ProcessResult
 
-result as ProcessResult = system("prove", ["build", "path/to/project"])
+result as ProcessResult = system("proof", ["build", "path/to/project"])
 ```
 
 ### Self-Modifying Binary Pattern
@@ -302,7 +302,7 @@ Combining Store with subprocess compilation enables self-modifying binaries:
 1. Load a lookup table from the store
 2. Modify the table (add/remove/update entries)
 3. Save the updated table back to the store
-4. Spawn `prove build` to compile a new binary that includes the updated data
+4. Spawn `proof build` to compile a new binary that includes the updated data
 5. The new binary reads from the same store, picking up the changes
 
 This pattern keeps data in persistent storage (the store) while allowing the compiled binary to be regenerated with updated lookup tables.

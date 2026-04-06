@@ -1,3 +1,9 @@
+---
+title: Self-Hosted Runner Setup - Prove Programming Language
+description: Guide for setting up a Gitea Actions self-hosted runner on macOS for building Prove binaries.
+keywords: Prove self-hosted runner, Gitea Actions, macOS, CI/CD
+---
+
 # Self-Hosted Runner Setup (macOS)
 
 This guide covers setting up a Gitea Actions self-hosted runner on macOS for building proof binaries.
