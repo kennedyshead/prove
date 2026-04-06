@@ -93,7 +93,7 @@ var (
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords
-				{`\b(as|binary|comptime|constants|domain|event_type|foreign|from|is|main|match|module|state_init|state_type|type|types|valid|where)\b`, chroma.Keyword, nil},
+				{`\b(as|binary|comptime|constants|domain|event_type|foreign|from|invalid|is|main|match|module|runtime|state_init|state_type|type|types|valid|where|with)\b`, chroma.Keyword, nil},
 				// PROVE-EXPORT-END: keywords
 
 				// PROVE-EXPORT-BEGIN: ai-keywords
