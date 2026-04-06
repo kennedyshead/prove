@@ -1017,6 +1017,7 @@ class CallEmitterMixin:
                 for i, pt in enumerate(sig.param_types):
                     if isinstance(pt, FunctionType) and i < len(expr.args):
                         if isinstance(expr.args[i], LambdaExpr):
+                            self._drop_generic_lambda(args[i])
                             args[i] = self._emit_verb_lambda(expr.args[i], pt)
                 args = self._coerce_call_args(args, expr.args, sig)
                 args_coerced = True
@@ -1330,6 +1331,7 @@ class CallEmitterMixin:
             for i, pt in enumerate(sig.param_types):
                 if isinstance(pt, FunctionType) and i < len(expr.args):
                     if isinstance(expr.args[i], LambdaExpr):
+                        self._drop_generic_lambda(args[i])
                         args[i] = self._emit_verb_lambda(expr.args[i], pt)
             args = self._coerce_call_args(args, expr.args, sig)
             c_name: str | None = self._resolve_stdlib_c_name(sig)
@@ -1378,6 +1380,7 @@ class CallEmitterMixin:
             for i, pt in enumerate(sig.param_types):
                 if isinstance(pt, FunctionType) and i < len(expr.args):
                     if isinstance(expr.args[i], LambdaExpr):
+                        self._drop_generic_lambda(args[i])
                         args[i] = self._emit_verb_lambda(expr.args[i], pt)
             args = self._coerce_call_args(args, expr.args, sig)
             mangled = mangle_name(sig.verb, sig.name, sig.param_types, module=self._sig_module(sig))
@@ -2206,6 +2209,16 @@ class CallEmitterMixin:
             f"{list_arg}, {init_cast}, {fn_name}, {ctx_arg});"
         )
         return self._hof_unbox(result_tmp, accum_ct)
+
+    def _drop_generic_lambda(self, name: str) -> None:
+        """Remove a previously hoisted generic (int64_t-typed) lambda by name.
+
+        When a lambda arg is emitted generically at args-list construction time
+        and then re-emitted by _emit_verb_lambda with correct types, the stale
+        generic definition must be removed to avoid C type-mismatch errors.
+        """
+        prefix = f"static int64_t {name}("
+        self._lambdas[:] = [lam for lam in self._lambdas if not lam.startswith(prefix)]
 
     def _emit_verb_lambda(self, expr: LambdaExpr, func_type: FunctionType) -> str:
         """Hoist a lambda for a Verb<...> parameter with correct C signature."""

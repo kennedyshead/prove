@@ -100,7 +100,7 @@ _PRIMITIVE_MAP: dict[str, CType] = {
     "Statement": CType("Prove_Statement*", is_pointer=True, header="prove_sqlite.h"),
     "Cursor": CType("Prove_Cursor*", is_pointer=True, header="prove_sqlite.h"),
     "Row": CType("Prove_Row*", is_pointer=True, header="prove_sqlite.h"),
-    "Token": CType("Prove_Language_Token*", is_pointer=True, header="prove_language.h"),
+    "Token": CType("Prove_Token*", is_pointer=True, header="prove_parse.h"),
     "Rule": CType("Prove_Rule*", is_pointer=True, header="prove_parse.h"),
     "Tree": CType("Prove_Tree", is_pointer=True, header="prove_prove.h"),
     "Node": CType("Prove_Node", is_pointer=True, header="prove_prove.h"),

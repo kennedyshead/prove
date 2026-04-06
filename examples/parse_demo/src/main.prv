@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Parse module URL and Base64 operations."""
   System outputs console
-  Parse types Url creates base64 url
+  Parse types Url Json Toml creates base64 url toml json validates json
   Bytes types ByteArray creates bytearray
 
 main() Result<Unit, Error>!
@@ -11,3 +11,18 @@ from
     data as ByteArray = bytearray([72, 101, 108, 108, 111])
     encoded as String = base64(data)
     console("base64: " + encoded)
+    // Parse TOML
+    toml_doc as Result<Value<Toml>, String> = toml("title = \"test\"")
+    console("parsed TOML ok")
+    // Tag value as TOML
+    plain as Value = "hello"
+    tagged as Value<Toml> = toml(plain)
+    console("tagged as TOML")
+    // Tag value as JSON
+    json_tagged as Value<Json> = json(plain)
+    console("tagged as JSON")
+    // Validate JSON
+    good_json as Boolean = valid json("{\"a\": 1}")
+    console(f"valid json: {good_json}")
+    bad_json as Boolean = valid json("not json")
+    console(f"invalid json: {bad_json}")

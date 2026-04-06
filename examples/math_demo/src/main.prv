@@ -26,6 +26,10 @@ from
     console(f"min(1.5, 2.5): {string(min(1.5, 2.5))}")
     console(f"max(1.5, 2.5): {string(max(1.5, 2.5))}")
     console(f"clamp(29.99, 10.0, 25.0): {string(clamp(price, 10.0, 25.0))}")
+    // Float overloads
+    console(f"min(1.5f, 2.5f): {min(1.5f, 2.5f)}")
+    console(f"max(1.5f, 2.5f): {max(1.5f, 2.5f)}")
+    console(f"clamp(5.0f, 0.0f, 3.0f): {clamp(5.0f, 0.0f, 3.0f)}")
     // Rounding
     console(f"floor(3.7f): {floor(3.7f)}")
     console(f"ceil(3.2f): {ceil(3.2f)}")

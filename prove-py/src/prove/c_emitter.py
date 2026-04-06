@@ -141,6 +141,7 @@ class CEmitter(
         self.comptime_dependencies: set["Path"] = set()  # files read by comptime
         self._string_literal_cache: dict[str, str] = {}  # escaped literal → tmp var name
         self._static_error_strings: dict[str, str] = {}  # C literal → generated name
+        self._static_str_lits: dict[str, str] = {}  # escaped literal → static var name
         self._param_names: set[str] = set()  # current function's parameter names
         self._in_hof_inline = False  # True when emitting inline HOF loop body
         self._hof_predicate = False  # True when verb return must be bool (all/any)
@@ -336,20 +337,27 @@ class CEmitter(
                         self._emit_main(item)
                         break
 
-        # Insert static immortal error strings before functions
-        if self._static_error_strings:
-            statics: list[str] = []
-            for escaped, name in self._static_error_strings.items():
-                byte_len = self._c_byte_length(escaped)
-                statics.append(
-                    f"static struct {{ Prove_Header header; int64_t length; "
-                    f"char data[{byte_len + 1}]; }} {name} = "
-                    f'{{ {{ INT32_MAX }}, {byte_len}, "{escaped}" }};'
-                )
-            statics.append("")
-            for i, line in enumerate(statics):
+        # Insert static immortal string literals before functions
+        all_statics: list[str] = []
+        for escaped, name in self._static_str_lits.items():
+            byte_len = self._c_byte_length(escaped)
+            all_statics.append(
+                f"static struct {{ Prove_Header header; int64_t length; "
+                f"char data[{byte_len + 1}]; }} {name} = "
+                f'{{ {{ INT32_MAX }}, {byte_len}, "{escaped}" }};'
+            )
+        for escaped, name in self._static_error_strings.items():
+            byte_len = self._c_byte_length(escaped)
+            all_statics.append(
+                f"static struct {{ Prove_Header header; int64_t length; "
+                f"char data[{byte_len + 1}]; }} {name} = "
+                f'{{ {{ INT32_MAX }}, {byte_len}, "{escaped}" }};'
+            )
+        if all_statics:
+            all_statics.append("")
+            for i, line in enumerate(all_statics):
                 self._out.insert(lambda_pos + i, line)
-            lambda_pos += len(statics)
+            lambda_pos += len(all_statics)
 
         # Insert hoisted lambdas before functions
         if self._lambdas:
@@ -1359,6 +1367,16 @@ class CEmitter(
             self._static_error_strings[c_literal] = name
         return f"(Prove_String*)&{self._static_error_strings[c_literal]}"
 
+    def _static_str_lit_ref(self, escaped: str) -> str:
+        """Return C expression for a static immortal string literal.
+
+        Deduplicates: same escaped content reuses the same static variable.
+        The static has refcount INT32_MAX (immortal), so retain/release are no-ops.
+        """
+        if escaped not in self._static_str_lits:
+            self._static_str_lits[escaped] = f"_str_lit_{len(self._static_str_lits)}"
+        return f"(Prove_String*)&{self._static_str_lits[escaped]}"
+
     @staticmethod
     def _c_byte_length(escaped: str) -> int:
         """Compute actual byte length of a C-escaped string literal."""
@@ -2365,6 +2383,9 @@ class CEmitter(
             if self._expected_emit_type:
                 return self._expected_emit_type
             return INTEGER
+
+        if isinstance(expr, ValidExpr):
+            return BOOLEAN
 
         return ERROR_TY
 

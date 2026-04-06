@@ -1,7 +1,12 @@
 module Main
   narrative: """Demonstrates Array<T> - fixed-size unboxed arrays."""
   System outputs console
-  Sequence derives value get get_safe set creates array set_safe length
+  Sequence
+    derives value get get_safe set slice reverse sort extend
+    creates array set_safe length index list
+    validates empty contains
+  Types derives unwrap creates string
+  Text creates join
 
 main()
 from
@@ -35,3 +40,43 @@ from
     items as List<Value> = [1, 2, 3]
     v as Option<Value> = value(1, items)
     console("Read value at position")
+    // Decimal array
+    decs as Array<Decimal> = array(3, 0.0)
+    decs2 as Array<Decimal> = set(decs, 0, 3.14)
+    console(f"Decimal array[0]: {string(get(decs2, 0))}")
+    // Empty check
+    empty_arr as Array<Integer> = array(0, 0)
+    is_empty as Boolean = valid empty(empty_arr)
+    console(f"Empty array: {is_empty}")
+    not_empty as Boolean = valid empty(nums3)
+    console(f"Non-empty array: {not_empty}")
+    // Contains
+    has_20 as Boolean = valid contains(nums3, 20)
+    console(f"Contains 20: {has_20}")
+    has_99 as Boolean = valid contains(nums3, 99)
+    console(f"Contains 99: {has_99}")
+    // Index
+    idx_20 as Option<Integer> = index(nums3, 20)
+    console(f"Index of 20: {unwrap(idx_20, -1)}")
+    // Slice
+    sliced as Array<Integer> = slice(nums3, 0, 2)
+    console(f"Slice [0:2] length: {length(sliced)}")
+    // Reverse
+    rev_arr as Array<Integer> = reverse(nums3)
+    console(f"Reversed[0]: {get(rev_arr, 0)}")
+    // Sort
+    unsorted as Array<Integer> = array(3, 0)
+    u1 as Array<Integer> = set(unsorted, 0, 30)
+    u2 as Array<Integer> = set(u1, 1, 10)
+    u3 as Array<Integer> = set(u2, 2, 20)
+    sorted_arr as Array<Integer> = sort(u3)
+    console(f"Sorted[0]: {get(sorted_arr, 0)}")
+    // Extend
+    extra as Array<Integer> = array(2, 0)
+    e1 as Array<Integer> = set(extra, 0, 40)
+    e2 as Array<Integer> = set(e1, 1, 50)
+    extended as Array<Integer> = extend(nums3, e2)
+    console(f"Extended length: {length(extended)}")
+    // Array to List conversion
+    as_list as List<Integer> = list(nums3)
+    console(f"As list: {join(map(as_list, |v| string(v)), ", ")}")

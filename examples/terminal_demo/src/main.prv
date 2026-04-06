@@ -1,6 +1,7 @@
 module Main
   narrative: """Demonstrates Terminal module operations."""
   System outputs console
+  UI types TextStyle
   Terminal derives ansi size validates terminal outputs cursor
   Types creates string
 
@@ -13,6 +14,9 @@ from
     blue as String = ansi("Blue")
     reset as String = ansi("Reset")
     console(blue + "Blue text" + reset)
+    // Text styles via TextStyle lookup
+    bold as String = ansi(TextStyle:Bold)
+    console(bold + "Bold text" + reset)
     // Move cursor
     cursor(0, 0)
     console("Cursor moved")

@@ -114,6 +114,22 @@ binary
 creates remote_value(conflict Conflict) String
 binary
 
+/// Keep the local value for this conflict
+creates keep_local() Resolution
+binary
+
+/// Keep the remote value for this conflict
+creates keep_remote() Resolution
+binary
+
+/// Use a custom value for this conflict
+creates use_value(value String) Resolution
+binary
+
+/// Reject the merge, recording a reason
+creates reject(reason String) Resolution
+binary
+
 /// Add a row to a store-backed lookup table
 outputs add(table StoreTable, row StoreTable)
 binary

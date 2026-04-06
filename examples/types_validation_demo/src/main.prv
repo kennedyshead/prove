@@ -3,10 +3,13 @@ module Main
   transforms json parsing into a Value result
   """
   System outputs console
-  Parse types Json creates json
+  Parse types Json Toml Token Rule creates json toml rule tokens
+  Sequence derives first get_safe set creates array
   Types
-    creates character string
+    derives unwrap
+    creates character string integer float decimal boolean code
     validates text number decimal boolean array object unit ok error
+     float character string value
 
 /// Parse JSON and return as a Value string (failable)
 transforms try_json(source String) Value!
@@ -47,3 +50,91 @@ from
     console(f"{bad_ok}")
     bad_err as Boolean = valid error(bad)
     console(f"{bad_err}")
+    // Numeric conversions
+    from_float as Integer = integer(3.7f)
+    console(f"integer(3.7f): {from_float}")
+    from_dec as Integer = integer(9.99)
+    console(f"integer(9.99): {from_dec}")
+    from_bool as Integer = integer(true)
+    console(f"integer(true): {from_bool}")
+    num_val as Value = 42
+    int_from_val as Integer = integer(num_val)
+    console(f"integer(value 42): {int_from_val}")
+    float_str as Float = float("3.14")!
+    console(f"float(\"3.14\"): {string(float_str)}")
+    float_from_dec as Float = float(2.5)
+    console(f"float(2.5): {string(float_from_dec)}")
+    float_from_val as Float = float(num_val)
+    console(f"float(value 42): {string(float_from_val)}")
+    dec_str as Decimal = decimal("42.5")!
+    console(f"decimal(\"42.5\"): {string(dec_str)}")
+    dec_from_int as Decimal = decimal(42)
+    console(f"decimal(42): {string(dec_from_int)}")
+    dec_from_val as Decimal = decimal(num_val)
+    console(f"decimal(value 42): {string(dec_from_val)}")
+    // Boolean conversions
+    bool_from_int as Boolean = boolean(1)
+    console(f"boolean(1): {bool_from_int}")
+    bool_str as Boolean = boolean("true")!
+    console(f"boolean(\"true\"): {bool_str}")
+    bool_val as Value = true
+    bool_from_val as Boolean = boolean(bool_val)
+    console(f"boolean(value true): {bool_from_val}")
+    // Character operations
+    ch2 as Character = character(90)
+    is_char as Boolean = valid character(ch2)
+    console(f"valid character: {is_char}")
+    code_point as Integer = code(ch)
+    console(f"code('A'): {code_point}")
+    ch_str as String = string(ch)
+    console(f"string(char): {ch_str}")
+    // Float and string validators
+    is_float as Boolean = valid float(3.14f)
+    console(f"valid float: {is_float}")
+    is_str as Boolean = valid string("hello")
+    console(f"valid string: {is_str}")
+    // TOML parse and string
+    toml_str as Value<Toml> = toml("key = \"value\"")!
+    console(f"toml parsed: {string(toml_str)}")
+    // JSON tag and validate
+    json_val as Value<Json> = json(num_val)
+    console(f"json tag: {string(json_val)}")
+    is_json as Boolean = valid json("{}")
+    console(f"valid json: {is_json}")
+    // Token string
+    r as Rule = rule("[a-z]+", 1)
+    toks as List<Token> = tokens("hello world", [r])
+    console(f"token string: {string(toks[0])}")
+    // Option<Float> validators — obtain via first(List<Float>)
+    float_list as List<Float> = [1.1f, 2.2f]
+    some_f as Option<Float> = first(float_list)
+    empty_fl as List<Float> = []
+    none_f as Option<Float> = first(empty_fl)
+    has_float as Boolean = valid value(some_f)
+    console(f"Option<Float> has value: {has_float}")
+    no_float as Boolean = valid unit(none_f)
+    console(f"Option<Float> is none: {no_float}")
+    unwrapped_f as Float = unwrap(some_f, 0.0f)
+    console(f"unwrap float: {string(unwrapped_f)}")
+    // Option<Decimal> validators — obtain via first(List<Decimal>)
+    dec_list as List<Decimal> = [9.99, 4.50]
+    some_d as Option<Decimal> = first(dec_list)
+    empty_dl as List<Decimal> = []
+    none_d as Option<Decimal> = first(empty_dl)
+    has_dec as Boolean = valid value(some_d)
+    console(f"Option<Decimal> has value: {has_dec}")
+    no_dec as Boolean = valid unit(none_d)
+    console(f"Option<Decimal> is none: {no_dec}")
+    unwrapped_d as Decimal = unwrap(some_d, 0.0)
+    console(f"unwrap decimal: {string(unwrapped_d)}")
+    // Option<Boolean> validators — obtain via get_safe(Array<Boolean>)
+    bool_arr as Array<Boolean> = array(2, false)
+    bool_arr2 as Array<Boolean> = set(bool_arr, 0, true)
+    some_b as Option<Boolean> = get_safe(bool_arr2, 0)
+    none_b as Option<Boolean> = get_safe(bool_arr2, 99)
+    has_bool2 as Boolean = valid value(some_b)
+    console(f"Option<Bool> has value: {has_bool2}")
+    no_bool as Boolean = valid unit(none_b)
+    console(f"Option<Bool> is none: {no_bool}")
+    unwrapped_b as Boolean = unwrap(some_b, false)
+    console(f"unwrap bool: {unwrapped_b}")

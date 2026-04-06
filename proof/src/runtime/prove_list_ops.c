@@ -177,6 +177,22 @@ Prove_List *prove_list_ops_reverse(Prove_List *list) {
 
 /* ── Sort (int) ─────────────────────────────────────────────── */
 
+#define ISORT_THRESHOLD 24
+
+/* Typed insertion sort for small lists — avoids qsort callback overhead */
+static void _isort_int_list(void **data, int64_t n) {
+    for (int64_t i = 1; i < n; i++) {
+        void *key = data[i];
+        int64_t kv = (int64_t)(intptr_t)key;
+        int64_t j = i - 1;
+        while (j >= 0 && (int64_t)(intptr_t)data[j] > kv) {
+            data[j + 1] = data[j];
+            j--;
+        }
+        data[j + 1] = key;
+    }
+}
+
 static int _cmp_int(const void *a, const void *b) {
     int64_t va = (int64_t)(intptr_t)*(void *const *)a;
     int64_t vb = (int64_t)(intptr_t)*(void *const *)b;
@@ -189,7 +205,11 @@ Prove_List *prove_list_ops_sort_int(Prove_List *list) {
         memcpy(result->data, list->data, sizeof(void *) * (size_t)list->length);
         result->length = list->length;
         if (list->length > 1) {
-            qsort(result->data, (size_t)result->length, sizeof(void *), _cmp_int);
+            if (list->length <= ISORT_THRESHOLD) {
+                _isort_int_list(result->data, result->length);
+            } else {
+                qsort(result->data, (size_t)result->length, sizeof(void *), _cmp_int);
+            }
         }
     }
     return result;
@@ -345,6 +365,11 @@ Prove_List *prove_list_ops_set(Prove_List *list, int64_t idx, void *value) {
         result->data[idx] = value;
         result->length = list->length + 1;
         return result;
+    }
+    /* Copy-on-write: mutate in-place when sole owner */
+    if (list->header.refcount == 1) {
+        list->data[idx] = value;
+        return list;
     }
     Prove_List *result = prove_list_new(list->length);
     if (idx > 0) {

@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates advanced System operations."""
   System
     types ProcessResult DirEntry
-    validates system dir
+    validates system dir process
     inputs system process dir cwd
     outputs system dir console
 
@@ -14,6 +14,9 @@ from
     // Get command line arguments
     args as List<String> = process()
     console("Got command line arguments")
+    // Validate a process name exists in args
+    has_prove as Boolean = valid process("prove")
+    console(f"prove in args: {has_prove}")
     // Validate a command exists in PATH
     has_ls as Boolean = valid system("ls")
     console(f"{has_ls}")

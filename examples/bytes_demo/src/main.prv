@@ -2,7 +2,7 @@ module Main
   narrative: """Demonstrates Bytes module operations."""
   System outputs console
   Parse creates hexadecimal
-  Bytes types ByteArray creates at bytearray validates exist
+  Bytes types ByteArray derives bytearray creates at bytearray validates exist bytearray
 
 main()
 from
@@ -18,3 +18,15 @@ from
     console(f"index 2 exists: {has_idx}")
     no_idx as Boolean = valid exist(data, 99)
     console(f"index 99 exists: {no_idx}")
+    // Validate non-empty
+    has_data as Boolean = valid bytearray(data)
+    console(f"has data: {has_data}")
+    empty as ByteArray = bytearray([])
+    no_data as Boolean = valid bytearray(empty)
+    console(f"empty has data: {no_data}")
+    // Slice bytes
+    slice as ByteArray = bytearray(data, 1, 3)
+    console(f"slice hex: {hexadecimal(slice)}")
+    // Concat bytes
+    combined as ByteArray = bytearray(data, decoded)
+    console(f"concat hex: {hexadecimal(combined)}")

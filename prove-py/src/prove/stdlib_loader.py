@@ -460,6 +460,8 @@ _register_module(
         ("creates", "code"): "prove_convert_code",
         ("creates", "string"): "prove_value_as_text",
         ("validates", "string"): "prove_string_is_valid",
+        ("validates", "float"): "prove_convert_is_valid_float",
+        ("validates", "character"): "prove_convert_is_valid_character",
         ("validates", "text"): "prove_value_is_text",
         ("validates", "number"): "prove_value_is_number",
         ("validates", "decimal"): "prove_value_is_decimal",
@@ -738,6 +740,10 @@ _register_module(
         ("outputs", "rollback"): "prove_store_rollback",
         ("inputs", "version"): "prove_store_version_inputs",
         ("outputs", "add"): "prove_store_table_add",
+        ("creates", "keep_local"): "prove_store_resolution_keep_local",
+        ("creates", "keep_remote"): "prove_store_resolution_keep_remote",
+        ("creates", "use_value"): "prove_store_resolution_use_value",
+        ("creates", "reject"): "prove_store_resolution_reject",
     },
 )
 

@@ -61,6 +61,20 @@ Prove_String *prove_convert_string_byte(uint8_t b);
 int64_t prove_convert_code(char c);
 char    prove_convert_character(int64_t n);
 
+/* ── Character validator ─────────────────────────────────────── */
+
+static inline bool prove_convert_is_valid_character(char c) {
+    (void)c;
+    return true; /* every Character value is inherently valid */
+}
+
+/* ── Float validator (finite, not NaN/Inf) ───────────────────── */
+
+#include <math.h>
+static inline bool prove_convert_is_valid_float(double x) {
+    return isfinite(x);
+}
+
 /* ── Position → String ──────────────────────────────────────── */
 
 /* Forward-declare to avoid pulling in prove_terminal.h */

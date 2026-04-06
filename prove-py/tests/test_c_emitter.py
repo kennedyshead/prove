@@ -62,7 +62,7 @@ class TestVarDecl:
         )
         c_code = _emit(source)
         assert "Prove_String*" in c_code
-        assert 'prove_string_from_cstr("world")' in c_code
+        assert '"world"' in c_code  # static string literal (immortal struct)
 
 
 class TestBinaryExpr:
@@ -114,7 +114,7 @@ class TestStringInterp:
     def test_raw_string_emit(self):
         source = 'transforms pattern() String\n    from\n        r"^[A-Z]+$"\n'
         c_code = _emit(source)
-        assert "prove_string_from_cstr" in c_code
+        assert '"^[A-Z]+$"' in c_code  # static string literal
 
 
 class TestRetainRelease:

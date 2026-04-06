@@ -8,7 +8,7 @@ module Main
   """
   System outputs console
   Sequence
-    derives first last slice reverse sort
+    derives first last slice reverse sort get get_safe extend
     creates range length index
     validates empty contains
   Text creates join
@@ -50,3 +50,22 @@ from
     console(f"Index of 19.95: {price_idx}")
     sorted_prices as List<Decimal> = sort(prices)
     console(f"Sorted prices: {join(map(sorted_prices, |value| string(value)), ", ")}")
+    // Direct index access on List
+    third as Integer = get(numbers, 2)
+    console(f"Get index 2: {third}")
+    // Safe index access on List
+    safe as Option<Integer> = get_safe(numbers, 2)
+    console(f"Get_safe index 2: {unwrap(safe, -1)}")
+    oob as Option<Integer> = get_safe(numbers, 99)
+    console(f"Get_safe index 99: {unwrap(oob, -1)}")
+    // Range with step
+    evens as List<Integer> = range(0, 10, 2)
+    console(f"Evens: {join(map(evens, |v| string(v)), ", ")}")
+    // Extend (concatenate lists)
+    more as List<Integer> = [7, 8, 9]
+    extended as List<Integer> = extend(numbers, more)
+    console(f"Extended length: {length(extended)}")
+    // Sort strings
+    names as List<String> = ["charlie", "alice", "bob"]
+    sorted_names as List<String> = sort(names)
+    console(f"Sorted names: {join(sorted_names, ", ")}")

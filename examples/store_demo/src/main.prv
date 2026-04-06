@@ -2,12 +2,13 @@ module Main
   narrative: """Demonstrates Store module operations."""
   System outputs console
   Store
-    types Store StoreTable TableDiff MergeResult Version Conflict
+    types Store StoreTable TableDiff MergeResult Version Conflict Resolution
     derives patch
     creates integrity merged conflicts variant column local_value remote_value diff merge
     validates store table merged
     inputs table version lookup
     outputs store table lookup rollback add
+     keep_local keep_remote use_value reject
   Sequence creates length
   Types creates string
 
@@ -55,6 +56,10 @@ from
                     console(f"Local: {local_value(c)}")
                     console(f"Remote: {remote_value(c)}")
                 false => console("No conflicts to inspect")
+    tbl4 as StoreTable = table(db, "demo")!
+    d3 as TableDiff = diff(tbl, tbl4)
+    resolved_mr as MergeResult = merge(tbl, d, d3, |c| keep_local())
+    console(f"Merge with resolver ok: {valid merged(resolved_mr)}")
     lookup(db, "demo")!
     items as List<String> = lookup("/tmp/prove_store_demo/demo.lookup")!
     console(f"Lookup items: {string(length(items))}")

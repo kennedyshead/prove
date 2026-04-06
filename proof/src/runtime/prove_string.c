@@ -69,9 +69,22 @@ int64_t prove_string_len(Prove_String *s) {
 }
 
 Prove_String *prove_string_from_int(int64_t val) {
-    char buf[32];
-    int n = snprintf(buf, sizeof(buf), "%" PRId64, val);
-    return prove_string_new(buf, (int64_t)n);
+    /* Fast path: hand-rolled conversion avoids snprintf overhead */
+    char buf[22]; /* max: -9223372036854775808 = 20 digits + sign + NUL */
+    char *end = buf + sizeof(buf) - 1;
+    *end = '\0';
+    char *p = end;
+    bool neg = val < 0;
+    /* Handle INT64_MIN safely: -(INT64_MIN) overflows, use unsigned */
+    uint64_t uval = neg ? (val == INT64_MIN ? ((uint64_t)INT64_MAX + 1u)
+                                            : (uint64_t)(-val))
+                        : (uint64_t)val;
+    do {
+        *--p = '0' + (int)(uval % 10);
+        uval /= 10;
+    } while (uval);
+    if (neg) *--p = '-';
+    return prove_string_new(p, (int64_t)(end - p));
 }
 
 Prove_String *prove_string_from_double(double val) {

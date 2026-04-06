@@ -4,7 +4,7 @@
 Prove_List *prove_list_new(int64_t initial_cap) {
     if (initial_cap < 4) initial_cap = 4;
     Prove_List *l = (Prove_List *)prove_alloc(sizeof(Prove_List));
-    l->data = (void **)calloc((size_t)initial_cap, sizeof(void *));
+    l->data = (void **)malloc(sizeof(void *) * (size_t)initial_cap);
     if (!l->data) prove_panic("list data alloc failed");
     l->length = 0;
     l->capacity = initial_cap;

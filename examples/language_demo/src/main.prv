@@ -4,7 +4,8 @@ module Main
   Language
     derives soundex metaphone stopwords stem root normalize transliterate
     creates without_stopwords frequency bigrams keywords ngrams words sentences distance
-     similarity
+     similarity start end kind
+  Parse types Token Rule creates rule tokens
   Types creates string
   Text creates join
   Sequence creates length
@@ -46,3 +47,11 @@ from
     // Word frequency
     freq as Table<String, Integer> = frequency(article)
     console("Computed word frequency")
+    // Token accessors (start, end, kind)
+    r as Rule = rule("[a-zA-Z]+", 1)
+    toks as List<Token> = tokens("hello world", [r])
+    t as Token = toks[0]
+    tok_start as Integer = start(t)
+    tok_end as Integer = end(t)
+    tok_kind as Integer = kind(t)
+    console(f"Token: start={tok_start}, end={tok_end}, kind={tok_kind}")

@@ -501,10 +501,14 @@ def _build_c(
     # Math runtime always needs libm; par_map needs pthreads
     link_flags.append("-lm")
     link_flags.append("-lpthread")
+    seen_foreign: set[str] = set()
     for module, _symbols in modules_and_symbols:
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
                 for fb in decl.foreign_blocks:
+                    if fb.library in seen_foreign:
+                        continue
+                    seen_foreign.add(fb.library)
                     cf, lf = _resolve_foreign_flags(fb.library, standalone=standalone)
                     extra_flags.extend(cf)
                     link_flags.extend(lf)

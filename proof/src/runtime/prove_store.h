@@ -125,6 +125,13 @@ typedef struct {
 /* Resolver callback: takes pointer to Conflict, returns pointer to Resolution */
 typedef Prove_Resolution* (*Prove_ResolverFn)(Prove_Conflict*);
 
+/* ── Resolution constructors ────────────────────────────────── */
+
+Prove_Resolution *prove_store_resolution_keep_local(void);
+Prove_Resolution *prove_store_resolution_keep_remote(void);
+Prove_Resolution *prove_store_resolution_use_value(Prove_String *value);
+Prove_Resolution *prove_store_resolution_reject(Prove_String *reason);
+
 /* ── Store channel ──────────────────────────────────────────── */
 
 Prove_Result prove_store_create(Prove_String *path);

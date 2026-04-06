@@ -11,7 +11,7 @@ typedef struct {
     Prove_Header header;
     int64_t      length;
     int64_t      elem_size;  /* bytes per element */
-    void        *data;       /* flat buffer */
+    char         data[];     /* elements follow inline (flexible array member) */
 } Prove_Array;
 
 /* Create a new array of `length` elements, each `elem_size` bytes.

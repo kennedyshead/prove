@@ -39,15 +39,25 @@ uint32_t prove_hash(const char *data, size_t len) {
 }
 
 #else
-/* ── FNV-1a fallback ──────────────────────────────────────────── */
+/* ── FNV-1a fallback (SWAR: 8 bytes per iteration) ──────────── */
 
 uint32_t prove_hash(const char *data, size_t len) {
-    uint32_t h = 0x811C9DC5u;  /* FNV offset basis */
-    for (size_t i = 0; i < len; i++) {
-        h ^= (uint8_t)data[i];
-        h *= 0x01000193u;      /* FNV prime */
+    uint64_t h = 14695981039346656037ULL;  /* FNV-1a 64-bit offset basis */
+    size_t i = 0;
+    /* Process 8 bytes at a time using SWAR — no ISA requirement */
+    for (; i + 8 <= len; i += 8) {
+        uint64_t word;
+        __builtin_memcpy(&word, data + i, 8);
+        h ^= word;
+        h *= 1099511628211ULL;  /* FNV-1a 64-bit prime */
     }
-    return h;
+    /* Process remaining bytes */
+    for (; i < len; i++) {
+        h ^= (uint8_t)data[i];
+        h *= 1099511628211ULL;
+    }
+    /* Fold 64-bit result to 32-bit */
+    return (uint32_t)(h ^ (h >> 32));
 }
 
 #endif

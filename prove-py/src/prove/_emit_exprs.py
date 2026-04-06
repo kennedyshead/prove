@@ -82,39 +82,29 @@ class ExprEmitterMixin:
             escaped = self._escape_c_string(expr.value)
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
-            if self._use_region_allocation():
-                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
-            return f'prove_string_from_cstr("{escaped}")'
+            return self._static_str_lit_ref(escaped)
 
         if isinstance(expr, StringLit):
             escaped = self._escape_c_string(expr.value)
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
-            if self._use_region_allocation():
-                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
-            return f'prove_string_from_cstr("{escaped}")'
+            return self._static_str_lit_ref(escaped)
 
         if isinstance(expr, TripleStringLit):
             escaped = self._escape_c_string(expr.value)
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
-            if self._use_region_allocation():
-                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
-            return f'prove_string_from_cstr("{escaped}")'
+            return self._static_str_lit_ref(escaped)
 
         if isinstance(expr, RawStringLit):
             escaped = self._escape_c_string(expr.value)  # noqa: E501
             if self._in_hof_inline and escaped in self._string_literal_cache:
                 return self._string_literal_cache[escaped]
-            if self._use_region_allocation():
-                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
-            return f'prove_string_from_cstr("{escaped}")'
+            return self._static_str_lit_ref(escaped)
 
         if isinstance(expr, RegexLit):
             escaped = self._escape_c_string(expr.value)
-            if self._use_region_allocation():
-                return f'prove_string_from_cstr_region({self._get_region_ptr()}, "{escaped}")'
-            return f'prove_string_from_cstr("{escaped}")'
+            return self._static_str_lit_ref(escaped)
 
         if isinstance(expr, StringInterp):
             return self._emit_string_interp(expr)
@@ -1242,7 +1232,7 @@ class ExprEmitterMixin:
         for part in expr.parts:
             if isinstance(part, StringLit):
                 escaped = self._escape_c_string(part.value)
-                parts.append(f'prove_string_from_cstr("{escaped}")')
+                parts.append(self._static_str_lit_ref(escaped))
             else:
                 part_type = self._infer_expr_type(part)
                 val = self._emit_expr(part)

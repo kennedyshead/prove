@@ -85,7 +85,7 @@ def compile_c(
 
     # Optimization
     if optimize:
-        cmd.extend(["-O2", "-flto"])
+        cmd.extend(["-O3", "-flto", "-fno-math-errno"])
     else:
         cmd.append("-O0")
 

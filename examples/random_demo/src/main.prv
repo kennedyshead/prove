@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Random module operations"""
   System outputs console
-  Random inputs integer decimal boolean choice shuffle
+  Random validates integer inputs integer decimal boolean choice shuffle
   Types creates string
   Text creates join
 
@@ -24,3 +24,19 @@ from
     numbers as List<Integer> = List(1, 2, 3, 4, 5)
     shuffled as List<Integer> = shuffle(numbers)
     console(f"Shuffled: {join(map(shuffled, |value| string(value)), ", ")}")
+    // Validate integer in range
+    in_range as Boolean = valid integer(5, 1, 10)
+    console(f"5 in 1..10: {in_range}")
+    out_range as Boolean = valid integer(15, 1, 10)
+    console(f"15 in 1..10: {out_range}")
+    // Ranged decimal
+    rd as Float = decimal(1.0f, 100.0f)
+    console(f"Random decimal 1..100: {string(rd)}")
+    // Choice from integer list
+    nums as List<Integer> = List(10, 20, 30, 40, 50)
+    pick as Integer = choice(nums)
+    console(f"Random int choice: {pick}")
+    // Shuffle string list
+    words as List<String> = List("alpha", "beta", "gamma", "delta")
+    mixed as List<String> = shuffle(words)
+    console(f"Shuffled words: {join(mixed, ", ")}")

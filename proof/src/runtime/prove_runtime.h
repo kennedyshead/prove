@@ -38,7 +38,7 @@ static inline void prove_release(void *obj) {
 }
 
 static inline void *prove_alloc(size_t size) {
-    void *ptr = calloc(1, size);
+    void *ptr = malloc(size);
     if (!ptr) {
         fprintf(stderr, "prove: out of memory\n");
         exit(1);

@@ -990,3 +990,33 @@ Prove_Result prove_store_version_inputs(Prove_Store *store, Prove_String *name) 
 
     return prove_result_ok_ptr(versions);
 }
+
+/* ── Resolution constructors ────────────────────────────────── */
+
+Prove_Resolution *prove_store_resolution_keep_local(void) {
+    Prove_Resolution *r = (Prove_Resolution *)malloc(sizeof(Prove_Resolution));
+    r->tag = PROVE_RESOLUTION_KEEP_LOCAL;
+    r->data.use_value = NULL;
+    return r;
+}
+
+Prove_Resolution *prove_store_resolution_keep_remote(void) {
+    Prove_Resolution *r = (Prove_Resolution *)malloc(sizeof(Prove_Resolution));
+    r->tag = PROVE_RESOLUTION_KEEP_REMOTE;
+    r->data.use_value = NULL;
+    return r;
+}
+
+Prove_Resolution *prove_store_resolution_use_value(Prove_String *value) {
+    Prove_Resolution *r = (Prove_Resolution *)malloc(sizeof(Prove_Resolution));
+    r->tag = PROVE_RESOLUTION_USE_VALUE;
+    r->data.use_value = value;
+    return r;
+}
+
+Prove_Resolution *prove_store_resolution_reject(Prove_String *reason) {
+    Prove_Resolution *r = (Prove_Resolution *)malloc(sizeof(Prove_Resolution));
+    r->tag = PROVE_RESOLUTION_REJECT;
+    r->data.reject_reason = reason;
+    return r;
+}

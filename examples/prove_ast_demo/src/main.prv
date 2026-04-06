@@ -9,7 +9,7 @@ module Main
   Prove
     types Node Tree
     derives root
-    creates kind children count line column named_children child
+    creates kind children count line column named_children child parent
     validates error
   Types creates string
 
@@ -52,3 +52,10 @@ from
     match child(r, "name")
         Some(n) => console(f"{kind(n)}")
         None => console("No name field")
+    kids as List<Node> = children(r)
+    first_kid as Node = kids[0]
+    match parent(first_kid)
+        Some(p) => console(f"Parent kind: {kind(p)}")
+        None =>
+            // Get parent of first child
+            console("No parent")

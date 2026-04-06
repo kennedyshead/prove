@@ -1,7 +1,7 @@
 module Main
   narrative: """Demonstrates Network module: TCP client connecting to a server."""
   System outputs console
-  Network types Socket inputs socket message outputs socket message
+  Network types Socket validates socket inputs socket message outputs socket message
   Parse creates hexadecimal
   Bytes types ByteArray
 
@@ -9,6 +9,9 @@ main() Result<Unit, Error>!
 from
     connection as Socket = socket("127.0.0.1", 9000)!
     console("connected to 127.0.0.1:9000")
+    // Check if connection is open
+    is_open as Boolean = valid socket(connection)
+    console(f"socket open: {is_open}")
     data as ByteArray = hexadecimal("68656c6c6f")
     message(connection, data)!
     response as ByteArray = message(connection, 1024)!
