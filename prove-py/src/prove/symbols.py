@@ -243,7 +243,19 @@ class SymbolTable:
         3. First-argument type match (when *arg_types* given)
         4. First candidate
         """
-        from prove.types import TypeVariable, types_compatible
+        from prove.types import GenericInstance, TypeVariable, types_compatible
+
+        def _ret_matches(expected: Type, actual_ret: Type) -> bool:
+            """Match expected return type, unwrapping Result<T, E> → T."""
+            if types_compatible(expected, actual_ret):
+                return True
+            if (
+                isinstance(actual_ret, GenericInstance)
+                and actual_ret.base_name == "Result"
+                and actual_ret.args
+            ):
+                return types_compatible(expected, actual_ret.args[0])
+            return False
 
         candidates: list[FunctionSignature] = []
         for (_, fname), sigs in self._functions.items():
@@ -271,7 +283,7 @@ class SymbolTable:
         # Instead, narrow candidates but defer the final pick to structural
         # matching below.
         if expected_return is not None:
-            matches = [s for s in candidates if types_compatible(expected_return, s.return_type)]
+            matches = [s for s in candidates if _ret_matches(expected_return, s.return_type)]
             if len(matches) == 1:
                 # If the sole match is only via TypeVariable return and we have
                 # arg_types to do structural disambiguation, don't commit yet —
@@ -297,13 +309,16 @@ class SymbolTable:
                         isinstance(p, TypeVariable) or types_compatible(p, a)
                         for p, a in zip(sig.param_types, arg_types)
                     ):
-                        # If all params are concrete matches (no TypeVariable) and
-                        # the return type matches, this is an exact hit — return early.
+                        # If all params are concrete matches (no TypeVariable),
+                        # the actual args are also concrete (not TypeVariable),
+                        # and the return type matches, this is an exact hit — return early.
                         all_concrete = all(not isinstance(p, TypeVariable) for p in sig.param_types)
+                        args_concrete = all(not isinstance(a, TypeVariable) for a in arg_types)
                         if (
                             all_concrete
+                            and args_concrete
                             and expected_return is not None
-                            and types_compatible(expected_return, sig.return_type)
+                            and _ret_matches(expected_return, sig.return_type)
                         ):
                             return sig
                         structural_matches.append(sig)
@@ -318,7 +333,7 @@ class SymbolTable:
                     ret_matches = [
                         s
                         for s in structural_matches
-                        if types_compatible(expected_return, s.return_type)
+                        if _ret_matches(expected_return, s.return_type)
                     ]
                     if len(ret_matches) == 1:
                         return ret_matches[0]

@@ -996,10 +996,12 @@ class CallEmitterMixin:
                         isinstance(a, TypeVariable) and not isinstance(p, TypeVariable)
                         for p, a in zip(sig.param_types, narrowed_types)
                     )
+                _expected_ret = getattr(self, "_expected_emit_type", None)
                 if _needs_reresolution:
                     any_sig = self._symbols.resolve_function_any(
                         name,
                         narrowed_types,
+                        expected_return=_expected_ret,
                     )
                     if any_sig is not None:
                         sig = any_sig
@@ -1007,6 +1009,7 @@ class CallEmitterMixin:
                 sig = self._symbols.resolve_function_any(
                     name,
                     arity=n_args,
+                    expected_return=getattr(self, "_expected_emit_type", None),
                 )
             args_coerced = False
             if sig and sig.module:
@@ -1547,12 +1550,147 @@ class CallEmitterMixin:
             return coll_type.element
         if isinstance(coll_type, ErrorType):
             return TypeVariable("Value")
+        if isinstance(coll_type, PrimitiveType) and coll_type.name == "Cursor":
+            return PrimitiveType("Row")
         return INTEGER
+
+    @staticmethod
+    def _is_cursor_type(coll_type: Type) -> bool:
+        return isinstance(coll_type, PrimitiveType) and coll_type.name == "Cursor"
+
+    def _emit_cursor_hof_each(self, expr: CallExpr) -> str:
+        """Emit each over a Cursor as a while-loop calling prove_sqlite_cursor_next."""
+        self._needed_headers.add("prove_sqlite.h")
+        cursor_arg = self._emit_expr(expr.args[0])
+        if self._is_failable_call_expr(expr.args[0]):
+            cursor_arg = self._emit_failable_unwrap(cursor_arg, "Prove_Cursor*")
+
+        lam = expr.args[1]
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_row"
+            row_var = self._named_tmp("crow")
+            self._line("")
+            self._line(f"Prove_Row *{row_var};")
+            self._line(f"while (({row_var} = prove_sqlite_cursor_next({cursor_arg})) != NULL) {{")
+            self._indent += 1
+            self._line(f"Prove_Row *{param} = {row_var};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = PrimitiveType("Row")
+            self._emit_loop_body_retains(lam.body, param)
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"{body_code};")
+            self._indent -= 1
+            self._line("}")
+            return "((void*)0)"
+        return "((void*)0)"
+
+    def _emit_cursor_hof_map(self, expr: CallExpr) -> str:
+        """Emit map over a Cursor, collecting results into a Prove_List."""
+        self._needed_headers.add("prove_sqlite.h")
+        self._needed_headers.add("prove_list.h")
+        cursor_arg = self._emit_expr(expr.args[0])
+        if self._is_failable_call_expr(expr.args[0]):
+            cursor_arg = self._emit_failable_unwrap(cursor_arg, "Prove_Cursor*")
+
+        elem_type = PrimitiveType("Row")
+        lam = expr.args[1]
+        result_list = self._tmp()
+        self._line(f"Prove_List *{result_list} = prove_list_new(16);")
+
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_row"
+            row_var = self._named_tmp("crow")
+            self._line(f"Prove_Row *{row_var};")
+            self._line(f"while (({row_var} = prove_sqlite_cursor_next({cursor_arg})) != NULL) {{")
+            self._indent += 1
+            self._line(f"Prove_Row *{param} = {row_var};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = elem_type
+            body_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            mapped_ct = map_type(self._infer_expr_type(lam.body))
+            mapped_tmp = self._tmp()
+            self._line(f"{mapped_ct.decl} {mapped_tmp} = {body_code};")
+            box_expr = self._hof_box(mapped_tmp, mapped_ct)
+            self._line(f"prove_list_push({result_list}, {box_expr});")
+            self._indent -= 1
+            self._line("}")
+
+        return result_list
+
+    def _emit_cursor_hof_filter(self, expr: CallExpr) -> str:
+        """Emit filter over a Cursor, collecting matching rows into a Prove_List."""
+        self._needed_headers.add("prove_sqlite.h")
+        self._needed_headers.add("prove_list.h")
+        cursor_arg = self._emit_expr(expr.args[0])
+        if self._is_failable_call_expr(expr.args[0]):
+            cursor_arg = self._emit_failable_unwrap(cursor_arg, "Prove_Cursor*")
+
+        lam = expr.args[1]
+        result_list = self._tmp()
+        self._line(f"Prove_List *{result_list} = prove_list_new(16);")
+
+        if isinstance(lam, LambdaExpr):
+            param = lam.params[0] if lam.params else "_row"
+            row_var = self._named_tmp("crow")
+            self._line(f"Prove_Row *{row_var};")
+            self._line(f"while (({row_var} = prove_sqlite_cursor_next({cursor_arg})) != NULL) {{")
+            self._indent += 1
+            self._line(f"Prove_Row *{param} = {row_var};")
+            saved_locals = dict(self._locals)
+            self._locals[param] = PrimitiveType("Row")
+            pred_code = self._emit_expr(lam.body)
+            self._locals = saved_locals
+            self._line(f"if ({pred_code}) {{")
+            self._indent += 1
+            self._line(f"prove_retain({param});")
+            self._line(f"prove_list_push({result_list}, {param});")
+            self._indent -= 1
+            self._line("}")
+            self._indent -= 1
+            self._line("}")
+
+        return result_list
+
+    def _emit_cursor_hof_reduce(self, expr: CallExpr) -> str:
+        """Emit reduce over a Cursor."""
+        self._needed_headers.add("prove_sqlite.h")
+        cursor_arg = self._emit_expr(expr.args[0])
+        if self._is_failable_call_expr(expr.args[0]):
+            cursor_arg = self._emit_failable_unwrap(cursor_arg, "Prove_Cursor*")
+
+        callback = expr.args[2]
+        accum_type = self._infer_expr_type(expr.args[1])
+        accum_ct = map_type(accum_type)
+        accum_tmp = self._tmp()
+        accum_val = self._emit_expr(expr.args[1])
+        self._line(f"{accum_ct.decl} {accum_tmp} = {accum_val};")
+
+        if isinstance(callback, LambdaExpr) and len(callback.params) == 2:
+            elem_param = callback.params[1]
+            row_var = self._named_tmp("crow")
+            self._line(f"Prove_Row *{row_var};")
+            self._line(f"while (({row_var} = prove_sqlite_cursor_next({cursor_arg})) != NULL) {{")
+            self._indent += 1
+            saved = dict(self._locals)
+            self._locals[callback.params[0]] = accum_type
+            self._locals[elem_param] = PrimitiveType("Row")
+            self._line(f"{accum_ct.decl} {callback.params[0]} = {accum_tmp};")
+            self._line(f"Prove_Row *{elem_param} = {row_var};")
+            body_code = self._emit_expr(callback.body)
+            self._locals = saved
+            self._line(f"{accum_tmp} = {body_code};")
+            self._indent -= 1
+            self._line("}")
+        return accum_tmp
 
     def _emit_hof_map(self, expr: CallExpr) -> str:
         """Emit prove_list_map or prove_array_map depending on collection type."""
         coll_type = self._infer_expr_type(expr.args[0])
 
+        if self._is_cursor_type(coll_type):
+            return self._emit_cursor_hof_map(expr)
         if isinstance(coll_type, ArrayType):
             return self._emit_array_hof_map(expr, coll_type)
 
@@ -1648,6 +1786,8 @@ class CallEmitterMixin:
     def _emit_hof_each(self, expr: CallExpr) -> str:
         """Emit each as inline loop (avoids closure issues)."""
         coll_type = self._infer_expr_type(expr.args[0])
+        if self._is_cursor_type(coll_type):
+            return self._emit_cursor_hof_each(expr)
         if isinstance(coll_type, ArrayType):
             return self._emit_array_hof_each(expr, coll_type)
 
@@ -1782,6 +1922,8 @@ class CallEmitterMixin:
         """Emit prove_list_filter or prove_array_filter depending on collection type."""
         coll_type = self._infer_expr_type(expr.args[0])
 
+        if self._is_cursor_type(coll_type):
+            return self._emit_cursor_hof_filter(expr)
         if isinstance(coll_type, ArrayType):
             return self._emit_array_hof_filter(expr, coll_type)
 
@@ -1988,6 +2130,8 @@ class CallEmitterMixin:
     def _emit_hof_reduce(self, expr: CallExpr) -> str:
         """Emit reduce as inline for-loop when callback is a lambda."""
         coll_type = self._infer_expr_type(expr.args[0])
+        if self._is_cursor_type(coll_type):
+            return self._emit_cursor_hof_reduce(expr)
         if isinstance(coll_type, ArrayType):
             return self._emit_array_hof_reduce(expr, coll_type)
 

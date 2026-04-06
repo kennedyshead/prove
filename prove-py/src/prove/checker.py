@@ -580,8 +580,16 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Common built-in functions
         # Builtins that accept additional types beyond their signature.
         # Maps (func_name, param_index) → frozenset of extra types.
+        _cursor_ty = PrimitiveType("Cursor")
         self._builtin_extra_types: dict[tuple[str, int], frozenset[Type]] = {
             ("len", 0): frozenset({STRING}),
+            ("map", 0): frozenset({_cursor_ty}),
+            ("each", 0): frozenset({_cursor_ty}),
+            ("filter", 0): frozenset({_cursor_ty}),
+            ("reduce", 0): frozenset({_cursor_ty}),
+            ("all", 0): frozenset({_cursor_ty}),
+            ("any", 0): frozenset({_cursor_ty}),
+            ("find", 0): frozenset({_cursor_ty}),
         }
 
         builtins = [

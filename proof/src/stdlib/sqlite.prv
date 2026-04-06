@@ -1,0 +1,101 @@
+module Sqlite
+  narrative: """
+  Provides SQLite database access for Prove programs. SQLite is a
+  self-contained, serverless relational database engine. This module
+  supports opening databases (file or in-memory), executing SQL,
+  querying with cursors, prepared statements, and transactions.
+
+  opens a database via inputs or creates
+  executes SQL statements via outputs
+  queries rows via inputs returning a cursor
+  reads column values and column names from rows
+  manages transactions via begin, commit, rollback
+  """
+
+  type Database is binary
+
+  type Statement is binary
+
+  type Cursor is binary
+
+  type Row is binary
+
+/// Open a SQLite database at the given file path
+inputs database(path String) Result<Database, Error>!
+binary
+
+/// Open an in-memory SQLite database
+creates database() Result<Database, Error>!
+binary
+
+/// Close a database connection
+outputs database(db Database)
+binary
+
+/// Check if a database connection is open
+validates database(db Database)
+binary
+
+/// Execute a SQL statement (CREATE, INSERT, UPDATE, DELETE)
+outputs execute(db Database, sql String) Result<Unit, Error>!
+binary
+
+/// Execute with bound parameters (prevents SQL injection)
+outputs execute(db Database, sql String, params List<String>) Result<Unit, Error>!
+binary
+
+/// Query rows — returns a cursor for iteration
+inputs query(db Database, sql String) Result<Cursor, Error>!
+binary
+
+/// Query with bound parameters
+inputs query(db Database, sql String, params List<String>) Result<Cursor, Error>!
+binary
+
+/// Prepare a SQL statement for repeated execution
+creates statement(db Database, sql String) Result<Statement, Error>!
+binary
+
+/// Execute a prepared statement with bound parameters
+outputs statement(stmt Statement, params List<String>) Result<Unit, Error>!
+binary
+
+/// Query from a prepared statement with bound parameters
+inputs statement(stmt Statement, params List<String>) Result<Cursor, Error>!
+binary
+
+/// Finalize (release) a prepared statement
+outputs finalize(stmt Statement)
+binary
+
+/// Begin a transaction
+outputs begin(db Database) Result<Unit, Error>!
+binary
+
+/// Commit a transaction
+outputs commit(db Database) Result<Unit, Error>!
+binary
+
+/// Rollback a transaction
+outputs rollback(db Database) Result<Unit, Error>!
+binary
+
+/// Enable WAL journal mode for better concurrent read performance
+outputs wal(db Database) Result<Unit, Error>!
+binary
+
+/// Read a column value by name
+reads column(row Row, name String) Result<String, Error>!
+binary
+
+/// Read a column value by index
+reads column(row Row, index Integer) Result<String, Error>!
+binary
+
+/// Get column names from a row
+reads columns(row Row) List<String>
+binary
+
+/// Get number of rows changed by last INSERT/UPDATE/DELETE
+reads changes(db Database) Integer
+binary

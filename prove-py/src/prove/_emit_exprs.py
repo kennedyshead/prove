@@ -576,6 +576,14 @@ class ExprEmitterMixin:
         if isinstance(inner_type, GenericInstance) and inner_type.base_name == "Result":
             if inner_type.args:
                 success_type = inner_type.args[0]
+                # When annotation provides a more specific type (e.g. Cursor vs Unit
+                # from wrong verb resolution), prefer the annotation type.
+                expected = getattr(self, "_expected_emit_type", None)
+                if expected is not None and not isinstance(expected, GenericInstance):
+                    from prove.types import types_compatible
+
+                    if not types_compatible(expected, success_type):
+                        success_type = expected
                 return self._unwrap_result_value(tmp, success_type)
         # Failable function with non-Result return -- the C ABI still wraps
         # in Prove_Result, so we need to unwrap.

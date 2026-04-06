@@ -158,6 +158,7 @@ STDLIB_RUNTIME_LIBS: dict[str, set[str]] = {
         "prove_input_output",
         "prove_path",
     },
+    "sqlite": {"prove_sqlite"},
     "network": {"prove_network", "prove_bytes"},
     "language": {"prove_language", "prove_parse"},
     "ui": set(),
@@ -594,6 +595,29 @@ _RUNTIME_FUNCTIONS = {
         "prove_store_table_find_int",
         "prove_store_table_add",
     ],
+    "prove_sqlite": [
+        "prove_sqlite_database_inputs",
+        "prove_sqlite_database_creates",
+        "prove_sqlite_database_outputs",
+        "prove_sqlite_database_validates",
+        "prove_sqlite_execute_outputs",
+        "prove_sqlite_execute_outputs_params",
+        "prove_sqlite_query_inputs",
+        "prove_sqlite_query_inputs_params",
+        "prove_sqlite_statement_creates",
+        "prove_sqlite_statement_outputs",
+        "prove_sqlite_statement_inputs",
+        "prove_sqlite_finalize_outputs",
+        "prove_sqlite_begin_outputs",
+        "prove_sqlite_commit_outputs",
+        "prove_sqlite_rollback_outputs",
+        "prove_sqlite_wal_outputs",
+        "prove_sqlite_column_by_name",
+        "prove_sqlite_column_by_index",
+        "prove_sqlite_columns",
+        "prove_sqlite_changes",
+        "prove_sqlite_cursor_next",
+    ],
     "prove_array": [
         "prove_array_new",
         "prove_array_new_bool",
@@ -866,12 +890,22 @@ def copy_runtime(
         with importlib.resources.as_file(tsp_pkg.joinpath("tree_sitter", "parser.h")) as resolved:
             shutil.copy2(resolved, tsp_ts / "parser.h")
 
+    if "prove_sqlite" in needed_libs:
+        vendor_dest = dest / "vendor"
+        vendor_dest.mkdir(parents=True, exist_ok=True)
+        vendor_pkg = pkg.joinpath("vendor")
+        for vfile in ("sqlite3.h", "sqlite3.c"):
+            with importlib.resources.as_file(vendor_pkg.joinpath(vfile)) as resolved:
+                shutil.copy2(resolved, vendor_dest / vfile)
+            if vfile.endswith(".c"):
+                c_files.append(vendor_dest / vfile)
+
     return c_files
 
 
 # Runtime libs that require external dependencies — excluded from default copy.
 # Only included when explicitly requested via stdlib_libs.
-_EXTERNAL_DEP_LIBS = frozenset({"prove_gui", "prove_prove"})
+_EXTERNAL_DEP_LIBS = frozenset({"prove_gui", "prove_prove", "prove_sqlite"})
 
 
 def _copy_all_runtime_files(dest: Path, *, stdlib_libs: set[str] | None = None) -> list[Path]:
@@ -888,4 +922,16 @@ def _copy_all_runtime_files(dest: Path, *, stdlib_libs: set[str] | None = None) 
             shutil.copy2(src_path, dst)
         if name.endswith(".c"):
             c_files.append(dst)
+
+    # Copy vendor files for included external-dep libs
+    if stdlib_libs and "prove_sqlite" in stdlib_libs:
+        vendor_dest = dest / "vendor"
+        vendor_dest.mkdir(parents=True, exist_ok=True)
+        vendor_pkg = pkg.joinpath("vendor")
+        for vfile in ("sqlite3.h", "sqlite3.c"):
+            with importlib.resources.as_file(vendor_pkg.joinpath(vfile)) as resolved:
+                shutil.copy2(resolved, vendor_dest / vfile)
+            if vfile.endswith(".c"):
+                c_files.append(vendor_dest / vfile)
+
     return c_files

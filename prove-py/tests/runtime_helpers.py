@@ -26,7 +26,7 @@ def compile_and_run(
     assert cc is not None
 
     # Exclude external-dep libs — they require vendored/system libraries
-    _EXTERNAL_C = frozenset({"prove_gui.c", "prove_prove.c"})
+    _EXTERNAL_C = frozenset({"prove_gui.c", "prove_prove.c", "prove_sqlite.c"})
     runtime_c = sorted(f for f in runtime_dir.glob("*.c") if f.name not in _EXTERNAL_C)
     cmd = [
         cc,

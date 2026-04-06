@@ -621,6 +621,8 @@ class CallCheckMixin:
                     elem_type = list_type.element
                 elif isinstance(list_type, ArrayType):
                     elem_type = list_type.element
+                elif isinstance(list_type, PrimitiveType) and list_type.name == "Cursor":
+                    elem_type = PrimitiveType("Row")
                 if hof_name in _HOF_BUILTINS_2 and len(expr.args) >= 3:
                     mid_types = [self._infer_expr(a) for a in expr.args[1:-1]]
                     acc_type = mid_types[0] if mid_types else None

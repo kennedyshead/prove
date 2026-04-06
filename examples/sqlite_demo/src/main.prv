@@ -1,0 +1,80 @@
+module Main
+  narrative: """Demonstrates Sqlite module operations."""
+  System outputs console
+  Sqlite
+    types Database Statement Cursor Row
+    derives column columns changes
+    creates database statement
+    validates database
+    inputs database query statement
+    outputs execute begin commit rollback database wal finalize
+  Sequence creates length
+  Types creates string
+
+main() Result<Unit, Error>!
+from
+    // Open an in-memory database
+    db as Database = database()!
+    console("Opened in-memory database")
+    ok as Boolean = valid database(db)
+    console(f"Valid: {ok}")
+    // Enable WAL journal mode
+    wal(db)!
+    console("WAL mode enabled")
+    // Create a table
+    execute(db, "CREATE TABLE users (name TEXT, age TEXT)")!
+    console("Created users table")
+    // Insert with transactions
+    begin(db)!
+    execute(db, "INSERT INTO users VALUES (?, ?)", ["Alice", "30"])!
+    execute(db, "INSERT INTO users VALUES (?, ?)", ["Bob", "25"])!
+    execute(db, "INSERT INTO users VALUES (?, ?)", ["Carol", "35"])!
+    commit(db)!
+    console(f"Changes after commit: {string(changes(db))}")
+    // Query all users with each
+    rows as Cursor = query(db, "SELECT name, age FROM users ORDER BY name")!
+    each(rows, |row| console(f"  {column(row, "name")!} age {column(row, "age")!}"))
+    console("Listed all users")
+    // Query with parameters and map
+    filtered as Cursor = query(db, "SELECT name FROM users WHERE age > ?", ["28"])!
+    names as List<String> = map(filtered, |row| column(row, "name")!)
+    console(f"Users over 28: {string(length(names))}")
+    // Column access by index
+    idx_rows as Cursor = query(db, "SELECT name, age FROM users LIMIT 1")!
+    each(idx_rows, |row| console(f"By index: {column(row, 0)!} {column(row, 1)!}"))
+    // Filter cursor
+    all_rows as Cursor = query(db, "SELECT name, age FROM users ORDER BY name")!
+    young as List<Row> = filter(all_rows, |row| column(row, "age")! == "25")
+    console(f"Users aged 25: {string(length(young))}")
+    // Reduce cursor
+    ages as Cursor = query(db, "SELECT age FROM users ORDER BY name")!
+    total as String = reduce(ages, "", |acc, row| f"{acc}{column(row, "age")!} ")
+    console(f"All ages: {total}")
+    // Prepared statement (execute)
+    ins as Statement = statement(db, "INSERT INTO users VALUES (?, ?)")!
+    statement(ins, ["Dave", "40"])!
+    finalize(ins)
+    console("Inserted via prepared statement")
+    // Prepared statement (query)
+    sel as Statement = statement(db, "SELECT name FROM users WHERE name = ?")!
+    found as Cursor = statement(sel, ["Alice"])!
+    each(found, |row| console(f"Found: {column(row, "name")!}"))
+    finalize(sel)
+    // Column introspection
+    info as Cursor = query(db, "SELECT * FROM users LIMIT 1")!
+    each(info, |row| console(f"Columns: {string(length(columns(row)))}"))
+    // Rollback demonstration
+    begin(db)!
+    execute(db, "DELETE FROM users")!
+    rollback(db)!
+    check as Cursor = query(db, "SELECT count(*) as cnt FROM users")!
+    each(check, |row| console(f"After rollback: {column(row, "cnt")!} users"))
+    // File-based database
+    file_db as Database = database("/tmp/prove_sqlite_demo.db")!
+    execute(file_db, "CREATE TABLE IF NOT EXISTS test (val TEXT)")!
+    execute(file_db, "INSERT INTO test VALUES ('hello')")!
+    database(file_db)
+    console("File database written")
+    // Close
+    database(db)
+    console("Sqlite demo complete")

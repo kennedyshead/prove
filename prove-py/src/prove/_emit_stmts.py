@@ -618,7 +618,7 @@ class StmtEmitterMixin:
                     if resolved:
                         target_ty = resolved
 
-        # Set expected type for binary lookup column selection
+        # Set expected type for binary lookup column selection and verb disambiguation
         self._expected_emit_type = target_ty
 
         # When annotation and value are both Option but with different inner types,

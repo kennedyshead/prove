@@ -832,6 +832,40 @@ _register_module(
 )
 
 _register_module(
+    "sqlite",
+    display="Sqlite",
+    prv_file="sqlite.prv",
+    c_map={
+        ("inputs", "database"): "prove_sqlite_database_inputs",
+        ("creates", "database"): "prove_sqlite_database_creates",
+        ("outputs", "database"): "prove_sqlite_database_outputs",
+        ("validates", "database"): "prove_sqlite_database_validates",
+        ("outputs", "execute"): "prove_sqlite_execute_outputs",
+        ("inputs", "query"): "prove_sqlite_query_inputs",
+        ("creates", "statement"): "prove_sqlite_statement_creates",
+        ("outputs", "statement"): "prove_sqlite_statement_outputs",
+        ("inputs", "statement"): "prove_sqlite_statement_inputs",
+        ("outputs", "finalize"): "prove_sqlite_finalize_outputs",
+        ("outputs", "begin"): "prove_sqlite_begin_outputs",
+        ("outputs", "commit"): "prove_sqlite_commit_outputs",
+        ("outputs", "rollback"): "prove_sqlite_rollback_outputs",
+        ("outputs", "wal"): "prove_sqlite_wal_outputs",
+        ("derives", "columns"): "prove_sqlite_columns",
+        ("derives", "changes"): "prove_sqlite_changes",
+    },
+    overloads={
+        (
+            "outputs",
+            "execute",
+            "Database_String_List<String>",
+        ): "prove_sqlite_execute_outputs_params",
+        ("inputs", "query", "Database_String_List<String>"): "prove_sqlite_query_inputs_params",
+        ("derives", "column", "Row_String"): "prove_sqlite_column_by_name",
+        ("derives", "column", "Row_Integer"): "prove_sqlite_column_by_index",
+    },
+)
+
+_register_module(
     "prove",
     display="Prove",
     prv_file="prove.prv",
