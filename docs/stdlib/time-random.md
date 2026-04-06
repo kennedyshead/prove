@@ -88,7 +88,7 @@ All functions use the `inputs` verb because randomness requires external entropy
 |------|-----------|-------------|
 | `inputs` | `integer() Integer` | Random integer |
 | `inputs` | `integer(minimum Integer, maximum Integer) Integer` | Random integer within range (inclusive) |
-| `inputs` | `decimal() Float` | Random floating-point number between 0.0 and 1.0 |
+| `inputs` | `decimal() Float` | Random floating-point number between 0.0 and 1.0 (named `decimal` for API symmetry with `integer`; returns `Float` for IEEE 754 precision) |
 | `inputs` | `decimal(minimum Float, maximum Float) Float` | Random floating-point number within range |
 | `inputs` | `boolean() Boolean` | Random boolean |
 

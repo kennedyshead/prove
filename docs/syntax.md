@@ -198,7 +198,7 @@ population as Integer = 1_000_000
 budget as Decimal = 9_999.99
 ```
 
-**Escape sequences** in strings and characters: `\n` (newline), `\t` (tab), `\r` (carriage return), `\\` (backslash), `\"` (double quote), `\{` and `\}` (literal braces in f-strings), `\0` (null), `\e` (escape).
+**Escape sequences** in strings and characters: `\n` (newline), `\t` (tab), `\r` (carriage return), `\\` (backslash), `\"` (double quote), `\{` and `\}` (literal braces in f-strings), `\0` (null).
 
 ## Variable Declarations
 

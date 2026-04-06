@@ -17,7 +17,7 @@ This guide covers setting up Prove in Neovim with syntax highlighting (tree-sitt
 ## Install Prove
 
 ```bash
-pip install -e ".[dev]"
+pip install -e "prove-py/[dev]"
 ```
 
 ML completion stores are downloaded automatically to `~/.prove/` the first time the LSP starts.
@@ -85,7 +85,7 @@ ln -s ~/Projects/prove/tree-sitter-prove/parser/prove.so \
 
 ---
 
-## LSP Setup (prove-lsp)
+## LSP Setup (proof lsp)
 
 Prove includes an LSP server for diagnostics, code completion, and go-to-definition.
 
@@ -98,8 +98,8 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = "prove",
   callback = function()
     vim.lsp.start({
-      name = "prove-lsp",
-      cmd = { "prove-lsp" },
+      name = "proof-lsp",
+      cmd = { "proof", "lsp" },
       root_dir = vim.fs.root(0, { "prove.toml", ".git" }),
     })
   end,
@@ -114,7 +114,7 @@ The LSP will start automatically when opening `.prv` files.
 local lspconfig = require("lspconfig")
 
 lspconfig.prove_lsp = {
-  cmd = { "prove-lsp" },
+  cmd = { "proof", "lsp" },
   filetypes = { "prove" },
   root_dir = function(fname)
     return vim.fs.root(fname, { "prove.toml", ".git" })
@@ -132,7 +132,7 @@ Open a `.prv` file and run:
 :LspInfo
 ```
 
-You should see `prove-lsp` listed as an active client.
+You should see `proof-lsp` listed as an active client.
 
 ---
 
@@ -221,14 +221,14 @@ npm run build
 
 ### LSP not starting
 
-Check prove-lsp is installed:
+Check `proof` is installed and on your `$PATH`:
 
 ```bash
-which prove-lsp
-prove-lsp --version
+which proof
+proof lsp --help
 ```
 
-If not found, check that your pip install location is on `$PATH` (e.g. `~/.local/bin` for user installs). If ML completions are missing or broken, run `prove advanced setup` to force a re-download of the stores.
+If not found, build `proof` first: `python -m prove build proof/` and add the output directory to `$PATH`. If ML completions are missing or broken, run `prove setup` to force a re-download of the stores.
 
 ### No syntax highlighting
 

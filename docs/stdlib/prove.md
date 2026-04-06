@@ -86,21 +86,19 @@ module Main
   Parse creates tree
   Prove derives root child creates kind string children named_children count line column
 
+/// Build an indentation string for the given depth
+creates indent(depth Integer) String
+  terminates: depth
+from
+    match depth
+        0 => ""
+        _ => "  " + indent(depth - 1)
+
 /// Print node kinds at each level
 outputs walk(node Node, depth Integer)
 from
-    indent as String = ""
-    i as Integer = 0
-    match i < depth
-        true =>
-            indent = indent + "  "
-            i = i + 1
-        false => Unit
-    console(indent + kind(node))
-    match count(node) > 0
-        true =>
-            each(children(node), walk(_, depth + 1))
-        false => Unit
+    console(indent(depth) + kind(node))
+    each(children(node), |child| walk(child, depth + 1))
 
 main() Result<Unit, Error>!
 from

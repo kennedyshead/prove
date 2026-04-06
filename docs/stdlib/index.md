@@ -1,12 +1,12 @@
 ---
 title: Standard Library Overview - Prove Programming Language
-description: Overview of the Prove standard library — 23 modules with consistent design patterns, verb families, and channel dispatch.
+description: Overview of the Prove standard library — 24 modules with consistent design patterns, verb families, and channel dispatch.
 keywords: Prove stdlib, standard library, design pattern, verb families, channel dispatch
 ---
 
 # Standard Library
 
-The Prove standard library is a set of 23 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
+The Prove standard library is a set of 24 modules (plus aliases) that ship with the compiler. Each module is a `.prv` file declaring types and function signatures, backed by a C implementation that the compiler links into the final binary.
 
 ---
 
@@ -84,4 +84,5 @@ See [Lambdas & Iteration](../lambdas.md#builtin-functions) for the full referenc
 | **[UI](ui-terminal.md#ui)** | Complete | Base UI types: `AppEvent` algebraic event type, `Key:[Lookup]`, `Color:[Lookup]`, `Position` struct |
 | **[Terminal](ui-terminal.md#terminal)** | Complete | TUI primitives via ANSI escape codes: raw/cooked mode, cursor control, clear, terminal size, `TerminalAppEvent` |
 | **[Graphic](ui-terminal.md#graphic)** | Complete | GUI primitives via SDL2 + Nuklear: window, button, label, checkbox, slider, progress, text input. Requires [SDL2](ui-terminal.md#graphic) |
+| **[Sqlite](sqlite.md)** | Experimental | SQLite database access: open, query, execute, prepare, cursor iteration. Vendored SQLite amalgamation (no external dependency) |
 | **[Prove](prove.md)** | Complete | Syntax tree access for Prove source code: parse, traverse, inspect nodes. Requires [tree-sitter](prove.md) |

@@ -45,7 +45,7 @@ from
     confirmed
 
 /// Routes incoming HTTP requests.
-inputs request(route Route, body String, db Store) Response!
+dispatches request(route Route, body String, db Store) Response!
 from
     Get("/health") => ok("healthy")
     Get("/products") => table(db, "products")! |> encode |> ok

@@ -639,9 +639,9 @@ This code is used in two contexts:
 1. **Decimal precision:** An assignment or comparison between two `Decimal:[Scale:N]` types with different scale values.
 2. **Async verbs:** A `renders` verb was declared without a `state_init` annotation.
 
-### E409 — `state_type` on non-`listens` verb
+### E409 — `state_type` on non-`listens`/`attached` verb
 
-The `state_type` annotation was used on a function that is not a `listens` verb. This annotation is only valid on `listens` dispatchers.
+The `state_type` annotation was used on a function that is not a `listens` or `attached` verb. This annotation is only valid on `listens` dispatchers and `attached` callbacks that need access to the parent `renders` state.
 
 ### E410 — Tail recursion not supported in comptime
 

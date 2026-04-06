@@ -289,7 +289,7 @@ module Counter
 
   type CounterApp is GraphicAppEvent
 
-renders app(registered_attached_verbs List<Listens>)
+renders app(listeners List<Listens>)
   event_type CounterApp
   state_init CounterState(0)
 from

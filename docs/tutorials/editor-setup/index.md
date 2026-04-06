@@ -12,8 +12,8 @@ Prove has support for multiple editors through tree-sitter parsers and LSP. This
 
 | Editor | Syntax Highlighting | LSP | Formatter |
 |--------|-------------------|-----|-----------|
-| Neovim | tree-sitter | prove-lsp | prove CLI |
-| VS Code | tree-sitter | prove-lsp | prove CLI |
+| Neovim | tree-sitter | proof lsp | prove CLI |
+| VS Code | tree-sitter | proof lsp | prove CLI |
 | Other | tree-sitter | — | prove CLI |
 
 ## Quick Start
@@ -22,7 +22,7 @@ All editors require:
 
 1. **Install Prove**:
    ```bash
-   pip install -e ".[dev]"
+   pip install -e "prove-py/[dev]"
    ```
 
 2. **Install tree-sitter parser** (see editor-specific guide)

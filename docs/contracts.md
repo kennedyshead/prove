@@ -573,7 +573,7 @@ creates set_port(p Port) Config    // Port = 1..65535
 A `near_miss` declares an input that exercises a boundary condition — the compiler verifies each near-miss produces the expected result, confirming the function handles edge cases correctly. This catches contracts that are too permissive and implementations that miss boundaries.
 
 ```prove
-transforms leap_year(y Integer) Boolean
+validates leap_year(y Integer)
   requires y > 0
   near_miss: 0 => false          // not a valid year
   near_miss: -1 => false         // negative year

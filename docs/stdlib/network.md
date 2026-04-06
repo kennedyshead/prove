@@ -164,8 +164,8 @@ The `streams` loop here:
 6. Returns to the top of the loop for the next `Accept`
 
 The `Exit` arm is never reached in normal server operation but is required — the compiler
-enforces exhaustive match coverage on `streams` bodies
-([E371](../diagnostics.md#e371-non-exhaustive-match-blocking-io-in-async-body)).
+enforces that `streams` bodies include an `Exit` arm
+([E151](../diagnostics.md#e151-listensstreamsrenders-body-missing-exit-arm)).
 
 The `!` on `streams serve(conn Connection)!` marks the function as failable; any `!`
 call inside the body that fails propagates out, terminating the loop.

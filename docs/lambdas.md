@@ -74,9 +74,11 @@ evens as List<Item> = filter(items, |item, idx| idx % 2 == 0)
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `len` | `len(items) Integer` | Number of elements |
-| `clamp` | `clamp(value, min, max) Integer` | Clamp value to range |
+| `clamp` | `clamp(value, min, max) Integer` | Clamp integer value to range |
 
 These are **not** part of any stdlib module — they are compiler builtins with generic type inference. The compiler dispatches to the appropriate C runtime function based on the collection type.
+
+> **Note:** The builtin `clamp` handles `Integer` arguments only. For `Float` and `Decimal` arguments, use `Math.clamp` — see [Math](stdlib/math-types.md#clamp).
 
 ## Iteration — No Loops
 
@@ -168,7 +170,7 @@ from
     user
 
 /// Routes incoming HTTP requests.
-inputs request(route Route, body String, db Store) Response!
+dispatches request(route Route, body String, db Store) Response!
 from
     Get("/health") => ok("healthy")
     Get("/users")  => users(db)! |> encode |> ok

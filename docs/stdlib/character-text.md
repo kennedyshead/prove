@@ -80,14 +80,14 @@ The `StringBuilder` type allows efficient incremental string construction.
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `creates` | `builder() StringBuilder:[Mutable]` | Create an empty builder |
-| `derives` | `string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
-| `derives` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
+| `transforms` | `string_builder(builder StringBuilder:[Mutable], text String) StringBuilder:[Mutable]` | Append a string |
+| `transforms` | `char(builder StringBuilder:[Mutable], character Character) StringBuilder:[Mutable]` | Append a character |
 | `creates` | `build(builder StringBuilder:[Mutable]) String` | Finalize to string |
 | `creates` | `length(builder StringBuilder:[Mutable]) Integer` | Current builder length |
 
 ```prove
   Text creates length index validates contains starts derives slice derives trim lower upper replace repeat creates split join
-  Text creates builder derives string_builder creates build
+  Text creates builder transforms string_builder creates build
 
 creates word_count(text String) Integer
 from

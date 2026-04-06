@@ -12,7 +12,7 @@ Prove provides structured concurrency via cooperative coroutines. Async verbs fo
 |------|---------|-------------------|
 | `detached` | Spawn and move on — fire-and-forget | No return type. Body runs concurrently; caller does not wait |
 | `attached` | Spawn and await — caller blocks until result is ready | Must declare a return type. May call blocking IO (runs in its own coroutine stack) |
-| `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. No return type |
+| `listens` | Cooperative loop — processes items until `Exit` | `from` block must be a single implicit match with an `Exit` arm. Return type is the app event type (what gets dispatched in `renders`) |
 | `renders` | Event-driven UI loop — like `listens` with mutable state | `event_type` + `state_init` annotations. `List<Listens>` first param. Match with `Exit` arm |
 
 **Key rules:**
@@ -139,7 +139,7 @@ The `renders` verb declares an event-driven UI loop with mutable state. It follo
 **Signature pattern:**
 
 ```prove
-renders name(dispatchers List<Listens>)
+renders name(listeners List<Listens>)
     event_type MyAppEvent
     state_init MyState(initial_value)
 from

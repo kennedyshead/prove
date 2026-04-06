@@ -113,8 +113,9 @@ transforms factorial(n Integer) Integer
   terminates: n
   requires n >= 0
 from
-    n == 0 => 1
-    _ => n * factorial(n - 1)
+    match n
+        0 => 1
+        _ => n * factorial(n - 1)
 ```
 
 ---
