@@ -48,17 +48,22 @@ class ProveLexer(RegexLexer):
             # Fail marker (before operators)
             (r"!", Keyword.Pseudo),
             # PROVE-EXPORT-BEGIN: verbs
-            # Intent verbs (function declaration keywords)
+            # Verb keywords
             (
                 words(
                     (
+                        "attached",
                         "creates",
                         "derives",
+                        "detached",
                         "dispatches",
                         "inputs",
+                        "listens",
                         "matches",
                         "outputs",
                         "reads",
+                        "renders",
+                        "streams",
                         "transforms",
                         "validates",
                     ),
@@ -96,12 +101,15 @@ class ProveLexer(RegexLexer):
                         "comptime",
                         "constants",
                         "domain",
+                        "event_type",
                         "foreign",
                         "from",
                         "is",
                         "main",
                         "match",
                         "module",
+                        "state_init",
+                        "state_type",
                         "type",
                         "types",
                         "valid",
@@ -138,7 +146,7 @@ class ProveLexer(RegexLexer):
             # PROVE-EXPORT-END: ai-keywords
             # PROVE-EXPORT-BEGIN: literals
             # Boolean constants
-            (r"\b(true|false)\b", Keyword.Constant),
+            (r"\b(false|true)\b", Keyword.Constant),
             # PROVE-EXPORT-END: literals
             # PROVE-EXPORT-BEGIN: builtin-types
             # Built-in types
@@ -237,45 +245,51 @@ class ProveIntentLexer(RegexLexer):
             (r"\s+", Text),
             # Comments
             (r"//.*$", Comment.Single),
+            # PROVE-EXPORT-BEGIN: intent-sections
             # Section keywords
             (
                 words(
                     (
+                        "constraints",
+                        "domain",
+                        "flow",
+                        "module",
                         "project",
                         "purpose",
-                        "domain",
                         "vocabulary",
-                        "module",
-                        "flow",
-                        "constraints",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword,
             ),
+            # PROVE-EXPORT-END: intent-sections
+            # PROVE-EXPORT-BEGIN: verbs
             # Verb keywords
             (
                 words(
                     (
-                        "validates",
-                        "transforms",
-                        "reads",
-                        "creates",
-                        "matches",
-                        "inputs",
-                        "outputs",
-                        "streams",
-                        "listens",
-                        "renders",
-                        "detached",
                         "attached",
+                        "creates",
+                        "derives",
+                        "detached",
+                        "dispatches",
+                        "inputs",
+                        "listens",
+                        "matches",
+                        "outputs",
+                        "reads",
+                        "renders",
+                        "streams",
+                        "transforms",
+                        "validates",
                     ),
                     prefix=r"\b",
                     suffix=r"\b",
                 ),
                 Keyword.Declaration,
             ),
+            # PROVE-EXPORT-END: verbs
             # "is" keyword (vocabulary definitions)
             (r"\bis\b", Keyword),
             # Flow arrow

@@ -112,6 +112,11 @@ else
     echo "    OK: parser ABI $PARSER_ABI matches system library"
 fi
 
+# ── Step 5: Sync keyword lists to Chroma & Pygments lexers ──
+
+echo "==> Syncing keyword lists to lexers..."
+python3 "$REPO_ROOT/scripts/sync_lexers.py"
+
 echo ""
 echo "==> Tree-sitter sync complete."
 echo "    Remember to run: pip install -e prove-py && python scripts/test_e2e.py"

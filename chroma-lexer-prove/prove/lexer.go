@@ -20,10 +20,12 @@ var (
 				{`\s+`, chroma.Text, nil},
 				// Comments
 				{`//[^\n]*`, chroma.Comment, nil},
-				// Section keywords
-				{`\b(project|purpose|domain|vocabulary|module|flow|constraints)\b`, chroma.Keyword, nil},
-				// Verb keywords
-				{`\b(validates|transforms|reads|creates|matches|inputs|outputs|streams|listens|renders|detached|attached)\b`, chroma.KeywordDeclaration, nil},
+				// PROVE-EXPORT-BEGIN: intent-sections
+				{`\b(constraints|domain|flow|module|project|purpose|vocabulary)\b`, chroma.Keyword, nil},
+				// PROVE-EXPORT-END: intent-sections
+				// PROVE-EXPORT-BEGIN: verbs
+				{`\b(attached|creates|derives|detached|dispatches|inputs|listens|matches|outputs|reads|renders|streams|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
+				// PROVE-EXPORT-END: verbs
 				// "is" keyword
 				{`\bis\b`, chroma.Keyword, nil},
 				// Flow arrow
@@ -83,7 +85,7 @@ var (
 				{`!`, chroma.KeywordPseudo, nil},
 
 				// PROVE-EXPORT-BEGIN: verbs
-				{`\b(creates|derives|dispatches|inputs|matches|outputs|reads|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
+				{`\b(attached|creates|derives|detached|dispatches|inputs|listens|matches|outputs|reads|renders|streams|transforms|validates)\b`, chroma.KeywordDeclaration, nil},
 				// PROVE-EXPORT-END: verbs
 
 				// PROVE-EXPORT-BEGIN: contract-keywords
@@ -91,7 +93,7 @@ var (
 				// PROVE-EXPORT-END: contract-keywords
 
 				// PROVE-EXPORT-BEGIN: keywords
-				{`\b(as|binary|comptime|constants|domain|foreign|from|is|main|match|module|type|types|valid|where)\b`, chroma.Keyword, nil},
+				{`\b(as|binary|comptime|constants|domain|event_type|foreign|from|is|main|match|module|state_init|state_type|type|types|valid|where)\b`, chroma.Keyword, nil},
 				// PROVE-EXPORT-END: keywords
 
 				// PROVE-EXPORT-BEGIN: ai-keywords
@@ -99,7 +101,7 @@ var (
 				// PROVE-EXPORT-END: ai-keywords
 
 				// PROVE-EXPORT-BEGIN: literals
-				{`\b(true|false)\b`, chroma.KeywordConstant, nil},
+				{`\b(false|true)\b`, chroma.KeywordConstant, nil},
 				// PROVE-EXPORT-END: literals
 
 				// PROVE-EXPORT-BEGIN: builtin-types

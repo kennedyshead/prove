@@ -21,6 +21,13 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: sync-lexers
+        name: sync-lexers
+        entry: python3 scripts/sync_lexers.py --check
+        language: system
+        pass_filenames: false
+        files: (keywords\.toml|chroma-lexer-prove/.*\.go|pygments-prove/.*\.py)
+
       - id: sync-checks
         name: sync-checks
         entry: bash -c "cd prove-py && python -m pytest tests/test_diagnostic_links.py tests/test_runtime_functions_sync.py -x -q"
