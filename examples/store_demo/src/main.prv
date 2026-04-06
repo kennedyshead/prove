@@ -2,13 +2,13 @@ module Main
   narrative: """Demonstrates Store module operations."""
   System outputs console
   Store
-    types Store StoreTable TableDiff MergeResult Version Conflict Resolution
+    types Store StoreTable TableDiff MergeResult Version Conflict
     derives patch
     creates integrity merged conflicts variant column local_value remote_value diff merge
     validates store table merged
     inputs table version lookup
     outputs store table lookup rollback add
-     keep_local keep_remote use_value reject
+     keep_local
   Sequence creates length
   Types creates string
 

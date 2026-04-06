@@ -919,6 +919,7 @@ def _build_unity_source(c_sources: list[str]) -> str:
     prefixed: list[str] = []
     for idx, src in enumerate(c_sources):
         src = src.replace("_err_str_", f"_err_str_m{idx}_")
+        src = src.replace("_str_lit_", f"_str_lit_m{idx}_")
         src = src.replace("_lambda_", f"_lambda_m{idx}_")
         prefixed.append(src)
 
