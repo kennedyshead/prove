@@ -33,7 +33,7 @@ from
 
 ### Verb Purity Enforcement
 
-The compiler enforces that [pure verbs](functions.md#intent-verbs) (`transforms`, `validates`, `derives`, `creates`, `matches`) cannot perform IO, cannot be failable, and cannot call IO functions. This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-function), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
+The compiler enforces that [pure verbs](verbs.md) (`transforms`, `validates`, `derives`, `creates`, `matches`) cannot perform IO and cannot call IO functions. Pure verbs cannot be failable (except `transforms`, which is allowed `!`). This is checked at compile time — errors [E361](diagnostics.md#e361-pure-function-cannot-be-failable), [E362](diagnostics.md#e362-pure-function-cannot-call-io-function), [E363](diagnostics.md#e363-pure-function-cannot-call-user-defined-io-function).
 
 ### Exhaustive Match
 
@@ -60,9 +60,9 @@ transforms insert(tree BalancedTree<Value>, val Value) BalancedTree<Value>
 
 ```prove
 validates leap_year(y Year)
-  near_miss 1900 => false
-  near_miss 2000 => true
-  near_miss 2100 => false
+  near_miss: 1900 => false
+  near_miss: 2000 => true
+  near_miss: 2100 => false
 from
     (y % 4) == 0 && ((y % 100) != 0 || (y % 400) == 0)
 ```
@@ -82,7 +82,7 @@ from
 
 ### Anti-Training License for Prove Code
 
-Every `prove new` project is initialized with the **Prove Source License v1.0**. It is a permissive MIT-style license with comprehensive AI restrictions covering:
+Every `proof new` project is initialized with the **Prove Source License v1.0**. It is a permissive MIT-style license with comprehensive AI restrictions covering:
 
 - **Training, fine-tuning, and distillation** (Section 3.1)
 - **Dataset inclusion, vector stores, RAG indices, and embedding databases** (Section 3.2)
@@ -201,10 +201,10 @@ Active profiles:
 
 The compiler generates plausible-but-wrong alternative implementations using its mutation testing engine and requires the programmer to explain (via `why_not`) why they fail.
 
-Run `prove check` to see unaddressed challenges for functions with `ensures` contracts — refutation challenges run by default. Use `--no-challenges` to skip them. Each challenge is a mutation of the function body that might violate the contract:
+Run `proof check` to see unaddressed challenges for functions with `ensures` contracts — refutation challenges run by default. Use `--no-challenges` to skip them. Each challenge is a mutation of the function body that might violate the contract:
 
 ```bash
-$ prove check
+$ proof check
 
   derives sort — 3 challenges, 1 addressed:
     [+] swap + to - in comparison
@@ -214,28 +214,9 @@ $ prove check
 
 Address challenges by adding `why_not` annotations to the function.
 
-## Domain Profiles
-
-A module's [`domain:`](contracts.md#module-level-annotations) declaration selects a built-in profile that adds domain-specific warnings ([W340–W342](diagnostics.md)):
-
-- **finance**: prefer `Decimal` over `Float`, require `ensures` contracts and `near_miss` examples
-- **safety**: require `ensures`, `requires`, `explain` blocks
-- **general**: no additional requirements
-
-```prove
-module Accounting
-  domain finance
-
-// W340: domain 'finance' prefers Decimal over Float
-
-transforms total(amounts List<Float>) Float
-from
-    reduce(amounts, 0.0, add)
-```
-
 ## Coherence Checking
 
-Run [`prove check`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)) — coherence checking runs by default (skip with `--no-coherence`). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
+Run [`proof check`](cli.md) to verify vocabulary consistency between the module's [`narrative:`](contracts.md#module-level-annotations) and its function/type names ([I340](diagnostics.md)) — coherence checking runs by default (skip with `--no-coherence`). The compiler extracts key words from the narrative and checks that function names use related vocabulary:
 
 ```prove
 module UserAuth

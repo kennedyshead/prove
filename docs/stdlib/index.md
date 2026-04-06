@@ -19,7 +19,7 @@ Verbs define what a function does. The compiler enforces their guarantees:
 | Family | Verbs | Guarantees |
 |--------|-------|------------|
 | **Pure** | `transforms`, `validates`, `derives`, `creates`, `matches` | No IO, no side effects. Safe to memoize, parallelize |
-| **IO** | `inputs`, `outputs`, `streams` | Reads/writes to external world |
+| **IO** | `inputs`, `outputs`, `dispatches`, `streams` | Reads/writes to external world |
 | **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via coroutines |
 
 See [Functions & Verbs](../verbs.md) for the full reference.
@@ -51,7 +51,7 @@ These functions are always available without import — they are compiler builti
 
 - **Iteration:** `map`, `filter`, `reduce`, `each`, `all`, `any` — work on any iterable (`List`, `Array`)
 - **Parallel:** `par_map`, `par_filter`, `par_reduce`, `par_each` — parallel variants (pure functions only)
-- **Utility:** `len`, `clamp`
+- **Utility:** `len`
 
 See [Lambdas & Iteration](../lambdas.md#builtin-functions) for the full reference.
 
@@ -63,9 +63,10 @@ See [Lambdas & Iteration](../lambdas.md#builtin-functions) for the full referenc
 |--------|--------|---------|
 | **[Character](character-text.md#character)** | Complete | Character classification (`alphabetic`, `digit`, `whitespace`, etc.) and string-to-char access |
 | **[Text](character-text.md#text)** | Complete | String operations (`slice`, `contains`, `split`, `join`, `trim`, `replace`) and `StringBuilder` for efficient string construction |
-| **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `reads get`, `reads add`, `validates has` |
+| **[Table](table-list-store.md#table)** | Complete | Hash map `Table<Value>` with `creates new`, `derives get`, `derives add`, `validates has` |
 | **[List](table-list-store.md#list)** | Complete | Operations on `List<Value>`: length, first, last, contains, sort, reverse, range |
 | **[Array](table-list-store.md#array)** | Complete | Fixed-size contiguous arrays `Array<T>` with typed elements; supports copy-on-write and `:[Mutable]` in-place variants |
+| **[Store](table-list-store.md#store)** | Complete | Persistent key-value storage with versioning, structural diffs, and compilation |
 | **[System](io-path.md#system)** | Complete | Channels: `console`, `file`, `system`, `dir`, `process` with `validates` verbs |
 | **[Parse](parse-format-pattern.md#parse)** | Complete | JSON, TOML, URL, Base64, CSV codecs with `Value`/`Url` types, and generic tokenization with `Token`/`Rule` types |
 | **[Math](math-types.md#math)** | Complete | Numeric functions: abs, min, max, floor, ceil, pow, clamp, sqrt, log |

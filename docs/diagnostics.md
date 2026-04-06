@@ -10,7 +10,7 @@ The Prove compiler emits diagnostics with unique codes, source locations, and su
 
 - **Error** — compilation fails; must be fixed
 - **Warning** — code compiles but the compiler could use this information (e.g., optimization, contract reasoning)
-- **Info** — good practice suggestions or issues that `prove format` fixes automatically
+- **Info** — good practice suggestions or issues that `proof format` fixes automatically
 
 Diagnostic codes use a letter prefix matching their severity (`E` = error, `W` = warning, `I` = info) and a numeric group (1xx = lexer/parser, 2xx = parser, 3xx = checker, 4xx = comptime, 5xx = prose coherence, 6xx = completeness).
 
@@ -85,7 +85,7 @@ The parser expected an expression (a name, literal, or parenthesized group) but 
 
 ### E214 — Verb used as identifier
 
-A verb keyword (`transforms`, `validates`, `derives`, `creates`, `matches`, `inputs`, `outputs`) cannot be used as a variable or function name. Use a different name, or declare it as a verb.
+A verb keyword (`transforms`, `validates`, `derives`, `creates`, `matches`, `inputs`, `outputs`, `dispatches`, `streams`, `detached`, `attached`, `listens`, `renders`) cannot be used as a variable or function name. Use a different name, or declare it as a verb.
 
 ### E215 — Expected pattern
 
@@ -296,7 +296,7 @@ Lambdas now support capturing immutable variables from an enclosing scope. This 
 
 ### E365 — `matches` verb requires matchable first parameter
 
-A `matches` function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, `String`, and `Integer`.
+A `matches` function must take a matchable type as its first parameter for dispatch. Matchable types are algebraic types, `String`, `Integer`, `Result`, and `Option`.
 
 ### E366 — Recursive function missing `terminates`
 
@@ -917,7 +917,7 @@ derives double(n Integer) Integer
 
 ### W330 — Surviving mutant
 
-A previous `prove build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
+A previous `proof build` run (mutation testing) found a surviving mutant in this function. The function's contracts were not strong enough to detect the mutation. Add or strengthen `requires`/`ensures` clauses to catch it.
 
 ### W332 — Unused pure function result
 
@@ -1060,11 +1060,11 @@ A function declares `satisfies` for an invariant network but has no `ensures` cl
 
 ### W501 — Verb not described in module narrative
 
-A function's verb keyword is not implied by any action word in the module's `narrative:` block. The narrative should describe every kind of operation the module performs. Emitted only with `prove check --coherence`.
+A function's verb keyword is not implied by any action word in the module's `narrative:` block. The narrative should describe every kind of operation the module performs. Emitted by default; skip with `--no-coherence`.
 
 ### W502 — Explain entry doesn't match from-body
 
-An `explain` entry's prose text has no overlap with the names of operations or parameters in the function's `from` block. The explain block should document what the code actually does. Emitted only with `prove check --coherence`.
+An `explain` entry's prose text has no overlap with the names of operations or parameters in the function's `from` block. The explain block should document what the code actually does. Coherence checking runs by default — skip with `proof check --no-coherence`.
 
 ### W503 — Chosen declared without why_not
 
@@ -1096,14 +1096,14 @@ A flow declaration in an `.intent` file references a module name that is not def
 
 ### I340 — Vocabulary drift from narrative
 
-A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Emitted only with `prove check --coherence`.
+A function name uses vocabulary not found in the module's `narrative:` block. This is informational — it helps keep code names consistent with the module's stated purpose. Coherence checking runs by default — skip with `proof check --no-coherence`.
 
 
 ---
 
 ## Info
 
-Info diagnostics are suggestions for good practice. Most can be auto-fixed by `prove format`.
+Info diagnostics are suggestions for good practice. Most can be auto-fixed by `proof format`.
 
 ### I201 — Module missing narrative
 
@@ -1119,7 +1119,7 @@ module MyModule
 This code is used in two contexts:
 
 1. **Checker:** A `listens`, `streams`, or `renders` verb body should be a single `match` expression for clarity.
-2. **Parser:** A trailing comma was found in a parameter list. `prove format` removes it automatically.
+2. **Parser:** A trailing comma was found in a parameter list. `proof format` removes it automatically.
 
 ### I300 — Unused variable
 
@@ -1175,11 +1175,11 @@ A variable with a concrete type annotation (e.g. `Table<Value>`, `String`) is as
 
 ### I315 — Import not found in module
 
-An import declaration names a function, type, or constant that does not exist in the specified module (stdlib or local). The import is automatically removed by `prove format`.
+An import declaration names a function, type, or constant that does not exist in the specified module (stdlib or local). The import is automatically removed by `proof format`.
 
 ### I318 — Module cannot import from itself
 
-A module's import block references itself. This is a no-op and is automatically removed by `prove format`.
+A module's import block references itself. This is a no-op and is automatically removed by `proof format`.
 
 ### I320 — Function without contracts
 
@@ -1219,19 +1219,19 @@ from
 
 ### I438 — `derives` function returns heap type and allocates
 
-A `derives` function returns a heap-allocated type (String, List, record, etc.) and its body allocates. `derives` is intended for non-allocating derivations — use `creates` instead when the function constructs new heap values. Auto-fixable by `prove format`.
+A `derives` function returns a heap-allocated type (String, List, record, etc.) and its body allocates. `derives` is intended for non-allocating derivations — use `creates` instead when the function constructs new heap values. Auto-fixable by `proof format`.
 
 ### I439 — `creates` function does not allocate
 
-A `creates` function body does not perform any heap allocation. `creates` signals that the function constructs a new value — if it only extracts or recomputes from inputs, use `derives` instead. Auto-fixable by `prove format`.
+A `creates` function body does not perform any heap allocation. `creates` signals that the function constructs a new value — if it only extracts or recomputes from inputs, use `derives` instead. Auto-fixable by `proof format`.
 
 ### I440 — `transforms` function is not failable
 
-A `transforms` function neither uses `!` nor calls any failable function. `transforms` is the failable pure verb — if the function cannot fail, use `creates` (if it allocates) or `derives` (if it doesn't). Auto-fixable by `prove format`.
+A `transforms` function neither uses `!` nor calls any failable function. `transforms` is the failable pure verb — if the function cannot fail, use `creates` (if it allocates) or `derives` (if it doesn't). Auto-fixable by `proof format`.
 
 ### I375 — `&` on a non-async callee
 
-The `&` async dispatch marker is used on a call to a function that is not an async verb (`detached`, `attached`, `listens`). The marker has no effect. `prove format` removes it.
+The `&` async dispatch marker is used on a call to a function that is not an async verb (`detached`, `attached`, `listens`). The marker has no effect. `proof format` removes it.
 
 ### I377 — `attached` call runs synchronously outside `listens`
 
@@ -1239,7 +1239,7 @@ An `attached` function is called with `&` outside a `listens` body. The call wor
 
 ### I378 — `detached` function called without `&`
 
-A `detached` function is called without the `&` marker. `detached` is fire-and-forget and should always use `&`. `prove format` will add it.
+A `detached` function is called without the `&` marker. `detached` is fire-and-forget and should always use `&`. `proof format` will add it.
 
 ### I601 — Incomplete implementation (todo)
 

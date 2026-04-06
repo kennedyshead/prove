@@ -141,7 +141,7 @@ You should see `prove-lsp` listed as an active client.
 Use the Prove CLI for formatting:
 
 ```vim
-:!prove format %
+:!proof format %
 ```
 
 Or configure conform.nvim / null-ls:
@@ -149,7 +149,7 @@ Or configure conform.nvim / null-ls:
 ```lua
 require("conform.nvim").setup({
   formatters_by_ft = {
-    prove = { "prove" },
+    prove = { "proof" },
   },
 })
 ```
@@ -158,8 +158,8 @@ With `prove` formatter defined as:
 
 ```lua
 formatters = {
-  prove = {
-    command = "prove",
+  proof = {
+    command = "proof",
     args = { "--stdin-filename", "$FILENAME", "format", "-" },
     stdin = true,
   },
@@ -173,7 +173,7 @@ formatters = {
 Prove's tree-sitter queries are in `tree-sitter-prove/queries/prove/`:
 
 - `highlights.scm` — syntax highlighting
-- `locals.scm` — scopelocal variables
+- `locals.scm` — scope-local variables
 - `tags.scm` — ctags support
 
 These are automatically loaded when using nvim-treesitter.

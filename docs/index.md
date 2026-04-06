@@ -51,7 +51,7 @@ The `ensures` clause declares hard postconditions — the compiler enforces them
 
     This detects your platform (Linux x86_64, macOS aarch64), downloads the binary, and installs it to `~/.local/bin/`.
 
-    Options: `--version v1.3.0` for a specific release, `--prefix /usr/local/bin` for a custom location.
+    Options: `--version v1.3.1` for a specific release, `--prefix /usr/local/bin` for a custom location.
 
 === "From source"
 
@@ -187,7 +187,7 @@ For a more comprehensive demonstration of Prove's features, see the [Inventory S
 
 ## Status
 
-**Prove v1.3.0 is released.** Tree-sitter is now the sole parser, the `reads` verb is renamed to `derives`, a new `dispatches` verb is added, verb names are mangled in C output, and the compiler gains a unified linting pass. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
+**Prove v1.3.1 is released.** Tree-sitter is now the sole parser, the `reads` verb is renamed to `derives`, a new `dispatches` verb is added, verb names are mangled in C output, and the compiler gains a unified linting pass. See the [Releases](releases.md) page for details and the [Roadmap](roadmap.md) for what's next (V2.0: self-hosted compiler).
 
 ## Repository
 

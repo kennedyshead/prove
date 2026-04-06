@@ -58,8 +58,8 @@ Make sure you've imported the module. Check the [Stdlib Overview](stdlib/index.m
 
 ### "Pure function cannot call IO function"
 
-You declared a `transforms`, `validates`, `derives`, `creates`, or `matches` function, but it's calling an `inputs` or `outputs` function. Either:
-1. Change the verb to `inputs` or `outputs` if it truly needs IO
+You declared a `transforms`, `validates`, `derives`, `creates`, or `matches` function, but it's calling an IO function. Either:
+1. Change the verb to an IO verb (`inputs`, `outputs`, `dispatches`, `streams`) if it truly needs IO
 2. Pass the data as a parameter instead of reading it inside
 
 ### "Cannot find function 'X'"
@@ -160,7 +160,7 @@ Both require a matchable first parameter (algebraic, String, Integer, Result, or
 ### When to use `Result` vs `!`?
 
 - `Result<Value, Error>` — for **expected failures** in pure functions (handle with `match`)
-- `!` — for **IO failures** and failable `transforms` that should propagate to `main`
+- `!` — for **IO failures** (`inputs`, `outputs`, `dispatches`, `streams`) and failable `transforms` that should propagate to `main`
 
 ### How to structure a module?
 

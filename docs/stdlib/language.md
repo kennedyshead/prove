@@ -56,7 +56,7 @@ keywords: Prove Language, NLP, stemming, edit distance, phonetic codes
 |------|-----------|-------------|
 | `derives` | `stopwords() List<String>` | Common English stopwords |
 | `creates` | `without_stopwords(text String) List<String>` | Remove stopwords, return remaining words |
-| `creates` | `frequency(text String) Table<String, Integer>` | Word frequency counts |
+| `creates` | `frequency(text String) Table<Value>` | Word frequency counts (keys are words, values are counts) |
 | `creates` | `keywords(text String, count Integer) List<String>` | Top N most frequent words |
 
 ### Token Accessors

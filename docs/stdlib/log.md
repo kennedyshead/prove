@@ -12,7 +12,7 @@ Logging functions use UI `Color` lookups (via `Terminal.ansi()`) for colorized o
 
 ### Colors & Styles
 
-Colors and text styles are provided by the `UI` module's `Color` and `TextStyle` lookup types. Use `Terminal.ansi(Color:Red)` or `Terminal.ansi(TextStyle:Bold)` for ANSI escape sequences.
+Colors and text styles are provided by the `UI` module's `Color` and `TextStyle` lookup types. Use `Terminal.ansi("red")` or `Terminal.ansi("bold")` for ANSI escape sequences. The argument is a color or style name string — see `Color:[Lookup]` and `TextStyle:[Lookup]` in [UI](ui-terminal.md#ui).
 
 ### Logging
 

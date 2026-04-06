@@ -32,11 +32,11 @@ Or run `./scripts/dev-setup.sh` which installs all dependencies automatically.
 
 ## Parsing (in Parse module)
 
-Use `Parse.tree()` to parse source into a tree and `Parse.string()` to extract the source back.
+Use `Parse.tree()` to parse source into a tree and `Types.string(tree)` to extract the source back.
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `creates` | `tree(source String) Result<Tree, Error>` | Parse Prove source into a syntax tree |
+| `creates` | `tree(source String) Result<Value<Tree>, Error>` | Parse Prove source into a syntax tree |
 | `creates` | `string(tree Tree) String` | Extract the full source text from a tree |
 
 ## Tree Accessors
@@ -57,7 +57,7 @@ Use `Parse.tree()` to parse source into a tree and `Parse.string()` to extract t
 | `creates` | `count(node Node) Integer` | Number of child nodes |
 | `creates` | `line(node Node) Integer` | Line number (1-based) |
 | `creates` | `column(node Node) Integer` | Column number (0-based) |
-| `validates` | `error(node Node) Boolean` | Whether the node represents a syntax error |
+| `validates` | `error(node Node)` | Whether the node represents a syntax error |
 
 ## Common Node Kinds
 
@@ -87,7 +87,7 @@ module Main
   Prove derives root child creates kind string children named_children count line column
 
 /// Print node kinds at each level
-derives walk(node Node, depth Integer)
+outputs walk(node Node, depth Integer)
 from
     indent as String = ""
     i as Integer = 0

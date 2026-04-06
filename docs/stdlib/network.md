@@ -68,28 +68,26 @@ Import only what your module uses. Verbs are declared per channel:
   // Client: connect and exchange messages
   Network inputs socket message outputs socket message
   Network types Socket
-  Bytes creates hex derives hex
+  Parse creates hexadecimal validates hexadecimal
   Bytes types ByteArray
 
   // Server: bind, accept, and echo
   Network inputs server accept message outputs socket message
   Network types Socket
-  Bytes derives hex
+  Parse creates hexadecimal
   Bytes types ByteArray
   Log detached info
 ```
 
-`Network types Socket` is required whenever you hold a `Socket` value. `Bytes` is needed
-to construct and inspect `ByteArray` data — `creates hex` decodes a hex string into bytes,
-`reads hex` encodes bytes back to a hex string.
+`Network types Socket` is required whenever you hold a `Socket` value. `Parse` provides
+hex encoding/decoding — `creates hexadecimal` converts between hex strings and byte arrays.
 
 ---
 
 ## Client
 
 A TCP client connects to a host, sends a request, and reads the response. Bytes are passed
-as `ByteArray` — use `creates hex` to decode a hex string into bytes to send, and
-`reads hex` to encode the response back to a printable string.
+as `ByteArray` — use `Parse.hexadecimal` to convert between hex strings and byte arrays.
 
 ```prove
 module Main
@@ -97,23 +95,23 @@ module Main
   System outputs console
   Network inputs socket message outputs socket message
   Network types Socket
-  Bytes creates hex derives hex
+  Parse creates hexadecimal validates hexadecimal
   Bytes types ByteArray
 
 main() Result<Unit, Error>!
 from
     connection as Socket = socket("127.0.0.1", 9000)!
     console("connected to 127.0.0.1:9000")
-    data as ByteArray = hex("68656c6c6f")
+    data as ByteArray = hexadecimal("68656c6c6f")
     message(connection, data)!
     response as ByteArray = message(connection, 1024)!
-    reply as String = hex(response)
+    reply as String = hexadecimal(response)
     console(f"server replied: {reply}")
     socket(connection)
 ```
 
-`hex("68656c6c6f")` calls `creates hex` — hex-decoding the string `"hello"` into its
-byte representation. `hex(response)` calls `reads hex` — encoding the received bytes as
+`hexadecimal("68656c6c6f")` calls `Parse.creates hexadecimal` — hex-decoding the string `"hello"` into its
+byte representation. `hexadecimal(response)` calls the byte-to-string overload — encoding the received bytes as
 a printable hex string.
 
 ---
@@ -130,7 +128,7 @@ module Main
   System outputs console
   Network inputs server accept message outputs socket message
   Network types Socket
-  Bytes derives hex
+  Parse creates hexadecimal
   Bytes types ByteArray
   Log detached info
 
@@ -144,7 +142,7 @@ from
     Accept(listener) =>
         client as Socket = accept(listener)!
         data as ByteArray = message(client, 1024)!
-        info(f"received: {hex(data)}")&
+        info(f"received: {hexadecimal(data)}")&
         message(client, data)!
         info("echoed response")&
         socket(client)

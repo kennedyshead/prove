@@ -92,5 +92,5 @@ The `StringBuilder` type allows efficient incremental string construction.
 creates word_count(text String) Integer
 from
     parts as List<String> = Text.split(Text.trim(text), " ")
-    Text.length(parts)
+    len(parts)
 ```

@@ -153,7 +153,7 @@ Prove has several literal syntaxes for different types:
 
 ```prove
 count as Integer = 42           // Integer literal
-precision as Decimal = 3.14    // Decimal literal (arbitrary precision)
+precision as Decimal = 3.14    // Decimal literal (exact decimal; hardware float internally)
 speed as Float = 9.8f          // Float literal (IEEE 754, requires 'f' suffix)
 flag as Boolean = true
 greeting as String = "Hello"
@@ -248,7 +248,7 @@ From highest to lowest:
 
 ## Type Inference with Formatter Enforcement
 
-The compiler infers types when unambiguous, but **`prove format` always inserts explicit type annotations**. This means you can write clean code during development, and the formatter makes it explicit before commit.
+The compiler infers types when unambiguous, but **`proof format` always inserts explicit type annotations**. This means you can write clean code during development, and the formatter makes it explicit before commit.
 
 ```prove
 // What you write:
@@ -256,7 +256,7 @@ port as = 8080
 server as = new_server()
 users as = query(db, "SELECT * FROM users")!
 
-// What `prove format` produces:
+// What `proof format` produces:
 port as Integer = 8080
 server as Server = new_server()
 users as List<User> = query(db, "SELECT * FROM users")!

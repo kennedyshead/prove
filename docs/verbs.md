@@ -61,7 +61,7 @@ transforms config(data String) Config!
 from
     Config(toml(data))
 
-derives normalize(data List<Decimal>) List<Decimal>
+creates normalize(data List<Decimal>) List<Decimal>
   ensures len(result) == len(data)
 from
     max_val as Decimal = max(data)

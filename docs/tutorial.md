@@ -21,7 +21,11 @@ This tutorial walks you through Prove's core concepts step by step. By the end, 
 Install Prove:
 
 ```bash
-pip install -e ".[dev]"
+# Binary (recommended)
+curl -sSf https://code.botwork.se/Botwork/prove/raw/branch/main/scripts/install.sh | sh
+
+# Or from source
+pip install -e prove-py/[dev]
 ```
 
 ---
@@ -90,6 +94,7 @@ from
 | `validates` | Return true/false (implicitly Boolean) |
 | `derives` | Extract or query without modification |
 | `creates` | Construct a new value |
+| `matches` | Pattern match dispatch on algebraic type |
 
 ### IO Verbs (Side Effects)
 
@@ -107,6 +112,8 @@ from
 |------|---------|
 | `inputs` | Read from external world |
 | `outputs` | Write to external world |
+| `dispatches` | IO match dispatch on a matchable type |
+| `streams` | Blocking IO loop with implicit match |
 
 The compiler **enforces** these distinctions. A `transforms` function cannot call `inputs` or `outputs` — the verb itself guarantees purity.
 
@@ -144,9 +151,8 @@ Prove has no `if/else`. All branching uses `match`:
 ```prove
 matches area(shape Shape) Decimal
 from
-    match shape
-        Circle(r) => pi * r * r
-        Rect(w, h) => w * h
+    Circle(r) => pi * r * r
+    Rect(w, h) => w * h
 ```
 
 The compiler **enforces exhaustiveness** — if you add a new variant to `Shape`, it will error until you handle it everywhere.
@@ -192,7 +198,7 @@ from
     parse(content)
 ```
 
-The `!` marks fallibility — it propagates errors up the call chain. IO verbs (`inputs`, `outputs`) and `transforms` (the only failable pure verb) can use `!`.
+The `!` marks fallibility — it propagates errors up the call chain. IO verbs (`inputs`, `outputs`, `dispatches`, `streams`) and `transforms` (the only failable pure verb) can use `!`.
 
 For pure functions that need to represent failure, use `Result`:
 

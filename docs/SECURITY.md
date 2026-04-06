@@ -4,10 +4,10 @@
 
 If you discover a security issue, please report it responsibly.
 
-**Do NOT** create a public GitHub issue for security vulnerabilities. Instead:
+**Do NOT** create a public issue for security vulnerabilities. Instead:
 
-1. **Email**: Contact magnus@botwork.se directly
-2. **GitHub Security Advisories**: Use [Private vulnerability reporting](https://github.com/kennedyshead/prove/security/advisories/new)
+1. **Email**: Contact magnusknutas@botwork.se directly
+2. **Gitea**: Report via [code.botwork.se/Botwork/prove](https://code.botwork.se/Botwork/prove)
 
 We aim to respond within 48 hours and provide a timeline for the fix.
 

@@ -82,7 +82,7 @@ Here `data` is `Result<String, Error>`. The `requires valid toml(data)` clause:
 
 - Calls `Parse.validates toml` to check `data` is valid
 - Narrows `data` from `Result<String, Error>` to `String` inside the body
-- Since `toml(data)` now receives `String`, the compiler resolves to `creates toml(source String) Result<Table<Value>, String>` — not `reads toml(value Value) String`
+- Since `toml(data)` now receives `String`, the compiler resolves to `creates toml(source String) Result<Table<Value>, String>` — not `derives toml(value Value) String`
 - The return type `Result<Table<Value>, String>` is also narrowed to `Table<Value>` because the argument was validated
 - The `Table<Value>` is then mapped to the `Config` record fields automatically
 
@@ -371,7 +371,7 @@ from
     reduce(items, 0, |acc, item| acc + item.price)
 ```
 
-The compiler stops warning. [`prove check`](cli.md) reports trusted functions in its verification coverage summary.
+The compiler stops warning. [`proof check`](cli.md) reports trusted functions in its verification coverage summary.
 
 ---
 
@@ -519,10 +519,10 @@ from
     reduce(items, 0, |acc, item| acc + item.price)
 ```
 
-[`prove check`](cli.md) reports verification coverage:
+[`proof check`](cli.md) reports verification coverage:
 
 ```
-$ prove check
+$ proof check
 
 Verification:
   ✓ 42 functions with ensures (property tests)
@@ -570,7 +570,7 @@ creates set_port(p Port) Config    // Port = 1..65535
 
 ### Level 3: near_miss
 
-A `near_miss` declares an input that *should fail* a contract. The compiler verifies that the function's `requires` or `validates` clauses actually reject it. This catches contracts that are too permissive.
+A `near_miss` declares an input that exercises a boundary condition — the compiler verifies each near-miss produces the expected result, confirming the function handles edge cases correctly. This catches contracts that are too permissive and implementations that miss boundaries.
 
 ```prove
 transforms leap_year(y Integer) Boolean
@@ -584,9 +584,9 @@ from
 ### Level 4: Mutation Testing
 
 ```
-$ prove build    # mutation testing runs by default
+$ proof build    # mutation testing runs by default
 # or
-$ prove build --no-mutate    # skip mutation testing
+$ proof build --no-mutate    # skip mutation testing
 
 Mutation score: 97.2% (347/357 mutants killed)
 Surviving mutants:

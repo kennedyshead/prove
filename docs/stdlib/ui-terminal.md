@@ -13,7 +13,7 @@ The `UI` module provides base types shared by all UI backends (Terminal and Grap
 Two backends extend `AppEvent`:
 
 - **Terminal** — TUI via ANSI escape codes. Zero external dependencies.
-- **Graphic** — GUI via SDL2 + Nuklear. **Requires SDL2** (`brew install sdl2` on macOS, `apt install libsdl2-dev` on Linux). Resolved automatically via `pkg-config`.
+- **Graphic** — GUI via SDL2 + Nuklear. **Requires [SDL2](#graphic)**. Resolved automatically via `pkg-config`.
 
 ### Types
 
@@ -134,7 +134,7 @@ type MyAppEvent is TerminalAppEvent
 
 | Verb | Name | Signature | Description |
 |------|------|-----------|-------------|
-| `validates` | `terminal` | `() Boolean` | Check if stdout is an interactive terminal |
+| `validates` | `terminal` | `()` | Check if stdout is an interactive terminal |
 | `outputs` | `raw` | `()` | Enable raw mode (disable echo, line buffering) |
 | `outputs` | `cooked` | `()` | Restore normal terminal mode |
 | `outputs` | `terminal` | `(text String)` | Write text at current cursor position |
@@ -229,7 +229,7 @@ from
 ```
 
 ```bash
-prove build examples/terminal_todo/
+proof build examples/terminal_todo/
 ./examples/terminal_todo/dist/terminal_todo
 ```
 
@@ -282,7 +282,7 @@ A minimal GUI application with a button that increments a counter.
 ```prove
 module Counter
   Graphic types GraphicAppEvent outputs window button label
-  Types derives string
+  Types creates string
 
   type CounterState is
     count Integer
@@ -310,6 +310,6 @@ from
 ```
 
 ```bash
-prove build examples/gui_counter/
+proof build examples/gui_counter/
 ./examples/gui_counter/dist/gui_counter
 ```

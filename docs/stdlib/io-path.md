@@ -10,7 +10,7 @@ keywords: Prove System, Prove Path, file IO, console IO, path manipulation
 
 **Module:** `System` — handles IO operations across console, file, system, dir, and process channels.
 
-All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../functions.md) for how IO and fallibility work together.
+All System functions use IO verbs (`inputs`, `outputs`, `validates`) — see [Functions & Verbs](../verbs.md) for how IO and fallibility work together.
 
 ### Console Channel
 
@@ -51,8 +51,8 @@ Read, write, and check files. File operations are failable — use [`!`](../type
 
 | Verb | Signature | Description |
 |------|-----------|-------------|
-| `inputs` | `file(path String) Result<String, Error>!` | Read file contents |
-| `outputs` | `file(path String, content String) Result<Unit, Error>!` | Write file contents |
+| `inputs` | `file(path String) String!` | Read file contents |
+| `outputs` | `file(path String, content String)!` | Write file contents |
 | `validates` | `file(path String)` | Check if file exists |
 
 ```prove
@@ -80,7 +80,7 @@ List and create directories. Type: `DirEntry` (binary).
 | Verb | Signature | Description |
 |------|-----------|-------------|
 | `inputs` | `dir(path String) List<DirEntry>` | List directory contents |
-| `outputs` | `dir(path String) Result<Unit, Error>!` | Create a directory |
+| `outputs` | `dir(path String)!` | Create a directory |
 | `validates` | `dir(path String)` | Check if directory exists |
 
 ### Process Channel

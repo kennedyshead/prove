@@ -91,7 +91,7 @@ No external crypto dependency — all algorithms are implemented in the runtime.
 
 ```prove
   Hash creates sha256 hmac validates hmac
-  Bytes creates byte types ByteArray
+  Bytes creates bytearray types ByteArray
 
 creates checksum(content String) String
 from

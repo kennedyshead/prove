@@ -300,7 +300,7 @@ match Parse.json(raw)
     Err(msg) => report(msg)
 ```
 
-The [Types](stdlib/math-types.md#result-and-option-utilities) stdlib module provides utilities like `unwrap` for common patterns.
+The [Types](stdlib/math-types.md#types) stdlib module provides utilities like `unwrap` for common patterns.
 
 **Auto-wrapping:** Bare `T` values auto-wrap to `Some(T)` when assigned to `Option<T>`, and `Unit` auto-converts to `None`. This means you can return a plain value from a function that returns `Option<T>` without explicitly writing `Some(...)`.
 
@@ -394,7 +394,7 @@ Branch on *what something is*, not on *whether something is true*. Types and con
 
 ## Error Propagation
 
-`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. IO verbs (`inputs`, `outputs`), `transforms` (the only failable pure verb), and `main` can use `!`. Other pure verbs cannot be failable ([E361](diagnostics.md#e361-pure-function-cannot-be-failable)). There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
+`!` marks fallibility — on declarations it means "this function can fail", at call sites it propagates the error upward. IO verbs (`inputs`, `outputs`, `dispatches`, `streams`), `transforms` (the only failable pure verb), and `main` can use `!`. Other pure verbs cannot be failable ([E361](diagnostics.md#e361-pure-function-cannot-be-failable)). There is one `Error` type — errors are program-ending, not flow control. `!` errors propagate up the call chain until they reach `main`, which exits with an error message. There is no try/catch.
 
 Pure functions that need to represent expected failure cases use `Result<Value, Error>` and handle them with `match` — these are values, not errors.
 
@@ -415,7 +415,7 @@ Effects are encoded in the verb, not in type annotations. The compiler tracks th
 | Family | Verbs | Effect |
 |--------|-------|--------|
 | **Pure** | `transforms`, `validates`, `derives`, `creates`, `matches` | No IO, no concurrency. Automatically memoizable and parallelizable |
-| **IO** | `inputs`, `outputs`, `streams` | Reads from or writes to the external world. `!` marks additional fallibility. `streams` is a blocking IO loop with implicit match |
+| **IO** | `inputs`, `outputs`, `dispatches`, `streams` | Reads from or writes to the external world. `!` marks additional fallibility. `dispatches` is IO match dispatch. `streams` is a blocking IO loop with implicit match |
 | **Async** | `detached`, `attached`, `listens`, `renders` | Concurrent execution via cooperative coroutines (`prove_coro`). `detached` and `attached` may call IO freely (own coroutine stacks); `listens` may not (cooperative yield cycle). `renders` is a UI render loop with mutable state |
 
 ```prove
@@ -537,6 +537,7 @@ Every keyword in Prove has exactly one purpose. No keyword is overloaded across 
 | `attached` | Declares an awaited async function. See [Functions & Verbs](functions.md#async-verbs) |
 | `listens` | Declares an event dispatcher. See [Functions & Verbs](functions.md#async-verbs) |
 | `matches` | Declares a pure match dispatch on algebraic type. See [Functions & Verbs](functions.md#intent-verbs) |
+| `dispatches` | Declares an IO match dispatch on a matchable type. See [Functions & Verbs](verbs.md#io-verbs) |
 | `renders` | Declares a UI render loop with mutable state. See [Async & Streams](async.md) |
 
 ### Declarations & Types

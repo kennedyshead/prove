@@ -12,7 +12,7 @@ keywords: Prove Time, Prove Random, time operations, random generation, calendar
 
 Defines six binary types: `Time` (epoch timestamp), `Duration` (time span), `Date` (calendar date), `Clock` (time of day), `DateTime` (date + time), and `Weekday` (day of week, 0=Monday through 6=Sunday).
 
-Only `inputs time()` is an IO verb (reads the system clock). All other functions are pure. See [Functions & Verbs](../functions.md) for the IO/pure distinction.
+Only `inputs time()` is an IO verb (reads the system clock). All other functions are pure. See [Functions & Verbs](../verbs.md) for the IO/pure distinction.
 
 ### Time
 
@@ -88,8 +88,8 @@ All functions use the `inputs` verb because randomness requires external entropy
 |------|-----------|-------------|
 | `inputs` | `integer() Integer` | Random integer |
 | `inputs` | `integer(minimum Integer, maximum Integer) Integer` | Random integer within range (inclusive) |
-| `inputs` | `decimal() Float` | Random decimal between 0.0 and 1.0 |
-| `inputs` | `decimal(minimum Float, maximum Float) Float` | Random decimal within range |
+| `inputs` | `decimal() Float` | Random floating-point number between 0.0 and 1.0 |
+| `inputs` | `decimal(minimum Float, maximum Float) Float` | Random floating-point number within range |
 | `inputs` | `boolean() Boolean` | Random boolean |
 
 ### Selection
