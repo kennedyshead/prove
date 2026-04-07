@@ -1,4 +1,4 @@
-Usage: python -m prove new [OPTIONS] NAME
+Usage: proof new [OPTIONS] NAME
 
   Create a new Prove project.
 

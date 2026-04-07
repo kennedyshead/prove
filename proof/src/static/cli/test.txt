@@ -1,4 +1,4 @@
-Usage: python -m prove test [OPTIONS] [PATH]
+Usage: proof test [OPTIONS] [PATH]
 
   Run tests for a Prove project.
 

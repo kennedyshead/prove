@@ -1,4 +1,4 @@
-Usage: python -m prove check [OPTIONS] [PATH]
+Usage: proof check [OPTIONS] [PATH]
 
   Type-check, lint, and verify a Prove project or a single .prv file.
 
