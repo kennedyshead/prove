@@ -605,13 +605,22 @@ class ExprEmitterMixin:
                 args_str = ", ".join(["_coro"] + args)
                 from prove.c_types import mangle_name
 
-                if sig.param_types:
-                    mangled = mangle_name(
-                        sig.verb, fname, sig.param_types, module=self._sig_module(sig)
-                    )
-                else:
-                    mangled = fname
-                return f"{mangled}({args_str})"
+                mangled = mangle_name(
+                    sig.verb, fname, sig.param_types, module=self._sig_module(sig)
+                )
+                call_expr = f"{mangled}({args_str})"
+                # Inside a listens loop, if the attached call returns the
+                # event type, feed the result back as the next event.
+                if (
+                    self._in_listens_loop
+                    and self._listens_event_type is not None
+                    and sig.return_type is not None
+                    and sig.return_type == self._listens_event_type
+                ):
+                    self._line(f"_ev = {call_expr};")
+                    self._line("_has_next_ev = 1;")
+                    return "(void)0"
+                return call_expr
             if sig and sig.verb in ("listens", "renders"):
                 # For renders with translator listeners, skip worker coro
                 # creation — renders discovers listeners from module declarations

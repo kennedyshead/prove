@@ -76,9 +76,7 @@ dispatches lsp(help Boolean, arguments List<String>)!
 from
     true => console(HELP_LSP_TEXT)
     _ =>
-        info("Starts lsp server")&
         prvlsp()
-        info("Lsp ended")&
 
 /// Run the new command
 dispatches new(help Boolean, arguments List<String>)!

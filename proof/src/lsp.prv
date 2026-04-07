@@ -54,7 +54,7 @@ listens loop(messages List<Attached>)
 from
     OnMessage(raw) => handle(raw)&
     OnSend(raw) => send(raw)&
-    Loop => Unit
+    Loop => receive()&
     Exit => lsp_log("Connection closed")&
 
 /// Read one LSP JSON-RPC message (Content-Length framing)
@@ -79,10 +79,11 @@ from
     string(body)
 
 /// Write one LSP JSON-RPC message with Content-Length framing
-detached send(body String)
+attached send(body String) Event
 from
     len as Integer = length(body)
     console(f"Content-Length: {len}\r\n\r\n{body}", "stdout", false)
+    Loop()
 
 /// Log to stderr
 detached lsp_log(message String)
@@ -131,22 +132,19 @@ dispatches message(method String, root Table<Value>) Event
 from
     "initialize" =>
         lsp_log(f"initialize id={msg_id(root)}")&
-        OnSend(replace(INIT_RESULT, "ID_PLACEHOLDER", msg_id(root)))&
+        OnSend(replace(INIT_RESULT, "ID_PLACEHOLDER", msg_id(root)))
     "initialized" =>
         lsp_log("Client initialized")&
         Loop()
     "textDocument/didOpen" =>
         lsp_on_document(root)
-        Loop()
     "textDocument/didChange" =>
         lsp_on_document(root)
-        Loop()
     "textDocument/didSave" =>
         lsp_on_document(root)
-        Loop()
     "shutdown" =>
         lsp_log("Shutting down")&
-        OnSend(replace(RESPONSE_NULL, "ID_PLACEHOLDER", msg_id(root)))&
+        OnSend(replace(RESPONSE_NULL, "ID_PLACEHOLDER", msg_id(root)))
     "exit" =>
         lsp_log("Exiting")&
         Exit()

@@ -125,6 +125,7 @@ class CEmitter(
         self._in_return_position = False
         self._in_streams_loop = False
         self._in_listens_loop = False
+        self._listens_event_type: Type | None = None
         self._in_renders_loop = False
         self._foreign_names: set[str] = set()
         self._foreign_fns: list[ForeignFunction] = []
@@ -1268,8 +1269,10 @@ class CEmitter(
                 params.append(f"{decl_str} {safe_c_name(p.name)}")
             param_str = ", ".join(params) if params else "void"
             has_ptrs = any(map_type(pt).is_pointer for pt in sig.param_types)
-            has_async = self._body_has_async_calls(decl.body)
-            attr = self._function_attributes(decl.verb, has_ptrs, has_side_effects=has_async)
+            has_effects = self._body_has_async_calls(decl.body) or self._body_has_list_mutation(
+                decl.body
+            )
+            attr = self._function_attributes(decl.verb, has_ptrs, has_side_effects=has_effects)
             self._line(f"{attr}{ret_decl} {mangled}({param_str});")
             any_emitted = True
         if any_emitted:
@@ -1299,6 +1302,44 @@ class CEmitter(
                 for arm in match_expr.arms:
                     if cls._body_has_async_calls(arm.body):
                         return True
+        return False
+
+    @classmethod
+    def _body_has_list_mutation(cls, body: list) -> bool:
+        """Return True if the body calls ``set`` on a list (mutates through pointer).
+
+        Derives/validates/matches verbs with list mutation must not be
+        ``__attribute__((pure))`` — the compiler would eliminate the call
+        when its return value is unused, discarding the side effects.
+        """
+        from prove.ast_nodes import (
+            CallExpr,
+            ExprStmt,
+            IdentifierExpr,
+            LambdaExpr,
+            MatchExpr,
+            VarDecl,
+        )
+
+        for stmt in body:
+            exprs: list = []
+            if isinstance(stmt, ExprStmt):
+                exprs.append(stmt.expr)
+            elif isinstance(stmt, VarDecl) and stmt.value:
+                exprs.append(stmt.value)
+            elif isinstance(stmt, MatchExpr):
+                for arm in stmt.arms:
+                    if cls._body_has_list_mutation(arm.body):
+                        return True
+            for expr in exprs:
+                if isinstance(expr, CallExpr) and isinstance(expr.func, IdentifierExpr):
+                    if expr.func.name == "set":
+                        return True
+                    # Check lambdas inside each/filter/map calls
+                    for arg in expr.args:
+                        if isinstance(arg, LambdaExpr) and arg.body:
+                            if cls._body_has_list_mutation([ExprStmt(arg.body, arg.span)]):
+                                return True
         return False
 
     @staticmethod
@@ -1484,8 +1525,8 @@ class CEmitter(
         param_str = ", ".join(params) if params else "void"
 
         has_ptrs = any(map_type(pt).is_pointer for pt in param_types)
-        has_async = self._body_has_async_calls(fd.body)
-        attr = self._function_attributes(fd.verb, has_ptrs, has_side_effects=has_async)
+        has_effects = self._body_has_async_calls(fd.body) or self._body_has_list_mutation(fd.body)
+        attr = self._function_attributes(fd.verb, has_ptrs, has_side_effects=has_effects)
         self._line(f"{attr}{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
 
@@ -1901,39 +1942,131 @@ class CEmitter(
         self._line("")
 
     def _emit_listens_body(self, fd: FunctionDef, param_types: list) -> None:
-        """Emit the listens dispatcher: iterate pre-started workers, match on results."""
+        """Emit the listens event loop.
+
+        Structure:
+        1. Start initial workers from the list, get first event into ``_ev``.
+        2. Enter ``while(1)`` dispatch loop that matches on ``_ev``.
+        3. Arms that call attached functions returning the event type
+           feed back via ``_ev = call(...); _has_next_ev = 1;``.
+        4. When no arm produces a new event, call the worker wrapper
+           functions directly to wait for the next event.
+        5. ``Exit`` arm does ``goto _listens_exit`` to break out entirely.
+        """
         sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
         event_type = sig.event_type if sig else None
 
         if fd.params:
             workers_param = fd.params[0].name
-            # Iterate workers (pre-started coroutines in the list)
+
+            if event_type:
+                ct = map_type(event_type)
+                self._line(f"{ct.decl} _ev;")
+                self._locals["_ev"] = event_type
+
+            # Get initial event from pre-started workers
             self._line(f"for (int _i = 0; _i < {workers_param}->length; _i++) {{")
             self._indent += 1
             self._line(f"Prove_Coro *_child = (Prove_Coro*)prove_list_get({workers_param}, _i);")
-            # Resume worker until done
             self._line("while (!prove_coro_done(_child)) {")
             self._indent += 1
             self._line("prove_coro_resume(_child);")
             self._line("prove_coro_yield(_coro);")
             self._indent -= 1
             self._line("}")
-            # Extract result as the event type
             if event_type:
-                ct = map_type(event_type)
-                self._line(f"{ct.decl} _ev = *({ct.decl}*)_child->result;")
+                self._line(f"_ev = *({ct.decl}*)_child->result;")
                 self._line(f"free(({ct.decl}*)_child->result);")
-                self._locals["_ev"] = event_type
             self._line("prove_coro_free(_child);")
-            # Match dispatch on _ev
+            self._indent -= 1
+            self._line("}")  # end for
+
+            # Event dispatch loop — runs until Exit
+            self._line("while (1) {")
+            self._indent += 1
+            if event_type:
+                self._line("int _has_next_ev = 0;")
             self._in_listens_loop = True
+            self._listens_event_type = event_type
             for stmt in fd.body:
                 self._emit_stmt(stmt)
+            self._listens_event_type = None
             self._in_listens_loop = False
+            if event_type:
+                # No arm produced a new event — re-invoke workers to wait
+                self._line("if (!_has_next_ev) {")
+                self._indent += 1
+                self._emit_listens_worker_reinvoke(fd)
+                self._indent -= 1
+                self._line("}")
             self._indent -= 1
-            self._line("}")
+            self._line("}")  # end while
 
         self._line("_listens_exit:;")
+
+    def _emit_listens_worker_reinvoke(self, fd: FunctionDef) -> None:
+        """Re-invoke worker functions to get the next event.
+
+        When no match arm produced a new event, we call the original worker
+        wrapper functions to block until the next event arrives.  This scans
+        the module AST to find the call site that passes the workers list.
+        """
+        from prove.ast_nodes import (
+            AsyncCallExpr,
+            CallExpr,
+            IdentifierExpr,
+            ListLiteral,
+        )
+        from prove.c_types import mangle_name
+
+        sig = self._symbols.resolve_function(fd.verb, fd.name, len(fd.params))
+        event_type = sig.event_type if sig else None
+
+        # Find worker names from the call site
+        worker_names: list[str] = []
+        for other_fd in self._all_function_defs():
+            if other_fd is fd:
+                continue
+            for expr in self._walk_exprs(other_fd.body):
+                if (
+                    isinstance(expr, AsyncCallExpr)
+                    and isinstance(expr.expr, CallExpr)
+                    and isinstance(expr.expr.func, IdentifierExpr)
+                    and expr.expr.func.name == fd.name
+                    and expr.expr.args
+                    and isinstance(expr.expr.args[0], ListLiteral)
+                ):
+                    for elem in expr.expr.args[0].elements:
+                        if isinstance(elem, IdentifierExpr):
+                            worker_names.append(elem.name)
+                        elif isinstance(elem, CallExpr) and isinstance(elem.func, IdentifierExpr):
+                            worker_names.append(elem.func.name)
+
+        for wname in worker_names:
+            wsig = self._symbols.resolve_function_any(wname)
+            if wsig and wsig.verb == "attached":
+                w_mangled = mangle_name(
+                    wsig.verb, wname, wsig.param_types, module=self._sig_module(wsig)
+                )
+                if event_type:
+                    self._line(f"_ev = {w_mangled}(_coro);")
+                else:
+                    self._line(f"{w_mangled}(_coro);")
+
+    def _walk_exprs(self, stmts: list) -> list:
+        """Recursively collect all expressions from statements."""
+        from prove.ast_nodes import ExprStmt, MatchExpr, VarDecl
+
+        results = []
+        for s in stmts:
+            if isinstance(s, ExprStmt):
+                results.append(s.expr)
+            elif isinstance(s, VarDecl) and s.value:
+                results.append(s.value)
+            elif isinstance(s, MatchExpr):
+                for arm in s.arms:
+                    results.extend(self._walk_exprs(arm.body))
+        return results
 
     def _emit_listens_translator(self, fd: FunctionDef) -> None:
         """Emit a listens verb as an inline event translator function.
