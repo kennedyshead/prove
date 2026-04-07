@@ -12,7 +12,7 @@ module Commands
   Build outputs source_build
   Test outputs pytest
   FormatCmd outputs pyformat
-  Lsp outputs pylsp
+  Lsp outputs prvlsp
   New outputs new_project
   Sequence derives get validates contains
   Source types Content inputs source
@@ -76,7 +76,8 @@ dispatches lsp(help Boolean, arguments List<String>)!
 from
     true => console(HELP_LSP_TEXT)
     _ =>
-        pylsp()
+        info("Starts lsp server")&
+        prvlsp()
         info("Lsp ended")&
 
 /// Run the new command

@@ -305,6 +305,8 @@ _RUNTIME_FUNCTIONS = {
         "prove_file_open_append",
         "prove_file_writeln_handle",
         "prove_io_process_cwd",
+        "prove_print_channel",
+        "prove_readln_channel",
     ],
     "prove_parse": [
         "prove_value_null",

@@ -4,6 +4,7 @@ module Source
   matches and creates mangled verb and type signatures through verb token and parameter types
   derives module name from content
   creates stdlibs list
+  outputs stdlibs to json mapping
   """
   Config types Config
   System validates file inputs dir file outputs console
@@ -12,7 +13,8 @@ module Source
   Text derives replace creates join split length validates ends contains
   Types validates unit string
   Sequence derives set first last extend creates length list validates contains
-  Table derives get creates table keys
+  Table derives get add creates table keys new
+  Log detached info
 
   type ModuleDefinition is
     name String
@@ -174,3 +176,27 @@ from
         ModuleDefinition(
         module_name,
         set(mangled_verbs, length(mangled_verbs), mangled(node))))
+
+creates add_module(data Table<List<String>>, file SourceFile) Table<List<String>>
+from
+    match module_name(file.content)
+        Some(value) => add(value, file.definition.verbs, data)
+        None => data
+
+outputs stdlibs(data String)!
+  requires valid dir("src/static/")
+from
+    file("src/static/stdlib_definitions.json", data)!
+
+inputs parse_stdlibs()!
+from
+    info("Generating stdlib mapping")&
+    source as List<Option<SourceFile>> =
+        map(dir("src/stdlib"), |value| source_file(value.path))
+    source_pure as List<Option<SourceFile>> =
+        map(dir("src/stdlib/pure"), |value| source_file(value.path))
+    json_data as Table<List<String>> = new()
+    each(
+        filter(extend(source, source_pure), |file| unit(file) == false),
+        |source_file| add_module(json_data, source_file))
+    stdlibs(string(json_data))!

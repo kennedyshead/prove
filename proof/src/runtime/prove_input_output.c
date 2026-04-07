@@ -76,6 +76,37 @@ Prove_ByteArray *prove_readexactly(int64_t n) {
     return ba;
 }
 
+/* ── Channel-aware console ───────────────────────────────────── */
+
+static FILE *_resolve_channel(Prove_String *channel) {
+    if (channel && channel->data) {
+        if (strcmp(channel->data, "stderr") == 0) return stderr;
+        if (strcmp(channel->data, "stdin") == 0)  return stdin;
+    }
+    return stdout;
+}
+
+void prove_print_channel(Prove_String *message, Prove_String *channel, bool line) {
+    FILE *fp = _resolve_channel(channel);
+    if (message) {
+        fwrite(message->data, 1, (size_t)message->length, fp);
+    }
+    if (line) fputc('\n', fp);
+    fflush(fp);
+}
+
+Prove_String *prove_readln_channel(Prove_String *channel) {
+    FILE *fp = _resolve_channel(channel);
+    char buf[65536];
+    if (!fgets(buf, sizeof(buf), fp)) {
+        return prove_string_from_cstr("");
+    }
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') buf[--len] = '\0';
+    if (len > 0 && buf[len - 1] == '\r') buf[--len] = '\0';
+    return prove_string_new(buf, (int64_t)len);
+}
+
 /* ── File validates ──────────────────────────────────────────── */
 
 bool prove_io_file_validates(Prove_String *path) {

@@ -1,0 +1,1 @@
+{"range":{"start":{"line":LINE_START,"character":CHAR_START},"end":{"line":LINE_START,"character":CHAR_END}},"severity":1,"code":"E100","source":"prove","message":"MSG_PLACEHOLDER"}

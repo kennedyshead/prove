@@ -1308,7 +1308,19 @@ class StmtEmitterMixin:
 
         # Save locals so match arm bindings don't leak to function scope
         saved_locals = dict(self._locals)
+        # Hint the expected type before emitting the subject so that
+        # overloaded 0-arg functions (e.g. validates console() vs
+        # inputs console()) resolve correctly based on return type.
+        saved_expected = self._expected_emit_type
+        if any(
+            isinstance(a.pattern, LiteralPattern) and a.pattern.value in ("true", "false")
+            for a in m.arms
+        ):
+            from prove.types import PrimitiveType as _PT
+
+            self._expected_emit_type = _PT("Boolean")
         subj = self._emit_expr(m.subject)
+        self._expected_emit_type = saved_expected
         subj_type = self._resolve_prim_type(self._infer_expr_type(m.subject))
 
         if isinstance(subj_type, AlgebraicType):

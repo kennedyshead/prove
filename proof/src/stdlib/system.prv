@@ -27,8 +27,18 @@ module System
 outputs console(message String)
 binary
 
+/// Write to a named channel with line control
+/// channel: "stdout", "stderr"
+/// line: true to append newline, false for raw output
+outputs console(message String, channel String, line Boolean)
+binary
+
 /// Read a line from the console
 inputs console() String
+binary
+
+/// Read a line from a named channel (stdin, stdout, stderr)
+inputs console(channel String) String
 binary
 
 /// Read exactly count bytes from the console

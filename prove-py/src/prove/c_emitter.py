@@ -266,7 +266,11 @@ class CEmitter(
         return result
 
     def _all_function_defs(self) -> list[FunctionDef]:
-        """Collect all FunctionDef nodes from top-level and ModuleDecl body."""
+        """Collect all FunctionDef nodes from top-level and ModuleDecl body.
+
+        Async verbs (detached/attached/listens) are emitted first because they
+        define ``_args`` structs and ``_body`` functions that callers reference.
+        """
         result: list[FunctionDef] = []
         for decl in self._module.declarations:
             if isinstance(decl, FunctionDef):
@@ -275,7 +279,10 @@ class CEmitter(
                 for bd in decl.body:
                     if isinstance(bd, FunctionDef):
                         result.append(bd)
-        return result
+        async_verbs = {"detached", "attached", "listens"}
+        async_fds = [fd for fd in result if fd.verb in async_verbs]
+        other_fds = [fd for fd in result if fd.verb not in async_verbs]
+        return async_fds + other_fds
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -2346,7 +2353,7 @@ class CEmitter(
             return self._infer_pipe_type(expr)
 
         if isinstance(expr, AsyncCallExpr):
-            return UNIT
+            return self._infer_expr_type(expr.expr)
 
         if isinstance(expr, FailPropExpr):
             inner = self._infer_expr_type(expr.expr)

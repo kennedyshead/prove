@@ -146,6 +146,8 @@ _register_module(
     },
     overloads={
         ("inputs", "console", "Integer"): "prove_readexactly",
+        ("inputs", "console", "String"): "prove_readln_channel",
+        ("outputs", "console", "String_String_Boolean"): "prove_print_channel",
     },
 )
 

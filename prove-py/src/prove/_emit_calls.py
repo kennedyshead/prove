@@ -1005,12 +1005,19 @@ class CallEmitterMixin:
                     )
                     if any_sig is not None:
                         sig = any_sig
-            elif sig is None:
-                sig = self._symbols.resolve_function_any(
-                    name,
-                    arity=n_args,
-                    expected_return=getattr(self, "_expected_emit_type", None),
-                )
+            else:
+                # 0-arg calls: re-resolve with expected return type to
+                # disambiguate verb overloads (e.g. validates console()
+                # vs inputs console() — both have arity 0).
+                _expected_ret = getattr(self, "_expected_emit_type", None)
+                if _expected_ret is not None or sig is None:
+                    any_sig = self._symbols.resolve_function_any(
+                        name,
+                        arity=n_args,
+                        expected_return=_expected_ret,
+                    )
+                    if any_sig is not None:
+                        sig = any_sig
             args_coerced = False
             if sig and sig.module:
                 # Emit Verb lambda args before coercion

@@ -1,21 +1,240 @@
 module Lsp
   narrative: """
-  Handles the lsp.
+  Native LSP server for Prove.
 
-  outputs the command to python for a pylsp
+  Reads JSON-RPC messages from stdin via Content-Length framing,
+  dispatches by method name, runs native lint for diagnostics,
+  and writes JSON-RPC responses and notifications to stdout.
+
+  All logging goes to stderr to avoid corrupting the protocol stream.
+
+  outputs prvlsp
+  inputs lsp read from console
+  listens for stdin and loop until exit is called
+  attached to receive and handle
+  and send detached mesaages
+  dispatches on message
+  creates msg id 
+
+  == describe build diag collect errors diag body error diagnostic extract text field nested ==
   """
+  System types ByteArray inputs console outputs console
+  Parse creates json tree
+  Table derives get creates table
+  Text derives replace creates length split join validates starts
+  Types creates string integer
+  Sequence derives set first last creates length list
+  Prove types Node derives root creates children kind line column
 
-  foreign "libpython3"
-    py_initialize() Unit
-    py_finalize() Unit
-    py_run_string(code String) Integer
+  type Event is OnMessage(message String)
+    | OnSend(messge String)
+    | Loop
+    | Exit
 
-  PYTHON_LSP as String = comptime
-      read("python/lsp.py")
+  INIT_RESULT as String = comptime
+      read("static/lsp/init_result.json")
 
-outputs pylsp() Integer
+  DIAG_NOTIFICATION as String = comptime
+      read("static/lsp/diag_notification.json")
+
+  DIAG_ITEM as String = comptime
+      read("static/lsp/diag_item.json")
+
+  RESPONSE_NULL as String = comptime
+      read("static/lsp/response_null.json")
+
+outputs prvlsp()
 from
-    py_initialize()
-    result as Integer = py_run_string(PYTHON_LSP)
-    py_finalize()
-    result
+    lsp_log("Starting native LSP server")&
+    loop([receive])&
+
+/// Main message loop for lsp
+listens loop(messages List<Attached>)
+  event_type Event
+from
+    OnMessage(raw) => handle(raw)&
+    OnSend(raw) => send(raw)&
+    Loop => Unit
+    Exit => lsp_log("Connection closed")&
+
+/// Read one LSP JSON-RPC message (Content-Length framing)
+attached receive() OnMessage
+from
+    header as String = console("stdin")
+    match starts(header, "Content-Length:")
+        true => OnMessage(lsp_read_body(header))
+        false => Loop()
+
+/// Parse Content-Length and read the body bytes
+inputs lsp_read_body(header String) String
+from
+    size_str as String = match last(split(header, ": "))
+        Some(val) => val
+        None => "0"
+    content_length as Integer = match integer(size_str)
+        Ok(val) => val
+        Err => 0
+    console("stdin")
+    body as ByteArray = console(content_length)
+    string(body)
+
+/// Write one LSP JSON-RPC message with Content-Length framing
+detached send(body String)
+from
+    len as Integer = length(body)
+    console(f"Content-Length: {len}\r\n\r\n{body}", "stdout", false)
+
+/// Log to stderr
+detached lsp_log(message String)
+from
+    console(f"[prove-lsp] {message}", "stderr", true)
+
+/// Parse and dispatch a JSON-RPC message
+attached handle(raw String) Event
+from
+    match json(raw)
+        Ok(parsed) =>
+            root as Table<Value> = table(parsed)
+            method as String = match get("method", root)
+                Some(val) => string(val)
+                None => ""
+            message(method, root)
+        Err =>
+            lsp_log("JSON parse error")&
+            Loop()
+
+/// Get the id field from a JSON-RPC message as a string
+creates msg_id(root Table<Value>) String
+from
+    match get("id", root)
+        Some(val) =>
+            id_num as Integer = integer(val)
+            string(id_num)
+        None => "0"
+
+/// Get nested table from a key, or the source table on miss
+creates nested(key String, source Table<Value>) Table<Value>
+from
+    match get(key, source)
+        Some(val) => table(val)
+        None => source
+
+/// Get string value from a key, or empty string
+creates field(key String, source Table<Value>) String
+from
+    match get(key, source)
+        Some(val) => string(val)
+        None => ""
+
+/// Route by JSON-RPC method
+dispatches message(method String, root Table<Value>) Event
+from
+    "initialize" =>
+        lsp_log(f"initialize id={msg_id(root)}")&
+        OnSend(replace(INIT_RESULT, "ID_PLACEHOLDER", msg_id(root)))&
+    "initialized" =>
+        lsp_log("Client initialized")&
+        Loop()
+    "textDocument/didOpen" =>
+        lsp_on_document(root)
+        Loop()
+    "textDocument/didChange" =>
+        lsp_on_document(root)
+        Loop()
+    "textDocument/didSave" =>
+        lsp_on_document(root)
+        Loop()
+    "shutdown" =>
+        lsp_log("Shutting down")&
+        OnSend(replace(RESPONSE_NULL, "ID_PLACEHOLDER", msg_id(root)))&
+    "exit" =>
+        lsp_log("Exiting")&
+        Exit()
+    _ =>
+        lsp_log(f"Unhandled: {method}")&
+        Loop()
+
+/// Handle any document event by extracting URI and text, then checking
+outputs lsp_on_document(root Table<Value>) Event
+from
+    params as Table<Value> = nested("params", root)
+    text_doc as Table<Value> = nested("textDocument", params)
+    uri as String = field("uri", text_doc)
+    text as String = extract_text(params, text_doc)
+    match length(text) > 0
+        true =>
+            lsp_log(f"Checking: {uri}")&
+            lsp_check_and_publish(uri, text)
+        false =>
+            lsp_log(f"No text for: {uri}")&
+            Loop()
+
+/// Extract document text from didOpen or didChange or didSave
+creates extract_text(params Table<Value>, text_doc Table<Value>) String
+from
+    direct as String = field("text", text_doc)
+    match length(direct) > 0
+        true => direct
+        false => extract_from_changes(params)
+
+/// Try to get text from contentChanges array or params.text
+creates extract_from_changes(params Table<Value>) String
+from
+    match get("contentChanges", params)
+        Some(val) =>
+            match first(list(val))
+                Some(change) => field("text", table(change))
+                None => field("text", params)
+        None => field("text", params)
+
+/// Parse source, find errors, and publish diagnostics
+outputs lsp_check_and_publish(uri String, text String) Event
+from
+    match tree(text)
+        Ok(source) =>
+            diagnostics as List<String> = []
+            collect_errors(children(root(source)), diagnostics)
+            diag_body(uri, join(diagnostics, ","))
+        Err(error) =>
+            err_item as String = build_diag("0", "0", "1", "Parse error")
+            diag_body(uri, err_item)
+
+/// Send a diagnostics notification
+outputs diag_body(uri String, diags String) OnSend
+from
+    body as String =
+        replace(
+        replace(DIAG_NOTIFICATION, "URI_PLACEHOLDER", uri),
+        "DIAGS_PLACEHOLDER",
+        diags)
+    OnSend(body)
+
+/// Build a single LSP diagnostic JSON string
+creates build_diag(l String, c String, ec String, msg String) String
+from
+    replace(
+        replace(replace(replace(DIAG_ITEM, "LINE_START", l), "CHAR_START", c), "CHAR_END",
+            ec),
+        "MSG_PLACEHOLDER",
+        msg)
+
+/// Build a diagnostic from an ERROR node
+creates error_diagnostic(node Node) String
+from
+    build_diag(
+        string(line(node) - 1),
+        string(column(node)),
+        string(column(node) + length(string(node))),
+        "Syntax error")
+
+/// Walk tree nodes and collect ERROR diagnostics into the list
+derives collect_errors(nodes List<Node>, diagnostics List<String>) List<String>
+  terminates: length(nodes) == 0
+from
+    each(
+        filter(nodes, |node| kind(node) == "ERROR"),
+        |node| set(diagnostics, length(diagnostics), error_diagnostic(node)))
+    each(
+        filter(nodes, |node| kind(node) != "ERROR"),
+        |node| collect_errors(children(node), diagnostics))
+    diagnostics

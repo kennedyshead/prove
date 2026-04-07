@@ -37,6 +37,10 @@ Prove_Result prove_file_write(Prove_String *path, Prove_String *content);
 bool             prove_io_console_validates(void);
 Prove_ByteArray *prove_readexactly(int64_t n);
 
+/* Channel-aware console: channel is "stdout", "stderr", or "stdin". */
+void             prove_print_channel(Prove_String *message, Prove_String *channel, bool line);
+Prove_String    *prove_readln_channel(Prove_String *channel);
+
 /* ── File validates ──────────────────────────────────────────── */
 
 bool prove_io_file_validates(Prove_String *path);
