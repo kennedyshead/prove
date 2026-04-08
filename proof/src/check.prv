@@ -9,14 +9,13 @@ module Check
   matches the declaration and lint for each statement
   """
   System validates dir inputs cwd
-  Prove types Node derives root creates children kind parent
   Source types SourceFile Content
-  Types creates string validates boolean string
+  Types validates boolean
   Log detached info error
-  Sequence creates length validates contains
+  Sequence derives extend creates length validates contains
   Config types Config
-  Diagnostic matches ast_parse_error
-  Lint validates import narrative_check
+  Lint creates collect
+  Diagnostic types DiagnosticMessage detached diagnostic
 
   foreign "libpython3"
     py_initialize() Unit
@@ -28,47 +27,18 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
-/// match all known nodes for routing
-matches node(node_kind String, content Content, node Node, source_file SourceFile) Boolean
-  ensures valid boolean(result)
-  requires valid string(node_kind)
-from
-    "ERROR" =>
-        parent as String = match parent(node)
-            Some(parent) => kind(parent)
-            None => ""
-        ast_parse_error(parent, node, source_file)
-        false
-    "function_definition" =>
-        check(content, node, source_file)
-    "import_declaration" =>
-        match import(content, node, source_file)
-            true =>
-                check(content, node, source_file)
-            false => false
-    "module_declaration" =>
-        narrative_check(content, node, source_file) && check(content, node, source_file)
-    _ =>
-        check(content, node, source_file)
-
-/// Declaration (static) linting
-validates check(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires children(node) > 0
-  explain
-      iterates and lint all children of a module
-from
-    all(children(node), |child| node(kind(child), content, child, source_file))
-
 /// Lint content
 validates lint(content Content)
   ensures valid boolean(result)
   requires length(content.files) > 0
 from
-    all(
-        content.files,
-        |file| all(children(root(file.source)), |node| node(kind(node), content, node,
-            file)))
+    messages as List<DiagnosticMessage> = []
+    each(content.files, |file| extend(messages, collect(content, file.source)))
+    match length(messages) > 0
+        true =>
+            each(messages, |message| diagnostic(message)&)
+            false
+        false => true
 
 /// After a successful native lint, we continue with python check
 dispatches source_check(

@@ -845,6 +845,20 @@ class ExprEmitterMixin:
             ):
                 result_type = self._current_func_return
                 _option_wrap = True
+            else:
+                # Check if any arm returns Unit — if so, the match needs
+                # Option wrapping even if the dominant type doesn't match
+                # exactly (e.g. List<Option<T>> vs List<T>).
+                has_unit_arm = any(
+                    arm.body
+                    and isinstance(arm.body[-1], ExprStmt)
+                    and isinstance(arm.body[-1].expr, TypeIdentifierExpr)
+                    and arm.body[-1].expr.name == "Unit"
+                    for arm in m.arms
+                )
+                if has_unit_arm:
+                    result_type = self._current_func_return
+                    _option_wrap = True
 
         ct = map_type(result_type)
         is_unit = isinstance(result_type, UnitType)

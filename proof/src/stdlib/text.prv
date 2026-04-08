@@ -59,6 +59,18 @@ binary
 derives replace(text String, old String, new String) String
 binary
 
+/// Replace all occurrences using a 1:1 mapping (lists must be same length)
+derives replace(text String, old List<String>, new List<String>) String
+binary
+
+/// Replace all occurrences of any string in the list with the replacement
+derives replace(text String, old List<String>, new String) String
+binary
+
+/// Replace each successive occurrence with the corresponding list element
+derives replace(text String, old String, new List<String>) String
+binary
+
 /// Repeat a string count times
 derives repeat(text String, count Integer) String
 binary

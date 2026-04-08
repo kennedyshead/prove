@@ -80,6 +80,16 @@ Prove_List *prove_list_ops_remove(Prove_List *list, int64_t idx);
 
 Prove_List *prove_list_ops_extend(Prove_List *list, Prove_List *other);
 
+/* ── Replace (single value: returns new list with all occurrences replaced) ── */
+
+Prove_List *prove_list_ops_replace_int(Prove_List *list, int64_t old_val, int64_t new_val);
+Prove_List *prove_list_ops_replace_str(Prove_List *list, Prove_String *old_val, Prove_String *new_val);
+
+/* ── Replace (list-to-list 1:1 mapping: old[i] → new[i]) ──── */
+
+Prove_List *prove_list_ops_replace_map_int(Prove_List *list, Prove_List *old_vals, Prove_List *new_vals);
+Prove_List *prove_list_ops_replace_map_str(Prove_List *list, Prove_List *old_vals, Prove_List *new_vals);
+
 /* ── Get safe (bounds-checked, returns Option) ───────────────── */
 
 Prove_Option prove_list_ops_get_safe_int(Prove_List *list, int64_t idx);

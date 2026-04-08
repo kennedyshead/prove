@@ -418,3 +418,80 @@ Prove_List *prove_list_ops_extend(Prove_List *list, Prove_List *other) {
     result->length = new_len;
     return result;
 }
+
+/* ── Replace (int, single value) ────────────────────────────── */
+
+Prove_List *prove_list_ops_replace_int(Prove_List *list, int64_t old_val, int64_t new_val) {
+    Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
+    for (int64_t i = 0; i < list->length; i++) {
+        if ((int64_t)(intptr_t)list->data[i] == old_val) {
+            result->data[i] = (void *)(intptr_t)new_val;
+        } else {
+            result->data[i] = list->data[i];
+        }
+    }
+    result->length = list->length;
+    return result;
+}
+
+/* ── Replace (str, single value) ────────────────────────────── */
+
+Prove_List *prove_list_ops_replace_str(Prove_List *list, Prove_String *old_val, Prove_String *new_val) {
+    Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
+    for (int64_t i = 0; i < list->length; i++) {
+        if (prove_string_eq((Prove_String *)list->data[i], old_val)) {
+            prove_retain(&new_val->header);
+            result->data[i] = (void *)new_val;
+        } else {
+            prove_retain(&((Prove_String *)list->data[i])->header);
+            result->data[i] = list->data[i];
+        }
+    }
+    result->length = list->length;
+    return result;
+}
+
+/* ── Replace (int, list-to-list mapping) ────────────────────── */
+
+Prove_List *prove_list_ops_replace_map_int(Prove_List *list, Prove_List *old_vals, Prove_List *new_vals) {
+#ifndef PROVE_RELEASE
+    if (old_vals->length != new_vals->length) return list;
+#endif
+    Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
+    for (int64_t i = 0; i < list->length; i++) {
+        int64_t elem = (int64_t)(intptr_t)list->data[i];
+        void *replaced = list->data[i];
+        for (int64_t j = 0; j < old_vals->length; j++) {
+            if (elem == (int64_t)(intptr_t)old_vals->data[j]) {
+                replaced = new_vals->data[j];
+                break;
+            }
+        }
+        result->data[i] = replaced;
+    }
+    result->length = list->length;
+    return result;
+}
+
+/* ── Replace (str, list-to-list mapping) ────────────────────── */
+
+Prove_List *prove_list_ops_replace_map_str(Prove_List *list, Prove_List *old_vals, Prove_List *new_vals) {
+#ifndef PROVE_RELEASE
+    if (old_vals->length != new_vals->length) return list;
+#endif
+    Prove_List *result = prove_list_new(list->length > 0 ? list->length : 4);
+    for (int64_t i = 0; i < list->length; i++) {
+        Prove_String *elem = (Prove_String *)list->data[i];
+        void *replaced = list->data[i];
+        for (int64_t j = 0; j < old_vals->length; j++) {
+            if (prove_string_eq(elem, (Prove_String *)old_vals->data[j])) {
+                replaced = new_vals->data[j];
+                break;
+            }
+        }
+        prove_retain(&((Prove_String *)replaced)->header);
+        result->data[i] = replaced;
+    }
+    result->length = list->length;
+    return result;
+}

@@ -68,8 +68,14 @@ from
                 None => ""
         None => ""
 
+/// Source just stdlibs
+inputs source() Content
+from
+    libs as List<ModuleDefinition> = stdlibs()
+    Content([], [], libs)
+
 /// Source a prove project
-inputs source(config Config) Content
+inputs source(config Config) Content!
 from
     source as List<Option<SourceFile>> = map(dir("src/"), |value| source_file(value.path))
     files as List<SourceFile> = filter(source, |file| unit(file) == false)
@@ -146,6 +152,7 @@ from
             match contains(mangle, "_ret_")
                 true => mangle
                 false => f"{mangle}_ret_unit"
+        _ => "UNKNOWN"
     replace(replace(ret_mangle, "<", "_w_"), ">", "_e")
 
 creates stdlibs() List<ModuleDefinition>
@@ -177,12 +184,6 @@ from
         module_name,
         set(mangled_verbs, length(mangled_verbs), mangled(node))))
 
-creates add_module(data Table<List<String>>, file SourceFile) Table<List<String>>
-from
-    match module_name(file.content)
-        Some(value) => add(value, file.definition.verbs, data)
-        None => data
-
 outputs stdlibs(data String)!
   requires valid dir("src/static/")
 from
@@ -198,5 +199,6 @@ from
     json_data as Table<List<String>> = new()
     each(
         filter(extend(source, source_pure), |file| unit(file) == false),
-        |source_file| add_module(json_data, source_file))
+        |source_file| add(module_name(source_file.content), source_file.definition.verbs,
+            json_data))
     stdlibs(string(json_data))!

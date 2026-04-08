@@ -1167,6 +1167,10 @@ class CEmitter(
                             for pname, pt in zip(sig.param_names, sig.param_types):
                                 ct = map_type(pt)
                                 params.append(f"{ct.decl} {pname}")
+                                if ct.header:
+                                    self._needed_headers.add(ct.header)
+                            if ret_ct.header:
+                                self._needed_headers.add(ret_ct.header)
                             param_str = ", ".join(params) if params else "void"
                             self._line(f"{ret_decl} {mangled}({param_str});")
                             any_emitted = True
@@ -1269,8 +1273,10 @@ class CEmitter(
                 params.append(f"{decl_str} {safe_c_name(p.name)}")
             param_str = ", ".join(params) if params else "void"
             has_ptrs = any(map_type(pt).is_pointer for pt in sig.param_types)
-            has_effects = self._body_has_async_calls(decl.body) or self._body_has_list_mutation(
-                decl.body
+            has_effects = (
+                self._body_has_async_calls(decl.body)
+                or self._body_has_list_mutation(decl.body)
+                or self._body_calls_allocating_func(decl.body)
             )
             attr = self._function_attributes(decl.verb, has_ptrs, has_side_effects=has_effects)
             self._line(f"{attr}{ret_decl} {mangled}({param_str});")
@@ -1301,6 +1307,41 @@ class CEmitter(
             if isinstance(match_expr, MatchExpr):
                 for arm in match_expr.arms:
                     if cls._body_has_async_calls(arm.body):
+                        return True
+        return False
+
+    def _body_calls_allocating_func(self, body: list) -> bool:
+        """Return True if body calls a creates/inputs/outputs/transforms function.
+
+        These verbs allocate memory (region scopes, malloc) and violate C
+        pure/const semantics — the compiler must not optimize away their calls.
+        """
+        from prove.ast_nodes import ExprStmt, MatchExpr, VarDecl
+
+        _ALLOC_VERBS = frozenset(("creates", "inputs", "outputs", "transforms"))
+
+        def _check_expr(e: Expr) -> bool:
+            if isinstance(e, CallExpr) and isinstance(e.func, IdentifierExpr):
+                sig = self._symbols.resolve_function_any(e.func.name, arity=len(e.args))
+                if sig and sig.verb in _ALLOC_VERBS:
+                    return True
+            return False
+
+        for stmt in body:
+            if isinstance(stmt, ExprStmt) and _check_expr(stmt.expr):
+                return True
+            if isinstance(stmt, VarDecl) and stmt.value and _check_expr(stmt.value):
+                return True
+            match_expr = (
+                stmt.expr
+                if isinstance(stmt, ExprStmt)
+                else stmt
+                if isinstance(stmt, MatchExpr)
+                else None
+            )
+            if isinstance(match_expr, MatchExpr):
+                for arm in match_expr.arms:
+                    if self._body_calls_allocating_func(arm.body):
                         return True
         return False
 
@@ -1525,7 +1566,11 @@ class CEmitter(
         param_str = ", ".join(params) if params else "void"
 
         has_ptrs = any(map_type(pt).is_pointer for pt in param_types)
-        has_effects = self._body_has_async_calls(fd.body) or self._body_has_list_mutation(fd.body)
+        has_effects = (
+            self._body_has_async_calls(fd.body)
+            or self._body_has_list_mutation(fd.body)
+            or self._body_calls_allocating_func(fd.body)
+        )
         attr = self._function_attributes(fd.verb, has_ptrs, has_side_effects=has_effects)
         self._line(f"{attr}{ret_decl} {mangled}({param_str}) {{")
         self._indent += 1
@@ -2538,6 +2583,14 @@ class CEmitter(
             if name in ("map", "filter", "reduce", "all", "any") and n >= 2:
                 coll_ty = actual_types[0] if actual_types else None
                 if name == "filter" and isinstance(coll_ty, ListType):
+                    # Option-none filter unwraps: List<Option<T>> → List<T>
+                    if (
+                        isinstance(coll_ty.element, GenericInstance)
+                        and coll_ty.element.base_name == "Option"
+                        and coll_ty.element.args
+                        and self._is_option_none_filter(expr.args[1])
+                    ):
+                        return ListType(coll_ty.element.args[0])
                     return coll_ty
                 if name in ("all", "any"):
                     return BOOLEAN
@@ -2589,8 +2642,35 @@ class CEmitter(
                     )
                     if better is not None:
                         sig = better
+            # Verb-typed locals (dynamic dispatch): resolve by searching
+            # all functions whose first N params match the arg types.
+            if sig is None:
+                local_ty = self._locals.get(name)
+                if (
+                    local_ty is not None
+                    and isinstance(local_ty, PrimitiveType)
+                    and local_ty.name == "Verb"
+                ):
+                    from prove.types import types_compatible as _tc
+
+                    for (_v, _fn), sigs_list in self._symbols.all_functions().items():
+                        for s in sigs_list:
+                            if len(s.param_types) >= n and all(
+                                _tc(p, a) for p, a in zip(s.param_types[:n], narrowed_types)
+                            ):
+                                sig = s
+                                break
+                        if sig is not None:
+                            break
             if sig:
                 ret = sig.return_type
+                # Failable user-defined functions store the success type
+                # as return_type with can_fail=True. Wrap in Result so
+                # match arms on Ok/Err work correctly.
+                if sig.can_fail and not (
+                    isinstance(ret, GenericInstance) and ret.base_name == "Result"
+                ):
+                    ret = GenericInstance("Result", (ret, ERROR_TY))
                 # Resolve type variables using actual arg types.
                 # Strip Option<T> → T so e.g. list(Option<Value>) resolves
                 # return type as List<Value> not List<Option<Value>>.

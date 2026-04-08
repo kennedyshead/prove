@@ -212,6 +212,22 @@ binary
 derives set(items List<Value>, idx Integer, val Value) List<Value>
 binary
 
+/// Replace all occurrences of a value in a list of integers
+derives replace(items List<Integer>, old Integer, new Integer) List<Integer>
+binary
+
+/// Replace all occurrences of a value in a list of strings
+derives replace(items List<String>, old String, new String) List<String>
+binary
+
+/// Replace values using a 1:1 mapping (lists must be same length)
+derives replace(items List<Integer>, old List<Integer>, new List<Integer>) List<Integer>
+binary
+
+/// Replace values using a 1:1 mapping (lists must be same length)
+derives replace(items List<String>, old List<String>, new List<String>) List<String>
+binary
+
 /// Remove element at index (copy-on-write: returns new list)
 derives remove(items List<Value>, idx Integer) List<Value>
 binary

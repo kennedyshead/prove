@@ -294,6 +294,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self._forward_declared_types: set[str] = set()
         # Track user-defined constant names and their spans for I304
         self._user_constants: dict[str, Span] = {}
+        self._verb_list_arities: dict[str, int] = {}  # List<Verb> constant → expected arity
         # Requires-based narrowing: list of (module, args)
         self._requires_narrowings: list[tuple[str, list[Expr]]] = []
         # Parameters guaranteed non-empty via requires length(x) > 0
@@ -1860,6 +1861,49 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 )
             # Static refinement check for constants
             self._static_check_refinement(expected, cd.value, cd.span)
+            # E402: List<Verb> constants — check all functions have consistent
+            # arity AND parameter types (mismatched types cause SIGSEGV at runtime).
+            if (
+                isinstance(expected, ListType)
+                and isinstance(expected.element, PrimitiveType)
+                and expected.element.name == "Verb"
+                and isinstance(cd.value, ListLiteral)
+            ):
+                verb_sigs: list[tuple[str, FunctionSignature]] = []
+                for elem in cd.value.elements:
+                    if isinstance(elem, IdentifierExpr):
+                        sig = self.symbols.resolve_function_any(elem.name)
+                        if sig:
+                            verb_sigs.append((elem.name, sig))
+                if len(verb_sigs) >= 2:
+                    ref_name, ref_sig = verb_sigs[0]
+                    ref_arity = len(ref_sig.param_types)
+                    for fn_name, fn_sig in verb_sigs[1:]:
+                        fn_arity = len(fn_sig.param_types)
+                        if fn_arity != ref_arity:
+                            self._error(
+                                "E402",
+                                f"List<Verb> arity mismatch: '{ref_name}' has "
+                                f"{ref_arity} params but '{fn_name}' has {fn_arity}",
+                                cd.span,
+                            )
+                        else:
+                            for i, (pt_ref, pt_fn) in enumerate(
+                                zip(ref_sig.param_types, fn_sig.param_types)
+                            ):
+                                if not types_compatible(pt_ref, pt_fn):
+                                    pos = {0: "1st", 1: "2nd", 2: "3rd"}.get(i, f"{i + 1}th")
+                                    self._error(
+                                        "E402",
+                                        f"List<Verb> param type mismatch: "
+                                        f"{pos} param is '{type_name(pt_ref)}' in "
+                                        f"'{ref_name}' but '{type_name(pt_fn)}' in "
+                                        f"'{fn_name}'",
+                                        cd.span,
+                                    )
+                # Store verb arity for call-site checking
+                if verb_sigs:
+                    self._verb_list_arities[cd.name] = len(verb_sigs[0][1].param_types)
 
     def _validate_binary_lookup(self, body: LookupTypeDef, span: Span) -> None:
         """Validate a binary lookup table (E379, E387, W350)."""
@@ -3344,6 +3388,19 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                         ],
                     )
                 )
+            # E403: fail propagation inside coroutine body generates invalid
+            # C (return in void function). Use match Ok/Err instead.
+            if isinstance(self._current_function, FunctionDef) and self._current_function.verb in (
+                "attached",
+                "listens",
+                "renders",
+            ):
+                self._error(
+                    "E403",
+                    f"fail propagation `!` not allowed in '{self._current_function.verb}' "
+                    f"function — use `match Ok/Err` to handle errors explicitly",
+                    expr.span,
+                )
 
         # The inner expression must be a failable (Result-returning or Fail-effected) call
         if (
@@ -3528,6 +3585,29 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 "Option",
             ):
                 self._check_generic_exhaustiveness(expr, subject_type)
+            elif isinstance(subject_type, PrimitiveType) and subject_type.name in (
+                "String",
+                "Integer",
+                "Float",
+                "Decimal",
+            ):
+                # Infinite-domain types require a default arm to be exhaustive.
+                # Boolean is excluded (true/false covers all cases).
+                # Skip if arms use Option patterns (Some/None) — the subject
+                # may be auto-wrapped or the function may return Option<T>.
+                has_default = any(
+                    isinstance(arm.pattern, (WildcardPattern, BindingPattern)) for arm in expr.arms
+                )
+                has_option_patterns = any(
+                    isinstance(arm.pattern, VariantPattern) and arm.pattern.name in ("Some", "None")
+                    for arm in expr.arms
+                )
+                if not has_default and not has_option_patterns:
+                    self._error(
+                        "E401",
+                        f"non-exhaustive match on '{subject_type.name}': add a default `_ =>` arm",
+                        expr.span,
+                    )
 
         # I301: detect unreachable arms after always-matching record pattern
         resolved_subj = subject_type
@@ -3608,11 +3688,27 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 else:
                     result_type = value_type
                     for arm_type, arm in arm_types:  # type: ignore
+                        # Skip error/absent path arms — Err and None arms
+                        # in Result/Option matches naturally return different types.
+                        if isinstance(arm.pattern, VariantPattern) and arm.pattern.name in (
+                            "Err",
+                            "None",
+                        ):
+                            continue
                         if isinstance(arm_type, UnitType):
                             self._error(
                                 "E400",
                                 f"match arm returns Unit but other arms return "
                                 f"'{type_name(value_type)}'",
+                                arm.span,
+                            )
+                        elif not isinstance(arm_type, ErrorType) and not types_compatible(
+                            value_type, arm_type
+                        ):
+                            self._error(
+                                "E400",
+                                f"match arm returns '{type_name(arm_type)}' "
+                                f"but other arms return '{type_name(value_type)}'",
                                 arm.span,
                             )
 

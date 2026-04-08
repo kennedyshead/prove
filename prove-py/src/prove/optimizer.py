@@ -1203,6 +1203,7 @@ class Optimizer:
         from prove.ast_nodes import (
             BinaryExpr,
             FailPropExpr,
+            FieldExpr,
             IndexExpr,
             ListLiteral,
             PipeExpr,
@@ -1250,6 +1251,11 @@ class Optimizer:
             return replace(expr, expr=self._inline_in_expr(expr.expr, candidates))
         if isinstance(expr, AsyncCallExpr):
             return replace(expr, expr=self._inline_in_expr(expr.expr, candidates))
+        if isinstance(expr, FieldExpr):
+            return replace(
+                expr,
+                obj=self._inline_in_expr(expr.obj, candidates),
+            )
         if isinstance(expr, IndexExpr):
             return replace(
                 expr,
@@ -1285,8 +1291,11 @@ class Optimizer:
         """Substitute IdentifierExpr nodes matching param names with arg expressions."""
         from prove.ast_nodes import (
             BinaryExpr,
+            FieldExpr,
             IndexExpr,
+            ListLiteral,
             PipeExpr,
+            StringInterp,
             UnaryExpr,
         )
 
@@ -1322,6 +1331,24 @@ class Optimizer:
                 expr,
                 obj=self._substitute_params(expr.obj, params, args),
                 index=self._substitute_params(expr.index, params, args),
+            )
+        if isinstance(expr, FieldExpr):
+            return replace(
+                expr,
+                obj=self._substitute_params(expr.obj, params, args),
+            )
+        if isinstance(expr, ListLiteral):
+            return replace(
+                expr,
+                elements=[self._substitute_params(e, params, args) for e in expr.elements],
+            )
+        if isinstance(expr, StringInterp):
+            return replace(
+                expr,
+                parts=[
+                    self._substitute_params(p, params, args) if not isinstance(p, StringLit) else p
+                    for p in expr.parts
+                ],
             )
         if isinstance(expr, MatchExpr):
             new_arms = []

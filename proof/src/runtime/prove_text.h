@@ -32,6 +32,9 @@ Prove_String *prove_text_trim(Prove_String *s);
 Prove_String *prove_text_to_lower(Prove_String *s);
 Prove_String *prove_text_to_upper(Prove_String *s);
 Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_String *new_s);
+Prove_String *prove_text_replace_map(Prove_String *s, Prove_List *old_list, Prove_List *new_list);
+Prove_String *prove_text_replace_many_to_one(Prove_String *s, Prove_List *old_list, Prove_String *new_s);
+Prove_String *prove_text_replace_one_to_many(Prove_String *s, Prove_String *old_s, Prove_List *new_list);
 Prove_String *prove_text_repeat(Prove_String *s, int64_t n);
 
 /* ── Builder ─────────────────────────────────────────────────── */

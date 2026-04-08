@@ -97,6 +97,7 @@ class CallEmitterMixin:
     _locals: dict[str, Type]
     _in_hof_inline: bool
     _hof_predicate: bool
+    _expected_emit_type: Type | None
 
     @staticmethod
     def _is_option_none_filter(pred: Expr) -> bool:
@@ -846,7 +847,22 @@ class CallEmitterMixin:
                 if arity is None or len(expr.args) == arity:
                     return getattr(self, method_name)(expr)
 
-        args = [self._emit_expr(a) for a in expr.args]
+        # Resolve function sig early to set _expected_emit_type per arg,
+        # so lookup column access picks the correct column type.
+        _pre_sig = None
+        if isinstance(expr.func, IdentifierExpr):
+            _pre_sig = self._symbols.resolve_function(None, expr.func.name, len(expr.args))
+            if _pre_sig is None:
+                _pre_sig = self._symbols.resolve_function_any(expr.func.name, arity=len(expr.args))
+        if _pre_sig and _pre_sig.param_types and len(_pre_sig.param_types) == len(expr.args):
+            args = []
+            for a, pt in zip(expr.args, _pre_sig.param_types):
+                saved = self._expected_emit_type
+                self._expected_emit_type = pt
+                args.append(self._emit_expr(a))
+                self._expected_emit_type = saved
+        else:
+            args = [self._emit_expr(a) for a in expr.args]
 
         # Wrap record args with record-to-Value converters when needed
         args = self._wrap_record_to_value_args(expr, args)
@@ -1077,6 +1093,12 @@ class CallEmitterMixin:
                             val_arg = args[2]
                             if val_arg.startswith("prove_value_text(") and val_arg.endswith(")"):
                                 val_arg = val_arg[len("prove_value_text(") : -1]
+                            if val_arg.startswith("prove_value_array(") and val_arg.endswith(")"):
+                                val_arg = val_arg[len("prove_value_array(") : -1]
+                            if val_arg.startswith("prove_value_string_array(") and val_arg.endswith(
+                                ")"
+                            ):
+                                val_arg = val_arg[len("prove_value_string_array(") : -1]
                             if val_type and isinstance(val_type, (RecordType, AlgebraicType)):
                                 vct = map_type(val_type)
                                 heap_tmp = self._tmp()
@@ -1250,7 +1272,58 @@ class CallEmitterMixin:
                     ):
                         inner_ct = map_type(nar_ty)
                         coerced_args[i] = option_unwrap_value(f"{args[i]}.value", inner_ct)
-                ret = "bool" if self._hof_predicate else "void"
+                if self._hof_predicate:
+                    ret = "bool"
+                else:
+                    # Infer actual return type from verb signature or FunctionType
+                    ret = "void"
+                    if isinstance(local_ty, FunctionType) and local_ty.return_type:
+                        ret_ct = map_type(local_ty.return_type)
+                        if ret_ct.decl != "void":
+                            ret = ret_ct.decl
+                    else:
+                        # Try resolving by name (works for named function refs)
+                        verb_sig = self._symbols.resolve_function_any(name, arity=len(expr.args))
+                        if verb_sig is None and narrowed_types:
+                            verb_sig = self._symbols.resolve_function_any(
+                                name, arg_types=narrowed_types
+                            )
+                        if verb_sig is not None:
+                            ret_ct = map_type(verb_sig.return_type)
+                            if ret_ct.decl != "void":
+                                ret = ret_ct.decl
+                                if verb_sig.can_fail:
+                                    ret = "Prove_Result"
+                    # Verb locals from List<Verb>: search all functions by
+                    # argument types to find a matching signature's return type.
+                    # Verb dispatch may call with fewer args than the signature
+                    # has params, so match the first N types.
+                    from prove.types import types_compatible
+
+                    if ret == "void" and narrowed_types:
+                        n = len(narrowed_types)
+                        for (_v, _fn), sigs in self._symbols.all_functions().items():
+                            for s in sigs:
+                                if len(s.param_types) >= n and all(
+                                    types_compatible(p, a)
+                                    for p, a in zip(s.param_types[:n], narrowed_types)
+                                ):
+                                    sret = s.return_type
+                                    # Option<T> return → Prove_Option
+                                    if (
+                                        isinstance(sret, GenericInstance)
+                                        and sret.base_name == "Option"
+                                    ):
+                                        ret = "Prove_Option"
+                                    else:
+                                        ret_ct = map_type(sret)
+                                        if ret_ct.decl != "void":
+                                            ret = ret_ct.decl
+                                            if s.can_fail:
+                                                ret = "Prove_Result"
+                                    break
+                            if ret != "void":
+                                break
                 cast = f"{ret} (*)({', '.join(arg_c_types)})" if arg_c_types else f"{ret} (*)(void)"
                 return f"(({cast}){name})({', '.join(coerced_args)})"
 
@@ -3497,15 +3570,25 @@ class CallEmitterMixin:
         self._indent += 1
 
         # Option unwrap: if filter is |x| unit(x) == false, unwrap Option
-        # to inner type for the consumer lambda
+        # to inner type for the consumer lambda.
+        # Also handle TypeVariable("Value") — the element type may be an
+        # unresolved generic that's actually Option<T> at runtime.
         consumer_var = elem_var
         consumer_type = elem_type
-        if (
+        _is_option_elem: bool = bool(
             isinstance(elem_type, GenericInstance)
             and elem_type.base_name == "Option"
             and elem_type.args
-            and self._is_option_none_filter(expr.args[1])
+        )
+        if (
+            not _is_option_elem
+            and isinstance(elem_type, TypeVariable)
+            and elem_type.name == "Value"
         ):
+            # Unresolved generic — treat as Option<Value> if the filter is option-none
+            _is_option_elem = True
+            elem_type = GenericInstance("Option", (TypeVariable("Value"),))
+        if _is_option_elem and self._is_option_none_filter(expr.args[1]):
             inner_type = self._resolve_option_inner_type(elem_type, expr.args[2])
             inner_ct = map_type(inner_type)
             unwrapped = self._tmp()
@@ -3538,9 +3621,31 @@ class CallEmitterMixin:
             resolved = self._symbols.resolve_type(type_name)
             if resolved is not None and not isinstance(resolved, TypeVariable):
                 return resolved
-        # Infer from consumer lambda's function parameter types
+        # Infer from consumer lambda: find field access on the parameter
+        # (e.g. source_file.content → source_file must be a type with .content)
         if isinstance(consumer, LambdaExpr) and consumer.params:
             param_name = consumer.params[0]
+
+            def _find_field_on_param(e: Expr) -> str | None:
+                """Recursively find param.field and return the field name."""
+                if isinstance(e, FieldExpr):
+                    if isinstance(e.obj, IdentifierExpr) and e.obj.name == param_name:
+                        return e.field
+                    return _find_field_on_param(e.obj)
+                if isinstance(e, CallExpr):
+                    for a in e.args:
+                        r = _find_field_on_param(a)
+                        if r:
+                            return r
+                return None
+
+            field_name = _find_field_on_param(consumer.body)
+            if field_name:
+                for ty in self._symbols.all_types().values():
+                    if isinstance(ty, RecordType) and field_name in ty.fields:
+                        return ty
+
+            # Also check direct param usage as function arg
             body = consumer.body
             if isinstance(body, CallExpr) and isinstance(body.func, IdentifierExpr):
                 for i, arg in enumerate(body.args):
@@ -3655,13 +3760,23 @@ class CallEmitterMixin:
             saved = dict(self._locals)
             self._locals[old_param] = elem_type
             elem_ct = map_type(elem_type)
+            # ErrorType (unresolved inference) defaults to void* for parameter
+            if isinstance(elem_type, ErrorType) or (
+                isinstance(elem_type, PrimitiveType) and elem_type.name == "Verb"
+            ):
+                from prove.c_types import CType
+
+                elem_ct = CType(decl="void*", is_pointer=True, header=None)
             # Infer the body's return type for correct boxing
             body_type = self._infer_expr_type(body)
             body_ct = map_type(body_type)
-            # Struct types (Prove_Option, etc.) need void* boxing, not int64_t
+            # Struct types (Prove_Option, etc.) need void* boxing, not int64_t.
+            # Pointer types (Prove_List*, etc.) also use void* to avoid
+            # pointer-to-integer conversion warnings/errors.
             needs_box = body_ct.decl.startswith("Prove_") and not body_ct.is_pointer
+            use_void_ptr = needs_box or body_ct.is_pointer
             result_tmp = self._tmp()
-            if needs_box:
+            if use_void_ptr:
                 self._line(f"void *{result_tmp} = NULL;")
             else:
                 self._line(f"int64_t {result_tmp} = 0;")
@@ -3674,6 +3789,8 @@ class CallEmitterMixin:
             body_code = self._emit_expr(body)
             if needs_box:
                 self._line(f"{result_tmp} = {self._hof_box(body_code, body_ct)};")
+            elif body_ct.is_pointer:
+                self._line(f"{result_tmp} = (void*)({body_code});")
             else:
                 self._line(f"{result_tmp} = (int64_t)(intptr_t)({body_code});")
             self._indent -= 1

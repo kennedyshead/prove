@@ -16,15 +16,18 @@ module Lsp
   dispatches on message
   creates msg id 
 
-  == describe build diag collect errors diag body error diagnostic extract text field nested ==
+  == describe build diag collect errors diag body error diagnostic extract text field nested uri ==
   """
   System types ByteArray inputs console outputs console
   Parse creates json tree
   Table derives get creates table
   Text derives replace creates length split join validates starts
   Types creates string integer
-  Sequence derives set first last creates length list
-  Prove types Node derives root creates children kind line column
+  Sequence derives first last creates list
+  Diagnostic types DiagnosticMessage LintCode creates exxx
+  Lint creates collect
+  Source types Content inputs source
+  Config inputs config
 
   type Event is OnMessage(message String)
     | OnSend(messge String)
@@ -93,13 +96,23 @@ from
 /// Parse and dispatch a JSON-RPC message
 attached handle(raw String) Event
 from
+    lsp_log(raw)&
     match json(raw)
         Ok(parsed) =>
             root as Table<Value> = table(parsed)
             method as String = match get("method", root)
                 Some(val) => string(val)
                 None => ""
-            message(method, root)
+            match config(f"{uri(root)}../prove.toml")
+                Ok(config) =>
+                    message(
+                        method,
+                        root,
+                        match source(config)
+                        Ok(value) => value
+                        Err => source())
+                Err =>
+                    message(method, root, source())
         Err =>
             lsp_log("JSON parse error")&
             Loop()
@@ -127,21 +140,30 @@ from
         Some(val) => string(val)
         None => ""
 
+creates uri(root Table) String
+from
+    match get("params", root)
+        Some(val) =>
+            match get("rootUri", val)
+                Some(uri) => string(uri)
+                None => "NOROOTURIGIVEN"
+        None => "UNKNOWN"
+
 /// Route by JSON-RPC method
-dispatches message(method String, root Table<Value>) Event
+dispatches message(method String, root Table<Value>, content Content) Event
 from
     "initialize" =>
-        lsp_log(f"initialize id={msg_id(root)}")&
+        lsp_log(f"initialize id={msg_id(root)} {uri(root)}")&
         OnSend(replace(INIT_RESULT, "ID_PLACEHOLDER", msg_id(root)))
     "initialized" =>
         lsp_log("Client initialized")&
         Loop()
     "textDocument/didOpen" =>
-        lsp_on_document(root)
+        lsp_on_document(root, content)
     "textDocument/didChange" =>
-        lsp_on_document(root)
+        lsp_on_document(root, content)
     "textDocument/didSave" =>
-        lsp_on_document(root)
+        lsp_on_document(root, content)
     "shutdown" =>
         lsp_log("Shutting down")&
         OnSend(replace(RESPONSE_NULL, "ID_PLACEHOLDER", msg_id(root)))
@@ -153,7 +175,7 @@ from
         Loop()
 
 /// Handle any document event by extracting URI and text, then checking
-outputs lsp_on_document(root Table<Value>) Event
+outputs lsp_on_document(root Table<Value>, content Content) Event
 from
     params as Table<Value> = nested("params", root)
     text_doc as Table<Value> = nested("textDocument", params)
@@ -162,7 +184,7 @@ from
     match length(text) > 0
         true =>
             lsp_log(f"Checking: {uri}")&
-            lsp_check_and_publish(uri, text)
+            lsp_check_and_publish(uri, text, content)
         false =>
             lsp_log(f"No text for: {uri}")&
             Loop()
@@ -186,15 +208,16 @@ from
         None => field("text", params)
 
 /// Parse source, find errors, and publish diagnostics
-outputs lsp_check_and_publish(uri String, text String) Event
+outputs lsp_check_and_publish(uri String, text String, content Content) Event
 from
     match tree(text)
         Ok(source) =>
-            diagnostics as List<String> = []
-            collect_errors(children(root(source)), diagnostics)
-            diag_body(uri, join(diagnostics, ","))
+            diagnostics as List<DiagnosticMessage> = collect(content, source)
+            diag_body(
+                uri,
+                join(map(diagnostics, |diagnostic| build_diag(diagnostic)), ","))
         Err(error) =>
-            err_item as String = build_diag("0", "0", "1", "Parse error")
+            err_item as String = build_diag(exxx(LintCode:E100, LintCode:E100))
             diag_body(uri, err_item)
 
 /// Send a diagnostics notification
@@ -208,31 +231,10 @@ from
     OnSend(body)
 
 /// Build a single LSP diagnostic JSON string
-creates build_diag(l String, c String, ec String, msg String) String
+creates build_diag(message DiagnosticMessage) String
 from
     replace(
-        replace(replace(replace(DIAG_ITEM, "LINE_START", l), "CHAR_START", c), "CHAR_END",
-            ec),
-        "MSG_PLACEHOLDER",
-        msg)
-
-/// Build a diagnostic from an ERROR node
-creates error_diagnostic(node Node) String
-from
-    build_diag(
-        string(line(node) - 1),
-        string(column(node)),
-        string(column(node) + length(string(node))),
-        "Syntax error")
-
-/// Walk tree nodes and collect ERROR diagnostics into the list
-derives collect_errors(nodes List<Node>, diagnostics List<String>) List<String>
-  terminates: length(nodes) == 0
-from
-    each(
-        filter(nodes, |node| kind(node) == "ERROR"),
-        |node| set(diagnostics, length(diagnostics), error_diagnostic(node)))
-    each(
-        filter(nodes, |node| kind(node) != "ERROR"),
-        |node| collect_errors(children(node), diagnostics))
-    diagnostics
+        DIAG_ITEM,
+        ["LINE_START", "CHAR_START", "CHAR_END", "MSG_PLACEHOLDER"],
+        [string(message.line), string(message.column),
+            string(message.column + length(message.found)), message.message])

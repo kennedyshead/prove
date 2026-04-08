@@ -5,7 +5,6 @@ module Diagnostic
   sends a detatched background diagnostic message with a severity prefix
   """
   Log types Severity matches severity_color detached warning
-  Source types SourceFile
   Prove types Node creates line column parent
   Sequence derives get
   Types creates string validates string
@@ -47,30 +46,30 @@ from
     get(split(trim(code_line(node)), " "), 0)
 
 /// Root level narrowing
-matches root(start String, node Node, source SourceFile)
+matches root(start String, node Node) DiagnosticMessage
 from
-    "module" => exxx("Expected `module Name` but found", LintCode:E210, node, source)
+    "module" => exxx("Expected `module Name` but found", LintCode:E210, node)
     _ =>
         warning(f"Missed root match {start}")&
         message as String = LintCode:E100
-        exxx(message, LintCode:E100, node, source)
+        exxx(message, LintCode:E100, node)
 
 /// Module declaration diagnostic
-matches module(start String, node Node, source SourceFile)
+matches module(start String, node Node) DiagnosticMessage
 from
-    "type" => exxx("Expected `type Name is` but found", LintCode:E210, node, source)
+    "type" => exxx("Expected `type Name is` but found", LintCode:E210, node)
     _ =>
         warning(f"Missed module match {start}")&
         message as String = LintCode:E100
-        exxx(message, LintCode:E100, node, source)
+        exxx(message, LintCode:E100, node)
 
 /// Static fail linting
-matches ast_parse_error(parent String, node Node, source SourceFile)
+matches ast_parse_error(parent String, node Node) DiagnosticMessage
 from
     "source_file" =>
-        root(first_token(node), node, source)
+        root(first_token(node), node)
     "module_declaration" =>
-        module(first_token(node), node, source)
+        module(first_token(node), node)
     "lookup_variant" =>
         code as String = match parent(node)
             Some(parent) =>
@@ -78,39 +77,43 @@ from
                     Some(parent) => string(parent)
                     None => ""
             None => ""
-        lookup(split(code, "\n"), node, source)
+        lookup(split(code, "\n"), node)
     _ =>
         warning(f"Missed parent match {parent}")&
         message as String = LintCode:E100
-        exxx(message, LintCode:E100, node, source)
+        exxx(message, LintCode:E100, node)
 
 /// Error diagnostic message
-creates exxx(message String, code Integer, node Node, source SourceFile)
+creates exxx(message String, code Integer, node Node) DiagnosticMessage
 from
     actual_code as String = code_line(node)
-    diagnostic(DiagnosticMessage(
+    DiagnosticMessage(
         Severity.Error,
         code,
-        source.path,
+        "",
         get(split(string(node), "\n"), 0),
         message,
         line(node),
         column(node),
-        actual_code))&
+        actual_code)
 
-/// Error diagnostic message
-creates ixxx(message String, code Integer, node Node, source SourceFile)
+/// Error diagnostic message no node overload
+creates exxx(message String, code Integer) DiagnosticMessage
+from
+    DiagnosticMessage(Severity.Error, code, "", "", message, 0, 0, "")
+
+creates ixxx(message String, code Integer, node Node) DiagnosticMessage
 from
     actual_code as String = code_line(node)
-    diagnostic(DiagnosticMessage(
+    DiagnosticMessage(
         Severity.Info,
         code,
-        source.path,
+        "",
         get(split(string(node), "\n"), 0),
         message,
         line(node),
         column(node),
-        actual_code))&
+        actual_code)
 
 /// match the prefix for error code based severity
 matches severity_prefix(severity Severity) String

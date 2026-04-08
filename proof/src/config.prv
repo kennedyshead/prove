@@ -36,14 +36,18 @@ module Config
   PROVE_TOML as String = "prove.toml"
 
 inputs config() Config!
+from
+    config(PROVE_TOML)!
+
+inputs config(path String) Config!
   ensures unit(result) == false
-  requires valid file(PROVE_TOML)
+  requires valid file(path)
   explain
       loads settings as String from prove.toml file
       transform string to Config struct
       info message with name of the project
 from
-    load as String = file(PROVE_TOML)
+    load as String = file(path)
     config as Config = struct(load)!
     info(f"Found project {config.package.name}")&
     config

@@ -66,6 +66,7 @@ _HOF_BUILTINS_2 = frozenset({"reduce", "par_reduce"})
 class CallCheckMixin:
     _in_listens_worker_list: bool
     _inside_async_call: bool
+    _expected_type: Type | None
 
     @staticmethod
     def _is_option_none_filter(pred: Expr) -> bool:
@@ -153,6 +154,31 @@ class CallCheckMixin:
 
         if isinstance(expr.func, IdentifierExpr):
             name = expr.func.name
+
+            # HOF builtins: infer concrete return type from lambda body
+            # so that type mismatches like List<Option<T>> vs List<T> are caught.
+            if name == "map" and arg_count == 2 and isinstance(expr.args[1], LambdaExpr):
+                lam = expr.args[1]
+                coll_type = arg_types[0] if arg_types else None
+                if isinstance(coll_type, ListType) and lam.params:
+                    lam_return = arg_types[1]
+                    if isinstance(lam_return, FunctionType) and lam_return.return_type:
+                        return ListType(lam_return.return_type)
+                    # Fallback: infer from lambda body directly
+                    return ListType(self._infer_expr(lam.body))
+            if name == "filter" and arg_count == 2 and arg_types:
+                coll = arg_types[0]
+                # filter with |x| unit(x) == false unwraps Option<T> → T
+                if (
+                    isinstance(coll, ListType)
+                    and isinstance(coll.element, GenericInstance)
+                    and coll.element.base_name == "Option"
+                    and coll.element.args
+                    and self._is_option_none_filter(expr.args[1])
+                ):
+                    return ListType(coll.element.args[0])
+                return coll
+
             # Try specific resolution first
             sig = self.symbols.resolve_function(None, name, arg_count)
             # Also try with verb from current function context
@@ -187,6 +213,22 @@ class CallCheckMixin:
                     sym.used = True
                     if isinstance(sym.resolved_type, FunctionType):
                         return sym.resolved_type.return_type
+                    # E402: Verb variable called with wrong arg count — check
+                    # against known verb list arities to prevent null pointer
+                    # dereference from calling a 4-param function with 3 args.
+                    if (
+                        isinstance(sym.resolved_type, PrimitiveType)
+                        and sym.resolved_type.name == "Verb"
+                    ):
+                        for cname, expected_arity in self._verb_list_arities.items():
+                            if expected_arity != arg_count:
+                                self._error(
+                                    "E402",
+                                    f"verb call passes {arg_count} arguments but "
+                                    f"functions in '{cname}' expect {expected_arity}",
+                                    expr.span,
+                                )
+                                break
                     return ERROR_TY
                 self._error("E311", f"undefined function '{name}'", expr.span)
                 return ERROR_TY
@@ -221,12 +263,13 @@ class CallCheckMixin:
                             expr.span,
                         )
 
-            # Track verb-aware recursion
+            # Track verb-aware recursion (same name, verb, AND arity)
             if (
                 self._current_function
                 and isinstance(self._current_function, FunctionDef)
                 and sig.name == self._current_function.name
                 and sig.verb == self._current_function.verb
+                and len(sig.param_types) == len(self._current_function.params)
             ):
                 self._is_recursive = True
 
@@ -325,6 +368,21 @@ class CallCheckMixin:
                             sig = better
                         break  # only check first problematic param
 
+            # Re-infer lookup access args now that we know the expected
+            # param types — multi-column lookups pick their column based on
+            # expected type, which wasn't available during initial inference.
+            from prove.ast_nodes import LookupAccessExpr
+
+            for i, (expected, actual) in enumerate(zip(sig.param_types, arg_types)):
+                if (
+                    not types_compatible(expected, actual)
+                    and i < len(expr.args)
+                    and isinstance(expr.args[i], LookupAccessExpr)
+                ):
+                    re_inferred = self._infer_expr(expr.args[i], expected_type=expected)
+                    if types_compatible(expected, re_inferred):
+                        arg_types[i] = re_inferred
+
             # Check argument types
             sig_str = ", ".join(
                 f"{n} {type_name(t)}" for n, t in zip(sig.param_names, sig.param_types)
@@ -339,6 +397,10 @@ class CallCheckMixin:
                     and expected.name == "Value"
                     and not isinstance(actual, (ErrorType, TypeVariable))
                     and not is_json_serializable(actual)
+                    # Sequence operations (set, get, extend, etc.) use Value as
+                    # a pseudo-generic — they work for any element type at the
+                    # C level (void*), so skip the serializable restriction.
+                    and sig.module != "sequence"
                 ):
                     param_name = sig.param_names[i] if i < len(sig.param_names) else str(i + 1)
                     ordinal = {1: "1st", 2: "2nd", 3: "3rd"}.get(i + 1, f"{i + 1}th")
@@ -651,7 +713,14 @@ class CallCheckMixin:
                     ):
                         lam_type = FunctionType([lam_type.param_types[0]], lam_type.return_type)
                     return [list_type, lam_type]
-        return [self._infer_expr(a) for a in expr.args]
+        # Clear _expected_type so the outer context (e.g. `as String`)
+        # doesn't leak into argument inference — the function hasn't been
+        # resolved yet, so args have no meaningful expected type.
+        old_expected = self._expected_type
+        self._expected_type = None
+        result = [self._infer_expr(a) for a in expr.args]
+        self._expected_type = old_expected
+        return result
 
     def _post_resolve_call_checks(
         self,

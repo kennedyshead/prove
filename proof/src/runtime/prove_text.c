@@ -210,6 +210,72 @@ Prove_String *prove_text_replace(Prove_String *s, Prove_String *old_s, Prove_Str
     return prove_text_build(b);
 }
 
+Prove_String *prove_text_replace_map(Prove_String *s, Prove_List *old_list, Prove_List *new_list) {
+#ifndef PROVE_RELEASE
+    if (old_list->length != new_list->length) {
+        return prove_string_new(s->data, s->length);
+    }
+#endif
+    if (old_list->length == 0) {
+        return prove_string_new(s->data, s->length);
+    }
+
+    /* Apply replacements sequentially: result of one feeds the next */
+    Prove_String *current = prove_string_new(s->data, s->length);
+    for (int64_t i = 0; i < old_list->length; i++) {
+        Prove_String *old_s = (Prove_String *)old_list->data[i];
+        Prove_String *new_s = (Prove_String *)new_list->data[i];
+        Prove_String *next = prove_text_replace(current, old_s, new_s);
+        prove_release(&current->header);
+        current = next;
+    }
+    return current;
+}
+
+Prove_String *prove_text_replace_many_to_one(Prove_String *s, Prove_List *old_list, Prove_String *new_s) {
+    if (old_list->length == 0) {
+        return prove_string_new(s->data, s->length);
+    }
+    Prove_String *current = prove_string_new(s->data, s->length);
+    for (int64_t i = 0; i < old_list->length; i++) {
+        Prove_String *old_s = (Prove_String *)old_list->data[i];
+        Prove_String *next = prove_text_replace(current, old_s, new_s);
+        prove_release(&current->header);
+        current = next;
+    }
+    return current;
+}
+
+Prove_String *prove_text_replace_one_to_many(Prove_String *s, Prove_String *old_s, Prove_List *new_list) {
+    if (old_s->length == 0 || new_list->length == 0) {
+        return prove_string_new(s->data, s->length);
+    }
+    Prove_Builder *b = NULL;
+    const char *src = s->data;
+    const char *end = s->data + s->length;
+    int64_t idx = 0;
+
+    while (src + old_s->length <= end) {
+        const char *found = (const char *)memmem(
+            src, (size_t)(end - src), old_s->data, (size_t)old_s->length);
+        if (!found) break;
+
+        if (!b) b = prove_text_builder();
+        b = _builder_write_raw(b, src, (int64_t)(found - src));
+
+        if (idx < new_list->length) {
+            Prove_String *rep = (Prove_String *)new_list->data[idx];
+            b = _builder_write_raw(b, rep->data, rep->length);
+            idx++;
+        }
+        src = found + old_s->length;
+    }
+
+    if (!b) return prove_string_new(s->data, s->length);
+    b = _builder_write_raw(b, src, (int64_t)(end - src));
+    return prove_text_build(b);
+}
+
 Prove_String *prove_text_repeat(Prove_String *s, int64_t n) {
     if (n <= 0) return prove_string_new("", 0);
     if (s->length > 0 && n > INT64_MAX / s->length) {

@@ -191,6 +191,9 @@ _register_module(
     },
     overloads={
         ("creates", "length", "StringBuilder"): "prove_text_builder_length",
+        ("derives", "replace", "String_List<String>_List<String>"): "prove_text_replace_map",
+        ("derives", "replace", "String_List<String>_String"): "prove_text_replace_many_to_one",
+        ("derives", "replace", "String_String_List<String>"): "prove_text_replace_one_to_many",
     },
 )
 
@@ -303,6 +306,18 @@ _register_module(
         ("derives", "sort", "List<String>"): "prove_list_ops_sort_str",
         ("derives", "sort", "List<Float>"): "prove_list_ops_sort_float",
         ("derives", "sort", "List<Decimal>"): "prove_list_ops_sort_float",
+        ("derives", "replace", "List<Integer>_Integer_Integer"): "prove_list_ops_replace_int",
+        ("derives", "replace", "List<String>_String_String"): "prove_list_ops_replace_str",
+        (
+            "derives",
+            "replace",
+            "List<Integer>_List<Integer>_List<Integer>",
+        ): "prove_list_ops_replace_map_int",
+        (
+            "derives",
+            "replace",
+            "List<String>_List<String>_List<String>",
+        ): "prove_list_ops_replace_map_str",
         ("creates", "list", "Value<Csv>"): "prove_csv_as_list",
         ("creates", "list", "Value"): "prove_value_as_array",
         ("creates", "range", "Integer_Integer_Integer"): "prove_list_ops_range_step",

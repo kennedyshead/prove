@@ -5,14 +5,16 @@ module Lint
   validates import statements, makes sure the module exist, not import from self, lookup,
     narrative
   matches type to string name
+
+  == describe collect diagnose derives lint tree ==
   """
-  Prove types Node creates children kind
-  Sequence derives slice get first extend last creates length
-  Types creates integer validates boolean unit string
-  Diagnostic types LintCode creates exxx ixxx
+  Prove types Node Tree derives root creates children kind parent
+  Sequence derives slice get first extend last set creates length
+  Types creates integer validates boolean string unit
+  Diagnostic types LintCode DiagnosticMessage creates exxx ixxx matches ast_parse_error
   Text derives replace creates join split validates ends starts
   Log detached warning debug
-  Source types ModuleDefinition SourceFile Content
+  Source types ModuleDefinition Content creates module_name
 
   IMPORT_VALIDATION_CALL_FLOW as List<Verb> = [not_import_from_self, import_module]
 
@@ -32,9 +34,8 @@ matches import_verb(
     exists Boolean,
     verb_identifier String,
     module ModuleDefinition,
-    node Node,
-    source SourceFile
-) Boolean
+    node Node
+) Option<DiagnosticMessage>
 from
     false =>
         str_verbs as String = join(module.verbs, " ")
@@ -47,36 +48,29 @@ from
         name as String = match last(identifier)
             Some(value) => value
             None => ""
-        ixxx(
-            f"{name} is not declared as {verb} in {module.name}",
-            LintCode:I315,
-            node,
-            source)
-        true
-    true => true
+        ixxx(f"{name} is not declared as {verb} in {module.name}", LintCode:I315, node)
+    true => Unit
 
-validates import_group(module ModuleDefinition, node Node, source SourceFile)
+creates import_group(module ModuleDefinition, node Node) List<Option<DiagnosticMessage>>
 from
     statements as List<String> = split(string(node), " ")
     match first(statements)
         Some(verb) =>
-            all(
+            map(
                 slice(statements, 1, length(statements)),
                 |name| import_verb(
                 any(module.verbs, |exist| starts(exist, f"{verb}_{name}")),
                 f"{verb}_{name}",
                 module,
-                node,
-                source))
-        None => true
+                node))
+        None => []
 
 /// Validate if the module exist
-validates import_module(
+creates import_module(
     row List<String>,
     content Content,
-    node Node,
-    source_file SourceFile
-)
+    node Node
+) List<DiagnosticMessage>
   ensures valid boolean(result)
   requires length(row) > 0
 from
@@ -85,47 +79,53 @@ from
         extend(content.stdlibs, map(content.files, |file| file.definition)),
         |module| module.name == module_name))
         Some(value) =>
-            all(
+            messages as List<DiagnosticMessage> = []
+            each(
                 filter(children(node), |child| kind(child) == "import_group"),
-                |group| import_group(value, group, source_file))
+                |group| extend(messages, import_group(value, group)))
+            messages
         None =>
             message as String = LintCode:E314
-            exxx(message, LintCode:E314, node, source_file)
-            false
+            [exxx(message, LintCode:E314, node)]
 
 /// We do not allow imports from self (format will remove the line)
-validates not_import_from_self(
-    module_name String,
+creates not_import_from_self(
+    module_name List<String>,
     content Content,
-    node Node,
-    source_file SourceFile
-)
+    node Node
+) List<Option<DiagnosticMessage>>
 from
-    match source_file.definition.name == module_name
-        false => true
+    module as String = match parent(node)
+        Some(parent) => string(parent)
+        None => "module UNKNOWN"
+    name as String = match last(module_name)
+        Some(val) => val
+        None => ""
+    match module_name(module) == name
+        false => []
         true =>
             message as String = LintCode:I318
-            ixxx(message, LintCode:I318, node, source_file)
-            true
+            [ixxx(message, LintCode:I318, node)]
 
-validates narrative_check(content Content, node Node, source_file SourceFile)
+creates narrative_check(content Content, node Node) List<DiagnosticMessage>
 from
     match any(children(node), |child| kind(child) == "narrative_annotation")
-        true => true
+        true => []
         false =>
             message as String = LintCode:I201
-            ixxx(message, LintCode:I201, node, source_file)
-            true
+            [ixxx(message, LintCode:I201, node)]
 
 /// Validate import statements
-validates import(content Content, node Node, source_file SourceFile)
-  ensures valid boolean(result)
-  requires unit(row) == false
-  explain
-      all of the import statement(s) is validated
+creates import(content Content, node Node) List<DiagnosticMessage>
 from
     row as List<String> = split(string(node), " ")
-    all(IMPORT_VALIDATION_CALL_FLOW, |verb| verb(row, content, node, source_file))
+    ret as List<DiagnosticMessage> = []
+    diag as List<List<DiagnosticMessage>> =
+        filter(
+        map(IMPORT_VALIDATION_CALL_FLOW, |verb| verb(row, content, node)),
+        |message| unit(message) == false)
+    each(diag, |list| extend(ret, list))
+    ret
 
 /// Lookup type linting each row
 matches lookup_type_check(
@@ -142,7 +142,7 @@ from
     false => false
 
 /// Lookup type static linting
-creates lookup(rows List<String>, node Node, source SourceFile)
+creates lookup(rows List<String>, node Node) DiagnosticMessage
 from
     type_declaration as List<String> = split(replace(get(rows, 0), "where", ""), " ")
     match all(
@@ -153,7 +153,39 @@ from
         type_declaration))
         false =>
             message as String = LintCode:E379
-            exxx(message, LintCode:E379, node, source)
+            exxx(message, LintCode:E379, node)
         true =>
             message as String = LintCode:E100
-            exxx(message, LintCode:E100, node, source)
+            exxx(message, LintCode:E100, node)
+
+matches diagnose(node_kind String, node Node, content Content) List<DiagnosticMessage>
+from
+    "ERROR" =>
+        parent as String = match parent(node)
+            Some(parent) => kind(parent)
+            None => ""
+        [ast_parse_error(parent, node)]
+    "import_declaration" =>
+        import(content, node)
+    "module_declaration" =>
+        narrative_check(content, node)
+    _ => []
+
+/// Walk tree nodes and collect ERROR diagnostics into the list
+derives lint_tree(
+    nodes List<Node>,
+    diagnostics List<DiagnosticMessage>,
+    content Content
+) List<DiagnosticMessage>
+  terminates: length(nodes) == 0
+from
+    each(
+        nodes,
+        |node| set(diagnostics, length(diagnostics), diagnose(kind(node), node, content)))
+    each(nodes, |node| lint_tree(children(node), diagnostics, content))
+    diagnostics
+
+/// collects errors warnings and info lints for a tree
+creates collect(content Content, tree Tree) List<DiagnosticMessage>
+from
+    lint_tree(children(root(tree)), [], content)

@@ -32,6 +32,7 @@ from prove.types import (
     PrimitiveType,
     RecordType,
     RecursiveFieldInfo,
+    StructType,
     Type,
     TypeVariable,
     find_recursive_fields,
@@ -50,8 +51,11 @@ class TypeEmitterMixin:
             else:
                 self._line(f"typedef struct {cname} {cname};")
         # Forward declarations for imported local types.
-        # Lookup types (from stdlib or local modules) need full enum definitions
-        # here because C requires the complete type for by-value fields.
+        # Lookup types need full enum definitions here because C requires
+        # the complete type for by-value fields.  Algebraic types also need
+        # their struct emitted early so that a consuming module's struct
+        # (which embeds them by value) compiles in a unity build where the
+        # defining module appears later.
         lookup_names: set[str] = set()
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
@@ -65,10 +69,17 @@ class TypeEmitterMixin:
                 self._indent -= 1
                 self._line("};")
                 self._line("")
+            elif isinstance(ty, AlgebraicType):
+                # Emit typedef + full struct early for ordering; the same
+                # struct will be emitted again by _emit_imported_type_defs
+                # but the unity merger deduplicates by struct name.
+                self._line(f"typedef struct {cname} {cname};")
+                self._emit_algebraic_struct(cname, ty.variants)
+                self._line("")
             else:
                 self._line(f"typedef struct {cname} {cname};")
         self._line("")
-        # Full struct definitions for imported local types
+        # Full struct definitions + constructors for imported local types
         self._emit_imported_type_defs(lookup_names)
 
     def _imported_local_types(self) -> list[tuple[str, Type]]:
@@ -104,8 +115,26 @@ class TypeEmitterMixin:
             if isinstance(ty, PrimitiveType) and ty.name not in _BUILTIN_NAMES:
                 # Resolve PrimitiveType to actual type (e.g. Severity → AlgebraicType)
                 resolved = self._symbols.resolve_type(ty.name)
+                if resolved is None:
+                    # Transitive dependency not in local symbol table —
+                    # try loading from stdlib (e.g. DiagnosticMessage imports
+                    # Severity from Log, but the consuming module only
+                    # imports DiagnosticMessage, not Severity).
+                    from prove.stdlib_loader import load_stdlib_types
+
+                    for mod_name in ("Log", "UI", "Terminal", "Graphic", "Source"):
+                        types = load_stdlib_types(mod_name)
+                        if ty.name in types:
+                            resolved = types[ty.name]
+                            break
                 if resolved is not None and isinstance(resolved, (RecordType, AlgebraicType)):
                     ty = resolved
+            # StructType is anonymous (no .name) — only traverse its fields
+            # to collect named dependencies, don't add it to the ordered list.
+            if isinstance(ty, StructType):
+                for ftype in ty.required_fields.values():
+                    _visit(ftype)
+                return
             if not isinstance(ty, (RecordType, AlgebraicType)):
                 return
             name = ty.name

@@ -45,7 +45,7 @@ from
         debug as Boolean = contains(arguments, "--debug")
         no_mutate as Boolean = contains(arguments, "--no-mutate")
         config as Config = config()!
-        source as Content = source(config)
+        source as Content = source(config)!
         source_build(lint(source), source, cwd(), debug, no_mutate)!
 
 /// Run the check command
@@ -55,7 +55,7 @@ from
     _ =>
         info("Running check")&
         config as Config = config()!
-        source as Content = source(config)
+        source as Content = source(config)!
         source_check(lint(source), source.files, arguments, config)!
 
 /// Run the format command
