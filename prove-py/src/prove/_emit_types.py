@@ -57,6 +57,7 @@ class TypeEmitterMixin:
         # (which embeds them by value) compiles in a unity build where the
         # defining module appears later.
         lookup_names: set[str] = set()
+        early_algebraic: set[str] = set()
         for name, ty in self._imported_local_types():
             cname = mangle_type_name(name)
             if self._is_stdlib_lookup_type(name) or name in self._lookup_tables:
@@ -70,17 +71,18 @@ class TypeEmitterMixin:
                 self._line("};")
                 self._line("")
             elif isinstance(ty, AlgebraicType):
-                # Emit typedef + full struct early for ordering; the same
-                # struct will be emitted again by _emit_imported_type_defs
-                # but the unity merger deduplicates by struct name.
+                # Emit typedef + full struct early for ordering so that
+                # consuming modules' structs (embedding by value) compile
+                # in unity builds where the defining module appears later.
                 self._line(f"typedef struct {cname} {cname};")
                 self._emit_algebraic_struct(cname, ty.variants)
                 self._line("")
+                early_algebraic.add(name)
             else:
                 self._line(f"typedef struct {cname} {cname};")
         self._line("")
         # Full struct definitions + constructors for imported local types
-        self._emit_imported_type_defs(lookup_names)
+        self._emit_imported_type_defs(lookup_names, early_algebraic)
 
     def _imported_local_types(self) -> list[tuple[str, Type]]:
         """Collect types imported from local modules (not defined in this module).
@@ -145,6 +147,10 @@ class TypeEmitterMixin:
             if isinstance(ty, RecordType):
                 for ftype in ty.fields.values():
                     _visit(ftype)
+            elif isinstance(ty, AlgebraicType):
+                for vi in ty.variants:
+                    for ftype in vi.fields.values():
+                        _visit(ftype)
             ordered.append((name, ty))
 
         for ty in self._symbols.all_types().values():
@@ -180,7 +186,11 @@ class TypeEmitterMixin:
                     result.add(name)
         return result
 
-    def _emit_imported_type_defs(self, lookup_names: set[str] | None = None) -> None:
+    def _emit_imported_type_defs(
+        self,
+        lookup_names: set[str] | None = None,
+        early_algebraic: set[str] | None = None,
+    ) -> None:
         """Emit full struct definitions for imported local types.
 
         Constructors are only emitted for directly imported types — transitive
@@ -188,6 +198,7 @@ class TypeEmitterMixin:
         avoid name collisions with locally-defined constructors.
         """
         skip = lookup_names or set()
+        early = early_algebraic or set()
         direct_names = self._direct_imported_local_type_names()
         for name, ty in self._imported_local_types():
             if name in skip:
@@ -211,7 +222,8 @@ class TypeEmitterMixin:
                 if name in direct_names:
                     self._emit_record_constructor(cname, name, ty.fields)
             elif isinstance(ty, AlgebraicType):
-                self._emit_algebraic_struct(cname, ty.variants)
+                if name not in early:
+                    self._emit_algebraic_struct(cname, ty.variants)
                 if name in direct_names and not self._is_inherited_base_type(name):
                     self._emit_variant_constructors(cname, ty.variants)
 

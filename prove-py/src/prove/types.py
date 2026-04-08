@@ -56,6 +56,7 @@ class AlgebraicType:
     name: str
     variants: list[VariantInfo] = field(default_factory=list)
     type_params: tuple[str, ...] = ()
+    parents: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -542,7 +543,13 @@ def types_compatible(expected: Type, actual: Type, *, covariant: bool = True) ->
     if isinstance(expected, RecordType) and isinstance(actual, RecordType):
         return expected.name == actual.name
     if isinstance(expected, AlgebraicType) and isinstance(actual, AlgebraicType):
-        return expected.name == actual.name
+        if expected.name == actual.name:
+            return True
+        # Parent type is compatible where child type is expected:
+        # child contains all parent variants, so any parent value is valid.
+        if actual.name in expected.parents:
+            return True
+        return False
     if isinstance(expected, RefinementType) and isinstance(actual, RefinementType):
         return expected.name == actual.name
     if isinstance(expected, GenericInstance) and isinstance(actual, GenericInstance):

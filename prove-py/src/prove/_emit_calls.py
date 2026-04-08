@@ -550,6 +550,16 @@ class CallEmitterMixin:
                 break
             arg_ty = self._infer_expr_type(arg_expr)
             param_ty = sig.param_types[i]
+            # Skip coercion for TypeVariable params — the C runtime dispatch
+            # selects a typed variant (e.g. prove_array_set_int) that accepts
+            # the concrete type directly.  BUT still coerce when the C-level
+            # types actually differ (e.g. Table* → Value*), since skipping
+            # would pass a raw struct pointer where Value* is expected.
+            if isinstance(param_ty, TypeVariable):
+                arg_ct = map_type(arg_ty)
+                param_ct = map_type(param_ty)
+                if arg_ct.decl == param_ct.decl:
+                    continue
             arg_ct = map_type(arg_ty)
             param_ct = map_type(param_ty)
             if arg_ct.decl == param_ct.decl:
@@ -680,9 +690,14 @@ class CallEmitterMixin:
             if arg_ct.decl == "Prove_Value*" and param_ct.decl == "Prove_String*":
                 result[i] = f"prove_value_as_text({arg_str})"
                 continue
-            # Value<T> → T (phantom-typed value): cast Prove_Value* to concrete pointer
+            # Value<T> → T (phantom-typed value): cast Prove_Value* to concrete pointer.
+            # Prove_Table* needs prove_value_as_object() — a raw cast reinterprets
+            # the Value struct as a Table, causing infinite loops in _find_slot().
             if arg_ct.decl == "Prove_Value*" and param_ct.is_pointer:
-                result[i] = f"(({param_ct.decl}){arg_str})"
+                if param_ct.decl == "Prove_Table*":
+                    result[i] = f"prove_value_as_object({arg_str})"
+                else:
+                    result[i] = f"(({param_ct.decl}){arg_str})"
                 continue
             # concrete → Prove_Value*: wrap as Value
             if param_ct.decl == "Prove_Value*" and arg_ct.decl != "Prove_Value*":
@@ -1007,9 +1022,10 @@ class CallEmitterMixin:
                     )
                 )
                 if not _needs_reresolution and narrowed_types and sig and sig.param_types:
-                    # Force re-resolve when arg is TypeVariable but param is concrete
+                    # Force re-resolve when arg/param TypeVariable status mismatches
+                    # (generic sig + concrete args, or concrete sig + generic args)
                     _needs_reresolution = any(
-                        isinstance(a, TypeVariable) and not isinstance(p, TypeVariable)
+                        isinstance(a, TypeVariable) != isinstance(p, TypeVariable)
                         for p, a in zip(sig.param_types, narrowed_types)
                     )
                 _expected_ret = getattr(self, "_expected_emit_type", None)
@@ -1525,7 +1541,7 @@ class CallEmitterMixin:
             fake_sig = type(
                 "Sig",
                 (),
-                {"param_types": field_types},
+                {"param_types": field_types, "name": ""},
             )()
             args = self._coerce_call_args(
                 args,

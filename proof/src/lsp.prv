@@ -144,7 +144,7 @@ creates uri(root Table) String
 from
     match get("params", root)
         Some(val) =>
-            match get("rootUri", val)
+            match get("rootUri", table(val))
                 Some(uri) => string(uri)
                 None => "NOROOTURIGIVEN"
         None => "UNKNOWN"

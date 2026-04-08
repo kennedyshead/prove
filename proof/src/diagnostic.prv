@@ -50,7 +50,6 @@ matches root(start String, node Node) DiagnosticMessage
 from
     "module" => exxx("Expected `module Name` but found", LintCode:E210, node)
     _ =>
-        warning(f"Missed root match {start}")&
         message as String = LintCode:E100
         exxx(message, LintCode:E100, node)
 

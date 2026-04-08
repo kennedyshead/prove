@@ -161,6 +161,8 @@ class CEmitter(
         self._recursive_fields_cache: dict[str, set[tuple[str, str]]] = {}
         # Locals that are recursive pointers (from match arm bindings)
         self._recursive_pointer_locals: set[str] = set()
+        # Result param → unwrapped temp name (auto-unwrap for functions with requires)
+        self._result_param_remap: dict[str, str] = {}
         self._deferred_const_inits: list[str] = []  # constructor functions for list constants
         for decl in module.declarations:
             if isinstance(decl, ModuleDecl):
@@ -1374,7 +1376,7 @@ class CEmitter(
                         return True
             for expr in exprs:
                 if isinstance(expr, CallExpr) and isinstance(expr.func, IdentifierExpr):
-                    if expr.func.name == "set":
+                    if expr.func.name in ("set", "extend"):
                         return True
                     # Check lambdas inside each/filter/map calls
                     for arg in expr.args:
@@ -1586,6 +1588,7 @@ class CEmitter(
         self._locals.clear()
         self._used_names.clear()
         self._string_literal_cache.clear()
+        self._result_param_remap.clear()
         self._param_names = {p.name for p in fd.params}
         for p, pt in zip(fd.params, param_types):
             self._locals[p.name] = pt
@@ -1606,6 +1609,26 @@ class CEmitter(
                 ct = map_type(pt)
                 if ct.is_pointer:
                     self._line(f"prove_retain({p.name});")
+
+        # Auto-unwrap Result params when function has requires contracts.
+        # The requires contract proves the Result is Ok, so .value is safe.
+        # For Err results, .value is NULL and validators return false → panic.
+        self._result_param_remap.clear()
+        if fd.requires:
+            for p, pt in zip(fd.params, param_types):
+                if isinstance(pt, GenericInstance) and pt.base_name == "Result" and pt.args:
+                    inner_ty = pt.args[0]
+                    inner_ct = map_type(inner_ty)
+                    if inner_ct.header:
+                        self._needed_headers.add(inner_ct.header)
+                    cn = safe_c_name(p.name)
+                    tmp = self._named_tmp(f"unwrap_{cn}")
+                    if inner_ct.is_pointer:
+                        self._line(f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){cn}.value;")
+                    else:
+                        self._line(f"{inner_ct.decl} {tmp} = *({inner_ct.decl}*)&{cn}.value;")
+                    self._result_param_remap[p.name] = tmp
+                    self._locals[p.name] = inner_ty
 
         # Emit requires guards — if the precondition is not met,
         # the from-block must never execute.

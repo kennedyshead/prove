@@ -9,7 +9,7 @@ module Lint
   == describe collect diagnose derives lint tree ==
   """
   Prove types Node Tree derives root creates children kind parent
-  Sequence derives slice get first extend last set creates length
+  Sequence derives slice get first extend last creates length
   Types creates integer validates boolean string unit
   Diagnostic types LintCode DiagnosticMessage creates exxx ixxx matches ast_parse_error
   Text derives replace creates join split validates ends starts
@@ -179,11 +179,12 @@ derives lint_tree(
 ) List<DiagnosticMessage>
   terminates: length(nodes) == 0
 from
-    each(
+    extended as List<DiagnosticMessage> =
+        reduce(
         nodes,
-        |node| set(diagnostics, length(diagnostics), diagnose(kind(node), node, content)))
-    each(nodes, |node| lint_tree(children(node), diagnostics, content))
-    diagnostics
+        diagnostics,
+        |acc, node| extend(acc, diagnose(kind(node), node, content)))
+    reduce(nodes, extended, |acc, node| lint_tree(children(node), acc, content))
 
 /// collects errors warnings and info lints for a tree
 creates collect(content Content, tree Tree) List<DiagnosticMessage>

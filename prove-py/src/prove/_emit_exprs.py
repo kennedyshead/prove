@@ -115,6 +115,9 @@ class ExprEmitterMixin:
         if isinstance(expr, IdentifierExpr):
             # Local variables/parameters take priority over stdlib functions
             if expr.name in self._locals:
+                # Result param unwrap: use the pre-unwrapped temp variable
+                if expr.name in self._result_param_remap:
+                    return self._result_param_remap[expr.name]
                 cname = safe_c_name(expr.name)
                 # Recursive pointer locals need dereference when used as values
                 if expr.name in self._recursive_pointer_locals:
@@ -208,7 +211,31 @@ class ExprEmitterMixin:
                 sig = self._symbols.resolve_function_any(expr.name, arity=n)
             if expr.args is not None:
                 # valid error(x) -> call the validates function
-                args_c = ", ".join(self._emit_expr(a) for a in expr.args)
+                args_list = [self._emit_expr(a) for a in expr.args]
+                # Wrap record args → Prove_Value* for validates(Value) params
+                if sig and sig.param_types:
+                    from prove.types import (
+                        PrimitiveType,
+                        RecordType,
+                        TypeVariable,
+                        is_json_serializable,
+                    )
+
+                    for i, arg_expr in enumerate(expr.args):
+                        if i >= len(sig.param_types):
+                            break
+                        param_ty = sig.param_types[i]
+                        # TypeVariable params accept any type — check if arg is a record
+                        # that needs wrapping to Prove_Value* for the C function
+                        is_generic_param = isinstance(param_ty, TypeVariable) or (
+                            isinstance(param_ty, PrimitiveType) and param_ty.name == "Value"
+                        )
+                        if not is_generic_param:
+                            continue
+                        arg_ty = self._infer_expr_type(arg_expr)
+                        if isinstance(arg_ty, RecordType) and is_json_serializable(arg_ty):
+                            args_list[i] = f"_prove_record_to_value_{arg_ty.name}({args_list[i]})"
+                args_c = ", ".join(args_list)
                 # Check stdlib C name first
                 if sig and sig.module:
                     c_name = self._resolve_stdlib_c_name(sig, expr.args, verb_override="validates")

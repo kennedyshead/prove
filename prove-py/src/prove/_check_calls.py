@@ -168,6 +168,9 @@ class CallCheckMixin:
                     return ListType(self._infer_expr(lam.body))
             if name == "filter" and arg_count == 2 and arg_types:
                 coll = arg_types[0]
+                # filter(Cursor, pred) materialises to List<Row>
+                if isinstance(coll, PrimitiveType) and coll.name == "Cursor":
+                    return ListType(PrimitiveType("Row"))
                 # filter with |x| unit(x) == false unwraps Option<T> → T
                 if (
                     isinstance(coll, ListType)

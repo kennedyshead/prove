@@ -821,6 +821,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         # Check if first variant is actually a base algebraic type (inheritance)
         inherited_variants: list[VariantInfo] = []
         own_variants_start = 0
+        parents: tuple[str, ...] = ()
         if body.variants:
             first_v = body.variants[0]
             if not first_v.fields:
@@ -852,13 +853,14 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                     inherited_variants = list(base_type.variants)
                     own_variants_start = 1
                     self._used_types.add(first_v.name)
+                    parents = (base_type.name,) + base_type.parents
         variants.extend(inherited_variants)
         for v in body.variants[own_variants_start:]:
             vfields: dict[str, Type] = {}
             for f in v.fields:
                 vfields[f.name] = self._resolve_type_expr(f.type_expr)
             variants.append(VariantInfo(v.name, vfields))
-        resolved = AlgebraicType(td.name, variants, type_params)
+        resolved = AlgebraicType(td.name, variants, type_params, parents)
         # Register each variant as a constructor function
         # (both inherited and own variants)
         for vi in variants:
