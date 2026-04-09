@@ -260,6 +260,9 @@ class TypeEmitterMixin:
         # Pre-scan: find all record types that need conversion
         self._scan_record_to_value_needs()
 
+        if self._record_to_value:
+            self._needed_headers.add("prove_parse.h")
+
         for rec_name in sorted(self._record_to_value):
             rec_ty = self._symbols.resolve_type(rec_name)
             if not isinstance(rec_ty, RecordType):

@@ -160,7 +160,7 @@ class StmtEmitterMixin:
             assert entry.condition is not None
             cond = self._emit_expr(entry.condition)
             keyword = "if" if first else "else if"
-            self._line(f"{keyword} (({cond})) {{")
+            self._line(f"{keyword} ({cond}) {{")
             self._indent += 1
             if idx < len(body):
                 stmt = body[idx]

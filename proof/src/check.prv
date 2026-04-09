@@ -8,12 +8,11 @@ module Check
   outputs lint messages
   matches the declaration and lint for each statement
   """
-  System validates dir inputs cwd
-  Source types SourceFile Content
-  Types validates boolean
+  System validates dir inputs cwd outputs console
+  Source types SourceFile Content inputs source
   Log detached info error
   Sequence derives extend creates length validates contains
-  Config types Config
+  Config types Config inputs config
   Lint creates collect
   Diagnostic types DiagnosticMessage detached diagnostic
 
@@ -27,10 +26,21 @@ module Check
   PYTHON_CHECK as String = comptime
       read("python/check.py")
 
+  HELP_CHECK_TEXT as String = comptime
+      read("static/cli/check.txt")
+
+/// Run the check command
+dispatches check(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_CHECK_TEXT)
+    _ =>
+        info("Running check")&
+        config as Config = config()!
+        source as Content = source(config)!
+        source_check(lint(source), source.files, arguments, config)!
+
 /// Lint content
 validates lint(content Content)
-  ensures valid boolean(result)
-  requires length(content.files) > 0
 from
     messages as List<DiagnosticMessage> = []
     each(content.files, |file| extend(messages, collect(content, file.source)))

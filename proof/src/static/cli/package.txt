@@ -1,0 +1,15 @@
+Usage: proof package [OPTIONS] COMMAND [ARGS]...
+
+  Manage Prove packages.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  add      Add a dependency and resolve it.
+  clean    Clear the package cache (~/.prove/cache/packages/).
+  init     Add [dependencies] section to prove.toml.
+  install  Fetch all dependencies from lockfile.
+  list     Show dependency tree.
+  publish  Validate and create a .prvpkg file.
+  remove   Remove a dependency.

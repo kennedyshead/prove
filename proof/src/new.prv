@@ -3,10 +3,13 @@ module New
   Creates a new scaffold project.
   
   outputs the command to python for a pynew  
+  dispatches the new command
   """
-  System inputs cwd outputs dir file
+  System inputs cwd outputs dir file console
   Path derives join
   Types validates string
+  Sequence derives get
+  Log detached info
 
   MAIN_PRV as String = comptime
       read("static/scaffold/src/main.prv.txt")
@@ -19,6 +22,19 @@ module New
 
   PROJECT_INTENT as String = comptime
       read("static/scaffold/project.intent")
+
+  HELP_NEW_TEXT as String = comptime
+      read("static/cli/new.txt")
+
+/// Run the new command
+dispatches new(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_NEW_TEXT)
+    _ =>
+        name as String = get(arguments, 0)
+        info(f"{name}")&
+        new_project(name)!
+        info(f"{name}")&
 
 outputs new_project(name String)!
   requires valid string(name)

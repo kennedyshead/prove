@@ -10,7 +10,7 @@ keywords: Prove roadmap, language roadmap, self-hosted compiler
 
 Features use status labels rather than version numbers:
 
-- **Proposed** — Designed, not yet built.
+- **Staged** — Implemented, not yet released.
 - **Exploring** — Idea stage, no commitment.
 
 Two milestones frame the overall project:
@@ -23,9 +23,9 @@ V1.0 has shipped. V2.0 planning is underway.
 
 ---
 
-## Proposed
+## V1.4 — Staged
 
-### V1.4 — Package Manager
+### Package Manager
 
 Pure-Prove package distribution via AST-level sharing in SQLite archives.
 
@@ -39,10 +39,6 @@ Pure-Prove package distribution via AST-level sharing in SQLite archives.
 - Purity validation on publish: no `foreign` blocks, all imports must resolve to stdlib or declared dependencies
 - Checker integration: package signatures loaded from exports table without full AST deserialization
 - Full design: [`future/14-package-manager.md`](https://code.botwork.se/Botwork/prove/src/branch/main/future/14-package-manager.md)
-
----
-
-## V1.4 — Staged
 
 ### Sqlite Stdlib (Experimental)
 

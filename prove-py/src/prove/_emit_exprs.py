@@ -1523,6 +1523,21 @@ class ExprEmitterMixin:
             return ty.name
         return ""
 
+    @staticmethod
+    def _strip_outer_parens(s: str) -> str:
+        """Strip one layer of balanced outer parentheses from a string."""
+        if len(s) >= 2 and s[0] == "(" and s[-1] == ")":
+            depth = 0
+            for i, c in enumerate(s):
+                if c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                if depth == 0 and i < len(s) - 1:
+                    return s  # Parens aren't a single outer pair
+            return s[1:-1]
+        return s
+
     def _types_match(self, a: Type, b: Type) -> bool:
         """Check if two types match by name."""
         return self._type_name_str(a) == self._type_name_str(b)
@@ -1655,7 +1670,9 @@ class ExprEmitterMixin:
                 subj = f"prove_value_as_bool({subj})"
             elif is_resolved_value:
                 subj = f"(bool)(intptr_t){subj}"
-            return subj if val == "true" else f"!({subj})"
+            # Strip redundant outer parens — callers wrap in if(...)
+            bare = self._strip_outer_parens(subj)
+            return bare if val == "true" else f"!{subj}"
         if pat.kind == "string":
             escaped = self._escape_c_string(val)
             if is_true_value:

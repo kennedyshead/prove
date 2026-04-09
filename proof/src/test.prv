@@ -3,9 +3,11 @@ module Test
   Handles the source check.
 
   outputs the command to python for a pytest
+  dispatches the test command
   """
-  Config types Config
-  System validates dir
+  Config types Config inputs config
+  System validates dir inputs cwd outputs console
+  Log detached info
 
   foreign "libpython3"
     py_initialize() Unit
@@ -16,6 +18,18 @@ module Test
 
   PYTHON_TEST as String = comptime
       read("python/test.py")
+
+  HELP_TEST_TEXT as String = comptime
+      read("static/cli/test.txt")
+
+/// Run the test command
+dispatches test(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_TEST_TEXT)
+    _ =>
+        config as Config = config()!
+        pytest(config, cwd())!
+        info(f"{config.package.name}{config.package.version}")&
 
 outputs pytest(config Config, path String) Integer!
   requires valid dir(path)

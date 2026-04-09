@@ -60,11 +60,19 @@ class TestConfig:
 
 
 @dataclass
+class DependencyConfig:
+    name: str
+    version_constraint: str
+    path: str | None = None  # Local path to package project (relative to prove.toml)
+
+
+@dataclass
 class ProveConfig:
     package: PackageConfig = field(default_factory=PackageConfig)
     build: BuildConfig = field(default_factory=BuildConfig)
     optimize: OptimizeConfig = field(default_factory=OptimizeConfig)
     test: TestConfig = field(default_factory=TestConfig)
+    dependencies: list[DependencyConfig] = field(default_factory=list)
 
 
 # Directories under src/ that contain shared resources (stdlib .prv files,
@@ -145,4 +153,81 @@ def load_config(path: Path) -> ProveConfig:
             property_rounds=tst.get("property_rounds", 1000),
         )
 
+    if "dependencies" in data:
+        deps = data["dependencies"]
+        for name, value in deps.items():
+            if isinstance(value, dict):
+                # Table form: name = { path = "...", version = "..." }
+                dep_path = value.get("path")
+                if dep_path:
+                    # Resolve relative to prove.toml location
+                    dep_path = str((path.parent / dep_path).resolve())
+                config.dependencies.append(
+                    DependencyConfig(
+                        name=name,
+                        version_constraint=value.get("version", "*"),
+                        path=dep_path,
+                    )
+                )
+            else:
+                # Simple form: name = "version"
+                config.dependencies.append(
+                    DependencyConfig(name=name, version_constraint=str(value))
+                )
+
     return config
+
+
+def write_dependency(
+    config_path: Path,
+    name: str,
+    version_constraint: str,
+    *,
+    dep_path: str | None = None,
+) -> None:
+    """Add or update a dependency in prove.toml.
+
+    If *dep_path* is given, writes a table form: ``name = { path = "..." }``.
+    Otherwise writes simple form: ``name = "version"``.
+    """
+    text = config_path.read_text()
+    if "[dependencies]" not in text:
+        text = text.rstrip() + "\n\n[dependencies]\n"
+
+    if dep_path:
+        new_value = f'{name} = {{ path = "{dep_path}" }}'
+    else:
+        new_value = f'{name} = "{version_constraint}"'
+
+    # Check if dependency already exists
+    lines = text.split("\n")
+    found = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith(f"{name} ") or stripped.startswith(f"{name}="):
+            lines[i] = new_value
+            found = True
+            break
+    if not found:
+        # Find [dependencies] section and append
+        for i, line in enumerate(lines):
+            if line.strip() == "[dependencies]":
+                lines.insert(i + 1, new_value)
+                break
+    config_path.write_text("\n".join(lines))
+
+
+def remove_dependency(config_path: Path, name: str) -> bool:
+    """Remove a dependency from prove.toml. Returns True if found."""
+    text = config_path.read_text()
+    lines = text.split("\n")
+    found = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith(f"{name} ") or stripped.startswith(f"{name}="):
+            lines.pop(i)
+            found = True
+            break
+    if found:
+        config_path.write_text("\n".join(lines))
+    return found

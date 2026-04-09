@@ -79,7 +79,7 @@ Prove_ByteArray *prove_readexactly(int64_t n) {
 /* ── Channel-aware console ───────────────────────────────────── */
 
 static FILE *_resolve_channel(Prove_String *channel) {
-    if (channel && channel->data) {
+    if (channel && channel->length > 0) {
         if (strcmp(channel->data, "stderr") == 0) return stderr;
         if (strcmp(channel->data, "stdin") == 0)  return stdin;
     }

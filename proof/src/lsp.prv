@@ -46,6 +46,16 @@ module Lsp
   RESPONSE_NULL as String = comptime
       read("static/lsp/response_null.json")
 
+  HELP_LSP_TEXT as String = comptime
+      read("static/cli/lsp.txt")
+
+/// Run the lsp command
+dispatches lsp(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_LSP_TEXT)
+    _ =>
+        prvlsp()
+
 outputs prvlsp()
 from
     lsp_log("Starting native LSP server")&

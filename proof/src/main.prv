@@ -14,23 +14,25 @@ module Main
   System inputs process outputs console
   Sequence derives value slice creates length validates contains
   Config types Config inputs config
-  Commands dispatches new check format lsp test build
-  Source inputs parse_stdlibs
+  Build dispatches build
+  Check dispatches check
+  .Format dispatches format
+  Lsp dispatches lsp
+  New dispatches new
+  Package dispatches package
+  Test dispatches test
 
   HELP_TXT as String = comptime
       read("static/cli/root.txt")
 
 dispatches parsed_command(command Option<String>, help Boolean, arguments List<String>)!
 from
-    Some("build") =>
-        match contains(arguments, "--compiler")
-            true =>
-                parse_stdlibs()!
-        build(help, arguments)!
+    Some("build") => build(help, arguments)!
     Some("check") => check(help, arguments)!
     Some("format") => format(help, arguments)!
     Some("lsp") => lsp(help, arguments)!
     Some("new") => new(help, arguments)!
+    Some("package") => package(help, arguments)!
     Some("test") => test(help, arguments)!
     Some("--version") =>
         config as Config = config()!

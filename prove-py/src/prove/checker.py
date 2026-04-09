@@ -274,6 +274,7 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
         self,
         local_modules: dict[str, object] | None = None,
         project_dir: Path | None = None,
+        package_modules: dict[str, object] | None = None,
     ) -> None:
         self.symbols = SymbolTable()
         self.diagnostics: list[Diagnostic] = []
@@ -309,6 +310,8 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             self._survivors = load_survivors(project_dir)
         # Local (sibling) module info for cross-file imports
         self._local_modules = local_modules
+        # Package module info for package imports
+        self._package_modules = package_modules
         # Lookup tables per type name for TypeName: resolution
         self._lookup_tables: dict[str, LookupTypeDef] = {}
         # Store-backed lookup type names (runtime data, not compile-time)
@@ -1134,6 +1137,10 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
             if self._local_modules and imp.module in self._local_modules:
                 self._register_local_import(imp)
                 return
+            # Check installed packages
+            if self._package_modules and imp.module in self._package_modules:
+                self._register_package_import(imp)
+                return
             # Register the module name so we know it was declared,
             # but don't add function names — call sites will flag them.
             self._module_imports.setdefault(imp.module, set())
@@ -1375,6 +1382,110 @@ class Checker(TypeCheckMixin, CallCheckMixin, ContractCheckMixin):
                 self._info(
                     "I315",
                     f"function '{item.name}' not found in module '{imp.module}'",
+                    item.span,
+                )
+
+    def _register_package_import(self, imp: ImportDecl) -> None:
+        """Register imports from an installed package module."""
+        pkg_info = self._package_modules[imp.module]  # type: ignore[index]
+
+        names = self._module_imports.setdefault(imp.module, set())
+        for item in imp.items:
+            names.add(item.name)
+            self._import_spans.setdefault(
+                (imp.module.lower(), item.name),
+                [],
+            ).append(item.span)
+
+        # Build lookup dicts
+        pkg_funcs_by_name: dict[str, list[FunctionSignature]] = {}
+        for sig in pkg_info.functions:
+            pkg_funcs_by_name.setdefault(sig.name, []).append(sig)
+
+        for item in imp.items:
+            # Constant imports
+            is_const_name = item.verb == "constants" or (
+                len(item.name) >= 2
+                and all(c.isupper() or c.isdigit() or c == "_" for c in item.name)
+            )
+            if is_const_name:
+                if item.name in pkg_info.constants:
+                    resolved = pkg_info.constants[item.name]
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.CONSTANT,
+                            resolved_type=resolved,
+                            span=item.span,
+                            is_imported=True,
+                        )
+                    )
+                else:
+                    self._info(
+                        "I315",
+                        f"constant '{item.name}' not found in package module '{imp.module}'",
+                        item.span,
+                    )
+                continue
+
+            # Type imports
+            is_type_import = item.verb == "types" or (item.verb is None and item.name[:1].isupper())
+            if is_type_import:
+                resolved_type = pkg_info.types.get(item.name)
+                if resolved_type is not None:
+                    self.symbols.define_type(item.name, resolved_type)
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.TYPE,
+                            resolved_type=resolved_type,
+                            span=item.span,
+                            verb=item.verb,
+                            is_imported=True,
+                        )
+                    )
+                    # Register variant constructors for algebraic types
+                    if isinstance(resolved_type, AlgebraicType):
+                        for vi in resolved_type.variants:
+                            vsig = FunctionSignature(
+                                verb=None,
+                                name=vi.name,
+                                param_names=list(vi.fields.keys()),
+                                param_types=list(vi.fields.values()),
+                                return_type=resolved_type,
+                                can_fail=False,
+                                span=item.span,
+                                requires=[],
+                            )
+                            self.symbols.define_function(vsig)
+                else:
+                    self._info(
+                        "I315",
+                        f"type '{item.name}' not found in package module '{imp.module}'",
+                        item.span,
+                    )
+                continue
+
+            # Function imports — register all verb overloads
+            sigs = pkg_funcs_by_name.get(item.name, [])
+            if sigs:
+                for sig in sigs:
+                    ft = FunctionType(sig.param_types, sig.return_type)
+                    self.symbols.define(
+                        Symbol(
+                            name=item.name,
+                            kind=SymbolKind.FUNCTION,
+                            resolved_type=ft,
+                            span=item.span,
+                            verb=sig.verb,
+                            is_imported=True,
+                        )
+                    )
+                    self.symbols.define_function(sig)
+            else:
+                self._info(
+                    "I315",
+                    f"function '{item.name}' not found in package module '{imp.module}'",
                     item.span,
                 )
 

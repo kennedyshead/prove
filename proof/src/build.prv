@@ -5,9 +5,12 @@ module Build
   outputs the command to python for a pybuild
     or prvbuild for a prove only build
   """
-  System validates dir
-  Source types Content
+  System validates dir inputs cwd outputs console
+  Source types Content inputs source parse_stdlibs
   Log detached info error
+  Sequence validates contains
+  Config types Config inputs config
+  Check validates lint
 
   foreign "libpython3"
     py_initialize() Unit
@@ -16,8 +19,26 @@ module Build
     py_set_string(name String, value String) Unit
     py_set_bool(name String, value Boolean) Unit
 
+  HELP_BUILD_TEXT as String = comptime
+      read("static/cli/build.txt")
+
   PYTHON_BUILD as String = comptime
       read("python/build.py")
+
+/// Run the build command
+dispatches build(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_BUILD_TEXT)
+    false =>
+        info("Running build...")&
+        match contains(arguments, "--compiler")
+            true =>
+                parse_stdlibs()!
+        debug as Boolean = contains(arguments, "--debug")
+        no_mutate as Boolean = contains(arguments, "--no-mutate")
+        config as Config = config()!
+        source as Content = source(config)!
+        source_build(lint(source), source, cwd(), debug, no_mutate)!
 
 outputs pybuild(path String, debug Boolean, no_mutate Boolean)!
   requires valid dir(path)

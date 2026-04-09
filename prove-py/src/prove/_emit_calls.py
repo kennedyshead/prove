@@ -560,6 +560,10 @@ class CallEmitterMixin:
                 param_ct = map_type(param_ty)
                 if arg_ct.decl == param_ct.decl:
                     continue
+                # When a typed variant is selected (e.g. prove_array_set_int),
+                # it accepts the concrete type directly — skip Value* wrapping.
+                if param_ct.decl == "Prove_Value*" and not arg_ct.is_pointer:
+                    continue
             arg_ct = map_type(arg_ty)
             param_ct = map_type(param_ty)
             if arg_ct.decl == param_ct.decl:
@@ -650,6 +654,7 @@ class CallEmitterMixin:
                         continue
                 # Result<T, E> → Value*: unwrap + wrap as Value
                 if param_ct.decl == "Prove_Value*":
+                    self._needed_headers.add("prove_parse.h")
                     if inner_ct.decl == "Prove_Table*":
                         result[i] = (
                             f"prove_value_object(({inner_ct.decl})prove_result_unwrap_ptr({arg_str}))"
@@ -701,6 +706,7 @@ class CallEmitterMixin:
                 continue
             # concrete → Prove_Value*: wrap as Value
             if param_ct.decl == "Prove_Value*" and arg_ct.decl != "Prove_Value*":
+                self._needed_headers.add("prove_parse.h")
                 if arg_ct.decl == "Prove_Table*":
                     result[i] = f"prove_value_object({arg_str})"
                 elif arg_ct.decl == "Prove_String*":
@@ -971,6 +977,7 @@ class CallEmitterMixin:
                     elif default_ct.decl == "bool":
                         default_c = f"prove_value_boolean({default_c})"
                     self._needed_headers.add("prove_error.h")
+                    self._needed_headers.add("prove_parse.h")
                     return f"prove_error_unwrap_or({args[0]}, {default_c})"
 
             # Builtin mapping

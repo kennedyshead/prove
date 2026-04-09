@@ -1,0 +1,14 @@
+module Package
+  narrative: """Handle package manager"""
+  System outputs console
+  Log detached info
+
+  HELP_PACKAGE_TEXT as String = comptime
+      read("static/cli/package.txt")
+
+/// Run the build command
+dispatches package(help Boolean, arguments List<String>)!
+from
+    true => console(HELP_PACKAGE_TEXT)
+    false =>
+        info("TBD")&

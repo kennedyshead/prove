@@ -266,6 +266,17 @@ def build_project(
 
     local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
 
+    # Load installed packages from lockfile
+    package_modules = None
+    lockfile_path = project_dir / "prove.lock"
+    if lockfile_path.exists():
+        from prove.lockfile import read_lockfile
+        from prove.package_loader import load_installed_packages
+
+        lockfile = read_lockfile(lockfile_path)
+        if lockfile:
+            package_modules = load_installed_packages(project_dir, lockfile)
+
     for prv_file in prv_files:
         source = prv_file.read_text()
         filename = str(prv_file)
@@ -286,7 +297,7 @@ def build_project(
         # Format (type-infer and rewrite), then re-parse only if source changed
         from prove.formatter import ProveFormatter
 
-        checker = Checker(local_modules=local_modules)
+        checker = Checker(local_modules=local_modules, package_modules=package_modules)
         symbols = checker.check(module)
         formatter = ProveFormatter(symbols=symbols)
         formatted = formatter.format(module)
@@ -302,7 +313,7 @@ def build_project(
                 all_diags.extend(module.parse_diagnostics)
                 if any(d.severity == Severity.ERROR for d in module.parse_diagnostics):
                     continue
-            checker = Checker(local_modules=local_modules)
+            checker = Checker(local_modules=local_modules, package_modules=package_modules)
             symbols = checker.check(module)
 
         all_diags.extend(checker.diagnostics)
@@ -320,6 +331,10 @@ def build_project(
     # Compile pure stdlib modules that are imported by the project
     user_module_count = len(modules_and_symbols)
     _compile_pure_stdlib(modules_and_symbols, all_diags)
+
+    # Compile package modules that are imported by the project
+    if package_modules:
+        _compile_package_modules(package_modules, modules_and_symbols, all_diags)
 
     standalone = not (debug or config.build.debug)
     return _build_c(
@@ -369,6 +384,38 @@ def _compile_pure_stdlib(
             continue
 
         modules_and_symbols.append((stdlib_module, symbols))
+
+
+def _compile_package_modules(
+    package_modules: dict[str, object],
+    modules_and_symbols: list[tuple[Module, SymbolTable]],
+    all_diags: list[Diagnostic],
+) -> None:
+    """Compile package modules imported by the project."""
+    from prove.package_loader import load_package_for_emit
+
+    # Collect all imported module names from the project
+    imported: set[str] = set()
+    for module, _symbols in modules_and_symbols:
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                for imp in decl.imports:
+                    if imp.module in package_modules:
+                        imported.add(imp.module)
+
+    for mod_name in imported:
+        pkg_info = package_modules[mod_name]
+        try:
+            pkg_module, pkg_symbols = load_package_for_emit(pkg_info)
+            modules_and_symbols.append((pkg_module, pkg_symbols))
+        except Exception as e:
+            all_diags.append(
+                Diagnostic(
+                    code="E317",
+                    message=f"failed to load package module '{mod_name}': {e}",
+                    severity=Severity.ERROR,
+                )
+            )
 
 
 def _build_c(

@@ -7,6 +7,7 @@ fallbacks when optimize.enabled=false (no compiled ``proof`` binary needed).
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import click
@@ -89,6 +90,17 @@ def check(path: str, md: bool, strict: bool, no_intent: bool) -> None:
 
     local_modules = build_module_registry(prv_files) if len(prv_files) > 1 else None
 
+    # Load installed packages from lockfile
+    package_modules = None
+    lockfile_path = project_dir / "prove.lock"
+    if lockfile_path.exists():
+        from prove.lockfile import read_lockfile
+        from prove.package_loader import load_installed_packages
+
+        lockfile = read_lockfile(lockfile_path)
+        if lockfile:
+            package_modules = load_installed_packages(project_dir, lockfile)
+
     renderer = DiagnosticRenderer(color=not md)
     has_errors = False
     for prv_file in prv_files:
@@ -101,7 +113,7 @@ def check(path: str, md: bool, strict: bool, no_intent: bool) -> None:
             has_errors = True
             continue
 
-        checker = Checker(local_modules=local_modules)
+        checker = Checker(local_modules=local_modules, package_modules=package_modules)
         checker.check(module)
         for diag in checker.diagnostics:
             click.echo(renderer.render(diag), err=True)
@@ -556,6 +568,344 @@ def export_cmd(fmt: str | None, build: bool, workspace_path: str | None) -> None
 @main.group()
 def advanced() -> None:
     """Advanced development tools."""
+
+
+# ── Package manager commands ─────────────────────────────────────
+
+
+@main.group()
+def package() -> None:
+    """Manage Prove packages."""
+
+
+@package.command("init")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def package_init(path: str) -> None:
+    """Add [dependencies] section to prove.toml."""
+    from prove.config import find_config
+
+    try:
+        config_path = find_config(Path(path))
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    text = config_path.read_text()
+    if "[dependencies]" in text:
+        click.echo("[dependencies] section already exists")
+        return
+
+    config_path.write_text(text.rstrip() + "\n\n[dependencies]\n")
+    click.echo(f"added [dependencies] to {config_path}")
+
+
+@package.command("add")
+@click.argument("name")
+@click.argument("version", default="")
+@click.option(
+    "--path",
+    "dep_path",
+    default=None,
+    type=click.Path(exists=True),
+    help="Local path to package project directory.",
+)
+def package_add(name: str, version: str, dep_path: str | None) -> None:
+    """Add a dependency and resolve it."""
+    from prove.config import find_config, load_config, write_dependency
+    from prove.lockfile import read_lockfile, write_lockfile
+    from prove.resolver import resolve
+
+    try:
+        config_path = find_config()
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    project_dir = config_path.parent
+
+    if dep_path:
+        # Local path dependency
+        abs_path = str(Path(dep_path).resolve())
+        # Make path relative to prove.toml for portability
+        try:
+            rel_path = os.path.relpath(abs_path, project_dir)
+        except ValueError:
+            rel_path = abs_path
+        write_dependency(config_path, name, version or "*", dep_path=rel_path)
+    elif not version:
+        # Fetch latest from registry
+        from prove.registry import fetch_package_info
+
+        info = fetch_package_info(name)
+        if info and info.versions:
+            version = info.versions[0].version
+            click.echo(f"using latest: {name} {version}")
+        else:
+            click.echo(f"error: package '{name}' not found in registry", err=True)
+            raise SystemExit(1)
+        write_dependency(config_path, name, version)
+    else:
+        write_dependency(config_path, name, version)
+
+    # Re-read config and resolve
+    config = load_config(config_path)
+    deps = [(d.name, d.version_constraint) for d in config.dependencies]
+    local_paths = {d.name: d.path for d in config.dependencies if d.path}
+    existing = read_lockfile(project_dir / "prove.lock")
+
+    result = resolve(deps, existing_lock=existing, local_paths=local_paths)
+    if isinstance(result, list):
+        for err in result:
+            click.echo(f"error: {err.message}", err=True)
+        raise SystemExit(1)
+
+    write_lockfile(project_dir / "prove.lock", result)
+    click.echo(f"added {name} {version}")
+
+
+@package.command("remove")
+@click.argument("name")
+def package_remove(name: str) -> None:
+    """Remove a dependency."""
+    from prove.config import find_config, load_config, remove_dependency
+    from prove.lockfile import read_lockfile, write_lockfile
+    from prove.resolver import resolve
+
+    try:
+        config_path = find_config()
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    project_dir = config_path.parent
+
+    if not remove_dependency(config_path, name):
+        click.echo(f"error: '{name}' not found in dependencies", err=True)
+        raise SystemExit(1)
+
+    # Re-resolve
+    config = load_config(config_path)
+    deps = [(d.name, d.version_constraint) for d in config.dependencies]
+    local_paths = {d.name: d.path for d in config.dependencies if d.path}
+    existing = read_lockfile(project_dir / "prove.lock")
+
+    if deps:
+        result = resolve(deps, existing_lock=existing, local_paths=local_paths)
+        if isinstance(result, list):
+            for err in result:
+                click.echo(f"error: {err.message}", err=True)
+            raise SystemExit(1)
+        write_lockfile(project_dir / "prove.lock", result)
+    else:
+        # No deps left, write empty lockfile
+        from prove import __version__
+        from prove.lockfile import Lockfile
+
+        write_lockfile(project_dir / "prove.lock", Lockfile(prove_version=__version__))
+
+    click.echo(f"removed {name}")
+
+
+@package.command("install")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def package_install(path: str) -> None:
+    """Fetch all dependencies from lockfile."""
+    from prove.config import find_config, load_config
+    from prove.lockfile import read_lockfile, write_lockfile
+    from prove.registry import download_package, verify_checksum
+    from prove.resolver import resolve
+
+    try:
+        config_path = find_config(Path(path))
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    project_dir = config_path.parent
+    lockfile = read_lockfile(project_dir / "prove.lock")
+
+    config = load_config(config_path)
+
+    if lockfile is None:
+        # No lockfile — resolve from config
+        if not config.dependencies:
+            click.echo("no dependencies to install")
+            return
+
+        deps = [(d.name, d.version_constraint) for d in config.dependencies]
+        local_paths = {d.name: d.path for d in config.dependencies if d.path}
+        result = resolve(deps, local_paths=local_paths)
+        if isinstance(result, list):
+            for err in result:
+                click.echo(f"error: {err.message}", err=True)
+            raise SystemExit(1)
+        lockfile = result
+        write_lockfile(project_dir / "prove.lock", lockfile)
+
+    installed = 0
+    for pkg in lockfile.packages:
+        # Local packages are already in place
+        if pkg.source.startswith("file://"):
+            local_path = Path(pkg.source[7:])
+            if local_path.exists():
+                installed += 1
+                click.echo(f"  {pkg.name} {pkg.version} (local: {local_path})")
+                continue
+            else:
+                click.echo(f"error: local package missing: {local_path}", err=True)
+                continue
+
+        pkg_path = download_package(
+            pkg.name,
+            pkg.version,
+            pkg.source.rsplit("/packages/", 1)[0] if "/packages/" in pkg.source else "",
+        )
+        if pkg_path is None:
+            click.echo(f"error: failed to download {pkg.name} {pkg.version}", err=True)
+            continue
+        if pkg.checksum and not verify_checksum(pkg_path, pkg.checksum):
+            click.echo(f"warning: checksum mismatch for {pkg.name} {pkg.version}", err=True)
+        installed += 1
+        click.echo(f"  installed {pkg.name} {pkg.version}")
+
+    click.echo(f"\n{installed} package(s) installed")
+
+
+@package.command("publish")
+@click.option("--dry-run", is_flag=True, help="Validate without creating .prvpkg.")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def package_publish(path: str, dry_run: bool) -> None:
+    """Validate and create a .prvpkg file."""
+    from prove import __version__
+    from prove.builder import lex_and_parse
+    from prove.checker import Checker
+    from prove.config import discover_prv_files, find_config, load_config
+    from prove.package import create_package
+
+    try:
+        config_path = find_config(Path(path))
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    project_dir = config_path.parent
+    config = load_config(config_path)
+    src_dir = project_dir / "src"
+    if not src_dir.is_dir():
+        src_dir = project_dir
+
+    prv_files = discover_prv_files(src_dir)
+    if not prv_files:
+        click.echo("error: no .prv files found", err=True)
+        raise SystemExit(1)
+
+    # Parse and check all modules
+    modules = {}
+    has_errors = False
+    for prv_file in prv_files:
+        source = prv_file.read_text()
+        try:
+            module = lex_and_parse(source, str(prv_file))
+        except Exception as e:
+            click.echo(f"error: {e}", err=True)
+            has_errors = True
+            continue
+
+        checker = Checker()
+        checker.check(module)
+        if checker.has_errors():
+            renderer = DiagnosticRenderer(color=True)
+            for diag in checker.diagnostics:
+                click.echo(renderer.render(diag), err=True)
+            has_errors = True
+            continue
+
+        # Validate purity: no foreign blocks
+        from prove.ast_nodes import ModuleDecl
+
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                if decl.foreign_blocks:
+                    click.echo(
+                        f"error: module '{decl.name}' has foreign blocks — "
+                        "packages cannot contain FFI code",
+                        err=True,
+                    )
+                    has_errors = True
+
+        # Use module name from ModuleDecl
+        mod_name = None
+        for decl in module.declarations:
+            if isinstance(decl, ModuleDecl):
+                mod_name = decl.name
+                break
+        if mod_name:
+            modules[mod_name] = module
+
+    if has_errors:
+        raise SystemExit(1)
+
+    if dry_run:
+        click.echo(f"dry run: {len(modules)} module(s) validated")
+        for name in sorted(modules):
+            click.echo(f"  {name}")
+        return
+
+    # Build dependencies list
+    deps = [(d.name, d.version_constraint) for d in config.dependencies]
+
+    output = project_dir / f"{config.package.name}-{config.package.version}.prvpkg"
+    create_package(
+        output,
+        name=config.package.name,
+        version=config.package.version,
+        prove_version=__version__,
+        modules=modules,
+        dependencies=deps,
+    )
+    click.echo(f"published {output}")
+
+
+@package.command("list")
+@click.argument("path", default=".", type=click.Path(exists=True))
+def package_list(path: str) -> None:
+    """Show dependency tree."""
+    from prove.config import find_config, load_config
+    from prove.lockfile import read_lockfile
+
+    try:
+        config_path = find_config(Path(path))
+    except FileNotFoundError:
+        click.echo("error: no prove.toml found", err=True)
+        raise SystemExit(1)
+
+    project_dir = config_path.parent
+    config = load_config(config_path)
+    lockfile = read_lockfile(project_dir / "prove.lock")
+
+    if not config.dependencies:
+        click.echo("no dependencies")
+        return
+
+    locked = {}
+    if lockfile:
+        locked = {pkg.name: pkg for pkg in lockfile.packages}
+
+    for dep in config.dependencies:
+        pkg = locked.get(dep.name)
+        if pkg:
+            click.echo(f"  {dep.name} {pkg.version} (locked)")
+        else:
+            click.echo(f"  {dep.name} {dep.version_constraint} (not installed)")
+
+
+@package.command("clean")
+def package_clean() -> None:
+    """Clear the package cache (~/.prove/cache/packages/)."""
+    from prove.registry import clear_cache
+
+    count = clear_cache()
+    click.echo(f"removed {count} cached package(s)")
 
 
 def _view_impl(file: str) -> None:
