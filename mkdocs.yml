@@ -77,7 +77,7 @@ theme:
     - search.suggest
     - search.highlight
   logo: assets/icon.png
-  favicon: assets/icon.png
+  favicon: assets/favicon.png
   icon:
     repo: fontawesome/brands/git-alt
 
