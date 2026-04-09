@@ -1528,20 +1528,28 @@ class StmtEmitterMixin:
                         inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                         inner_ct = map_type(inner_ty)
                         bind_name = arm.pattern.fields[0].name
-                        # Use temp to avoid shadowing when bind_name == subj
-                        tmp = self._tmp()
-                        if inner_ct.is_pointer:
-                            self._line(f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){subj}.value;")
-                        elif inner_ct.decl == "double":
-                            self._line(
-                                f"{inner_ct.decl} {tmp} = prove_result_unwrap_double({subj});"
-                            )
+                        if isinstance(inner_ty, UnitType):
+                            # Unit/void cannot be stored in a variable;
+                            # declare as int so references in the arm body
+                            # still compile (value is meaningless for Unit).
+                            self._line(f"int {bind_name} = 0; /* Ok(Unit) */")
+                            self._locals[bind_name] = inner_ty
                         else:
-                            self._line(
-                                f"{inner_ct.decl} {tmp} = ({inner_ct.decl})(intptr_t){subj}.value;"
-                            )
-                        self._line(f"{inner_ct.decl} {bind_name} = {tmp};")
-                        self._locals[bind_name] = inner_ty
+                            # Use temp to avoid shadowing when bind_name == subj
+                            tmp = self._tmp()
+                            if inner_ct.is_pointer:
+                                self._line(
+                                    f"{inner_ct.decl} {tmp} = ({inner_ct.decl}){subj}.value;"
+                                )
+                            elif inner_ct.decl == "double":
+                                self._line(
+                                    f"{inner_ct.decl} {tmp} = prove_result_unwrap_double({subj});"
+                                )
+                            else:
+                                cast = f"({inner_ct.decl})(intptr_t)"
+                                self._line(f"{inner_ct.decl} {tmp} = {cast}{subj}.value;")
+                            self._line(f"{inner_ct.decl} {bind_name} = {tmp};")
+                            self._locals[bind_name] = inner_ty
                     self._emit_match_arm_body(arm.body)
                     self._indent -= 1
                 elif arm.pattern.name in ("Err", "Error"):

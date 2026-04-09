@@ -944,14 +944,18 @@ class ExprEmitterMixin:
                             inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                             inner_ct = map_type(inner_ty)
                             bind_name = vp.fields[0].name
-                            val = option_unwrap_value(f"{subj}.value", inner_ct)
-                            if bind_name == subj:
-                                alias = self._tmp()
-                                self._line(f"{inner_ct.decl} {alias} = {val};")
-                                self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                            if isinstance(inner_ty, UnitType):
+                                self._line(f"int {bind_name} = 0; /* Some(Unit) */")
+                                self._locals[bind_name] = inner_ty
                             else:
-                                self._line(f"{inner_ct.decl} {bind_name} = {val};")
-                            self._locals[bind_name] = inner_ty
+                                val = option_unwrap_value(f"{subj}.value", inner_ct)
+                                if bind_name == subj:
+                                    alias = self._tmp()
+                                    self._line(f"{inner_ct.decl} {alias} = {val};")
+                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                                else:
+                                    self._line(f"{inner_ct.decl} {bind_name} = {val};")
+                                self._locals[bind_name] = inner_ty
                         self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                         self._indent -= 1
                     elif vp.name == "None":
@@ -972,14 +976,18 @@ class ExprEmitterMixin:
                             inner_ty = subj_type.args[0] if subj_type.args else INTEGER
                             inner_ct = map_type(inner_ty)
                             bind_name = vp.fields[0].name
-                            val = option_unwrap_value(f"{subj}.value", inner_ct)
-                            if bind_name == subj:
-                                alias = self._tmp()
-                                self._line(f"{inner_ct.decl} {alias} = {val};")
-                                self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                            if isinstance(inner_ty, UnitType):
+                                self._line(f"int {bind_name} = 0; /* Ok(Unit) */")
+                                self._locals[bind_name] = inner_ty
                             else:
-                                self._line(f"{inner_ct.decl} {bind_name} = {val};")
-                            self._locals[bind_name] = inner_ty
+                                val = option_unwrap_value(f"{subj}.value", inner_ct)
+                                if bind_name == subj:
+                                    alias = self._tmp()
+                                    self._line(f"{inner_ct.decl} {alias} = {val};")
+                                    self._line(f"{inner_ct.decl} {bind_name} = {alias};")
+                                else:
+                                    self._line(f"{inner_ct.decl} {bind_name} = {val};")
+                                self._locals[bind_name] = inner_ty
                         self._emit_arm_body(arm.body, tmp, is_unit, _option_wrap)
                         self._indent -= 1
                     elif vp.name == "Err":
