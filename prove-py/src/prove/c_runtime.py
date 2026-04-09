@@ -527,6 +527,7 @@ _RUNTIME_FUNCTIONS = {
         "prove_bytes_hex_validates",
         "prove_bytes_at",
         "prove_bytes_at_validates",
+        "prove_bytes_length",
     ],
     "prove_hash_crypto": [
         "prove_crypto_sha256_bytes",

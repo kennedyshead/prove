@@ -152,3 +152,12 @@ int64_t prove_bytes_at(Prove_ByteArray *data, int64_t index) {
 bool prove_bytes_at_validates(Prove_ByteArray *data, int64_t index) {
     return data != NULL && index >= 0 && index < data->length;
 }
+
+/* ── length channel ─────────────────────────────────────────── */
+
+int64_t prove_bytes_length(Prove_ByteArray *data) {
+#ifndef PROVE_RELEASE
+    if (!data) return 0;
+#endif
+    return data->length;
+}

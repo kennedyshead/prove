@@ -1,0 +1,494 @@
+module HxApp
+  narrative: """
+    Explorative hex editor with wildcard byte-pattern search.
+    Renders a TUI hex view with offset, hex bytes, and ASCII columns.
+    Supports cursor navigation, scrolling, and pattern search with ?? wildcards.
+  """
+  Terminal types TerminalAppEvent derives size ansi outputs terminal clear raw cooked
+  System types ByteArray inputs file process outputs console
+  Bytes creates bytearray length at
+  Format derives pad_left creates hexadecimal
+  Text derives slice upper creates length split
+  Math derives max min
+  UI types Key Position
+  Sequence derives get extend
+  Parse creates hexadecimal
+  Types creates string
+
+  type HxState is
+    data ByteArray
+    filename String
+    offset Integer
+    cursor Integer
+    rows Integer
+    cols Integer
+    search_on Boolean
+    search_buf String
+    hits List<Integer>
+    hit_idx Integer
+    loaded Boolean
+
+  type HxEvent is TerminalAppEvent
+    | Search
+    | NextMatch
+    | PrevMatch
+    | SearchChar
+
+/// Format a byte value as 2-char uppercase hex.
+creates hex_byte(value Integer) String
+from
+    upper(pad_left(hexadecimal(value), 2, '0'))
+
+/// Format an offset as 8-char uppercase hex.
+creates hex_offset(off Integer) String
+from
+    upper(pad_left(hexadecimal(off), 8, '0'))
+
+/// Return printable ASCII char or dot.
+creates ascii_char(value Integer) String
+from
+    match value >= 32 && value <= 126
+        true => string(bytearray([value]))
+        false => "."
+
+/// Check if pattern matches at position using recursion.
+derives check_at(
+    data ByteArray,
+    pattern List<Integer>,
+    pos Integer,
+    j Integer,
+    pat_len Integer
+) Boolean
+  terminates: pat_len - j
+from
+    match j >= pat_len
+        true => true
+        false =>
+            p as Integer = get(pattern, j)
+            ok as Boolean = p == -1 || at(data, pos + j) == p
+            match ok
+                true => check_at(data, pattern, pos, j + 1, pat_len)
+                false => false
+
+/// Collect match positions recursively.
+creates collect_matches(
+    data ByteArray,
+    pattern List<Integer>,
+    pat_len Integer,
+    data_len Integer,
+    i Integer,
+    acc List<Integer>
+) List<Integer>
+  terminates: data_len - i
+from
+    match i > data_len - pat_len
+        true => acc
+        false =>
+            next as List<Integer> = match check_at(data, pattern, i, 0, pat_len)
+                true => extend(acc, [i])
+                false => acc
+            collect_matches(data, pattern, pat_len, data_len, i + 1, next)
+
+/// Find all positions where pattern matches.
+creates find_matches(data ByteArray, pattern List<Integer>) List<Integer>
+from
+    pat_len as Integer = pattern.length
+    data_len as Integer = length(data)
+    match pat_len == 0 || data_len == 0
+        true => []
+        false => collect_matches(data, pattern, pat_len, data_len, 0, [])
+
+/// Parse one hex token to an integer. Returns -1 for wildcard, -2 for invalid.
+creates parse_token(tok String) Integer
+from
+    match tok == "??"
+        true => -1
+        false =>
+            match length(tok) >= 2
+                true =>
+                    hex_str as String = upper(slice(tok, 0, 2))
+                    decoded as ByteArray = hexadecimal(hex_str)
+                    match length(decoded) > 0
+                        true => at(decoded, 0)
+                        false => -2
+                false => -2
+
+/// Parse a search pattern like "FF ?? 89" into a list of integers.
+creates parse_pattern(input String) List<Integer>
+from
+    filter(map(split(input, " "), |tok| parse_token(tok)), |v| v != -2)
+
+/// Check if byte position falls within any match range.
+derives in_match_check(
+    pos Integer,
+    hits List<Integer>,
+    pat_len Integer,
+    i Integer
+) Boolean
+  terminates: hits.length - i
+from
+    match i >= hits.length
+        true => false
+        false =>
+            m as Integer = get(hits, i)
+            match pos >= m && pos < m + pat_len
+                true => true
+                false => in_match_check(pos, hits, pat_len, i + 1)
+
+/// Render one byte cell (hex + ascii).
+outputs render_byte(
+    state HxState,
+    byte_pos Integer,
+    col Integer,
+    y Integer,
+    pat_len Integer
+) Unit
+from
+    data_len as Integer = length(state.data)
+    extra as Integer = match col >= 8
+        true => 1
+        false => 0
+    x as Integer = 10 + col * 3 + extra
+    gap as String = match col == 8
+        true => " "
+        false => ""
+    match byte_pos < data_len
+        true =>
+            val as Integer = at(state.data, byte_pos)
+            hex as String = hex_byte(val)
+            ascii as String = ascii_char(val)
+            is_cur as Boolean = byte_pos == state.cursor
+            is_match as Boolean = in_match_check(byte_pos, state.hits, pat_len, 0)
+            cur_hit as Boolean = match state.hits.length > 0
+                true => byte_pos == get(state.hits, state.hit_idx % state.hits.length)
+                false => false
+            color as String = match is_cur
+                true => ansi("inverse")
+                false =>
+                    match cur_hit
+                        true => f"{ansi("bold")}{ansi("green")}"
+                        false =>
+                            match is_match
+                                true => ansi("yellow")
+                                false =>
+                                    match val == 0
+                                        true => ansi("dim")
+                                        false => ""
+            reset as String = match color == ""
+                true => ""
+                false => ansi("reset")
+            terminal(x, y, f"{gap}{color}{hex}{reset}")
+            terminal(59 + col, y, f"{color}{ascii}{reset}")
+        false =>
+            terminal(x, y, f"{gap}  ")
+            terminal(59 + col, y, " ")
+
+/// Render bytes in a row recursively.
+outputs render_cols(
+    state HxState,
+    row_offset Integer,
+    y Integer,
+    col Integer,
+    pat_len Integer
+) Unit
+  terminates: 16 - col
+from
+    match col >= 16
+        true => Unit
+        false =>
+            render_byte(state, row_offset + col, col, y, pat_len)
+            render_cols(state, row_offset, y, col + 1, pat_len)
+
+/// Render one hex row (offset + bytes + ascii).
+outputs render_row(state HxState, row_offset Integer, y Integer, pat_len Integer) Unit
+from
+    terminal(1, y, f" {hex_offset(row_offset)} ")
+    render_cols(state, row_offset, y, 0, pat_len)
+
+/// Render visible rows recursively.
+outputs render_rows(state HxState, r Integer, pat_len Integer, data_len Integer) Unit
+  terminates: state.rows - r
+from
+    match r >= state.rows
+        true => Unit
+        false =>
+            row_off as Integer = state.offset + r * 16
+            match row_off < data_len
+                true => render_row(state, row_off, r + 2, pat_len)
+                false => Unit
+            render_rows(state, r + 1, pat_len, data_len)
+
+/// Render the full hex view.
+outputs render_view(state HxState) Unit
+from
+    clear()
+    sz as Position = size()
+    state.cols = sz.x
+    state.rows = max(1, sz.y - 4)
+    data_len as Integer = length(state.data)
+    hit_count as Integer = state.hits.length
+    pat_len as Integer = match state.search_buf == ""
+        true => 0
+        false => parse_pattern(state.search_buf).length
+    fname as String = state.filename
+    header as String = match hit_count > 0
+        true =>
+            idx as Integer = (state.hit_idx % hit_count) + 1
+            f" hx: {fname}  ({data_len} bytes)  Matches: {hit_count} [{idx}/{hit_count}]"
+        false => f" hx: {fname}  ({data_len} bytes)"
+    terminal(0, 0, header)
+    terminal(1, 1, " Offset   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII")
+    render_rows(state, 0, pat_len, data_len)
+    status_y as Integer = sz.y - 2
+    terminal(1, status_y, f" Cursor: 0x{hex_offset(state.cursor)}")
+    search_y as Integer = sz.y - 1
+    sbuf as String = state.search_buf
+    match state.search_on
+        true => terminal(1, search_y, f" /{sbuf}")
+        false =>
+            match sbuf != ""
+                true => terminal(1, search_y, f" Last: {sbuf}")
+                false =>
+                    terminal(1, search_y, " / search  n/N next/prev  q quit")
+
+renders interface(registered_listens_verbs List<Listens>)
+  event_type HxEvent
+  state_init HxState(bytearray([]), "", 0, 0, 24, 80, false, "", [], 0, false)
+from
+    Draw(state) =>
+        match state.loaded
+            false =>
+                args as List<String> = process()
+                match args.length < 2
+                    true =>
+                        cooked()
+                        console("Usage: hx <filename>")
+                        Exit(state)
+                    false =>
+                        fname as String = get(args, 1)
+                        result as Result<String, Error> = file(fname)
+                        match result
+                            Ok(content) =>
+                                state.data = bytearray(content)
+                                state.filename = fname
+                                state.loaded = true
+                                Draw(state)
+                            Err(e) =>
+                                cooked()
+                                console(f"Error: could not read {fname}")
+                                Exit(state)
+            true =>
+                render_view(state)
+    Tick(state) => Draw(state)
+    Search =>
+        pattern as List<Integer> = parse_pattern(state.search_buf)
+        state.hits = find_matches(state.data, pattern)
+        state.hit_idx = 0
+        state.search_on = false
+        match state.hits.length > 0
+            true =>
+                state.cursor = get(state.hits, 0)
+                state.offset = state.cursor - (state.cursor % 16)
+                Draw(state)
+            false => Draw(state)
+    NextMatch =>
+        match state.hits.length > 0
+            true =>
+                count as Integer = state.hits.length
+                next_idx as Integer = state.hit_idx + 1
+                state.hit_idx = next_idx % count
+                state.cursor = get(state.hits, state.hit_idx)
+                state.offset = state.cursor - (state.cursor % 16)
+                Draw(state)
+            false => Draw(state)
+    PrevMatch =>
+        match state.hits.length > 0
+            true =>
+                count as Integer = state.hits.length
+                prev_idx as Integer = state.hit_idx + count - 1
+                state.hit_idx = prev_idx % count
+                state.cursor = get(state.hits, state.hit_idx)
+                state.offset = state.cursor - (state.cursor % 16)
+                Draw(state)
+            false => Draw(state)
+    SearchChar => Draw(state)
+    Exit(state) =>
+        cooked()
+        Unit
+    _ => Unit
+
+/// Handle backspace in search mode: delete last char from search buffer.
+creates do_backspace(state HxState) String
+from
+    slen as Integer = length(state.search_buf)
+    match slen > 0
+        true => slice(state.search_buf, 0, slen - 1)
+        false => state.search_buf
+
+listens on_key(attached_verbs List<Attached>) HxEvent
+  event_type KeyDown
+  state_type HxState
+from
+    Key:Escape =>
+        match state.search_on
+            true =>
+                state.search_on = false
+                Draw(state)
+            false => Exit(state)
+    Key:Enter =>
+        match state.search_on
+            true => Search()
+            false => Tick(state)
+    Key:Backspace =>
+        state.search_buf = do_backspace(state)
+        match state.search_on
+            true => Draw(state)
+            false => Tick(state)
+    Key:ArrowLeft =>
+        state.cursor = max(0, state.cursor - 1)
+        match state.cursor < state.offset
+            true => state.offset = max(0, state.offset - 16)
+            false => Unit
+        Draw(state)
+    Key:ArrowRight =>
+        data_len as Integer = length(state.data)
+        state.cursor = min(data_len - 1, state.cursor + 1)
+        max_vis as Integer = state.offset + state.rows * 16 - 1
+        match state.cursor > max_vis
+            true => state.offset = state.offset + 16
+            false => Unit
+        Draw(state)
+    Key:ArrowUp =>
+        state.cursor = max(0, state.cursor - 16)
+        match state.cursor < state.offset
+            true => state.offset = max(0, state.offset - 16)
+            false => Unit
+        Draw(state)
+    Key:ArrowDown =>
+        data_len as Integer = length(state.data)
+        state.cursor = min(data_len - 1, state.cursor + 16)
+        max_vis as Integer = state.offset + state.rows * 16 - 1
+        match state.cursor > max_vis
+            true => state.offset = state.offset + 16
+            false => Unit
+        Draw(state)
+    Key:PageUp =>
+        jump as Integer = state.rows * 16
+        state.offset = max(0, state.offset - jump)
+        state.cursor = max(0, state.cursor - jump)
+        Draw(state)
+    Key:PageDown =>
+        data_len as Integer = length(state.data)
+        jump as Integer = state.rows * 16
+        state.offset = min(max(0, data_len - state.rows * 16), state.offset + jump)
+        state.cursor = min(data_len - 1, state.cursor + jump)
+        Draw(state)
+    Key:Home =>
+        state.cursor = 0
+        state.offset = 0
+        Draw(state)
+    Key:End =>
+        data_len as Integer = length(state.data)
+        state.cursor = max(0, data_len - 1)
+        state.offset = max(0, data_len - state.rows * 16)
+        Draw(state)
+    Key:"/" =>
+        state.search_on = true
+        state.search_buf = ""
+        Draw(state)
+    Key:"q" =>
+        match state.search_on
+            true =>
+                state.search_buf = f"{state.search_buf}q"
+                SearchChar()
+            false => Exit(state)
+    Key:"n" =>
+        match state.search_on
+            true =>
+                state.search_buf = f"{state.search_buf}n"
+                SearchChar()
+            false => NextMatch()
+    Key:"N" =>
+        match state.search_on
+            true =>
+                state.search_buf = f"{state.search_buf}N"
+                SearchChar()
+            false => PrevMatch()
+    Key:"0" =>
+        state.search_buf = f"{state.search_buf}0"
+        SearchChar()
+    Key:"1" =>
+        state.search_buf = f"{state.search_buf}1"
+        SearchChar()
+    Key:"2" =>
+        state.search_buf = f"{state.search_buf}2"
+        SearchChar()
+    Key:"3" =>
+        state.search_buf = f"{state.search_buf}3"
+        SearchChar()
+    Key:"4" =>
+        state.search_buf = f"{state.search_buf}4"
+        SearchChar()
+    Key:"5" =>
+        state.search_buf = f"{state.search_buf}5"
+        SearchChar()
+    Key:"6" =>
+        state.search_buf = f"{state.search_buf}6"
+        SearchChar()
+    Key:"7" =>
+        state.search_buf = f"{state.search_buf}7"
+        SearchChar()
+    Key:"8" =>
+        state.search_buf = f"{state.search_buf}8"
+        SearchChar()
+    Key:"9" =>
+        state.search_buf = f"{state.search_buf}9"
+        SearchChar()
+    Key:"a" =>
+        state.search_buf = f"{state.search_buf}a"
+        SearchChar()
+    Key:"b" =>
+        state.search_buf = f"{state.search_buf}b"
+        SearchChar()
+    Key:"c" =>
+        state.search_buf = f"{state.search_buf}c"
+        SearchChar()
+    Key:"d" =>
+        state.search_buf = f"{state.search_buf}d"
+        SearchChar()
+    Key:"e" =>
+        state.search_buf = f"{state.search_buf}e"
+        SearchChar()
+    Key:"f" =>
+        state.search_buf = f"{state.search_buf}f"
+        SearchChar()
+    Key:"A" =>
+        state.search_buf = f"{state.search_buf}A"
+        SearchChar()
+    Key:"B" =>
+        state.search_buf = f"{state.search_buf}B"
+        SearchChar()
+    Key:"C" =>
+        state.search_buf = f"{state.search_buf}C"
+        SearchChar()
+    Key:"D" =>
+        state.search_buf = f"{state.search_buf}D"
+        SearchChar()
+    Key:"E" =>
+        state.search_buf = f"{state.search_buf}E"
+        SearchChar()
+    Key:"F" =>
+        state.search_buf = f"{state.search_buf}F"
+        SearchChar()
+    Key:"?" =>
+        state.search_buf = f"{state.search_buf}?"
+        SearchChar()
+    Key:Space =>
+        state.search_buf = f"{state.search_buf} "
+        SearchChar()
+    _ => Tick(state)
+
+main()
+from
+    raw()
+    interface([on_key])&

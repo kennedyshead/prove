@@ -673,11 +673,13 @@ _register_module(
         ("creates", "bytearray"): "prove_bytes_create",
         ("validates", "bytearray"): "prove_bytes_validates",
         ("validates", "exist"): "prove_bytes_at_validates",
+        ("creates", "length"): "prove_bytes_length",
     },
     overloads={
         ("derives", "bytearray", "ByteArray_Integer"): "prove_bytes_slice",
         ("derives", "bytearray", "ByteArray_ByteArray"): "prove_bytes_concat",
         ("creates", "at", "ByteArray"): "prove_bytes_at",
+        ("creates", "bytearray", "String"): "prove_bytes_from_string",
     },
 )
 

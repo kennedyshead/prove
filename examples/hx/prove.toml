@@ -1,0 +1,24 @@
+[package]
+name = "hx"
+version = "0.1.0"
+authors = []
+license = ""
+
+[build]
+target = "native"
+mutate = true
+debug = true
+ccache = true
+
+[optimize]
+enabled = false
+pgo = false
+strip = false
+tune_host = false
+gc_sections = false
+
+[test]
+property_rounds = 1000
+
+[style]
+line_length = 90

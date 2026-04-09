@@ -35,3 +35,11 @@ binary
 /// Check if index exists in a ByteArray
 validates exist(data ByteArray, index Integer)
 binary
+
+/// Create a byte array from a string (raw bytes)
+creates bytearray(value String) ByteArray
+binary
+
+/// Get the number of bytes in a ByteArray
+creates length(data ByteArray) Integer
+binary

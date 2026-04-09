@@ -36,4 +36,8 @@ bool             prove_bytes_hex_validates(Prove_String *source);
 int64_t prove_bytes_at(Prove_ByteArray *data, int64_t index);
 bool    prove_bytes_at_validates(Prove_ByteArray *data, int64_t index);
 
+/* ── length channel ─────────────────────────────────────────── */
+
+int64_t prove_bytes_length(Prove_ByteArray *data);
+
 #endif /* PROVE_BYTES_H */
